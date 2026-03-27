@@ -1,0 +1,26 @@
+# Rust
+target/
+
+# Node / frontend
+node_modules/
+dist/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Logs and runtime dumps
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Temp
+tmp/
+*.tmp
