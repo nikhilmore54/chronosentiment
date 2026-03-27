@@ -1,5 +1,6 @@
-use chronosentiment_core::*;
+use chronosentiment_core::{*, ga::GaConfig, harness::run_simulation_harness};
 use crate::ApiError;
+use rand::{Rng, SeedableRng};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SimulateInput {
@@ -25,9 +26,40 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
         _ => return Err(ApiError::InvalidInput("mode must be 'real' or 'ideal'".to_string())),
     };
 
+    let mut rng = rand::rngs::StdRng::seed_from_u64(input.seed);
+
+    let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", input.seed, 100);
+    let default_scenario = scenarios_map.values().next().ok_or_else(|| ApiError::InternalError("No benchmark scenarios found".to_string()))?;
+    let market_events = default_scenario.clone(); // Use a clone for now
+
+    let first_event_price = market_events.first().map(|e| e.price).unwrap_or(100);
+    let first_event_timestamp = market_events.first().map(|e| e.exchange_ts).unwrap_or(0);
+
+    let config = GaConfig {
+        population_size: 1,
+        generations: 1,
+        mutation_rate: 0.0,
+        seed: input.seed,
+        order_id_prefix: "SIMULATE".to_string(),
+        order_price: first_event_price,
+        order_quantity_for_strategy: 100,
+        order_timestamp: first_event_timestamp,
+        lambda: 0.5,
+        initial_queue_threshold: 200,
+    };
+
+    let create_orders = vec![CreateOrder {
+        order_id: "sim_order_1".to_string(),
+        side: Side::Buy,
+        price: config.order_price,
+        quantity: config.order_quantity_for_strategy,
+        timestamp: config.order_timestamp,
+        fill_probability: rng.gen_range(0.0..1.0),
+    }];
+
     // Baseline Validation 1: Determinism Check
-    let res1 = run_simulation(mode);
-    let res2 = run_simulation(mode);
+    let (_, res1, _) = run_simulation_harness(mode, market_events.clone(), create_orders.clone());
+    let (_, res2, _) = run_simulation_harness(mode, market_events.clone(), create_orders.clone());
 
     if res1.pnl != res2.pnl || res1.trades != res2.trades || res1.events.len() != res2.events.len() {
         return Err(ApiError::InternalError("Determinism violation detected".to_string()));
@@ -40,7 +72,7 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
         }
     }
 
-    let state_hash = format!("{:x}", res1.pnl.abs()); // Simple deterministic hash for MVP
+    let state_hash = blake3::hash(serde_json::to_string(&res1).unwrap_or_default().as_bytes()).to_hex().to_string();
 
     Ok(SimulateOutput {
         pnl: res1.pnl,

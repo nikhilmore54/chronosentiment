@@ -13,6 +13,8 @@ pub mod pipeline;
 pub mod synthetic;
 pub mod binance_adapter;
 pub mod strategy_ranking;
+pub mod tick_replay;
+pub mod replay_evaluator;
 
 pub use ga::*;
 pub use harness::{run_simulation_harness};
@@ -29,6 +31,8 @@ pub use pipeline::*;
 pub use synthetic::*;
 pub use binance_adapter::*;
 pub use strategy_ranking::*;
+pub use tick_replay::*;
+pub use replay_evaluator::*;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

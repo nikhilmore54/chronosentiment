@@ -1,32 +1,35 @@
 use crate::*;
 
 pub fn print_timeline(simulation: &SimulationResult) {
-    println!("--- Timeline ---");
+    println!("-- - Timeline ---");
     println!();
     for event in &simulation.events {
         match event {
-            SimEvent::MarketEvent { subtype, price, quantity, ts, .. } => {
+            SimEvent::MarketEvent { subtype, price, quantity, timestamp, .. } => {
                 let subtype_str = match subtype {
                     MarketEventType::NewOrder => "NEW_ORDER",
                     MarketEventType::Trade => "TRADE",
                     MarketEventType::Cancel => "CANCEL",
                 };
                 if *subtype == MarketEventType::Trade {
-                    println!("t={:<2} | MarketTrade qty={} price={}", ts, quantity, price);
+                    println!("t={:<2} | MarketTrade qty={} price={}", timestamp, quantity, price);
                 } else {
-                    println!("t={:<2} | MarketEvent {:<9} price={} qty={}", ts, subtype_str, price, quantity);
+                    println!("t={:<2} | MarketEvent {:<9} price={} qty={}", timestamp, subtype_str, price, quantity);
                 }
             }
-            SimEvent::OrderIntent { order_id, ts, .. } => {
-                println!("t={:<2} | OrderIntent {} created", ts, order_id);
+            SimEvent::OrderIntent { order_id, timestamp, .. } => {
+                println!("t={:<2} | OrderIntent {} created", timestamp, order_id);
             }
-            SimEvent::OrderEnteredQueue { order_id, ts, .. } => {
-                println!("t={:<2} | Order {} entered queue", ts, order_id);
+            SimEvent::OrderEnteredQueue { order_id, timestamp, .. } => {
+                println!("t={:<2} | Order {} entered queue", timestamp, order_id);
             }
-            SimEvent::PartialFill { order_id, ts, filled_qty, .. } => {
-                println!("t={:<2} | PartialFill {} qty={}", ts, order_id, filled_qty);
+            SimEvent::PartialFill { order_id, timestamp, filled_qty, .. } => {
+                println!("t={:<2} | PartialFill {} qty={}", timestamp, order_id, filled_qty);
             }
             SimEvent::QueueProgression { .. } => {}
+            SimEvent::OrderFilled { order_id, timestamp, .. } => {
+                println!("t={:<2} | OrderFilled {}", timestamp, order_id);
+            }
         }
     }
 }
@@ -38,30 +41,30 @@ pub fn replay_step(simulation: &SimulationResult, step: usize) {
     }
 }
 
-pub fn replay_range(simulation: &SimulationResult, start_ts: u64, end_ts: u64) {
-    println!("--- Replay (t={} → t={}) ---", start_ts, end_ts);
+pub fn replay_range(simulation: &SimulationResult, start_timestamp: u64, end_timestamp: u64) {
+    println!("-- - Replay (t={} → t={}) ---", start_timestamp, end_timestamp);
     println!();
     for event in &simulation.events {
-        let ts = event.timestamp();
-        if ts >= start_ts && ts <= end_ts {
+        let timestamp = event.timestamp();
+        if timestamp >= start_timestamp && timestamp <= end_timestamp {
             format_event(event);
         }
     }
 }
 
 fn format_event(event: &SimEvent) {
-    let ts = event.timestamp();
+    let timestamp = event.timestamp();
     match event {
         SimEvent::MarketEvent { subtype, quantity, .. } => {
             if *subtype == MarketEventType::Trade {
-                println!("t={:<2} MarketTrade qty={}", ts, quantity);
+                println!("t={:<2} MarketTrade qty={}", timestamp, quantity);
             }
         }
         SimEvent::OrderEnteredQueue { order_id, .. } => {
-            println!("t={:<2} Order {} enters queue", ts, order_id);
+            println!("t={:<2} Order {} enters queue", timestamp, order_id);
         }
         SimEvent::PartialFill { order_id, filled_qty, .. } => {
-            println!("t={:<2} PartialFill {} qty={}", ts, order_id, filled_qty);
+            println!("t={:<2} PartialFill {} qty={}", timestamp, order_id, filled_qty);
         }
         _ => {}
     }

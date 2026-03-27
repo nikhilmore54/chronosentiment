@@ -14,6 +14,37 @@ const ORDER_PRICE: u64 = 100;
 const ORDER_QUANTITY: u64 = 100;
 const ORDER_TIMESTAMP: u64 = 12; // A reasonable timestamp for event-driven simulation
 
+fn parse_strategy_from_id(strategy_id: &str) -> Option<chronosentiment_core::ga::Strategy> {
+    let mut nums: Vec<u64> = Vec::new();
+    for part in strategy_id.split('_').rev() {
+        if let Ok(v) = part.parse::<u64>() {
+            nums.push(v);
+            if nums.len() == 4 {
+                break;
+            }
+        }
+    }
+    if nums.len() < 4 {
+        return None;
+    }
+    Some(chronosentiment_core::ga::Strategy {
+        stop_loss: nums[0],
+        take_profit: nums[1],
+        base_edge: nums[2],
+        queue_threshold: nums[3],
+    })
+}
+
+fn map_regime(regime: &str) -> chronosentiment_core::strategy_ranking::LiveRegime {
+    match regime {
+        "trending_up" => chronosentiment_core::strategy_ranking::LiveRegime::TrendingUp,
+        "trending_down" => chronosentiment_core::strategy_ranking::LiveRegime::TrendingDown,
+        "sideways" => chronosentiment_core::strategy_ranking::LiveRegime::Sideways,
+        "volatile" => chronosentiment_core::strategy_ranking::LiveRegime::Volatile,
+        _ => chronosentiment_core::strategy_ranking::LiveRegime::Mixed,
+    }
+}
+
 #[derive(Clone)]
 pub struct EvaluationService {
     pub last_simulation: Arc<Mutex<Option<SimulationResult>>>,
@@ -569,21 +600,193 @@ impl EvaluationService {
         Ok(snapshot)
     }
 
-    /// Actionable suggestions only: `BUY` and `SELL` (omits `HOLD`).
+    /// Real-time style suggestions from pre-trained strategy pool (no online GA).
     pub fn get_trade_suggestions(&self) -> Result<crate::dto::TradeSuggestionsResponse, ApiError> {
-        use chronosentiment_core::pipeline::SignalAction;
+        use chronosentiment_core::strategy_ranking::{
+            LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile,
+            StrategyRegistry, SuggestionDebug,
+        };
 
         let snapshot = self.get_latest_signals()?;
-        let suggestions: Vec<_> = snapshot
-            .signals
-            .into_iter()
-            .filter(|s| s.action != SignalAction::HOLD)
-            .collect();
-        let count = suggestions.len();
+        if snapshot.signals.is_empty() {
+            return Ok(crate::dto::TradeSuggestionsResponse {
+                asset: "MULTI".to_string(),
+                timestamp: snapshot.timestamp,
+                suggestions: Vec::new(),
+                count: 0,
+                debug: SuggestionDebug::default(),
+            });
+        }
+
+        let mut registry_rows: Vec<StrategyProfile> = Vec::new();
+        for sig in &snapshot.signals {
+            let strategy = parse_strategy_from_id(&sig.strategy_id).unwrap_or(chronosentiment_core::ga::Strategy {
+                queue_threshold: 100,
+                base_edge: 2,
+                take_profit: 10,
+                stop_loss: 5,
+            });
+            registry_rows.push(StrategyProfile {
+                strategy_id: sig.strategy_id.clone(),
+                strategy,
+                preferred_regimes: vec![map_regime(&sig.regime)],
+                confidence_weight: sig.confidence.clamp(0.0, 1.0),
+                execution_weight: sig.composite_score.clamp(0.0, 1.0),
+            });
+        }
+        registry_rows.sort_by(|a, b| a.strategy_id.cmp(&b.strategy_id));
+        registry_rows.dedup_by(|a, b| a.strategy_id == b.strategy_id);
+        let registry = StrategyRegistry::new(registry_rows);
+
+        let mut states_by_asset: HashMap<String, LiveMarketState> = HashMap::new();
+        for sig in &snapshot.signals {
+            let state = states_by_asset
+                .entry(sig.asset.clone())
+                .or_insert_with(|| LiveMarketState::new(sig.asset.clone()));
+            state.confidence = state.confidence.max(sig.confidence);
+            state.expected_edge = state.expected_edge.max(sig.expected_edge);
+            state.execution_score = state.execution_score.max(sig.composite_score.clamp(0.0, 1.0));
+            state.regime = map_regime(&sig.regime);
+        }
+
+        let mut all_suggestions = Vec::new();
+        let mut agg_debug = SuggestionDebug::default();
+        for (_asset, state) in states_by_asset {
+            let mut evaluator = LiveEvaluator::new(state, registry.clone(), RankingWeights::default());
+            let mut top = evaluator.rank_current(3);
+            let dbg = evaluator.debug_snapshot();
+            agg_debug.rejected_hold += dbg.rejected_hold;
+            agg_debug.rejected_low_edge += dbg.rejected_low_edge;
+            agg_debug.rejected_low_exec += dbg.rejected_low_exec;
+            agg_debug.suppressed_stability += dbg.suppressed_stability;
+            all_suggestions.append(&mut top);
+        }
+
+        all_suggestions.sort_by(|a, b| {
+            b.live_score
+                .partial_cmp(&a.live_score)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| a.strategy_id.cmp(&b.strategy_id))
+        });
+        all_suggestions.truncate(5);
+
         Ok(crate::dto::TradeSuggestionsResponse {
+            asset: "MULTI".to_string(),
             timestamp: snapshot.timestamp,
-            suggestions,
-            count,
+            count: all_suggestions.len(),
+            suggestions: all_suggestions,
+            debug: agg_debug,
+        })
+    }
+
+    pub fn get_replay_suggestions(
+        &self,
+        mode: String,
+        limit: usize,
+        sample_rate: usize,
+        include_full: bool,
+    ) -> Result<crate::dto::ReplaySuggestionsResponse, ApiError> {
+        use chronosentiment_core::replay_evaluator::run_replay_with_evaluator;
+        use chronosentiment_core::strategy_ranking::{
+            LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile, StrategyRegistry,
+        };
+        use chronosentiment_core::tick_replay::{ReplayConfig, ReplayMode, TickReplayEngine};
+
+        let jsonl_path = std::env::var("BINANCE_JSONL")
+            .unwrap_or_else(|_| "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/binance_ticks.jsonl".to_string());
+        let mut replay = TickReplayEngine::from_binance_jsonl(
+            &jsonl_path,
+            ReplayConfig {
+                mode: ReplayMode::Fast,
+                ..ReplayConfig::default()
+            },
+            1,
+        )
+        .map_err(|e| {
+            ApiError::EngineError(format!("Failed to load replay ticks from {}: {}", jsonl_path, e))
+        })?;
+
+        let snapshot = self.get_latest_signals()?;
+        let mut registry_rows: Vec<StrategyProfile> = Vec::new();
+        for sig in &snapshot.signals {
+            let strategy = parse_strategy_from_id(&sig.strategy_id).unwrap_or(chronosentiment_core::ga::Strategy {
+                queue_threshold: 100,
+                base_edge: 2,
+                take_profit: 10,
+                stop_loss: 5,
+            });
+            registry_rows.push(StrategyProfile {
+                strategy_id: sig.strategy_id.clone(),
+                strategy,
+                preferred_regimes: vec![map_regime(&sig.regime)],
+                confidence_weight: sig.confidence.clamp(0.0, 1.0),
+                execution_weight: sig.composite_score.clamp(0.0, 1.0),
+            });
+        }
+        registry_rows.sort_by(|a, b| a.strategy_id.cmp(&b.strategy_id));
+        registry_rows.dedup_by(|a, b| a.strategy_id == b.strategy_id);
+        if registry_rows.is_empty() {
+            return Err(ApiError::EngineError(
+                "No strategy profiles available for replay evaluation.".to_string(),
+            ));
+        }
+
+        let registry = StrategyRegistry::new(registry_rows);
+        let mut evaluator = LiveEvaluator::new(
+            LiveMarketState::new("BTCUSDT".to_string()),
+            registry,
+            RankingWeights::default(),
+        );
+        let replay_out = run_replay_with_evaluator(&mut replay, &mut evaluator, 5);
+
+        let mode_norm = mode.to_lowercase();
+        let include_timeline = include_full || mode_norm == "full" || mode_norm == "sampled";
+        let sample_every = if mode_norm == "sampled" {
+            sample_rate.max(1)
+        } else {
+            1
+        };
+        let cap = limit.max(1);
+
+        let mut timeline: Vec<crate::dto::ReplaySuggestionPoint> = Vec::new();
+        let mut prev_strategy: Option<String> = None;
+        if include_timeline {
+            for (idx, point) in replay_out.timeline.iter().enumerate() {
+                if idx % sample_every != 0 {
+                    continue;
+                }
+                let top = point.suggestions.first().map(|s| crate::dto::TopStrategySnapshot {
+                    strategy_id: s.strategy_id.clone(),
+                    action: s.action.clone(),
+                    live_score: s.live_score,
+                    expected_edge: s.expected_edge,
+                    execution_score: s.execution_score,
+                });
+                timeline.push(crate::dto::ReplaySuggestionPoint {
+                    ts: point.exchange_ts,
+                    decision_ts: point.decision_ts,
+                    execution_ts: point.execution_ts,
+                    suggestion_count: point.suggestions.len(),
+                    prev_strategy: prev_strategy.clone(),
+                    flip_occurred: matches!(
+                        (&prev_strategy, &top),
+                        (Some(prev), Some(curr)) if prev != &curr.strategy_id
+                    ),
+                    top_strategy: top,
+                });
+                prev_strategy = timeline
+                    .last()
+                    .and_then(|p| p.top_strategy.as_ref().map(|x| x.strategy_id.clone()));
+                if timeline.len() >= cap {
+                    break;
+                }
+            }
+        }
+
+        Ok(crate::dto::ReplaySuggestionsResponse {
+            asset: "BTCUSDT".to_string(),
+            metrics: replay_out.metrics,
+            timeline,
         })
     }
 

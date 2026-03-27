@@ -22,27 +22,27 @@ pub fn inspect_trade(order_id_to_find: &str, simulation: &SimulationResult) -> T
 
     for event in &simulation.events {
         match event {
-            SimEvent::OrderIntent { order_id, side, price, quantity, ts, sequence_id, .. } if order_id == order_id_to_find => {
+            SimEvent::OrderIntent { order_id, side, price, quantity, timestamp, sequence_id, .. } if order_id == order_id_to_find => {
                 decision.order_id = order_id.clone();
                 decision.side = *side;
                 decision.price = *price;
                 decision.quantity = *quantity;
-                decision.timestamp = *ts;
+                decision.timestamp = *timestamp;
                 last_order_event_seq = Some(*sequence_id);
             }
-            SimEvent::OrderEnteredQueue { order_id, ts, quantity_ahead, sequence_id, .. } if order_id == order_id_to_find => {
-                execution.arrival_time = *ts;
-                execution.queue_ahead_initial = *quantity_ahead;
-                execution.queue_progression.push(*quantity_ahead);
+            SimEvent::OrderEnteredQueue { order_id, timestamp, queue_ahead, sequence_id, .. } if order_id == order_id_to_find => {
+                execution.arrival_time = *timestamp;
+                execution.queue_ahead_initial = *queue_ahead;
+                execution.queue_progression.push(*queue_ahead);
                 last_order_event_seq = Some(*sequence_id);
             }
-            SimEvent::QueueProgression { order_id, new_quantity_ahead, sequence_id, .. } if order_id == order_id_to_find => {
-                execution.queue_progression.push(*new_quantity_ahead);
+            SimEvent::QueueProgression { order_id, queue_ahead, sequence_id, .. } if order_id == order_id_to_find => {
+                execution.queue_progression.push(*queue_ahead);
                 last_order_event_seq = Some(*sequence_id);
             }
-            SimEvent::PartialFill { order_id, ts, filled_qty, price, sequence_id, .. } if order_id == order_id_to_find => {
+            SimEvent::PartialFill { order_id, timestamp, filled_qty, price, sequence_id, .. } if order_id == order_id_to_find => {
                 execution.fills.push(FillEvent {
-                    ts: *ts,
+                    timestamp: *timestamp,
                     qty: *filled_qty,
                     price: *price,
                 });

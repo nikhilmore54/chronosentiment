@@ -1,0 +1,23 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit sanitizer..."
+
+FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$')
+
+FAILED=0
+
+for file in $FILES; do
+  if grep -n '\\n' "$file" | grep -E '<|>|</'; then
+    echo "❌ ERROR: Found invalid '\\n' inside JSX in $file"
+    echo "👉 Remove escaped newlines before committing."
+    FAILED=1
+  fi
+done
+
+if [ $FAILED -ne 0 ]; then
+  echo "🚫 Commit blocked."
+  exit 1
+fi
+
+echo "✅ Pre-commit check passed."

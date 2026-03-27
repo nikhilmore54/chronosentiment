@@ -122,9 +122,38 @@ pub struct TimelineResponse {
 /// BUY/SELL only — excludes `HOLD` from the latest signal run (see `/signals/latest` for full snapshot).
 #[derive(Debug, Serialize)]
 pub struct TradeSuggestionsResponse {
+    pub asset: String,
     pub timestamp: u64,
-    pub suggestions: Vec<chronosentiment_core::pipeline::TradeSignal>,
+    pub suggestions: Vec<chronosentiment_core::strategy_ranking::RankedStrategy>,
     pub count: usize,
+    pub debug: chronosentiment_core::strategy_ranking::SuggestionDebug,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct TopStrategySnapshot {
+    pub strategy_id: String,
+    pub action: String,
+    pub live_score: f64,
+    pub expected_edge: f64,
+    pub execution_score: f64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ReplaySuggestionPoint {
+    pub ts: u64,
+    pub decision_ts: u64,
+    pub execution_ts: u64,
+    pub suggestion_count: usize,
+    pub prev_strategy: Option<String>,
+    pub flip_occurred: bool,
+    pub top_strategy: Option<TopStrategySnapshot>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ReplaySuggestionsResponse {
+    pub asset: String,
+    pub metrics: chronosentiment_core::replay_evaluator::ReplayMetrics,
+    pub timeline: Vec<ReplaySuggestionPoint>,
 }
 
 #[derive(Debug, Serialize)]

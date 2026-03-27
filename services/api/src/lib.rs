@@ -5,15 +5,31 @@ pub mod timeline;
 pub mod replay;
 pub mod events;
 pub mod certify;
+pub mod market_adapter;
+pub mod market_data_simulate;
 
 pub use simulate::*;
 pub use ga::*;
-pub use inspector::*;
+pub use inspector::{TradeInspectorResponse, MinimalEvent, build_trade_inspector, handle_inspect, to_minimal_event};
 pub use timeline::*;
 pub use replay::*;
 pub use events::*;
 pub use certify::*;
-pub use replay::*;
+pub use market_adapter::*;
+pub use market_data_simulate::*;
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SimulateOutputDto {
+    pub pnl: i64,
+    pub trade_count: u64,
+    pub events: Vec<MinimalEvent>,
+    pub state_hash: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct EventsResponseDto {
+    pub events: Vec<MinimalEvent>,
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct EventStreamResponse {

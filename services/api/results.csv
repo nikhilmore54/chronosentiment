@@ -1,0 +1,3 @@
+run_id,strategy_id,global_avg,global_std,global_robustness,avg_test,classification
+42,233_1_10,0.000274,0.000000,-3.398241,-3.398241,Stable
+42,233_1_10,0.000274,0.000368,0.000090,-0.334241,Volatile

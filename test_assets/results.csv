@@ -1,0 +1,113 @@
+run_id,strategy_id,global_avg,global_std,global_robustness,avg_test,classification
+42,Strategy { queue_threshold: 103 },17.333333,0.000000,17.333333,0.000000,Stable
+42,Strategy { queue_threshold: 88 },17.333333,0.000000,17.333333,0.000000,Stable
+42,Strategy { queue_threshold: 88 },17.333333,0.000000,17.333333,0.000000,Stable
+42,Strategy { queue_threshold: 103 },17.333333,0.000000,17.333333,0.000000,Stable
+42,Strategy { queue_threshold: 88, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 103, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 88, base_edge: 1, take_profit: 10, stop_loss: 5 },2.706617,0.000000,2.706617,2.257179,Stable
+42,Strategy { queue_threshold: 103, base_edge: 1, take_profit: 10, stop_loss: 5 },2.706617,0.000000,2.706617,2.257179,Stable
+42,Strategy { queue_threshold: 88, base_edge: 1, take_profit: 10, stop_loss: 5 },2.706617,0.000000,2.706617,2.257179,Stable
+42,Strategy { queue_threshold: 103, base_edge: 1, take_profit: 10, stop_loss: 5 },2.706617,0.000000,2.706617,2.257179,Stable
+42,Strategy { queue_threshold: 103, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 88, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },-17.333333,0.000000,-17.333333,0.000000,Fragile
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },-17.333333,0.000000,-17.333333,0.000000,Fragile
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },-49.815855,0.000000,-49.815855,-45.786517,Fragile
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },19.665210,0.000000,19.665210,10.510612,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },34.928964,0.000000,34.928964,39.066167,Stable
+42,Strategy { queue_threshold: 50, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },35.162256,0.000000,35.162256,39.066167,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },56.555722,0.000000,56.555722,75.740325,Stable
+42,Strategy { queue_threshold: 65, base_edge: 1, take_profit: 10, stop_loss: 5 },56.555722,0.000000,56.555722,75.740325,Stable
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },7.460274,0.000000,7.460274,0.052700,Stable
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },5.138596,0.000000,5.138596,0.049332,Stable
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },8.016585,0.000000,8.016585,0.011549,Stable
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },9.640495,0.000000,9.640495,0.011550,Stable
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-10.930622,0.000000,-10.930622,0.014400,Fragile
+42,Strategy { queue_threshold: 251, base_edge: 1, take_profit: 10, stop_loss: 5 },-8.510952,0.000000,-8.510952,0.016373,Fragile
+42,Strategy { queue_threshold: 266, base_edge: 1, take_profit: 10, stop_loss: 5 },-12.429094,0.000000,-12.429094,0.035071,Fragile
+42,Strategy { queue_threshold: 370, base_edge: 1, take_profit: 10, stop_loss: 5 },-11.009200,0.000000,-11.009200,0.026651,Fragile
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },-10.828988,0.000000,-10.828988,0.011550,Fragile
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-10.932808,0.000000,-10.932808,0.014403,Fragile
+42,Strategy { queue_threshold: 320, base_edge: 1, take_profit: 10, stop_loss: 5 },-12.767281,0.000000,-12.767281,0.016373,Fragile
+42,Strategy { queue_threshold: 320, base_edge: 1, take_profit: 10, stop_loss: 5 },-12.766324,0.000000,-12.766324,0.016371,Fragile
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-11.742874,0.000000,-11.742874,0.018771,Fragile
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-11.744342,0.000000,-11.744342,0.018774,Fragile
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-11.746985,0.000000,-11.746985,0.018778,Fragile
+42,Strategy { queue_threshold: 98, base_edge: 1, take_profit: 10, stop_loss: 5 },-13.157101,0.000000,-13.157101,0.018925,Fragile
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },-9.807178,0.000000,-9.807178,0.017700,Fragile
+42,Strategy { queue_threshold: 294, base_edge: 1, take_profit: 10, stop_loss: 5 },-6.426236,0.000000,-6.426236,0.020476,Fragile
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 287, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,Strategy { queue_threshold: 233, base_edge: 1, take_profit: 10, stop_loss: 5 },0.000000,0.000000,0.000000,0.000000,Inactive
+42,287_1_10,0.000307,0.000000,-3.395739,-3.395739,Stable
+42,287_1_10,0.000307,0.000000,-3.395739,-3.395739,Stable
+42,233_1_10,0.000274,0.000000,-3.398241,-3.398241,Stable
+42,320_1_10,0.000200,0.000000,-3.605645,-3.605645,Stable
+42,233_1_10,0.000274,0.000000,-3.398241,-3.398241,Stable
+42,233_1_10,0.000274,0.000000,-3.598241,-3.598241,Stable
+42,287_1_10,0.000242,0.000000,-3.401445,-3.401445,Stable
+42,320_1_10,0.000200,0.000000,-3.605645,-3.605645,Stable
+42,320_1_10,0.000255,0.000000,-3.400143,-3.400143,Stable
+42,233_1_10,0.000274,0.000000,0.000274,-3.598241,Stable
+42,233_1_10,0.000274,0.000000,0.000274,-0.334241,Stable
+42,320_1_10,0.000200,0.000000,0.000200,-0.341645,Stable
+42,320_1_10,0.000255,0.000336,0.000087,-0.316143,Volatile
+42,287_1_10,0.000222,0.000338,0.000052,-0.319445,Volatile
+42,287_1_10,0.000222,0.000338,0.000052,-0.339445,Volatile
+42,233_1_10,0.000274,0.000368,0.000090,-0.314241,Volatile
+42,320_1_10,0.000200,0.000330,0.000034,-0.341645,Volatile

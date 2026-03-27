@@ -1,4 +1,4 @@
-use chronosentiment_core::*;
+use chronosentiment_core::{*, harness::run_simulation_harness};
 use crate::{ApiError, CertificationResponse};
 use serde_json;
 
@@ -7,7 +7,35 @@ pub fn handle_certify(sim: &SimulationResult) -> Result<CertificationResponse, A
     // The requirement says: "Run SAME simulation twice internally"
     // Since we have 'sim', we'll run it again and compare.
     
-    let replay_sim = run_simulation(ExecutionMode::Real); 
+    // Reconstruct CreateOrder from the simulation events or a default for replay
+    let create_orders_for_replay = sim.events.iter().filter_map(|event| {
+        if let SimEvent::OrderIntent { order_id, side, price, quantity, timestamp, .. } = event {
+            // For replay, we need to make an assumption about fill_probability.
+            // For determinism, it's best to use a fixed value or derive it if possible
+            Some(CreateOrder {
+                order_id: order_id.clone(),
+                side: *side,
+                price: *price,
+                quantity: *quantity,
+                timestamp: *timestamp,
+                fill_probability: 0.5, // Default for replay, adjust if needed
+            })
+        } else { None }
+    }).collect::<Vec<CreateOrder>>();
+
+    let market_events_for_replay = sim.events.iter().filter_map(|event| {
+        if let SimEvent::MarketEvent { subtype, price, quantity, side, timestamp, .. } = event {
+            Some(MarketEvent {
+                subtype: *subtype,
+                price: *price,
+                quantity: *quantity,
+                side: *side,
+                exchange_ts: *timestamp,
+            })
+        } else { None }
+    }).collect::<Vec<MarketEvent>>();
+
+    let (_, replay_sim, _) = run_simulation_harness(ExecutionMode::Real, market_events_for_replay, create_orders_for_replay); 
 
     // 2. Compare event sequences and find divergence point
     let mut divergence_point = None;

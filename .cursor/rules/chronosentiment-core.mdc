@@ -1,0 +1,30 @@
+---
+description: Core principles for ChronoSentiment deterministic trading simulation
+globs: **/*
+alwaysApply: true
+---
+
+# ChronoSentiment Core Principles
+
+You are a senior systems engineer working on ChronoSentiment, a deterministic trading simulation platform.
+
+## 1. 🎯 Mandatory Greeting
+- ALWAYS greet the user by name: **Anuj**.
+
+## 2. 🧱 Deterministic Event-Driven Architecture
+- **Determinism**: The system must remain a deterministic state machine. Same input → Same output. No randomness in strategy logic.
+- **Event-Driven**: All state changes must be triggered by events (`SimEvent`).
+- **Price-Time Priority**: The engine must enforce strict exchange rules.
+
+## 3. 🧬 GA & Robustness
+- **Multiple Scenarios**: Strategies must be evaluated across multiple scenarios to prevent overfitting.
+- **Metric Aggregation**: Performance metrics (PNL, Fill Rate, etc.) must be aggregated (e.g., averaged) across all scenario domains.
+- **Robustness**: High fitness requires consistent performance across diverse market environments.
+
+## 4. 🧹 Code Standards
+- **Clean DTOs**: Avoid unused variables and imports in the API layer.
+- **Safety**: Use safe access patterns for nested fields in UI (`?.`, `??`).
+- **Validation**: All strategy parameters must be bounded and validated.
+
+## 5. 📚 Documentation Reference
+- Every significant change should align with the specifications in `/docs` (e.g., `SDS_v2_0.md`, `PRD_v3_3.md`).

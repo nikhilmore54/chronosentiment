@@ -7,11 +7,8 @@
 
 #[cfg(test)]
 mod demo_tests {
-    use chronosentiment_mvp_demo::{
+    use chronosentiment_core::{
         ExecutionMode,
-        SimulationResult,
-        GAResult,
-        OrderOutcome,
         run_simulation,
         run_ga,
     };

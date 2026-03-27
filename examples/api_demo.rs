@@ -1,6 +1,7 @@
 // examples/api_demo.rs
 
 use chronosentiment_api::*;
+use chronosentiment_core::*;
 
 fn main() {
     println!("--- ChronoSentiment API Demo ---");
@@ -28,8 +29,8 @@ fn main() {
             // 2. GET /events?from=2&to=5
             println!("\n>>> GET /events?from=2&to=5");
             match handle_events(&sim_res, Some(2), Some(5)) {
-                Ok(events) => {
-                    println!("Response: [{} raw events in range]", events.len());
+                Ok(res) => {
+                    println!("Response: [{} raw events in range]", res.events.len());
                 }
                 Err(e) => println!("Error: {:?}", e),
             }
@@ -39,9 +40,9 @@ fn main() {
             match handle_certify(&sim_res) {
                 Ok(report) => {
                     println!("Response: {{");
-                    println!("  \"last_run_hash\": \"{}\",", report.last_run_hash);
-                    println!("  \"replay_hash\": \"{}\",", report.replay_hash);
-                    println!("  \"passes\": {}", report.passes_identity_check);
+                    println!("  \"hash_1\": \"{}\",", report.hash_1);
+                    println!("  \"hash_2\": \"{}\",", report.hash_2);
+                    println!("  \"status\": \"{}\"", report.status);
                     println!("}}");
                 }
                 Err(e) => println!("Error: {:?}", e),
@@ -65,6 +66,35 @@ fn main() {
             match handle_timeline(&sim_res) {
                 Ok(timeline) => {
                     println!("Response: [{} events]", timeline.len());
+                }
+                Err(e) => println!("Error: {:?}", e),
+            }
+
+            // 6. POST /simulate_with_market_data
+            println!("\n>>> POST /simulate_with_market_data");
+            let market_input = MarketDataSimulateInput {
+                mode: "real".to_string(),
+                market_data_jsonl: vec![
+                    r#"{"timestamp": 1, "type": "add", "price": 100, "qty": 500, "side": "SELL"}"#.to_string(),
+                    r#"{"timestamp": 2, "type": "trade", "price": 100, "qty": 200}"#.to_string(),
+                ],
+                order_intents: vec![
+                    CreateOrder {
+                        order_id: "T1".to_string(),
+                        side: Side::Buy,
+                        price: 100,
+                        quantity: 100,
+                        timestamp: 1,
+                    }
+                ],
+            };
+            match handle_simulate_with_market_data(market_input) {
+                Ok(res) => {
+                    println!("Response: {{");
+                    println!("  \"pnl\": {},", res.pnl);
+                    println!("  \"state_hash\": \"{}\",", res.state_hash);
+                    println!("  \"events\": [{} events]", res.events.len());
+                    println!("}}");
                 }
                 Err(e) => println!("Error: {:?}", e),
             }

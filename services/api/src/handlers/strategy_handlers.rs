@@ -195,3 +195,28 @@ pub async fn trade_suggestions_handler(
     let response = service.get_trade_suggestions()?;
     Ok(Json(response))
 }
+
+#[derive(serde::Deserialize)]
+pub struct ReplaySuggestionsParams {
+    #[serde(default)]
+    pub mode: Option<String>, // summary | sampled | full
+    #[serde(default)]
+    pub limit: Option<usize>,
+    #[serde(default)]
+    pub sample_rate: Option<usize>,
+    #[serde(default)]
+    pub include_full: Option<bool>,
+}
+
+pub async fn replay_suggestions_handler(
+    State(service): State<EvaluationService>,
+    axum::extract::Query(params): axum::extract::Query<ReplaySuggestionsParams>,
+) -> Result<Json<crate::dto::ReplaySuggestionsResponse>, ApiError> {
+    println!("Request received: signals/replay-suggestions");
+    let mode = params.mode.unwrap_or_else(|| "summary".to_string());
+    let limit = params.limit.unwrap_or(1000);
+    let sample_rate = params.sample_rate.unwrap_or(10);
+    let include_full = params.include_full.unwrap_or(false);
+    let response = service.get_replay_suggestions(mode, limit, sample_rate, include_full)?;
+    Ok(Json(response))
+}

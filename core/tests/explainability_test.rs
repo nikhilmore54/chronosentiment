@@ -1,6 +1,6 @@
 // tests/explainability_test.rs
 
-use chronosentiment_mvp_demo::*;
+use chronosentiment_core::*;
 
 #[cfg(test)]
 mod tests {
@@ -26,6 +26,9 @@ mod tests {
                 }
                 SimEvent::PartialFill { parent_sequence_id, .. } => {
                     assert!(parent_sequence_id.is_some(), "PartialFill must have a parent");
+                }
+                SimEvent::OrderFilled { parent_sequence_id, .. } => {
+                    assert!(parent_sequence_id.is_some(), "OrderFilled must have a parent");
                 }
             }
         }

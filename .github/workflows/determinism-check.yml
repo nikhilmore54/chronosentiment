@@ -1,0 +1,43 @@
+name: Determinism and Contract Enforcement
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Build All
+      run: cargo build --all --verbose
+
+    - name: Run All Tests
+      run: cargo test --all --verbose
+
+    - name: Run Determinism Harness Test
+      run: cargo test test_determinism_certification_harness -- --nocapture
+
+    - name: Run API Contract Validation Script
+      run: |
+        chmod +x verify_api_contract.sh
+        ./verify_api_contract.sh
