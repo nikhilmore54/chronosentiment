@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const PRICE_SCALE = 100;
+
 function safeDisplay(value, digits = 2) {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return "N/A";
@@ -137,7 +139,13 @@ function topSignalsPerAsset(signals, { topK = 2, includeWeak = true, strongOnly 
 
 function normalizeGaResult(raw) {
   const history = Array.isArray(raw?.generation_history) ? raw.generation_history : [];
-  const { best: historyBest, index: historyBestIndex } = findBestByGaFitness(history);
+  // Ensure each history entry has a ga_fitness for proper resolution
+  const processedHistory = history.map(entry => ({ 
+    ...entry, 
+    ga_fitness: resolveGaFitness(entry) ?? (entry.fitness ?? 0) 
+  }));
+
+  const { best: historyBest, index: historyBestIndex } = findBestByGaFitness(processedHistory);
   const globalBest =
     raw?.global_best ??
     historyBest ??
@@ -145,7 +153,7 @@ function normalizeGaResult(raw) {
   const finalGenerationBest =
     raw?.final_generation_best ??
     raw?.final_gen_best ??
-    (history.length > 0 ? history[history.length - 1] : undefined) ??
+    (processedHistory.length > 0 ? processedHistory[processedHistory.length - 1] : undefined) ??
     (Array.isArray(raw?.results) && raw.results.length > 0 ? raw.results[0] : undefined);
   const peakGeneration =
     raw?.global_best_generation ??
@@ -153,6 +161,7 @@ function normalizeGaResult(raw) {
     historyBestIndex;
   return {
     ...raw,
+    generation_history: processedHistory, // Use processed history
     global_best: globalBest,
     final_generation_best: finalGenerationBest,
     global_best_generation: peakGeneration,
@@ -295,8 +304,8 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
             <h3 className="text-xl font-semibold mb-2">🏆 Best Strategy (Execution Verified)</h3>
             <p><span className="font-semibold">Execution Fitness:</span> {safeDisplay(resolveExecutionFitness(gaResult.global_best), 6)}</p>
             <p><span className="font-semibold">GA Fitness:</span> {resolveGaFitness(gaResult.global_best) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(gaResult.global_best), 6)}</p>
-            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay(gaResult.global_best?.avg, 6)}</p>
-            <p><span className="font-semibold">Std Dev:</span> {safeDisplay(gaResult.global_best?.std, 6)}</p>
+            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay((gaResult.global_best?.avg ?? 0) / PRICE_SCALE, 6)}</p>
+            <p><span className="font-semibold">Std Dev:</span> {safeDisplay((gaResult.global_best?.std ?? 0) / PRICE_SCALE, 6)}</p>
             <p><span className="font-semibold">Found at Generation:</span> {resolvePeakGeneration(gaResult) ?? 'N/A'}</p>
           </div>
 
@@ -304,32 +313,32 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
             <h3 className="text-xl font-semibold mb-2">📍 Final Generation Best (Search Result)</h3>
             <p><span className="font-semibold">Execution Fitness:</span> {safeDisplay(resolveExecutionFitness(gaResult.final_generation_best ?? gaResult.final_gen_best), 6)}</p>
             <p><span className="font-semibold">GA Fitness:</span> {resolveGaFitness(gaResult.final_generation_best ?? gaResult.final_gen_best) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(gaResult.final_generation_best ?? gaResult.final_gen_best), 6)}</p>
-            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay((gaResult.final_generation_best ?? gaResult.final_gen_best)?.avg, 6)}</p>
-            <p><span className="font-semibold">Std Dev:</span> {safeDisplay((gaResult.final_generation_best ?? gaResult.final_gen_best)?.std, 6)}</p>
+            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay(((gaResult.final_generation_best ?? gaResult.final_gen_best)?.avg ?? 0) / PRICE_SCALE, 6)}</p>
+            <p><span className="font-semibold">Std Dev:</span> {safeDisplay(((gaResult.final_generation_best ?? gaResult.final_gen_best)?.std ?? 0) / PRICE_SCALE, 6)}</p>
           </div>
 
           {gaResult.best_per_regime && Object.keys(gaResult.best_per_regime).length > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
               <h3 className="text-xl font-semibold mb-2">🧭 Best Per Regime (Execution Verified)</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-300">
-                  <thead>
+              <div className="overflow-x-auto shadow-md rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="py-2 px-4 border-b text-left">Regime Key</th>
-                      <th className="py-2 px-4 border-b text-left">Strategy ID</th>
-                      <th className="py-2 px-4 border-b text-left">Execution Fitness</th>
-                      <th className="py-2 px-4 border-b text-left">GA Fitness</th>
-                      <th className="py-2 px-4 border-b text-left">Class</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regime Key</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strategy ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution Fitness</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GA Fitness</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {Object.entries(gaResult.best_per_regime).map(([regimeKey, row]) => (
-                      <tr key={regimeKey} className="cursor-pointer hover:bg-gray-100" onClick={() => setSelectedStrategyForInspection(row.strategy_id, seed)}>
-                        <td className="py-2 px-4 border-b">{regimeKey}</td>
-                        <td className="py-2 px-4 border-b">{row.strategy_id}</td>
-                        <td className="py-2 px-4 border-b">{safeDisplay(resolveExecutionFitness(row), 6)}</td>
-                        <td className="py-2 px-4 border-b">{resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}</td>
-                        <td className="py-2 px-4 border-b">{row.classification}</td>
+                      <tr key={regimeKey} className="hover:bg-gray-50 transition duration-150 ease-in-out" onClick={() => setSelectedStrategyForInspection(row.strategy_id, seed)}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{regimeKey}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.strategy_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay(resolveExecutionFitness(row), 6)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.classification}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -339,33 +348,33 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
           )}
 
           <h3 className="text-xl font-semibold mb-3">Best Strategies</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-300">
-              <thead>
+          <div className="overflow-x-auto shadow-md rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="py-2 px-4 border-b text-left">Strategy ID</th>
-                  <th className="py-2 px-4 border-b text-left">Execution Fitness</th>
-                  <th className="py-2 px-4 border-b text-left">GA Fitness</th>
-                  <th className="py-2 px-4 border-b text-left">Divergence</th>
-                  <th className="py-2 px-4 border-b text-left">Avg PNL</th>
-                  <th className="py-2 px-4 border-b text-left">Std Dev</th>
-                  <th className="py-2 px-4 border-b text-left">Class</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strategy ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution Fitness</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GA Fitness</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Divergence</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg PNL</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Std Dev</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white divide-y divide-gray-200">
                 {gaResult.results && gaResult.results.map((row) => (
                   <tr
                     key={row.strategy_id}
-                    className="cursor-pointer hover:bg-gray-100"
+                    className="hover:bg-gray-50 transition duration-150 ease-in-out cursor-pointer"
                     onClick={() => setSelectedStrategyForInspection(row.strategy_id, seed)}
                   >
-                    <td className="py-2 px-4 border-b">{row.strategy_id}</td>
-                    <td className="py-2 px-4 border-b">{safeDisplay(resolveExecutionFitness(row), 6)}</td>
-                    <td className="py-2 px-4 border-b">{resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}</td>
-                    <td className="py-2 px-4 border-b">{divergenceBadge(row)}</td>
-                    <td className="py-2 px-4 border-b">{safeDisplay(row.avg, 6)}</td>
-                    <td className="py-2 px-4 border-b">{safeDisplay(row.std, 6)}</td>
-                    <td className="py-2 px-4 border-b">{row.classification}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.strategy_id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay(resolveExecutionFitness(row), 6)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{divergenceBadge(row)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay((row.avg ?? 0) / PRICE_SCALE, 6)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay((row.std ?? 0) / PRICE_SCALE, 6)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.classification}</td>
                   </tr>
                 ))}
               </tbody>
@@ -512,11 +521,11 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                           <div className="text-sm mt-1 text-gray-700">
                             Entry:{' '}
                             {Array.isArray(s.entry_zone)
-                              ? `${safeDisplay(s.entry_zone[0], 2)} - ${safeDisplay(s.entry_zone[1], 2)}`
+                              ? `${safeDisplay((s.entry_zone[0] ?? 0) / PRICE_SCALE, 2)} - ${safeDisplay((s.entry_zone[1] ?? 0) / PRICE_SCALE, 2)}`
                               : 'N/A'}
                           </div>
                           <div className="text-sm text-gray-700">
-                            Target: {safeDisplay(s.target, 2)} | SL: {safeDisplay(s.stop_loss, 2)} | Holding:{' '}
+                            Target: {safeDisplay((s.target ?? 0) / PRICE_SCALE, 2)} | SL: {safeDisplay((s.stop_loss ?? 0) / PRICE_SCALE, 2)} | Holding:{' '}
                             {s.expected_holding_time ?? 'N/A'}
                           </div>
                         </div>
@@ -577,11 +586,11 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                               <td className="py-2 px-4 border-b">{safeDisplay(s.confidence, 3)}</td>
                               <td className="py-2 px-4 border-b">
                                 {Array.isArray(s.entry_zone)
-                                  ? `${safeDisplay(s.entry_zone[0], 2)} - ${safeDisplay(s.entry_zone[1], 2)}`
+                                  ? `${safeDisplay((s.entry_zone[0] ?? 0) / PRICE_SCALE, 2)} - ${safeDisplay((s.entry_zone[1] ?? 0) / PRICE_SCALE, 2)}`
                                   : 'N/A'}
                               </td>
-                              <td className="py-2 px-4 border-b">{safeDisplay(s.stop_loss, 2)}</td>
-                              <td className="py-2 px-4 border-b">{safeDisplay(s.target, 2)}</td>
+                              <td className="py-2 px-4 border-b">{safeDisplay((s.stop_loss ?? 0) / PRICE_SCALE, 2)}</td>
+                              <td className="py-2 px-4 border-b">{safeDisplay((s.target ?? 0) / PRICE_SCALE, 2)}</td>
                               <td className="py-2 px-4 border-b">{s.expected_holding_time ?? 'N/A'}</td>
                             </tr>
                           ))}

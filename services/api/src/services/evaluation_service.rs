@@ -322,11 +322,17 @@ impl EvaluationService {
         println!("API_INFO: Calling Core unified GA pipeline (seed={})", seed);
         let scenarios_map = self.load_all_real_scenarios();
         
-        let unified_result = chronosentiment_core::pipeline::run_ga_orchestration(
+        let mut unified_result = chronosentiment_core::pipeline::run_ga_orchestration(
             ga_config,
             &scenarios_map,
             0.2, // 20% holdout
         ).map_err(|e| ApiError::InternalError(e))?;
+
+        // Deduplicate results based on strategy_id
+        let mut seen_strategies = std::collections::HashSet::new();
+        unified_result.results.retain(|eval| {
+            seen_strategies.insert(eval.strategy_id.clone())
+        });
 
         Ok(RunGaResponse::from(unified_result))
     }
