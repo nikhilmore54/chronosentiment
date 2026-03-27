@@ -392,7 +392,7 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                 {gaResult.generation_history.map((gen, index) => (
                   <div key={index} className="flex items-center mb-1">
                     <span className="w-16 text-right mr-2">Gen {index}:</span>
-                    <span className="w-24 text-blue-600">{'█'.repeat(Math.max(0, Math.min(50, Math.floor((resolveGaFitness(gen) ?? 0) * 10))))}</span> {/* Scale to 50 blocks max, normalized */}
+                    <span className="w-24 text-blue-600">{'█'.repeat(Math.max(0, Math.min(50, Math.floor((resolveGaFitness(gen) ?? 0) * 50))))}</span> {/* Scale to 50 blocks max */}
                     <span className="ml-2">{safeDisplay(resolveGaFitness(gen), 6)}</span>
                   </div>
                 ))}
