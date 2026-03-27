@@ -1,5 +1,37 @@
+pub mod ga;
+pub mod harness;
+pub mod inspector;
+pub mod kernel;
+pub mod replay;
+pub mod ese;
+pub mod market_adapter;
+pub mod data_source;
+pub mod csv_source;
+pub mod live_source;
+pub mod folder_source;
+pub mod pipeline;
+pub mod synthetic;
+pub mod binance_adapter;
+pub mod strategy_ranking;
+
+pub use ga::*;
+pub use harness::{run_simulation_harness};
+pub use inspector::*;
+pub use kernel::*;
+pub use replay::*;
+pub use ese::{FIXED_LATENCY};
+pub use market_adapter::*;
+pub use data_source::*;
+pub use csv_source::*;
+pub use live_source::*;
+pub use folder_source::*;
+pub use pipeline::*;
+pub use synthetic::*;
+pub use binance_adapter::*;
+pub use strategy_ranking::*;
+
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum ExecutionMode {
@@ -29,13 +61,14 @@ pub enum Side {
     Sell,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct CreateOrder {
     pub order_id: String,
     pub side: Side,
     pub price: u64,
     pub quantity: u64,
-    pub ts: u64,
+    pub timestamp: u64,
+    pub fill_probability: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +94,7 @@ pub struct GAResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum SimEvent {
     MarketEvent {
         sequence_id: u64,
@@ -68,7 +102,8 @@ pub enum SimEvent {
         subtype: MarketEventType,
         price: u64,
         quantity: u64,
-        ts: u64,
+        side: Option<Side>,
+        timestamp: u64,
     },
     OrderIntent {
         sequence_id: u64,
@@ -77,21 +112,21 @@ pub enum SimEvent {
         side: Side,
         price: u64,
         quantity: u64,
-        ts: u64,
+        timestamp: u64,
     },
     OrderEnteredQueue {
         sequence_id: u64,
         parent_sequence_id: Option<u64>,
         order_id: String,
-        ts: u64,
+        timestamp: u64,
         price: u64,
-        quantity_ahead: u64,
+        queue_ahead: u64,
     },
     PartialFill {
         sequence_id: u64,
         parent_sequence_id: Option<u64>,
         order_id: String,
-        ts: u64,
+        timestamp: u64,
         filled_qty: u64,
         price: u64,
     },
@@ -99,19 +134,26 @@ pub enum SimEvent {
         sequence_id: u64,
         parent_sequence_id: Option<u64>,
         order_id: String,
-        ts: u64,
-        new_quantity_ahead: u64,
+        timestamp: u64,
+        queue_ahead: u64,
+    },
+    OrderFilled {
+        sequence_id: u64,
+        parent_sequence_id: Option<u64>,
+        order_id: String,
+        timestamp: u64,
     },
 }
 
 impl SimEvent {
     pub fn timestamp(&self) -> u64 {
         match self {
-            SimEvent::MarketEvent { ts, .. } => *ts,
-            SimEvent::OrderIntent { ts, .. } => *ts,
-            SimEvent::OrderEnteredQueue { ts, .. } => *ts,
-            SimEvent::PartialFill { ts, .. } => *ts,
-            SimEvent::QueueProgression { ts, .. } => *ts,
+            SimEvent::MarketEvent { timestamp, .. } => *timestamp,
+            SimEvent::OrderIntent { timestamp, .. } => *timestamp,
+            SimEvent::OrderEnteredQueue { timestamp, .. } => *timestamp,
+            SimEvent::PartialFill { timestamp, .. } => *timestamp,
+            SimEvent::QueueProgression { timestamp, .. } => *timestamp,
+            SimEvent::OrderFilled { timestamp, .. } => *timestamp,
         }
     }
 
@@ -122,6 +164,7 @@ impl SimEvent {
             SimEvent::OrderEnteredQueue { sequence_id, .. } => *sequence_id,
             SimEvent::PartialFill { sequence_id, .. } => *sequence_id,
             SimEvent::QueueProgression { sequence_id, .. } => *sequence_id,
+            SimEvent::OrderFilled { sequence_id, .. } => *sequence_id,
         }
     }
 
@@ -132,13 +175,25 @@ impl SimEvent {
             SimEvent::OrderEnteredQueue { parent_sequence_id, .. } => *parent_sequence_id,
             SimEvent::PartialFill { parent_sequence_id, .. } => *parent_sequence_id,
             SimEvent::QueueProgression { parent_sequence_id, .. } => *parent_sequence_id,
+            SimEvent::OrderFilled { parent_sequence_id, .. } => *parent_sequence_id,
+        }
+    }
+
+    pub fn order_id(&self) -> Option<&String> {
+        match self {
+            SimEvent::OrderIntent { order_id, .. } => Some(order_id),
+            SimEvent::OrderEnteredQueue { order_id, .. } => Some(order_id),
+            SimEvent::PartialFill { order_id, .. } => Some(order_id),
+            SimEvent::QueueProgression { order_id, .. } => Some(order_id),
+            SimEvent::OrderFilled { order_id, .. } => Some(order_id),
+            _ => None,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FillEvent {
-    pub ts: u64,
+    pub timestamp: u64,
     pub qty: u64,
     pub price: u64,
 }
@@ -176,12 +231,3 @@ pub struct TradeInspection {
     pub outcome: OutcomeLayer,
 }
 
-pub mod ese;
-pub mod kernel;
-pub mod replay;
-pub mod inspector;
-
-pub use ese::*;
-pub use kernel::*;
-pub use replay::*;
-pub use inspector::*;
