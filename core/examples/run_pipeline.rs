@@ -47,6 +47,53 @@ fn main() {
         vec!["BTC".to_string(), "BANKNIFTY".to_string()]
     };
 
+    let run_mode = std::env::var("RUN_MODE")
+        .unwrap_or_else(|_| "full".to_string())
+        .to_lowercase();
+    let strategy_store_path = std::env::var("STRATEGY_STORE_PATH")
+        .unwrap_or_else(|_| format!("{}/strategy_store.json", test_assets_str));
+
+    if run_mode == "train" {
+        println!(
+            "RUN_MODE=train -> persisting strategy store at {}",
+            strategy_store_path
+        );
+        match pipeline::train_and_persist_strategies(
+            sweep_assets.clone(),
+            global_lambda,
+            Some(strategy_store_path),
+        ) {
+            Ok(count) => println!("Saved strategies for {} assets", count),
+            Err(err) => eprintln!("Failed to persist strategy store: {}", err),
+        }
+        return;
+    }
+
+    if run_mode == "recommend" {
+        println!(
+            "RUN_MODE=recommend -> loading strategy store from {}",
+            strategy_store_path
+        );
+        match pipeline::generate_latest_signals_from_saved_strategies(
+            sweep_assets.clone(),
+            global_lambda,
+            0.45,
+            0.35,
+            Some(strategy_store_path),
+        ) {
+            Ok(snapshot) => {
+                println!(
+                    "Fast recommendation snapshot: trades={} total={} participation={:.2}",
+                    snapshot.meta.trades,
+                    snapshot.meta.total_scenarios,
+                    snapshot.meta.participation
+                );
+            }
+            Err(err) => eprintln!("Failed to generate fast recommendations: {}", err),
+        }
+        return;
+    }
+
     println!("Starting real-data GA evaluation pipeline... DATA_SOURCE={}", data_source);
     let ranking = pipeline::evaluate_on_real_data(assets, global_lambda);
 

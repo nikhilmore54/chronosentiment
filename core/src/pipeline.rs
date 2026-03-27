@@ -5,6 +5,7 @@ use crate::market_adapter::{Candle, convert_series_to_events};
 use serde::{Serialize, Deserialize};
 use std::path::Path;
 use std::env;
+use std::fs;
 use crate::data_source::CandleSource;
 use crate::csv_source::CsvCandleSource;
 use crate::folder_source::FolderCandleSource;
@@ -73,6 +74,14 @@ pub struct AssetRanking {
     pub participation: f64,
     pub avg_pnl: f64,
     pub weak_executed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistedStrategyStore {
+    pub version: u32,
+    pub global_lambda: f64,
+    pub assets: Vec<String>,
+    pub by_asset: HashMap<String, ga::GaResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -431,6 +440,116 @@ fn scenario_map_for_signal_generation(
     }
 }
 
+fn strategy_store_path_from_env() -> String {
+    env::var("STRATEGY_STORE_PATH").unwrap_or_else(|_| {
+        "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/strategy_store.json".to_string()
+    })
+}
+
+fn load_strategy_store(path: &str) -> Result<PersistedStrategyStore, String> {
+    let raw = fs::read_to_string(path)
+        .map_err(|e| format!("failed to read strategy store '{}': {}", path, e))?;
+    serde_json::from_str::<PersistedStrategyStore>(&raw)
+        .map_err(|e| format!("failed to parse strategy store '{}': {}", path, e))
+}
+
+fn save_strategy_store(path: &str, store: &PersistedStrategyStore) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(store)
+        .map_err(|e| format!("failed to serialize strategy store: {}", e))?;
+    fs::write(path, json)
+        .map_err(|e| format!("failed to write strategy store '{}': {}", path, e))
+}
+
+fn train_asset_strategy(
+    asset_name: &str,
+    scenario_map: &HashMap<String, Vec<MarketEvent>>,
+    global_lambda: f64,
+) -> Option<ga::GaResult> {
+    let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(scenario_map) else {
+        return None;
+    };
+    let config = GaConfig {
+        population_size: 5,
+        generations: 3,
+        mutation_rate: 0.1,
+        seed: 42,
+        order_id_prefix: format!("SIGNAL_GA_{}", asset_name),
+        order_price: initial_price,
+        order_quantity_for_strategy: 100,
+        order_timestamp: initial_timestamp,
+        lambda: global_lambda,
+        initial_queue_threshold: 200,
+    };
+    let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
+    sorted_names.sort();
+    if sorted_names.is_empty() {
+        return None;
+    }
+    let test_index = (config.seed as usize) % sorted_names.len();
+    let test_scenario_name = sorted_names[test_index].clone();
+    let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
+    for name in &sorted_names {
+        if *name != test_scenario_name {
+            if let Some(events) = scenario_map.get(name) {
+                train_scenarios.insert(name.clone(), events.as_slice());
+            }
+        }
+    }
+    Some(ga::run_ga_evolution(config, &train_scenarios))
+}
+
+pub fn train_and_persist_strategies(
+    assets: Vec<String>,
+    global_lambda: f64,
+    path: Option<String>,
+) -> Result<usize, String> {
+    let data_source = env::var("DATA_SOURCE")
+        .unwrap_or_else(|_| "folder".to_string())
+        .to_lowercase();
+    let folder_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string();
+    let mut folder_candles_by_asset: HashMap<String, Vec<Candle>> = HashMap::new();
+    if data_source == "folder" {
+        let source = FolderCandleSource {
+            folder_path: folder_path.clone(),
+        };
+        for (asset, candles) in source.load_all() {
+            folder_candles_by_asset.insert(asset, candles);
+        }
+    }
+
+    let mut trained_assets: Vec<String> = Vec::new();
+    let mut by_asset: HashMap<String, ga::GaResult> = HashMap::new();
+    for asset_name in &assets {
+        let folder_candles = folder_candles_by_asset.get(asset_name);
+        let scenario_map = scenario_map_for_signal_generation(
+            asset_name,
+            data_source.as_str(),
+            folder_candles,
+            folder_path.as_str(),
+        );
+        if scenario_map.is_empty() {
+            continue;
+        }
+        if let Some(ga_result) = train_asset_strategy(asset_name, &scenario_map, global_lambda) {
+            by_asset.insert(asset_name.clone(), ga_result);
+            trained_assets.push(asset_name.clone());
+        }
+    }
+
+    let mut assets_sorted = trained_assets.clone();
+    assets_sorted.sort();
+    let store = PersistedStrategyStore {
+        version: 1,
+        global_lambda,
+        assets: assets_sorted,
+        by_asset,
+    };
+    let target = path.unwrap_or_else(strategy_store_path_from_env);
+    save_strategy_store(&target, &store)?;
+    println!("STRATEGY_STORE_SAVED path={} assets={}", target, trained_assets.len());
+    Ok(trained_assets.len())
+}
+
 fn should_trade(execution_fitness: f64) -> bool {
     execution_fitness.is_finite() && execution_fitness > 0.0
 }
@@ -737,6 +856,27 @@ pub fn generate_latest_signals(
         resolved_min_tradable_edge(),
         resolved_edge_override_threshold(),
     );
+    let use_saved = env::var("USE_SAVED_STRATEGIES")
+        .map(|v| {
+            let s = v.to_lowercase();
+            s == "1" || s == "true" || s == "yes"
+        })
+        .unwrap_or(false);
+    if use_saved {
+        let path = strategy_store_path_from_env();
+        match generate_latest_signals_from_saved_strategies(
+            assets.clone(),
+            global_lambda,
+            confidence_floor,
+            score_floor,
+            Some(path),
+        ) {
+            Ok(snapshot) => return snapshot,
+            Err(err) => {
+                eprintln!("SAVED_STRATEGY_FALLBACK: {}", err);
+            }
+        }
+    }
     generate_latest_signals_with_thresholds(
         assets,
         global_lambda,
@@ -854,6 +994,40 @@ pub fn generate_latest_signals_with_thresholds(
     confidence_floor: f64,
     score_floor: f64,
 ) -> SignalsSnapshot {
+    generate_latest_signals_with_thresholds_internal(
+        assets,
+        global_lambda,
+        confidence_floor,
+        score_floor,
+        None,
+    )
+}
+
+pub fn generate_latest_signals_from_saved_strategies(
+    assets: Vec<String>,
+    global_lambda: f64,
+    confidence_floor: f64,
+    score_floor: f64,
+    path: Option<String>,
+) -> Result<SignalsSnapshot, String> {
+    let target = path.unwrap_or_else(strategy_store_path_from_env);
+    let store = load_strategy_store(&target)?;
+    Ok(generate_latest_signals_with_thresholds_internal(
+        assets,
+        global_lambda,
+        confidence_floor,
+        score_floor,
+        Some(&store),
+    ))
+}
+
+fn generate_latest_signals_with_thresholds_internal(
+    assets: Vec<String>,
+    global_lambda: f64,
+    confidence_floor: f64,
+    score_floor: f64,
+    strategy_store: Option<&PersistedStrategyStore>,
+) -> SignalsSnapshot {
     let min_tradable_edge = resolved_min_tradable_edge();
     let edge_override_threshold = resolved_edge_override_threshold();
     let data_source = env::var("DATA_SOURCE")
@@ -927,18 +1101,35 @@ pub fn generate_latest_signals_with_thresholds(
         sorted_names.sort();
         total_scenarios += sorted_names.len();
 
-        let test_index = (config.seed as usize) % sorted_names.len();
-        let test_scenario_name = sorted_names[test_index].clone();
-        let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
-        for name in &sorted_names {
-            if *name != test_scenario_name {
-                if let Some(events) = scenario_map.get(name) {
-                    train_scenarios.insert(name.clone(), events.as_slice());
+        let ga_result = if let Some(store) = strategy_store {
+            if let Some(saved) = store.by_asset.get(asset_name) {
+                saved.clone()
+            } else {
+                let test_index = (config.seed as usize) % sorted_names.len();
+                let test_scenario_name = sorted_names[test_index].clone();
+                let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
+                for name in &sorted_names {
+                    if *name != test_scenario_name {
+                        if let Some(events) = scenario_map.get(name) {
+                            train_scenarios.insert(name.clone(), events.as_slice());
+                        }
+                    }
+                }
+                ga::run_ga_evolution(config.clone(), &train_scenarios)
+            }
+        } else {
+            let test_index = (config.seed as usize) % sorted_names.len();
+            let test_scenario_name = sorted_names[test_index].clone();
+            let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
+            for name in &sorted_names {
+                if *name != test_scenario_name {
+                    if let Some(events) = scenario_map.get(name) {
+                        train_scenarios.insert(name.clone(), events.as_slice());
+                    }
                 }
             }
-        }
-
-        let ga_result = ga::run_ga_evolution(config.clone(), &train_scenarios);
+            ga::run_ga_evolution(config.clone(), &train_scenarios)
+        };
 
         for scenario_name in &sorted_names {
             if let Some(events) = scenario_map.get(scenario_name) {
