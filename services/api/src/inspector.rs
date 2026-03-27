@@ -27,17 +27,18 @@ pub struct MinimalEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filled_qty: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub price: Option<u64>,
+    pub price: Option<f64>,
 }
 
 pub fn to_minimal_event(event: &SimEvent) -> MinimalEvent {
+    let scale = chronosentiment_core::PRICE_SCALE as f64;
     let (event_type, queue_ahead, filled_qty, price) = match event {
-        SimEvent::OrderIntent { price, .. } => (EventType::OrderIntent, None, None, Some(*price)),
+        SimEvent::OrderIntent { price, .. } => (EventType::OrderIntent, None, None, Some(*price as f64 / scale)),
         SimEvent::OrderEnteredQueue { queue_ahead, .. } => (EventType::OrderEnteredQueue, Some(*queue_ahead), None, None),
         SimEvent::QueueProgression { queue_ahead, .. } => (EventType::QueueProgression, Some(*queue_ahead), None, None),
-        SimEvent::PartialFill { filled_qty, price, .. } => (EventType::PartialFill, None, Some(*filled_qty), Some(*price)),
+        SimEvent::PartialFill { filled_qty, price, .. } => (EventType::PartialFill, None, Some(*filled_qty), Some(*price as f64 / scale)),
         SimEvent::OrderFilled { .. } => (EventType::OrderFilled, None, None, None),
-        SimEvent::MarketEvent { price, .. } => (EventType::MarketEvent, None, None, Some(*price)),
+        SimEvent::MarketEvent { price, .. } => (EventType::MarketEvent, None, None, Some(*price as f64 / scale)),
     };
 
     MinimalEvent {
@@ -55,7 +56,7 @@ pub fn to_minimal_event(event: &SimEvent) -> MinimalEvent {
 pub struct DecisionLayerDto {
     pub order_id: String,
     pub side: Side,
-    pub price: u64,
+    pub price: f64,
     pub quantity: u64,
     pub timestamp: u64,
     pub sequence_id: u64,
@@ -79,7 +80,7 @@ pub struct OutcomeLayer {
     pub status: String, // NEW, ACTIVE, PARTIAL, FILLED
     pub filled_qty: u64,
     pub remaining_qty: u64,
-    pub avg_price: u64,
+    pub avg_price: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,12 +99,12 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
         status: "NEW".to_string(),
         filled_qty: 0,
         remaining_qty: 0,
-        avg_price: 0,
+        avg_price: 0.0,
     };
     let mut causal_chain_events_json: Vec<MinimalEvent> = Vec::new();
 
     let mut total_filled_qty: u64 = 0;
-    let mut total_filled_value: u64 = 0;
+    let mut total_filled_value: f64 = 0.0;
     let mut initial_order_quantity: u64 = 0;
     let mut order_status_internal: OrderStatus = OrderStatus::New;
     let mut order_price: u64 = 0;
@@ -119,10 +120,11 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
         }
     }) {
         if let SimEvent::OrderIntent { order_id: o_id, side, price, quantity, timestamp, sequence_id, .. } = intent_event {
+            let scale = chronosentiment_core::PRICE_SCALE as f64;
             decision_dto = Some(DecisionLayerDto {
                 order_id: o_id.clone(),
                 side: *side,
-                price: *price,
+                price: *price as f64 / scale,
                 quantity: *quantity,
                 timestamp: *timestamp,
                 sequence_id: *sequence_id,
@@ -212,7 +214,7 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             SimEvent::PartialFill { order_id: o_id, filled_qty, price, sequence_id, .. } if o_id == order_id => {
                 execution_events_json.push(to_minimal_event(&current_event));
                 total_filled_qty += filled_qty;
-                total_filled_value += filled_qty * price;
+                total_filled_value += (*filled_qty as f64) * (*price as f64);
                 order_status_internal = OrderStatus::Partial;
                 final_execution_seq = Some(*sequence_id);
             }
@@ -221,11 +223,7 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
                 if total_filled_qty < initial_order_quantity {
                     let newly_filled_qty = initial_order_quantity - total_filled_qty;
                     total_filled_qty = initial_order_quantity;
-                    if total_filled_value == 0 {
-                        total_filled_value = newly_filled_qty * order_price;
-                    } else {
-                        total_filled_value += newly_filled_qty * order_price;
-                    }
+                    total_filled_value += (newly_filled_qty as f64) * (order_price as f64);
                 }
                 order_status_internal = OrderStatus::Filled;
                 final_execution_seq = Some(*sequence_id);
@@ -254,7 +252,8 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
     outcome.filled_qty = total_filled_qty;
     outcome.remaining_qty = initial_order_quantity - total_filled_qty;
     outcome.status = map_status(order_status_internal);
-    outcome.avg_price = if total_filled_qty > 0 { total_filled_value / total_filled_qty } else { 0 };
+    let scale = chronosentiment_core::PRICE_SCALE as f64;
+    outcome.avg_price = if total_filled_qty > 0 { (total_filled_value / total_filled_qty as f64) / scale } else { 0.0 };
 
     let response = TradeInspectorResponse {
         order_id: order_id.to_string(),

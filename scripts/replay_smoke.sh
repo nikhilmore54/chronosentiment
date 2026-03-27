@@ -81,3 +81,13 @@ echo "Running FULL mode (limited)..."
 curl -sS "${BASE_URL}?mode=full&limit=200" | jq '{
   total_points: (.timeline | length)
 }'
+
+echo ""
+echo "Running PnL diagnostics..."
+curl -sS "${BASE_URL}?mode=summary" | jq '{
+  trades: .pnl.total_trades,
+  win_rate: .pnl.win_rate,
+  avg_pnl: .pnl.avg_pnl,
+  total_pnl: .pnl.total_pnl,
+  edge_retention: .pnl.edge_retention
+}'

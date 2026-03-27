@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct NormalizedMarketEvent {
+    pub asset: String,
     pub exchange_ts: u64,
     pub price: f64,
     pub volume: f64,
@@ -22,7 +23,7 @@ impl NormalizedMarketEvent {
         }
         Some(MarketEvent {
             subtype: MarketEventType::Trade,
-            price: self.price.round() as u64,
+            price: (self.price * crate::PRICE_SCALE as f64).round() as u64,
             quantity: self.volume.round().max(1.0) as u64,
             side: self.side,
             exchange_ts: self.exchange_ts,
@@ -83,6 +84,7 @@ pub fn parse_binance_trade_event(payload: &str) -> Option<NormalizedMarketEvent>
     // Binance `m=true` means buyer is maker => aggressive side is sell.
     let side = if msg.is_buyer_maker { Side::Sell } else { Side::Buy };
     Some(NormalizedMarketEvent {
+        asset: "UNKNOWN".to_string(), // Tagged later by loader
         exchange_ts: msg.trade_time_ms,
         price,
         volume,
@@ -115,6 +117,7 @@ pub fn parse_binance_depth_event(payload: &str, top_k: usize) -> Option<Normaliz
     let mid = (best_bid + best_ask) * 0.5;
 
     Some(NormalizedMarketEvent {
+        asset: "UNKNOWN".to_string(), // Tagged later by loader
         exchange_ts: msg.event_time_ms,
         price: mid,
         volume: 0.0,
@@ -124,6 +127,39 @@ pub fn parse_binance_depth_event(payload: &str, top_k: usize) -> Option<Normaliz
         bids: Some(bids_k),
         asks: Some(asks_k),
     })
+}
+
+#[derive(Debug, Deserialize)]
+struct BinanceJsonlRow {
+    pub asset: String,
+    pub payload: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+}
+
+/// Load and parse Binance events from a JSONL file.
+/// Each line must be a `BinanceJsonlRow` with `asset` and `payload` (raw Binance JSON).
+pub fn load_binance_events_from_jsonl(path: &str, top_k: usize) -> Result<Vec<NormalizedMarketEvent>, String> {
+    let raw = std::fs::read_to_string(path)
+        .map_err(|e| format!("failed to read jsonl {}: {}", path, e))?;
+    let mut events = Vec::new();
+    for line in raw.lines() {
+        if line.trim().is_empty() { continue; }
+        let row: BinanceJsonlRow = serde_json::from_str(line)
+            .map_err(|e| format!("failed to parse jsonl line: {} (line: {})", e, line))?;
+        
+        let mut ev = match row.event_type.as_str() {
+            "trade" => parse_binance_trade_event(&row.payload),
+            "depth" => parse_binance_depth_event(&row.payload, top_k),
+            _ => None,
+        };
+
+        if let Some(ref mut e) = ev {
+            e.asset = row.asset.clone();
+            events.push(e.clone());
+        }
+    }
+    Ok(events)
 }
 
 #[cfg(test)]

@@ -10,7 +10,7 @@ use serde_json::json;
 // Placeholder for internal engine functions (these would ideally be in a core library)
 // For now, we'll assume they are accessible or mocked.
 
-const ORDER_PRICE: u64 = 100;
+const ORDER_PRICE: u64 = 100 * chronosentiment_core::PRICE_SCALE;
 const ORDER_QUANTITY: u64 = 100;
 const ORDER_TIMESTAMP: u64 = 12; // A reasonable timestamp for event-driven simulation
 
@@ -88,10 +88,11 @@ impl EvaluationService {
     }
 
     pub fn new() -> Self {
+        let scale = chronosentiment_core::PRICE_SCALE;
         let sample_candles = vec![
-            Candle { timestamp: 10, open: 100, high: 105, low: 99, close: 103, volume: 1000 },
-            Candle { timestamp: 20, open: 103, high: 108, low: 101, close: 107, volume: 1500 },
-            Candle { timestamp: 30, open: 107, high: 110, low: 105, close: 106, volume: 1200 },
+            Candle { timestamp: 10, open: 100 * scale, high: 105 * scale, low: 99 * scale, close: 103 * scale, volume: 1000 },
+            Candle { timestamp: 20, open: 103 * scale, high: 108 * scale, low: 101 * scale, close: 107 * scale, volume: 1500 },
+            Candle { timestamp: 30, open: 107 * scale, high: 110 * scale, low: 105 * scale, close: 106 * scale, volume: 1200 },
         ];
 
         let mut events = convert_series_to_events(&sample_candles, 1);
@@ -686,6 +687,7 @@ impl EvaluationService {
         sample_rate: usize,
         include_full: bool,
     ) -> Result<crate::dto::ReplaySuggestionsResponse, ApiError> {
+        use chronosentiment_core::pnl_overlay::run_pnl_overlay;
         use chronosentiment_core::replay_evaluator::run_replay_with_evaluator;
         use chronosentiment_core::strategy_ranking::{
             LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile, StrategyRegistry,
@@ -731,6 +733,7 @@ impl EvaluationService {
             ));
         }
 
+        let registry_rows_for_pnl = registry_rows.clone();
         let registry = StrategyRegistry::new(registry_rows);
         let mut evaluator = LiveEvaluator::new(
             LiveMarketState::new("BTCUSDT".to_string()),
@@ -738,6 +741,34 @@ impl EvaluationService {
             RankingWeights::default(),
         );
         let replay_out = run_replay_with_evaluator(&mut replay, &mut evaluator, 5);
+
+        // Run PnL overlay on an isolated replay/evaluator instance so results remain deterministic
+        // and independent of timeline sampling mode.
+        let mut replay_for_pnl = TickReplayEngine::from_binance_jsonl(
+            &jsonl_path,
+            ReplayConfig {
+                mode: ReplayMode::Fast,
+                ..ReplayConfig::default()
+            },
+            1,
+        )
+        .map_err(|e| {
+            ApiError::EngineError(format!(
+                "Failed to load replay ticks for pnl overlay from {}: {}",
+                jsonl_path, e
+            ))
+        })?;
+        let mut evaluator_for_pnl = LiveEvaluator::new(
+            LiveMarketState::new("BTCUSDT".to_string()),
+            StrategyRegistry::new(registry_rows_for_pnl),
+            RankingWeights::default(),
+        );
+        let horizon_ticks = std::env::var("PNL_HORIZON_TICKS")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(20);
+        let (_trades, pnl_metrics) =
+            run_pnl_overlay(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks);
 
         let mode_norm = mode.to_lowercase();
         let include_timeline = include_full || mode_norm == "full" || mode_norm == "sampled";
@@ -787,6 +818,7 @@ impl EvaluationService {
             asset: "BTCUSDT".to_string(),
             metrics: replay_out.metrics,
             timeline,
+            pnl: Some(pnl_metrics),
         })
     }
 

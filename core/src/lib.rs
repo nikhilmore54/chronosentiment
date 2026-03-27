@@ -15,6 +15,8 @@ pub mod binance_adapter;
 pub mod strategy_ranking;
 pub mod tick_replay;
 pub mod replay_evaluator;
+pub mod pnl_overlay;
+pub mod edge_decay;
 
 pub use ga::*;
 pub use harness::{run_simulation_harness};
@@ -33,6 +35,21 @@ pub use binance_adapter::*;
 pub use strategy_ranking::*;
 pub use tick_replay::*;
 pub use replay_evaluator::*;
+pub use pnl_overlay::*;
+
+pub const PRICE_SCALE: u64 = 100; // 1 Rupee = 100 Paise (Paise Format)
+
+/// Rounds a price in Paise to the nearest valid tick.
+/// Rule:
+/// - Price < ₹20 (2000 Paise): 1 Paisa tick
+/// - Price >= ₹20 (2000 Paise): 5 Paisa tick
+pub fn round_to_tick(price_paise: u64) -> u64 {
+    if price_paise < 2000 {
+        price_paise
+    } else {
+        ((price_paise as f64 / 5.0).round() * 5.0) as u64
+    }
+}
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

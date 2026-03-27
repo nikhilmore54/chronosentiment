@@ -154,6 +154,7 @@ pub struct ReplaySuggestionsResponse {
     pub asset: String,
     pub metrics: chronosentiment_core::replay_evaluator::ReplayMetrics,
     pub timeline: Vec<ReplaySuggestionPoint>,
+    pub pnl: Option<chronosentiment_core::pnl_overlay::PnLMetrics>,
 }
 
 #[derive(Debug, Serialize)]
@@ -173,7 +174,7 @@ pub struct OrderState {
     pub quantity_filled: u64,
     pub quantity_remaining: u64,
     pub queue_ahead: u64,
-    pub price: u64,
+    pub price: f64, // Currency units
     pub side: chronosentiment_core::Side,
 }
 

@@ -1,4 +1,5 @@
 use chronosentiment_core::ga::Strategy;
+use chronosentiment_core::pnl_overlay::run_pnl_overlay;
 use chronosentiment_core::replay_evaluator::run_replay_with_evaluator;
 use chronosentiment_core::strategy_ranking::{
     LiveEvaluator, LiveMarketState, LiveRegime, RankingWeights, StrategyProfile, StrategyRegistry,
@@ -85,4 +86,64 @@ fn main() {
     for (k, v) in out.metrics.top_strategy_persistence_ticks {
         println!("{}={}", k, v);
     }
+
+    // PnL overlay run (fresh replay/evaluator instance for deterministic consistency).
+    let mut replay_for_pnl = match TickReplayEngine::from_binance_jsonl(
+        &jsonl_path,
+        ReplayConfig {
+            mode: ReplayMode::Fast,
+            ..ReplayConfig::default()
+        },
+        1,
+    ) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to reload replay file {} for pnl overlay: {}", jsonl_path, e);
+            return;
+        }
+    };
+    let registry_for_pnl = StrategyRegistry::new(vec![
+        StrategyProfile {
+            strategy_id: "strat_live_momentum".to_string(),
+            strategy: Strategy {
+                queue_threshold: 80,
+                base_edge: 2,
+                take_profit: 12,
+                stop_loss: 6,
+            },
+            preferred_regimes: vec![LiveRegime::TrendingUp, LiveRegime::TrendingDown],
+            confidence_weight: 0.8,
+            execution_weight: 0.9,
+        },
+        StrategyProfile {
+            strategy_id: "strat_live_conservative".to_string(),
+            strategy: Strategy {
+                queue_threshold: 120,
+                base_edge: 1,
+                take_profit: 8,
+                stop_loss: 8,
+            },
+            preferred_regimes: vec![LiveRegime::Sideways, LiveRegime::Mixed],
+            confidence_weight: 0.9,
+            execution_weight: 0.8,
+        },
+    ]);
+    let mut evaluator_for_pnl = LiveEvaluator::new(
+        LiveMarketState::new("BTCUSDT".to_string()),
+        registry_for_pnl,
+        RankingWeights::default(),
+    );
+    let horizon_ticks = std::env::var("PNL_HORIZON_TICKS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(20);
+    let (_trades, pnl) = run_pnl_overlay(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks);
+    println!(
+        "PNL_OVERLAY: trades={} win_rate={:.2}% avg_pnl={:.6} total_pnl={:.6} edge_retention={:.6}",
+        pnl.total_trades,
+        pnl.win_rate * 100.0,
+        pnl.avg_pnl,
+        pnl.total_pnl,
+        pnl.edge_retention
+    );
 }

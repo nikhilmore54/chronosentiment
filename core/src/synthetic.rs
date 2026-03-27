@@ -44,7 +44,7 @@ pub fn generate_deterministic_scenarios(asset: &str, base_seed: u64, base_price:
                 let move_pct = drift_pct + vol_pct * noise;
                 current_price *= 1.0 + move_pct;
                 
-                let price = current_price.max(10.0).round() as u64;
+                let price = current_price.max(1.0).round() as u64;
 
                 // 3. Quantity: spikes + low periods
                 let is_spike = scenario_rng.gen_bool(0.1);

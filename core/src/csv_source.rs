@@ -12,10 +12,16 @@ fn parse_u64_cell(raw: &str) -> Option<u64> {
     if v.is_empty() {
         return None;
     }
+    // We use crate::PRICE_SCALE to preserve precision
+    let scale = crate::PRICE_SCALE as f64;
     if let Ok(n) = v.parse::<u64>() {
-        return Some(n);
+        let p = n * (crate::PRICE_SCALE as u64);
+        return Some(crate::round_to_tick(p));
     }
-    v.parse::<f64>().ok().map(|x| x.max(0.0).round() as u64)
+    v.parse::<f64>().ok().map(|x| {
+        let p = (x * scale).max(0.0).round() as u64;
+        crate::round_to_tick(p)
+    })
 }
 
 fn find_col(headers: &[&str], names: &[&str]) -> Option<usize> {

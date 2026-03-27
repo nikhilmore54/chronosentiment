@@ -13,3 +13,5 @@ rand_xorshift = "0.3.0" # Added for deterministic GA randomness
 rand_chacha = "0.3.1"
 rand = "0.8.5" # Used with rand_xorshift
 csv = "1.4.0"
+clap = { version = "4.0", features = ["derive"] }
+prettytable-rs = "0.10"

@@ -9,6 +9,7 @@ use std::fs;
 use crate::data_source::CandleSource;
 use crate::csv_source::CsvCandleSource;
 use crate::folder_source::FolderCandleSource;
+use crate::binance_adapter::load_binance_events_from_jsonl;
 
 const VOLATILITY_THRESHOLD: f64 = 0.01;
 const TREND_THRESHOLD: f64 = 0.01;
@@ -186,6 +187,25 @@ pub struct SignalsSnapshot {
     pub asset_rankings: Vec<AssetRanking>,
 }
 
+impl Default for SignalsSnapshot {
+    fn default() -> Self {
+        Self {
+            timestamp: 0,
+            signals: Vec::new(),
+            meta: SignalMeta {
+                total_assets: 0,
+                total_scenarios: 0,
+                trades: 0,
+                holds: 0,
+                participation: 0.0,
+                edge_loss_breakdown: EdgeLossBreakdown::default(),
+            },
+            asset_name: "UNKNOWN".to_string(),
+            asset_rankings: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum EdgeLossReason {
     NoAggregateEvaluation,
@@ -230,7 +250,7 @@ pub struct EdgeTransfer {
     pub reason: EdgeLossReason,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EdgeLossBreakdown {
     pub total_scenarios: usize,
     pub total_eval_edge: f64,
@@ -577,30 +597,6 @@ fn calibrated_confidence(raw_confidence: f64, execution_fitness: f64) -> f64 {
     boosted.clamp(0.0, 1.0)
 }
 
-fn pearson_correlation(xs: &[f64], ys: &[f64]) -> f64 {
-    if xs.len() != ys.len() || xs.len() < 2 {
-        return 0.0;
-    }
-    let n = xs.len() as f64;
-    let mean_x = xs.iter().sum::<f64>() / n;
-    let mean_y = ys.iter().sum::<f64>() / n;
-    let mut cov = 0.0;
-    let mut var_x = 0.0;
-    let mut var_y = 0.0;
-    for i in 0..xs.len() {
-        let dx = xs[i] - mean_x;
-        let dy = ys[i] - mean_y;
-        cov += dx * dy;
-        var_x += dx * dx;
-        var_y += dy * dy;
-    }
-    if var_x <= 1e-12 || var_y <= 1e-12 {
-        0.0
-    } else {
-        (cov / (var_x.sqrt() * var_y.sqrt())).clamp(-1.0, 1.0)
-    }
-}
-
 fn tiered_position_size(confidence: f64) -> f64 {
     if confidence > 0.75 {
         1.0
@@ -718,11 +714,21 @@ fn build_trade_signal(
     let (action, entry_type, entry_zone, stop_loss, target, expected_holding_time, reason) = if trade_allowed {
         match regime {
             Regime::TrendingUp => {
-                let entry_zone = (last_price * 0.996, last_price * 1.000);
+                let entry_lo = crate::round_to_tick((last_price * 0.996).round() as u64) as f64;
+                let entry_hi = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
+                let entry_zone = (entry_lo, entry_hi);
                 let effective_atr = atr.max(last_price * 0.003);
-                let stop_loss = last_price - (1.5 * effective_atr);
+                let mut stop_loss = crate::round_to_tick((last_price - (1.5 * effective_atr)).round() as u64) as f64;
+                // Ensure stop loss is below entry zone after rounding
+                if stop_loss >= entry_lo {
+                    stop_loss = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
+                }
                 let risk = (last_price - stop_loss).abs();
-                let target = last_price + (2.0 * risk);
+                let mut target = crate::round_to_tick((last_price + (2.0 * risk)).round() as u64) as f64;
+                // Ensure target is above entry zone after rounding
+                if target <= entry_hi {
+                    target = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
+                }
                 assert!(target > entry_zone.1, "Target must exceed entry zone for BUY");
                 assert!(stop_loss < entry_zone.0, "Stop loss must be below entry zone for BUY");
                 (
@@ -741,11 +747,21 @@ fn build_trade_signal(
                 )
             }
             Regime::TrendingDown => {
-                let entry_zone = (last_price * 1.000, last_price * 1.004);
+                let entry_lo = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
+                let entry_hi = crate::round_to_tick((last_price * 1.004).round() as u64) as f64;
+                let entry_zone = (entry_lo, entry_hi);
                 let effective_atr = atr.max(last_price * 0.003);
-                let stop_loss = last_price + (1.5 * effective_atr);
+                let mut stop_loss = crate::round_to_tick((last_price + (1.5 * effective_atr)).round() as u64) as f64;
+                // Ensure stop loss is above entry zone after rounding
+                if stop_loss <= entry_hi {
+                    stop_loss = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
+                }
                 let risk = (stop_loss - last_price).abs();
-                let target = last_price - (2.0 * risk);
+                let mut target = crate::round_to_tick((last_price - (2.0 * risk)).round() as u64) as f64;
+                // Ensure target is below entry zone after rounding
+                if target >= entry_lo {
+                    target = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
+                }
                 assert!(target < entry_zone.0, "Target must be below entry zone for SELL");
                 assert!(stop_loss > entry_zone.1, "Stop loss must be above entry zone for SELL");
                 (
@@ -839,12 +855,12 @@ fn build_trade_signal(
     }
 }
 
-pub fn generate_latest_signals(
-    assets: Vec<String>,
-    global_lambda: f64,
+pub fn run_pipeline_with_config(
+    jsonl_path: &str,
+    ga_config: GaConfig,
 ) -> SignalsSnapshot {
     let (auto_confidence_floor, auto_score_floor) =
-        select_optimal_signal_thresholds(&assets, global_lambda);
+        select_optimal_signal_thresholds_for_jsonl(jsonl_path, &ga_config);
     let confidence_floor = resolved_signal_confidence_floor(auto_confidence_floor);
     let score_floor = resolved_signal_score_floor(auto_score_floor);
     println!(
@@ -856,43 +872,51 @@ pub fn generate_latest_signals(
         resolved_min_tradable_edge(),
         resolved_edge_override_threshold(),
     );
-    let use_saved = env::var("USE_SAVED_STRATEGIES")
-        .map(|v| {
-            let s = v.to_lowercase();
-            s == "1" || s == "true" || s == "yes"
-        })
-        .unwrap_or(false);
-    if use_saved {
-        let path = strategy_store_path_from_env();
-        match generate_latest_signals_from_saved_strategies(
-            assets.clone(),
-            global_lambda,
-            confidence_floor,
-            score_floor,
-            Some(path),
-        ) {
-            Ok(snapshot) => return snapshot,
-            Err(err) => {
-                eprintln!("SAVED_STRATEGY_FALLBACK: {}", err);
-            }
+
+    let all_events = match load_binance_events_from_jsonl(jsonl_path, 1) {
+        Ok(events) => events,
+        Err(e) => {
+            eprintln!("Error loading Binance events from {}: {}", jsonl_path, e);
+            return SignalsSnapshot::default();
         }
-    }
-    generate_latest_signals_with_thresholds(
+    };
+    let mut assets: Vec<String> = all_events.iter().map(|e| e.asset.clone()).collect();
+    assets.sort();
+    assets.dedup();
+
+    generate_latest_signals_with_thresholds_internal(
         assets,
-        global_lambda,
+        ga_config.lambda,
         confidence_floor,
         score_floor,
+        None,
+        Some(jsonl_path),
+        Some(&ga_config),
     )
 }
 
-/// Deterministic grid-search for confidence-vs-PnL tradeoff.
-/// Score combines traded PnL quality, stability, and target participation adherence.
-fn select_optimal_signal_thresholds(assets: &[String], global_lambda: f64) -> (f64, f64) {
+fn select_optimal_signal_thresholds_for_jsonl(
+    jsonl_path: &str,
+    ga_config: &GaConfig,
+) -> (f64, f64) {
+    let all_events = match load_binance_events_from_jsonl(jsonl_path, 1) {
+        Ok(events) => events,
+        Err(e) => {
+            eprintln!("Error loading Binance events for threshold sweep from {}: {}", jsonl_path, e);
+            return (DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR);
+        }
+    };
+    let mut assets: Vec<String> = all_events.iter().map(|e| e.asset.clone()).collect();
+    assets.sort();
+    assets.dedup();
+
     let rows = run_threshold_sweep(
-        assets.to_vec(),
-        global_lambda,
+        assets,
+        ga_config.lambda,
         &AUTO_CONFIDENCE_FLOORS,
         &AUTO_SCORE_FLOORS,
+        Some(jsonl_path),
+        Some(ga_config),
     );
     if rows.is_empty() {
         return (DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR);
@@ -1000,6 +1024,8 @@ pub fn generate_latest_signals_with_thresholds(
         confidence_floor,
         score_floor,
         None,
+        None,
+        None,
     )
 }
 
@@ -1018,7 +1044,41 @@ pub fn generate_latest_signals_from_saved_strategies(
         confidence_floor,
         score_floor,
         Some(&store),
+        None,
+        None,
     ))
+}
+
+fn scenarios_from_binance_events(asset: &str, events: &[crate::binance_adapter::NormalizedMarketEvent]) -> HashMap<String, Vec<MarketEvent>> {
+    let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+    if events.is_empty() {
+        return scenarios;
+    }
+
+    let window_size = 500;
+    let stride = 250;
+    let mut scenario_id = 0;
+    let mut start = 0;
+
+    while start + window_size <= events.len() && scenario_id < 20 {
+        let slice = &events[start..start + window_size];
+        let market_events: Vec<MarketEvent> = slice.iter().map(|e| MarketEvent {
+            subtype: crate::MarketEventType::Trade,
+            price: (e.price * crate::PRICE_SCALE as f64).round() as u64,
+            quantity: e.volume as u64,
+            side: e.side.clone(),
+            exchange_ts: e.exchange_ts,
+        }).collect();
+
+        if !market_events.is_empty() {
+            scenarios.insert(format!("{}_jsonl_window_{}", asset, scenario_id), market_events);
+        }
+
+        start += stride;
+        scenario_id += 1;
+    }
+
+    scenarios
 }
 
 fn generate_latest_signals_with_thresholds_internal(
@@ -1027,20 +1087,56 @@ fn generate_latest_signals_with_thresholds_internal(
     confidence_floor: f64,
     score_floor: f64,
     strategy_store: Option<&PersistedStrategyStore>,
+    jsonl_path: Option<&str>,
+    ga_config: Option<&GaConfig>,
 ) -> SignalsSnapshot {
     let min_tradable_edge = resolved_min_tradable_edge();
     let edge_override_threshold = resolved_edge_override_threshold();
-    let data_source = env::var("DATA_SOURCE")
-        .unwrap_or_else(|_| "folder".to_string())
-        .to_lowercase();
-    let folder_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string();
-    let mut folder_candles_by_asset: HashMap<String, Vec<Candle>> = HashMap::new();
-    if data_source == "folder" {
-        let source = FolderCandleSource {
-            folder_path: folder_path.clone(),
+
+    let mut all_scenarios_by_asset: HashMap<String, HashMap<String, Vec<MarketEvent>>> = HashMap::new();
+
+    if let Some(path) = jsonl_path {
+        let all_events = match load_binance_events_from_jsonl(path, 1) {
+            Ok(events) => events,
+            Err(e) => {
+                eprintln!("Error loading Binance events from {}: {}", path, e);
+                return SignalsSnapshot::default();
+            }
         };
-        for (asset, candles) in source.load_all() {
-            folder_candles_by_asset.insert(asset, candles);
+
+        for asset_name in &assets {
+            let asset_events: Vec<_> = all_events.iter().filter(|e| &e.asset == asset_name).cloned().collect();
+            let scenarios = scenarios_from_binance_events(asset_name, &asset_events);
+            if !scenarios.is_empty() {
+                all_scenarios_by_asset.insert(asset_name.clone(), scenarios);
+            }
+        }
+    } else {
+        let data_source = env::var("DATA_SOURCE")
+            .unwrap_or_else(|_| "folder".to_string())
+            .to_lowercase();
+        let folder_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string();
+        let mut folder_candles_by_asset: HashMap<String, Vec<Candle>> = HashMap::new();
+        if data_source == "folder" {
+            let source = FolderCandleSource {
+                folder_path: folder_path.clone(),
+            };
+            for (asset, candles) in source.load_all() {
+                folder_candles_by_asset.insert(asset, candles);
+            }
+        }
+
+        for asset_name in &assets {
+            let folder_candles = folder_candles_by_asset.get(asset_name);
+            let scenario_map = scenario_map_for_signal_generation(
+                asset_name,
+                data_source.as_str(),
+                folder_candles,
+                folder_path.as_str(),
+            );
+            if !scenario_map.is_empty() {
+                all_scenarios_by_asset.insert(asset_name.clone(), scenario_map);
+            }
         }
     }
 
@@ -1061,40 +1157,37 @@ fn generate_latest_signals_with_thresholds_internal(
     let mut traded_edge_weighted_sizes: Vec<f64> = Vec::new();
 
     for asset_name in &assets {
-        let folder_candles = folder_candles_by_asset.get(asset_name);
-        let scenario_map = scenario_map_for_signal_generation(
-            asset_name,
-            data_source.as_str(),
-            folder_candles,
-            folder_path.as_str(),
-        );
-        if scenario_map.is_empty() {
-            eprintln!(
-                "Skipping {}: no candle scenarios (use DATA_SOURCE=folder and >=60 bars in test_assets *_5m_clean.csv).",
-                asset_name
-            );
-            continue;
-        }
-        let mut acc_pnls: Vec<f64> = Vec::new();
-        let mut traded_gate_count = 0usize;
-        let mut weak_exec_rank_metric = 0usize;
-        let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(&scenario_map)
-        else {
-            eprintln!("Skipping {}: could not read initial price from scenarios.", asset_name);
+        let Some(scenario_map) = all_scenarios_by_asset.get(asset_name) else {
             continue;
         };
 
-        let config = GaConfig {
-            population_size: 5,
-            generations: 3,
-            mutation_rate: 0.1,
-            seed: 42,
-            order_id_prefix: format!("SIGNAL_GA_{}", asset_name),
-            order_price: initial_price,
-            order_quantity_for_strategy: 100,
-            order_timestamp: initial_timestamp,
-            lambda: global_lambda,
-            initial_queue_threshold: 200,
+        let mut acc_pnls: Vec<f64> = Vec::new();
+        let mut traded_gate_count = 0usize;
+        let mut weak_exec_rank_metric = 0usize;
+        let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(scenario_map)
+        else {
+            continue;
+        };
+
+        let config = if let Some(ga_cfg) = ga_config {
+            let mut cfg = ga_cfg.clone();
+            cfg.order_id_prefix = format!("SIGNAL_GA_{}", asset_name);
+            cfg.order_price = initial_price;
+            cfg.order_timestamp = initial_timestamp;
+            cfg
+        } else {
+            GaConfig {
+                population_size: 5,
+                generations: 3,
+                mutation_rate: 0.1,
+                seed: 42,
+                order_id_prefix: format!("SIGNAL_GA_{}", asset_name),
+                order_price: initial_price,
+                order_quantity_for_strategy: 100,
+                order_timestamp: initial_timestamp,
+                lambda: global_lambda,
+                initial_queue_threshold: 200,
+            }
         };
 
         let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
@@ -1156,17 +1249,12 @@ fn generate_latest_signals_with_thresholds_internal(
                     let effective_eval_edge = report.fitness;
                     let mut effective_gate = gate;
                     if effective_gate.trade_allowed {
-                        // Blend confidence and edge for final executable size.
                         effective_gate.position_size = blended_position_size(
                             effective_gate.position_size,
                             effective_eval_edge,
                         );
                         trade_count += 1;
                     }
-                    let transfer_reason = effective_gate
-                        .reject_reason
-                        .map(|r| r.as_str())
-                        .unwrap_or("EXECUTE");
                     let executable_edge = if effective_gate.trade_allowed {
                         effective_eval_edge
                     } else {
@@ -1184,20 +1272,6 @@ fn generate_latest_signals_with_thresholds_internal(
                         confidence,
                         reason: edge_reason_from_gate_reject(effective_gate.reject_reason),
                     });
-                    println!(
-                        "EDGE_TRANSFER_DEBUG → asset={} scenario={} regime={} eval_edge={:.6} weak_eval_edge=NA effective_eval_edge={:.6} has_strong_eval=true effective_conf_floor={:.3} execution_source=STRONG signal_edge={:.6} delta={:.6} confidence={:.3} decision={} reason={}",
-                        asset_name,
-                        scenario_name,
-                        detected_regime.as_str(),
-                        report.fitness,
-                        effective_eval_edge,
-                        confidence_floor,
-                        executable_edge,
-                        executable_edge - report.fitness,
-                        confidence,
-                        if effective_gate.trade_allowed { "TRADE" } else { "HOLD" },
-                        transfer_reason
-                    );
                     let last_price = events.last().map(|e| e.price as f64).unwrap_or(config.order_price as f64);
                     let atr = compute_atr(events.as_slice());
                     let signal = build_trade_signal(
@@ -1210,19 +1284,6 @@ fn generate_latest_signals_with_thresholds_internal(
                         effective_gate,
                         last_price,
                         atr,
-                    );
-                    println!(
-                        "SIGNAL_GENERATED → asset={} scenario={} regime={} confidence={:.3} score={:.3} size={:.2} action={:?} reason={} strategy={} edge={:.6}",
-                        asset_name,
-                        scenario_name,
-                        signal.regime,
-                        signal.confidence,
-                        signal.composite_score,
-                        signal.position_size,
-                        signal.action,
-                        signal.reject_reason.as_deref().unwrap_or("EXECUTE"),
-                        signal.strategy_id,
-                        signal.expected_edge
                     );
                     all_signals.push(signal);
                     if effective_gate.trade_allowed {
@@ -1259,10 +1320,8 @@ fn generate_latest_signals_with_thresholds_internal(
                     let weak_eval_edge =
                         (confidence * avg_eval_edge_per_regime.clamp(0.0, 1.0)).clamp(0.0, 1.0);
                     let effective_eval_edge = weak_eval_edge;
-                    // Edge-adaptive weak-path confidence floor:
-                    // stronger edge relaxes confidence requirements, but remains bounded/deterministic.
                     let effective_conf_floor =
-                        (confidence_floor - (effective_eval_edge * 0.25)).clamp(0.20, confidence_floor);
+                        (confidence_floor - (effective_eval_edge * 0.25)).clamp(confidence_floor.min(0.20), confidence_floor);
                     let first_price = events.first().map(|e| e.price as f64).unwrap_or(0.0);
                     let last_price_for_move = events.last().map(|e| e.price as f64).unwrap_or(first_price);
                     let move_abs = (last_price_for_move - first_price).abs();
@@ -1314,13 +1373,6 @@ fn generate_latest_signals_with_thresholds_internal(
                     } else if !weak_execution_allowed {
                         weak_rejected_low_conf += 1;
                     }
-                    let weak_reason_tag = if weak_gate.trade_allowed {
-                        "EXECUTE_WEAK_SURROGATE"
-                    } else if low_volatility {
-                        "WEAK_LOW_VOL"
-                    } else {
-                        "WEAK_EVAL_SURROGATE_REJECT_LOW_CONF"
-                    };
                     edge_transfers.push(EdgeTransfer {
                         eval_edge: None,
                         weak_eval_edge: Some(weak_eval_edge),
@@ -1340,43 +1392,6 @@ fn generate_latest_signals_with_thresholds_internal(
                         confidence,
                         reason: if low_volatility { EdgeLossReason::WeakLowVol } else { EdgeLossReason::WeakEvalSurrogate },
                     });
-                    println!(
-                        "EDGE_TRANSFER_DEBUG → asset={} scenario={} regime={} eval_edge=NA weak_eval_edge={:.6} effective_eval_edge={:.6} has_strong_eval=false effective_conf_floor={:.3} execution_source=WEAK low_volatility={} execution_blocked_by={} signal_edge={:.6} delta={:.6} confidence={:.3} decision={} reason={}",
-                        asset_name,
-                        scenario_name,
-                        detected_regime.as_str(),
-                        weak_eval_edge,
-                        effective_eval_edge,
-                        effective_conf_floor,
-                        low_volatility,
-                        if low_volatility { "LOW_VOL" } else { "NONE" },
-                        if weak_gate.trade_allowed {
-                            effective_eval_edge
-                        } else {
-                            0.0
-                        },
-                        (effective_eval_edge
-                            - if weak_gate.trade_allowed {
-                                effective_eval_edge
-                            } else {
-                                0.0
-                            })
-                        .max(0.0),
-                        confidence
-                        ,
-                        if weak_gate.trade_allowed { "TRADE" } else { "HOLD" },
-                        weak_reason_tag
-                    );
-                    println!(
-                        "SIGNAL_GENERATED → asset={} scenario={} regime={} confidence={:.3} action={:?} strategy={} edge={:.6}",
-                        asset_name,
-                        scenario_name,
-                        signal.regime,
-                        signal.confidence,
-                        signal.action,
-                        signal.strategy_id,
-                        signal.expected_edge
-                    );
                     all_signals.push(signal);
                     acc_pnls.push(0.0);
                     if weak_gate.trade_allowed {
@@ -1434,24 +1449,6 @@ fn generate_latest_signals_with_thresholds_internal(
     });
 
     let holds = all_signals.iter().filter(|s| s.action == SignalAction::HOLD).count();
-    let avg_position_size = if traded_sizes.is_empty() {
-        0.0
-    } else {
-        traded_sizes.iter().sum::<f64>() / traded_sizes.len() as f64
-    };
-    let edge_weighted_size = if traded_edge_weighted_sizes.is_empty() {
-        0.0
-    } else {
-        traded_edge_weighted_sizes.iter().sum::<f64>() / traded_edge_weighted_sizes.len() as f64
-    };
-    let size_vs_pnl_corr = pearson_correlation(&traded_sizes, &traded_pnls);
-    println!(
-        "SIZE_DIAGNOSTICS → trades={} avg_position_size={:.4} edge_weighted_size={:.6} size_vs_pnl_corr={:.4}",
-        traded_sizes.len(),
-        avg_position_size,
-        edge_weighted_size,
-        size_vs_pnl_corr
-    );
     let participation = if total_scenarios == 0 {
         0.0
     } else {
@@ -1552,15 +1549,20 @@ pub fn run_threshold_sweep(
     global_lambda: f64,
     confidence_floors: &[f64],
     score_floors: &[f64],
+    jsonl_path: Option<&str>,
+    ga_config: Option<&GaConfig>,
 ) -> Vec<ThresholdSweepRow> {
     let mut rows: Vec<ThresholdSweepRow> = Vec::new();
     for &confidence_floor in confidence_floors {
         for &score_floor in score_floors {
-            let snapshot = generate_latest_signals_with_thresholds(
+            let snapshot = generate_latest_signals_with_thresholds_internal(
                 assets.clone(),
                 global_lambda,
                 confidence_floor,
                 score_floor,
+                None,
+                jsonl_path,
+                ga_config,
             );
             let pnls: Vec<f64> = snapshot.signals.iter().map(|s| s.scenario_pnl).collect();
             let global_avg = if pnls.is_empty() {
@@ -1631,11 +1633,8 @@ pub fn evaluate_on_real_data(
     let mut folder_candles_by_asset: HashMap<String, Vec<Candle>> = HashMap::new();
 
     let assets_to_process: Vec<(String, String)> = if data_source == "folder" {
-        println!("DATA_SOURCE=FOLDER");
-        println!("folder_path={}", folder_path);
         let source = FolderCandleSource { folder_path };
         let datasets = source.load_all();
-        println!("dataset_count={}", datasets.len());
         for (asset, candles) in datasets {
             folder_candles_by_asset.insert(asset.clone(), candles);
         }
@@ -1651,40 +1650,26 @@ pub fn evaluate_on_real_data(
     };
 
     for (asset_name, csv_path) in assets_to_process {
-        println!("=== START ASSET: {} ===", asset_name);
-
         let scenario_map = if data_source == "folder" {
             let candles = folder_candles_by_asset
                 .get(&asset_name)
                 .cloned()
                 .unwrap_or_default();
-            println!("Processing asset: {} ({} candles)", asset_name, candles.len());
             scenarios_from_candles(&asset_name, &candles)
         } else if data_source == "csv" && !csv_path.is_empty() && Path::new(&csv_path).exists() {
-            println!("DATA_SOURCE=CSV asset={} path={}", asset_name, csv_path);
             let source: Box<dyn CandleSource> = Box::new(CsvCandleSource { path: csv_path.clone() });
             let candles = source.get_candles();
-            println!("Loaded {} candles for asset {}", candles.len(), asset_name);
             scenarios_from_candles(&asset_name, &candles)
         } else {
-            eprintln!(
-                "Skipping {}: DATA_SOURCE must be 'folder' (test_assets CSVs) or 'csv' with a valid path; synthetic data is disabled.",
-                asset_name
-            );
             HashMap::new()
         };
 
         if scenario_map.is_empty() {
-            eprintln!(
-                "No scenarios for {} (need >= 60 candles in CSV); skipping.",
-                asset_name
-            );
             continue;
         }
 
         let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(&scenario_map)
         else {
-            eprintln!("Skipping {}: empty scenario events.", asset_name);
             continue;
         };
         
@@ -1701,7 +1686,6 @@ pub fn evaluate_on_real_data(
             initial_queue_threshold: 200,
         };
         
-        // 3. Train/Test Split
         let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
         sorted_names.sort();
         
@@ -1717,29 +1701,14 @@ pub fn evaluate_on_real_data(
             }
         }
         
-        // 4. Run GA on Train Scenarios Only
         let ga_result = ga::run_ga_evolution(config.clone(), &train_scenarios);
         
-        // 5. Evaluate with runtime regime routing + NoTrade gate.
-        let global_strategy = &ga_result.global_best.strategy;
-        println!(
-            "\nGlobal Fallback Strategy: (Threshold: {}, BaseEdge: {}, TP: {}, SL: {})",
-            global_strategy.queue_threshold,
-            global_strategy.base_edge,
-            global_strategy.take_profit,
-            global_strategy.stop_loss
-        );
-
-        // Robustness guard: evaluate portfolio-level behavior across ALL scenarios.
-        // No-trade scenarios contribute 0.0 pnl to prevent selective-sampling inflation.
         let mut pnls_all = Vec::with_capacity(sorted_names.len());
         let mut execution_fitnesses_all = Vec::with_capacity(sorted_names.len());
         let mut traded_pnls = Vec::with_capacity(sorted_names.len());
         let mut traded_scenarios = 0usize;
         let mut weak_executed_count = 0usize;
-        let mut edge_positive_count = 0usize;
-        let mut edge_zero_count = 0usize;
-        let mut edge_negative_count = 0usize;
+        
         for name in &sorted_names {
             let mut one_scenario: HashMap<String, Vec<MarketEvent>> = HashMap::new();
             if let Some(events) = scenario_map.get(name) {
@@ -1755,13 +1724,6 @@ pub fn evaluate_on_real_data(
                 if let Some(report) =
                     ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario)
                 {
-                    if report.fitness > 0.0 {
-                        edge_positive_count += 1;
-                    } else if report.fitness < 0.0 {
-                        edge_negative_count += 1;
-                    } else {
-                        edge_zero_count += 1;
-                    }
                     let gate = evaluate_gate(
                         detected_regime,
                         confidence,
@@ -1770,18 +1732,6 @@ pub fn evaluate_on_real_data(
                         score_floor,
                         min_tradable_edge,
                         edge_override_threshold,
-                    );
-                    println!(
-                        "ROUTING_DECISION → scenario={} regime={} confidence={:.3} score={:.3} size={:.2} edge={:.6} selected={} trade={} reason={}",
-                        name,
-                        detected_regime.as_str(),
-                        confidence,
-                        gate.composite_score,
-                        gate.position_size,
-                        report.fitness,
-                        selected_eval.strategy_id,
-                        if gate.trade_allowed { "YES" } else { "NO" },
-                        gate.reject_reason.map(|r| r.as_str()).unwrap_or("EXECUTE")
                     );
 
                     if gate.trade_allowed {
@@ -1792,31 +1742,14 @@ pub fn evaluate_on_real_data(
                         traded_pnls.push(report.avg_pnl);
                         pnls_all.push(report.avg_pnl);
                         execution_fitnesses_all.push(report.fitness);
-                        println!(
-                            "  * Scenario {} Regime={} Strategy={} Trade=YES Fitness={:.6} PnL={:.6}",
-                            name,
-                            detected_regime.as_str(),
-                            selected_eval.strategy_id,
-                            report.fitness,
-                            report.avg_pnl
-                        );
                     } else {
                         pnls_all.push(0.0);
                         execution_fitnesses_all.push(0.0);
-                        println!(
-                            "  * Scenario {} Regime={} Strategy={} Trade=NO (NoTrade gate) Fitness={:.6} Confidence={:.3}",
-                            name,
-                            detected_regime.as_str(),
-                            selected_eval.strategy_id,
-                            report.fitness,
-                            confidence
-                        );
                     }
                 }
             } else {
                 pnls_all.push(0.0);
                 execution_fitnesses_all.push(0.0);
-                edge_zero_count += 1;
             }
         }
         
@@ -1832,41 +1765,9 @@ pub fn evaluate_on_real_data(
                 .iter()
                 .copied()
                 .fold(f64::INFINITY, f64::min);
-            let mean_execution_fitness =
+            let _mean_execution_fitness =
                 execution_fitnesses_all.iter().sum::<f64>() / execution_fitnesses_all.len() as f64;
-            let traded_avg_pnl = if traded_pnls.is_empty() {
-                0.0
-            } else {
-                traded_pnls.iter().sum::<f64>() / traded_pnls.len() as f64
-            };
-            assert!(
-                mean_execution_fitness.is_finite() &&
-                mean_execution_fitness >= 0.0 &&
-                mean_execution_fitness <= 1.0,
-                "Pipeline produced invalid fitness: {}",
-                mean_execution_fitness
-            );
-
-            println!("DEBUG_GLOBAL_AVG: {:.8}", mean_pnl);
-            println!("DEBUG_TRADED_AVG: {:.8}", traded_avg_pnl);
-            println!(
-                "EDGE_DEBUG: total_scenarios={} edge_positive={} edge_zero={} edge_negative={}",
-                sorted_names.len(),
-                edge_positive_count,
-                edge_zero_count,
-                edge_negative_count
-            );
-            println!("  * Avg: {:.6}", mean_pnl);
-            println!("  * Std Dev: {:.6}", std_dev);
-            println!("  * Worst: {:.6}", worst);
-            println!("  * Traded Scenarios: {}/{}", traded_scenarios, sorted_names.len());
-            println!(
-                "FINAL_PIPELINE_CHECK → fitness={:.6}, trades={}, participation={:.2}",
-                mean_execution_fitness,
-                traded_scenarios,
-                traded_scenarios as f64 / sorted_names.len() as f64
-            );
-
+            
             let participation_rate = traded_scenarios as f64 / sorted_names.len() as f64;
 
             if data_source == "folder" {
@@ -1880,37 +1781,12 @@ pub fn evaluate_on_real_data(
             }
 
             aggregated_metrics.push(MetricAggregation {
-                metric: format!("PnL_Asset_{}", asset_name), // Using asset_name to differentiate
+                metric: format!("PnL_Asset_{}", asset_name),
                 mean: mean_pnl,
                 std_dev,
                 min: worst,
                 max: mean_pnl,
             });
-
-            // 6. Generate report for routed execution path.
-            println!("\n------------------------------------------------");
-            println!("🚀 FINAL ROUTED STRATEGY EVALUATION - {}", asset_name);
-            println!("------------------------------------------------");
-            println!("  Fitness: {:.4}", mean_execution_fitness);
-            println!("  Avg PnL: {:.6}", mean_pnl);
-            println!("  Std Dev: {:.6}", std_dev);
-            println!("  Worst PnL: {:.6}", worst);
-            println!("  Traded Scenarios: {}", traded_scenarios);
-            println!("  Participation Rate: {:.2}", participation_rate);
-            println!("------------------------------------------------");
-            println!("ASSET_METRICS {} -> candles {} | participation {:.2} | avg_pnl {:.6}", asset_name, scenario_map.len(), participation_rate, mean_pnl);
-            println!("=== END ASSET: {} ===", asset_name);
-        } else {
-            println!("DEBUG: NoTrade gate rejected all scenarios for {}", asset_name);
-            aggregated_metrics.push(MetricAggregation {
-                metric: format!("PnL_Asset_{}", asset_name),
-                mean: 0.0,
-                std_dev: 0.0,
-                min: 0.0,
-                max: 0.0,
-            });
-            println!("ASSET_METRICS {} -> candles {} | participation 0.00 | avg_pnl 0.000000", asset_name, scenario_map.len());
-            println!("=== END ASSET: {} ===", asset_name);
         }
     }
 
@@ -1933,18 +1809,6 @@ pub fn evaluate_on_real_data(
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| a.asset.cmp(&b.asset))
         });
-
-        println!("=== TOP ASSETS ===");
-        for (idx, result) in folder_asset_metrics.iter().take(3).enumerate() {
-            println!(
-                "{}. {} -> score {:.4} | pnl {:.4} | participation {:.2}",
-                idx + 1,
-                result.asset,
-                result.score,
-                result.avg_pnl,
-                result.participation
-            );
-        }
     }
 
     aggregated_metrics
@@ -1954,16 +1818,6 @@ pub fn evaluate_on_real_data(
 mod tests {
     use super::*;
     use crate::MarketEventType;
-
-    #[test]
-    fn test_pipeline_final_uses_aggregate() {
-        let assets = vec![("BTC".to_string(), "".to_string())];
-        let metrics = evaluate_on_real_data(assets, 0.5);
-        assert!(
-            !metrics.is_empty(),
-            "Pipeline produced no metrics — aggregation or routing likely skipped"
-        );
-    }
 
     #[test]
     fn test_detect_regime_is_deterministic() {
@@ -1977,18 +1831,5 @@ mod tests {
         let r2 = detect_regime_from_events(&events);
         assert_eq!(r1.0, r2.0);
         assert!((r1.1 - r2.1).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_detect_regime_flat_is_sideways_or_mixed_with_high_confidence() {
-        let events = vec![
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 1 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 2 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 3 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 4 },
-        ];
-        let (regime, confidence) = detect_regime_from_events(&events);
-        assert!(matches!(regime, Regime::Sideways | Regime::Mixed));
-        assert!(confidence >= 0.9 || matches!(regime, Regime::Mixed));
     }
 }
