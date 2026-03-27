@@ -85,13 +85,94 @@ pub struct PersistedStrategyStore {
     pub by_asset: HashMap<String, ga::GaResult>,
 }
 
-#[derive(Debug, Clone)]
-pub struct StrategyEvaluationDto {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct UnifiedStrategyEvaluation {
     pub strategy_id: String,
     pub avg: f64,
     pub std: f64,
-    pub score: f64,
+    pub ga_fitness: Option<f64>,
+    pub execution_fitness: f64,
     pub classification: String,
+}
+
+impl From<ga::StrategyEvaluation> for UnifiedStrategyEvaluation {
+    fn from(eval: ga::StrategyEvaluation) -> Self {
+        let classification = ga::get_strategy_classification(&eval);
+        Self {
+            strategy_id: eval.strategy_id,
+            avg: eval.avg_pnl,
+            std: eval.std_dev,
+            ga_fitness: Some(eval.fitness),
+            execution_fitness: eval.fitness,
+            classification,
+        }
+    }
+}
+
+pub fn deterministic_strategy_id(strategy: &ga::Strategy, scenario_names: &[String], seed: u64) -> String {
+    let mut names = scenario_names.to_vec();
+    names.sort();
+    format!(
+        "strat_{}_{}_{}_{}_{}",
+        strategy.queue_threshold,
+        strategy.base_edge,
+        strategy.take_profit,
+        strategy.stop_loss,
+        seed ^ (names.len() as u64)
+    )
+}
+
+pub fn run_evaluation_orchestration(
+    strategy: ga::Strategy,
+    scenarios: &HashMap<String, Vec<MarketEvent>>,
+    seed: u64,
+) -> Result<UnifiedStrategyEvaluation, String> {
+    let mut scenario_names: Vec<String> = scenarios.keys().cloned().collect();
+    scenario_names.sort();
+
+    let strategy_id = deterministic_strategy_id(&strategy, &scenario_names, seed);
+    
+    let ga_config = GaConfig {
+        seed,
+        ..GaConfig::default()
+    };
+
+    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, scenarios)
+        .ok_or_else(|| "Strategy produced no evaluable trades".to_string())?;
+
+    let mut unified = UnifiedStrategyEvaluation::from(eval);
+    unified.strategy_id = strategy_id;
+    Ok(unified)
+}
+
+pub fn run_comparison_orchestration(
+    strategies: Vec<ga::Strategy>,
+    scenarios: &HashMap<String, Vec<MarketEvent>>,
+    seed: u64,
+) -> Result<Vec<UnifiedStrategyEvaluation>, String> {
+    let mut results = Vec::new();
+    for strategy in strategies {
+        let res = run_evaluation_orchestration(strategy, scenarios, seed)?;
+        results.push(res);
+    }
+    
+    // Sort by execution fitness descending
+    results.sort_by(|a, b| {
+        b.execution_fitness.partial_cmp(&a.execution_fitness)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.strategy_id.cmp(&b.strategy_id))
+    });
+    
+    Ok(results)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnifiedGaResponse {
+    pub global_best: UnifiedStrategyEvaluation,
+    pub final_generation_best: UnifiedStrategyEvaluation,
+    pub generation_history: Vec<UnifiedStrategyEvaluation>,
+    pub best_per_regime: HashMap<String, UnifiedStrategyEvaluation>,
+    pub global_best_generation: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -372,7 +453,7 @@ fn detect_regime_from_events(events: &[MarketEvent]) -> (Regime, f64) {
     (regime, confidence)
 }
 
-fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String, Vec<MarketEvent>> {
+pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String, Vec<MarketEvent>> {
     let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
     if candles.len() < 60 {
         return scenarios;
@@ -466,7 +547,7 @@ fn strategy_store_path_from_env() -> String {
     })
 }
 
-fn load_strategy_store(path: &str) -> Result<PersistedStrategyStore, String> {
+pub fn load_strategy_store(path: &str) -> Result<PersistedStrategyStore, String> {
     let raw = fs::read_to_string(path)
         .map_err(|e| format!("failed to read strategy store '{}': {}", path, e))?;
     serde_json::from_str::<PersistedStrategyStore>(&raw)
@@ -570,8 +651,98 @@ pub fn train_and_persist_strategies(
     Ok(trained_assets.len())
 }
 
-fn should_trade(execution_fitness: f64) -> bool {
-    execution_fitness.is_finite() && execution_fitness > 0.0
+pub fn run_ga_orchestration(
+    config: GaConfig,
+    scenarios: &HashMap<String, Vec<MarketEvent>>,
+    holdout_ratio: f64,
+) -> Result<UnifiedGaResponse, String> {
+    let mut scenario_names: Vec<String> = scenarios.keys().cloned().collect();
+    scenario_names.sort();
+
+    if scenario_names.is_empty() {
+        return Err("No scenarios provided for GA orchestration".to_string());
+    }
+
+    // Split scenarios into train and holdout
+    let (train_names, holdout_names): (Vec<String>, Vec<String>) = if scenario_names.len() <= 2 {
+        (scenario_names.clone(), scenario_names.clone())
+    } else {
+        let holdout_count = ((scenario_names.len() as f64) * holdout_ratio).round() as usize;
+        let holdout_count = holdout_count.clamp(1, scenario_names.len() - 1);
+        let split_at = scenario_names.len() - holdout_count;
+        (scenario_names[..split_at].to_vec(), scenario_names[split_at..].to_vec())
+    };
+
+    let mut train_scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+    for name in &train_names {
+        if let Some(events) = scenarios.get(name) {
+            train_scenarios.insert(name.clone(), events.clone());
+        }
+    }
+
+    let mut holdout_scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+    for name in &holdout_names {
+        if let Some(events) = scenarios.get(name) {
+            holdout_scenarios.insert(name.clone(), events.clone());
+        }
+    }
+
+    // Run GA Evolution
+    let ga_result = ga::run_ga_evolution(config.clone(), &train_scenarios);
+
+    // Cross-evaluate best strategies on holdout data for "Execution Fitness"
+    let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
+
+    let to_unified = |ga_eval: ga::StrategyEvaluation, exec_eval: ga::StrategyEvaluation| -> UnifiedStrategyEvaluation {
+        let mut unified = UnifiedStrategyEvaluation::from(ga_eval);
+        unified.execution_fitness = exec_eval.fitness;
+        unified
+    };
+
+    let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
+        ga::evaluate_and_aggregate(strategy, &config, execution_scenarios)
+            .unwrap_or_else(|| ga::StrategyEvaluation {
+                strategy: strategy.clone(),
+                ..ga::StrategyEvaluation::default()
+            })
+    };
+
+    let global_best = to_unified(
+        ga_result.global_best.clone(),
+        evaluate_on_exec(&ga_result.global_best.strategy)
+    );
+
+    let final_generation_best = to_unified(
+        ga_result.final_generation_best.clone(),
+        evaluate_on_exec(&ga_result.final_generation_best.strategy)
+    );
+
+    let mut generation_history = Vec::new();
+    for eval in ga_result.generation_history {
+        generation_history.push(to_unified(
+            eval.clone(),
+            evaluate_on_exec(&eval.strategy)
+        ));
+    }
+
+    let mut best_per_regime = HashMap::new();
+    for (regime, eval) in ga_result.best_per_regime {
+        best_per_regime.insert(
+            regime,
+            to_unified(
+                eval.clone(),
+                evaluate_on_exec(&eval.strategy)
+            )
+        );
+    }
+
+    Ok(UnifiedGaResponse {
+        global_best,
+        final_generation_best,
+        generation_history,
+        best_per_regime,
+        global_best_generation: ga_result.global_best_generation,
+    })
 }
 
 fn regime_quality(regime: Regime) -> f64 {
@@ -627,7 +798,7 @@ fn evaluate_gate(
     min_tradable_edge: f64,
     edge_override_threshold: f64,
 ) -> GateDecision {
-    if !should_trade(execution_fitness) {
+    if execution_fitness <= 0.0 {
         return GateDecision {
             trade_allowed: false,
             position_size: 0.0,
@@ -1198,17 +1369,14 @@ fn generate_latest_signals_with_thresholds_internal(
             if let Some(saved) = store.by_asset.get(asset_name) {
                 saved.clone()
             } else {
-                let test_index = (config.seed as usize) % sorted_names.len();
-                let test_scenario_name = sorted_names[test_index].clone();
-                let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
-                for name in &sorted_names {
-                    if *name != test_scenario_name {
-                        if let Some(events) = scenario_map.get(name) {
-                            train_scenarios.insert(name.clone(), events.as_slice());
-                        }
-                    }
+                // If asset not in store, return empty/zero result instead of running GA during "recommend" phase
+                ga::GaResult {
+                    global_best: ga::StrategyEvaluation::default(),
+                    global_best_generation: 0,
+                    final_generation_best: ga::StrategyEvaluation::default(),
+                    generation_history: Vec::new(),
+                    best_per_regime: HashMap::new(),
                 }
-                ga::run_ga_evolution(config.clone(), &train_scenarios)
             }
         } else {
             let test_index = (config.seed as usize) % sorted_names.len();

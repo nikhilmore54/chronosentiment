@@ -821,7 +821,7 @@ pub(crate) fn evaluate_strategy(
                     continue;
                 }
 
-                // --- MINIMUM MOVE FILTER (Relaxed for synthetic testing) ---
+                // --- MINIMUM MOVE FILTER ---
                 let move_abs = (exit_price_val as f64 - current_entry_price as f64).abs();
                 let min_move = current_entry_price as f64 * 0.0005; // 0.05%
 
@@ -842,7 +842,7 @@ pub(crate) fn evaluate_strategy(
                     Side::Sell => (current_entry_price as f64 - exit_price_val as f64) / current_entry_price as f64,
                 };
 
-                let transaction_cost = 0.0001; // 0.01% (Relaxed for synthetic testing)
+                let transaction_cost = 0.0001; // 0.01%
                 let final_pnl_return = pnl_return_base - transaction_cost;
 
                 assert!(
@@ -928,12 +928,12 @@ pub(crate) fn evaluate_strategy(
         0.0
     };
 
-    // Relaxed for synthetic testing
+    // Standard move check
     if total_trades > 0 && selectivity < 0.1 {
         return None;
     }
 
-    // Relaxed for synthetic testing
+    // Standard move check
     if total_trades > 0 && payoff_ratio < 0.8 {
         return None;
     }
@@ -1567,7 +1567,17 @@ mod tests {
             lambda: 0.5,
             initial_queue_threshold: 200,
         };
-        let scenarios = crate::synthetic::generate_deterministic_scenarios("BTC", 42, 40000);
+        // Load real scenarios for testing instead of synthetic
+        let source = crate::csv_source::FolderCandleSource {
+            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+        };
+        let assets_with_candles = source.load_all();
+        let mut scenarios = std::collections::HashMap::new();
+        for (asset, candles) in assets_with_candles {
+            let asset_scenarios = crate::pipeline::scenarios_from_candles(&asset, &candles);
+            scenarios.extend(asset_scenarios);
+        }
+        
         let ga_result = run_ga_evolution(config.clone(), &scenarios);
         let eval = evaluate_and_aggregate(&ga_result.global_best.strategy, &config, &scenarios)
             .expect("Aggregation should produce evaluation");

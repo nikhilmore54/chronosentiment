@@ -1,0 +1,95 @@
+[
+  {
+    "model": "Ideal",
+    "avg_pnl": -0.0006402070874117417,
+    "total_pnl": -0.16901467107669982,
+    "win_rate": 0.4810606060606061,
+    "edge_retention": 0.0,
+    "effective_signal_rate": 0.1007,
+    "tradability_band": "Tradable",
+    "edge_decay_pct": 1.0,
+    "debug_metrics": {
+      "total_events": 10000,
+      "events_with_signals": 1007,
+      "participation_pct": 10.07,
+      "avg_suggestions_per_event": 0.1007,
+      "avg_suggestions_per_signal_event": 1.0,
+      "strategy_flips": 0,
+      "flip_rate": 0.0,
+      "effective_signals": 1007.0,
+      "effective_signal_rate": 0.1007,
+      "tradability_band": "Tradable",
+      "top_strategy_persistence_ticks": {
+        "strat_BTCUSDT_jsonl_window_1_201_2_31_10": 1007
+      },
+      "final_debug": {
+        "rejected_low_edge": 7805,
+        "rejected_low_exec": 0,
+        "rejected_hold": 1140,
+        "suppressed_stability": 48
+      }
+    }
+  },
+  {
+    "model": "Spread",
+    "avg_pnl": -0.0007344538642175223,
+    "total_pnl": -0.1938958201534259,
+    "win_rate": 0.4810606060606061,
+    "edge_retention": 0.0,
+    "effective_signal_rate": 0.1007,
+    "tradability_band": "Tradable",
+    "edge_decay_pct": 1.0,
+    "debug_metrics": {
+      "total_events": 10000,
+      "events_with_signals": 1007,
+      "participation_pct": 10.07,
+      "avg_suggestions_per_event": 0.1007,
+      "avg_suggestions_per_signal_event": 1.0,
+      "strategy_flips": 0,
+      "flip_rate": 0.0,
+      "effective_signals": 1007.0,
+      "effective_signal_rate": 0.1007,
+      "tradability_band": "Tradable",
+      "top_strategy_persistence_ticks": {
+        "strat_BTCUSDT_jsonl_window_1_201_2_31_10": 1007
+      },
+      "final_debug": {
+        "rejected_low_edge": 7805,
+        "rejected_low_exec": 0,
+        "rejected_hold": 1140,
+        "suppressed_stability": 48
+      }
+    }
+  },
+  {
+    "model": "SpreadSlippage",
+    "avg_pnl": -0.0008309595455623663,
+    "total_pnl": -0.21937332002846469,
+    "win_rate": 0.4810606060606061,
+    "edge_retention": 0.0,
+    "effective_signal_rate": 0.1007,
+    "tradability_band": "Tradable",
+    "edge_decay_pct": 1.0,
+    "debug_metrics": {
+      "total_events": 10000,
+      "events_with_signals": 1007,
+      "participation_pct": 10.07,
+      "avg_suggestions_per_event": 0.1007,
+      "avg_suggestions_per_signal_event": 1.0,
+      "strategy_flips": 0,
+      "flip_rate": 0.0,
+      "effective_signals": 1007.0,
+      "effective_signal_rate": 0.1007,
+      "tradability_band": "Tradable",
+      "top_strategy_persistence_ticks": {
+        "strat_BTCUSDT_jsonl_window_1_201_2_31_10": 1007
+      },
+      "final_debug": {
+        "rejected_low_edge": 7805,
+        "rejected_low_exec": 0,
+        "rejected_hold": 1140,
+        "suppressed_stability": 48
+      }
+    }
+  }
+]

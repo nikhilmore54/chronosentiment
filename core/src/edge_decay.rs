@@ -32,14 +32,16 @@ fn map_regime_local(regime: &str) -> LiveRegime {
 
 // Local helper to parse strategy from ID (simplified for reporting)
 fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
-    // Expected format: STRAT_Q<threshold>_E<edge>_TP<tp>_SL<sl>
+    // Expected format from ga.rs: strat_{scenario_name}_{q}_{e}_{tp}_{sl}
+    // Note: scenario_name itself contains underscores, e.g., BTCUSDT_jsonl_window_1
     let parts: Vec<&str> = id.split('_').collect();
     if parts.len() < 5 { return None; }
     
-    let q = parts[1].trim_start_matches('Q').parse().ok()?;
-    let e = parts[2].trim_start_matches('E').parse().ok()?;
-    let tp = parts[3].trim_start_matches("TP").parse().ok()?;
-    let sl = parts[4].trim_start_matches("SL").parse().ok()?;
+    // The last 4 parts should be our parameters
+    let sl = parts.last()?.parse().ok()?;
+    let tp = parts[parts.len() - 2].parse().ok()?;
+    let e = parts[parts.len() - 3].parse().ok()?;
+    let q = parts[parts.len() - 4].parse().ok()?;
     
     Some(Strategy {
         queue_threshold: q,

@@ -28,9 +28,18 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(input.seed);
 
-    let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", input.seed, 100);
-    let default_scenario = scenarios_map.values().next().ok_or_else(|| ApiError::InternalError("No benchmark scenarios found".to_string()))?;
-    let market_events = default_scenario.clone(); // Use a clone for now
+    let source = chronosentiment_core::FolderCandleSource {
+        folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+    };
+    let assets_with_candles = source.load_all();
+    let mut all_scenarios = std::collections::HashMap::new();
+    for (asset, candles) in assets_with_candles {
+        let asset_scenarios = chronosentiment_core::pipeline::scenarios_from_candles(&asset, &candles);
+        all_scenarios.extend(asset_scenarios);
+    }
+    
+    let default_scenario = all_scenarios.values().next().ok_or_else(|| ApiError::InternalError("No real market scenarios found in test_assets".to_string()))?;
+    let market_events = default_scenario.clone();
 
     let first_event_price = market_events.first().map(|e| e.price).unwrap_or(100);
     let first_event_timestamp = market_events.first().map(|e| e.exchange_ts).unwrap_or(0);

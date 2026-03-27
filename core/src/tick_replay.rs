@@ -62,29 +62,10 @@ impl TickReplayEngine {
         }
     }
 
-    /// Parse JSONL where each line is a Binance trade/depth payload.
-    /// Trade-only replay is supported out of the box; depth lines are accepted too.
+    /// Parse JSONL where each line is a Binance trade/depth payload (possibly wrapped in metadata).
     pub fn from_binance_jsonl(path: &str, config: ReplayConfig, depth_top_k: usize) -> std::io::Result<Self> {
-        let file = File::open(Path::new(path))?;
-        let reader = BufReader::new(file);
-        let mut events: Vec<NormalizedMarketEvent> = Vec::new();
-        for line in reader.lines() {
-            let raw = match line {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
-            let s = raw.trim();
-            if s.is_empty() {
-                continue;
-            }
-            if let Some(ev) = parse_binance_trade_event(s) {
-                events.push(ev);
-                continue;
-            }
-            if let Some(ev) = parse_binance_depth_event(s, depth_top_k) {
-                events.push(ev);
-            }
-        }
+        let events = crate::binance_adapter::load_binance_events_from_jsonl(path, depth_top_k)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(Self::from_events(events, config))
     }
 

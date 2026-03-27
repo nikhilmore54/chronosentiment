@@ -133,11 +133,11 @@ pub async fn inspect_strategy_handler(
     let scenario = if let Some(s) = request.scenarios.into_iter().next() {
         s
     } else {
-        chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", request.seed, 100)
+        service.load_all_real_scenarios()
             .keys()
             .next()
             .cloned()
-            .ok_or_else(|| ApiError::EngineError("No benchmark scenarios available".to_string()))?
+            .ok_or_else(|| ApiError::EngineError("No real market scenarios available in test_assets".to_string()))?
     };
 
     let response = service.inspect_strategy(

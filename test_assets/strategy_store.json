@@ -1,0 +1,727 @@
+{
+  "version": 1,
+  "global_lambda": 0.5,
+  "assets": [
+    "BANKNIFTY",
+    "HDFCBANK",
+    "NIFTY50",
+    "RELIANCE",
+    "TATAMOTORS",
+    "VODAFONEIDEA"
+  ],
+  "by_asset": {
+    "BANKNIFTY": {
+      "global_best": {
+        "strategy_id": "N/A",
+        "strategy": {
+          "queue_threshold": 0,
+          "base_edge": 0,
+          "take_profit": 0,
+          "stop_loss": 0
+        },
+        "avg_pnl": 0.0,
+        "std_dev": 0.0,
+        "worst": 0.0,
+        "robustness": 0.0,
+        "fitness": 0.0,
+        "trade_count": 0,
+        "max_drawdown": 0.0,
+        "participation_rate": 0.0,
+        "profitable_trades": 0,
+        "zero_pnl_trades": 0,
+        "quality_trades": 0.0,
+        "payoff_ratio": 0.0,
+        "execution_metrics": {
+          "fill_efficiency": 0.0,
+          "capture_efficiency": 0.0,
+          "avg_slippage": 0.0,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 0,
+      "final_generation_best": {
+        "strategy_id": "N/A",
+        "strategy": {
+          "queue_threshold": 0,
+          "base_edge": 0,
+          "take_profit": 0,
+          "stop_loss": 0
+        },
+        "avg_pnl": 0.0,
+        "std_dev": 0.0,
+        "worst": 0.0,
+        "robustness": 0.0,
+        "fitness": 0.0,
+        "trade_count": 0,
+        "max_drawdown": 0.0,
+        "participation_rate": 0.0,
+        "profitable_trades": 0,
+        "zero_pnl_trades": 0,
+        "quality_trades": 0.0,
+        "payoff_ratio": 0.0,
+        "execution_metrics": {
+          "fill_efficiency": 0.0,
+          "capture_efficiency": 0.0,
+          "avg_slippage": 0.0,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [],
+      "best_per_regime": {}
+    },
+    "RELIANCE": {
+      "global_best": {
+        "strategy_id": "strat_RELIANCE_csv_window_0_232_1_16_17",
+        "strategy": {
+          "queue_threshold": 232,
+          "base_edge": 1,
+          "take_profit": 16,
+          "stop_loss": 17
+        },
+        "avg_pnl": 0.00886695599386944,
+        "std_dev": 0.007219335306019156,
+        "worst": 0.003815714838619622,
+        "robustness": 0.005257288340859862,
+        "fitness": 0.003740301340870131,
+        "trade_count": 6,
+        "max_drawdown": 99.8777142760672,
+        "participation_rate": 1.0,
+        "profitable_trades": 6,
+        "zero_pnl_trades": 0,
+        "quality_trades": 6.0,
+        "payoff_ratio": 1.2,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 1.0,
+          "avg_slippage": 0.004934859804689106,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 1,
+      "final_generation_best": {
+        "strategy_id": "strat_RELIANCE_csv_window_0_293_5_50_20",
+        "strategy": {
+          "queue_threshold": 293,
+          "base_edge": 5,
+          "take_profit": 50,
+          "stop_loss": 20
+        },
+        "avg_pnl": 0.007558366790951394,
+        "std_dev": 0.007192143977746386,
+        "worst": 0.0014882874209273785,
+        "robustness": 0.003962294802078201,
+        "fitness": 0.003735319748222659,
+        "trade_count": 7,
+        "max_drawdown": 99.88178316236572,
+        "participation_rate": 1.0,
+        "profitable_trades": 7,
+        "zero_pnl_trades": 0,
+        "quality_trades": 7.0,
+        "payoff_ratio": 1.2,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 0.9173807497917498,
+          "avg_slippage": 0.004457167981942947,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [
+        {
+          "strategy_id": "strat_RELIANCE_csv_window_0_232_1_16_17",
+          "strategy": {
+            "queue_threshold": 232,
+            "base_edge": 1,
+            "take_profit": 16,
+            "stop_loss": 17
+          },
+          "avg_pnl": 0.00886695599386944,
+          "std_dev": 0.007219335306019156,
+          "worst": 0.003815714838619622,
+          "robustness": 0.005257288340859862,
+          "fitness": 0.003740301340870131,
+          "trade_count": 6,
+          "max_drawdown": 99.8777142760672,
+          "participation_rate": 1.0,
+          "profitable_trades": 6,
+          "zero_pnl_trades": 0,
+          "quality_trades": 6.0,
+          "payoff_ratio": 1.2,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 1.0,
+            "avg_slippage": 0.004934859804689106,
+            "latency_impact": 0.0
+          }
+        },
+        {
+          "strategy_id": "strat_RELIANCE_csv_window_0_293_5_50_20",
+          "strategy": {
+            "queue_threshold": 293,
+            "base_edge": 5,
+            "take_profit": 50,
+            "stop_loss": 20
+          },
+          "avg_pnl": 0.007558366790951394,
+          "std_dev": 0.007192143977746386,
+          "worst": 0.0014882874209273785,
+          "robustness": 0.003962294802078201,
+          "fitness": 0.003735319748222659,
+          "trade_count": 7,
+          "max_drawdown": 99.88178316236572,
+          "participation_rate": 1.0,
+          "profitable_trades": 7,
+          "zero_pnl_trades": 0,
+          "quality_trades": 7.0,
+          "payoff_ratio": 1.2,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9173807497917498,
+            "avg_slippage": 0.004457167981942947,
+            "latency_impact": 0.0
+          }
+        }
+      ],
+      "best_per_regime": {
+        "RELIANCE_mixed": {
+          "strategy_id": "strat_RELIANCE_csv_window_0_232_1_16_17",
+          "strategy": {
+            "queue_threshold": 232,
+            "base_edge": 1,
+            "take_profit": 16,
+            "stop_loss": 17
+          },
+          "avg_pnl": 0.00886695599386944,
+          "std_dev": 0.007219335306019156,
+          "worst": 0.003815714838619622,
+          "robustness": 0.005257288340859862,
+          "fitness": 0.003740301340870131,
+          "trade_count": 6,
+          "max_drawdown": 99.8777142760672,
+          "participation_rate": 1.0,
+          "profitable_trades": 6,
+          "zero_pnl_trades": 0,
+          "quality_trades": 6.0,
+          "payoff_ratio": 1.2,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 1.0,
+            "avg_slippage": 0.004934859804689106,
+            "latency_impact": 0.0
+          }
+        }
+      }
+    },
+    "NIFTY50": {
+      "global_best": {
+        "strategy_id": "N/A",
+        "strategy": {
+          "queue_threshold": 0,
+          "base_edge": 0,
+          "take_profit": 0,
+          "stop_loss": 0
+        },
+        "avg_pnl": 0.0,
+        "std_dev": 0.0,
+        "worst": 0.0,
+        "robustness": 0.0,
+        "fitness": 0.0,
+        "trade_count": 0,
+        "max_drawdown": 0.0,
+        "participation_rate": 0.0,
+        "profitable_trades": 0,
+        "zero_pnl_trades": 0,
+        "quality_trades": 0.0,
+        "payoff_ratio": 0.0,
+        "execution_metrics": {
+          "fill_efficiency": 0.0,
+          "capture_efficiency": 0.0,
+          "avg_slippage": 0.0,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 0,
+      "final_generation_best": {
+        "strategy_id": "N/A",
+        "strategy": {
+          "queue_threshold": 0,
+          "base_edge": 0,
+          "take_profit": 0,
+          "stop_loss": 0
+        },
+        "avg_pnl": 0.0,
+        "std_dev": 0.0,
+        "worst": 0.0,
+        "robustness": 0.0,
+        "fitness": 0.0,
+        "trade_count": 0,
+        "max_drawdown": 0.0,
+        "participation_rate": 0.0,
+        "profitable_trades": 0,
+        "zero_pnl_trades": 0,
+        "quality_trades": 0.0,
+        "payoff_ratio": 0.0,
+        "execution_metrics": {
+          "fill_efficiency": 0.0,
+          "capture_efficiency": 0.0,
+          "avg_slippage": 0.0,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [],
+      "best_per_regime": {}
+    },
+    "HDFCBANK": {
+      "global_best": {
+        "strategy_id": "strat_HDFCBANK_csv_window_11_16_6_12_21",
+        "strategy": {
+          "queue_threshold": 16,
+          "base_edge": 6,
+          "take_profit": 12,
+          "stop_loss": 21
+        },
+        "avg_pnl": 0.0034140317558414035,
+        "std_dev": 0.002002712961792024,
+        "worst": 0.001374128416819951,
+        "robustness": 0.0024126752749453915,
+        "fitness": 0.0013259117388209783,
+        "trade_count": 6,
+        "max_drawdown": 99.85291391188271,
+        "participation_rate": 1.0,
+        "profitable_trades": 6,
+        "zero_pnl_trades": 0,
+        "quality_trades": 6.0,
+        "payoff_ratio": 1.2,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 1.0,
+          "avg_slippage": 0.0015412260182297761,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 0,
+      "final_generation_best": {
+        "strategy_id": "N/A",
+        "strategy": {
+          "queue_threshold": 0,
+          "base_edge": 0,
+          "take_profit": 0,
+          "stop_loss": 0
+        },
+        "avg_pnl": 0.0,
+        "std_dev": 0.0,
+        "worst": 0.0,
+        "robustness": 0.0,
+        "fitness": 0.0,
+        "trade_count": 0,
+        "max_drawdown": 0.0,
+        "participation_rate": 0.0,
+        "profitable_trades": 0,
+        "zero_pnl_trades": 0,
+        "quality_trades": 0.0,
+        "payoff_ratio": 0.0,
+        "execution_metrics": {
+          "fill_efficiency": 0.0,
+          "capture_efficiency": 0.0,
+          "avg_slippage": 0.0,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [
+        {
+          "strategy_id": "strat_HDFCBANK_csv_window_11_16_6_12_21",
+          "strategy": {
+            "queue_threshold": 16,
+            "base_edge": 6,
+            "take_profit": 12,
+            "stop_loss": 21
+          },
+          "avg_pnl": 0.0034140317558414035,
+          "std_dev": 0.002002712961792024,
+          "worst": 0.001374128416819951,
+          "robustness": 0.0024126752749453915,
+          "fitness": 0.0013259117388209783,
+          "trade_count": 6,
+          "max_drawdown": 99.85291391188271,
+          "participation_rate": 1.0,
+          "profitable_trades": 6,
+          "zero_pnl_trades": 0,
+          "quality_trades": 6.0,
+          "payoff_ratio": 1.2,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 1.0,
+            "avg_slippage": 0.0015412260182297761,
+            "latency_impact": 0.0
+          }
+        }
+      ],
+      "best_per_regime": {
+        "HDFCBANK_mixed": {
+          "strategy_id": "strat_HDFCBANK_csv_window_11_16_6_12_21",
+          "strategy": {
+            "queue_threshold": 16,
+            "base_edge": 6,
+            "take_profit": 12,
+            "stop_loss": 21
+          },
+          "avg_pnl": 0.0034140317558414035,
+          "std_dev": 0.002002712961792024,
+          "worst": 0.001374128416819951,
+          "robustness": 0.0024126752749453915,
+          "fitness": 0.0013259117388209783,
+          "trade_count": 6,
+          "max_drawdown": 99.85291391188271,
+          "participation_rate": 1.0,
+          "profitable_trades": 6,
+          "zero_pnl_trades": 0,
+          "quality_trades": 6.0,
+          "payoff_ratio": 1.2,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 1.0,
+            "avg_slippage": 0.0015412260182297761,
+            "latency_impact": 0.0
+          }
+        }
+      }
+    },
+    "VODAFONEIDEA": {
+      "global_best": {
+        "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+        "strategy": {
+          "queue_threshold": 74,
+          "base_edge": 1,
+          "take_profit": 48,
+          "stop_loss": 18
+        },
+        "avg_pnl": 0.013378992722341415,
+        "std_dev": 0.018778818392811352,
+        "worst": 0.0029447731755424065,
+        "robustness": 0.003989583525935739,
+        "fitness": 0.0541722794898947,
+        "trade_count": 10,
+        "max_drawdown": 99.80020851776547,
+        "participation_rate": 1.0,
+        "profitable_trades": 10,
+        "zero_pnl_trades": 0,
+        "quality_trades": 10.0,
+        "payoff_ratio": 1.1999999999999997,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 0.9728162225678899,
+          "avg_slippage": 0.008982755558469478,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 0,
+      "final_generation_best": {
+        "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+        "strategy": {
+          "queue_threshold": 74,
+          "base_edge": 1,
+          "take_profit": 48,
+          "stop_loss": 18
+        },
+        "avg_pnl": 0.013378992722341415,
+        "std_dev": 0.018778818392811352,
+        "worst": 0.0029447731755424065,
+        "robustness": 0.003989583525935739,
+        "fitness": 0.04743274363507621,
+        "trade_count": 10,
+        "max_drawdown": 99.80020851776547,
+        "participation_rate": 1.0,
+        "profitable_trades": 10,
+        "zero_pnl_trades": 0,
+        "quality_trades": 10.0,
+        "payoff_ratio": 1.1999999999999997,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 0.9728162225678899,
+          "avg_slippage": 0.008982755558469478,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [
+        {
+          "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+          "strategy": {
+            "queue_threshold": 74,
+            "base_edge": 1,
+            "take_profit": 48,
+            "stop_loss": 18
+          },
+          "avg_pnl": 0.013378992722341415,
+          "std_dev": 0.018778818392811352,
+          "worst": 0.0029447731755424065,
+          "robustness": 0.003989583525935739,
+          "fitness": 0.0541722794898947,
+          "trade_count": 10,
+          "max_drawdown": 99.80020851776547,
+          "participation_rate": 1.0,
+          "profitable_trades": 10,
+          "zero_pnl_trades": 0,
+          "quality_trades": 10.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9728162225678899,
+            "avg_slippage": 0.008982755558469478,
+            "latency_impact": 0.0
+          }
+        },
+        {
+          "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+          "strategy": {
+            "queue_threshold": 74,
+            "base_edge": 1,
+            "take_profit": 48,
+            "stop_loss": 18
+          },
+          "avg_pnl": 0.013378992722341415,
+          "std_dev": 0.018778818392811352,
+          "worst": 0.0029447731755424065,
+          "robustness": 0.003989583525935739,
+          "fitness": 0.04896292527282595,
+          "trade_count": 10,
+          "max_drawdown": 99.80020851776547,
+          "participation_rate": 1.0,
+          "profitable_trades": 10,
+          "zero_pnl_trades": 0,
+          "quality_trades": 10.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9728162225678899,
+            "avg_slippage": 0.008982755558469478,
+            "latency_impact": 0.0
+          }
+        },
+        {
+          "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+          "strategy": {
+            "queue_threshold": 74,
+            "base_edge": 1,
+            "take_profit": 48,
+            "stop_loss": 18
+          },
+          "avg_pnl": 0.013378992722341415,
+          "std_dev": 0.018778818392811352,
+          "worst": 0.0029447731755424065,
+          "robustness": 0.003989583525935739,
+          "fitness": 0.04743274363507621,
+          "trade_count": 10,
+          "max_drawdown": 99.80020851776547,
+          "participation_rate": 1.0,
+          "profitable_trades": 10,
+          "zero_pnl_trades": 0,
+          "quality_trades": 10.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9728162225678899,
+            "avg_slippage": 0.008982755558469478,
+            "latency_impact": 0.0
+          }
+        }
+      ],
+      "best_per_regime": {
+        "VODAFONEIDEA_mixed": {
+          "strategy_id": "strat_VODAFONEIDEA_csv_window_1_74_1_48_18",
+          "strategy": {
+            "queue_threshold": 74,
+            "base_edge": 1,
+            "take_profit": 48,
+            "stop_loss": 18
+          },
+          "avg_pnl": 0.013378992722341415,
+          "std_dev": 0.018778818392811352,
+          "worst": 0.0029447731755424065,
+          "robustness": 0.003989583525935739,
+          "fitness": 0.0541722794898947,
+          "trade_count": 10,
+          "max_drawdown": 99.80020851776547,
+          "participation_rate": 1.0,
+          "profitable_trades": 10,
+          "zero_pnl_trades": 0,
+          "quality_trades": 10.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9728162225678899,
+            "avg_slippage": 0.008982755558469478,
+            "latency_impact": 0.0
+          }
+        }
+      }
+    },
+    "TATAMOTORS": {
+      "global_best": {
+        "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+        "strategy": {
+          "queue_threshold": 26,
+          "base_edge": 5,
+          "take_profit": 40,
+          "stop_loss": 27
+        },
+        "avg_pnl": 0.012503403327175458,
+        "std_dev": 0.006634455407485771,
+        "worst": 0.0026059359252924045,
+        "robustness": 0.009186175623432572,
+        "fitness": 0.04578547437367123,
+        "trade_count": 15,
+        "max_drawdown": 99.85734482746342,
+        "participation_rate": 1.0,
+        "profitable_trades": 15,
+        "zero_pnl_trades": 0,
+        "quality_trades": 15.0,
+        "payoff_ratio": 1.1999999999999997,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 0.9712308678681982,
+          "avg_slippage": 0.006321751747629967,
+          "latency_impact": 0.0
+        }
+      },
+      "global_best_generation": 0,
+      "final_generation_best": {
+        "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+        "strategy": {
+          "queue_threshold": 26,
+          "base_edge": 5,
+          "take_profit": 40,
+          "stop_loss": 27
+        },
+        "avg_pnl": 0.012503403327175458,
+        "std_dev": 0.006634455407485771,
+        "worst": 0.0026059359252924045,
+        "robustness": 0.009186175623432572,
+        "fitness": 0.045452282245641316,
+        "trade_count": 15,
+        "max_drawdown": 99.85734482746342,
+        "participation_rate": 1.0,
+        "profitable_trades": 15,
+        "zero_pnl_trades": 0,
+        "quality_trades": 15.0,
+        "payoff_ratio": 1.1999999999999997,
+        "execution_metrics": {
+          "fill_efficiency": 1.0,
+          "capture_efficiency": 0.9712308678681982,
+          "avg_slippage": 0.006321751747629967,
+          "latency_impact": 0.0
+        }
+      },
+      "generation_history": [
+        {
+          "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+          "strategy": {
+            "queue_threshold": 26,
+            "base_edge": 5,
+            "take_profit": 40,
+            "stop_loss": 27
+          },
+          "avg_pnl": 0.012503403327175458,
+          "std_dev": 0.006634455407485771,
+          "worst": 0.0026059359252924045,
+          "robustness": 0.009186175623432572,
+          "fitness": 0.04578547437367123,
+          "trade_count": 15,
+          "max_drawdown": 99.85734482746342,
+          "participation_rate": 1.0,
+          "profitable_trades": 15,
+          "zero_pnl_trades": 0,
+          "quality_trades": 15.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9712308678681982,
+            "avg_slippage": 0.006321751747629967,
+            "latency_impact": 0.0
+          }
+        },
+        {
+          "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+          "strategy": {
+            "queue_threshold": 26,
+            "base_edge": 5,
+            "take_profit": 40,
+            "stop_loss": 27
+          },
+          "avg_pnl": 0.012503403327175458,
+          "std_dev": 0.006634455407485771,
+          "worst": 0.0026059359252924045,
+          "robustness": 0.009186175623432572,
+          "fitness": 0.04552813086015219,
+          "trade_count": 15,
+          "max_drawdown": 99.85734482746342,
+          "participation_rate": 1.0,
+          "profitable_trades": 15,
+          "zero_pnl_trades": 0,
+          "quality_trades": 15.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9712308678681982,
+            "avg_slippage": 0.006321751747629967,
+            "latency_impact": 0.0
+          }
+        },
+        {
+          "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+          "strategy": {
+            "queue_threshold": 26,
+            "base_edge": 5,
+            "take_profit": 40,
+            "stop_loss": 27
+          },
+          "avg_pnl": 0.012503403327175458,
+          "std_dev": 0.006634455407485771,
+          "worst": 0.0026059359252924045,
+          "robustness": 0.009186175623432572,
+          "fitness": 0.045452282245641316,
+          "trade_count": 15,
+          "max_drawdown": 99.85734482746342,
+          "participation_rate": 1.0,
+          "profitable_trades": 15,
+          "zero_pnl_trades": 0,
+          "quality_trades": 15.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9712308678681982,
+            "avg_slippage": 0.006321751747629967,
+            "latency_impact": 0.0
+          }
+        }
+      ],
+      "best_per_regime": {
+        "TATAMOTORS_mixed": {
+          "strategy_id": "strat_TATAMOTORS_csv_window_0_26_5_40_27",
+          "strategy": {
+            "queue_threshold": 26,
+            "base_edge": 5,
+            "take_profit": 40,
+            "stop_loss": 27
+          },
+          "avg_pnl": 0.012503403327175458,
+          "std_dev": 0.006634455407485771,
+          "worst": 0.0026059359252924045,
+          "robustness": 0.009186175623432572,
+          "fitness": 0.04578547437367123,
+          "trade_count": 15,
+          "max_drawdown": 99.85734482746342,
+          "participation_rate": 1.0,
+          "profitable_trades": 15,
+          "zero_pnl_trades": 0,
+          "quality_trades": 15.0,
+          "payoff_ratio": 1.1999999999999997,
+          "execution_metrics": {
+            "fill_efficiency": 1.0,
+            "capture_efficiency": 0.9712308678681982,
+            "avg_slippage": 0.006321751747629967,
+            "latency_impact": 0.0
+          }
+        }
+      }
+    }
+  }
+}

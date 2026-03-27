@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub use chronosentiment_core::{Strategy, StrategyEvaluation};
+pub use chronosentiment_core::{Strategy, pipeline::UnifiedGaResponse, pipeline::UnifiedStrategyEvaluation as StrategyEvaluationDto};
 
 // --- Request DTOs ---
 
@@ -66,32 +66,6 @@ pub struct InspectStrategyResponse {
     pub event_sequence: Vec<EventWrapper>,
 }
 
-#[derive(Debug, Serialize, Clone, PartialEq)]
-pub struct StrategyEvaluationDto {
-    pub strategy_id: String,
-    pub avg: f64,
-    pub std: f64,
-    /// ga_fitness = GA search-layer fitness (used for evolution progress)
-    pub ga_fitness: Option<f64>,
-    /// execution_fitness = execution-layer fitness (canonical trading decision metric)
-    pub execution_fitness: f64,
-    pub classification: String,
-}
-
-impl From<StrategyEvaluation> for StrategyEvaluationDto {
-    fn from(eval: StrategyEvaluation) -> Self {
-        let classification = chronosentiment_core::ga::get_strategy_classification(&eval);
-        Self {
-            strategy_id: eval.strategy_id,
-            avg: eval.avg_pnl,
-            std: eval.std_dev,
-            ga_fitness: None,
-            execution_fitness: eval.fitness,
-            classification,
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct RunGaResponse {
     pub results: Vec<StrategyEvaluationDto>,
@@ -102,6 +76,21 @@ pub struct RunGaResponse {
     pub generation_found: usize,
     pub final_generation_best: StrategyEvaluationDto,
     pub final_gen_best: StrategyEvaluationDto,
+}
+
+impl From<UnifiedGaResponse> for RunGaResponse {
+    fn from(res: UnifiedGaResponse) -> Self {
+        Self {
+            results: vec![res.global_best.clone(), res.final_generation_best.clone()],
+            generation_history: res.generation_history,
+            best_per_regime: res.best_per_regime,
+            global_best: res.global_best.clone(),
+            global_best_generation: res.global_best_generation,
+            generation_found: res.global_best_generation,
+            final_generation_best: res.final_generation_best.clone(),
+            final_gen_best: res.final_generation_best,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]

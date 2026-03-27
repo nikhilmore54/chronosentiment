@@ -1,0 +1,4 @@
+model,avg_pnl,total_pnl,win_rate,edge_retention,eff_rate,band,decay_pct
+Ideal,-0.000640,-0.169015,0.48,0.0000,0.1007,Tradable,1.0000
+Spread,-0.000734,-0.193896,0.48,0.0000,0.1007,Tradable,1.0000
+SpreadSlippage,-0.000831,-0.219373,0.48,0.0000,0.1007,Tradable,1.0000

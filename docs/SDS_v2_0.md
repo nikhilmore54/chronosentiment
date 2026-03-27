@@ -507,6 +507,27 @@ Future support:
 
 ---
 
+# 15. 🏗️ Architectural Pattern — Single System
+
+To ensure absolute **Determinism** (Rule #2) and **Robustness** (Rule #3), ChronoSentiment follows the **Single System Architecture**.
+
+## 15.1 Core-as-Master
+The `chronosentiment_core` crate is the single source of truth for all business logic, metric aggregation, and strategy evolution. No decision-making logic or scenario-splitting logic may exist in the interface layers.
+
+## 15.2 Interface Roles
+*   **Core (Brain)**: Contains all `Orchestrators` that handle scenario splitting, GA evolution, and PnL aggregation. Returns `UnifiedResult` DTOs.
+*   **API (Thin Adapter)**: Converts HTTP/JSON requests into Core function calls. Maps Core DTOs to API responses. Handles session state and persistence.
+*   **CLI (Thin Adapter)**: Parses terminal flags/args and calls the same Core orchestrators. Formats results for console output (tables, logs).
+*   **Live Feeds (Adapter)**: Future Binance/Websocket adapters will feed data into the same Core interfaces to maintain parity between simulation and live execution.
+
+## 15.3 Unified Orchestration
+Every major system capability (GA, Evaluation, Comparison) MUST have a corresponding `orchestrator` function in the Core:
+*   `run_ga_orchestration`
+*   `run_evaluation_orchestration`
+*   `run_comparison_orchestration`
+
+---
+
 # 🔚 FINAL SUMMARY
 
 The strategy system is:

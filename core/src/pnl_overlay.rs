@@ -94,8 +94,9 @@ fn deterministic_slippage(ts: u64, max_bps: f64) -> f64 {
     if max_bps <= 0.0 {
         return 0.0;
     }
+    let max_slip = max_bps / 10000.0;
     let x = (ts % 1000) as f64 / 1000.0;
-    (x * max_bps).clamp(0.0, max_bps)
+    (x * max_slip).clamp(0.0, max_slip)
 }
 
 fn apply_adverse_slippage(price: f64, slippage: f64, taking_buy_side: bool) -> f64 {

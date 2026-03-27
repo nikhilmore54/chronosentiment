@@ -1,7 +1,7 @@
-use crate::{dto::{EvaluateStrategyResponse, CompareStrategiesResponse, ComparisonSummary, InspectStrategyResponse, RunGaResponse, EventWrapper, TradeInspectorResponse, StrategyEvaluationDto},
+use crate::{dto::{EvaluateStrategyResponse, CompareStrategiesResponse, ComparisonSummary, InspectStrategyResponse, RunGaResponse, EventWrapper, TradeInspectorResponse},
     errors::ApiError,
 };
-use chronosentiment_core::{self, GaConfig, Strategy, ga::StrategyEvaluation, SimEvent, SimulationResult, Candle, convert_series_to_events};
+use chronosentiment_core::{self, GaConfig, Strategy, SimEvent, SimulationResult};
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::sync::{Arc, Mutex};
@@ -48,113 +48,22 @@ fn map_regime(regime: &str) -> chronosentiment_core::strategy_ranking::LiveRegim
 #[derive(Clone)]
 pub struct EvaluationService {
     pub last_simulation: Arc<Mutex<Option<SimulationResult>>>,
-    pub last_global_ranking: Arc<Mutex<Vec<crate::dto::StrategyEvaluationDto>>>,
+    pub strategy_store: Arc<Mutex<Option<chronosentiment_core::pipeline::PersistedStrategyStore>>>,
 }
 
 impl EvaluationService {
-    fn deterministic_strategy_id(strategy: &Strategy, scenario_names: &[String], seed: u64) -> String {
-        let mut names = scenario_names.to_vec();
-        names.sort();
-        format!(
-            "strat_{}_{}_{}_{}_{}",
-            strategy.queue_threshold,
-            strategy.base_edge,
-            strategy.take_profit,
-            strategy.stop_loss,
-            seed ^ (names.len() as u64)
-        )
-    }
-
-    fn to_dual_fitness_dto(
-        strategy_id: String,
-        ga_eval: &StrategyEvaluation,
-        execution_eval: &StrategyEvaluation,
-    ) -> crate::dto::StrategyEvaluationDto {
-        assert!(
-            execution_eval.fitness.is_finite() &&
-            execution_eval.fitness >= 0.0 &&
-            execution_eval.fitness <= 1.0,
-            "Execution fitness out of bounds: {}",
-            execution_eval.fitness
-        );
-        crate::dto::StrategyEvaluationDto {
-            strategy_id,
-            avg: execution_eval.avg_pnl,
-            std: execution_eval.std_dev,
-            ga_fitness: Some(ga_eval.fitness),
-            execution_fitness: execution_eval.fitness,
-            classification: chronosentiment_core::ga::get_strategy_classification(execution_eval),
-        }
-    }
-
     pub fn new() -> Self {
-        let scale = chronosentiment_core::PRICE_SCALE;
-        let sample_candles = vec![
-            Candle { timestamp: 10, open: 100 * scale, high: 105 * scale, low: 99 * scale, close: 103 * scale, volume: 1000 },
-            Candle { timestamp: 20, open: 103 * scale, high: 108 * scale, low: 101 * scale, close: 107 * scale, volume: 1500 },
-            Candle { timestamp: 30, open: 107 * scale, high: 110 * scale, low: 105 * scale, close: 106 * scale, volume: 1200 },
-        ];
-
-        let mut events = convert_series_to_events(&sample_candles, 1);
-        let next_seq_id = events.last().map(|e| e.sequence_id()).unwrap_or(0) + 1;
-
-        let mut order_outcomes = HashMap::new();
-        order_outcomes.insert("O1".to_string(), chronosentiment_core::OrderOutcome {
-            order_id: "O1".to_string(),
-            filled_quantity: 100,
-            remaining_quantity: 0,
-            arrival_time: 15,
-            queue_ahead: 500,
-        });
-
-        // Add mock order events interleaved or appended for demonstration
-        events.push(SimEvent::OrderIntent {
-            sequence_id: next_seq_id,
-            parent_sequence_id: None,
-            order_id: "O1".to_string(),
-            side: chronosentiment_core::Side::Buy,
-            price: 100,
-            quantity: 100,
-            timestamp: 12,
-        });
-        events.push(SimEvent::OrderEnteredQueue {
-            sequence_id: next_seq_id + 1,
-            parent_sequence_id: Some(next_seq_id),
-            order_id: "O1".to_string(),
-            timestamp: 15,
-            price: 100,
-            queue_ahead: 500,
-        });
-        events.push(SimEvent::PartialFill {
-            sequence_id: next_seq_id + 2,
-            parent_sequence_id: Some(next_seq_id + 1),
-            order_id: "O1".to_string(),
-            timestamp: 18,
-            filled_qty: 100,
-            price: 100,
-        });
-        events.push(SimEvent::OrderFilled {
-            sequence_id: next_seq_id + 3,
-            parent_sequence_id: Some(next_seq_id + 2),
-            order_id: "O1".to_string(),
-            timestamp: 20,
-        });
-
-        // Ensure events are sorted by timestamp
-        events.sort_by_key(|e| e.timestamp());
-
-        let mock_simulation = SimulationResult {
-            pnl: 0,
-            trades: 1,
-            order_outcomes,
-            events,
-        };
-
-        let initial_ranking = Vec::new();
+        let strategy_store_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/strategy_store.json";
+        let loaded_store = chronosentiment_core::pipeline::load_strategy_store(strategy_store_path).ok();
+        if loaded_store.is_some() {
+            println!("API_INFO: Loaded pre-trained strategy store from {}", strategy_store_path);
+        } else {
+            println!("API_INFO: No strategy store found at {}; recommendations will trigger GA evolution", strategy_store_path);
+        }
 
         Self {
-            last_simulation: Arc::new(Mutex::new(Some(mock_simulation))),
-            last_global_ranking: Arc::new(Mutex::new(initial_ranking)),
+            last_simulation: Arc::new(Mutex::new(None)),
+            strategy_store: Arc::new(Mutex::new(loaded_store)),
         }
     }
 
@@ -207,65 +116,35 @@ impl EvaluationService {
         }
     }
 
+    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::MarketEvent>> {
+        let source = chronosentiment_core::FolderCandleSource {
+            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+        };
+        let assets_with_candles = source.load_all();
+        let mut all_scenarios = HashMap::new();
+        for (asset, candles) in assets_with_candles {
+            let asset_scenarios = chronosentiment_core::pipeline::scenarios_from_candles(&asset, &candles);
+            all_scenarios.extend(asset_scenarios);
+        }
+        all_scenarios
+    }
+
     pub fn evaluate_strategy(
         &self,
         strategy_config: Strategy,
         scenario_names: Vec<String>,
         seed: u64,
     ) -> Result<EvaluateStrategyResponse, ApiError> {
-        let ga_config = GaConfig {
-            population_size: 1, // Only one strategy to evaluate
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_EVAL".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
-
-        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
+        let scenarios_map = self.load_all_real_scenarios();
 
         // Default to all benchmark scenarios if none provided
         let scenario_names = if scenario_names.is_empty() {
-            scenarios_map.keys().cloned().collect::<Vec<String>>()
+            let mut names: Vec<String> = scenarios_map.keys().cloned().collect();
+            names.sort();
+            names
         } else {
             scenario_names
         };
-
-        // Sort scenario_names for deterministic strategy_id generation
-        let mut sorted_scenario_names = scenario_names.clone();
-        sorted_scenario_names.sort();
-
-        let strategy_id = Self::deterministic_strategy_id(&strategy_config, &sorted_scenario_names, seed);
-
-        for (i, scenario_name) in scenario_names.iter().enumerate() {
-            let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
-                ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
-            })?;
-
-            let (_event_log, simulation_result, _) = chronosentiment_core::harness::run_simulation_harness(
-                chronosentiment_core::ExecutionMode::Real,
-                market_events.clone(),
-                vec![chronosentiment_core::CreateOrder {
-                    order_id: format!("strat_{}_{}", scenario_name, strategy_config.queue_threshold),
-                    side: chronosentiment_core::Side::Buy,
-                    price: ORDER_PRICE,
-                    quantity: ORDER_QUANTITY,
-                    timestamp: ORDER_TIMESTAMP,
-                    fill_probability: 0.5,
-                }],
-            );
-
-            // Store result for the first scenario
-            if i == 0 {
-                let mut last_sim = self.last_simulation.lock().unwrap_or_else(|e| e.into_inner());
-                *last_sim = Some(simulation_result.clone());
-            }
-
-        }
 
         let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
         for scenario_name in &scenario_names {
@@ -275,22 +154,34 @@ impl EvaluationService {
             selected_scenarios.insert(scenario_name.clone(), market_events.clone());
         }
 
-        let aggregated_evaluation = match chronosentiment_core::evaluate_and_aggregate(
-            &strategy_config,
-            &ga_config,
+        // Store first scenario's trace for UI visualization
+        if let Some(first_scenario_name) = scenario_names.first() {
+             if let Some(market_events) = selected_scenarios.get(first_scenario_name) {
+                let (_event_log, simulation_result, _) = chronosentiment_core::harness::run_simulation_harness(
+                    chronosentiment_core::ExecutionMode::Real,
+                    market_events.clone(),
+                    vec![chronosentiment_core::CreateOrder {
+                        order_id: format!("strat_{}_{}", first_scenario_name, strategy_config.queue_threshold),
+                        side: chronosentiment_core::Side::Buy,
+                        price: ORDER_PRICE,
+                        quantity: ORDER_QUANTITY,
+                        timestamp: ORDER_TIMESTAMP,
+                        fill_probability: 0.5,
+                    }],
+                );
+                let mut last_sim = self.last_simulation.lock().unwrap_or_else(|e| e.into_inner());
+                *last_sim = Some(simulation_result);
+             }
+        }
+
+        let unified_eval = chronosentiment_core::pipeline::run_evaluation_orchestration(
+            strategy_config,
             &selected_scenarios,
-        ) {
-            Some(mut eval) => {
-                eval.strategy_id = strategy_id.clone();
-                eval
-            },
-            None => {
-                return Err(ApiError::InternalError("Failed to aggregate strategy reports".to_string()));
-            }
-        };
+            seed,
+        ).map_err(|e| ApiError::InternalError(e))?;
         
-        Ok(crate::dto::EvaluateStrategyResponse {
-            strategy_evaluation: aggregated_evaluation.into(),
+        Ok(EvaluateStrategyResponse {
+            strategy_evaluation: unified_eval,
         })
     }
 
@@ -305,70 +196,46 @@ impl EvaluationService {
                 "At least two strategies are required for comparison".to_string(),
             ));
         }
-        let ga_config = GaConfig {
-            population_size: strategies.len(),
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_COMPARE".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
 
-        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
+        let scenarios_map = self.load_all_real_scenarios();
 
         // Default to all benchmark scenarios if none provided
         let scenario_names = if scenario_names.is_empty() {
-            scenarios_map.keys().cloned().collect::<Vec<String>>()
+            let mut names: Vec<String> = scenarios_map.keys().cloned().collect();
+            names.sort();
+            names
         } else {
             scenario_names
         };
 
-        let mut rankings: Vec<StrategyEvaluation> = Vec::new();
-
-        // Sort scenario_names for deterministic strategy_id generation in compare_strategies
-        let mut sorted_scenario_names = scenario_names.clone();
-        sorted_scenario_names.sort();
-
-        for strategy_config in strategies {
-            let strategy_id = Self::deterministic_strategy_id(&strategy_config, &sorted_scenario_names, seed);
-            let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
-            for scenario_name in &scenario_names {
-                let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
-                    ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
-                })?;
-                selected_scenarios.insert(scenario_name.clone(), market_events.clone());
-            }
-
-            // Aggregate across scenarios via the canonical helper.
-            let mut aggregated_report = chronosentiment_core::evaluate_and_aggregate(
-                &strategy_config,
-                &ga_config,
-                &selected_scenarios,
-            ).ok_or_else(|| ApiError::InternalError("No scenario reports generated.".to_string()))?;
-            aggregated_report.strategy_id = strategy_id.clone();
-            rankings.push(aggregated_report);
+        let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
+        for scenario_name in &scenario_names {
+            let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
+                ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
+            })?;
+            selected_scenarios.insert(scenario_name.clone(), market_events.clone());
         }
 
-        rankings.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(Ordering::Equal).then_with(|| a.strategy_id.cmp(&b.strategy_id)));
+        let rankings = chronosentiment_core::pipeline::run_comparison_orchestration(
+            strategies,
+            &selected_scenarios,
+            seed,
+        ).map_err(|e| ApiError::InternalError(e))?;
 
         let mut comparison_summary = ComparisonSummary {
-            best_strategy: "".to_string(), // Will be updated
+            best_strategy: "".to_string(),
             reason: "No clear reason".to_string(),
         };
 
         if let Some(best) = rankings.first() {
             comparison_summary.best_strategy = best.strategy_id.clone();
             if rankings.len() >= 2 {
-                comparison_summary.reason = format!("The best strategy {} had a higher fitness of {:.2}.", best.strategy_id, best.fitness);
+                comparison_summary.reason = format!("The best strategy {} had a higher fitness of {:.2}.", best.strategy_id, best.execution_fitness);
             }
         }
 
         Ok(CompareStrategiesResponse {
-            ranking: rankings.into_iter().map(|e| e.into()).collect(),
+            ranking: rankings,
             comparison_summary,
         })
     }
@@ -379,22 +246,7 @@ impl EvaluationService {
         scenario_name: String,
         seed: u64,
     ) -> Result<InspectStrategyResponse, ApiError> {
-        let strategy_id = Self::deterministic_strategy_id(&strategy_config, &vec![scenario_name.clone()], seed);
-
-        let ga_config = GaConfig {
-            population_size: 1,
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_INSPECT".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
-
-        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
+        let scenarios_map = self.load_all_real_scenarios();
         let market_events = scenarios_map.get(&scenario_name).ok_or_else(|| {
             ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
         })?;
@@ -420,17 +272,18 @@ impl EvaluationService {
 
         let mut one_scenario: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
         one_scenario.insert(scenario_name.clone(), market_events.clone());
-        let strategy_report = chronosentiment_core::evaluate_and_aggregate(
-            &strategy_config,
-            &ga_config,
+        
+        let unified_eval = chronosentiment_core::pipeline::run_evaluation_orchestration(
+            strategy_config,
             &one_scenario,
-        ).ok_or_else(|| ApiError::InternalError("Strategy produced no evaluable trades".to_string()))?;
+            seed,
+        ).map_err(|e| ApiError::InternalError(e))?;
 
         Ok(InspectStrategyResponse {
-            strategy_id,
+            strategy_id: unified_eval.strategy_id.clone(),
             decision_trace: event_log.iter().map(|e| self.wrap_event(e)).collect(), 
             execution_trace: event_log.iter().map(|e| self.wrap_event(e)).collect(), 
-            metrics: strategy_report.into(),
+            metrics: unified_eval,
             event_sequence: event_log.iter().map(|e| self.wrap_event(e)).collect(),
         })
     }
@@ -466,103 +319,16 @@ impl EvaluationService {
             initial_queue_threshold: 200,
         };
 
-        // Enforce single source: Only use canonical synthetic scenarios
-        println!("API_INFO: Using canonical synthetic scenarios for GA (seed={})", seed);
-        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
-        let mut scenario_names: Vec<String> = scenarios_map.keys().cloned().collect();
-        scenario_names.sort();
+        println!("API_INFO: Calling Core unified GA pipeline (seed={})", seed);
+        let scenarios_map = self.load_all_real_scenarios();
+        
+        let unified_result = chronosentiment_core::pipeline::run_ga_orchestration(
+            ga_config,
+            &scenarios_map,
+            0.2, // 20% holdout
+        ).map_err(|e| ApiError::InternalError(e))?;
 
-        let (train_names, holdout_names): (Vec<String>, Vec<String>) = if scenario_names.len() <= 2 {
-            (scenario_names.clone(), scenario_names.clone())
-        } else {
-            let holdout_count = (scenario_names.len() / 5).max(1);
-            let split_at = scenario_names.len() - holdout_count;
-            (scenario_names[..split_at].to_vec(), scenario_names[split_at..].to_vec())
-        };
-
-        let mut train_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
-        for name in &train_names {
-            if let Some(events) = scenarios_map.get(name) {
-                train_scenarios.insert(name.clone(), events.clone());
-            }
-        }
-        let mut holdout_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
-        for name in &holdout_names {
-            if let Some(events) = scenarios_map.get(name) {
-                holdout_scenarios.insert(name.clone(), events.clone());
-            }
-        }
-        println!(
-            "API_INFO: GA split train={} holdout={} (deterministic)",
-            train_scenarios.len(),
-            holdout_scenarios.len()
-        );
-
-        let ga_result = chronosentiment_core::run_ga_evolution(ga_config.clone(), &train_scenarios);
-        let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
-        let global_exec_eval = chronosentiment_core::evaluate_and_aggregate(
-            &ga_result.global_best.strategy,
-            &ga_config,
-            execution_scenarios,
-        ).ok_or_else(|| ApiError::InternalError("Failed to evaluate global best execution fitness".to_string()))?;
-        let final_exec_eval = chronosentiment_core::evaluate_and_aggregate(
-            &ga_result.final_generation_best.strategy,
-            &ga_config,
-            execution_scenarios,
-        ).ok_or_else(|| ApiError::InternalError("Failed to evaluate final generation execution fitness".to_string()))?;
-
-        let global_best_dto = Self::to_dual_fitness_dto(
-            ga_result.global_best.strategy_id.clone(),
-            &ga_result.global_best,
-            &global_exec_eval,
-        );
-        let final_gen_best_dto = Self::to_dual_fitness_dto(
-            ga_result.final_generation_best.strategy_id.clone(),
-            &ga_result.final_generation_best,
-            &final_exec_eval,
-        );
-        let mut generation_history: Vec<StrategyEvaluationDto> = Vec::new();
-        for eval in &ga_result.generation_history {
-            let exec_eval = chronosentiment_core::evaluate_and_aggregate(
-                &eval.strategy,
-                &ga_config,
-                execution_scenarios,
-            ).ok_or_else(|| ApiError::InternalError("Failed to evaluate generation history execution fitness".to_string()))?;
-            generation_history.push(Self::to_dual_fitness_dto(
-                eval.strategy_id.clone(),
-                eval,
-                &exec_eval,
-            ));
-        }
-        let mut best_per_regime: HashMap<String, StrategyEvaluationDto> = HashMap::new();
-        for (regime_key, eval) in &ga_result.best_per_regime {
-            let exec_eval = chronosentiment_core::evaluate_and_aggregate(
-                &eval.strategy,
-                &ga_config,
-                execution_scenarios,
-            ).ok_or_else(|| ApiError::InternalError("Failed to evaluate per-regime execution fitness".to_string()))?;
-            best_per_regime.insert(
-                regime_key.clone(),
-                Self::to_dual_fitness_dto(
-                    eval.strategy_id.clone(),
-                    eval,
-                    &exec_eval,
-                ),
-            );
-        }
-
-        Ok(RunGaResponse {
-            // Backward-compatible fields
-            results: vec![global_best_dto.clone(), final_gen_best_dto.clone()],
-            generation_history,
-            best_per_regime,
-            // New extended fields
-            global_best: global_best_dto,
-            global_best_generation: ga_result.global_best_generation,
-            generation_found: ga_result.global_best_generation,
-            final_generation_best: final_gen_best_dto.clone(),
-            final_gen_best: final_gen_best_dto,
-        })
+        Ok(RunGaResponse::from(unified_result))
     }
 
     pub fn get_timeline(&self) -> Result<Vec<EventWrapper>, ApiError> {
@@ -597,7 +363,21 @@ impl EvaluationService {
             ));
         }
         println!("API_INFO: latest_signals CSV-only assets={:?}", assets);
-        let snapshot = chronosentiment_core::pipeline::generate_latest_signals(assets, 0.5);
+        
+        let store_guard = self.strategy_store.lock().unwrap_or_else(|e| e.into_inner());
+        let snapshot = if let Some(_store) = store_guard.as_ref() {
+            println!("API_INFO: Generating signals using pre-trained strategy store");
+            chronosentiment_core::pipeline::generate_latest_signals_from_saved_strategies(
+                assets.clone(),
+                0.5,
+                0.45,
+                0.35,
+                Some("/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/strategy_store.json".to_string())
+            ).unwrap_or_else(|_| chronosentiment_core::pipeline::generate_latest_signals_with_thresholds(assets, 0.5, 0.45, 0.35))
+        } else {
+            chronosentiment_core::pipeline::generate_latest_signals_with_thresholds(assets, 0.5, 0.45, 0.35)
+        };
+
         Ok(snapshot)
     }
 
@@ -909,7 +689,7 @@ impl EvaluationService {
                         quantity_filled: 0,
                         quantity_remaining: *quantity,
                         queue_ahead: 0,
-                        price: *price,
+                        price: *price as f64 / chronosentiment_core::PRICE_SCALE as f64,
                         side: *side,
                     });
                 }
@@ -931,7 +711,8 @@ impl EvaluationService {
                             chronosentiment_core::Side::Sell => -1,
                         };
                         position += multiplier * (*filled_qty as i64);
-                        pnl += multiplier as f64 * (*filled_qty as f64) * (*price as f64);
+                        let p = *price as f64 / chronosentiment_core::PRICE_SCALE as f64;
+                        pnl += multiplier as f64 * (*filled_qty as f64) * p;
                     }
                 }
                 SimEvent::QueueProgression { order_id, queue_ahead, .. } => {
