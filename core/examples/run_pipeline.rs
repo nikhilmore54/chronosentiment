@@ -4,12 +4,55 @@ use chronosentiment_core::PRICE_SCALE;
 use std::path::PathBuf;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Asset to process (filters sweep_assets and hardcoded assets)
+    #[arg(short, long)]
+    asset: Option<String>,
+}
 
 fn test_assets_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("chronosentiment_core must live under workspace root")
         .join("test_assets")
+}
+
+/// Default extended grids (override with `SWEEP_CONF_FLOORS` / `SWEEP_SCORE_FLOORS`, comma-separated).
+const DEFAULT_SWEEP_CONF_FLOORS: &[f64] = &[0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60];
+const DEFAULT_SWEEP_SCORE_FLOORS: &[f64] = &[0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70];
+
+/// When intrinsic gate stats sit near eff_conf≈1 and composite_score≈0.85+, use
+/// `SWEEP_PRESET=high` so the grid matches the real binding region (0.60–0.90).
+const SWEEP_PRESET_HIGH: &[f64] = &[0.60, 0.70, 0.80, 0.90];
+
+fn parse_f64_csv_env_optional(key: &str) -> Option<Vec<f64>> {
+    std::env::var(key).ok().map(|s| {
+        s.split(',')
+            .filter_map(|t| t.trim().parse::<f64>().ok())
+            .collect::<Vec<_>>()
+    }).filter(|v| !v.is_empty())
+}
+
+fn resolve_sweep_conf_floors() -> Vec<f64> {
+    parse_f64_csv_env_optional("SWEEP_CONF_FLOORS").unwrap_or_else(|| {
+        match std::env::var("SWEEP_PRESET").ok().as_deref() {
+            Some("high") | Some("calibration") => SWEEP_PRESET_HIGH.to_vec(),
+            _ => DEFAULT_SWEEP_CONF_FLOORS.to_vec(),
+        }
+    })
+}
+
+fn resolve_sweep_score_floors() -> Vec<f64> {
+    parse_f64_csv_env_optional("SWEEP_SCORE_FLOORS").unwrap_or_else(|| {
+        match std::env::var("SWEEP_PRESET").ok().as_deref() {
+            Some("high") | Some("calibration") => SWEEP_PRESET_HIGH.to_vec(),
+            _ => DEFAULT_SWEEP_SCORE_FLOORS.to_vec(),
+        }
+    })
 }
 
 fn folder_sweep_assets(folder_path: String) -> Vec<String> {
@@ -106,6 +149,23 @@ fn dedupe_recommendations(
     out
 }
 
+fn print_threshold_sweep_table(sweep: &[pipeline::ThresholdSweepRow]) {
+    println!("conf_floor | score_floor | participation | trades | total | global_avg | traded_avg | std");
+    for row in sweep {
+        println!(
+            "{:.2} | {:.2} | {:.2} | {} | {} | {:.6} | {:.6} | {:.6}",
+            row.confidence_floor,
+            row.score_floor,
+            row.participation,
+            row.trades,
+            row.total_scenarios,
+            row.global_avg_pnl,
+            row.traded_avg_pnl,
+            row.std_dev,
+        );
+    }
+}
+
 fn close_within_bps(a: f64, b: f64, bps: f64) -> bool {
     let den = a.abs().max(b.abs()).max(1e-9);
     ((a - b).abs() / den) <= (bps / 10_000.0)
@@ -163,10 +223,17 @@ fn cluster_recommendations(
 }
 
 fn main() {
-    let assets = vec![
+    let args = Args::parse();
+    
+    let mut assets = vec![
         ("BTC".to_string(), "test_assets/btc_ohlc.csv".to_string()),
         ("BANKNIFTY".to_string(), "test_assets/BANKNIFTY_5m_Execution_Ready.csv".to_string()),
     ];
+    
+    if let Some(target) = &args.asset {
+        assets.retain(|(name, _)| name == target);
+    }
+    
     let global_lambda = 0.5;
 
     let data_source = std::env::var("DATA_SOURCE")
@@ -176,8 +243,13 @@ fn main() {
     let test_assets_path = test_assets_dir();
     let test_assets_str = test_assets_path.to_string_lossy().into_owned();
 
-    let sweep_assets: Vec<String> = if data_source == "folder" {
-        let names = folder_sweep_assets(test_assets_str.clone());
+    let mut sweep_assets: Vec<String> = if data_source == "folder" {
+        let mut names = folder_sweep_assets(test_assets_str.clone());
+        
+        if let Some(target) = &args.asset {
+            names.retain(|n| n == target);
+        }
+
         println!(
             "\n>>> FOLDER MODE: dataset_count={} scrips={:?}\n>>> (full GA + sweep use these symbols; scroll up for per-asset blocks)\n",
             names.len(),
@@ -185,7 +257,11 @@ fn main() {
         );
         names
     } else {
-        vec!["BTC".to_string(), "BANKNIFTY".to_string()]
+        if let Some(target) = &args.asset {
+            vec![target.clone()]
+        } else {
+            vec!["BTC".to_string(), "BANKNIFTY".to_string()]
+        }
     };
 
     let run_mode = std::env::var("RUN_MODE")
@@ -269,6 +345,32 @@ fn main() {
         return;
     }
 
+    if run_mode == "sweep" {
+        let conf_grid = resolve_sweep_conf_floors();
+        let score_grid = resolve_sweep_score_floors();
+        println!(
+            "RUN_MODE=sweep -> threshold grid only (no evaluate_on_real_data). DATA_SOURCE={}",
+            data_source
+        );
+        println!("sweep_assets={:?}", sweep_assets);
+        println!(
+            "grid: {} conf × {} score | SWEEP_PRESET=high|calibration → 0.60..0.90; else SWEEP_CONF_FLOORS / SWEEP_SCORE_FLOORS",
+            conf_grid.len(),
+            score_grid.len()
+        );
+        let sweep = pipeline::run_threshold_sweep(
+            sweep_assets.clone(),
+            global_lambda,
+            &conf_grid,
+            &score_grid,
+            None,
+            None,
+        );
+        print_threshold_sweep_table(&sweep);
+        println!("sweep_rows={}", sweep.len());
+        return;
+    }
+
     println!("Starting real-data GA evaluation pipeline... DATA_SOURCE={}", data_source);
     let ranking = pipeline::evaluate_on_real_data(assets, global_lambda);
 
@@ -283,28 +385,23 @@ fn main() {
     println!("\nPipeline completed successfully.");
     println!("Total metric rows produced: {}", ranking.len());
 
+    let conf_grid = resolve_sweep_conf_floors();
+    let score_grid = resolve_sweep_score_floors();
     println!("\nDeterministic threshold sweep (confidence floor x score floor):");
     println!("sweep_assets={:?}", sweep_assets);
+    println!(
+        "grid: {}×{} | SWEEP_PRESET=high|calibration or explicit lists; SWEEP_GATE_DEBUG=1 → intrinsic stats",
+        conf_grid.len(),
+        score_grid.len()
+    );
     let sweep = pipeline::run_threshold_sweep(
         sweep_assets,
         global_lambda,
-        &[0.30, 0.35, 0.40, 0.45, 0.50],
-        &[0.35, 0.40, 0.45, 0.50, 0.55],
+        &conf_grid,
+        &score_grid,
         None,
         None,
     );
-    println!("conf_floor | score_floor | participation | trades | total | global_avg | traded_avg | std");
-    for row in sweep.iter().take(9) {
-        println!(
-            "{:.2} | {:.2} | {:.2} | {} | {} | {:.6} | {:.6} | {:.6}",
-            row.confidence_floor,
-            row.score_floor,
-            row.participation,
-            row.trades,
-            row.total_scenarios,
-            row.global_avg_pnl,
-            row.traded_avg_pnl,
-            row.std_dev,
-        );
-    }
+    print_threshold_sweep_table(&sweep);
+    println!("sweep_rows={}", sweep.len());
 }

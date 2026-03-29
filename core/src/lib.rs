@@ -1,4 +1,5 @@
 pub mod ga;
+pub mod selection_cap;
 pub mod harness;
 pub mod inspector;
 pub mod kernel;
@@ -18,7 +19,7 @@ pub mod pnl_overlay;
 pub mod edge_decay;
 
 pub use ga::*;
-pub use harness::{run_simulation_harness};
+pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_harness};
 pub use inspector::*;
 pub use kernel::*;
 pub use replay::*;
@@ -35,17 +36,29 @@ pub use tick_replay::*;
 pub use replay_evaluator::*;
 pub use pnl_overlay::*;
 
-pub const PRICE_SCALE: u64 = 100; // 1 Rupee = 100 Paise (Paise Format)
+pub const PRICE_SCALE: u64 = 10000; // 1.0000 Precision (Institutional Format)
 
-/// Rounds a price in Paise to the nearest valid tick.
+pub fn to_real(price: u64) -> f64 {
+    price as f64 / PRICE_SCALE as f64
+}
+
+pub fn from_real(price: f64) -> u64 {
+    (price * PRICE_SCALE as f64).round() as u64
+}
+
+/// Rounds a scaled price to the nearest valid institutional tick.
 /// Rule:
-/// - Price < ₹20 (2000 Paise): 1 Paisa tick
-/// - Price >= ₹20 (2000 Paise): 5 Paisa tick
-pub fn round_to_tick(price_paise: u64) -> u64 {
-    if price_paise < 2000 {
-        price_paise
+/// - Price < 20 units: 1 Paisa tick (0.01 * PRICE_SCALE)
+/// - Price >= 20 units: 5 Paisa tick (0.05 * PRICE_SCALE)
+pub fn round_to_tick(price_scaled: u64) -> u64 {
+    let tick_01 = (0.01 * PRICE_SCALE as f64) as u64; // 1 Paisa
+    let tick_05 = (0.05 * PRICE_SCALE as f64) as u64; // 5 Paise
+    let threshold = 20 * PRICE_SCALE;
+
+    if price_scaled < threshold {
+        ((price_scaled as f64 / tick_01 as f64).round() * tick_01 as f64) as u64
     } else {
-        ((price_paise as f64 / 5.0).round() * 5.0) as u64
+        ((price_scaled as f64 / tick_05 as f64).round() * tick_05 as f64) as u64
     }
 }
 

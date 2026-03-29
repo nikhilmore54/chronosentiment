@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::cmp::Ordering;
 use crate::ga::{self, GaConfig};
 use crate::{MarketEvent, SimEvent};
 use crate::market_adapter::{Candle, convert_series_to_events};
@@ -10,12 +11,17 @@ use crate::data_source::CandleSource;
 use crate::csv_source::CsvCandleSource;
 use crate::folder_source::FolderCandleSource;
 use crate::binance_adapter::load_binance_events_from_jsonl;
+use crate::selection_cap;
+
+/// Float tolerance for deterministic comparisons (not `f64::EPSILON`, which is ~2e-16 and too tight for scaled money/weights).
+const F64_TOL: f64 = 1e-12;
 
 const VOLATILITY_THRESHOLD: f64 = 0.01;
 const TREND_THRESHOLD: f64 = 0.01;
 const VOL_NORM_FACTOR: f64 = 0.02;
 const DEFAULT_CONFIDENCE_FLOOR: f64 = 0.20;
-const DEFAULT_SCORE_FLOOR: f64 = 0.40;
+/// Default slightly below mid grid so more signals pass without env; override with `SIGNAL_SCORE_FLOOR` or `SCORE_FLOOR`.
+const DEFAULT_SCORE_FLOOR: f64 = 0.30;
 const MIN_TRADABLE_EDGE: f64 = 0.0005;
 const EDGE_OVERRIDE_THRESHOLD: f64 = 0.0012;
 const EDGE_CONFIDENCE_SCALE: f64 = 500.0;
@@ -34,11 +40,21 @@ fn env_f64(key: &str, default: f64) -> f64 {
 }
 
 fn resolved_signal_confidence_floor(default: f64) -> f64 {
-    env_f64("SIGNAL_CONF_FLOOR", default).clamp(0.0, 1.0)
+    env::var("SIGNAL_CONF_FLOOR")
+        .or_else(|_| env::var("CONFIDENCE_FLOOR"))
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(default)
+        .clamp(0.0, 1.0)
 }
 
 fn resolved_signal_score_floor(default: f64) -> f64 {
-    env_f64("SIGNAL_SCORE_FLOOR", default).clamp(0.0, 1.0)
+    env::var("SIGNAL_SCORE_FLOOR")
+        .or_else(|_| env::var("SCORE_FLOOR"))
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(default)
+        .clamp(0.0, 1.0)
 }
 
 fn resolved_min_tradable_edge() -> f64 {
@@ -46,7 +62,26 @@ fn resolved_min_tradable_edge() -> f64 {
 }
 
 fn resolved_edge_override_threshold() -> f64 {
-    env_f64("EDGE_OVERRIDE_THRESHOLD", EDGE_OVERRIDE_THRESHOLD).max(0.0)
+    env::var("EDGE_OVERRIDE_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(EDGE_OVERRIDE_THRESHOLD)
+        .max(0.0)
+}
+
+fn resolved_trailing_stop_factor() -> f64 {
+    env_f64("EXIT_TRAILING_FACTOR", 0.75).clamp(0.0, 1.0)
+}
+
+/// NSE-style minimum notional per trade in **rupees** from env (`MIN_TRADE_VALUE`, default ₹1000).
+/// Allocation converts to paise via `PRICE_SCALE` for internal math only.
+fn resolved_min_trade_value_rupees() -> f64 {
+    env_f64("MIN_TRADE_VALUE", 1000.0).max(0.0)
+}
+
+/// Max fraction of `total_capital` per single signal before redistribution (`MAX_ALLOCATION_RATIO`, default 0.4).
+fn resolved_max_allocation_ratio() -> f64 {
+    env_f64("MAX_ALLOCATION_RATIO", 0.4).clamp(0.0, 1.0)
 }
 
 #[derive(Debug)]
@@ -123,6 +158,7 @@ pub fn deterministic_strategy_id(strategy: &ga::Strategy, scenario_names: &[Stri
 }
 
 pub fn run_evaluation_orchestration(
+    asset_name: &str,
     strategy: ga::Strategy,
     scenarios: &HashMap<String, Vec<MarketEvent>>,
     seed: u64,
@@ -137,7 +173,8 @@ pub fn run_evaluation_orchestration(
         ..GaConfig::default()
     };
 
-    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, scenarios)
+    let scenarios_vec = map_to_pairs(asset_name, scenarios);
+    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec)
         .ok_or_else(|| "Strategy produced no evaluable trades".to_string())?;
 
     let mut unified = UnifiedStrategyEvaluation::from(eval);
@@ -146,13 +183,14 @@ pub fn run_evaluation_orchestration(
 }
 
 pub fn run_comparison_orchestration(
+    asset_name: &str,
     strategies: Vec<ga::Strategy>,
     scenarios: &HashMap<String, Vec<MarketEvent>>,
     seed: u64,
 ) -> Result<Vec<UnifiedStrategyEvaluation>, String> {
     let mut results = Vec::new();
     for strategy in strategies {
-        let res = run_evaluation_orchestration(strategy, scenarios, seed)?;
+        let res = run_evaluation_orchestration(asset_name, strategy, scenarios, seed)?;
         results.push(res);
     }
     
@@ -207,8 +245,31 @@ pub struct TradeSignal {
     pub composite_score: f64,
     pub reject_reason: Option<String>,
     pub expected_holding_time: String,
+    pub current_pnl: f64,
+    pub peak_pnl: f64,
+    pub exit_reason: Option<ExitReason>,
+    pub is_open: bool,
     pub strategy_id: String,
     pub reason: String,
+    /// `confidence * max(0, edge)^gamma` (`RANK_SCORE_EDGE_GAMMA`, default 1) — deterministic post-gate ranking (see `SIGNAL_TOP_K`).
+    #[serde(default)]
+    pub rank_score: f64,
+    /// 1-based position among actionable signals after global Top-K sort; `None` if unlimited cap or not actionable.
+    #[serde(default)]
+    pub rank_position: Option<u32>,
+    /// Deployed notional in **paise** (same unit as `entry_zone` tick prices).
+    #[serde(default)]
+    pub allocated_capital: Option<f64>,
+    #[serde(default)]
+    pub quantity: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum ExitReason {
+    TakeProfit,
+    TrailingStop,
+    EdgeDecay,
+    RegimeFlip,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -255,6 +316,9 @@ pub struct SignalMeta {
     pub trades: usize,
     pub holds: usize,
     pub participation: f64,
+    /// `None` = no Top-K cap (`SIGNAL_TOP_K=0`); `Some(k)` = global rank cap applied.
+    #[serde(default)]
+    pub selection_cap_k: Option<usize>,
     pub edge_loss_breakdown: EdgeLossBreakdown,
 }
 
@@ -279,6 +343,7 @@ impl Default for SignalsSnapshot {
                 trades: 0,
                 holds: 0,
                 participation: 0.0,
+                selection_cap_k: None,
                 edge_loss_breakdown: EdgeLossBreakdown::default(),
             },
             asset_name: "UNKNOWN".to_string(),
@@ -300,6 +365,8 @@ pub enum EdgeLossReason {
     LowLiquidity,
     HighLatencyImpact,
     Accepted,
+    /// BUY/SELL passed gates but was not in the top-K rank after `SIGNAL_TOP_K` selection.
+    CapacityRankedOut,
 }
 
 impl EdgeLossReason {
@@ -316,6 +383,7 @@ impl EdgeLossReason {
             EdgeLossReason::LowLiquidity => "LOW_LIQUIDITY",
             EdgeLossReason::HighLatencyImpact => "HIGH_LATENCY_IMPACT",
             EdgeLossReason::Accepted => "ACCEPTED",
+            EdgeLossReason::CapacityRankedOut => "CAPACITY_RANKED_OUT",
         }
     }
 }
@@ -329,6 +397,10 @@ pub struct EdgeTransfer {
     pub delta: f64,
     pub confidence: f64,
     pub reason: EdgeLossReason,
+    pub current_pnl: f64,
+    pub peak_pnl: f64,
+    pub exit_triggered: bool,
+    pub exit_reason: Option<ExitReason>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -347,6 +419,9 @@ pub struct EdgeLossBreakdown {
     pub weak_rejected_low_conf: usize,
     pub weak_rejected_low_vol: usize,
     pub weak_executed_count: usize,
+    pub exit_count: usize,
+    pub exit_by_reason: HashMap<ExitReason, usize>,
+    pub avg_exit_pnl: f64,
     pub transfer_traces: Vec<EdgeTransfer>,
 }
 
@@ -511,6 +586,15 @@ fn initial_order_from_scenario_map(
     Some((e.price, e.exchange_ts))
 }
 
+pub fn resolve_execution_symbol(symbol: &str) -> String {
+    let s = symbol.to_uppercase();
+    if s.contains("_FUT") {
+        s
+    } else {
+        format!("{}_FUT", s)
+    }
+}
+
 /// Scenarios from CSV candles only (`folder` preloads candles; `csv` loads `{folder_path}/{asset}_5m_clean.csv`).
 fn scenario_map_for_signal_generation(
     asset_name: &str,
@@ -541,6 +625,90 @@ fn scenario_map_for_signal_generation(
     }
 }
 
+fn pair_scenarios_by_index<'a>(
+    signal_symbol: &'a str,
+    execution_symbol: &'a str,
+    signal_scenarios: &'a HashMap<String, Vec<MarketEvent>>,
+    execution_scenarios: &'a HashMap<String, Vec<MarketEvent>>,
+) -> Vec<ga::ScenarioPair<'a>> {
+    let mut s_names: Vec<&String> = signal_scenarios.keys().collect();
+    s_names.sort();
+    
+    let mut e_names: Vec<&String> = execution_scenarios.keys().collect();
+    e_names.sort();
+
+    let strict = std::env::var("CS_STRICT").unwrap_or_else(|_| "1".into()) == "1";
+    println!("ROUTE_INIT → {} -> {}", signal_symbol, execution_symbol);
+
+    let mut pairs = Vec::new();
+    let total_potential = s_names.len().min(e_names.len());
+    let mut paired = 0usize;
+    let mut skipped = 0usize;
+    
+    for i in 0..total_potential {
+        let s_name = s_names[i];
+        let e_name = e_names[i];
+        
+        let s_events = signal_scenarios.get(s_name).unwrap();
+        let e_events = execution_scenarios.get(e_name).unwrap();
+        
+        // Unbreakable: Hard check on length and timestamps
+        let len_mismatch = s_events.len() != e_events.len();
+        let mut ts_mismatch = false;
+        
+        if !len_mismatch {
+            for (se, ee) in s_events.iter().zip(e_events.iter()) {
+                if se.exchange_ts != ee.exchange_ts {
+                    ts_mismatch = true;
+                    break;
+                }
+            }
+        }
+
+        if len_mismatch || ts_mismatch {
+            if strict {
+                panic!("FATAL: Scenario alignment mismatch for {}/{} (strict mode)", s_name, e_name);
+            } else {
+                skipped += 1;
+                continue;
+            }
+        }
+
+        // Pointer safety assert: Different symbols MUST have different memory
+        if signal_symbol != execution_symbol {
+            assert!(
+                !std::ptr::eq(s_events.as_ptr(), e_events.as_ptr()),
+                "FATAL: Dual-stream collapsed into single stream for symbol pair {} -> {}",
+                signal_symbol, execution_symbol
+            );
+        }
+        
+        pairs.push(ga::ScenarioPair {
+            name: s_name.as_str(),
+            signal_symbol,
+            execution_symbol,
+            signal: s_events.as_slice(),
+            execution: e_events.as_slice(),
+        });
+        paired += 1;
+    }
+
+    // PAIR_HEALTH metric for observability
+    let ratio = paired as f64 / (paired + skipped).max(1) as f64;
+    println!(
+        "PAIR_HEALTH → paired={} skipped={} ratio={:.2}",
+        paired,
+        skipped,
+        ratio
+    );
+
+    if strict {
+        assert!(ratio >= 0.6, "Too many windows skipped for {} (ratio={:.2}); check data alignment", signal_symbol, ratio);
+    }
+
+    pairs
+}
+
 fn strategy_store_path_from_env() -> String {
     env::var("STRATEGY_STORE_PATH").unwrap_or_else(|_| {
         "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/strategy_store.json".to_string()
@@ -563,12 +731,16 @@ fn save_strategy_store(path: &str, store: &PersistedStrategyStore) -> Result<(),
 
 fn train_asset_strategy(
     asset_name: &str,
-    scenario_map: &HashMap<String, Vec<MarketEvent>>,
+    paired_scenarios: &[ga::ScenarioPair],
     global_lambda: f64,
 ) -> Option<ga::GaResult> {
-    let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(scenario_map) else {
+    if paired_scenarios.is_empty() {
         return None;
-    };
+    }
+
+    let initial_price = paired_scenarios[0].signal.first().map(|e| e.price).unwrap_or(0);
+    let initial_timestamp = paired_scenarios[0].signal.first().map(|e| e.exchange_ts).unwrap_or(0);
+
     let config = GaConfig {
         population_size: 5,
         generations: 3,
@@ -580,22 +752,22 @@ fn train_asset_strategy(
         order_timestamp: initial_timestamp,
         lambda: global_lambda,
         initial_queue_threshold: 200,
+        ..GaConfig::default()
     };
-    let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
-    sorted_names.sort();
-    if sorted_names.is_empty() {
-        return None;
-    }
-    let test_index = (config.seed as usize) % sorted_names.len();
-    let test_scenario_name = sorted_names[test_index].clone();
-    let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
-    for name in &sorted_names {
-        if *name != test_scenario_name {
-            if let Some(events) = scenario_map.get(name) {
-                train_scenarios.insert(name.clone(), events.as_slice());
-            }
+    
+    let mut sorted_pairs = paired_scenarios.to_vec();
+    sorted_pairs.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let test_index = (config.seed as usize) % sorted_pairs.len();
+    let test_scenario_name = sorted_pairs[test_index].name;
+
+    let mut train_scenarios: Vec<ga::ScenarioPair> = Vec::new();
+    for pair in &sorted_pairs {
+        if pair.name != test_scenario_name {
+            train_scenarios.push(pair.clone());
         }
     }
+
     Some(ga::run_ga_evolution(config, &train_scenarios))
 }
 
@@ -616,22 +788,69 @@ pub fn train_and_persist_strategies(
         for (asset, candles) in source.load_all() {
             folder_candles_by_asset.insert(asset, candles);
         }
+
+        // UNBREAKABLE: Add memory pointer collision guard after loading (Requested)
+        for asset in folder_candles_by_asset.keys() {
+            let exec_asset = resolve_execution_symbol(asset);
+            if exec_asset != *asset && folder_candles_by_asset.contains_key(&exec_asset) {
+                let spot_ptr = folder_candles_by_asset[asset].as_ptr();
+                let fut_ptr = folder_candles_by_asset[&exec_asset].as_ptr();
+                assert!(
+                    spot_ptr != fut_ptr,
+                    "FATAL: Spot and Futures share same memory ({})",
+                    asset
+                );
+            }
+        }
     }
 
     let mut trained_assets: Vec<String> = Vec::new();
     let mut by_asset: HashMap<String, ga::GaResult> = HashMap::new();
     for asset_name in &assets {
         let folder_candles = folder_candles_by_asset.get(asset_name);
-        let scenario_map = scenario_map_for_signal_generation(
+        let signal_scenario_map = scenario_map_for_signal_generation(
             asset_name,
             data_source.as_str(),
             folder_candles,
             folder_path.as_str(),
         );
-        if scenario_map.is_empty() {
+        if signal_scenario_map.is_empty() {
             continue;
         }
-        if let Some(ga_result) = train_asset_strategy(asset_name, &scenario_map, global_lambda) {
+
+        let exec_asset = resolve_execution_symbol(asset_name);
+        let exec_folder_candles = folder_candles_by_asset.get(&exec_asset);
+        let strict = std::env::var("CS_STRICT").unwrap_or_else(|_| "1".into()) == "1";
+        
+        // Remove ALL silent fallbacks: MUST load separately if symbols differ
+        let exec_scenario_map = if exec_asset != *asset_name {
+            let map = scenario_map_for_signal_generation(
+                &exec_asset,
+                data_source.as_str(),
+                exec_folder_candles,
+                folder_path.as_str(),
+            );
+            
+            if map.is_empty() {
+                if strict {
+                    panic!("FATAL: Missing execution data for {} (strict mode)", exec_asset);
+                } else {
+                    println!("SKIPPING → Missing execution scenario map for symbol={} (non-strict)", exec_asset);
+                    continue;
+                }
+            }
+            map
+        } else {
+            // Self-execution (e.g. Stocks) is allowed only if explicitly identified
+            signal_scenario_map.clone()
+        };
+
+        let aligned_pairs = pair_scenarios_by_index(asset_name, &exec_asset, &signal_scenario_map, &exec_scenario_map);
+        if aligned_pairs.is_empty() {
+            continue;
+        }
+
+        if let Some(ga_result) = train_asset_strategy(asset_name, &aligned_pairs, global_lambda) {
             by_asset.insert(asset_name.clone(), ga_result);
             trained_assets.push(asset_name.clone());
         }
@@ -651,7 +870,48 @@ pub fn train_and_persist_strategies(
     Ok(trained_assets.len())
 }
 
+pub fn map_to_pairs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, Vec<MarketEvent>>) -> Vec<ga::ScenarioPair<'a>> {
+    scenarios.iter().map(|(n, ev)| ga::ScenarioPair {
+        name: n.as_str(),
+        signal_symbol: symbol,
+        execution_symbol: symbol,
+        signal: ev.as_slice(),
+        execution: ev.as_slice(),
+    }).collect()
+}
+
+pub fn map_to_hash_pairs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, Vec<MarketEvent>>) -> HashMap<String, ga::ScenarioPair<'a>> {
+    scenarios.iter().map(|(n, ev)| (n.clone(), ga::ScenarioPair {
+        name: n.as_str(),
+        signal_symbol: symbol,
+        execution_symbol: symbol,
+        signal: ev.as_slice(),
+        execution: ev.as_slice(),
+    })).collect()
+}
+
+pub fn map_to_pairs_from_refs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, &'a [MarketEvent]>) -> Vec<ga::ScenarioPair<'a>> {
+    scenarios.iter().map(|(n, ev)| ga::ScenarioPair {
+        name: n.as_str(),
+        signal_symbol: symbol,
+        execution_symbol: symbol,
+        signal: ev,
+        execution: ev,
+    }).collect()
+}
+
+pub fn map_to_hash_pairs_from_refs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, &'a [MarketEvent]>) -> HashMap<String, ga::ScenarioPair<'a>> {
+    scenarios.iter().map(|(n, ev)| (n.clone(), ga::ScenarioPair {
+        name: n.as_str(),
+        signal_symbol: symbol,
+        execution_symbol: symbol,
+        signal: ev,
+        execution: ev,
+    })).collect()
+}
+
 pub fn run_ga_orchestration(
+    asset_name: &str,
     config: GaConfig,
     scenarios: &HashMap<String, Vec<MarketEvent>>,
     holdout_ratio: f64,
@@ -688,7 +948,8 @@ pub fn run_ga_orchestration(
     }
 
     // Run GA Evolution
-    let ga_result = ga::run_ga_evolution(config.clone(), &train_scenarios);
+    let train_pairs = map_to_pairs(asset_name, &train_scenarios);
+    let ga_result = ga::run_ga_evolution(config.clone(), &train_pairs);
 
     // Cross-evaluate best strategies on holdout data for "Execution Fitness"
     let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
@@ -699,8 +960,11 @@ pub fn run_ga_orchestration(
         unified
     };
 
+    let exec_hash_pairs = map_to_hash_pairs(asset_name, execution_scenarios);
+    let exec_vec_pairs: Vec<ga::ScenarioPair> = exec_hash_pairs.values().cloned().collect();
+    
     let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
-        ga::evaluate_and_aggregate(strategy, &config, execution_scenarios)
+        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs)
             .unwrap_or_else(|| ga::StrategyEvaluation {
                 strategy: strategy.clone(),
                 ..ga::StrategyEvaluation::default()
@@ -857,6 +1121,56 @@ fn evaluate_gate(
     }
 }
 
+/// Intrinsic pre-floor metrics (same formula as inside `evaluate_gate` after min-edge, before sideways/conf/score floors).
+/// Used for sweep diagnostics only; returns `None` if edge is non-positive or below `min_tradable_edge`.
+fn intrinsic_gate_strength(
+    regime: Regime,
+    raw_confidence: f64,
+    execution_fitness: f64,
+    min_tradable_edge: f64,
+) -> Option<(f64, f64)> {
+    if execution_fitness <= 0.0 || execution_fitness < min_tradable_edge {
+        return None;
+    }
+    let edge_aligned_confidence = raw_confidence.max(edge_to_confidence(execution_fitness));
+    let effective_confidence = calibrated_confidence(edge_aligned_confidence, execution_fitness);
+    let score =
+        0.5 * effective_confidence + 0.3 * edge_norm(execution_fitness) + 0.2 * regime_quality(regime);
+    Some((effective_confidence, score))
+}
+
+fn print_sweep_gate_intrinsic_summary(rows: &[(f64, f64)]) {
+    if rows.is_empty() {
+        println!("SWEEP_GATE_DEBUG: n_above_min_edge=0 (no scenarios cleared min_tradable_edge)");
+        return;
+    }
+    let mut ec_min = f64::INFINITY;
+    let mut ec_max = f64::NEG_INFINITY;
+    let mut sc_min = f64::INFINITY;
+    let mut sc_max = f64::NEG_INFINITY;
+    let mut ec_sum = 0.0;
+    let mut sc_sum = 0.0;
+    for &(ec, sc) in rows {
+        ec_min = ec_min.min(ec);
+        ec_max = ec_max.max(ec);
+        sc_min = sc_min.min(sc);
+        sc_max = sc_max.max(sc);
+        ec_sum += ec;
+        sc_sum += sc;
+    }
+    let n = rows.len() as f64;
+    println!(
+        "SWEEP_GATE_DEBUG: n_above_min_edge={} eff_conf min/max/mean={:.4}/{:.4}/{:.4} composite_score min/max/mean={:.4}/{:.4}/{:.4} (floors do not bind if all means >> grid)",
+        rows.len(),
+        ec_min,
+        ec_max,
+        ec_sum / n,
+        sc_min,
+        sc_max,
+        sc_sum / n
+    );
+}
+
 fn compute_atr(events: &[MarketEvent]) -> f64 {
     if events.len() < 2 {
         return 0.0;
@@ -868,6 +1182,63 @@ fn compute_atr(events: &[MarketEvent]) -> f64 {
         true_ranges.push((curr - prev).abs());
     }
     true_ranges.iter().sum::<f64>() / true_ranges.len() as f64
+}
+
+fn infer_exit_state(
+    signal: &TradeSignal,
+    events: &[MarketEvent],
+    entry_regime: Regime,
+    initial_edge: f64,
+    effective_eval_edge: f64,
+) -> (f64, f64, Option<ExitReason>, bool) {
+    if !matches!(signal.action, SignalAction::BUY | SignalAction::SELL) || events.is_empty() {
+        return (0.0, 0.0, None, false);
+    }
+    let entry_price = signal
+        .entry_zone
+        .map(|(lo, hi)| (lo + hi) * 0.5)
+        .unwrap_or_else(|| events.first().map(|e| e.price as f64).unwrap_or(0.0));
+    if entry_price <= 0.0 {
+        return (0.0, 0.0, None, false);
+    }
+    let target_price = signal.target.unwrap_or(entry_price * 1.01);
+    let take_profit_threshold = match signal.action {
+        SignalAction::BUY => ((target_price - entry_price) / entry_price).max(0.0),
+        SignalAction::SELL => ((entry_price - target_price) / entry_price).max(0.0),
+        SignalAction::HOLD => 0.0,
+    };
+
+    let mut current_pnl = 0.0;
+    let mut peak_pnl = f64::NEG_INFINITY;
+    for ev in events {
+        let px = ev.price as f64;
+        let pnl = match signal.action {
+            SignalAction::BUY => (px - entry_price) / entry_price,
+            SignalAction::SELL => (entry_price - px) / entry_price,
+            SignalAction::HOLD => 0.0,
+        };
+        current_pnl = pnl;
+        peak_pnl = peak_pnl.max(pnl);
+    }
+    if !peak_pnl.is_finite() {
+        peak_pnl = 0.0;
+    }
+
+    let mut exit_reason = None;
+    if take_profit_threshold > 0.0 && current_pnl >= take_profit_threshold {
+        exit_reason = Some(ExitReason::TakeProfit);
+    } else if peak_pnl > 0.0 && current_pnl < peak_pnl * resolved_trailing_stop_factor() {
+        exit_reason = Some(ExitReason::TrailingStop);
+    } else if effective_eval_edge < (initial_edge * 0.5) {
+        exit_reason = Some(ExitReason::EdgeDecay);
+    } else {
+        let (current_regime, _) = detect_regime_from_events(events);
+        if current_regime != entry_regime {
+            exit_reason = Some(ExitReason::RegimeFlip);
+        }
+    }
+    let is_open = exit_reason.is_none();
+    (current_pnl, peak_pnl, exit_reason, is_open)
 }
 
 fn build_trade_signal(
@@ -1021,8 +1392,331 @@ fn build_trade_signal(
         composite_score: gate.composite_score,
         reject_reason: gate.reject_reason.map(|r| r.as_str().to_string()),
         expected_holding_time,
+        current_pnl: 0.0,
+        peak_pnl: 0.0,
+        exit_reason: None,
+        is_open: trade_allowed,
         strategy_id: selected_strategy_id.to_string(),
         reason,
+        rank_score: selection_cap::rank_score_edge_confidence(report_fitness, confidence),
+        rank_position: None,
+        allocated_capital: None,
+        quantity: None,
+    }
+}
+
+fn demote_signal_for_capacity(s: &mut TradeSignal) {
+    let prev_edge = s.expected_edge;
+    s.action = SignalAction::HOLD;
+    s.entry_type = EntryType::MARKET;
+    s.entry_zone = None;
+    s.stop_loss = None;
+    s.target = None;
+    s.position_size = 0.0;
+    s.scenario_pnl = 0.0;
+    s.risk_reward = 0.0;
+    s.reject_reason = Some("CAPACITY_RANKED_OUT".to_string());
+    s.expected_holding_time = "N/A".to_string();
+    s.reason = format!(
+        "Capacity-ranked: not in top SIGNAL_TOP_K (edge={:.4}, rank_score={:.6})",
+        prev_edge, s.rank_score
+    );
+    s.is_open = false;
+    s.exit_reason = None;
+    s.current_pnl = 0.0;
+    s.peak_pnl = 0.0;
+    s.rank_position = None;
+    s.allocated_capital = None;
+    s.quantity = None;
+}
+
+const RANK_BIAS_FACTOR: f64 = 1.0;
+const EDGE_AWARE_SIZING_FACTOR: f64 = 0.3; // 0.7 * rank_score + 0.3 * effective_eval_edge
+
+/// `total_capital_rupees` comes from `TOTAL_CAPITAL` (rupees). All sizing, caps, and `allocated_capital` are computed in **paise** only.
+fn allocate_capital(
+    signals: &mut Vec<TradeSignal>,
+    total_capital_rupees: f64,
+) {
+    let scale = crate::PRICE_SCALE as f64;
+    let budget_paise = (total_capital_rupees * scale).max(0.0);
+    if signals.is_empty() || budget_paise <= F64_TOL {
+        return;
+    }
+
+    let entry_mid_paise = |s: &TradeSignal| -> f64 {
+        s.entry_zone.map(|(lo, hi)| (lo + hi) * 0.5).unwrap_or(0.0)
+    };
+
+    let min_trade_paise = resolved_min_trade_value_rupees() * scale;
+    let max_allocation_ratio = resolved_max_allocation_ratio();
+
+    let k_cap = selection_cap::resolved_signal_top_k().map(|k| k as f64).unwrap_or(1.0).max(1.0);
+    let mut total_adjusted_score = 0.0;
+
+    // Step 5: Add rank bias and edge-aware sizing
+    // Calculate adjusted scores for all signals
+    let mut adjusted_signals: Vec<(usize, f64)> = signals.iter().enumerate().filter_map(|(i, s)| {
+        if matches!(s.action, SignalAction::BUY | SignalAction::SELL) && s.rank_position.is_some() {
+            let rank_position = s.rank_position.unwrap_or(1) as f64;
+            let rank_bias = (k_cap - rank_position) / k_cap;
+            
+            // Apply rank bias
+            let rank_score_biased = s.rank_score * (1.0 + RANK_BIAS_FACTOR * rank_bias);
+
+            // Apply edge-aware sizing
+            let final_score = (1.0 - EDGE_AWARE_SIZING_FACTOR) * rank_score_biased + (EDGE_AWARE_SIZING_FACTOR * s.expected_edge);
+            
+            total_adjusted_score += final_score;
+            Some((i, final_score))
+        } else {
+            None
+        }
+    }).collect();
+
+    if total_adjusted_score <= F64_TOL {
+        // If all adjusted scores are zero, we cannot allocate
+        for s in signals.iter_mut() {
+            s.allocated_capital = Some(0.0);
+            s.quantity = Some(0);
+        }
+        return;
+    }
+
+    // Step 1-4, and NSE constraints (all amounts in paise)
+    for (idx, adjusted_score) in adjusted_signals.iter_mut() {
+        let s = &mut signals[*idx];
+        
+        // Step 1: normalize weights
+        let weight_i = *adjusted_score / total_adjusted_score;
+
+        // Step 2: apply capital
+        let mut allocation_i = budget_paise * weight_i;
+
+        // NSE Constraint: Max per-asset cap
+        let max_cap = budget_paise * max_allocation_ratio;
+        allocation_i = allocation_i.min(max_cap);
+
+        // Drop if weighted slice cannot meet minimum notional (deterministic gate)
+        if allocation_i < min_trade_paise {
+            demote_signal_for_capacity(s);
+            s.allocated_capital = Some(0.0);
+            s.quantity = Some(0);
+            continue;
+        }
+
+        // Step 3: convert to quantity (paise per share × qty = paise notional)
+        let entry_p = entry_mid_paise(s);
+        let mut qty_i = 0u64;
+        if entry_p > F64_TOL {
+            qty_i = (allocation_i / entry_p).floor() as u64;
+        }
+        
+        // NSE Constraint: Lot size / liquidity guard (minimum trade value on filled notional)
+        if (qty_i as f64 * entry_p) < min_trade_paise {
+            qty_i = 0;
+        }
+
+        // Step 4: enforce minimum size (drop signal if quantity is 0)
+        if qty_i == 0 {
+            demote_signal_for_capacity(s);
+            s.allocated_capital = Some(0.0);
+            s.quantity = Some(0);
+        } else {
+            let used_i = (qty_i as f64) * entry_p;
+            s.allocated_capital = Some(used_i);
+            s.quantity = Some(qty_i);
+        }
+    }
+
+    // Deterministic leftover redistribution: spend remaining budget in rank order (1..K), round-robin rounds.
+    let mut ranked_active: Vec<(u32, usize, f64)> = signals
+        .iter()
+        .enumerate()
+        .filter_map(|(i, s)| {
+            if !matches!(s.action, SignalAction::BUY | SignalAction::SELL) {
+                return None;
+            }
+            let rp = s.rank_position?;
+            let q = s.quantity.unwrap_or(0);
+            if q == 0 {
+                return None;
+            }
+            let entry = entry_mid_paise(s);
+            if entry <= F64_TOL {
+                return None;
+            }
+            Some((rp, i, entry))
+        })
+        .collect();
+    ranked_active.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then_with(|| a.1.cmp(&b.1))
+    });
+
+    let mut used_total: f64 = signals
+        .iter()
+        .map(|s| {
+            let q = s.quantity.unwrap_or(0);
+            let p = entry_mid_paise(s);
+            (q as f64) * p
+        })
+        .sum();
+    let mut leftover = (budget_paise - used_total).max(0.0);
+    let max_cap_per_asset = budget_paise * max_allocation_ratio;
+
+    let mut progress = true;
+    while progress && leftover + F64_TOL >= min_trade_paise {
+        progress = false;
+        for (_, idx, price) in &ranked_active {
+            if leftover + F64_TOL < *price {
+                continue;
+            }
+            let s = &mut signals[*idx];
+            let q = s.quantity.unwrap_or(0);
+            let new_q = q.saturating_add(1);
+            let new_used = (new_q as f64) * price;
+            if new_used > max_cap_per_asset + F64_TOL {
+                continue;
+            }
+            s.quantity = Some(new_q);
+            s.allocated_capital = Some(new_used);
+            leftover -= price;
+            used_total += price;
+            progress = true;
+            if leftover + F64_TOL < min_trade_paise {
+                break;
+            }
+        }
+    }
+
+    // Final notional floor after redistribution (drop marginal micro-positions deterministically).
+    for s in signals.iter_mut() {
+        if !matches!(s.action, SignalAction::BUY | SignalAction::SELL) {
+            continue;
+        }
+        let q = s.quantity.unwrap_or(0);
+        if q == 0 {
+            continue;
+        }
+        let entry_p = entry_mid_paise(s);
+        if (q as f64) * entry_p + F64_TOL < min_trade_paise {
+            demote_signal_for_capacity(s);
+            s.allocated_capital = Some(0.0);
+            s.quantity = Some(0);
+        }
+    }
+
+    // NSE Constraint: Max positions
+    // If more positions are allocated than SIGNAL_TOP_K, demote the lowest ranked signals
+    if let Some(max_positions_k) = selection_cap::resolved_signal_top_k() {
+        let active_positions = signals
+            .iter()
+            .filter(|s| s.allocated_capital.unwrap_or(0.0) > F64_TOL)
+            .count();
+        if active_positions > max_positions_k {
+            let mut current_allocated_signals: Vec<(usize, f64)> = signals
+                .iter()
+                .enumerate()
+                .filter_map(|(i, s)| {
+                    if s.allocated_capital.unwrap_or(0.0) > F64_TOL {
+                        Some((i, s.rank_score))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            current_allocated_signals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+            
+            for i in max_positions_k..current_allocated_signals.len() {
+                let (idx_to_demote, _) = current_allocated_signals[i];
+                let s = &mut signals[idx_to_demote];
+                demote_signal_for_capacity(s);
+                s.allocated_capital = Some(0.0);
+                s.quantity = Some(0);
+            }
+        }
+    }
+
+    // Debug output: ranked executable rows only + one portfolio summary
+    let portfolio_used: f64 = signals
+        .iter()
+        .map(|x| {
+            let q = x.quantity.unwrap_or(0);
+            let p = entry_mid_paise(x);
+            (q as f64) * p
+        })
+        .sum();
+    let portfolio_leftover = (budget_paise - portfolio_used).max(0.0);
+    println!(
+        "ALLOC_DEBUG_SUMMARY: budget_paise={:.0} used_paise={:.0} leftover_paise={:.0}",
+        budget_paise, portfolio_used, portfolio_leftover
+    );
+    for s in signals.iter() {
+        if s.rank_position.is_none() {
+            continue;
+        }
+        if !matches!(s.action, SignalAction::BUY | SignalAction::SELL) {
+            continue;
+        }
+        let q = s.quantity.unwrap_or(0);
+        if q == 0 {
+            continue;
+        }
+        if let (Some(used_c), Some(qty_u)) = (s.allocated_capital, s.quantity) {
+            println!(
+                "ALLOC_DEBUG: rank={:?} score={:.6} used_paise={:.0} qty={}",
+                s.rank_position, s.rank_score, used_c, qty_u
+            );
+        }
+    }
+}
+
+/// Deterministic portfolio layer: among gated BUY/SELL signals, keep only top `SIGNAL_TOP_K` by `rank_score`.
+fn apply_capacity_selection(signals: &mut Vec<TradeSignal>, transfers: &mut Vec<EdgeTransfer>) {
+    let Some(k) = selection_cap::resolved_signal_top_k() else {
+        return;
+    };
+    if signals.len() != transfers.len() {
+        return;
+    }
+    let mut actionable: Vec<usize> = signals
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| matches!(s.action, SignalAction::BUY | SignalAction::SELL))
+        .map(|(i, _)| i)
+        .collect();
+    if actionable.is_empty() {
+        return;
+    }
+    actionable.sort_by(|&a, &b| {
+        let sa = &signals[a];
+        let sb = &signals[b];
+        sb.rank_score
+            .partial_cmp(&sa.rank_score)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| sa.asset.cmp(&sb.asset))
+            .then_with(|| sa.strategy_id.cmp(&sb.strategy_id))
+            .then_with(|| sa.regime.cmp(&sb.regime))
+    });
+    let keep = actionable.len().min(k);
+    for (rank, &idx) in actionable.iter().take(keep).enumerate() {
+        signals[idx].rank_position = Some((rank as u32) + 1);
+    }
+    if actionable.len() <= k {
+        return;
+    }
+    let drop: HashSet<usize> = actionable.iter().skip(k).copied().collect();
+    for idx in drop {
+        demote_signal_for_capacity(&mut signals[idx]);
+        let t = &mut transfers[idx];
+        let eval = t.eval_edge.or(t.weak_eval_edge).unwrap_or(0.0);
+        t.signal_edge = 0.0;
+        t.delta = eval.max(0.0);
+        t.reason = EdgeLossReason::CapacityRankedOut;
+        t.exit_triggered = false;
+        t.exit_reason = None;
     }
 }
 
@@ -1063,6 +1757,8 @@ pub fn run_pipeline_with_config(
         None,
         Some(jsonl_path),
         Some(&ga_config),
+        false,
+        None,
     )
 }
 
@@ -1119,18 +1815,18 @@ fn select_optimal_signal_thresholds_for_jsonl(
         if row.total_scenarios == 0 || row.trades == 0 {
             continue;
         }
-        let traded_norm = if (max_traded - min_traded).abs() < 1e-12 {
+        let traded_norm = if (max_traded - min_traded).abs() < F64_TOL {
             0.5
         } else {
             ((row.traded_avg_pnl - min_traded) / (max_traded - min_traded)).clamp(0.0, 1.0)
         };
-        let stability_norm = if (max_std - min_std).abs() < 1e-12 {
+        let stability_norm = if (max_std - min_std).abs() < F64_TOL {
             0.5
         } else {
             (1.0 - ((row.std_dev - min_std) / (max_std - min_std))).clamp(0.0, 1.0)
         };
         let participation_distance = (row.participation - target_participation).abs();
-        let participation_norm = if max_participation_distance <= 1e-12 {
+        let participation_norm = if max_participation_distance <= F64_TOL {
             1.0
         } else {
             (1.0 - (participation_distance / max_participation_distance)).clamp(0.0, 1.0)
@@ -1149,11 +1845,11 @@ fn select_optimal_signal_thresholds_for_jsonl(
         match best {
             None => best = Some((row, utility)),
             Some((best_row, best_utility)) => {
-                let better = utility > best_utility + 1e-12
-                    || ((utility - best_utility).abs() <= 1e-12
+                let better = utility > best_utility + F64_TOL
+                    || ((utility - best_utility).abs() <= F64_TOL
                         && row.confidence_floor > best_row.confidence_floor)
-                    || ((utility - best_utility).abs() <= 1e-12
-                        && (row.confidence_floor - best_row.confidence_floor).abs() <= 1e-12
+                    || ((utility - best_utility).abs() <= F64_TOL
+                        && (row.confidence_floor - best_row.confidence_floor).abs() <= F64_TOL
                         && row.traded_avg_pnl > best_row.traded_avg_pnl);
                 if better {
                     best = Some((row, utility));
@@ -1163,7 +1859,7 @@ fn select_optimal_signal_thresholds_for_jsonl(
     }
 
     if let Some((row, _)) = best {
-        let execution_efficiency = if row.global_avg_pnl.abs() > 1e-12 {
+        let execution_efficiency = if row.global_avg_pnl.abs() > F64_TOL {
             row.traded_avg_pnl / row.global_avg_pnl
         } else {
             0.0
@@ -1197,6 +1893,8 @@ pub fn generate_latest_signals_with_thresholds(
         None,
         None,
         None,
+        false,
+        None,
     )
 }
 
@@ -1216,6 +1914,8 @@ pub fn generate_latest_signals_from_saved_strategies(
         score_floor,
         Some(&store),
         None,
+        None,
+        false,
         None,
     ))
 }
@@ -1252,6 +1952,9 @@ fn scenarios_from_binance_events(asset: &str, events: &[crate::binance_adapter::
     scenarios
 }
 
+/// When `sweep_disable_edge_override` is true (threshold sweep / auto tuner grid only), the gate
+/// does not bypass confidence or score floors via edge override, so sweep rows can differ across
+/// floor values. Live signal paths pass `false` and use `EDGE_OVERRIDE_THRESHOLD` as usual.
 fn generate_latest_signals_with_thresholds_internal(
     assets: Vec<String>,
     global_lambda: f64,
@@ -1260,9 +1963,15 @@ fn generate_latest_signals_with_thresholds_internal(
     strategy_store: Option<&PersistedStrategyStore>,
     jsonl_path: Option<&str>,
     ga_config: Option<&GaConfig>,
+    sweep_disable_edge_override: bool,
+    mut sweep_gate_metrics_sink: Option<&mut Vec<(f64, f64)>>,
 ) -> SignalsSnapshot {
     let min_tradable_edge = resolved_min_tradable_edge();
-    let edge_override_threshold = resolved_edge_override_threshold();
+    let edge_override_threshold = if sweep_disable_edge_override {
+        f64::MAX
+    } else {
+        resolved_edge_override_threshold()
+    };
 
     let mut all_scenarios_by_asset: HashMap<String, HashMap<String, Vec<MarketEvent>>> = HashMap::new();
 
@@ -1306,7 +2015,12 @@ fn generate_latest_signals_with_thresholds_internal(
                 folder_path.as_str(),
             );
             if !scenario_map.is_empty() {
-                all_scenarios_by_asset.insert(asset_name.clone(), scenario_map);
+                // all_scenarios_by_asset expects HashMap, scenario_map is Vec<(String, Vec<MarketEvent>)>
+                let mut converted: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+                for (name, events) in scenario_map {
+                    converted.insert(name, events);
+                }
+                all_scenarios_by_asset.insert(asset_name.clone(), converted);
             }
         }
     }
@@ -1358,6 +2072,7 @@ fn generate_latest_signals_with_thresholds_internal(
                 order_timestamp: initial_timestamp,
                 lambda: global_lambda,
                 initial_queue_threshold: 200,
+                ..GaConfig::default()
             }
         };
 
@@ -1389,7 +2104,8 @@ fn generate_latest_signals_with_thresholds_internal(
                     }
                 }
             }
-            ga::run_ga_evolution(config.clone(), &train_scenarios)
+            let train_pairs = map_to_pairs_from_refs(asset_name, &train_scenarios);
+            ga::run_ga_evolution(config.clone(), &train_pairs)
         };
 
         for scenario_name in &sorted_names {
@@ -1403,8 +2119,21 @@ fn generate_latest_signals_with_thresholds_internal(
                     .unwrap_or(&ga_result.global_best);
                 let mut one_scenario: HashMap<String, Vec<MarketEvent>> = HashMap::new();
                 one_scenario.insert(scenario_name.clone(), events.clone());
-                if let Some(report) = ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario) {
+                let one_scenario_vec = map_to_pairs(asset_name, &one_scenario);
+                if let Some(report) = ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_vec) {
                     max_observed_eval_edge = max_observed_eval_edge.max(report.fitness.max(0.0));
+                    if sweep_disable_edge_override {
+                        if let Some(sink) = sweep_gate_metrics_sink.as_mut() {
+                            if let Some(pair) = intrinsic_gate_strength(
+                                detected_regime,
+                                confidence,
+                                report.fitness,
+                                min_tradable_edge,
+                            ) {
+                                sink.push(pair);
+                            }
+                        }
+                    }
                     let gate = evaluate_gate(
                         detected_regime,
                         confidence,
@@ -1431,18 +2160,9 @@ fn generate_latest_signals_with_thresholds_internal(
                     let regime_name = detected_regime.as_str().to_string();
                     *regime_eval_sums.entry(regime_name.clone()).or_insert(0.0) += report.fitness;
                     *regime_eval_counts.entry(regime_name).or_insert(0usize) += 1;
-                    edge_transfers.push(EdgeTransfer {
-                        eval_edge: Some(report.fitness),
-                        weak_eval_edge: None,
-                        has_strong_eval: true,
-                        signal_edge: executable_edge,
-                        delta: (report.fitness - executable_edge).max(0.0),
-                        confidence,
-                        reason: edge_reason_from_gate_reject(effective_gate.reject_reason),
-                    });
                     let last_price = events.last().map(|e| e.price as f64).unwrap_or(config.order_price as f64);
                     let atr = compute_atr(events.as_slice());
-                    let signal = build_trade_signal(
+                    let mut signal = build_trade_signal(
                         asset_name,
                         detected_regime,
                         confidence,
@@ -1452,6 +2172,39 @@ fn generate_latest_signals_with_thresholds_internal(
                         effective_gate,
                         last_price,
                         atr,
+                    );
+                    let (current_pnl, peak_pnl, exit_reason, is_open) = infer_exit_state(
+                        &signal,
+                        events.as_slice(),
+                        detected_regime,
+                        report.fitness,
+                        effective_eval_edge,
+                    );
+                    signal.current_pnl = current_pnl;
+                    signal.peak_pnl = peak_pnl;
+                    signal.exit_reason = exit_reason;
+                    signal.is_open = is_open;
+                    edge_transfers.push(EdgeTransfer {
+                        eval_edge: Some(report.fitness),
+                        weak_eval_edge: None,
+                        has_strong_eval: true,
+                        signal_edge: executable_edge,
+                        delta: (report.fitness - executable_edge).max(0.0),
+                        confidence,
+                        reason: edge_reason_from_gate_reject(effective_gate.reject_reason),
+                        current_pnl,
+                        peak_pnl,
+                        exit_triggered: exit_reason.is_some(),
+                        exit_reason,
+                    });
+                    println!(
+                        "EDGE_TRANSFER_DEBUG: asset={} scenario={} current_pnl={:.6} peak_pnl={:.6} exit_triggered={} exit_reason={:?}",
+                        asset_name,
+                        scenario_name,
+                        current_pnl,
+                        peak_pnl,
+                        exit_reason.is_some(),
+                        exit_reason
                     );
                     all_signals.push(signal);
                     if effective_gate.trade_allowed {
@@ -1497,8 +2250,9 @@ fn generate_latest_signals_with_thresholds_internal(
                     let low_volatility = detected_regime == Regime::Sideways || (first_price > 0.0 && move_abs < min_move);
                     let weak_execution_allowed =
                         !low_volatility
-                            && (confidence >= effective_conf_floor
-                                || effective_eval_edge >= edge_override_threshold);
+                            && (effective_eval_edge >= edge_override_threshold
+                                || (confidence >= effective_conf_floor
+                                    && effective_eval_edge >= min_tradable_edge));
                     let weak_scaled_size = (0.7
                         * blended_position_size(
                             confidence.max(edge_to_confidence(effective_eval_edge)),
@@ -1541,6 +2295,18 @@ fn generate_latest_signals_with_thresholds_internal(
                     } else if !weak_execution_allowed {
                         weak_rejected_low_conf += 1;
                     }
+                    let (current_pnl, peak_pnl, exit_reason, is_open) = infer_exit_state(
+                        &signal,
+                        events.as_slice(),
+                        detected_regime,
+                        weak_eval_edge,
+                        effective_eval_edge,
+                    );
+                    let mut signal = signal;
+                    signal.current_pnl = current_pnl;
+                    signal.peak_pnl = peak_pnl;
+                    signal.exit_reason = exit_reason;
+                    signal.is_open = is_open;
                     edge_transfers.push(EdgeTransfer {
                         eval_edge: None,
                         weak_eval_edge: Some(weak_eval_edge),
@@ -1559,7 +2325,20 @@ fn generate_latest_signals_with_thresholds_internal(
                         .max(0.0),
                         confidence,
                         reason: if low_volatility { EdgeLossReason::WeakLowVol } else { EdgeLossReason::WeakEvalSurrogate },
+                        current_pnl,
+                        peak_pnl,
+                        exit_triggered: exit_reason.is_some(),
+                        exit_reason,
                     });
+                    println!(
+                        "EDGE_TRANSFER_DEBUG: asset={} scenario={} current_pnl={:.6} peak_pnl={:.6} exit_triggered={} exit_reason={:?}",
+                        asset_name,
+                        scenario_name,
+                        current_pnl,
+                        peak_pnl,
+                        exit_reason.is_some(),
+                        exit_reason
+                    );
                     all_signals.push(signal);
                     acc_pnls.push(0.0);
                     if weak_gate.trade_allowed {
@@ -1616,6 +2395,20 @@ fn generate_latest_signals_with_thresholds_internal(
             .then_with(|| a.asset.cmp(&b.asset))
     });
 
+    apply_capacity_selection(&mut all_signals, &mut edge_transfers);
+
+    let total_capital = env::var("TOTAL_CAPITAL")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(10000.0); // Default to 10,000 as per example
+
+    allocate_capital(&mut all_signals, total_capital);
+    
+    trade_count = all_signals
+        .iter()
+        .filter(|s| matches!(s.action, SignalAction::BUY | SignalAction::SELL) && s.quantity.unwrap_or(0) > 0)
+        .count();
+
     let holds = all_signals.iter().filter(|s| s.action == SignalAction::HOLD).count();
     let participation = if total_scenarios == 0 {
         0.0
@@ -1648,6 +2441,7 @@ fn generate_latest_signals_with_thresholds_internal(
     };
     let mut loss_by_reason: HashMap<String, f64> = HashMap::new();
     let mut count_by_reason: HashMap<String, usize> = HashMap::new();
+    let mut exit_by_reason: HashMap<ExitReason, usize> = HashMap::new();
     let executed_strong_edge = edge_transfers
         .iter()
         .filter(|t| t.has_strong_eval && t.signal_edge > 0.0)
@@ -1662,7 +2456,21 @@ fn generate_latest_signals_with_thresholds_internal(
         let key = transfer.reason.as_str().to_string();
         *count_by_reason.entry(key.clone()).or_insert(0usize) += 1;
         *loss_by_reason.entry(key).or_insert(0.0) += transfer.delta;
+        if let Some(exit_reason) = transfer.exit_reason {
+            *exit_by_reason.entry(exit_reason).or_insert(0usize) += 1;
+        }
     }
+    let exit_count: usize = exit_by_reason.values().sum();
+    let avg_exit_pnl = if exit_count > 0 {
+        edge_transfers
+            .iter()
+            .filter(|t| t.exit_reason.is_some())
+            .map(|t| t.current_pnl)
+            .sum::<f64>()
+            / exit_count as f64
+    } else {
+        0.0
+    };
     let total_loss: f64 = loss_by_reason.values().sum();
     let mut loss_distribution: Vec<ReasonLossShare> = if total_loss > 0.0 {
         let mut rows: Vec<ReasonLossShare> = loss_by_reason
@@ -1693,6 +2501,9 @@ fn generate_latest_signals_with_thresholds_internal(
         weak_rejected_low_conf,
         weak_rejected_low_vol,
         weak_executed_count,
+        exit_count,
+        exit_by_reason,
+        avg_exit_pnl,
         transfer_traces: edge_transfers.clone(),
     };
 
@@ -1705,6 +2516,7 @@ fn generate_latest_signals_with_thresholds_internal(
             trades: trade_count,
             holds,
             participation,
+            selection_cap_k: selection_cap::resolved_signal_top_k(),
             edge_loss_breakdown,
         },
         asset_name: assets.first().cloned().unwrap_or_else(|| "UNKNOWN".to_string()),
@@ -1712,6 +2524,12 @@ fn generate_latest_signals_with_thresholds_internal(
     }
 }
 
+/// Grid over confidence/score floors. Disables edge override in the gate so floors can bind;
+/// production snapshots still respect `EDGE_OVERRIDE_THRESHOLD` from the environment.
+///
+/// Set **`SWEEP_GATE_DEBUG=1`** to print one line of intrinsic `effective_confidence` / composite
+/// score min–max–mean (scenarios above `MIN_TRADABLE_EDGE` only), sampled from the **first** grid cell
+/// so you can see whether your floor range can bind.
 pub fn run_threshold_sweep(
     assets: Vec<String>,
     global_lambda: f64,
@@ -1720,18 +2538,42 @@ pub fn run_threshold_sweep(
     jsonl_path: Option<&str>,
     ga_config: Option<&GaConfig>,
 ) -> Vec<ThresholdSweepRow> {
+    let sweep_gate_debug = std::env::var("SWEEP_GATE_DEBUG").ok().as_deref() == Some("1");
+    let mut sweep_gate_metrics: Vec<(f64, f64)> = Vec::new();
+    let mut first_cell = true;
     let mut rows: Vec<ThresholdSweepRow> = Vec::new();
-    for &confidence_floor in confidence_floors {
-        for &score_floor in score_floors {
-            let snapshot = generate_latest_signals_with_thresholds_internal(
-                assets.clone(),
-                global_lambda,
-                confidence_floor,
-                score_floor,
-                None,
-                jsonl_path,
-                ga_config,
-            );
+    for &conf_raw in confidence_floors {
+        for &score_raw in score_floors {
+            // f105: Temporarily relax floors for debugging
+            let confidence_floor = (conf_raw * 0.5).max(0.01);
+            let score_floor = (score_raw * 0.5).max(0.01);
+            
+            let snapshot = if first_cell && sweep_gate_debug {
+                generate_latest_signals_with_thresholds_internal(
+                    assets.clone(),
+                    global_lambda,
+                    confidence_floor,
+                    score_floor,
+                    None,
+                    jsonl_path,
+                    ga_config,
+                    true,
+                    Some(&mut sweep_gate_metrics),
+                )
+            } else {
+                generate_latest_signals_with_thresholds_internal(
+                    assets.clone(),
+                    global_lambda,
+                    confidence_floor,
+                    score_floor,
+                    None,
+                    jsonl_path,
+                    ga_config,
+                    true,
+                    None,
+                )
+            };
+            first_cell = false;
             let pnls: Vec<f64> = snapshot.signals.iter().map(|s| s.scenario_pnl).collect();
             let global_avg = if pnls.is_empty() {
                 0.0
@@ -1765,6 +2607,10 @@ pub fn run_threshold_sweep(
                 std_dev: variance.sqrt(),
             });
         }
+    }
+
+    if sweep_gate_debug {
+        print_sweep_gate_intrinsic_summary(&sweep_gate_metrics);
     }
 
     rows.sort_by(|a, b| {
@@ -1852,6 +2698,7 @@ pub fn evaluate_on_real_data(
             order_timestamp: initial_timestamp,
             lambda: global_lambda,
             initial_queue_threshold: 200,
+            ..GaConfig::default()
         };
         
         let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
@@ -1860,16 +2707,16 @@ pub fn evaluate_on_real_data(
         let test_index = (config.seed as usize) % sorted_names.len();
         let test_scenario_name = sorted_names[test_index].clone();
         
-        let mut train_scenarios: HashMap<String, &[MarketEvent]> = HashMap::new();
+        let mut train_scenarios_map: HashMap<String, Vec<MarketEvent>> = HashMap::new();
         for name in &sorted_names {
-            if *name != test_scenario_name {
+            if name != &test_scenario_name {
                 if let Some(events) = scenario_map.get(name) {
-                    train_scenarios.insert(name.clone(), events.as_slice());
+                    train_scenarios_map.insert(name.clone(), events.clone());
                 }
             }
         }
-        
-        let ga_result = ga::run_ga_evolution(config.clone(), &train_scenarios);
+        let train_px_pairs = map_to_pairs(&asset_name, &train_scenarios_map);
+        let ga_result = ga::run_ga_evolution(config.clone(), &train_px_pairs);
         
         let mut pnls_all = Vec::with_capacity(sorted_names.len());
         let mut execution_fitnesses_all = Vec::with_capacity(sorted_names.len());
@@ -1878,9 +2725,10 @@ pub fn evaluate_on_real_data(
         let mut weak_executed_count = 0usize;
         
         for name in &sorted_names {
-            let mut one_scenario: HashMap<String, Vec<MarketEvent>> = HashMap::new();
             if let Some(events) = scenario_map.get(name) {
-                one_scenario.insert(name.clone(), events.clone());
+                let mut one_scenario_map: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+                one_scenario_map.insert(name.clone(), events.clone());
+                let one_scenario_px_pairs = map_to_pairs(&asset_name, &one_scenario_map);
 
                 let (detected_regime, confidence) = detect_regime_from_events(events.as_slice());
                 let regime_key = format!("{}_{}", asset_name, detected_regime.as_str());
@@ -1890,7 +2738,7 @@ pub fn evaluate_on_real_data(
                     .unwrap_or(&ga_result.global_best);
 
                 if let Some(report) =
-                    ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario)
+                    ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_px_pairs)
                 {
                     let gate = evaluate_gate(
                         detected_regime,
