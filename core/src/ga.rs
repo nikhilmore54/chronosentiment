@@ -62,6 +62,12 @@ struct ScenarioMetrics {
     pub max_exec_pop_dominance: f64,
     pub exec_pop_dominance_buckets: [usize; 6],
     
+    // Phase 2: Consistency Engine
+    pub trade_qualities: Vec<f64>,
+    pub sum_realized_pnl: f64,
+    pub sum_expected_pnl: f64,
+
+    // Phase 14: Consensus Bridge Audit
     pub vip_count: usize,
     pub stat_count: usize,
     pub stat_zero_dom_count: usize,
@@ -122,7 +128,8 @@ impl ScenarioMetrics {
 
     fn record_trade(
         &mut self,
-        pnl: f64,
+        realized_pnl: f64,
+        expected_pnl: f64,
         entropy: f64,
         conviction: f64,
         efficiency: f64,
@@ -135,7 +142,19 @@ impl ScenarioMetrics {
         signal_entropy: f64,
     ) {
         self.trade_count += 1;
-        self.sum_pnl += pnl;
+        self.sum_pnl += realized_pnl;
+        
+        // Phase 2: Consistency Engine Tracking
+        self.sum_realized_pnl += realized_pnl;
+        self.sum_expected_pnl += expected_pnl;
+        
+        let denom = expected_pnl.abs().max(1e-9);
+        let quality = (realized_pnl / denom).clamp(-2.0, 2.0);
+        self.trade_qualities.push(quality);
+        if self.trade_qualities.len() > 20 {
+            self.trade_qualities.remove(0);
+        }
+
         self.sum_entropy += entropy;
         self.sum_conviction += conviction;
         self.sum_efficiency += efficiency;
@@ -148,7 +167,7 @@ impl ScenarioMetrics {
         self.sum_dominance += dominance;
         self.sum_signal_entropy += signal_entropy;
 
-        if pnl > 0.0 {
+        if realized_pnl > 0.0 {
             self.profitable_trades += 1;
         }
     }
@@ -480,6 +499,14 @@ pub struct StrategyEvaluation {
     pub realized_pnl_rolling: f64,
     #[serde(default)]
     pub predicted_pnl_rolling: f64,
+    #[serde(default)]
+    pub trade_qualities: Vec<f64>,
+    #[serde(default)]
+    pub outcome_consistency: f64,
+    #[serde(default)]
+    pub avg_trade_quality: f64,
+    #[serde(default)]
+    pub std_trade_quality: f64,
 
     // Exit Reason Distribution (Observability)
     pub exit_tp_count: usize,
@@ -511,6 +538,8 @@ pub struct StrategyEvaluation {
     pub aqg_skip_ratio: f64,
     #[serde(default)]
     pub avg_edge_spread: f64,
+    #[serde(default)]
+    pub consistency_n: usize, // Sample size for outcome consistency tracking
     #[serde(default)]
     pub avg_dominance: f64,
     #[serde(default)]
@@ -583,16 +612,35 @@ impl StrategyEvaluation {
     /// predicted_pnl: expected pnl based on strategy signal
     pub fn update_capture_efficiency(&mut self, realized: f64, predicted: f64) {
         if predicted.abs() < 1e-9 { return; } // Denominator Guard 1
-        let ratio = (realized / predicted).max(0.0).min(2.0); // Ratio Clamp
+        let ratio = (realized / predicted).clamp(-2.0, 2.0); // Safe ratio with institutional clamp
         
         // Evolving Horizons (EMA Approximation)
         // Short (20 trades) -> Alpha ~ 0.1
         // Long (100 trades) -> Alpha ~ 0.02
-        self.short_term_capture_eff = (0.1 * ratio) + (0.9 * self.short_term_capture_eff);
-        self.long_term_capture_eff = (0.02 * ratio) + (0.98 * self.long_term_capture_eff);
+        self.short_term_capture_eff = (0.1 * ratio.max(0.0).min(2.0)) + (0.9 * self.short_term_capture_eff);
+        self.long_term_capture_eff = (0.02 * ratio.max(0.0).min(2.0)) + (0.98 * self.long_term_capture_eff);
         
         self.realized_pnl_rolling += realized;
         self.predicted_pnl_rolling += predicted;
+
+        // Phase 2: Consistency Window Logic
+        self.trade_qualities.push(ratio);
+        if self.trade_qualities.len() > 20 {
+            self.trade_qualities.remove(0);
+        }
+
+        if self.trade_qualities.len() >= 10 {
+            let n = self.trade_qualities.len() as f64;
+            let mean = self.trade_qualities.iter().sum::<f64>() / n;
+            let var = self.trade_qualities.iter().map(|q| (q - mean).powi(2)).sum::<f64>() / n;
+            let std = var.sqrt();
+            
+            self.avg_trade_quality = mean;
+            self.std_trade_quality = std;
+            self.outcome_consistency = mean - std;
+        } else {
+            self.outcome_consistency = 0.0;
+        }
     }
 }
 
@@ -762,6 +810,11 @@ impl Default for StrategyEvaluation {
             stability_reject_rate: 0.0,
             clarity_pnl_share: 0.0,
             conviction_pnl_share: 0.0,
+            trade_qualities: Vec::new(),
+            outcome_consistency: 0.0,
+            avg_trade_quality: 0.0,
+            std_trade_quality: 0.0,
+            consistency_n: 0,
 
             pnl_fingerprint: Vec::new(),
         }
@@ -1615,16 +1668,17 @@ pub fn evaluate_ensemble_strategy(
                 // Record Decision-Time Metrics (Phase 13.6 Health Tracking)
                 metrics.record_trade(
                     trade_pnl,
+                    trade_pnl, // expected_pnl (placeholder)
                     entropy_norm,
                     conviction.conviction_score,
                     outcome.efficiency,
                     outcome.edge_quality,
                     outcome.time_to_mfe as f64,
                     margin,
-                    1.0, // Health is 1.0 for ensemble execution (already aggregated)
-                    0.0, // edge_spread (Phase 15 - fallback)
-                    0.0, // dominance (Phase 15 - fallback)
-                    0.0, // signal_entropy (Phase 15 - fallback)
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
                 );
 
                 if trade_pnl > 0.0 {
@@ -2605,7 +2659,10 @@ pub(crate) fn evaluate_strategy(
     // Phase 17B: Store E-score for realizability analysis
     let mut valid_signals: Vec<(usize, ConvictionOutcome, f64, &'static str, f64)> = Vec::new(); 
     let mut max_z = 0.0;
-    let min_energy = abs_floor * 0.8;
+    
+    let p75_energy = percentile_f64(&scores, 0.75);
+    let energy_min = abs_floor.max(p75_energy);
+    
     let mut decision_was_override = false;
     let mut winner_idx = 0usize;
     let mut winner_conviction = window_data[0].1.clone();
@@ -2645,7 +2702,7 @@ pub(crate) fn evaluate_strategy(
         // VIP: Clarity-first (Clarity over Intensity)
         // Phase 14: Regime-aware VIP threshold (Stricter in high-vol)
         let vip_dom_th = if vol_ratio > 1.3 { 0.50 } else { 0.40 };
-        let is_vip = raw_dom_t >= vip_dom_th && score.abs() >= min_energy;
+        let is_vip = raw_dom_t >= vip_dom_th && score.abs() >= energy_min;
         // STAT: Intensity fallback (Statistical Extremity)
         let is_stat = score >= abs_floor && z_score >= z_threshold;
 
@@ -2684,10 +2741,8 @@ pub(crate) fn evaluate_strategy(
             let e_score = (stability + distance_score + vol_score) / 3.0;
             let e_threshold = if is_vip { 0.50 } else { 0.70 };
             
-            // --- PHASE 14: Conditional Stability Floor (Breakout-Aware) ---
-            // Displacement = move / atr
-            let displacement = (current_price - prev_price).abs() / (atr + EPS);
-            if stability < 0.20 && displacement < 0.50 {
+            // --- PHASE 14: Hard Stability Gate (Fixed 0.60 Floor) ---
+            if stability < 0.60 {
                 metrics.stability_rejected_count += 1;
                 continue;
             }
@@ -2894,7 +2949,7 @@ pub(crate) fn evaluate_strategy(
             scenario_name, valid_signals.len(), max_z, dominance, mean, window_entropy, report_reason);
     }
 
-    signal_count = if allow_bypass { window_data.len() } else { valid_signals.len() };
+    let signal_count = if allow_bypass { window_data.len() } else { valid_signals.len() };
 
     let mut busy_until = 0usize;
     let cooldown = config.trade_cooldown_events.unwrap_or(8);
@@ -2935,7 +2990,7 @@ pub(crate) fn evaluate_strategy(
         // --- EXECUTION ---
         if let Some(outcome) = ga_simulate_round_trip_at_cursor(
             strategy,
-            &strategy_id,
+                &strategy_id,
             scenario_name,
             signal_events,
             execution_events,
@@ -2945,6 +3000,31 @@ pub(crate) fn evaluate_strategy(
             &final_conviction,
         ) {
             let trade_pnl = outcome.pnl * final_conviction.edge_weight;
+            let expected_move = outcome.expected_move.abs().max(1e-9);
+
+            let margin = if final_conviction.selection_threshold > 1e-9 {
+                (final_conviction.conviction_score - final_conviction.selection_threshold) / final_conviction.selection_threshold
+            } else {
+                final_conviction.conviction_score
+            };
+            let aqg_health = if final_conviction.conviction_score >= aqg_threshold { 1.0 } else { 0.0 };
+            
+            // Phase 2: Outcome Consistency Tracking (Consolidated)
+            metrics.record_trade(
+                trade_pnl,
+                expected_move,
+                outcome.efficiency,
+                final_conviction.conviction_score,
+                outcome.efficiency,
+                outcome.edge_quality,
+                outcome.time_to_mfe as f64,
+                outcome.drawdown_penalty_raw,
+                aqg_health,
+                edge_spread_norm,
+                dominance,
+                final_conviction.raw_q_ratio, // Proxy for entropy
+            );
+
             let raw_exit = outcome.exit_event_idx;
             
             // Phase 14 Attribution
@@ -3024,19 +3104,7 @@ pub(crate) fn evaluate_strategy(
             };
             let aqg_health = if conviction.conviction_score >= aqg_threshold { 1.0 } else { 0.0 };
 
-            metrics.record_trade(
-                trade_pnl,
-                0.0,
-                1.0,
-                outcome.efficiency,
-                outcome.edge_quality,
-                outcome.time_to_mfe as f64,
-                margin,
-                aqg_health,
-                edge_spread_norm,
-                dominance,
-                window_entropy,
-            );
+            // record_trade moved to early-simulation for Phase 2 capture efficiency
 
             busy_until = capped_exit + cooldown;
 
@@ -3053,7 +3121,7 @@ pub(crate) fn evaluate_strategy(
         let decision_skipped = entry_attempted.saturating_sub(total_trades).saturating_sub(skipped_busy);
         println!(
             "ENTRY_DEBUG → signals={} attempts={} triggered={} busy_skipped={} decision_skipped={} | EXITS: TP={} SL={} TS={}",
-            signal_count, entry_attempted, total_trades, skipped_busy, decision_skipped, exit_tp_count, exit_sl_count, exit_ts_count
+            signal_events.len(), entry_attempted, total_trades, skipped_busy, decision_skipped, exit_tp_count, exit_sl_count, exit_ts_count
         );
     }
 
@@ -3275,9 +3343,13 @@ pub(crate) fn evaluate_strategy(
         stat_avg_e_score: metrics.sum_stat_e_score / ((metrics.exec_passed_count - metrics.vip_exec_passed_count) as f64).max(1.0),
         consensus_bypass_ratio: metrics.consensus_bypass_count as f64 / metrics.exec_passed_count.max(1) as f64,
         stability_reject_rate: metrics.stability_rejected_count as f64 / metrics.exec_admitted_count.max(1) as f64,
-        clarity_pnl_share: 0.0,
-        conviction_pnl_share: 0.0,
-        ..Default::default()
+        clarity_pnl_share: metrics.sum_clarity_pnl,
+        conviction_pnl_share: metrics.sum_conviction_pnl,
+        trade_qualities: metrics.trade_qualities.clone(),
+        outcome_consistency: 0.0, // Calculated at the aggregate level for Phase 2A
+        ..StrategyEvaluation::default()
+    })
+}
 /// Per-scenario rank for GA Top-K alignment with pipeline: `edge × confidence`.
 /// Edge uses robustness (risk-adjusted) with a non-negative avg_pnl fallback; confidence uses win rate.
 pub fn ga_scenario_rank_score(e: &StrategyEvaluation) -> f64 {
@@ -4007,7 +4079,7 @@ fn aggregate_strategy_reports_inner(
         exec_sum / total_evals.max(1.0), exec_p95, pop_delta, ccr
     );
     println!(
-        "VIP_AUDIT:      ratio={:.4} | band={} | energy_min=abs_floor*0.8",
+        "VIP_AUDIT:      ratio={:.4} | band={} | energy_min=max(p80, p75)",
         avg_vip_ratio, vip_band
     );
     println!(
@@ -4052,6 +4124,36 @@ fn aggregate_strategy_reports_inner(
     println!(
         "CONSENSUS_BRIDGE: bypass_ratio={:.4} | stability_reject={:.4} | clarity_share={:.2} | conviction_share={:.2}",
         avg_consensus_bypass_ratio, avg_stability_reject_rate, avg_clarity_pnl_share, avg_conviction_pnl_share
+    );
+
+    // --- PHASE 2 OUTCOME AUDIT ---
+    let mut phase2_total_quality = 0.0;
+    let mut phase2_total_quality_sq = 0.0;
+    let mut phase2_total_quality_count = 0.0f64;
+    let mut phase2_sum_realized = 0.0;
+    let mut phase2_sum_expected = 0.0;
+
+    for e in &evaluations {
+        for &q in &e.trade_qualities {
+            phase2_total_quality += q;
+            phase2_total_quality_sq += q * q;
+            phase2_total_quality_count += 1.0;
+        }
+        phase2_sum_realized += e.realized_pnl_rolling;
+        phase2_sum_expected += e.predicted_pnl_rolling;
+    }
+
+    let global_mean_quality = if phase2_total_quality_count > 0.0 { phase2_total_quality / phase2_total_quality_count } else { 0.0 };
+    let global_std_quality = if phase2_total_quality_count > 1.0 {
+        let var = (phase2_total_quality_sq / phase2_total_quality_count) - (global_mean_quality * global_mean_quality);
+        var.max(0.0).sqrt()
+    } else { 0.0 };
+    let global_consistency = global_mean_quality - global_std_quality;
+    let global_capture_eff = if phase2_sum_expected.abs() > 1e-9 { phase2_sum_realized / phase2_sum_expected } else { 0.0 };
+
+    println!(
+        "OUTCOME_AUDIT:  trades={} | n={:.0} | mean_q={:.3} | std_q={:.3} | consistency={:.3} | capture_eff={:.4}",
+        phase2_total_quality_count, phase2_total_quality_count, global_mean_quality, global_std_quality, global_consistency, global_capture_eff
     );
     println!(
         "RAW_HIST:  [0-0.05]: {:.1}%, [0.05-0.10]: {:.1}%, [0.10-0.20]: {:.1}%, [0.20-0.25]: {:.1}%, [0.25-0.50]: {:.1}%, [0.50+]: {:.1}%",
@@ -4143,7 +4245,11 @@ fn aggregate_strategy_reports_inner(
         vip_ratio: avg_vip_ratio,
         ccr,
         stat_zero_dom_ratio: avg_stat_zero_dom_ratio,
-        ..Default::default()
+        outcome_consistency: global_consistency,
+        avg_trade_quality: global_mean_quality,
+        std_trade_quality: global_std_quality,
+        consistency_n: phase2_total_quality_count as usize,
+        ..StrategyEvaluation::default()
     };
 
     let mean_depth = total_trade_count as f64 / total_scenarios.max(1.0);
