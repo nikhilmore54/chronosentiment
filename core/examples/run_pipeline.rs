@@ -79,8 +79,8 @@ fn main() {
 
     if args.deep_validation {
         println!("🚨 DEEP_VALIDATION_MODE: Elevating search depth (Pop=20, Gen=15) and stabilizing mutation...");
-        config.population_size = 20;
-        config.generations = 15;
+        config.population_size = config.population_size.max(20);
+        config.generations = config.generations.max(15);
         config.deep_validation = true;
     }
 

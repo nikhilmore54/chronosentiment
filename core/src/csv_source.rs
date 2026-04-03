@@ -38,9 +38,22 @@ fn parse_timestamp_strict(raw: &str) -> Option<u64> {
     }
 
     // Try EXACT formatted timestamp: %Y-%m-%d %H:%M:%S
-    use chrono::NaiveDateTime;
+    use chrono::{NaiveDateTime, DateTime};
     if let Ok(dt) = NaiveDateTime::parse_from_str(v, "%Y-%m-%d %H:%M:%S") {
         return Some(dt.and_utc().timestamp() as u64);
+    }
+    
+    // Try ISO 8601 with offset (e.g. 2024-03-22 09:15:00+05:30 or +0530)
+    if let Ok(dt) = DateTime::parse_from_str(v, "%Y-%m-%d %H:%M:%S%:z") {
+        return Some(dt.timestamp() as u64);
+    }
+    if let Ok(dt) = DateTime::parse_from_str(v, "%Y-%m-%d %H:%M:%S%z") {
+        return Some(dt.timestamp() as u64);
+    }
+
+    // Try DATE-ONLY: %Y-%m-%d
+    if let Ok(dt) = chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d") {
+        return Some(dt.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp() as u64);
     }
     
     None
@@ -66,7 +79,7 @@ impl CandleSource for CsvCandleSource {
 
         let header_parts: Vec<&str> = header_line.split(',').map(|x| x.trim()).collect();
 
-        let ts_idx = find_col(&header_parts, &["timestamp", "time", "datetime"]).unwrap_or(0);
+        let ts_idx = find_col(&header_parts, &["timestamp", "time", "datetime", "date"]).unwrap_or(0);
         let open_idx = find_col(&header_parts, &["open"]).unwrap_or(1);
         let high_idx = find_col(&header_parts, &["high"]).unwrap_or(2);
         let low_idx = find_col(&header_parts, &["low"]).unwrap_or(3);
