@@ -2401,6 +2401,7 @@ pub struct GaRoundTripOutcome {
     pub entry_order_id: String,
     pub exit_order_id: String,
     pub spread: f64,
+    pub avg_window_volume: f64,
 }
 
 /// Deterministic single round-trip anchored at `market_events[cursor_i]`.
@@ -2619,6 +2620,7 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         entry_order_id,
         exit_order_id,
         spread: (exe_px - sig_px).abs(),
+        avg_window_volume: 0.0,
     })
 }
 
@@ -2762,6 +2764,7 @@ pub(crate) fn evaluate_strategy(
     let mut long_win_count_scenario = 0usize;
     let short_win_count_scenario = 0usize;
     let mut micro_loss_count = 0u32;
+    let mut total_window_volume = 0.0;
 
     // --- PHASE 14: DISTRIBUTION-AWARE SIGNAL VALIDATION LAYER ---
     // Transitioning from fixed-gate scoring to institutional selective-gating.
@@ -3294,6 +3297,7 @@ pub(crate) fn evaluate_strategy(
             total_efficiency += outcome.efficiency;
             total_vol_ratio += std_v;
             total_spread_reality += outcome.spread;
+            total_window_volume += outcome.avg_window_volume;
             
             // Phase C.1: Trade-Level Survivability Check
             let window_slippage = outcome.spread * (1.0 + std_v.powf(1.2)) * config.slippage_factor;
@@ -3409,15 +3413,6 @@ pub(crate) fn evaluate_strategy(
     }
 
     let total_trades = metrics.trade_count;
-    
-    // --- PHASE C.1.6: PARTICIPATION PRESSURE (Hard Frequency Floor) ---
-    if total_trades < 5 {
-        if std::env::var("GA_DEBUG").is_ok() {
-            println!("FITNESS_TRACE: [INACTIVE] total_trades={} final=0.0", total_trades);
-        }
-        return None;
-    }
-
     let mean_expected_move = if total_trades > 0 { sum_expected_move / total_trades as f64 } else { 0.0 };
     let drawdown_penalty_raw = if total_trades > 0 { sum_drawdown_raw / total_trades as f64 } else { 0.0 };
     let requested_qty = config.order_quantity_for_strategy * 2 * (total_trades.max(1) as u64);
@@ -3481,20 +3476,28 @@ pub(crate) fn evaluate_strategy(
     }
     let worst_pnl_for_scenario = scenario_max_drawdown; 
 
-    // --- PHASE 11.2 / B.1 / C / C.1: INSTITUTIONAL FITNESS REDESIGN (Execution Reality + Discovery) ---
+    // --- PHASE 11.2 / B.1 / C / C.1 / C.1.5: INSTITUTIONAL FITNESS REDESIGN ---
     // Formula: Alpha * Consistency * Efficiency * Activity * Stability * DiscoveryPressure
     
     // 1. Reality Factors (Phase C)
-    let avg_vol_ratio = if total_trades > 0 { total_vol_ratio / total_trades as f64 } else { 0.0 };
-    let avg_spread_reality = if total_trades > 0 { total_spread_reality / total_trades as f64 } else { 0.0 };
+    let avg_vol_ratio = total_vol_ratio / total_trades as f64;
+    let avg_spread_reality = total_spread_reality / total_trades as f64;
+    let adtv = (total_window_volume / total_trades as f64).max(100_000.0); // Dynamic ADTV from last N windows
     
-    // --- 1.1 Slippage Model (Convex) ---
-    let slippage = avg_spread_reality * (1.0 + avg_vol_ratio.powf(1.2)) * config.slippage_factor;
+    // --- 1.1 Slippage Model (Convex + Phase C.2 Liquidity Scaling) ---
+    let basic_slippage = avg_spread_reality * (1.0 + avg_vol_ratio.powf(1.2)) * config.slippage_factor;
+    let size = config.order_quantity_for_strategy as f64;
+    let participation_rate = (size / adtv).clamp(0.0001, 0.2);
+    
+    // Square Root Law of Market Impact (Phase C.2)
+    let size_slippage_multiplier = (1.0 + (participation_rate / 0.01).powi(2)).max(1.0);
+    let slippage = (basic_slippage * size_slippage_multiplier);
     let slippage = if avg_pnl_for_scenario > 0.0 { slippage.min(avg_pnl_for_scenario * 0.7_f64) } else { slippage };
 
-    // --- 1.2 Fill Probability ---
-    let avg_efficiency = if total_trades > 0 { total_efficiency / total_trades as f64 } else { 0.0 };
-    let fill_prob = (avg_efficiency * 0.7 + 0.3).clamp(0.5, 1.0);
+    // --- 1.2 Fill Probability (Phase C.2 Depth-Aware) ---
+    let avg_efficiency = total_efficiency / total_trades as f64;
+    let base_fill_prob = (avg_efficiency * 0.7 + 0.3).clamp(0.5, 1.0);
+    let fill_prob = (base_fill_prob * (-8.0 * participation_rate).exp()).clamp(0.1, 1.0);
 
     // --- 1.3 Latency Decay ---
     let latency_ticks = config.latency_ticks as f64;
@@ -3507,10 +3510,21 @@ pub(crate) fn evaluate_strategy(
         (avg_pnl_for_scenario * fill_prob * latency_penalty) - slippage
     };
 
+    // --- PHASE C.1.6b: ADAPTIVE PARTICIPATION GATE (Confidence Refinement) ---
+    // Preserve Elite Rare Alpha if Confidence (PnL * sqrt(N)) is high enough
+    let confidence = effective_pnl.abs() * (total_trades as f64).sqrt();
+    let min_trades = if confidence >= 0.01_f64 { 3 } else { 5 };
+    if total_trades < min_trades {
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!("FITNESS_TRACE: [INACTIVE] total_trades={} conf={:.4} final=0.0", total_trades, confidence);
+        }
+        return None;
+    }
+
     let reality_gap = avg_pnl_for_scenario - effective_pnl;
     let gap_ratio = if avg_pnl_for_scenario.abs() > 1e-6 { reality_gap / avg_pnl_for_scenario.abs() } else { 0.0 };
 
-    // 2. Discovery Pressure (Phase C.1)
+    // 2. Discovery Pressure (Phase C.1 / C.1.5)
     let gap_score = if total_trades < 3 {
         0.3_f64 // Penalize inactivity (fake perfection)
     } else {
@@ -3523,8 +3537,10 @@ pub(crate) fn evaluate_strategy(
         survivability_score *= 0.7_f64;
     }
 
-    // 3. Component Scores
-    let pnl_score = (effective_pnl / avg_vol_ratio.max(1e-3)).max(1e-4_f64);
+    // 3. Component Scores (Phase C.2 Dollar-PnL Objective)
+    let dollar_pnl_capacity = (effective_pnl * size).max(1e-4_f64);
+    let pnl_score = (dollar_pnl_capacity / (avg_vol_ratio * size).max(1e-3)).max(1e-4_f64);
+    
     let consistency_score = win_rate.powf(1.5).max(0.1);
     let efficiency_score = avg_efficiency.clamp(0.0, 1.0).max(0.1);
     let activity_score = (total_trades as f64 / 3.0).min(1.0).max(0.2);

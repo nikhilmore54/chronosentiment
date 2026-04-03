@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-04-03_03-31",
+    "timestamp": "2026-04-03_02-54",
     "avg_fitness": 0.0,
     "avg_pnl": 0.0,
     "cv": 0.0,
@@ -9,7 +9,7 @@
       "liquidity": 0.5,
       "participation": 0.0,
       "label": "multi_asset_nse",
-      "timestamp": 1775187119
+      "timestamp": 1775184853
     },
     "strategies_count": 1,
     "fitness_mode": "Scalable"
