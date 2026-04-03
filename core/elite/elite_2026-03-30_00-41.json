@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_00-41",
+    "avg_fitness": 0.0007774699534993762,
+    "avg_pnl": 0.0038174726515901136,
+    "cv": 0.0,
+    "regime_profile": {
+      "volatility": 0.7042913364504605,
+      "liquidity": 0.5,
+      "participation": 0.7701146076146076,
+      "label": "multi_regime_elite",
+      "timestamp": 1774831315
+    },
+    "strategies_count": 1
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_HINDUNILVR.NS_csv_window_19_10300_200_28_3",
+      "strategy": {
+        "queue_threshold": 10300,
+        "base_edge": 200,
+        "take_profit": 28,
+        "stop_loss": 3
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0038174726515901136,
+      "std_dev": 0.0006861071610482402,
+      "worst": 0.0032616908621454516,
+      "robustness": 0.0034744190710659937,
+      "fitness": 0.0007774699534993762,
+      "trade_count": 72,
+      "max_drawdown": 100.64787358466867,
+      "participation_rate": 1.0,
+      "profitable_trades": 61,
+      "zero_pnl_trades": 0,
+      "quality_trades": 40.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.24117096536037186,
+        "avg_slippage": 0.0023853413142167317,
+        "latency_impact": 9.25495337995338
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.046274766899766895,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.7042913364504605,
+      "avg_efficiency": 0.24117096536037186,
+      "avg_edge_quality": 1.4572902458974222,
+      "directional_accuracy": 0.8453768453768454,
+      "decisiveness": 0.7701146076146076,
+      "execution_friction": 1.3220177401198787e-6,
+      "exit_tp_count": 18,
+      "exit_sl_count": 54,
+      "exit_ts_count": 0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0038174726515901136
+    }
+  ]
+}

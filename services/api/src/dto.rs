@@ -3,6 +3,24 @@ use std::collections::HashMap;
 
 pub use chronosentiment_core::{Strategy, pipeline::UnifiedGaResponse, pipeline::UnifiedStrategyEvaluation as StrategyEvaluationDto};
 
+/// Type-safe boundary unit for real-world Rupees (f64).
+/// This ensures internal scaled integers (paise/units) never leak to the API.
+#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+pub struct PriceDto(pub f64);
+
+impl From<f64> for PriceDto {
+    fn from(val: f64) -> Self {
+        // Assume val is already real units if it's f64 in DTO
+        PriceDto(val)
+    }
+}
+
+impl PriceDto {
+    pub fn from_scaled(scaled: f64) -> Self {
+        PriceDto(scaled / chronosentiment_core::PRICE_SCALE as f64)
+    }
+}
+
 // --- Request DTOs ---
 
 #[derive(Debug, Deserialize)]
@@ -146,12 +164,119 @@ pub struct ReplaySuggestionsResponse {
     pub pnl: Option<chronosentiment_core::pnl_overlay::PnLMetrics>,
 }
 
+/// Mirror of `chronosentiment_core::pipeline::TradeSignal` using `PriceDto` for monetary fields.
+#[derive(Debug, Serialize)]
+pub struct TradeSignalDto {
+    pub asset: String,
+    pub regime: String,
+    pub confidence: f64,
+    pub action: chronosentiment_core::pipeline::SignalAction,
+    pub entry_type: chronosentiment_core::pipeline::EntryType,
+    pub entry_zone: Option<(PriceDto, PriceDto)>,
+    pub stop_loss: Option<PriceDto>,
+    pub target: Option<PriceDto>,
+    pub expected_edge: f64,
+    pub scenario_pnl: f64,
+    pub risk_reward: f64,
+    pub position_size: f64,
+    pub conviction: f64,
+    pub composite_score: f64,
+    pub consensus_strength: f64,
+    pub conflict_score: f64,
+    pub execution_confidence: f64,
+    pub short_term_capture_eff: f64,
+    pub long_term_capture_eff: f64,
+    pub reject_reason: Option<String>,
+    pub expected_holding_time: String,
+    pub current_pnl: f64,
+    pub peak_pnl: f64,
+    pub exit_reason: Option<chronosentiment_core::pipeline::ExitReason>,
+    pub is_open: bool,
+    pub strategy_id: String,
+    pub reason: String,
+    pub regime_confidence: f64,
+    pub rank_score: f64,
+    pub rank_position: Option<u32>,
+    pub allocated_capital: Option<PriceDto>,
+    pub quantity: Option<u64>,
+}
+
+impl From<chronosentiment_core::pipeline::TradeSignal> for TradeSignalDto {
+    fn from(s: chronosentiment_core::pipeline::TradeSignal) -> Self {
+        Self {
+            asset: s.asset,
+            regime: s.regime,
+            confidence: s.confidence,
+            action: s.action,
+            entry_type: s.entry_type,
+            entry_zone: s.entry_zone.map(|(lo, hi)| (PriceDto::from_scaled(lo), PriceDto::from_scaled(hi))),
+            stop_loss: s.stop_loss.map(PriceDto::from_scaled),
+            target: s.target.map(PriceDto::from_scaled),
+            expected_edge: s.expected_edge,
+            scenario_pnl: s.scenario_pnl,
+            risk_reward: s.risk_reward,
+            position_size: s.position_size,
+            conviction: s.conviction,
+            composite_score: s.composite_score,
+            consensus_strength: s.consensus_strength,
+            conflict_score: s.conflict_score,
+            execution_confidence: s.execution_confidence,
+            short_term_capture_eff: s.short_term_capture_eff,
+            long_term_capture_eff: s.long_term_capture_eff,
+            reject_reason: s.reject_reason,
+            expected_holding_time: s.expected_holding_time,
+            current_pnl: s.current_pnl,
+            peak_pnl: s.peak_pnl,
+            exit_reason: s.exit_reason,
+            is_open: s.is_open,
+            strategy_id: s.strategy_id,
+            reason: s.reason,
+            regime_confidence: s.regime_confidence,
+            rank_score: s.rank_score,
+            rank_position: s.rank_position,
+            allocated_capital: s.allocated_capital.map(PriceDto::from_scaled),
+            quantity: s.quantity,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct SignalsSnapshotDto {
+    pub timestamp: u64,
+    pub signals: Vec<TradeSignalDto>,
+}
+
+impl From<chronosentiment_core::pipeline::SignalsSnapshot> for SignalsSnapshotDto {
+    fn from(s: chronosentiment_core::pipeline::SignalsSnapshot) -> Self {
+        Self {
+            timestamp: s.timestamp,
+            signals: s.signals.into_iter().map(TradeSignalDto::from).collect(),
+        }
+    }
+}
+#[derive(Debug, Serialize, Clone)]
+pub struct TradeInspectorDecision {
+    pub order_id: String,
+    pub side: chronosentiment_core::Side,
+    pub price: f64,
+    pub quantity: u64,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TradeInspectorOutcome {
+    pub filled_qty: u64,
+    pub remaining_qty: u64,
+    pub avg_price: f64,
+    pub status: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct TradeInspectorResponse {
     pub order_id: String,
-    pub decision: chronosentiment_core::DecisionLayer,
-    pub execution: Vec<serde_json::Value>, // Simplified for now as steps
-    pub outcome: chronosentiment_core::OutcomeLayer,
+    pub decision: TradeInspectorDecision,
+    pub execution: Vec<serde_json::Value>,
+    pub outcome: TradeInspectorOutcome,
     pub causal_chain: Option<Vec<EventWrapper>>,
 }
 

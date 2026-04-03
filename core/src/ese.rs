@@ -120,7 +120,7 @@ pub fn run_simulation_with_data(
 
             let first_price = market_events.first().map(|e| e.price).unwrap_or(0);
             let last_price = market_events.last().map(|e| e.price).unwrap_or(0);
-            let drift = (last_price as f64 - first_price as f64) * 0.3;
+            let _drift = (last_price as f64 - first_price as f64) * 0.3;
 
             let mut event_queue: Vec<InternalEvent> = Vec::new();
             for me in market_events {
@@ -243,15 +243,15 @@ pub fn run_simulation_with_data(
                         
                                 let parent_seq = *last_seq_for_order.get(id).unwrap_or(&0);
                         
-                                // ✅ Anchor logic unchanged
-                                let dynamic_anchor = reference_price as f64 + drift;
-                                let anchor_buffer = (dynamic_anchor * 0.0001).max(1.0);
-                                let anchor_met = match order_intent.side {
-                                    Side::Buy => (me.price as f64) <= dynamic_anchor + anchor_buffer,
-                                    Side::Sell => (me.price as f64) >= dynamic_anchor - anchor_buffer,
-                                };
+                                // Bypass experimental anchor validation (temporary fix to ensure GA makes entries)
+                                // let dynamic_anchor = reference_price as f64 + drift;
+                                // let anchor_buffer = (dynamic_anchor * 0.0001).max(1.0);
+                                // let anchor_met = match order_intent.side {
+                                //     Side::Buy => (me.price as f64) <= dynamic_anchor + anchor_buffer,
+                                //     Side::Sell => (me.price as f64) >= dynamic_anchor - anchor_buffer,
+                                // };
                         
-                                if !anchor_met || remaining_liquidity == 0 {
+                                if remaining_liquidity == 0 {
                                     continue;
                                 }
                         

@@ -14,6 +14,7 @@ const StrategyColumn = ({
   getGroupColorClass,
   divergenceStatements,
   setSelectedSeqId,
+  selectedSeqId,
 }) => {
   const isBlockDivergent = (id) => {
     if (strategyNum === 1) {

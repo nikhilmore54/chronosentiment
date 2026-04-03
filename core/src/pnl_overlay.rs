@@ -280,6 +280,7 @@ mod tests {
     fn pnl_overlay_produces_trades() {
         let events = vec![
             NormalizedMarketEvent {
+                asset: "TEST".to_string(),
                 exchange_ts: 1,
                 price: 100.0,
                 volume: 1.0,
@@ -290,6 +291,7 @@ mod tests {
                 asks: None,
             },
             NormalizedMarketEvent {
+                asset: "TEST".to_string(),
                 exchange_ts: 2,
                 price: 101.0,
                 volume: 1.0,
@@ -300,6 +302,7 @@ mod tests {
                 asks: None,
             },
             NormalizedMarketEvent {
+                asset: "TEST".to_string(),
                 exchange_ts: 3,
                 price: 102.0,
                 volume: 1.0,

@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_08-19",
+    "avg_fitness": 0.18678140551232658,
+    "avg_pnl": 0.0022276520575681674,
+    "cv": 0.06659124226503788,
+    "regime_profile": {
+      "volatility": 0.7243581359911078,
+      "liquidity": 0.5,
+      "participation": 0.4737465600275198,
+      "label": "multi_regime_elite",
+      "timestamp": 1774858769
+    },
+    "strategies_count": 2,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_RELIANCE_5M_CLEAN_csv_window_12_8425_500_456_281",
+      "strategy": {
+        "queue_threshold": 8425,
+        "base_edge": 500,
+        "take_profit": 456,
+        "stop_loss": 281
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0022146803951073645,
+      "std_dev": 0.0007696366161480368,
+      "worst": 0.0011784242008151923,
+      "robustness": 0.001829862087033346,
+      "fitness": 0.1992194113374022,
+      "trade_count": 56,
+      "max_drawdown": 100.93319074393133,
+      "participation_rate": 1.0,
+      "profitable_trades": 46,
+      "zero_pnl_trades": 0,
+      "quality_trades": 24.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4575402178781578,
+        "avg_slippage": 0.0009939178807062228,
+        "latency_impact": 6.674074074074074
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.03337037037037038,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.7236345075128168,
+      "avg_efficiency": 0.4575402178781578,
+      "avg_edge_quality": 2.5033826091537326,
+      "directional_accuracy": 0.8240740740740741,
+      "decisiveness": 0.40972222222222215,
+      "execution_friction": 8.163416034408128,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 10,
+      "exit_sl_count": 13,
+      "exit_ts_count": 33,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0022146803951073645,
+      "pnl_from_tp": 0.061730406783116594,
+      "pnl_from_sl": 0.003492169117106623,
+      "max_trade_pnl": 0.01885311707948997
+    },
+    {
+      "strategy_id": "strat_RELIANCE_5M_CLEAN_csv_window_12_11200_500_456_281",
+      "strategy": {
+        "queue_threshold": 11200,
+        "base_edge": 500,
+        "take_profit": 456,
+        "stop_loss": 281
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0022406237200289707,
+      "std_dev": 0.0007697899189191102,
+      "worst": 0.0013388479656031484,
+      "robustness": 0.0018557287605694157,
+      "fitness": 0.17434339968725096,
+      "trade_count": 53,
+      "max_drawdown": 100.5232342052894,
+      "participation_rate": 1.0,
+      "profitable_trades": 43,
+      "zero_pnl_trades": 0,
+      "quality_trades": 21.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.32369027942579603,
+        "avg_slippage": 0.0014274597702939164,
+        "latency_impact": 6.8730650154798765
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.03436532507739939,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.7250817644693988,
+      "avg_efficiency": 0.32369027942579603,
+      "avg_edge_quality": 2.180624765388309,
+      "directional_accuracy": 0.8163054695562435,
+      "decisiveness": 0.5377708978328174,
+      "execution_friction": 12.020254805183372,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 6,
+      "exit_sl_count": 14,
+      "exit_ts_count": 33,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0022406237200289707,
+      "pnl_from_tp": 0.04375592071316891,
+      "pnl_from_sl": 0.01796813378584399,
+      "max_trade_pnl": 0.017555478711043758
+    }
+  ]
+}

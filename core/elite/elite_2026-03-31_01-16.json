@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-31_01-16",
+    "avg_fitness": 0.20950250133606643,
+    "avg_pnl": 0.0030455717627892323,
+    "cv": 0.42783200588577736,
+    "regime_profile": {
+      "volatility": 0.6874325424737182,
+      "liquidity": 0.5,
+      "participation": 0.7371693121693121,
+      "label": "multi_regime_elite",
+      "timestamp": 1774919811
+    },
+    "strategies_count": 2,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_KOTAKBANK.NS_csv_window_3_12000_500_113_154",
+      "strategy": {
+        "queue_threshold": 12000,
+        "base_edge": 500,
+        "take_profit": 113,
+        "stop_loss": 154
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.003619964521933413,
+      "std_dev": 0.0006346514773272856,
+      "worst": 0.0030364675725187374,
+      "robustness": 0.0033026387832697703,
+      "fitness": 0.2991343767207635,
+      "trade_count": 17,
+      "max_drawdown": 99.0978129468492,
+      "participation_rate": 1.0,
+      "profitable_trades": 13,
+      "zero_pnl_trades": 0,
+      "quality_trades": 11.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.41555754617625834,
+        "avg_slippage": 0.002207037751659388,
+        "latency_impact": 11.877777777777778
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.05938888888888889,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.6611822798260771,
+      "avg_efficiency": 0.41555754617625834,
+      "avg_edge_quality": 2.402495459211877,
+      "directional_accuracy": 0.8222222222222223,
+      "decisiveness": 0.7525925925925927,
+      "execution_friction": 32.854567359689376,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 8,
+      "exit_sl_count": 6,
+      "exit_ts_count": 3,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.003619964521933413,
+      "pnl_from_tp": 0.05196693217625739,
+      "pnl_from_sl": 0.01188293052003377,
+      "max_trade_pnl": 0.009048882742105963
+    },
+    {
+      "strategy_id": "strat_KOTAKBANK.NS_csv_window_2_8100_800_440_82",
+      "strategy": {
+        "queue_threshold": 8100,
+        "base_edge": 800,
+        "take_profit": 440,
+        "stop_loss": 82
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.002471179003645052,
+      "std_dev": 0.0005882661521443076,
+      "worst": 0.0019240731249836268,
+      "robustness": 0.0021770459275728985,
+      "fitness": 0.11987062595136937,
+      "trade_count": 23,
+      "max_drawdown": 100.23809837104643,
+      "participation_rate": 1.0,
+      "profitable_trades": 19,
+      "zero_pnl_trades": 0,
+      "quality_trades": 13.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.3668736865007358,
+        "avg_slippage": 0.0014734171716731654,
+        "latency_impact": 9.249206349206348
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.04624603174603175,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.7136828051213594,
+      "avg_efficiency": 0.3668736865007358,
+      "avg_edge_quality": 2.1789129222144843,
+      "directional_accuracy": 0.8444444444444444,
+      "decisiveness": 0.7217460317460317,
+      "execution_friction": 5.928812870430609,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 9,
+      "exit_sl_count": 13,
+      "exit_ts_count": 1,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.002471179003645052,
+      "pnl_from_tp": 0.04124236848562589,
+      "pnl_from_sl": 0.014071211231676763,
+      "max_trade_pnl": 0.0063498701328089146
+    }
+  ]
+}

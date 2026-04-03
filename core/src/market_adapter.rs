@@ -11,6 +11,70 @@ pub struct Candle {
     pub volume: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CandleRow {
+    #[serde(rename = "Timestamp")]
+    timestamp: String,
+
+    #[serde(rename = "Open")]
+    open: f64,
+
+    #[serde(rename = "High")]
+    high: f64,
+
+    #[serde(rename = "Low")]
+    low: f64,
+
+    #[serde(rename = "Close")]
+    close: f64,
+
+    #[serde(rename = "Volume")]
+    volume: f64,
+
+    #[serde(default)]
+    #[serde(rename = "Spread")]
+    _spread: Option<f64>,
+
+    #[serde(default)]
+    #[serde(rename = "Slippage")]
+    _slippage: Option<f64>,
+
+    #[serde(default)]
+    #[serde(rename = "Execution_Buy")]
+    _exec_buy: Option<f64>,
+
+    #[serde(default)]
+    #[serde(rename = "Execution_Sell")]
+    _exec_sell: Option<f64>,
+}
+
+fn parse_timestamp(ts: &str) -> i64 {
+    use chrono::{NaiveDateTime, DateTime};
+
+    NaiveDateTime::parse_from_str(ts, "%Y-%m-%d %H:%M:%S")
+        .unwrap_or_else(|_| {
+            println!("BAD TIMESTAMP: {}", ts);
+            DateTime::from_timestamp(0, 0).unwrap().naive_utc()
+        })
+        .and_utc()
+        .timestamp()
+}
+
+const PRICE_SCALE: f64 = 10000.0;
+
+pub fn rows_to_candles(rows: Vec<CandleRow>) -> Vec<Candle> {
+    rows.into_iter().map(|row| {
+        Candle {
+            timestamp: parse_timestamp(&row.timestamp) as u64,
+            open: (row.open * PRICE_SCALE) as u64,
+            high: (row.high * PRICE_SCALE) as u64,
+            low: (row.low * PRICE_SCALE) as u64,
+            close: (row.close * PRICE_SCALE) as u64,
+            volume: row.volume as u64,
+        }
+    }).collect()
+}
+
 pub fn convert_candle_to_events(candle: &Candle, mut seq_id: u64) -> (Vec<SimEvent>, u64) {
     let mut events = Vec::new();
     let time_step = 1; // Simple deterministic time increment within candle
@@ -52,4 +116,24 @@ pub fn convert_series_to_events(candles: &[Candle], start_seq_id: u64) -> Vec<Si
     }
 
     all_events
+}
+
+pub fn convert_events_to_candles(events: &[crate::MarketEvent]) -> Vec<Candle> {
+    if events.is_empty() { return Vec::new(); }
+    let open = events[0].price as u64;
+    let mut high = open;
+    let mut low = open;
+    let mut close = open;
+    let mut volume = 0;
+    let timestamp = events[0].exchange_ts;
+    
+    for ev in events {
+        let px = ev.price as u64;
+        high = high.max(px);
+        low = low.min(px);
+        close = px;
+        volume += ev.quantity as u64;
+    }
+    
+    vec![Candle { timestamp, open, high, low, close, volume }]
 }

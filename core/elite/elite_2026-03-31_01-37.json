@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-31_01-37",
+    "avg_fitness": 0.17157659944393605,
+    "avg_pnl": 0.0037292614810138323,
+    "cv": 0.0,
+    "regime_profile": {
+      "volatility": 0.6994980830401696,
+      "liquidity": 0.5,
+      "participation": 0.704074074074074,
+      "label": "multi_regime_elite",
+      "timestamp": 1774921074
+    },
+    "strategies_count": 1,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_JSWSTEEL.NS_csv_window_17_12000_500_113_154",
+      "strategy": {
+        "queue_threshold": 12000,
+        "base_edge": 500,
+        "take_profit": 113,
+        "stop_loss": 154
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0037292614810138323,
+      "std_dev": 0.00004407506651122288,
+      "worst": 0.003668238652663797,
+      "robustness": 0.003707223947758221,
+      "fitness": 0.17157659944393605,
+      "trade_count": 39,
+      "max_drawdown": 100.34638266645389,
+      "participation_rate": 1.0,
+      "profitable_trades": 35,
+      "zero_pnl_trades": 0,
+      "quality_trades": 26.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4423091272624005,
+        "avg_slippage": 0.002081392775842915,
+        "latency_impact": 13.203703703703704
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.06601851851851852,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.6994980830401696,
+      "avg_efficiency": 0.4423091272624005,
+      "avg_edge_quality": 2.1583570501749985,
+      "directional_accuracy": 0.8962962962962964,
+      "decisiveness": 0.704074074074074,
+      "execution_friction": 33.643731501385794,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 18,
+      "exit_sl_count": 19,
+      "exit_ts_count": 2,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0037292614810138323,
+      "pnl_from_tp": 0.09980496116055665,
+      "pnl_from_sl": 0.04382081825281138,
+      "max_trade_pnl": 0.012010868754859617
+    }
+  ]
+}

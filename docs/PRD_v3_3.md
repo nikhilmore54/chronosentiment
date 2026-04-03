@@ -198,6 +198,22 @@ Development will proceed in phases, beginning with core simulation capabilities 
 | Phase 3 | Optimization      | Advanced analysis |
 | Phase 4 | Integration       | Broader adoption  |
 
+### 11.1 Deterministic Exit Intelligence (Pipeline Phase-2 Extension)
+
+As part of execution realism, ChronoSentiment introduces deterministic exit intelligence in `core/src/pipeline.rs` to improve profit capture after entry, without changing entry generation behavior.
+
+**Product constraints**
+- Deterministic only (no randomness)
+- No change to signal generation or entry decisions
+- No change to edge computation path (`eval_edge`, `weak_eval_edge`)
+- No change to event ordering or sequencing semantics
+- Localized implementation and observer-compatible diagnostics
+
+**Expected product effect**
+- Better profit capture
+- Reduced giveback after local pnl peaks
+- Clear exit traceability via reason-coded diagnostics
+
 ---
 
 ## 12. Closing Perspective

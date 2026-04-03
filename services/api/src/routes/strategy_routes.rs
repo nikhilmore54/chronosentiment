@@ -1,7 +1,7 @@
 use axum::{routing::{get, post}, Router};
 
 use crate::{
-    handlers::strategy_handlers::{compare_strategies_handler, evaluate_strategy_handler, inspect_strategy_handler, test_determinism_handler, run_ga_handler, timeline_handler, events_handler, replay_handler, order_inspection_handler, health_handler, latest_signals_handler, trade_suggestions_handler, replay_suggestions_handler},
+    handlers::strategy_handlers::{compare_strategies_handler, evaluate_strategy_handler, inspect_strategy_handler, test_determinism_handler, run_ga_handler, timeline_handler, events_handler, replay_handler, order_inspection_handler, health_handler, latest_signals_handler, trade_suggestions_handler, replay_suggestions_handler, get_strategy_store_handler},
     services::evaluation_service::EvaluationService,
 };
 
@@ -18,6 +18,7 @@ pub fn strategy_routes() -> Router<EvaluationService> {
         .route("/replay/:id", get(replay_handler))
         .route("/order/:id", get(order_inspection_handler))
         .route("/ga/global-ranking", get(crate::handlers::strategy_handlers::get_global_ranking_handler))
+        .route("/ga/strategy-store", get(get_strategy_store_handler))
         .route("/signals/latest", get(latest_signals_handler))
         .route("/signals/trade-suggestions", get(trade_suggestions_handler))
         .route("/signals/replay-suggestions", get(replay_suggestions_handler))

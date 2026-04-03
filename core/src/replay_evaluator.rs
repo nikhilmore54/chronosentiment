@@ -149,6 +149,7 @@ mod tests {
     fn replay_metrics_populate() {
         let events = vec![
             NormalizedMarketEvent {
+                asset: "TEST".to_string(),
                 exchange_ts: 1,
                 price: 100.0,
                 volume: 1.0,
@@ -159,6 +160,7 @@ mod tests {
                 asks: None,
             },
             NormalizedMarketEvent {
+                asset: "TEST".to_string(),
                 exchange_ts: 2,
                 price: 101.0,
                 volume: 1.0,

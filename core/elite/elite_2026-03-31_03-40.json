@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-31_03-40",
+    "avg_fitness": 0.44806057266857874,
+    "avg_pnl": 0.004075918072938273,
+    "cv": 0.0,
+    "regime_profile": {
+      "volatility": 0.6934350060155277,
+      "liquidity": 0.5,
+      "participation": 0.7130555555555556,
+      "label": "multi_regime_elite",
+      "timestamp": 1774928452
+    },
+    "strategies_count": 1,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_ICICIBANK.NS_csv_window_14_12000_500_113_154",
+      "strategy": {
+        "queue_threshold": 12000,
+        "base_edge": 500,
+        "take_profit": 113,
+        "stop_loss": 154
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.004075918072938273,
+      "std_dev": 0.0011608354905044155,
+      "worst": 0.0026386508851657595,
+      "robustness": 0.0034955003276860653,
+      "fitness": 0.44806057266857874,
+      "trade_count": 26,
+      "max_drawdown": 100.0336080774556,
+      "participation_rate": 1.0,
+      "profitable_trades": 21,
+      "zero_pnl_trades": 0,
+      "quality_trades": 15.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4745265230264237,
+        "avg_slippage": 0.002775938573749022,
+        "latency_impact": 9.741666666666667
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.04870833333333333,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.6934350060155277,
+      "avg_efficiency": 0.4745265230264237,
+      "avg_edge_quality": 2.4957344029185062,
+      "directional_accuracy": 0.7999999999999999,
+      "decisiveness": 0.7130555555555556,
+      "execution_friction": 39.24001618871684,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 14,
+      "exit_sl_count": 11,
+      "exit_ts_count": 1,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.004075918072938273,
+      "pnl_from_tp": 0.09431372253630696,
+      "pnl_from_sl": 0.008877612984543105,
+      "max_trade_pnl": 0.029803633125488938
+    }
+  ]
+}

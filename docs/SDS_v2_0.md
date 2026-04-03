@@ -528,6 +528,84 @@ Every major system capability (GA, Evaluation, Comparison) MUST have a correspon
 
 ---
 
+# 16. 🧭 Deterministic Exit Intelligence (Pipeline Observer Contract)
+
+This section defines the documentation contract for implementing deterministic exit intelligence in `core/src/pipeline.rs` with strictly localized changes.
+
+## 16.1 Scope and Non-Goals
+
+**In scope**
+- Add deterministic exit-state fields to `TradeSignal`
+- Add deterministic exit trigger classification
+- Extend existing edge/debug observability with exit metadata
+- Extend edge-loss summary with exit counters and average realized exit pnl
+
+**Out of scope**
+- No change to signal generation or entry decisions
+- No change to `eval_edge` / `weak_eval_edge` computation path
+- No change to event ordering, sequencing, or replay semantics
+- No stochastic logic
+
+## 16.2 `TradeSignal` Extension
+
+`TradeSignal` should be extended with:
+- `current_pnl: f64`
+- `peak_pnl: f64`
+- `exit_reason: Option<ExitReason>`
+- `is_open: bool`
+
+`ExitReason` is defined as:
+
+```text
+TakeProfit | TrailingStop | EdgeDecay | RegimeFlip
+```
+
+## 16.3 Deterministic Exit Conditions
+
+An open trade exits immediately when any condition is true:
+
+1. **Take Profit**: `current_pnl >= take_profit_threshold`
+2. **Trailing Stop**: `current_pnl < peak_pnl * 0.6`
+3. **Edge Decay**: `effective_eval_edge < initial_edge * 0.5`
+4. **Regime Flip**: `detected_regime != entry_regime`
+
+Execution rule:
+- Exit closes the position fully.
+- No delayed/queued exit events are introduced in this pipeline layer.
+
+## 16.4 State Tracking Rules
+
+For each open trade lifecycle:
+- Capture immutable `entry_price`
+- Recompute `current_pnl` deterministically per step
+- Update `peak_pnl = max(previous_peak_pnl, current_pnl)`
+
+These updates must remain observer-compatible with existing breakdown/debug paths.
+
+## 16.5 Observability Extension
+
+`EDGE_TRANSFER_DEBUG` style output should include:
+- `current_pnl`
+- `peak_pnl`
+- `exit_triggered` (bool)
+- `exit_reason` (enum/string)
+
+## 16.6 Edge Breakdown Extension
+
+`EdgeLossBreakdown` should include:
+- `exit_count: usize`
+- `exit_by_reason: HashMap<ExitReason, usize>`
+- `avg_exit_pnl: f64`
+
+## 16.7 Validation Requirements
+
+- `cargo check` passes
+- No new lint warnings in changed files
+- Entry logic remains unchanged
+- Deterministic output is preserved for identical inputs
+
+---
+
 # 🔚 FINAL SUMMARY
 
 The strategy system is:

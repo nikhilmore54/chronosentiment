@@ -1,5 +1,6 @@
-use chronosentiment_api::*;
-use chronosentiment_core::*;
+use api::certify::handle_certify;
+use chronosentiment_core::harness::run_simulation;
+use chronosentiment_core::ExecutionMode;
 
 fn main() {
     println!("=== ChronoSentiment MVP One-Command Certification ===\n");

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const PRICE_SCALE = 100;
+
 
 function safeDisplay(value, digits = 2) {
   if (value === undefined || value === null || Number.isNaN(value)) {
@@ -177,6 +177,9 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [signalsSnapshot, setSignalsSnapshot] = useState(null);
+  const [persistedStorePayload, setPersistedStorePayload] = useState(null);
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [storeError, setStoreError] = useState(null);
   const [signalsTopK, setSignalsTopK] = useState(2);
   const [includeWeakSignals, setIncludeWeakSignals] = useState(true);
   const [strongOnlySignals, setStrongOnlySignals] = useState(false);
@@ -197,6 +200,29 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
     });
     return bestIdx;
   };
+
+  const fetchPersistedStrategyStore = async () => {
+    setStoreLoading(true);
+    setStoreError(null);
+    try {
+      const response = await fetch('http://localhost:8000/ga/strategy-store');
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to load persisted strategy store');
+      }
+      const data = await response.json();
+      setPersistedStorePayload(data);
+    } catch (err) {
+      setStoreError(err.message);
+      setPersistedStorePayload(null);
+    } finally {
+      setStoreLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPersistedStrategyStore();
+  }, []);
 
   const handleRunGA = async () => {
     setLoading(true);
@@ -225,6 +251,7 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
       console.log("SIGNALS_SNAPSHOT:", signalsData);
       setGaResult(normalized);
       setSignalsSnapshot(signalsData);
+      await fetchPersistedStrategyStore();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -235,6 +262,46 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
   return (
     <div className="p-4">
       <h2 className="text-2xl font-semibold mb-4">Run Genetic Algorithm</h2>
+
+      <details className="mb-6 border border-gray-200 rounded-lg bg-gray-50 p-3" open>
+        <summary className="cursor-pointer font-semibold text-gray-800">
+          Persisted strategy store (on-disk JSON)
+        </summary>
+        <p className="text-xs text-gray-600 mt-2 mb-2">
+          Same file the API loads for signals: full per-asset GA results written by the training pipeline
+          (interactive <code className="bg-gray-200 px-1 rounded">/run_ga</code> does not overwrite this file).
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded"
+            onClick={fetchPersistedStrategyStore}
+            disabled={storeLoading}
+          >
+            {storeLoading ? 'Loading…' : 'Refresh'}
+          </button>
+          {persistedStorePayload?.path && (
+            <span className="text-xs text-gray-600 font-mono break-all">
+              Path: {persistedStorePayload.path}
+            </span>
+          )}
+        </div>
+        {storeError && <p className="text-red-600 text-sm mt-2">{storeError}</p>}
+        {persistedStorePayload !== null && persistedStorePayload.store != null && (
+          <pre className="mt-3 text-xs overflow-x-auto max-h-96 overflow-y-auto bg-gray-900 text-gray-100 p-3 rounded">
+            {JSON.stringify(persistedStorePayload.store, null, 2)}
+          </pre>
+        )}
+        {persistedStorePayload !== null &&
+          persistedStorePayload.store == null &&
+          !storeLoading &&
+          !storeError && (
+            <p className="text-sm text-gray-600 mt-2">
+              No store on disk at that path (or parse failed). Run the full training pipeline to generate{' '}
+              <code className="bg-gray-200 px-1 rounded">strategy_store.json</code>.
+            </p>
+          )}
+      </details>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
@@ -304,8 +371,8 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
             <h3 className="text-xl font-semibold mb-2">🏆 Best Strategy (Execution Verified)</h3>
             <p><span className="font-semibold">Execution Fitness:</span> {safeDisplay(resolveExecutionFitness(gaResult.global_best), 6)}</p>
             <p><span className="font-semibold">GA Fitness:</span> {resolveGaFitness(gaResult.global_best) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(gaResult.global_best), 6)}</p>
-            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay((gaResult.global_best?.avg ?? 0) / PRICE_SCALE, 6)}</p>
-            <p><span className="font-semibold">Std Dev:</span> {safeDisplay((gaResult.global_best?.std ?? 0) / PRICE_SCALE, 6)}</p>
+            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay(gaResult.global_best?.avg, 2)}</p>
+            <p><span className="font-semibold">Std Dev:</span> {safeDisplay(gaResult.global_best?.std, 4)}</p>
             <p><span className="font-semibold">Found at Generation:</span> {resolvePeakGeneration(gaResult) ?? 'N/A'}</p>
           </div>
 
@@ -313,8 +380,8 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
             <h3 className="text-xl font-semibold mb-2">📍 Final Generation Best (Search Result)</h3>
             <p><span className="font-semibold">Execution Fitness:</span> {safeDisplay(resolveExecutionFitness(gaResult.final_generation_best ?? gaResult.final_gen_best), 6)}</p>
             <p><span className="font-semibold">GA Fitness:</span> {resolveGaFitness(gaResult.final_generation_best ?? gaResult.final_gen_best) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(gaResult.final_generation_best ?? gaResult.final_gen_best), 6)}</p>
-            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay(((gaResult.final_generation_best ?? gaResult.final_gen_best)?.avg ?? 0) / PRICE_SCALE, 6)}</p>
-            <p><span className="font-semibold">Std Dev:</span> {safeDisplay(((gaResult.final_generation_best ?? gaResult.final_gen_best)?.std ?? 0) / PRICE_SCALE, 6)}</p>
+            <p><span className="font-semibold">Avg PnL:</span> {safeDisplay((gaResult.final_generation_best ?? gaResult.final_gen_best)?.avg, 2)}</p>
+            <p><span className="font-semibold">Std Dev:</span> {safeDisplay((gaResult.final_generation_best ?? gaResult.final_gen_best)?.std, 4)}</p>
           </div>
 
           {gaResult.best_per_regime && Object.keys(gaResult.best_per_regime).length > 0 && (
@@ -372,8 +439,8 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay(resolveExecutionFitness(row), 6)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{divergenceBadge(row)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay((row.avg ?? 0) / PRICE_SCALE, 6)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay((row.std ?? 0) / PRICE_SCALE, 6)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay(row.avg, 2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeDisplay(row.std, 4)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.classification}</td>
                   </tr>
                 ))}
@@ -424,9 +491,14 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
               strongOnly,
             });
             const trades = meta?.trades ?? 0;
+            const totalScenarios = meta?.total_scenarios ?? 0;
             const weakEx = elb?.weak_executed_count ?? 0;
-            const strongShare = trades > 0 ? ((trades - weakEx) / trades) * 100 : 0;
-            const weakShare = trades > 0 ? (weakEx / trades) * 100 : 0;
+            // `trades` = funded positions (qty>0) after allocator; `weakEx` = weak-path BUY/SELL scenario
+            // signals (pre-alloc). Do NOT mix into (trades - weakEx) / trades — that yields nonsense (e.g. -900%).
+            const weakPctOfScenarios =
+              totalScenarios > 0 ? (weakEx / totalScenarios) * 100 : 0;
+            const fundedPctOfScenarios =
+              totalScenarios > 0 ? (trades / totalScenarios) * 100 : 0;
 
             return (
               <div className="mt-6 space-y-6">
@@ -521,11 +593,11 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                           <div className="text-sm mt-1 text-gray-700">
                             Entry:{' '}
                             {Array.isArray(s.entry_zone)
-                              ? `${safeDisplay((s.entry_zone[0] ?? 0) / PRICE_SCALE, 2)} - ${safeDisplay((s.entry_zone[1] ?? 0) / PRICE_SCALE, 2)}`
+                              ? `${safeDisplay(s.entry_zone[0], 2)} - ${safeDisplay(s.entry_zone[1], 2)}`
                               : 'N/A'}
                           </div>
                           <div className="text-sm text-gray-700">
-                            Target: {safeDisplay((s.target ?? 0) / PRICE_SCALE, 2)} | SL: {safeDisplay((s.stop_loss ?? 0) / PRICE_SCALE, 2)} | Holding:{' '}
+                            Target: {safeDisplay(s.target, 2)} | SL: {safeDisplay(s.stop_loss, 2)} | Holding:{' '}
                             {s.expected_holding_time ?? 'N/A'}
                           </div>
                         </div>
@@ -536,15 +608,23 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
 
                 <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
                   <h3 className="text-xl font-semibold mb-2">📉 Participation &amp; edge</h3>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Participation = funded positions ÷ scenarios. Weak count = weak-eval surrogate BUY/SELL rows
+                    (pre-capital); funded count = rows with qty &gt; 0 after allocator — different denominators than
+                    a single &quot;strong %&quot;.
+                  </p>
                   <ul className="text-sm space-y-1">
-                    <li>Participation: {safeDisplay(meta?.participation, 2)}</li>
                     <li>
-                      Strong trades (est.): {safeDisplay(strongShare, 1)}% / Weak trades (est.):{' '}
-                      {safeDisplay(weakShare, 1)}%
+                      Participation: {safeDisplay(meta?.participation, 2)} ({trades} funded / {totalScenarios}{' '}
+                      scenarios)
                     </li>
                     <li>
-                      Edge retention: {safeDisplay(elb?.edge_retention_ratio, 2)} — true:{' '}
-                      {safeDisplay(elb?.true_edge_retention, 2)}
+                      Funded share of scenarios: {safeDisplay(fundedPctOfScenarios, 1)}% / Weak surrogate signals
+                      (share of scenarios): {safeDisplay(weakPctOfScenarios, 1)}% (count {weakEx})
+                    </li>
+                    <li>
+                      Edge retention (signal vs Σ eval edge): {safeDisplay(elb?.edge_retention_ratio, 2)} — inclusive
+                      (signal vs eval + weak missing): {safeDisplay(elb?.true_edge_retention, 2)}
                     </li>
                   </ul>
                 </div>
@@ -586,11 +666,11 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
                               <td className="py-2 px-4 border-b">{safeDisplay(s.confidence, 3)}</td>
                               <td className="py-2 px-4 border-b">
                                 {Array.isArray(s.entry_zone)
-                                  ? `${safeDisplay((s.entry_zone[0] ?? 0) / PRICE_SCALE, 2)} - ${safeDisplay((s.entry_zone[1] ?? 0) / PRICE_SCALE, 2)}`
+                                  ? `${safeDisplay(s.entry_zone[0], 2)} - ${safeDisplay(s.entry_zone[1], 2)}`
                                   : 'N/A'}
                               </td>
-                              <td className="py-2 px-4 border-b">{safeDisplay((s.stop_loss ?? 0) / PRICE_SCALE, 2)}</td>
-                              <td className="py-2 px-4 border-b">{safeDisplay((s.target ?? 0) / PRICE_SCALE, 2)}</td>
+                              <td className="py-2 px-4 border-b">{safeDisplay(s.stop_loss, 2)}</td>
+                              <td className="py-2 px-4 border-b">{safeDisplay(s.target, 2)}</td>
                               <td className="py-2 px-4 border-b">{s.expected_holding_time ?? 'N/A'}</td>
                             </tr>
                           ))}

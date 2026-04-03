@@ -1,11 +1,11 @@
 import ErrorBoundary from './ErrorBoundary';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import TimelineViewer from './components/TimelineViewer';
 import EventExplorer from './components/EventExplorer';
 import TradeInspector from './TradeInspector';
 import ReplayStepper from './ReplayStepper'; // New component
 import StateViewerPanel from './StateViewerPanel'; // New component
-import { SystemState, SimEvent } from './types';
+import { SystemState } from './types';
 import { API_BASE_URL } from './config';
 
 interface EventWrapper {

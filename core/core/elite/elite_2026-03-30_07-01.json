@@ -1,0 +1,211 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_07-01",
+    "avg_fitness": 0.2082945690578784,
+    "avg_pnl": 0.0035873741103948547,
+    "cv": 0.49333393878771015,
+    "regime_profile": {
+      "volatility": 0.8994538468022412,
+      "liquidity": 0.5,
+      "participation": 0.5759609100050276,
+      "label": "multi_regime_elite",
+      "timestamp": 1774854088
+    },
+    "strategies_count": 4,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_ICICIBANK.NS_csv_window_4_8212_366_23_15",
+      "strategy": {
+        "queue_threshold": 8212,
+        "base_edge": 366,
+        "take_profit": 23,
+        "stop_loss": 15
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0035038703210191926,
+      "std_dev": 0.0007968447948070232,
+      "worst": 0.0027140010323831844,
+      "robustness": 0.0031054479236156812,
+      "fitness": 0.30505672112862375,
+      "trade_count": 45,
+      "max_drawdown": 101.0129876533261,
+      "participation_rate": 1.0,
+      "profitable_trades": 38,
+      "zero_pnl_trades": 0,
+      "quality_trades": 24.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.43520594886341596,
+        "avg_slippage": 0.0016065973710055045,
+        "latency_impact": 8.013926596279537
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.0400696329813977,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.7879296354923419,
+      "avg_efficiency": 0.43520594886341596,
+      "avg_edge_quality": 2.6208577909462627,
+      "directional_accuracy": 0.848868778280543,
+      "decisiveness": 0.45106586224233286,
+      "execution_friction": 1.980979135948984e-6,
+      "exit_tp_count": 10,
+      "exit_sl_count": 10,
+      "exit_ts_count": 25,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0035038703210191926,
+      "pnl_from_tp": 0.08420550452303427,
+      "pnl_from_sl": 0.011976975098446705,
+      "max_trade_pnl": 0.025157333325646312
+    },
+    {
+      "strategy_id": "strat_ICICIBANK.NS_csv_window_9_6008_394_21_6",
+      "strategy": {
+        "queue_threshold": 6008,
+        "base_edge": 394,
+        "take_profit": 21,
+        "stop_loss": 6
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0026519428644761964,
+      "std_dev": 0.0005501884711318334,
+      "worst": 0.0020763680308239205,
+      "robustness": 0.0023768486289102797,
+      "fitness": 0.27561449890267575,
+      "trade_count": 5,
+      "max_drawdown": 100.18387789785369,
+      "participation_rate": 1.0,
+      "profitable_trades": 5,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 1.2,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.6127012206080319,
+        "avg_slippage": 0.000745981773601861,
+        "latency_impact": 13.166666666666666
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.06583333333333334,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.9258768108999295,
+      "avg_efficiency": 0.6127012206080319,
+      "avg_edge_quality": 3.3333333333333335,
+      "directional_accuracy": 1.0,
+      "decisiveness": 0.7416666666666667,
+      "execution_friction": 1.0734447429038761e-6,
+      "exit_tp_count": 3,
+      "exit_sl_count": 2,
+      "exit_ts_count": 0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0026519428644761964,
+      "pnl_from_tp": 0.01012013763622565,
+      "pnl_from_sl": 0.0023983620548843707,
+      "max_trade_pnl": 0.0040496492632424675
+    },
+    {
+      "strategy_id": "strat_ICICIBANK.NS_csv_window_10_11076_846_23_12",
+      "strategy": {
+        "queue_threshold": 11076,
+        "base_edge": 846,
+        "take_profit": 23,
+        "stop_loss": 12
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0044473880096873855,
+      "std_dev": 0.0022193764892718113,
+      "worst": 0.0025687484933497318,
+      "robustness": 0.00333769976505148,
+      "fitness": 0.2125121966121673,
+      "trade_count": 7,
+      "max_drawdown": 99.895548076549,
+      "participation_rate": 1.0,
+      "profitable_trades": 7,
+      "zero_pnl_trades": 0,
+      "quality_trades": 6.0,
+      "payoff_ratio": 1.2,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.5243219068358476,
+        "avg_slippage": 0.001197287801197341,
+        "latency_impact": 17.38888888888889
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.08694444444444445,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.934237201110351,
+      "avg_efficiency": 0.5243219068358476,
+      "avg_edge_quality": 2.777777777777778,
+      "directional_accuracy": 1.0,
+      "decisiveness": 0.5444444444444444,
+      "execution_friction": 1.4714435385570198e-6,
+      "exit_tp_count": 3,
+      "exit_sl_count": 3,
+      "exit_ts_count": 1,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0044473880096873855,
+      "pnl_from_tp": 0.013566043072484487,
+      "pnl_from_sl": 0.007706245480049195,
+      "max_trade_pnl": 0.007564202469902506
+    },
+    {
+      "strategy_id": "strat_ICICIBANK.NS_csv_window_7_11800_1000_31_15",
+      "strategy": {
+        "queue_threshold": 11800,
+        "base_edge": 1000,
+        "take_profit": 31,
+        "stop_loss": 15
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0037462952463966424,
+      "std_dev": 0.00012010875253258758,
+      "worst": 0.0036063785116109835,
+      "robustness": 0.0036862408701303488,
+      "fitness": 0.03999485958804687,
+      "trade_count": 4,
+      "max_drawdown": 100.34968628309333,
+      "participation_rate": 1.0,
+      "profitable_trades": 3,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.46897626975318424,
+        "avg_slippage": 0.0016796226884663818,
+        "latency_impact": 6.333333333333333
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.03166666666666667,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.9497717397063422,
+      "avg_efficiency": 0.46897626975318424,
+      "avg_edge_quality": 2.5,
+      "directional_accuracy": 0.8333333333333334,
+      "decisiveness": 0.5666666666666667,
+      "execution_friction": 1.3923704811277713e-6,
+      "exit_tp_count": 1,
+      "exit_sl_count": 0,
+      "exit_ts_count": 3,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0037462952463966424,
+      "pnl_from_tp": 0.0038996601431956954,
+      "pnl_from_sl": 0.0,
+      "max_trade_pnl": 0.007557694168766496
+    }
+  ]
+}

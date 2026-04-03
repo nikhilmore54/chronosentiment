@@ -12,6 +12,12 @@ blake3 = "1.0.0" # Added for deterministic hashing
 rand_xorshift = "0.3.0" # Added for deterministic GA randomness
 rand_chacha = "0.3.1"
 rand = "0.8.5" # Used with rand_xorshift
+rayon = "1.10"
 csv = "1.4.0"
 clap = { version = "4.0", features = ["derive"] }
 prettytable-rs = "0.10"
+tokio = { version = "1.0", features = ["full"] }
+yahoo_finance_api = "2.0"
+reqwest = { version = "0.11", features = ["json"] }
+async-trait = "0.1"
+chrono = "0.4"

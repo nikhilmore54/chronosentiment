@@ -4,6 +4,7 @@ mod errors;
 mod handlers;
 mod routes;
 mod services;
+mod strategy_id_parse;
 
 use axum::{routing::get, Router};
 use services::evaluation_service::EvaluationService;

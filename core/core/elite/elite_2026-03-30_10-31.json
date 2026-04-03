@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_10-31",
+    "avg_fitness": 0.09419546187441194,
+    "avg_pnl": 0.002198507630964194,
+    "cv": 0.24055065790808006,
+    "regime_profile": {
+      "volatility": 0.6681439303532231,
+      "liquidity": 0.5,
+      "participation": 0.6708333333333333,
+      "label": "multi_regime_elite",
+      "timestamp": 1774866697
+    },
+    "strategies_count": 2,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_RELIANCE_5M_CLEAN_csv_window_13_8100_800_440_82",
+      "strategy": {
+        "queue_threshold": 8100,
+        "base_edge": 800,
+        "take_profit": 440,
+        "stop_loss": 82
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0021753970772332713,
+      "std_dev": 0.0002724684939219936,
+      "worst": 0.0017942521829283392,
+      "robustness": 0.0020391628302722747,
+      "fitness": 0.1168542422002572,
+      "trade_count": 6,
+      "max_drawdown": 99.51776378418158,
+      "participation_rate": 1.0,
+      "profitable_trades": 5,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4912822074055756,
+        "avg_slippage": 0.0015657361324309341,
+        "latency_impact": 5.916666666666667
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.029583333333333333,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.6575955732360417,
+      "avg_efficiency": 0.4912822074055756,
+      "avg_edge_quality": 2.6530794075064037,
+      "directional_accuracy": 0.8333333333333334,
+      "decisiveness": 0.5333333333333333,
+      "execution_friction": 4.776752533981443,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 2,
+      "exit_sl_count": 2,
+      "exit_ts_count": 2,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0021753970772332713,
+      "pnl_from_tp": 0.007348064424852751,
+      "pnl_from_sl": 0.004805559901041803,
+      "max_trade_pnl": 0.0038392634770799175
+    },
+    {
+      "strategy_id": "strat_RELIANCE_5M_CLEAN_csv_window_5_12000_800_440_82",
+      "strategy": {
+        "queue_threshold": 12000,
+        "base_edge": 800,
+        "take_profit": 440,
+        "stop_loss": 82
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.0022216181846951163,
+      "std_dev": 0.00035256762372988835,
+      "worst": 0.0017856950268291406,
+      "robustness": 0.002045334372830172,
+      "fitness": 0.07153668154856667,
+      "trade_count": 6,
+      "max_drawdown": 99.19085000603037,
+      "participation_rate": 1.0,
+      "profitable_trades": 5,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.3111743222362691,
+        "avg_slippage": 0.002259923111868741,
+        "latency_impact": 6.416666666666667
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.03208333333333333,
+        "fill_ratio": 1.0,
+        "participation": 1.0,
+        "execution_variance": 0.0
+      },
+      "avg_conviction": 0.6786922874704043,
+      "avg_efficiency": 0.3111743222362691,
+      "avg_edge_quality": 2.5,
+      "directional_accuracy": 0.8333333333333334,
+      "decisiveness": 0.8083333333333332,
+      "execution_friction": 5.57391121440659,
+      "short_term_capture_eff": 1.0,
+      "long_term_capture_eff": 1.0,
+      "realized_pnl_rolling": 0.0,
+      "predicted_pnl_rolling": 0.0,
+      "exit_tp_count": 2,
+      "exit_sl_count": 3,
+      "exit_ts_count": 1,
+      "avg_hold_time": 0.0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.0022216181846951163,
+      "pnl_from_tp": 0.0077952882109698935,
+      "pnl_from_sl": 0.005626420897200803,
+      "max_trade_pnl": 0.004255417448564531
+    }
+  ]
+}

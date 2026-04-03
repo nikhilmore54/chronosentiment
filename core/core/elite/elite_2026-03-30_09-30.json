@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_09-30",
+    "avg_fitness": 0.11655925575809517,
+    "avg_pnl": 0.004150227891524415,
+    "cv": 0.0,
+    "regime_profile": {
+      "volatility": 0.9336270270943565,
+      "liquidity": 0.5,
+      "participation": 0.5416666666666666,
+      "label": "multi_regime_elite",
+      "timestamp": 1774863045
+    },
+    "strategies_count": 1,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_RELIANCE.NS_csv_window_0_11107_1452_16_10",
+      "strategy": {
+        "queue_threshold": 11107,
+        "base_edge": 1452,
+        "take_profit": 16,
+        "stop_loss": 10
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.004150227891524415,
+      "std_dev": 0.0016683059173588743,
+      "worst": 0.002648789231725523,
+      "robustness": 0.003316074932844978,
+      "fitness": 0.11655925575809517,
+      "trade_count": 4,
+      "max_drawdown": 100.1694508773614,
+      "participation_rate": 1.0,
+      "profitable_trades": 4,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 1.2,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4969164435187288,
+        "avg_slippage": 0.002305335636683907,
+        "latency_impact": 7.583333333333333
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.03791666666666667,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.9336270270943565,
+      "avg_efficiency": 0.4969164435187288,
+      "avg_edge_quality": 3.3333333333333335,
+      "directional_accuracy": 1.0,
+      "decisiveness": 0.5416666666666666,
+      "execution_friction": 4.80477832481698e-6,
+      "exit_tp_count": 2,
+      "exit_sl_count": 1,
+      "exit_ts_count": 1,
+      "consistency_score": 1.0,
+      "recent_performance": 0.004150227891524415,
+      "pnl_from_tp": 0.010145876120745778,
+      "pnl_from_sl": 0.0033248354189212817,
+      "max_trade_pnl": 0.006477059023926442
+    }
+  ]
+}

@@ -47,7 +47,8 @@ fn main() -> io::Result<()> {
     // 1. Run the GA pipeline to get an initial SignalsSnapshot for the strategy profiles
     println!("🧬 Running GA pipeline to generate strategy profiles...");
     let ga_config = GaConfig::default();
-    let initial_signal_snapshot = run_pipeline_with_config(&args.input, ga_config);
+    let empty_repo = std::collections::HashMap::new();
+    let initial_signal_snapshot = run_pipeline_with_config(&args.input, ga_config, &empty_repo);
 
     if initial_signal_snapshot.signals.is_empty() {
         return Err(io::Error::new(io::ErrorKind::Other, "GA pipeline produced no signals. Check your input data."));

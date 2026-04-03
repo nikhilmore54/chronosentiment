@@ -17,6 +17,8 @@ pub mod tick_replay;
 pub mod replay_evaluator;
 pub mod pnl_overlay;
 pub mod edge_decay;
+pub mod ensemble;
+pub mod exit;
 
 pub use ga::*;
 pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_harness};
@@ -25,7 +27,7 @@ pub use kernel::*;
 pub use replay::*;
 pub use ese::{FIXED_LATENCY};
 pub use market_adapter::*;
-pub use data_source::*;
+pub use data_source::CandleSource;
 pub use csv_source::*;
 pub use live_source::*;
 pub use folder_source::*;
@@ -35,15 +37,39 @@ pub use strategy_ranking::*;
 pub use tick_replay::*;
 pub use replay_evaluator::*;
 pub use pnl_overlay::*;
+pub use edge_decay::*;
+pub use ensemble::*;
+pub use exit::{ExitReason, ExitDecision, ExitEvaluator, ExitMetadata};
 
-pub const PRICE_SCALE: u64 = 10000; // 1.0000 Precision (Institutional Format)
+/// System-wide institutional price scaling factor.
+/// 1.0000 = 10,000 units (1/100th of a paisa precision).
+/// This is the SINGLE SOURCE OF TRUTH for internal math.
+pub const PRICE_SCALE: u64 = 10000; 
 
+/// Converts internal scaled integer to real-unit float (Rupees).
 pub fn to_real(price: u64) -> f64 {
     price as f64 / PRICE_SCALE as f64
 }
 
+/// Converts real-unit float (Rupees) to internal scaled integer.
+/// Performs rounding to the nearest internal unit.
 pub fn from_real(price: f64) -> u64 {
     (price * PRICE_SCALE as f64).round() as u64
+}
+
+#[cfg(test)]
+mod precision_tests {
+    use super::*;
+
+    #[test]
+    fn test_rupee_scaling_contract() {
+        let value_rs = 432.85;
+        let scaled = from_real(value_rs);
+        // 432.85 * 10000 = 4,328,500
+        assert_eq!(scaled, 4328500, "Scaling must be exactly 10,000x");
+        // Float precision safe comparison
+        assert!((to_real(scaled) - value_rs).abs() < 1e-6, "Round-trip must be lossless for 2-decimal prices");
+    }
 }
 
 /// Rounds a scaled price to the nearest valid institutional tick.
@@ -262,4 +288,3 @@ pub struct TradeInspection {
     pub execution: ExecutionLayer,
     pub outcome: OutcomeLayer,
 }
-

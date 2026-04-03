@@ -55,6 +55,7 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
         order_timestamp: first_event_timestamp,
         lambda: 0.5,
         initial_queue_threshold: 200,
+        ..GaConfig::default()
     };
 
     let create_orders = vec![CreateOrder {

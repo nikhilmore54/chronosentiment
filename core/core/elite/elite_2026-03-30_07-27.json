@@ -1,0 +1,163 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-30_07-27",
+    "avg_fitness": 0.2829534716972751,
+    "avg_pnl": 0.004959281328389462,
+    "cv": 0.22217432607358284,
+    "regime_profile": {
+      "volatility": 0.8167138263263903,
+      "liquidity": 0.5,
+      "participation": 0.5347300031123561,
+      "label": "multi_regime_elite",
+      "timestamp": 1774855644
+    },
+    "strategies_count": 3,
+    "fitness_mode": "Scalable"
+  },
+  "strategies": [
+    {
+      "strategy_id": "strat_IRCTC.NS_csv_window_19_7780_181_23_5",
+      "strategy": {
+        "queue_threshold": 7780,
+        "base_edge": 181,
+        "take_profit": 23,
+        "stop_loss": 5
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.005206436234615266,
+      "std_dev": 0.0009242121061807408,
+      "worst": 0.00398527415557965,
+      "robustness": 0.0047443301815248955,
+      "fitness": 0.3704189202019923,
+      "trade_count": 50,
+      "max_drawdown": 100.5297585799329,
+      "participation_rate": 1.0,
+      "profitable_trades": 43,
+      "zero_pnl_trades": 0,
+      "quality_trades": 40.0,
+      "payoff_ratio": 2.0,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.4883795531055745,
+        "avg_slippage": 0.002588307896122188,
+        "latency_impact": 11.100762527233115
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.055503812636165585,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.6869239445110509,
+      "avg_efficiency": 0.4883795531055745,
+      "avg_edge_quality": 2.7213507625272335,
+      "directional_accuracy": 0.8586056644880173,
+      "decisiveness": 0.4585947712418301,
+      "execution_friction": 7.227368188335293e-6,
+      "exit_tp_count": 21,
+      "exit_sl_count": 20,
+      "exit_ts_count": 9,
+      "consistency_score": 1.0,
+      "recent_performance": 0.005206436234615266,
+      "pnl_from_tp": 0.16442893864473881,
+      "pnl_from_sl": 0.04942109837671008,
+      "max_trade_pnl": 0.023659382013054255
+    },
+    {
+      "strategy_id": "strat_IRCTC.NS_csv_window_19_8626_534_13_11",
+      "strategy": {
+        "queue_threshold": 8626,
+        "base_edge": 534,
+        "take_profit": 13,
+        "stop_loss": 11
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.005331561999227234,
+      "std_dev": 0.0026146077271534444,
+      "worst": 0.0027180382745558905,
+      "robustness": 0.004024258135650512,
+      "fitness": 0.253017784747833,
+      "trade_count": 16,
+      "max_drawdown": 100.68318145162637,
+      "participation_rate": 1.0,
+      "profitable_trades": 16,
+      "zero_pnl_trades": 0,
+      "quality_trades": 12.0,
+      "payoff_ratio": 1.2,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.5335221685805069,
+        "avg_slippage": 0.002573738337715952,
+        "latency_impact": 10.105952380952381
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.050529761904761904,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.8407000136353374,
+      "avg_efficiency": 0.5335221685805069,
+      "avg_edge_quality": 2.443288382807433,
+      "directional_accuracy": 1.0,
+      "decisiveness": 0.6789285714285714,
+      "execution_friction": 0.000018913811893682225,
+      "exit_tp_count": 8,
+      "exit_sl_count": 7,
+      "exit_ts_count": 1,
+      "consistency_score": 1.0,
+      "recent_performance": 0.005331561999227234,
+      "pnl_from_tp": 0.034579877870817524,
+      "pnl_from_sl": 0.04111859262849219,
+      "max_trade_pnl": 0.021981340799845366
+    },
+    {
+      "strategy_id": "strat_IRCTC.NS_csv_window_19_8655_1299_19_10",
+      "strategy": {
+        "queue_threshold": 8655,
+        "base_edge": 1299,
+        "take_profit": 19,
+        "stop_loss": 10
+      },
+      "capability": "Executable",
+      "avg_pnl": 0.004339845751325886,
+      "std_dev": 0.001338114590648975,
+      "worst": 0.002892880600759917,
+      "robustness": 0.0036707884560013984,
+      "fitness": 0.22542371014200002,
+      "trade_count": 3,
+      "max_drawdown": 99.85297538533331,
+      "participation_rate": 1.0,
+      "profitable_trades": 3,
+      "zero_pnl_trades": 0,
+      "quality_trades": 3.0,
+      "payoff_ratio": 1.2,
+      "execution_metrics": {
+        "fill_efficiency": 1.0,
+        "capture_efficiency": 0.6065423264120332,
+        "avg_slippage": 0.0018063926733933493,
+        "latency_impact": 12.333333333333334
+      },
+      "scenario_signature": {
+        "avg_queue_ahead": 0.0,
+        "avg_latency": 0.06166666666666667,
+        "fill_ratio": 1.0,
+        "participation": 1.0
+      },
+      "avg_conviction": 0.9225175208327827,
+      "avg_efficiency": 0.6065423264120332,
+      "avg_edge_quality": 3.3333333333333335,
+      "directional_accuracy": 1.0,
+      "decisiveness": 0.4666666666666666,
+      "execution_friction": 6.363223165237784e-6,
+      "exit_tp_count": 2,
+      "exit_sl_count": 1,
+      "exit_ts_count": 0,
+      "consistency_score": 1.0,
+      "recent_performance": 0.004339845751325886,
+      "pnl_from_tp": 0.009012402506381278,
+      "pnl_from_sl": 0.004007134747596382,
+      "max_trade_pnl": 0.006119521905621361
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { SystemState, OrderState, PortfolioState } from './types';
+import { SystemState, OrderState } from './types';
+import { formatInr } from './money';
 
 interface StateViewerPanelProps {
   systemState: SystemState;
@@ -27,7 +28,7 @@ const StateViewerPanel: React.FC<StateViewerPanelProps> = ({ systemState }) => {
               <strong>Order ID: {order.order_id}</strong><br/>
               Status: {order.status}<br/>
               Side: {order.side}<br/>
-              Price: {order.price}<br/>
+              Price: {formatInr(order.price)}<br/>
               Total Qty: {order.quantity_total}<br/>
               Filled Qty: {order.quantity_filled}<br/>
               Remaining Qty: {order.quantity_remaining}<br/>

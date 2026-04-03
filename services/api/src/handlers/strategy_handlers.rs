@@ -3,35 +3,9 @@ use axum::{extract::{State, Path}, Json};
 use crate::{dto::{CompareStrategiesRequest, CompareStrategiesResponse, EvaluateStrategyRequest, EvaluateStrategyResponse, InspectStrategyResponse, InspectStrategyRequest, RunGaResponse, TimelineResponse, SystemState, TradeInspectorResponse, EventWrapper},
     errors::ApiError,
     services::evaluation_service::EvaluationService,
+    strategy_id_parse::parse_strategy_id_full,
 };
 use serde_json;
-
-
-fn strategy_from_id(strategy_id: &str) -> Result<chronosentiment_core::Strategy, ApiError> {
-    let mut nums: Vec<u64> = Vec::new();
-    for part in strategy_id.split('_').rev() {
-        if let Ok(v) = part.parse::<u64>() {
-            nums.push(v);
-            if nums.len() == 4 {
-                break;
-            }
-        }
-    }
-
-    if nums.len() < 4 {
-        return Err(ApiError::ValidationError(format!(
-            "Could not parse strategy parameters from strategy_id: {}",
-            strategy_id
-        )));
-    }
-
-    Ok(chronosentiment_core::Strategy {
-        stop_loss: nums[0],
-        take_profit: nums[1],
-        base_edge: nums[2],
-        queue_threshold: nums[3],
-    })
-}
 
 
 pub async fn health_handler() -> Json<serde_json::Value> {
@@ -119,18 +93,20 @@ pub async fn inspect_strategy_handler(
 ) -> Result<Json<InspectStrategyResponse>, ApiError> {
     println!("Request received: inspect_strategy");
 
-    let strategy_config = if let Some(cfg) = request.strategy_config {
-        cfg
+    let (strategy_config, scenario_from_id) = if let Some(cfg) = request.strategy_config {
+        (cfg, None)
     } else if let Some(id) = request.strategy_id.as_deref() {
-        strategy_from_id(id)?
+        parse_strategy_id_full(id).map_err(ApiError::ValidationError)?
     } else {
         return Err(ApiError::ValidationError(
             "inspect_strategy requires either strategy_config or strategy_id".to_string(),
         ));
     };
 
-    // Default to the first benchmark scenario if none provided
+    // Prefer explicit scenarios[]; else scenario embedded in strategy_id; else first benchmark name (lexicographic)
     let scenario = if let Some(s) = request.scenarios.into_iter().next() {
+        s
+    } else if let Some(s) = scenario_from_id {
         s
     } else {
         service.load_all_real_scenarios()
@@ -180,11 +156,27 @@ pub async fn get_global_ranking_handler(
     Ok(Json(ranking))
 }
 
+/// Latest on-disk `PersistedStrategyStore` JSON (reloads from disk each request).
+pub async fn get_strategy_store_handler(
+    State(_service): State<EvaluationService>,
+) -> Json<serde_json::Value> {
+    println!("Request received: ga/strategy-store");
+    let path = EvaluationService::STRATEGY_STORE_PATH;
+    let store = match chronosentiment_core::pipeline::load_strategy_store(path) {
+        Ok(s) => serde_json::to_value(&s).unwrap_or(serde_json::Value::Null),
+        Err(_) => serde_json::Value::Null,
+    };
+    Json(serde_json::json!({
+        "path": path,
+        "store": store,
+    }))
+}
+
 pub async fn latest_signals_handler(
     State(service): State<EvaluationService>,
-) -> Result<Json<chronosentiment_core::pipeline::SignalsSnapshot>, ApiError> {
+) -> Result<Json<crate::dto::SignalsSnapshotDto>, ApiError> {
     println!("Request received: signals/latest");
-    let snapshot = service.get_latest_signals()?;
+    let snapshot = service.get_latest_signals_for_api()?;
     Ok(Json(snapshot))
 }
 

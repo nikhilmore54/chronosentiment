@@ -23,9 +23,48 @@ pub struct ScenarioPair<'a> {
 
 // Helper function to serialize any serializable struct into a canonical JSON string.
 // This is crucial for deterministic hashing, especially for floating-point numbers.
+/// --- PHASE A+: ADAPTIVE INTELLIGENCE ENGINE ---
+#[derive(Default, Debug, Clone)]
+struct WelfordTracker {
+    count: usize,
+    mean: f64,
+    m2: f64,
+}
+
+impl WelfordTracker {
+    fn update(&mut self, val: f64) {
+        self.count += 1;
+        let n = self.count as f64;
+        let delta = val - self.mean;
+        self.mean += delta / n;
+        let delta2 = val - self.mean;
+        self.m2 += delta * delta2;
+    }
+    
+    fn mean(&self) -> f64 { self.mean }
+    fn std(&self) -> f64 {
+        if self.count < 2 { 0.0 } else { (self.m2 / (self.count - 1) as f64).sqrt() }
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+struct AdaptiveStats {
+    agreement: WelfordTracker,
+    dominance: WelfordTracker,
+    purity: WelfordTracker,
+    stability: WelfordTracker,
+    z_score: WelfordTracker,
+    energy: WelfordTracker,
+    final_score: WelfordTracker,
+    score_history: Vec<f64>, // For rolling percentile
+}
+
 /// --- PHASE 13.5: INSTITUTIONAL METRICS ENGINE ---
 #[derive(Default, Debug, Clone)]
 struct ScenarioMetrics {
+    // Adaptive Layer
+    pub adaptive: AdaptiveStats,
+
     // Trade stats
     trade_count: usize,
     profitable_trades: usize,
@@ -83,13 +122,32 @@ struct ScenarioMetrics {
     pub sum_vip_e_score: f64,
     pub sum_stat_e_score: f64,
 
-    // Phase 14: Consensus Bridge Audit
+    // Phase 14++: Structural Health (Universe Discovery)
+    pub total_windows: usize,
+    pub valid_windows: usize,
+    pub accepted_windows: usize,
+    
+    pub sum_agreement_raw: f64,
+    pub sum_purity_raw: f64,
+    pub sum_stability_raw: f64,
+    
+    pub sum_agreement_valid: f64,
+    pub sum_purity_valid: f64,
+    pub sum_stability_valid: f64,
+    
+    pub max_agreement: f64,
+    pub max_purity: f64,
+
+    // Phase 14++: Consensus Bridge Audit
     pub consensus_bypass_count: usize,
     pub stability_rejected_count: usize,
     pub clarity_trade_count: usize,
     pub conviction_trade_count: usize,
     pub sum_clarity_pnl: f64,
     pub sum_conviction_pnl: f64,
+    
+    // Phase A+: Adaptive Ranking
+    pub adaptive_opportunity_count: usize,
 }
 
 impl ScenarioMetrics {
@@ -124,6 +182,45 @@ impl ScenarioMetrics {
         } else {
             buckets[5] += 1;
         }
+    }
+
+    fn record_structural_health(&mut self, agreement: f64, purity: f64, stability: f64, is_valid: bool) {
+        self.total_windows += 1;
+        self.sum_agreement_raw += agreement;
+        self.sum_purity_raw += purity;
+        self.sum_stability_raw += stability;
+        
+        if agreement > self.max_agreement { self.max_agreement = agreement; }
+        if purity > self.max_purity { self.max_purity = purity; }
+        
+        if is_valid {
+            self.valid_windows += 1;
+            self.sum_agreement_valid += agreement;
+            self.sum_purity_valid += purity;
+            self.sum_stability_valid += stability;
+        }
+    }
+
+    fn record_adaptive_pulse(&mut self, agreement: f64, dominance: f64, purity: f64, stability: f64, z_score: f64, energy: f64) {
+        self.adaptive.agreement.update(agreement);
+        self.adaptive.dominance.update(dominance);
+        self.adaptive.purity.update(purity);
+        self.adaptive.stability.update(stability);
+        self.adaptive.z_score.update(z_score);
+        self.adaptive.energy.update(energy);
+    }
+    
+    fn record_final_score(&mut self, score: f64) {
+        self.adaptive.final_score.update(score);
+        self.adaptive.score_history.push(score);
+        if self.adaptive.score_history.len() > 200 {
+            self.adaptive.score_history.remove(0);
+        }
+    }
+
+    fn adaptive_threshold(&self, percentile: f64) -> f64 {
+        if self.adaptive.score_history.is_empty() { return 0.0; }
+        percentile_f64(&self.adaptive.score_history, percentile)
     }
 
     fn record_trade(
@@ -583,6 +680,32 @@ pub struct StrategyEvaluation {
     #[serde(default)]
     pub stat_avg_e_score: f64,
 
+    // Phase 14++: Structural Health (Universe Discovery)
+    #[serde(default)]
+    pub alpha: f64,
+    #[serde(default)]
+    pub consistency: f64,
+    #[serde(default)]
+    pub opportunity: f64,
+    #[serde(default)]
+    pub structural_score: f64,
+    #[serde(default)]
+    pub acceptance_rate: f64,
+    #[serde(default)]
+    pub valid_window_ratio: f64,
+    #[serde(default)]
+    pub avg_agreement_valid: f64,
+    #[serde(default)]
+    pub avg_purity_valid: f64,
+    #[serde(default)]
+    pub avg_stability_valid: f64,
+    #[serde(default)]
+    pub max_agreement: f64,
+    #[serde(default)]
+    pub max_purity: f64,
+    #[serde(default)]
+    pub total_windows: usize,
+
     // Phase 14: Consensus Audit
     #[serde(default)]
     pub consensus_bypass_ratio: f64,
@@ -798,7 +921,6 @@ impl Default for StrategyEvaluation {
             ccr: 0.0,
             stat_zero_dom_ratio: 0.0,
             
-            // Phase 17B: Realizability
             exec_accept_rate: 0.0,
             vip_exec_retention: 0.0,
             e_rejection_rate: 0.0,
@@ -806,16 +928,32 @@ impl Default for StrategyEvaluation {
             avg_e_score: 0.0,
             vip_avg_e_score: 0.0,
             stat_avg_e_score: 0.0,
+
+            // Phase 14++: Structural Health (Universe Discovery)
+            alpha: 0.0,
+            consistency: 0.0,
+            opportunity: 0.0,
+            structural_score: 0.0,
+            acceptance_rate: 0.0,
+            valid_window_ratio: 0.0,
+            avg_agreement_valid: 0.0,
+            avg_purity_valid: 0.0,
+            avg_stability_valid: 0.0,
+            max_agreement: 0.0,
+            max_purity: 0.0,
+            total_windows: 0,
+            
+            // Phase 14: Consensus Audit
             consensus_bypass_ratio: 0.0,
             stability_reject_rate: 0.0,
             clarity_pnl_share: 0.0,
             conviction_pnl_share: 0.0,
+            
             trade_qualities: Vec::new(),
             outcome_consistency: 0.0,
             avg_trade_quality: 0.0,
             std_trade_quality: 0.0,
             consistency_n: 0,
-
             pnl_fingerprint: Vec::new(),
         }
     }
@@ -2365,8 +2503,8 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     // Refinement 4: Strict cursor-based contract
     assert!(cursor_i < signal_events.len(), "cursor_i {} out of bounds for signal_events {}", cursor_i, signal_events.len());
     let ref_event = &signal_events[cursor_i];
+    let _ref_price = ref_event.price;
     let ref_ts = ref_event.exchange_ts;
-    let ref_price = ref_event.price;
     let entry_idx = cursor_i + config.latency_ticks;
     if entry_idx >= execution_events.len().saturating_sub(1) {
         return None;
@@ -2588,7 +2726,11 @@ pub(crate) fn evaluate_strategy(
 
     let mut scenario_pnls: Vec<f64> = Vec::new();
     let mut total_quality_trades_scenario = 0.0;
+    let mut total_efficiency = 0.0;
+    let mut total_vol_ratio = 0.0;
+    let mut total_spread_reality = 0.0;
     let mut total_spread_test = 0.0;
+    let mut survivable_trades_count = 0usize;
     let mut sum_price = 0.0;
     let mut metrics = ScenarioMetrics::default();
     
@@ -2781,80 +2923,220 @@ pub(crate) fn evaluate_strategy(
         }
     }
 
+    // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
+    let top_1 = scores.iter().fold(0.0f64, |a, b| a.max(*b));
+    let scores_sum: f64 = scores.iter().sum::<f64>();
+    
+    let mut sorted_scores = scores.clone();
+    sorted_scores.sort_by(|a, b| b.total_cmp(a));
+    let top_k_sum: f64 = sorted_scores.iter().take(3).sum();
+
+    let std_v = if scores.len() > 1 {
+        let variance = scores.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / scores.len() as f64;
+        variance.sqrt()
+    } else { 0.0 };
+
+    // Purity: Ratio of High-Quality signals (E > 0.80) in the VALID pool
+    let high_quality_count = valid_signals.iter().filter(|e| e.4 > 0.80).count();
+    let purity = high_quality_count as f64 / valid_signals.len().max(1) as f64;
+
+    // Agreement: Ratio of dominant side (BUY vs SELL)
+    let mut buy_count = 0usize;
+    let mut sell_count = 0usize;
+    for (_, conv, _, _, _) in &valid_signals {
+        if conv.is_bearish {
+            sell_count += 1;
+        } else {
+            buy_count += 1;
+        }
+    }
+    let dominant_count = buy_count.max(sell_count);
+    let agreement = dominant_count as f64 / valid_signals.len().max(1) as f64;
+
+    // --- PHASE A+: SCORING ENGINE ---
+    // 1. Identify "Window Potential" (Best candidate stats for structural pulse)
+    let (best_dom, best_e) = valid_signals.iter()
+        .max_by(|(_, a, _, _, _), (_, b, _, _, _)| a.conviction_score.total_cmp(&b.conviction_score))
+        .map(|(_, _, dom, _, e_score)| (*dom, *e_score))
+        .unwrap_or((0.0, 0.0));
+
+    let stability_raw = (1.0 - std_v / 0.18).clamp(0.0, 1.0);
+    
+    // 2. Update structural stats BEFORE gating (Layer 1: Perception)
+    metrics.record_adaptive_pulse(
+        agreement, 
+        purity, 
+        stability_raw,
+        purity, 
+        max_z,
+        best_e
+    );
+    metrics.record_structural_health(agreement, purity, std_v, true); 
+
+    // 3. Normalized Metrics (Z-scores) using Institutional Priors (Fallback N < 20)
+    let n_count = metrics.adaptive.agreement.count;
+    
+    let calc_z = |val: f64, tracker: &WelfordTracker, p_mu: f64, p_sigma: f64| -> f64 {
+        if n_count < 20 {
+            (val - p_mu) / p_sigma.max(EPS)
+        } else {
+            (val - tracker.mean()) / (tracker.std() + EPS)
+        }
+    };
+
+    let agreement_z = calc_z(agreement, &metrics.adaptive.agreement, 0.65, 0.10);
+    let purity_z = calc_z(purity, &metrics.adaptive.purity, 0.60, 0.15);
+    let stability_z = calc_z(stability_raw, &metrics.adaptive.stability, 0.15, 0.05);
+    let dominance_z = calc_z(best_dom, &metrics.adaptive.dominance, 0.20, 0.10);
+    let z_norm = calc_z(max_z, &metrics.adaptive.z_score, 1.50, 0.50);
+    let energy_norm = calc_z(best_e, &metrics.adaptive.energy, 0.75, 0.10);
+
+    // Final Adaptive Score (Weighted Sum)
+    // 30% z_norm, 25% energy_norm, 20% dominance_norm, 15% agreement_norm, 10% stability_norm
+    let final_score = 0.30 * z_norm 
+                    + 0.25 * energy_norm 
+                    + 0.20 * dominance_z 
+                    + 0.15 * agreement_z 
+                    + 0.10 * stability_z;
+    
+    let adaptive_threshold = metrics.adaptive_threshold(0.60); // Use PREVIOUS history
+    let is_struct_valid_adaptive = final_score >= (adaptive_threshold - EPS); // Add Margin to break Deadlock
+    
+    // Update structural stats and history AFTER gate decision 
+    metrics.record_final_score(final_score);
+    if is_struct_valid_adaptive {
+        metrics.adaptive_opportunity_count += 1;
+    }
+
     // Gating Logic
     if !allow_bypass {
-        // Starvation Skip (No high-conviction signals)
-        if valid_signals.is_empty() {
+        // --- PHASE 14++: ADAPTIVE PERCEPTION & SIGNAL OVERRIDE ---
+        
+        // 1. Adaptive Intelligence Gate (Percentile-Based)
+        if !is_struct_valid_adaptive {
             if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | max_z={:.2} floor={:.2} z_th={:.2} => SKIP: STARVATION", 
-                    scenario_name, max_z, abs_floor, z_threshold);
+                println!("WINDOW_DECISION → {} | score={:.3} < threshold={:.3} => SKIP: ADAPTIVE_RANKING", 
+                    scenario_name, final_score, adaptive_threshold);
             }
             return None;
         }
 
-        // Weak Consensus Check (Cluster too small for conviction)
-        if valid_signals.len() < min_signals && max_z < 1.5 {
-            if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | sigs={} < {} and max_z={:.2} < 1.5 => SKIP: WEAK_CONSENSUS", 
-                    scenario_name, valid_signals.len(), min_signals, max_z);
-            }
-            return None;
-        }
-
-        // Window Meta-Gate (Existing high-bar for absolute acceptance)
-        let max_score = scores.iter().fold(0.0f64, |a, b| a.max(*b));
-        if max_score < 0.85 {
-            if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | max={:.4} < 0.85 => SKIP: FAILED_HIGHBAR", scenario_name, max_score);
-            }
-            return None;
-        }
-
-        // --- PHASE 14/17: CONSOLIDATED DECISION & SELECTION ---
-        // 1. Selector: Argmax over VALID pool
+        // 2. Selector: Argmax over VALID pool
         let (w_idx, w_conv, w_dom, w_reason, w_e_score) = valid_signals.iter()
             .max_by(|(_, a, _, _, _), (_, b, _, _, _)| a.conviction_score.total_cmp(&b.conviction_score))
             .map(|(idx, conv, dom, reason, e_score)| (*idx, conv.clone(), *dom, *reason, *e_score))
             .unwrap_or((0, window_data[0].1.clone(), 0.0, "NONE", 0.0));
 
-        // 2. Decision Integrity: Unified Dominance Gate
         let dominance_gate = w_dom;
-        if std::env::var("GA_DEBUG").is_ok() && w_reason == "DOMINANCE_VIP" && dominance_gate < 0.40 {
-             panic!("Phase 17A.5 Consistency Critical Failure: VIP lost dominance (dom={:.6})", dominance_gate);
+        let mut buy_count = 0;
+        let mut sell_count = 0;
+        for (_, sig, _, _, _) in &valid_signals {
+            if !sig.is_bearish { buy_count += 1; } else { sell_count += 1; }
         }
-
-        // 3. Adaptive Confidence Override (Consensus Bridge)
-        let vol_ratio_window = (std_dev / TARGET_STD.max(0.001)).clamp(0.5, 2.0); 
-        let z_override_th = if vol_ratio_window < 0.7 { 1.8 } else if vol_ratio_window > 1.3 { 1.2 } else { 1.5 };
-        let is_high_conviction = w_e_score > 0.85 && max_z > z_override_th;
-
-        let mut final_reason = w_reason;
-        let mut is_conviction_override = false;
-
-        if max_z >= EXTREME_Z_OVERRIDE {
-            // ACCEPT UNCONDITIONALLY
-        } else if dominance_gate >= DOMINANCE_FLOOR {
-            // ACCEPT via Clarity (Path 1)
-        } else if is_high_conviction {
-            // ACCEPT via Conviction (Path 2 - Bypass)
-            metrics.consensus_bypass_count += 1;
-            final_reason = "CONVICTION_OVERRIDE";
-            is_conviction_override = true;
-            decision_was_override = true;
-        } else {
+        let total_valid = buy_count + sell_count;
+        
+        // Phase B: Precision Gates
+        // --- Layer 1: Directional Consistency ---
+        if total_valid < 3 {
+             if std::env::var("GA_DEBUG").is_ok() {
+                println!("WINDOW_DECISION → {} | n={} < 3 => SKIP: LOW_SIGNAL_COUNT", scenario_name, total_valid);
+            }
+            return None;
+        }
+        
+        let directional_consistency = (buy_count.max(sell_count) as f64) / (total_valid as f64);
+        let dc_override = w_e_score > 0.85 && max_z > 1.5;
+        
+        if directional_consistency < 0.6 && !dc_override {
             if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | dom={:.3} < {} (max_z={:.2}) => SKIP: NO_CLEAR_WINNER", 
-                    scenario_name, dominance_gate, DOMINANCE_FLOOR, max_z);
+                println!("WINDOW_DECISION → {} | dc={:.2} < 0.6 => SKIP: DIRECTIONAL_NOISE", scenario_name, directional_consistency);
             }
             return None;
         }
 
-        // 4. Final Lock for Step 6 (Simulation)
+        // 3. Signal Override Bridge (Cluster-Aware)
+        // If statistical evidence is overwhelming, bypass structural purity checks
+        let bypass_purity = w_e_score >= 0.85 && max_z >= 1.3 && total_valid >= 5;
+
+        // 4. Decision Integrity: Unified Dominance Gate with Soft Penalty
+        let mut final_reason = w_reason;
+        let mut is_conviction_override = false;
+        
+        if max_z >= EXTREME_Z_OVERRIDE {
+            // ACCEPT UNCONDITIONALLY (Extreme Alpha)
+        } else if dominance_gate >= DOMINANCE_FLOOR {
+            // Path 1: Clarity (Dominance-based)
+            if dominance_gate > 1.2 && !bypass_purity {
+                if purity < 0.40 {
+                    if std::env::var("GA_DEBUG").is_ok() {
+                        println!("WINDOW_DECISION → {} | dom={:.2} but purity={:.2} < 0.40 => SKIP: TRUE_NOISE", 
+                            scenario_name, dominance_gate, purity);
+                    }
+                    return None;
+                } else if purity < 0.55 {
+                    if std::env::var("GA_DEBUG").is_ok() {
+                        println!("WINDOW_DECISION → {} | dom={:.2} but purity={:.2} < 0.55 => APPLY: STRUCTURAL_PENALTY", 
+                            scenario_name, dominance_gate, purity);
+                    }
+                    // In a more complex version, we would multiply PnL or confidence here.
+                    // For now, we allow it but mark the reason.
+                    final_reason = "DOMINANCE_VIP_SOFT";
+                }
+            }
+        } else {
+            // Path 2: Conviction (Statistical Bridge)
+            let vol_ratio_window = (std_dev / TARGET_STD.max(0.001)).clamp(0.5, 2.0); 
+            let z_override_th = if vol_ratio_window < 0.7 { 1.8 } else if vol_ratio_window > 1.3 { 1.2 } else { 1.5 };
+            let is_high_conviction = w_e_score > 0.85 && max_z > z_override_th;
+
+            if is_high_conviction || bypass_purity {
+                if !bypass_purity && !(top_1 > 0.94 || (valid_signals.len() >= 12 && purity > 0.65)) {
+                    if std::env::var("GA_DEBUG").is_ok() {
+                        println!("WINDOW_DECISION → {} | OVERRIDE_REJECT: purity={:.2} sigs={} top={:.2}", 
+                            scenario_name, purity, valid_signals.len(), top_1);
+                    }
+                    return None;
+                }
+                metrics.consensus_bypass_count += 1;
+                final_reason = if bypass_purity { "SIGNAL_OVERRIDE" } else { "CONVICTION_OVERRIDE" };
+                is_conviction_override = true;
+                decision_was_override = true;
+            } else {
+                if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_DECISION → {} | dom={:.3} < {} (max_z={:.2}) => SKIP: NO_CLEAR_WINNER", 
+                        scenario_name, dominance_gate, DOMINANCE_FLOOR, max_z);
+                }
+                return None;
+            }
+        }
+
+        // --- Layer 3: Micro Follow-Through (Phase B) ---
+        let ft_horizon = 2; // Check next 2 ticks/bars
+        if w_idx + ft_horizon < signal_events.len() {
+            let entry_px = signal_events[w_idx].price as f64;
+            let ft_px = signal_events[w_idx + ft_horizon].price as f64;
+            let ft_delta = ft_px - entry_px;
+            
+            // Normalize by volatility (with clamp to prevent explosion)
+            let vol_ft = std_v.max(1e-3);
+            let net_direction = if buy_count >= sell_count { 1.0 } else { -1.0 };
+            let directional_ft = (ft_delta / vol_ft) * net_direction;
+            
+            if directional_ft < 0.25 {
+                if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_DECISION → {} | ft={:.3} < 0.25 => SKIP: ZERO_FOLLOW_THROUGH", scenario_name, directional_ft);
+                }
+                return None;
+            }
+        }
+
+        // 5. Final Lock for Step 6 (Simulation)
         winner_idx = w_idx;
         winner_conviction = w_conv;
         winner_reason_final = final_reason;
         winner_dom_final = w_dom;
         winner_e_score_final = w_e_score;
+        metrics.accepted_windows += 1;
 
         if std::env::var("GA_DEBUG").is_ok() {
             println!("WINDOW_DECISION → {} | dom={:.3} e_score={:.2} reason={} {} => ACCEPT", 
@@ -2877,77 +3159,38 @@ pub(crate) fn evaluate_strategy(
 
     // 4. Separation Analysis (Phase 15: Distance + Clarity + Structure)
     let scores_sum: f64 = scores.iter().sum();
-    let window_entropy: f64 = scores.iter()
-        .map(|s| {
-            let p = s / (scores_sum + EPS);
-            if p > 0.0 { -p * p.ln() } else { 0.0 }
-        })
-        .sum();
+    let winner_score = winner_conviction.conviction_score;
+    let second_score = if allow_bypass {
+        window_data.iter()
+            .filter(|(idx, _)| *idx != winner_idx)
+            .map(|(_, conv)| conv.conviction_score)
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap_or(mean)
+    } else if valid_signals.len() >= 2 {
+        valid_signals.iter()
+            .filter(|(idx, _, _, _, _)| *idx != winner_idx)
+            .map(|(_, conv, _, _, _)| conv.conviction_score)
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap_or(mean)
+    } else {
+        mean
+    };
+
+    let dominance = if allow_bypass { 
+        ((winner_score - second_score) / (std_dev + EPS)).min(3.0) 
+    } else { 
+        winner_dom_final 
+    };
+    
+    let report_reason = if max_z >= EXTREME_Z_OVERRIDE { "EXTREME_OVERRIDE" } else { winner_reason_final };
+
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!("WINDOW_DECISION → {} | sigs={} z={:.2} dom={:.3} mean={:.3} purity={:.2} conc={:.2} agree={:.2} => ACCEPTED: TRADE ({})", 
+            scenario_name, valid_signals.len(), max_z, dominance, mean, purity, top_k_sum / scores_sum.max(EPS), agreement, report_reason);
+    }
 
     let median_score = percentile_f64(&scores, 0.50);
-
-    // Phase 17A.5: Unified dominance for reporting
-    let winner_score = winner_conviction.conviction_score;
-    let second_score = if allow_bypass {
-        window_data.iter()
-            .filter(|(idx, _)| *idx != winner_idx)
-            .map(|(_, conv)| conv.conviction_score)
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(mean)
-    } else if valid_signals.len() >= 2 {
-        valid_signals.iter()
-            .filter(|(idx, _, _, _, _)| *idx != winner_idx)
-            .map(|(_, conv, _, _, _)| conv.conviction_score)
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(mean)
-    } else {
-        mean
-    };
-
-    let dominance = if allow_bypass { 
-        ((winner_score - second_score) / (std_dev + EPS)).min(3.0) 
-    } else { 
-        winner_dom_final 
-    };
-    
-    let report_reason = if max_z >= EXTREME_Z_OVERRIDE { "EXTREME_OVERRIDE" } else { winner_reason_final };
-
-    if std::env::var("GA_DEBUG").is_ok() {
-        println!("WINDOW_DECISION → {} | sigs={} z={:.2} dom={:.3} mean={:.3} entropy={:.3} => ACCEPTED: TRADE ({})", 
-            scenario_name, valid_signals.len(), max_z, dominance, mean, window_entropy, report_reason);
-    }
-    let winner_score = winner_conviction.conviction_score;
-
-    let second_score = if allow_bypass {
-        window_data.iter()
-            .filter(|(idx, _)| *idx != winner_idx)
-            .map(|(_, conv)| conv.conviction_score)
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(mean)
-    } else if valid_signals.len() >= 2 {
-        valid_signals.iter()
-            .filter(|(idx, _, _, _, _)| *idx != winner_idx)
-            .map(|(_, conv, _, _, _)| conv.conviction_score)
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(mean)
-    } else {
-        mean
-    };
-
     let edge_spread_norm = (winner_score - median_score) / (std_dev + EPS);
-    // Phase 17A.5: Unified dominance for reporting
-    let dominance = if allow_bypass { 
-        ((winner_score - second_score) / (std_dev + EPS)).min(3.0) 
-    } else { 
-        winner_dom_final 
-    };
-    
-    let report_reason = if max_z >= EXTREME_Z_OVERRIDE { "EXTREME_OVERRIDE" } else { winner_reason_final };
-
-    if std::env::var("GA_DEBUG").is_ok() {
-        println!("WINDOW_DECISION → {} | sigs={} z={:.2} dom={:.3} mean={:.3} entropy={:.3} => ACCEPTED: TRADE ({})", 
-            scenario_name, valid_signals.len(), max_z, dominance, mean, window_entropy, report_reason);
-    }
 
     let signal_count = if allow_bypass { window_data.len() } else { valid_signals.len() };
 
@@ -2999,6 +3242,13 @@ pub(crate) fn evaluate_strategy(
             total_trades,
             &final_conviction,
         ) {
+            // Layer 4: Capture Efficiency Gate (Phase B)
+            if !allow_bypass && outcome.efficiency < 0.4 {
+                if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_DECISION → {} | eff={:.2} < 0.4 => SKIP: LOW_CAPTURE_EFF", scenario_name, outcome.efficiency);
+                }
+                continue;
+            }
             let trade_pnl = outcome.pnl * final_conviction.edge_weight;
             let expected_move = outcome.expected_move.abs().max(1e-9);
 
@@ -3041,7 +3291,40 @@ pub(crate) fn evaluate_strategy(
                 continue;
             }
             
+            total_efficiency += outcome.efficiency;
+            total_vol_ratio += std_v;
+            total_spread_reality += outcome.spread;
+            
+            // Phase C.1: Trade-Level Survivability Check
+            let window_slippage = outcome.spread * (1.0 + std_v.powf(1.2)) * config.slippage_factor;
+            let window_fill_prob = (outcome.efficiency * 0.7 + 0.3).clamp(0.5, 1.0);
+            let window_latency_penalty = (-0.05 * config.latency_ticks as f64).exp().clamp(0.6, 1.0);
+            let window_effective_pnl = if trade_pnl > 0.0 {
+                ((trade_pnl * window_fill_prob * window_latency_penalty) - window_slippage).max(trade_pnl * 0.1_f64)
+            } else {
+                (trade_pnl * window_fill_prob * window_latency_penalty) - window_slippage
+            };
+            if window_effective_pnl > 0.0 {
+                survivable_trades_count += 1;
+            }
+
             total_trades += 1;
+
+            // --- PHASE C.1.5: DEAD-ZONE ERADICATION (Early Exit) ---
+            if total_trades >= 5 {
+                let current_surv = survivable_trades_count as f64 / total_trades as f64;
+                if current_surv < 0.2_f64 {
+                    // Strategy is non-survivable in this regime; kill early to accelerate convergence
+                    return None;
+                }
+            }
+
+            // --- PHASE C.1.6: PARTICIPATION PRESSURE (Early Participation Choke) ---
+            if scenario_pnls.len() >= 20 && total_trades < 1 {
+                // Not active enough for institutional scale; kill early
+                return None;
+            }
+
             metrics.record_opportunity();
             entry_attempted += 1;
             
@@ -3126,11 +3409,18 @@ pub(crate) fn evaluate_strategy(
     }
 
     let total_trades = metrics.trade_count;
-    let requested_qty = config.order_quantity_for_strategy * 2 * (total_trades.max(1) as u64);
+    
+    // --- PHASE C.1.6: PARTICIPATION PRESSURE (Hard Frequency Floor) ---
+    if total_trades < 5 {
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!("FITNESS_TRACE: [INACTIVE] total_trades={} final=0.0", total_trades);
+        }
+        return None;
+    }
+
     let mean_expected_move = if total_trades > 0 { sum_expected_move / total_trades as f64 } else { 0.0 };
     let drawdown_penalty_raw = if total_trades > 0 { sum_drawdown_raw / total_trades as f64 } else { 0.0 };
-
-    if total_trades == 0 { return None; }
+    let requested_qty = config.order_quantity_for_strategy * 2 * (total_trades.max(1) as u64);
 
     // --- PHASE 10.5: REGIME ADMISSION GATE ---
     if total_trades > 15 && max_pnl_in_scenario < 0.0025 {
@@ -3140,7 +3430,7 @@ pub(crate) fn evaluate_strategy(
         return None; 
     }
 
-    let avg_pnl_for_scenario = metrics.sum_pnl / total_trades as f64;
+    let avg_pnl_for_scenario = if total_trades > 0 { metrics.sum_pnl / total_trades as f64 } else { 0.0 };
     let mut zero_pnl_trades_scenario = 0usize;
     let mut total_win = 0.0;
     let mut total_loss = 0.0;
@@ -3161,14 +3451,14 @@ pub(crate) fn evaluate_strategy(
     
     let avg_win = if win_count > 0 { total_win / win_count as f64 } else { 0.0 };
     let avg_loss = if loss_count > 0 { total_loss / loss_count as f64 } else { 0.0 };
-    let win_rate = win_count as f64 / total_trades as f64;
+    let win_rate = if total_trades > 0 { win_count as f64 / total_trades as f64 } else { 0.0 };
     
     // Stabilized Payoff Ratio
-    let payoff_ratio = (avg_win / avg_loss.max(0.0005)).clamp(0.5, 3.0);
-    let dir_consistency = (long_win_count_scenario.max(short_win_count_scenario) as f64 / win_count.max(1) as f64).clamp(0.5, 1.0);
+    let payoff_ratio = if avg_loss.abs() > 1e-6 { (avg_win / avg_loss.abs()).clamp(0.5, 3.0) } else { 0.0 };
+    let dir_consistency = if win_count > 0 { (long_win_count_scenario.max(short_win_count_scenario) as f64 / win_count as f64).clamp(0.5, 1.0) } else { 0.0 };
     
     // Composite Stability: Boosted with Squaring for Phase 11.2
-    let stability = (payoff_ratio * win_rate * dir_consistency).clamp(0.1, 1.5);
+    let stability = (payoff_ratio * win_rate * dir_consistency).clamp(0.0, 1.5);
     let stability_weighted = stability.powi(2);
 
     let selectivity = metrics.selectivity();
@@ -3191,57 +3481,86 @@ pub(crate) fn evaluate_strategy(
     }
     let worst_pnl_for_scenario = scenario_max_drawdown; 
 
-    // --- PHASE 11.2: INSTITUTIONAL CONSISTENCY FITNESS ---
-    // Formula: 0.5 * WinRate + 0.3 * Stability + 0.2 * AvgPnL
-    let mut total_fitness = (win_rate * 0.5) + (stability_weighted * 0.3) + (avg_pnl_for_scenario * 100.0 * 0.2);
+    // --- PHASE 11.2 / B.1 / C / C.1: INSTITUTIONAL FITNESS REDESIGN (Execution Reality + Discovery) ---
+    // Formula: Alpha * Consistency * Efficiency * Activity * Stability * DiscoveryPressure
     
-    // ⚠️ GUARDRAIL 4: FITNESS BASELINE
-    if total_trades > 0 && total_fitness <= 0.0 {
-        total_fitness = 1e-6;
+    // 1. Reality Factors (Phase C)
+    let avg_vol_ratio = if total_trades > 0 { total_vol_ratio / total_trades as f64 } else { 0.0 };
+    let avg_spread_reality = if total_trades > 0 { total_spread_reality / total_trades as f64 } else { 0.0 };
+    
+    // --- 1.1 Slippage Model (Convex) ---
+    let slippage = avg_spread_reality * (1.0 + avg_vol_ratio.powf(1.2)) * config.slippage_factor;
+    let slippage = if avg_pnl_for_scenario > 0.0 { slippage.min(avg_pnl_for_scenario * 0.7_f64) } else { slippage };
+
+    // --- 1.2 Fill Probability ---
+    let avg_efficiency = if total_trades > 0 { total_efficiency / total_trades as f64 } else { 0.0 };
+    let fill_prob = (avg_efficiency * 0.7 + 0.3).clamp(0.5, 1.0);
+
+    // --- 1.3 Latency Decay ---
+    let latency_ticks = config.latency_ticks as f64;
+    let latency_penalty = (-0.05 * latency_ticks).exp().clamp(0.6, 1.0);
+
+    // --- 1.4 Effective PnL (Scoring Overlay) ---
+    let effective_pnl = if avg_pnl_for_scenario > 0.0 {
+        ((avg_pnl_for_scenario * fill_prob * latency_penalty) - slippage).max(avg_pnl_for_scenario * 0.1_f64)
+    } else {
+        (avg_pnl_for_scenario * fill_prob * latency_penalty) - slippage
+    };
+
+    let reality_gap = avg_pnl_for_scenario - effective_pnl;
+    let gap_ratio = if avg_pnl_for_scenario.abs() > 1e-6 { reality_gap / avg_pnl_for_scenario.abs() } else { 0.0 };
+
+    // 2. Discovery Pressure (Phase C.1)
+    let gap_score = if total_trades < 3 {
+        0.3_f64 // Penalize inactivity (fake perfection)
+    } else {
+        (1.0 - gap_ratio).powf(1.2).clamp(0.1, 1.0)
+    };
+    // Context-Aware Slippage Normalization
+    let slippage_efficiency = (1.0 - (slippage / (avg_pnl_for_scenario.abs() + avg_vol_ratio * 0.5 + 1e-6))).clamp(0.1, 1.0);
+    let mut survivability_score = (survivable_trades_count as f64 / total_trades.max(1) as f64).clamp(0.1, 1.0);
+    if total_trades < 3 {
+        survivability_score *= 0.7_f64;
     }
 
-    // --- PHASE 12.5: VARIANCE COMPRESSION LAYER ---
-    // 1. Smooth Win-Rate Decay (Power-law instead of binary)
-    let wr_factor = (win_rate / 0.40).clamp(0.0, 1.0);
-    total_fitness *= wr_factor.powf(1.5);
+    // 3. Component Scores
+    let pnl_score = (effective_pnl / avg_vol_ratio.max(1e-3)).max(1e-4_f64);
+    let consistency_score = win_rate.powf(1.5).max(0.1);
+    let efficiency_score = avg_efficiency.clamp(0.0, 1.0).max(0.1);
+    let activity_score = (total_trades as f64 / 3.0).min(1.0).max(0.2);
+    let stability_score = (1.0 / (1.0 + std_dev_for_scenario)).clamp(0.1, 1.0);
+    
+    // --- 3.1 Power-Law Weighted Discovery ---
+    let discovery_multiplier = gap_score.powf(0.8) * slippage_efficiency.powf(0.8) * survivability_score.powf(1.2);
+    
+    let mut total_fitness = pnl_score * consistency_score * efficiency_score * activity_score * stability_score * discovery_multiplier;
 
-    // 2. Continuous Drawdown Penalty (Continuous Risk Sensitivity)
-    let dd_penalty = (1.0 + worst_pnl_for_scenario / 0.002).clamp(0.0, 1.0);
-    total_fitness *= dd_penalty.powf(1.2);
+    // 4. Reliability Penalty (Gradient)
+    let reliability_penalty = (match total_trades {
+        0..=2 => 0.5,
+        3..=4 => 0.75,
+        _ => 1.0,
+    } as f64).max(0.3);
+    total_fitness *= reliability_penalty;
 
-    // 3. Minimum Participation Floor
-    if total_trades < 2 {
-        total_fitness *= 0.5;
-    }
-
-    // 4. Direct Variance Penalty (Align with ActCV targets)
-    let scenario_variance = std_dev_for_scenario.powi(2);
-    let variance_penalty = 1.0 / (1.0 + scenario_variance * 100.0); 
-    total_fitness *= variance_penalty;
-
+    // --- PHASE 12.5+: DISCIPLINARY ADJUSTMENTS ---
     if total_trades > 0 {
-        // Multiplicative Adjustments
-        let avg_spread = total_spread_test / total_trades as f64;
-        let avg_price = sum_price / total_trades as f64;
-        let spread_bps = avg_spread / avg_price.max(1.0);
-        let spread_penalty = (spread_bps * 0.1).min(0.2);
-        total_fitness *= 1.0 - spread_penalty;
-        
-        if selectivity < 0.5 { total_fitness *= 0.8; }
-        let micro_loss_ratio = micro_loss_count as f64 / total_trades as f64;
-        if micro_loss_ratio > 0.4 { total_fitness *= 0.8; }
-        
-        // Phase 13.5: Disciplinary Selective Multipliers
-        total_fitness *= selectivity.powf(0.5); // Reward selectivity discipline
-    }
+        // Continuous Drawdown Penalty
+        let dd_penalty = (1.0 + worst_pnl_for_scenario / TARGET_STD.max(1e-3)).clamp(0.1, 1.0);
+        total_fitness *= dd_penalty.powf(1.2);
 
-    // 5. Soft Fitness Compression (Elite Outlier Stabilizer)
-    total_fitness = total_fitness / (1.0 + total_fitness);
+        // Selectivity Discipline
+        total_fitness *= selectivity.powf(0.5).max(0.5);
+    }
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
-            "FITNESS_TRACE: wr={:.2} dd_pen={:.2} st_var={:.2} pnl={:.6} final={:.4}",
-            win_rate, dd_penalty, variance_penalty, avg_pnl_for_scenario, total_fitness
+            "EXEC_REALITY → pnl={:.5} eff_pnl={:.5} slip={:.5} gap={:.2} surv={:.2}/{:.2}",
+            avg_pnl_for_scenario, effective_pnl, slippage, gap_score, survivable_trades_count as f64 / total_trades.max(1) as f64, survivability_score
+        );
+        println!(
+            "FITNESS_TRACE: wr={:.2} gap_s={:.2} surv={:.2} act={:.2} real_pnl={:.6} final={:.4}",
+            win_rate, gap_score, survivability_score, activity_score, effective_pnl, total_fitness
         );
     }
     let robustness_for_scenario = avg_pnl_for_scenario - config.lambda * std_dev_for_scenario;
@@ -3347,6 +3666,22 @@ pub(crate) fn evaluate_strategy(
         conviction_pnl_share: metrics.sum_conviction_pnl,
         trade_qualities: metrics.trade_qualities.clone(),
         outcome_consistency: 0.0, // Calculated at the aggregate level for Phase 2A
+        
+        // Phase 14++: Structural Health (Universe Discovery)
+        acceptance_rate: metrics.accepted_windows as f64 / metrics.total_windows.max(20) as f64,
+        valid_window_ratio: metrics.valid_windows as f64 / metrics.total_windows.max(1) as f64,
+        avg_agreement_valid: metrics.sum_agreement_valid / metrics.valid_windows.max(1) as f64,
+        avg_purity_valid: metrics.sum_purity_valid / metrics.valid_windows.max(1) as f64,
+        avg_stability_valid: metrics.sum_stability_valid / metrics.valid_windows.max(1) as f64,
+        max_agreement: metrics.max_agreement,
+        max_purity: metrics.max_purity,
+        total_windows: metrics.total_windows,
+        
+        // Phase A+: Adaptive Intelligence Metrics
+        alpha: metrics.adaptive.final_score.mean(),
+        consistency: 1.0 / (metrics.adaptive.final_score.std() + EPS),
+        opportunity: metrics.adaptive_opportunity_count as f64 / metrics.total_windows.max(1) as f64,
+        structural_score: 0.0, // Computed at population level
         ..StrategyEvaluation::default()
     })
 }
@@ -4251,6 +4586,66 @@ fn aggregate_strategy_reports_inner(
         consistency_n: phase2_total_quality_count as usize,
         ..StrategyEvaluation::default()
     };
+    
+    // --- PHASE 14++ Ext: STRUCTURAL RANKING ENGINE ---
+    let mut structural_candidates = Vec::new();
+    for e in &evaluations {
+        // Extract symbol from strategy_id (e.g., "VODAFONEIDEA_FUT_5M_CLEAN_csv_window_0" -> "VODAFONEIDEA_FUT")
+        let parts: Vec<&str> = e.strategy_id.split("strat_").collect();
+        let scenario_part = if parts.len() > 1 { parts[1] } else { &e.strategy_id };
+        let symbol = scenario_part.split("_csv_window_").next().unwrap_or("unknown").to_string();
+        
+        // Fix #3: Minimum Viability Filter (Garbage Filter) - Lowered for Adaptive Discovery
+        if e.total_windows < 5 {
+            continue;
+        }
+        
+        // Phase A+: Adaptive Alpha Ranking
+        // Sqrt Confidence Scaling: (N/100)^0.5
+        let confidence_factor = ((e.total_windows as f64) / 100.0).sqrt().min(1.0);
+        
+        // Composite Score: Prioritize Alpha (Avg Z) and Opportunity (%) scaled by confidence
+        // Weighted for institutional discovery: 70% Alpha, 30% Opportunity
+        let discovery_score = (e.alpha * 0.70 + e.opportunity * 0.30) * confidence_factor;
+        
+        let conf_label = if e.total_windows < 30 {
+            "LOW"
+        } else if e.total_windows < 80 {
+            "MED"
+        } else {
+            "HIGH"
+        };
+        
+        structural_candidates.push((symbol, e, discovery_score, conf_label));
+    }
+    
+    structural_candidates.sort_by(|a, b| b.2.total_cmp(&a.2));
+    
+    // Deduplicate symbols (since multiple windows might exist per symbol in some configurations)
+    let mut seen_symbols = HashSet::new();
+    let mut final_ranking = Vec::new();
+    for cand in structural_candidates {
+        if !seen_symbols.contains(&cand.0) {
+            seen_symbols.insert(cand.0.clone());
+            final_ranking.push(cand);
+        }
+    }
+    
+    println!("\n🚀 STRUCTURAL_RANKING (Adaptive Discovery)");
+    println!("--------------------------------------------------------------------------------------------------");
+    println!("Rank | Symbol       | Alpha   | Continuity | Opp%   | Stab | Agree | PeakAgree | Conf | N");
+    println!("--------------------------------------------------------------------------------------------------");
+    for (i, (sym, e, score, conf)) in final_ranking.iter().take(10).enumerate() {
+        println!("{:>4} | {:<12} | {:7.3} | {:10.2} | {:6.2}% | {:4.2} | {:5.2} | {:9.2} | {:4} | {}",
+            i + 1, sym, e.alpha, e.consistency, e.opportunity * 100.0,
+            (1.0 - e.avg_stability_valid / 0.18).clamp(0.0, 1.0),
+            e.avg_agreement_valid,
+            e.max_agreement,
+            conf,
+            e.total_windows
+        );
+    }
+    println!("--------------------------------------------------------------------------------------------------");
 
     let mean_depth = total_trade_count as f64 / total_scenarios.max(1.0);
     let _final_fitness_val = (1.0 + final_fitness).max(1e-6).ln();
@@ -5513,3 +5908,4 @@ mod tests {
         assert!(agg_opt.fitness > agg_low.fitness, "Optimal entropy (0.45) should beat low entropy (0.10)");
     }
 }
+    

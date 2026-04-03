@@ -1,7 +1,29 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import NarrativeBlock from './NarrativeBlock';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import StrategyColumn from './StrategyColumn';
 import ComparisonPanels from './ComparisonPanels';
+
+/** Flatten API EventWrapper `{ type, payload: { ... } }` into shape expected by narrative helpers. */
+function normalizeTraceEvent(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  const p = raw.payload != null && typeof raw.payload === 'object' ? raw.payload : {};
+  return { ...raw, ...p, type: raw.type };
+}
+
+function normalizeInspectResponse(data) {
+  if (!data || typeof data !== 'object') return data;
+  return {
+    ...data,
+    execution_trace: Array.isArray(data.execution_trace)
+      ? data.execution_trace.map(normalizeTraceEvent)
+      : data.execution_trace,
+    decision_trace: Array.isArray(data.decision_trace)
+      ? data.decision_trace.map(normalizeTraceEvent)
+      : data.decision_trace,
+    event_sequence: Array.isArray(data.event_sequence)
+      ? data.event_sequence.map(normalizeTraceEvent)
+      : data.event_sequence,
+  };
+}
 
 // Helper to get order_id or a fallback
 const getOrderId = (event) => {
@@ -256,6 +278,59 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
 
   const rawEventRefs = useRef({});
 
+  const handleInspectStrategy = useCallback(async (strategyNum) => {
+    const isFirstStrategy = strategyNum === 1;
+    const currentStrategyId = isFirstStrategy ? strategyId : strategyId2;
+    const currentSeed = isFirstStrategy ? seed : seed2;
+
+    if (!currentStrategyId || currentSeed === null) return;
+
+    isFirstStrategy ? setLoading(true) : setLoading2(true);
+    isFirstStrategy ? setError(null) : setError2(null);
+    setSelectedSeqId(null);
+
+    try {
+      const response = await fetch('http://localhost:8000/inspect_strategy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          strategy_id: currentStrategyId,
+          seed: Number(currentSeed),
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let msg = 'Failed to inspect strategy';
+        try {
+          const errorData = JSON.parse(errText);
+          msg = errorData.message || errorData.error || msg;
+        } catch {
+          if (errText) msg = errText;
+        }
+        throw new Error(msg);
+      }
+
+      const rawJson = await response.json();
+      const data = normalizeInspectResponse(rawJson);
+      if (isFirstStrategy) {
+        setInspectionResult(data);
+        if (data.execution_trace && data.execution_trace.length > 0) {
+          const maxId = Math.max(...data.execution_trace.map(e => e.sequence_id));
+          setSelectedMaxSeqId(maxId);
+        }
+      } else {
+        setInspectionResult2(data);
+      }
+    } catch (err) {
+      isFirstStrategy ? setError(err.message) : setError2(err.message);
+    } finally {
+      isFirstStrategy ? setLoading(false) : setLoading2(false);
+    }
+  }, [strategyId, strategyId2, seed, seed2]);
+
   // Update local state when props change (for primary strategy)
   useEffect(() => {
     setStrategyId(propStrategyId || '');
@@ -280,7 +355,7 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
       setInspectionResult(null);
       setError(null);
     }
-  }, [strategyId, seed]);
+  }, [strategyId, seed, handleInspectStrategy]);
 
   // Fetch data for second strategy when its inputs change
   useEffect(() => {
@@ -290,7 +365,7 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
       setInspectionResult2(null);
       setError2(null);
     }
-  }, [strategyId2, seed2]);
+  }, [strategyId2, seed2, handleInspectStrategy]);
 
   // Sync raw event scroll on selection change
   useEffect(() => {
@@ -301,51 +376,6 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
       });
     }
   }, [selectedSeqId, showRawEvents]);
-
-  const handleInspectStrategy = async (strategyNum) => {
-    const isFirstStrategy = strategyNum === 1;
-    const currentStrategyId = isFirstStrategy ? strategyId : strategyId2;
-    const currentSeed = isFirstStrategy ? seed : seed2;
-
-    if (!currentStrategyId || currentSeed === null) return;
-
-    isFirstStrategy ? setLoading(true) : setLoading2(true);
-    isFirstStrategy ? setError(null) : setError2(null);
-    setSelectedSeqId(null);
-
-    try {
-      const response = await fetch('http://localhost:8000/inspect_strategy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          strategy_id: currentStrategyId,
-          seed: Number(currentSeed),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to inspect strategy');
-      }
-
-      const data = await response.json();
-      if (isFirstStrategy) {
-        setInspectionResult(data);
-        if (data.execution_trace && data.execution_trace.length > 0) {
-          const maxId = Math.max(...data.execution_trace.map(e => e.sequence_id));
-          setSelectedMaxSeqId(maxId);
-        }
-      } else {
-        setInspectionResult2(data);
-      }
-    } catch (err) {
-      isFirstStrategy ? setError(err.message) : setError2(err.message);
-    } finally {
-      isFirstStrategy ? setLoading(false) : setLoading2(false);
-    }
-  };
 
   const allNarrativeBlocks1 = useMemo(() => inspectionResult?.execution_trace ? groupAndNarrateEvents(inspectionResult.execution_trace, null) : [], [inspectionResult?.execution_trace]);
   const allNarrativeBlocks2 = useMemo(() => inspectionResult2?.execution_trace ? groupAndNarrateEvents(inspectionResult2.execution_trace, null) : [], [inspectionResult2?.execution_trace]);
@@ -647,6 +677,7 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
                   getGroupColorClass={getGroupColorClass}
                   divergenceStatements={divergenceStatements}
                   setSelectedSeqId={setSelectedSeqId}
+                  selectedSeqId={selectedSeqId}
                 />
               </div>
 
@@ -665,6 +696,7 @@ const StrategyInspector = ({ strategyId: propStrategyId, seed: propSeed, strateg
                   getGroupColorClass={getGroupColorClass}
                   divergenceStatements={divergenceStatements}
                   setSelectedSeqId={setSelectedSeqId}
+                  selectedSeqId={selectedSeqId}
                 />
               )}
             </div>

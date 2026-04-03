@@ -1,5 +1,5 @@
 use crate::ese::{run_simulation_with_data, FIXED_LATENCY};
-use crate::{CreateOrder, ExecutionMode, MarketEvent, SimEvent, SimulationResult, OrderOutcome, MarketEventType};
+use crate::{CreateOrder, ExecutionMode, MarketEvent, SimEvent, SimulationResult, OrderOutcome, MarketEventType, Side};
 use serde_json;
 use blake3;
 use std::collections::HashMap;
@@ -37,6 +37,75 @@ pub fn run_simulation_harness(
     let state_hash = blake3::hash(serialized_state.as_bytes()).to_string();
 
     (events_output, result, state_hash)
+}
+
+/// Deterministic market + order set used by integration tests (`run_simulation`, determinism harness).
+pub fn deterministic_demo_fixture() -> (Vec<MarketEvent>, Vec<CreateOrder>) {
+    let market_events = vec![
+        MarketEvent {
+            subtype: MarketEventType::NewOrder,
+            price: 100,
+            quantity: 500,
+            side: Some(Side::Sell),
+            exchange_ts: 1,
+        },
+        MarketEvent {
+            subtype: MarketEventType::Trade,
+            price: 100,
+            quantity: 200,
+            side: None,
+            exchange_ts: 4,
+        },
+        MarketEvent {
+            subtype: MarketEventType::NewOrder,
+            price: 101,
+            quantity: 800,
+            side: Some(Side::Sell),
+            exchange_ts: 9,
+        },
+        MarketEvent {
+            subtype: MarketEventType::Trade,
+            price: 101,
+            quantity: 300,
+            side: None,
+            exchange_ts: 10,
+        },
+    ];
+
+    let create_orders = vec![
+        CreateOrder {
+            order_id: "O1".to_string(),
+            side: Side::Buy,
+            price: 100,
+            quantity: 600,
+            timestamp: 2,
+            fill_probability: 1.0,
+        },
+        CreateOrder {
+            order_id: "O2".to_string(),
+            side: Side::Buy,
+            price: 100,
+            quantity: 400,
+            timestamp: 5,
+            fill_probability: 1.0,
+        },
+        CreateOrder {
+            order_id: "O3".to_string(),
+            side: Side::Buy,
+            price: 101,
+            quantity: 300,
+            timestamp: 9,
+            fill_probability: 1.0,
+        },
+    ];
+    (market_events, create_orders)
+}
+
+/// Same inputs as [`deterministic_demo_fixture`]; used by demo/determinism/explainability integration tests.
+pub fn run_simulation(mode: ExecutionMode) -> SimulationResult {
+    let (market_events, create_orders) = deterministic_demo_fixture();
+    let (_, result, _) = run_simulation_harness(mode, market_events, create_orders);
+    result
 }
 
 // Replay engine that reconstructs the final state and computes its hash
@@ -126,68 +195,9 @@ pub fn replay_harness(event_log: Vec<SimEvent>) -> (SimulationResult, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MarketEventType;
-    use crate::Side;
 
     fn get_deterministic_inputs() -> (Vec<MarketEvent>, Vec<CreateOrder>) {
-        let market_events = vec![
-            MarketEvent {
-                subtype: MarketEventType::NewOrder,
-                price: 100,
-                quantity: 500,
-                side: Some(Side::Sell),
-                exchange_ts: 1,
-            },
-            MarketEvent {
-                subtype: MarketEventType::Trade,
-                price: 100,
-                quantity: 200,
-                side: None,
-                exchange_ts: 4,
-            },
-            MarketEvent {
-                subtype: MarketEventType::NewOrder,
-                price: 101,
-                quantity: 800,
-                side: Some(Side::Sell),
-                exchange_ts: 9,
-            },
-            MarketEvent {
-                subtype: MarketEventType::Trade,
-                price: 101,
-                quantity: 300,
-                side: None,
-                exchange_ts: 10,
-            },
-        ];
-
-        let create_orders = vec![
-            CreateOrder {
-                order_id: "O1".to_string(),
-                side: Side::Buy,
-                price: 100,
-                quantity: 600,
-                timestamp: 2,
-                fill_probability: 1.0,
-            },
-            CreateOrder {
-                order_id: "O2".to_string(),
-                side: Side::Buy,
-                price: 100,
-                quantity: 400,
-                timestamp: 5,
-                fill_probability: 1.0,
-            },
-            CreateOrder {
-                order_id: "O3".to_string(),
-                side: Side::Buy,
-                price: 101,
-                quantity: 300,
-                timestamp: 9,
-                fill_probability: 1.0,
-            },
-        ];
-        (market_events, create_orders)
+        deterministic_demo_fixture()
     }
 
     #[test]

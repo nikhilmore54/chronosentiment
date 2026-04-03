@@ -28,9 +28,34 @@ fn find_col(headers: &[&str], names: &[&str]) -> Option<usize> {
     headers.iter().position(|h| names.iter().any(|n| h.eq_ignore_ascii_case(n)))
 }
 
+fn parse_timestamp_strict(raw: &str) -> Option<u64> {
+    let v = raw.trim();
+    if v.is_empty() { return None; }
+    
+    // Try Unix timestamp first (integer)
+    if let Ok(n) = v.parse::<u64>() {
+        return Some(n);
+    }
+
+    // Try EXACT formatted timestamp: %Y-%m-%d %H:%M:%S
+    use chrono::NaiveDateTime;
+    if let Ok(dt) = NaiveDateTime::parse_from_str(v, "%Y-%m-%d %H:%M:%S") {
+        return Some(dt.and_utc().timestamp() as u64);
+    }
+    
+    None
+}
+
+#[async_trait::async_trait]
 impl CandleSource for CsvCandleSource {
-    fn get_candles(&self) -> Vec<Candle> {
-        let file = File::open(&self.path).expect("Failed to open CSV file");
+    fn get_candles_sync(&self) -> Vec<Candle> {
+        let file = match File::open(&self.path) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("ERROR: Failed to open CSV file {}: {:?}", self.path, e);
+                return Vec::new();
+            }
+        };
         let reader = BufReader::new(file);
         let mut lines = reader.lines();
 
@@ -50,7 +75,7 @@ impl CandleSource for CsvCandleSource {
 
         let mut candles = Vec::new();
 
-        for (row_idx, line) in lines.enumerate() {
+        for (_row_idx, line) in lines.enumerate() {
             let line = match line {
                 Ok(l) => l,
                 Err(_) => continue,
@@ -78,7 +103,13 @@ impl CandleSource for CsvCandleSource {
                 None => continue,
             };
 
-            let timestamp = parse_u64_cell(get(ts_idx)).unwrap_or((row_idx + 1) as u64);
+            let timestamp = match parse_timestamp_strict(get(ts_idx)) {
+                Some(v) => v,
+                None => {
+                    eprintln!("❌ FATAL_DATA_ERROR: Invalid timestamp format '{}' in {}. Expecting Unix or %Y-%m-%d %H:%M:%S", get(ts_idx), self.path);
+                    panic!("CSV_TIMESTAMP_FORMAT_ERROR");
+                }
+            };
             let volume = parse_u64_cell(get(vol_idx)).unwrap_or(0);
 
             candles.push(Candle {
@@ -93,5 +124,9 @@ impl CandleSource for CsvCandleSource {
 
         candles.sort_by_key(|c| c.timestamp);
         candles
+    }
+
+    async fn get_candles_async(&self) -> Vec<Candle> {
+        self.get_candles_sync()
     }
 }

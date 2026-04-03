@@ -301,6 +301,30 @@ AND liquidity_available > 0
 
 ---
 
+## 7.6 Deterministic Exit Intelligence (Pipeline Observer Layer)
+
+Exit intelligence in `core/src/pipeline.rs` is an observer-compatible state policy layered on top of existing event flow. It must not mutate event ordering or sequencing.
+
+**Lifecycle fields per open trade**
+- `entry_price`
+- `current_pnl`
+- `peak_pnl`
+- `entry_regime`
+- `initial_edge`
+- `is_open`
+
+**Deterministic exit triggers (first match closes trade immediately)**
+1. `TakeProfit`: `current_pnl >= take_profit_threshold`
+2. `TrailingStop`: `current_pnl < peak_pnl * 0.6`
+3. `EdgeDecay`: `effective_eval_edge < initial_edge * 0.5`
+4. `RegimeFlip`: `detected_regime != entry_regime`
+
+**Flow constraint**
+- No delayed or queued exit path is introduced at this layer.
+- Exit closes full position in pipeline state model.
+
+---
+
 # 8. Portfolio Engine
 
 ---

@@ -1,16 +1,17 @@
-use chronosentiment_core::pipeline::{
-    generate_latest_signals, generate_latest_signals_with_thresholds, SignalAction,
-};
+use chronosentiment_core::pipeline::{generate_latest_signals_with_thresholds, SignalAction};
 use std::env;
 
 fn main() {
     let assets = vec!["TATAMOTORS".to_string(), "RELIANCE".to_string()];
-    let conf = env::var("CONFIDENCE_FLOOR").ok().and_then(|v| v.parse::<f64>().ok());
-    let score = env::var("SCORE_FLOOR").ok().and_then(|v| v.parse::<f64>().ok());
-    let snapshot = match (conf, score) {
-        (Some(c), Some(s)) => generate_latest_signals_with_thresholds(assets.clone(), 0.5, c, s),
-        _ => generate_latest_signals(assets.clone(), 0.5),
-    };
+    let conf = env::var("CONFIDENCE_FLOOR")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    let score = env::var("SCORE_FLOOR")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    let snapshot = generate_latest_signals_with_thresholds(assets.clone(), 0.5, conf, score);
 
     let mut trades: Vec<_> = snapshot
         .signals

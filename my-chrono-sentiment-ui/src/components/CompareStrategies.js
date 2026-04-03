@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { parseStrategyParamsFromId } from '../utils/strategyId';
 
-const CompareStrategies = () => {
+const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   const [strategyIdsInput, setStrategyIdsInput] = useState('');
+  const [seed, setSeed] = useState(42);
   const [comparisonResult, setComparisonResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,6 +36,17 @@ const CompareStrategies = () => {
       return;
     }
 
+    let strategiesPayload;
+    try {
+      strategiesPayload = strategy_ids.map((id) => ({
+        strategy_config: parseStrategyParamsFromId(id),
+      }));
+    } catch (parseErr) {
+      setError(parseErr.message);
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:8000/compare_strategies', {
         method: 'POST',
@@ -41,13 +54,22 @@ const CompareStrategies = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          strategy_ids: strategy_ids,
+          strategies: strategiesPayload,
+          scenarios: [],
+          seed: Number(seed),
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to compare strategies');
+        const text = await response.text();
+        let msg = 'Failed to compare strategies';
+        try {
+          const errorData = JSON.parse(text);
+          msg = errorData.message || errorData.error || msg;
+        } catch {
+          if (text) msg = text;
+        }
+        throw new Error(msg);
       }
 
       const data = await response.json();
@@ -73,7 +95,20 @@ const CompareStrategies = () => {
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           value={strategyIdsInput}
           onChange={(e) => setStrategyIdsInput(e.target.value)}
-          placeholder="e.g., abc123, xyz789"
+          placeholder="e.g., strat_200_300_400_500_42 (same format as GA / inspect)"
+        />
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="compare_seed">
+          Seed (must match inspect / evaluation):
+        </label>
+        <input
+          type="number"
+          id="compare_seed"
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          value={seed}
+          onChange={(e) => setSeed(Number(e.target.value))}
         />
       </div>
 
@@ -101,7 +136,16 @@ const CompareStrategies = () => {
               </thead>
               <tbody>
                 {comparisonResult.ranking.map((row) => (
-                  <tr key={row.strategy_id}>
+                  <tr
+                    key={row.strategy_id}
+                    className={setSelectedStrategyForInspection ? 'hover:bg-gray-50 cursor-pointer' : ''}
+                    onClick={() => {
+                      if (setSelectedStrategyForInspection) {
+                        setSelectedStrategyForInspection(row.strategy_id, seed);
+                      }
+                    }}
+                    title={setSelectedStrategyForInspection ? 'Open in Inspect Strategy' : undefined}
+                  >
                     <td className="py-2 px-4 border-b">{row.strategy_id}</td>
                     <td className="py-2 px-4 border-b">{resolveExecutionFitness(row).toFixed(6)}</td>
                     <td className="py-2 px-4 border-b">{resolveGaFitness(row) === null ? "— (Search not performed)" : resolveGaFitness(row).toFixed(6)}</td>

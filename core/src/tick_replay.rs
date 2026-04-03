@@ -1,10 +1,5 @@
-use crate::binance_adapter::{
-    parse_binance_depth_event, parse_binance_trade_event, NormalizedMarketEvent,
-};
+use crate::binance_adapter::NormalizedMarketEvent;
 use crate::MarketEvent;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,6 +154,7 @@ mod tests {
         let mut eng = TickReplayEngine::from_events(
             vec![
                 NormalizedMarketEvent {
+                    asset: "TEST".to_string(),
                     exchange_ts: 3,
                     price: 101.0,
                     volume: 1.0,
@@ -169,6 +165,7 @@ mod tests {
                     asks: None,
                 },
                 NormalizedMarketEvent {
+                    asset: "TEST".to_string(),
                     exchange_ts: 1,
                     price: 100.0,
                     volume: 1.0,

@@ -122,6 +122,7 @@ mod tests {
             order_timestamp: 10,
             lambda: 0.5,
             initial_queue_threshold: 200,
+            ..chronosentiment_core::GaConfig::default()
         };
         
         let events = vec![

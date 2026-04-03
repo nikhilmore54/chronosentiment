@@ -596,7 +596,7 @@ pub fn resolve_execution_symbol(symbol: &str) -> String {
 }
 
 /// Scenarios from CSV candles only (`folder` preloads candles; `csv` loads `{folder_path}/{asset}_5m_clean.csv`).
-fn scenario_map_for_signal_generation(
+pub fn scenario_map_for_signal_generation(
     asset_name: &str,
     data_source: &str,
     folder_candles: Option<&Vec<Candle>>,
@@ -615,7 +615,7 @@ fn scenario_map_for_signal_generation(
             );
             if Path::new(&path).exists() {
                 let source = CsvCandleSource { path };
-                let candles = source.get_candles();
+                let candles = source.get_candles_sync();
                 scenarios_from_candles(asset_name, &candles)
             } else {
                 HashMap::new()
@@ -625,7 +625,7 @@ fn scenario_map_for_signal_generation(
     }
 }
 
-fn pair_scenarios_by_index<'a>(
+pub fn pair_scenarios_by_index<'a>(
     signal_symbol: &'a str,
     execution_symbol: &'a str,
     signal_scenarios: &'a HashMap<String, Vec<MarketEvent>>,
@@ -2090,7 +2090,10 @@ fn generate_latest_signals_with_thresholds_internal(
                     global_best_generation: 0,
                     final_generation_best: ga::StrategyEvaluation::default(),
                     generation_history: Vec::new(),
-                    best_per_regime: HashMap::new(),
+                    best_per_regime: std::collections::HashMap::new(),
+                    clusters_per_regime: std::collections::HashMap::new(),
+                    population_stats: ga::PopulationStats::default(),
+                    final_population: Vec::new(),
                 }
             }
         } else {
@@ -2672,7 +2675,7 @@ pub fn evaluate_on_real_data(
             scenarios_from_candles(&asset_name, &candles)
         } else if data_source == "csv" && !csv_path.is_empty() && Path::new(&csv_path).exists() {
             let source: Box<dyn CandleSource> = Box::new(CsvCandleSource { path: csv_path.clone() });
-            let candles = source.get_candles();
+            let candles = source.get_candles_sync();
             scenarios_from_candles(&asset_name, &candles)
         } else {
             HashMap::new()
