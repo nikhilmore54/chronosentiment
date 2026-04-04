@@ -1507,8 +1507,8 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
                         generation, best.fitness, median, worst, div, evo.mutation_scale
                     );
 
-                    println!("ADAPTIVE_DYNAMICS → Best: {:.4}, Median: {:.4}, Worst: {:.4} | Div: {:.4} | MutScale: {:.2} | Pressure: {:.2}", 
-                        best.fitness, median, worst, div, evo.mutation_scale, evo.selection_pressure);
+                    println!("ADAPTIVE_DYNAMICS → Best: {:.4}, Median: {:.4}, Worst: {:.4} | Div: {:.4} | MutScale: {:.2} | Pressure: {:.2} | ForceWinProb: {:.2}", 
+                        best.fitness, median, worst, div, evo.mutation_scale, evo.selection_pressure, (1.0 - (generation as f64 / 50.0)).clamp(0.05, 1.0));
 
                     if div < 0.05 {
                         println!("🚨 DIVERSITY_INJECTION: Population variance collapsed ({:.4}); injecting 30% random immigrants (preserving top-{})", div, config.preserve_top_k);
@@ -2642,12 +2642,17 @@ fn evolve_generation(evaluations: &Vec<StrategyEvaluation>, config: &GaConfig, r
         evo.stagnation_counter
     );
 
-    // Tournament Selection + Adaptive Mutation
+    // Tournament Selection + Adaptive Mutation (Phase D.1.19)
     let k = (config.population_size / 4).min(5).max(2);
     let shock_prob = if evo.stagnation_counter > 3 { 0.25 } else { 0.10 };
+
+    let fitness_mean = evaluations.iter().map(|e| e.fitness).sum::<f64>() / evaluations.len().max(1) as f64;
+    let fitness_std = (evaluations.iter().map(|e| (e.fitness - fitness_mean).powi(2)).sum::<f64>() / evaluations.len().max(1) as f64).sqrt();
+    let diversity_pressure = (1.0 - (fitness_std / (fitness_mean.abs() + EPS)).min(1.0)).powi(2);
     
-    // Adaptive Mutation Magnitude: Scale magnitude if stagnating
     let mut current_evo = evo.clone();
+    current_evo.mutation_scale *= 1.0 + diversity_pressure * 2.5; // Aggressive scale when stuck
+    
     if evo.stagnation_counter > 3 {
         current_evo.mutation_scale *= 1.5;
     }
@@ -2669,12 +2674,14 @@ fn evolve_generation(evaluations: &Vec<StrategyEvaluation>, config: &GaConfig, r
         unique_clusters, k, shock_prob, current_evo.mutation_scale
     );
 
+    let mutation_rate = config.mutation_rate * (1.0 + diversity_pressure);
+
     while next_gen.len() < config.population_size {
         // Diversified Tournament: Penalize similarity to existing elites
         let parent_eval = tournament_selection_diverse(evaluations, k, rng, &elites, pnl_mu, pnl_sigma, std_mu, std_sigma);
         let mut offspring = parent_eval.strategy.clone();
         
-        if rng.gen::<f64>() < config.mutation_rate {
+        if rng.gen::<f64>() < mutation_rate {
             if rng.gen::<f64>() < shock_prob {
                 // SHOCK MUTATION (Scout Injection/Exploration)
                 offspring = random_strategy(config, rng);
@@ -2709,7 +2716,7 @@ fn tournament_selection_diverse<'a>(
             if sim > max_sim { max_sim = sim; }
         }
         
-        let adj_fitness = candidate.fitness - 0.15 * max_sim;
+        let adj_fitness = candidate.fitness - 0.30 * max_sim; // Sharpened Penalty (D.1.19)
         
         if best.is_none() || adj_fitness > best.unwrap().1 {
             best = Some((candidate, adj_fitness));
@@ -3460,11 +3467,14 @@ pub(crate) fn evaluate_strategy(
         valid_signals.push((signal_idx, conv, dom, "RELATIVE_CANDIDATE", e_score, source, signature));
     }
 
-    // 3. Forced Winner Rule
+    // 3. Forced Winner Rule (Phase D.1.19: Decay)
+    let gen_progress = (generation as f64 / 50.0).clamp(0.0, 1.0);
+    let forced_win_prob = (1.0 - gen_progress).clamp(0.05, 1.0);
+    
     let had_organic_signals_final = !valid_signals.is_empty();
     if !had_organic_signals && !valid_signals.is_empty() {
-        // Already handled above
-    } else if !had_organic_signals_final && valid_signals.is_empty() {
+        // Already handled above (Organic Breakthrough)
+    } else if !had_organic_signals_final && valid_signals.is_empty() && rand::random::<f64>() < forced_win_prob {
         if let Some((_, (signal_idx, conviction))) = window_data.iter().enumerate().max_by(|a, b| a.1.1.conviction_score.total_cmp(&b.1.1.conviction_score)) {
             if conviction.conviction_score > 1e-6 {
                 let mut winner_conv = conviction.clone();
@@ -4330,7 +4340,13 @@ pub(crate) fn evaluate_strategy(
         max_purity: metrics.max_purity,
         total_windows: metrics.total_windows,
         
-        alpha: metrics.adaptive.final_score.mean(),
+        alpha: {
+            let raw_alpha = metrics.adaptive.final_score.mean();
+            let edge_strength = (metrics.sum_pnl.abs() / (metrics.trade_count.max(1) as f64)).max(1e-9);
+            let edge_min = 0.0005;
+            let pressure_penalty = (edge_strength / edge_min).powi(2).min(1.0);
+            raw_alpha * pressure_penalty
+        },
         consistency: 1.0 / (metrics.adaptive.final_score.std() + EPS),
         bootstrap_ratio: metrics.bootstrap_trade_count as f64 / total_trades.max(1) as f64,
         opportunity: metrics.adaptive_opportunity_count as f64 / metrics.total_windows.max(1) as f64,
