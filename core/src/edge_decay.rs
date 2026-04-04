@@ -32,22 +32,57 @@ fn map_regime_local(regime: &str) -> LiveRegime {
 
 // Local helper to parse strategy from ID (simplified for reporting)
 fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
-    // Expected format from ga.rs: strat_{scenario_name}_{q}_{e}_{tp}_{sl}
-    // Note: scenario_name itself contains underscores, e.g., BTCUSDT_jsonl_window_1
-    let parts: Vec<&str> = id.split('_').collect();
-    if parts.len() < 5 { return None; }
+    let parts: Vec<&str> = id.split('v').collect();
+    if parts.len() < 13 { return None; }
     
-    // The last 4 parts should be our parameters
-    let sl = parts.last()?.parse().ok()?;
-    let tp = parts[parts.len() - 2].parse().ok()?;
-    let e = parts[parts.len() - 3].parse().ok()?;
-    let q = parts[parts.len() - 4].parse().ok()?;
+    // The parts are our parameters (queue_threshold to archetype)
+    // Format: STRAT_QvEvTPvSLvHPvW_CONVvW_MOMvW_VOLvEXP_CONVvEXP_MOMvEXP_VOLvSELvARCH
+    let q = parts[0].trim_start_matches("STRAT_").parse().ok()?;
+    let e = parts[1].parse().ok()?;
+    let tp = parts[2].parse().ok()?;
+    let sl = parts[3].parse().ok()?;
+    let holding = parts[4].parse().ok()?;
+    let w_conv = parts[5].parse().ok()?;
+    let w_mom = parts[6].parse().ok()?;
+    let w_vol = parts[7].parse().ok()?;
+    let exp_conv = parts[8].parse().ok()?;
+    let exp_mom = parts[9].parse().ok()?;
+    let exp_vol = parts[10].parse().ok()?;
+    let selectivity = parts[11].parse().ok()?;
+    let archetype = parts[12].parse().ok()?;
     
     Some(Strategy {
         queue_threshold: q,
         base_edge: e,
         take_profit: tp,
         stop_loss: sl,
+        holding_period: holding,
+        w_conviction: w_conv,
+        w_momentum: w_mom,
+        w_volatility: w_vol,
+        exp_conviction: exp_conv,
+        exp_momentum: exp_mom,
+        exp_volatility: exp_vol,
+        selectivity,
+        archetype,
+    })
+}
+
+fn _parse_fallback(sig: &StrategyProfile) -> Strategy {
+    parse_strategy_from_id_local(&sig.strategy_id).unwrap_or(Strategy {
+        queue_threshold: 100,
+        base_edge: 2,
+        take_profit: 20,
+        stop_loss: 10,
+        holding_period: 0,
+        w_conviction: 50,
+        w_momentum: 30,
+        w_volatility: 20,
+        exp_conviction: 100,
+        exp_momentum: 100,
+        exp_volatility: 100,
+        selectivity: 75,
+        archetype: 0,
     })
 }
 
@@ -57,8 +92,17 @@ fn build_evaluator_from_snapshot(snapshot_signals: &[crate::pipeline::TradeSigna
         let strategy = parse_strategy_from_id_local(&sig.strategy_id).unwrap_or(Strategy {
             queue_threshold: 100,
             base_edge: 2,
-            take_profit: 10,
-            stop_loss: 5,
+            take_profit: 20,
+            stop_loss: 10,
+            holding_period: 0,
+            w_conviction: 50,
+            w_momentum: 30,
+            w_volatility: 20,
+            exp_conviction: 100,
+            exp_momentum: 100,
+            exp_volatility: 100,
+            selectivity: 75,
+            archetype: 0,
         });
         registry_rows.push(StrategyProfile {
             strategy_id: sig.strategy_id.clone(),

@@ -8,10 +8,19 @@ fn mock_eval(pnl: f64, trades: usize, fill_eff: f64) -> StrategyEvaluation {
     let mut eval = StrategyEvaluation {
         strategy_id: "mock".to_string(),
         strategy: Strategy {
-            queue_threshold: 0,
-            base_edge: 0,
-            take_profit: 0,
-            stop_loss: 0,
+            queue_threshold: 100,
+            base_edge: 2,
+            take_profit: 20,
+            stop_loss: 10,
+            holding_period: 0,
+            w_conviction: 50,
+            w_momentum: 30,
+            w_volatility: 20,
+            exp_conviction: 100,
+            exp_momentum: 100,
+            exp_volatility: 100,
+            selectivity: 75,
+            archetype: 0,
         },
         capability: ScenarioCapability::Executable,
         avg_pnl: pnl,
@@ -44,6 +53,7 @@ fn mock_eval(pnl: f64, trades: usize, fill_eff: f64) -> StrategyEvaluation {
         exit_ts_count: (trades as f64 * 0.1) as usize,
         consistency_score: 1.0,
         recent_performance: pnl,
+        ..Default::default()
     };
     eval
 }

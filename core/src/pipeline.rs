@@ -144,17 +144,8 @@ impl From<ga::StrategyEvaluation> for UnifiedStrategyEvaluation {
     }
 }
 
-pub fn deterministic_strategy_id(strategy: &ga::Strategy, scenario_names: &[String], seed: u64) -> String {
-    let mut names = scenario_names.to_vec();
-    names.sort();
-    format!(
-        "strat_{}_{}_{}_{}_{}",
-        strategy.queue_threshold,
-        strategy.base_edge,
-        strategy.take_profit,
-        strategy.stop_loss,
-        seed ^ (names.len() as u64)
-    )
+pub fn deterministic_strategy_id(strategy: &ga::Strategy, _scenario_names: &[String], _seed: u64) -> String {
+    ga::strategy_to_id(strategy)
 }
 
 pub fn run_evaluation_orchestration(
@@ -174,7 +165,7 @@ pub fn run_evaluation_orchestration(
     };
 
     let scenarios_vec = map_to_pairs(asset_name, scenarios);
-    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec)
+    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec, 0)
         .ok_or_else(|| "Strategy produced no evaluable trades".to_string())?;
 
     let mut unified = UnifiedStrategyEvaluation::from(eval);
@@ -964,7 +955,8 @@ pub fn run_ga_orchestration(
     let exec_vec_pairs: Vec<ga::ScenarioPair> = exec_hash_pairs.values().cloned().collect();
     
     let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
-        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs)
+        let generation = 0; // Standard non-evolutionary evaluation
+        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation)
             .unwrap_or_else(|| ga::StrategyEvaluation {
                 strategy: strategy.clone(),
                 ..ga::StrategyEvaluation::default()
@@ -2094,6 +2086,7 @@ fn generate_latest_signals_with_thresholds_internal(
                     clusters_per_regime: std::collections::HashMap::new(),
                     population_stats: ga::PopulationStats::default(),
                     final_population: Vec::new(),
+                    consensus_recommendations: None,
                 }
             }
         } else {
@@ -2123,7 +2116,8 @@ fn generate_latest_signals_with_thresholds_internal(
                 let mut one_scenario: HashMap<String, Vec<MarketEvent>> = HashMap::new();
                 one_scenario.insert(scenario_name.clone(), events.clone());
                 let one_scenario_vec = map_to_pairs(asset_name, &one_scenario);
-                if let Some(report) = ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_vec) {
+                let generation = 0; // Standard non-evolutionary evaluation
+                if let Some(report) = ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_vec, generation) {
                     max_observed_eval_edge = max_observed_eval_edge.max(report.fitness.max(0.0));
                     if sweep_disable_edge_override {
                         if let Some(sink) = sweep_gate_metrics_sink.as_mut() {
@@ -2741,7 +2735,7 @@ pub fn evaluate_on_real_data(
                     .unwrap_or(&ga_result.global_best);
 
                 if let Some(report) =
-                    ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_px_pairs)
+                    ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_px_pairs, 0)
                 {
                     let gate = evaluate_gate(
                         detected_regime,

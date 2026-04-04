@@ -203,7 +203,7 @@ for k in folder_candles.keys() {
             // --- PHASE 13: DIVERSIFIED ENSEMBLE SELECTION ---
             // 1. Gather all unique evaluations from the final population
             let mut final_evals = Vec::new();
-            if let Some(evs) = chronosentiment_core::ga::evaluate_population_scoped(&ga_res.final_population, &config, &scenarios, 0) {
+            if let Some(evs) = chronosentiment_core::ga::evaluate_population_scoped(&ga_res.final_population, &config, &scenarios, ga_res.final_generation_best.fitness as usize % 100) {
                 for (i, e) in evs.into_iter().enumerate() {
                     let rank_score = chronosentiment_core::ga::ga_scenario_rank_score(&e);
                     final_evals.push((i, rank_score, e));
@@ -222,7 +222,7 @@ for k in folder_candles.keys() {
             
             // 3. Final Institutional Ensemble Validation
             println!("🧠 ENSEMBLE_CONSENSUS: Evaluating 5-member diversified ensemble on {}...", asset_name);
-            let robustness = evaluate_ensemble_robustness(&ensemble_strategies, &config, &scenarios);
+            let robustness = evaluate_ensemble_robustness(&ensemble_strategies, &config, &scenarios, 0);
             
             let baseline_fitness = robustness.regime_fitness[0]; // Regime C
             let jitter_fitness = robustness.regime_fitness[2];   // Regime D (index changed in evaluate_ensemble_robustness)
@@ -232,7 +232,7 @@ for k in folder_candles.keys() {
             // Cross-Asset Transfer Test (If last asset available)
             if let Some((from_asset, strat)) = &last_best_strategy {
                 println!("🧪 CROSS_ASSET_TRANSFER: Evaluating strategy from {} on {}...", from_asset, asset_name);
-                let trans_robustness = evaluate_robustness(strat, &config, &scenarios);
+                let trans_robustness = evaluate_robustness(strat, &config, &scenarios, 0);
                 let trans_fit = trans_robustness.regime_fitness[0];
                 let deg = ((ga_res.global_best.fitness - trans_fit) / ga_res.global_best.fitness.max(1e-9)) * 100.0;
                 transfer_matrix.push((from_asset.clone(), asset_name.clone(), ga_res.global_best.fitness, trans_fit, deg));

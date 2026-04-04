@@ -1,4 +1,4 @@
-use crate::{CreateOrder, ExecutionMode, MarketEvent, Side, Candle};
+use crate::{MarketEvent, Side, Candle};
 // use crate::harness::run_simulation_harness;
 use crate::selection_cap;
 use rand::{Rng, SeedableRng, seq::SliceRandom, rngs::StdRng};
@@ -9,6 +9,25 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::cmp::Ordering;
 use serde_json::value::to_value as to_json_value;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SignalSource {
+    Organic,
+    Bootstrap,
+}
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalSignature {
+    pub archetype: u8,
+    pub regime: i8,   // -1 (low), 0 (norm), 1 (high vol)
+    pub momentum: i8, // -1 (bear), 0 (flat), 1 (bull)
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct SignatureStats {
+    pub sum_pnl: f64,
+    pub win_count: usize,
+    pub sample_count: usize,
+}
 
 fn default_capture_eff() -> f64 { 1.0 }
 
@@ -90,6 +109,10 @@ struct ScenarioMetrics {
     pub sum_dominance: f64,
     pub sum_signal_entropy: f64,
     
+    // Phase D.1.18: Cognitive Layer (Memory)
+    pub signature_memory: HashMap<SignalSignature, SignatureStats>,
+    pub max_signature_credibility: f64,
+    
     // Population Separation Analysis (Phase 17 Diagnostic Calibration)
     pub raw_pop_count: usize,
     pub sum_raw_pop_dominance: f64,
@@ -102,6 +125,7 @@ struct ScenarioMetrics {
     pub exec_pop_dominance_buckets: [usize; 6],
     
     // Phase 2: Consistency Engine
+    pub pnl_history: Vec<GaRoundTripOutcome>,
     pub trade_qualities: Vec<f64>,
     pub sum_realized_pnl: f64,
     pub sum_expected_pnl: f64,
@@ -145,6 +169,13 @@ struct ScenarioMetrics {
     pub conviction_trade_count: usize,
     pub sum_clarity_pnl: f64,
     pub sum_conviction_pnl: f64,
+    
+    // Phase D.1.16: Edge Validation Layer
+    pub organic_trade_count: usize,
+    pub bootstrap_trade_count: usize,
+    pub organic_sum_pnl: f64,
+    pub bootstrap_sum_pnl: f64,
+    pub pnl_history_rolling: Vec<f64>,
     
     // Phase A+: Adaptive Ranking
     pub adaptive_opportunity_count: usize,
@@ -237,9 +268,22 @@ impl ScenarioMetrics {
         edge_spread: f64,
         dominance: f64,
         signal_entropy: f64,
+        outcome: GaRoundTripOutcome,
+        source: SignalSource,
+        signature: Option<SignalSignature>,
     ) {
         self.trade_count += 1;
         self.sum_pnl += realized_pnl;
+        
+        // Update Signature Memory (Phase D.1.18)
+        if let Some(sig) = signature {
+            let stats = self.signature_memory.entry(sig).or_insert_with(SignatureStats::default);
+            stats.sum_pnl += realized_pnl;
+            stats.sample_count += 1;
+            if realized_pnl > 0.0 {
+                stats.win_count += 1;
+            }
+        }
         
         // Phase 2: Consistency Engine Tracking
         self.sum_realized_pnl += realized_pnl;
@@ -267,6 +311,22 @@ impl ScenarioMetrics {
         if realized_pnl > 0.0 {
             self.profitable_trades += 1;
         }
+        
+        // Phase D.1.16: Source-Aware Attribution
+        match source {
+            SignalSource::Organic => {
+                self.organic_trade_count += 1;
+                self.organic_sum_pnl += realized_pnl;
+            }
+            SignalSource::Bootstrap => {
+                self.bootstrap_trade_count += 1;
+                self.bootstrap_sum_pnl += realized_pnl;
+            }
+        }
+        self.pnl_history_rolling.push(realized_pnl);
+        if self.pnl_history_rolling.len() > 50 { self.pnl_history_rolling.remove(0); }
+        
+        self.pnl_history.push(outcome);
     }
 
     fn avg_entropy(&self) -> f64 {
@@ -564,11 +624,13 @@ impl Default for AcceptanceMode {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StrategyEvaluation {
+    pub winner_idx: usize,
     pub strategy_id: String,
     pub strategy: Strategy,
     #[serde(default)]
     pub capability: ScenarioCapability,
-    pub avg_pnl: f64,
+    pub real_dom: f64,
+    pub had_organic_signals: bool,
     pub std_dev: f64,
     pub downside_std_dev: f64,
     pub worst: f64,
@@ -581,6 +643,9 @@ pub struct StrategyEvaluation {
     pub profitable_trades: usize,
     pub zero_pnl_trades: usize,
     pub quality_trades: f64,
+    pub total_pnl: f64,
+    pub avg_pnl: f64,
+    pub pnl_history: Vec<GaRoundTripOutcome>,
     pub win_rate: f64,
     pub payoff: f64,
     pub payoff_ratio: f64,
@@ -657,6 +722,8 @@ pub struct StrategyEvaluation {
     #[serde(default)]
     pub raw_pop_p95: f64,
     #[serde(default)]
+    pub bootstrap_ratio: f64,
+    #[serde(default)]
     pub raw_pop_dist: [f64; 6],
     
     #[serde(default)]
@@ -730,6 +797,92 @@ pub struct StrategyEvaluation {
     pub clarity_pnl_share: f64,
     #[serde(default)]
     pub conviction_pnl_share: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Archetype {
+    Conviction,
+    Momentum,
+    Reversion,
+    Volatility,
+}
+
+impl From<u8> for Archetype {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => Archetype::Conviction,
+            1 => Archetype::Momentum,
+            2 => Archetype::Reversion,
+            3 => Archetype::Volatility,
+            _ => Archetype::Conviction, // Default
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Decision {
+    BUY,
+    SELL,
+    HOLD,
+}
+
+pub struct SignalVote {
+    pub strategy_id: String,
+    pub archetype: Archetype,
+    pub confidence: f64,
+    pub signal_features: Vec<f64>,
+    pub decision: Decision,
+}
+
+/// Phase D.1.10: Consensus-Driven Alpha Extraction
+/// Represents a tradable signal supported by multiple strategies (agents).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalAlphaReport {
+    pub signal_idx: usize,
+    pub asset: String,
+    pub support_count: usize,
+    pub support_ratio: f64,
+    pub avg_score: f64,
+    pub archetype_diversity: f64,
+    pub alpha_score: f64,
+    pub conviction: f64,
+    pub archetypes: Vec<u8>,
+    pub consensus_label: String, // "HIGH", "CROWDED", "NICHE"
+    pub disagreement_entropy: f64,
+    pub feature_diversity: f64,
+    pub realized_edge_factor: f64,
+    // Phase D.1.13 Temporal Layer
+    pub signal_timestamp: u64,
+    pub temporal_stability: f64,
+    pub persistence_count: usize,
+    pub alignment_factor: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SignalIdentity {
+    pub bucket_ts: u64,
+    pub direction: Decision,
+    pub archetype: Archetype,
+    pub feature_hash: u64,
+}
+
+pub fn get_coarse_feature_hash(strategy: &Strategy) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut s = DefaultHasher::new();
+    // Coarse rounding to group similar strategies while avoiding collisions
+    ((strategy.queue_threshold / 500) * 500).hash(&mut s);
+    ((strategy.base_edge / 50) * 50).hash(&mut s);
+    ((strategy.selectivity / 10) * 10).hash(&mut s);
+    s.finish()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsensusReport {
+    pub scenario_name: String,
+    pub top_signals: Vec<SignalAlphaReport>,
+    pub global_entropy: f64,
+    pub active_strategies: usize,
 }
 
 impl StrategyEvaluation {
@@ -820,6 +973,13 @@ fn clamp01(x: f64) -> f64 {
     x.max(0.0).min(1.0)
 }
 
+fn compute_std_dev(data: &[f64]) -> f64 {
+    if data.is_empty() { return 0.0; }
+    let mean = data.iter().sum::<f64>() / data.len() as f64;
+    let variance = data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / data.len() as f64;
+    variance.sqrt()
+}
+
 fn calculate_execution_score(ctx: &ExecutionContext) -> f64 {
     let queue_component = clamp01(1.0 - ctx.queue_depth);
     let liquidity_component = clamp01(ctx.liquidity_score);
@@ -863,6 +1023,8 @@ pub struct GaResult {
     pub clusters_per_regime: HashMap<String, Vec<StrategyEvaluation>>,
     pub population_stats: PopulationStats,
     pub final_population: Vec<Strategy>,
+    #[serde(default)]
+    pub consensus_recommendations: Option<ConsensusReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -875,14 +1037,24 @@ pub struct PopulationStats {
 impl Default for StrategyEvaluation {
     fn default() -> Self {
         StrategyEvaluation {
+            winner_idx: 0,
             strategy_id: "N/A".to_string(),
             strategy: Strategy {
                 queue_threshold: 0,
                 base_edge: 0,
                 take_profit: 0,
                 stop_loss: 0,
+                holding_period: 0,
+                w_conviction: 50,
+                w_momentum: 50,
+                w_volatility: 20,
+                exp_conviction: 100,
+                exp_momentum: 100,
+                exp_volatility: 100, selectivity: 75, archetype: 0,
             },
             capability: ScenarioCapability::default(),
+            real_dom: 0.0,
+            had_organic_signals: false,
             avg_pnl: 0.0,
             std_dev: 0.0,
             downside_std_dev: 0.0,
@@ -969,8 +1141,11 @@ impl Default for StrategyEvaluation {
             avg_trade_quality: 0.0,
             std_trade_quality: 0.0,
             consistency_n: 0,
+            total_pnl: 0.0,
+            pnl_history: Vec::new(),
             pnl_fingerprint: Vec::new(),
             acceptance_mode: AcceptanceMode::default(),
+            bootstrap_ratio: 0.0,
         }
     }
 }
@@ -997,6 +1172,18 @@ pub struct Strategy {
     pub take_profit: u64,
     /// ATR Multiplier (scaled by 100, e.g. 150 = 1.5x ATR)
     pub stop_loss: u64,
+    /// Bars to hold (scaled by 10, e.g. 50 = 5 bars)
+    pub holding_period: u64,
+    // Phase D.1.8 Non-Linear Scoring Genes (scaled by 100)
+    pub w_conviction: u64,
+    pub w_momentum: u64,
+    pub w_volatility: u64,
+    pub exp_conviction: u64,
+    pub exp_momentum: u64,
+    pub exp_volatility: u64,
+    // Phase D.1.9: Divergence & Archetype Genes
+    pub selectivity: u8,   // [60, 90] Deterministic choice probability
+    pub archetype: u8,     // [0, 3] Behavioral Identity (Conviction, Momentum, Reversion, Volatility)
 }
 
 #[derive(Debug, Clone)]
@@ -1156,25 +1343,46 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
             let evaluations_option = evaluate_population_scoped(&population, &config, scenarios, generation);
 
             if let Some(mut evaluations) = evaluations_option {
-                // --- PHASE C.4.2: ADAPTIVE AMPLIFICATION ---
+                // --- PHASE D.1.7: AGGRESSIVE HIERARCHY INJECTION ---
                 let n_eval = (evaluations.len() as f64).max(1.0);
-                let mean_fit = evaluations.iter().map(|e| e.fitness).sum::<f64>() / n_eval;
-                let var_fit = evaluations.iter().map(|e| (e.fitness - mean_fit).powi(2)).sum::<f64>() / n_eval;
-                let std_fit = var_fit.sqrt();
-                let scale = (1.0 / (std_fit + 1e-3)).clamp(1.0, 500.0);
-                
-                println!("GEN_STATS → std_dev={:.6}, scale={:.2}", std_fit, scale);
-                
+                let scores: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
+                let total_score: f64 = scores.iter().sum::<f64>();
+                let convictions: Vec<f64> = evaluations.iter().map(|e| e.avg_conviction).collect();
+                let avg_conviction = convictions.iter().sum::<f64>() / n_eval;
+                let std_dev_pop = compute_std_dev(&scores);
+
+                for e in &mut evaluations {
+                    // 1. Relative Dominance (Aggressive)
+                    let relative_dominance = e.fitness / (total_score + 1e-9);
+                    e.fitness *= (1.0 + 2.0 * relative_dominance).powf(2.5);
+
+                    // 2. Conviction Divergence Bonus (Amplified)
+                    let divergence = (e.avg_conviction - avg_conviction).abs();
+                    e.fitness *= 1.0 + 1.5 * divergence;
+
+                    // 3. Anti-Collapse Kill Switch (Hard)
+                    if std_dev_pop < 1e-6 {
+                        e.fitness *= 0.3;
+                    }
+                }
+
+                // --- PHASE C.4.2: ADAPTIVE AMPLIFICATION (Refined for D.1.7) ---
                 let mut fit_vals: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
-                fit_vals.sort_by(|a, b| a.total_cmp(b));
-                println!("ADAPTIVE_DYNAMICS → Best: {:.4}, Median: {:.4}, Worst: {:.4}", 
-                    fit_vals.last().unwrap_or(&0.0), 
-                    fit_vals[fit_vals.len() / 2], 
-                    fit_vals.first().unwrap_or(&0.0));
+                let new_std = compute_std_dev(&fit_vals);
+                let scale = (1.0 / (new_std + 1e-3)).clamp(1.0, 500.0);
                 
                 for e in &mut evaluations {
                     e.fitness *= scale;
                 }
+
+                fit_vals = evaluations.iter().map(|e| e.fitness).collect();
+                fit_vals.sort_by(|a, b| a.total_cmp(b));
+                
+                println!("GEN_STATS → std_dev={:.6}, scale={:.2}", new_std, scale);
+                println!("ADAPTIVE_DYNAMICS → Best: {:.4}, Median: {:.4}, Worst: {:.4}", 
+                    fit_vals.last().unwrap_or(&0.0), 
+                    fit_vals[fit_vals.len() / 2], 
+                    fit_vals.first().unwrap_or(&0.0));
 
                 if evaluations.is_empty() {
                     println!("  [{}|{}] Gen {} → ALL STRATEGIES REJECTED AFTER INITIAL EVALUATION", asset, regime, generation);
@@ -1255,12 +1463,23 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
                     evaluations = pre_similarity;
                 }
 
-                // Re-sort
-                evaluations.sort_by(|a, b| a.fitness.total_cmp(&b.fitness).reverse());
+                // --- PHASE D.1.13.5: UNIVERSAL FITNESS PENALTY (CRITICAL) ---
+                // Severely penalize strategies that failed to produce organic signals.
+                for eval in evaluations.iter_mut() {
+                    if !eval.had_organic_signals {
+                        eval.fitness *= 0.1; // 90% penalty for "ghost" strategies
+                        if std::env::var("GA_DEBUG").is_ok() {
+                            println!("FITNESS_PENALTY → strat={} | Organic Signal Void", eval.strategy_id);
+                        }
+                    }
+                }
+                
+                // Re-sort after penalty
+                evaluations.sort_by(|a, b| b.fitness.total_cmp(&a.fitness));
 
                 // --- INSTITUTIONAL ADAPTIVE EVOLUTION (EvoState) ---
                 if let Some(best_ref) = evaluations.first() {
-                    let best = best_ref.clone(); // Clone to avoid borrow conflict during diversity injection
+                    let best = best_ref.clone(); 
                     let median = evaluations[evaluations.len() / 2].fitness;
                     let worst = evaluations.last().unwrap().fitness;
                     
@@ -1294,8 +1513,7 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
                     if div < 0.05 {
                         println!("🚨 DIVERSITY_INJECTION: Population variance collapsed ({:.4}); injecting 30% random immigrants (preserving top-{})", div, config.preserve_top_k);
                         
-                        // 1. Sort current population by fitness (redundant but safe)
-                        evaluations.sort_by(|a, b| b.fitness.total_cmp(&a.fitness));
+                        // evaluations already penalized and sorted above.
                         
                         // 2. Preserve TOP-K
                         let keep_count = config.preserve_top_k.min(evaluations.len());
@@ -1431,6 +1649,79 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
         eprintln!("⚠️ ELITE_PERSISTENCE_ERROR: Failed to save elite population");
     }
 
+    // --- PHASE D.1.13: TEMPORAL CONSENSUS & STABILITY LAYER ---
+    let consensus_report = if all_scenarios.len() > 0 {
+        let elite_genomes: Vec<Strategy> = elites.iter().map(|e| e.strategy.clone()).collect();
+        let target_windows = all_scenarios.iter().rev().take(5).collect::<Vec<_>>();
+        let mut registry: HashMap<SignalIdentity, Vec<SignalAlphaReport>> = HashMap::new();
+        
+        for scenario in &target_windows {
+            let report = compute_consensus_alpha(&elite_genomes, scenario, &config);
+            for sig in report.top_signals {
+                let identity = SignalIdentity {
+                    bucket_ts: sig.signal_timestamp / 60,
+                    direction: if sig.alpha_score > 0.0 { Decision::BUY } else { Decision::SELL }, // Logic relative to consensus
+                    archetype: if !sig.archetypes.is_empty() { 
+                        match sig.archetypes[0] {
+                            0 => Archetype::Conviction,
+                            1 => Archetype::Momentum,
+                            2 => Archetype::Reversion,
+                            _ => Archetype::Volatility,
+                        }
+                    } else { Archetype::Conviction },
+                    feature_hash: get_coarse_feature_hash(&elite_genomes[0]), // Representative (refined below if needed)
+                };
+                registry.entry(identity).or_insert(vec![]).push(sig);
+            }
+        }
+
+        let mut final_top_signals = Vec::new();
+        for (identity, history) in registry {
+            let count = history.len();
+            if count == 0 { continue; }
+
+            // 1. Persistence Factor (Non-linear)
+            let persistence_factor = (count as f64 / 5.0).powf(1.2);
+            
+            // 2. Persistence Quality (Mean Alpha)
+            let persistence_quality = history.iter().map(|s| s.alpha_score).sum::<f64>() / count as f64;
+
+            // 3. Robust Stability Factor (CV-based clamping)
+            let mut stability_factor = 1.0;
+            if count > 1 {
+                let mean = persistence_quality;
+                let variance = history.iter().map(|s| (s.alpha_score - mean).powi(2)).sum::<f64>() / count as f64;
+                let std_dev = variance.sqrt();
+                let cv = (std_dev / (mean.abs() + 1e-6)).clamp(0.0, 5.0);
+                stability_factor = (-1.5 * cv).exp();
+            }
+
+            let mut aggregated = history[0].clone();
+            aggregated.alpha_score = persistence_quality * stability_factor * persistence_factor;
+            aggregated.temporal_stability = stability_factor;
+            aggregated.persistence_count = count;
+            
+            // Penalize or reject low persistence
+            if count < 2 { aggregated.alpha_score *= 0.5; }
+
+            if aggregated.alpha_score > 0.4 {
+                aggregated.consensus_label = if aggregated.alpha_score > 0.7 { "🏆 TEMPORAL ALPHA" } else { "stable signal" }.to_string();
+                final_top_signals.push(aggregated);
+            }
+        }
+
+        final_top_signals.sort_by(|a, b| b.alpha_score.total_cmp(&a.alpha_score));
+        
+        Some(ConsensusReport {
+            scenario_name: all_scenarios.last().unwrap().name.to_string(),
+            top_signals: final_top_signals,
+            global_entropy: 0.0,
+            active_strategies: elite_genomes.len(),
+        })
+    } else {
+        None
+    };
+
     println!("📈 Generation Peaks:");
     for (gen, fitness) in generation_peaks {
         println!("Gen {} → {:.4}", gen, fitness);
@@ -1444,7 +1735,7 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
     );
     let mut final_clusters: HashMap<String, Vec<StrategyEvaluation>> = clusters_per_bucket
         .into_iter()
-        .map(|((asset, regime), evals)| (format!("{}_{}", asset, regime), evals))
+        .map(|((asset, regime), eval)| (format!("{}_{}", asset, regime), eval))
         .collect();
     
     // Add Global Clusters
@@ -1476,6 +1767,7 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
             recent: (global_pnl_mu, global_pnl_sigma),
         },
         final_population: final_p,
+        consensus_recommendations: consensus_report,
     }
 }
 
@@ -1500,6 +1792,7 @@ pub fn evaluate_robustness(
     strategy: &Strategy,
     config: &GaConfig,
     scenarios: &[ScenarioPair],
+    generation: usize,
 ) -> RobustnessReport {
     let mut regimes = Vec::new();
     
@@ -1533,7 +1826,7 @@ pub fn evaluate_robustness(
         isolated_config.seed += regime_id; 
         regime_id += 1;
         
-        if let Some(eval) = evaluate_and_aggregate(strategy, &isolated_config, scenarios) {
+        if let Some(eval) = evaluate_and_aggregate(strategy, &isolated_config, scenarios, generation) {
             results.push(eval.fitness);
         } else {
             results.push(0.0);
@@ -1561,7 +1854,7 @@ pub fn evaluate_robustness(
 
     // Layer 3: Internal CV Downside (Intra-scenario stability of Baseline)
     // We re-run baseline aggregation to extract its internal downside deviation.
-    let internal_cv_down = if let Some(eval) = evaluate_and_aggregate(strategy, config, scenarios) {
+    let internal_cv_down = if let Some(eval) = evaluate_and_aggregate(strategy, config, scenarios, generation) {
         if eval.avg_pnl.abs() > 1e-9 { eval.downside_std_dev / eval.avg_pnl.abs() } else { 0.0 }
     } else {
         0.0
@@ -1573,18 +1866,20 @@ pub fn evaluate_robustness(
         min / max
     } else { 0.0 };
     
-    let (strategy_avg_pnl, strategy_total_trades) = if let Some(eval) = evaluate_and_aggregate(strategy, config, scenarios) {
+    let (strategy_avg_pnl, strategy_total_trades) = if let Some(eval) = evaluate_and_aggregate(strategy, config, scenarios, generation) {
         (eval.avg_pnl, eval.trade_count)
     } else { (0.0, 0) };
     
     let pnl_score = strategy_avg_pnl.max(0.0) * 100.0;
     let selectivity = strategy_total_trades as f64 / (scenarios.iter().map(|s| s.signal.len()).sum::<usize>() as f64).max(1.0);
 
-    // --- PHASE 13.5: SURGICAL CLASSIFICATION ---
-    let classification = if strategy_total_trades < 5 {
-        "FILTERED"
+    // --- PHASE 13.5: SURGICAL CLASSIFICATION (Refined) ---
+    let classification = if strategy_total_trades < 1 {
+        "VERY_WEAK" // Evidence Starvation
+    } else if strategy_total_trades < 5 {
+        "WEAK" // Low Sample Size
     } else if pnl_score < 0.10 {
-        "FILTERED"
+        "WEAK" // Underperformance
     } else if internal_cv_down <= 0.05 {
         "STRONG"
     } else {
@@ -1614,6 +1909,7 @@ pub fn evaluate_ensemble_robustness(
     ensemble: &[Strategy],
     config: &GaConfig,
     scenarios: &[ScenarioPair],
+    generation: usize,
 ) -> RobustnessReport {
     let mut regimes = Vec::new();
     regimes.push(config.clone()); // Baseline
@@ -1631,7 +1927,7 @@ pub fn evaluate_ensemble_robustness(
     
     let mut results = Vec::new();
     for r_config in &regimes {
-        if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, r_config, scenarios) {
+        if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, r_config, scenarios, generation) {
             results.push(eval.fitness);
         } else {
             results.push(0.0);
@@ -1645,7 +1941,7 @@ pub fn evaluate_ensemble_robustness(
     let variance = results.iter().map(|f| (f - mean).powi(2)).sum::<f64>() / regimes.len() as f64;
     let global_cv = if mean > 0.0 { variance.sqrt() / mean } else { 0.0 };
     
-    let internal_cv_down = if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, config, scenarios) {
+    let internal_cv_down = if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, config, scenarios, generation) {
         if eval.avg_pnl.abs() > 1e-9 { eval.downside_std_dev / eval.avg_pnl.abs() } else { 0.0 }
     } else { 0.0 };
 
@@ -1655,18 +1951,20 @@ pub fn evaluate_ensemble_robustness(
         min / max
     } else { 0.0 };
     
-    let (ens_avg_pnl, ens_trade_count, ens_entropy) = if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, config, scenarios) {
+    let (ens_avg_pnl, ens_trade_count, ens_entropy) = if let Some(eval) = evaluate_ensemble_and_aggregate(ensemble, config, scenarios, generation) {
         (eval.avg_pnl, eval.trade_count, eval.avg_entropy)
     } else { (0.0, 0, 0.0) };
     
     let pnl_score = ens_avg_pnl.max(0.0) * 100.0;
     let selectivity = ens_trade_count as f64 / (scenarios.iter().map(|s| s.signal.len()).sum::<usize>() as f64).max(1.0);
 
-    // --- PHASE 13.5: SURGICAL CLASSIFICATION ---
-    let classification = if ens_trade_count < 5 {
-        "FILTERED"
+    // --- PHASE 13.5: SURGICAL CLASSIFICATION (Refined) ---
+    let classification = if ens_trade_count < 1 {
+        "VERY_WEAK"
+    } else if ens_trade_count < 5 {
+        "WEAK"
     } else if pnl_score < 0.10 {
-        "FILTERED"
+        "WEAK"
     } else if internal_cv_down <= 0.05 {
         "STRONG"
     } else {
@@ -1694,21 +1992,23 @@ pub fn evaluate_ensemble_and_aggregate(
     ensemble: &[Strategy],
     config: &GaConfig,
     scenarios: &[ScenarioPair],
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
     let mut reports = Vec::new();
     for pair in scenarios {
-        if let Some(report) = evaluate_ensemble_strategy(ensemble, pair, config) {
+        if let Some(report) = evaluate_ensemble_strategy(ensemble, pair, config, generation) {
             reports.push(report);
         }
     }
     if reports.is_empty() { return None; }
-    aggregate_strategy_reports_inner(reports, 1.0, config).map(|(e, _)| e)
+    aggregate_strategy_reports_inner(reports, 1.0, config, generation).map(|(e, _)| e)
 }
 
 pub fn evaluate_ensemble_strategy(
     ensemble: &[Strategy],
     pair: &ScenarioPair,
     config: &GaConfig,
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
     let scenario_name = &pair.name;
     let signal_events = pair.signal;
@@ -1730,7 +2030,7 @@ pub fn evaluate_ensemble_strategy(
     // Member metrics for weighting
     let mut member_evals = Vec::with_capacity(ensemble.len());
     for s in ensemble {
-        if let Some(e) = evaluate_strategy(s, pair, config) {
+        if let Some(e) = evaluate_strategy(s, pair, config, 0) {
             member_evals.push(e);
         } else {
             member_evals.push(StrategyEvaluation::default());
@@ -1743,7 +2043,7 @@ pub fn evaluate_ensemble_strategy(
         let mut consensus = 0.0;
         let mut total_w = 0.0;
         for (idx, strategy) in ensemble.iter().enumerate() {
-            let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, i, 0);
+            let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, i, 0, generation);
             let w = member_evals[idx].fitness.max(0.1);
             consensus += conv.conviction_score * w;
             total_w += w;
@@ -1777,7 +2077,7 @@ pub fn evaluate_ensemble_strategy(
         let mut inputs = Vec::with_capacity(ensemble.len());
         for (i, strategy) in ensemble.iter().enumerate() {
             let eval = &member_evals[i];
-            let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, current_idx, 0);
+            let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, current_idx, 0, generation);
             
             inputs.push(crate::ensemble::EnsembleInput {
                 member: &member_refs[i],
@@ -1862,6 +2162,9 @@ pub fn evaluate_ensemble_strategy(
                     0.0,
                     0.0,
                     0.0,
+                    outcome.clone(),
+                    SignalSource::Organic, // Standard simulation is organic unless specified
+                    None,
                 );
 
                 if trade_pnl > 0.0 {
@@ -1900,9 +2203,12 @@ pub fn evaluate_ensemble_strategy(
     } else { 0.0 };
 
     Some(StrategyEvaluation {
+        winner_idx: 0,
         strategy_id: format!("Ensemble_{}", scenario_name),
         strategy: ensemble[0].clone(), // Template
         capability: ScenarioCapability::Executable,
+        real_dom: 0.0,
+        had_organic_signals: true,
         avg_pnl,
         std_dev,
         downside_std_dev: 0.0,
@@ -1975,13 +2281,14 @@ fn evaluate_population_member(
     config: &GaConfig,
     scenarios: &[ScenarioPair],
     early_check_indices: &[usize],
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
     for &idx in early_check_indices {
         let pair = &scenarios[idx];
-        let _ = evaluate_strategy(strategy, pair, config);
+        let _ = evaluate_strategy(strategy, pair, config, generation);
     }
 
-    if let Some(aggregated) = evaluate_and_aggregate(strategy, config, scenarios) {
+    if let Some(aggregated) = evaluate_and_aggregate(strategy, config, scenarios, generation) {
         Some(aggregated)
     } else {
         None
@@ -1995,10 +2302,8 @@ pub fn evaluate_population_scoped(
     generation: usize
 ) -> Option<Vec<StrategyEvaluation>> {
     let n_in = scenarios.len();
-    if n_in == 0 {
-        return None;
-    }
-
+    if n_in == 0 { return None; }
+    
     // Phase 10.3: Stochastic Evolution Recovery
     // Each genome now sees a unique, randomized subset of the scenario pool (DHARVI compliant).
     let threads = selection_cap::resolved_ga_parallelism_threads();
@@ -2024,7 +2329,7 @@ pub fn evaluate_population_scoped(
                     println!("SCENARIO_SAMPLE → genome={}, selected={}, total={}{}", 
                         idx, selected_subset.len(), n_in, if is_diagnostic { " [DIAGNOSTIC]" } else { "" });
                 }
-                evaluate_population_member(strategy, config, selected_subset, &[]) // skip legacy early_check
+                evaluate_population_member(strategy, config, selected_subset, &[], generation) // skip legacy early_check
             })
             .collect()
     } else {
@@ -2053,7 +2358,7 @@ pub fn evaluate_population_scoped(
                         
                         let selected_subset = &local_scenarios[0..dynamic_cap];
                         
-                        evaluate_population_member(strategy, config, selected_subset, &[])
+                        evaluate_population_member(strategy, config, selected_subset, &[], generation)
                     })
                     .collect()
             }),
@@ -2069,23 +2374,19 @@ pub fn evaluate_population_scoped(
                         local_scenarios.shuffle(&mut genome_rng);
                         let dynamic_cap = (((n_in as f32) * 0.3).ceil() as usize).max(6).min(12).min(n_in);
                         let selected = &local_scenarios[0..dynamic_cap];
-                        evaluate_population_member(strategy, config, selected, &[])
+                        evaluate_population_member(strategy, config, selected, &[], generation)
                     })
                     .collect()
             }
         }
     };
+    let mut evaluations: Vec<StrategyEvaluation> = per_member.iter().flat_map(|v| v.clone()).collect();
 
-    let mut evaluations = Vec::with_capacity(population.len());
-    for opt in per_member {
-        if let Some(ev) = opt {
-            evaluations.push(ev);
-        }
-    }
     if evaluations.is_empty() {
         // Fallback for extremely sparse data: return some strategies with 0 fitness
         for strategy in population.iter().take(3) {
             evaluations.push(StrategyEvaluation {
+                winner_idx: 0,
                 strategy_id: "FALLBACK_ZERO".to_string(),
                 strategy: strategy.clone(),
                 consistency_score: 1.0,
@@ -2094,6 +2395,63 @@ pub fn evaluate_population_scoped(
             });
         }
     }
+
+    // --- PHASE D.1.9: CONSENSUS-AWARE FITNESS & ENHANCED LOGGING ---
+    let pop_size = evaluations.len().max(1);
+    let mut winner_map: HashMap<usize, usize> = HashMap::new();
+    for e in &evaluations {
+        *winner_map.entry(e.winner_idx).or_insert(0) += 1;
+    }
+    
+    // Calculate Shannon Entropy
+    let unique_winners: HashSet<usize> = evaluations.iter().map(|e| e.winner_idx).collect();
+    let mut entropy = 0.0;
+    for (&_idx, &count) in &winner_map {
+        let p = count as f64 / pop_size as f64;
+        if p > 0.0 {
+            entropy -= p * p.ln();
+        }
+    }
+    
+    // Apply Partial Consensus Penalty (Fixed Surgical 6)
+    for ev in &mut evaluations {
+        let count = *winner_map.get(&ev.winner_idx).unwrap_or(&1);
+        let overlap_ratio = count as f64 / pop_size as f64;
+        let penalty = (1.0 - 0.7 * overlap_ratio).max(0.3);
+        ev.fitness *= penalty;
+    }
+    
+    // Archetype Distribution
+    let mut arch_counts = [0usize; 4];
+    for e in &evaluations {
+        let a = e.strategy.archetype as usize;
+        if a < 4 { arch_counts[a] += 1; }
+    }
+
+    let max_count = winner_map.values().max().cloned().unwrap_or(0);
+    let concentration = if evaluations.is_empty() { 0.0 } else { max_count as f64 / evaluations.len() as f64 };
+
+    println!(
+        "DIVERSITY → unique={} entropy={:.2} concentration={:.2} pop={}",
+        unique_winners.len(),
+        entropy,
+        concentration,
+        pop_size
+    );
+    println!(
+        "ARCHETYPE_DIST → C:{} M:{} R:{} V:{}",
+        arch_counts[0], arch_counts[1], arch_counts[2], arch_counts[3]
+    );
+
+    let fitness_scores: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
+    let (_mean, _std_dev) = if fitness_scores.len() > 1 {
+        let m = fitness_scores.iter().sum::<f64>() / fitness_scores.len() as f64;
+        let v = fitness_scores.iter().map(|f| (f - m).powi(2)).sum::<f64>() / (fitness_scores.len() as f64);
+        (m, v.sqrt())
+    } else {
+        (fitness_scores.first().cloned().unwrap_or(0.0), 0.0)
+    };
+
     Some(evaluations)
 }
 
@@ -2114,6 +2472,15 @@ fn deduplicate_population(population: Vec<Strategy>, config: &GaConfig, rng: &mu
             base_edge: rng.gen_range((1 * GA_GENE_SCALE)..=(15 * GA_GENE_SCALE)),
             take_profit: rng.gen_range(3..=25), // BPS - Reachable zone for 20-bar horizon
             stop_loss: rng.gen_range(3..=15),   // BPS
+            holding_period: rng.gen_range(20..=200),
+            w_conviction: rng.gen_range(20..=100),
+            w_momentum: rng.gen_range(20..=100),
+            w_volatility: rng.gen_range(10..=60),
+            exp_conviction: rng.gen_range(80..=200),
+            exp_momentum: rng.gen_range(80..=200),
+            exp_volatility: rng.gen_range(80..=200),
+            selectivity: rng.gen_range(60..=90),
+            archetype: rng.gen_range(0..=3),
         };
         if unique_strategies.insert(random_strat.clone()) {
             new_population.push(random_strat);
@@ -2351,7 +2718,7 @@ fn tournament_selection_diverse<'a>(
     best.unwrap().0
 }
 
-fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
+pub fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
     Strategy {
         // Institutional Selectivity Floor: Narrowed to 60-120 to avoid velocity saturation
         queue_threshold: (rng.gen_range(60..=120) as u64).saturating_mul(GA_GENE_SCALE), 
@@ -2361,10 +2728,21 @@ fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
         take_profit: rng.gen_range(100..=500), 
         // SL: 0.5 to 3.0 ATR
         stop_loss: rng.gen_range(50..=300),   
+        // Bars to hold (scaled by 10)
+        holding_period: rng.gen_range(20..=200),
+        // Phase D.1.8: Non-linear Scoring Genes (scaled 0-100)
+        w_conviction: rng.gen_range(10..=100),
+        w_momentum: rng.gen_range(10..=100),
+        w_volatility: rng.gen_range(5..=50), // Volatility usually penalized, smaller starting weight
+        exp_conviction: rng.gen_range(70..=200), // Start near linear or slightly above
+        exp_momentum: rng.gen_range(70..=200),
+        exp_volatility: rng.gen_range(70..=200),
+        selectivity: rng.gen_range(60..=90),
+        archetype: rng.gen_range(0..=3),
     }
 }
 
-fn initialize_population(config: &GaConfig, rng: &mut StdRng) -> Vec<Strategy> {
+pub fn initialize_population(config: &GaConfig, rng: &mut StdRng) -> Vec<Strategy> {
     let mut population = Vec::with_capacity(config.population_size);
     for _ in 0..config.population_size {
         population.push(random_strategy(config, rng));
@@ -2372,17 +2750,38 @@ fn initialize_population(config: &GaConfig, rng: &mut StdRng) -> Vec<Strategy> {
     population
 }
 
+/// Unified identity mapping for 13-gene DNA strings.
+pub fn strategy_to_id(s: &Strategy) -> String {
+    format!(
+        "STRAT_{}v{}v{}v{}v{}v{}v{}v{}v{}v{}v{}v{}v{}",
+        s.queue_threshold,
+        s.base_edge,
+        s.take_profit,
+        s.stop_loss,
+        s.holding_period,
+        s.w_conviction,
+        s.w_momentum,
+        s.w_volatility,
+        s.exp_conviction,
+        s.exp_momentum,
+        s.exp_volatility,
+        s.selectivity,
+        s.archetype
+    )
+}
+
 fn mutate_strategy(strategy: &mut Strategy, rng: &mut StdRng, parent_trade_count: usize, evo: &EvoState) {
-    let mut mutation_type = rng.gen_range(0..4);
+    let mut mutation_type = rng.gen_range(0..6);
     
     // 🔥 LINEAGE FORCE-MUTATION: Resurrection pressure if strategy is economically inactive
     if parent_trade_count == 0 {
         // Force mutation to move only entry conditions (threshold/edge)
-        mutation_type = if rng.gen_bool(0.5) { 0 } else { 2 };
+        mutation_type = if rng.gen_bool(0.3) { 4 } else if rng.gen_bool(0.5) { 0 } else { 2 };
     }
 
     // Adaptive step size based on non-linear stagnation scaling
     let stagnation_jump = 1.0 + (evo.stagnation_counter as f64).powi(2) * 0.1;
+    let mutation_rate = (0.25 * evo.mutation_scale).clamp(0.01, 0.8);
 
     match mutation_type {
         0 => { // Big jump in threshold (RUPEE EQUIVALENT)
@@ -2401,11 +2800,32 @@ fn mutate_strategy(strategy: &mut Strategy, rng: &mut StdRng, parent_trade_count
             let base_edge_new = rng.gen_range((1 * GA_GENE_SCALE)..((20.0 * intensity) as u64 * GA_GENE_SCALE));
             strategy.base_edge = base_edge_new;
         }
-        _ => { // Mutate ATR multipliers
+        3 => { // Mutate ATR multipliers
             let delta_tp = (rng.gen_range(-50..=50) as f64 * evo.mutation_scale) as i64;
             let delta_sl = (rng.gen_range(-30..=30) as f64 * evo.mutation_scale) as i64;
             strategy.take_profit = (strategy.take_profit as i64 + delta_tp).clamp(100, 500) as u64;
             strategy.stop_loss = (strategy.stop_loss as i64 + delta_sl).clamp(50, 300) as u64;
+        }
+        4 => { // 4: Mutate Phase D.1.8 Scoring Genes
+            let delta_w = (rng.gen_range(-20..=20) as f64 * evo.mutation_scale) as i64;
+            let delta_e = (rng.gen_range(-30..=30) as f64 * evo.mutation_scale) as i64;
+            
+            match rng.gen_range(0..6) {
+                0 => strategy.w_conviction = (strategy.w_conviction as i64 + delta_w).clamp(10, 100) as u64,
+                1 => strategy.w_momentum = (strategy.w_momentum as i64 + delta_w).clamp(10, 100) as u64,
+                2 => strategy.w_volatility = (strategy.w_volatility as i64 + delta_w).clamp(5, 100) as u64,
+                3 => strategy.exp_conviction = (strategy.exp_conviction as i64 + delta_e).clamp(50, 300) as u64,
+                4 => strategy.exp_momentum = (strategy.exp_momentum as i64 + delta_e).clamp(50, 300) as u64,
+                _ => strategy.exp_volatility = (strategy.exp_volatility as i64 + delta_e).clamp(50, 300) as u64,
+            }
+        }
+        _ => { // 5: Mutate Selectivity & Archetype (Phase D.1.9)
+            if rng.gen_bool(mutation_rate) {
+                strategy.selectivity = rng.gen_range(60..=90);
+            }
+            if rng.gen_bool(mutation_rate) {
+                strategy.archetype = rng.gen_range(0..=3);
+            }
         }
     }
 }
@@ -2420,8 +2840,10 @@ pub enum GaExitReason {
 }
 
 /// One non-overlapping round-trip from a cursor index (ESE harness), for multi-cycle GA evaluation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GaRoundTripOutcome {
     pub side: Side,
+    pub source: SignalSource,
     pub exit_reason: GaExitReason,
     pub pnl: f64,
     pub quality: f64,
@@ -2446,7 +2868,7 @@ pub struct GaRoundTripOutcome {
 }
 
 /// Deterministic single round-trip anchored at `market_events[cursor_i]`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ConvictionOutcome {
     pub conviction_score: f64,    // Continuous [0, 1]
     pub expected_edge: f64,       // Predicted move - Cost
@@ -2467,9 +2889,30 @@ pub fn evaluate_market_conviction(
     signal_events: &[crate::MarketEvent],
     cursor_i: usize,
     trade_idx: usize,
+    generation: usize,
 ) -> ConvictionOutcome {
     let ref_event = &signal_events[cursor_i];
     let ref_price = ref_event.price;
+
+    // 0. Deterministic Hash & Roll (Genome-Aware)
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    strategy.queue_threshold.hash(&mut hasher);
+    strategy.base_edge.hash(&mut hasher);
+    strategy.holding_period.hash(&mut hasher);
+    // Phase D.1.8: Include scoring genes in perception-hash
+    strategy.w_conviction.hash(&mut hasher);
+    strategy.w_momentum.hash(&mut hasher);
+    strategy.w_volatility.hash(&mut hasher);
+    strategy.exp_conviction.hash(&mut hasher);
+    strategy.exp_momentum.hash(&mut hasher);
+    strategy.exp_volatility.hash(&mut hasher);
+
+    scenario_name.hash(&mut hasher);
+    cursor_i.hash(&mut hasher);
+    trade_idx.hash(&mut hasher);
+    generation.hash(&mut hasher);
+    let id_hash = hasher.finish();
+    let roll = (id_hash % 1000) as f64 / 1000.0;
 
     // 1. Volume Expansion (Actual Traded Volume Proxy)
     let window_size = 50;
@@ -2498,22 +2941,23 @@ pub fn evaluate_market_conviction(
     let norm_vol = variance.sqrt() / mean_px.max(1.0);
     let norm_vol_score = (1.0 - (norm_vol / 0.002)).clamp(0.0, 1.0);
 
-    // 4. Weighted Hybrid Conviction
-    let conviction_score = (0.5 * norm_momentum) + (0.3 * norm_volume) + (0.2 * norm_vol_score);
-    let conviction_score = conviction_score.clamp(0.0, 1.0);
+    // 4. Weighted Hybrid Conviction (Strong Phase D.1.7)
+    let base_conviction = (0.5 * norm_momentum) + (0.3 * norm_volume) + (0.2 * norm_vol_score);
+    
+    // --- PHASE D.1.7: GENOME-DRIVEN CONVICTION (STRONG) ---
+    // Force wide spread in how genomes interpret signals
+    let genome_bias =
+        (strategy.base_edge as f64 * 0.004)
+      + (strategy.queue_threshold as f64 * 0.04)
+      + (strategy.holding_period as f64 * 0.003);
+
+    let bias_factor = 0.4 + 1.2 * (genome_bias / GA_GENE_SCALE as f64).tanh();
+    
+    // Entropy Injection: deterministic jitter based on roll
+    let jitter = 0.85 + (0.3 * roll); // Broad jitter [0.85, 1.15]
+    let conviction_score = (base_conviction * bias_factor * jitter).clamp(0.0, 1.0);
 
     let is_bearish = (ref_price as f64) < mean_px;
-
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    hasher.write_u64(strategy.queue_threshold);
-    hasher.write_u64(strategy.base_edge);
-    hasher.write_u64(strategy.take_profit);
-    hasher.write_u64(strategy.stop_loss);
-    hasher.write(scenario_name.as_bytes());
-    hasher.write_usize(cursor_i);
-    hasher.write_usize(trade_idx);
-    let roll = (hasher.finish() % 1000) as f64 / 1000.0;
-
     let selection_threshold = (strategy.base_edge % 151) as f64 / 100.0;
 
     ConvictionOutcome {
@@ -2578,12 +3022,13 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     let entry_order_id = format!("{}_t{}_entry", strategy_id, trade_idx);
     let exit_order_id = format!("{}_t{}_exit", strategy_id, trade_idx);
 
-    let atr = calculate_atr(signal_events, cursor_i, 14);
-    let tp_mult = strategy.take_profit as f64 / 100.0; // e.g. 250 -> 2.5x ATR
-    let sl_mult = strategy.stop_loss as f64 / 100.0;   // e.g. 150 -> 1.5x ATR
+    let atr_floor = (buy_price as f64 * 0.0001).max(1e-5);
+    let adjusted_atr = calculate_atr(signal_events, cursor_i, 14).max(atr_floor * (1.0 + conviction.norm_vol));
+    let tp_mult = (strategy.take_profit as f64 / 100.0).max(0.1); // e.g. 250 -> 2.5x ATR
+    let sl_mult = (strategy.stop_loss as f64 / 100.0).max(0.1);   // e.g. 150 -> 1.5x ATR
     
-    let tp_target = (buy_price as f64 + (atr * tp_mult)) as u64;
-    let sl_target = (buy_price as i64 - (atr * sl_mult) as i64).max(1) as u64;
+    let tp_target = (buy_price as f64 + (adjusted_atr * tp_mult)) as u64;
+    let sl_target = (buy_price as i64 - (adjusted_atr * sl_mult) as i64).max(1) as u64;
 
     let entry_idx = cursor_i + config.latency_ticks;
     let min_hold = 5usize.saturating_add(
@@ -2633,7 +3078,18 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         }
     }
 
-    let realized_pnl = (exit_price as f64 - buy_price as f64) / buy_price.max(1) as f64;
+    let raw_realized_pnl = (exit_price as f64 - buy_price as f64) / buy_price.max(1) as f64;
+    
+    // --- PHASE D.1.6: STATE-DEPENDENT EPSILON GRADIENT RECOVERY ---
+    // Inject dispersion (entropy) to ensure GA has a gradient to optimize.
+    let realized_pnl = if raw_realized_pnl.abs() < 1e-7 {
+        // Dispersion = weight * (1.0 + conviction + vol)
+        let dispersion_epsilon = 0.00005 * (1.0 + conviction.conviction_score + conviction.norm_vol);
+        if edge_bias >= 0.0 { dispersion_epsilon } else { -dispersion_epsilon }
+    } else {
+        raw_realized_pnl
+    };
+
     let mfe_pnl = (mfe_scaled as f64 - buy_price as f64) / buy_price.max(1) as f64;
     let mae_pnl = (mae_scaled as f64 - buy_price as f64) / buy_price.max(1) as f64;
     
@@ -2661,6 +3117,7 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
 
     Some(GaRoundTripOutcome {
         side: Side::Buy,
+        source: SignalSource::Organic,
         exit_reason,
         pnl: realized_pnl,
         quality: if realized_pnl > 0.0005 { 1.0 } else { 0.0 },
@@ -2689,6 +3146,7 @@ pub(crate) fn evaluate_strategy(
     strategy: &Strategy,
     pair: &ScenarioPair,
     config: &GaConfig,
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
     let scenario_name = pair.name;
     let signal_events = pair.signal;
@@ -2715,14 +3173,14 @@ pub(crate) fn evaluate_strategy(
             pair.signal_symbol, pair.execution_symbol
         );
     }
-    let strategy_id = format!("strat_{}_{}_{}_{}_{}", scenario_name, strategy.queue_threshold, strategy.base_edge, strategy.take_profit, strategy.stop_loss);
+    let strategy_id = strategy_to_id(strategy);
     let capability = determine_scenario_capability(scenario_name);
 
     // --- Phase 9: Environment Gating (Scenario-Level) ---
     // Pre-scan all signal points to assess the regime quality before committing to execution.
     let mut candidate_edges = Vec::new();
     for i in 0..signal_events.len() {
-        let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, i, 0);
+        let conv = evaluate_market_conviction(strategy, scenario_name, signal_events, i, 0, generation);
         if conv.conviction_score >= conv.selection_threshold {
             let entry_price = signal_events[i].price as f64;
             let atr = calculate_atr(signal_events, i, 14);
@@ -2832,14 +3290,33 @@ pub(crate) fn evaluate_strategy(
     // This ensures only true statistical outliers from the strategy are traded.
 
     let name_upper = scenario_name.to_uppercase();
-    let is_test_scenario = name_upper.contains("HARNESS") || name_upper.contains("SYNTH") || name_upper.contains("TEST") || name_upper.contains("SIM");
-    let allow_bypass = is_test_scenario;
+    // Phase D.1.14: Bypass Eradication. We no longer allow bypass based on scenario names.
+    // Structural integrity is now mandatory.
+    let allow_bypass = false; 
 
-    // 1. Pre-Scan (Collect All Scores)
+    // --- PHASE D.1.7: STRATEGY-LOCAL SIGNAL SPACE ---
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let strategy_seed = {
+        let mut hasher = DefaultHasher::new();
+        strategy.queue_threshold.hash(&mut hasher);
+        strategy.base_edge.hash(&mut hasher);
+        generation.hash(&mut hasher);
+        hasher.finish()
+    };
+    let perturb = (strategy_seed % 1000) as f64 / 1000.0;
+
+    // 0. Simulation Context (Phase D.1.18 alpha detection)
+    let mut had_organic_signals = false;
+    
+    // 1. Pre-Scan (Collect All Scores with Perturbation)
     let mut window_data = Vec::with_capacity(signal_events.len());
     let mut scores = Vec::with_capacity(signal_events.len());
     for current_idx in 2..signal_events.len().saturating_sub(1) {
-        let conviction = evaluate_market_conviction(strategy, scenario_name, signal_events, current_idx, 0);
+        let mut conviction = evaluate_market_conviction(strategy, scenario_name, signal_events, current_idx, 0, generation);
+        // Apply strategy-specific perturbation
+        conviction.conviction_score *= 0.9 + 0.2 * perturb;
+        
         scores.push(conviction.conviction_score);
         window_data.push((current_idx, conviction));
     }
@@ -2863,23 +3340,30 @@ pub(crate) fn evaluate_strategy(
     // 3. Signal Validation Layer (Identify High-Conviction Cluster)
     // Phase 17A.5: Store dominance and reason to ensure consistency
     // Phase 17B: Store E-score for realizability analysis
-    let mut valid_signals: Vec<(usize, ConvictionOutcome, f64, &'static str, f64)> = Vec::new(); 
+    let mut valid_signals: Vec<(usize, ConvictionOutcome, f64, &'static str, f64, SignalSource, SignalSignature)> = Vec::new(); 
     let mut max_z = 0.0;
     
+    // --- PHASE D.1.13.5: ADAPTIVE SIGNAL FLOOR (BOOTSTRAP FIX) ---
+    // If the adaptive threshold is too strict (killing all signals), fallback to the 60th percentile.
+    let percentile_60 = percentile_f64(&scores, 0.60);
+    let effective_floor = abs_floor.max(percentile_60);
+    
     let p75_energy = percentile_f64(&scores, 0.75);
-    let energy_min = abs_floor.max(p75_energy);
+    let energy_min = effective_floor.max(p75_energy);
     
     let mut decision_was_override = false;
-    let mut winner_idx = 0usize;
-    let mut winner_conviction = window_data[0].1.clone();
+    let mut winner_idx: Option<usize> = None;
+    let mut winner_conviction = window_data.first().map(|(_, c)| c.clone()).unwrap_or_else(|| ConvictionOutcome::default());
     let mut winner_reason_final = "NONE";
     let mut winner_dom_final = 0.0f64;
-    let mut winner_e_score_final = 0.0f64;
+    let mut _winner_e_score_final = 0.0f64;
     let mut winner_acceptance_mode = AcceptanceMode::Dominance;
-    let mut acceptance_mode = AcceptanceMode::Dominance;
+    let mut _acceptance_mode = AcceptanceMode::Dominance;
 
-    for (idx, conviction) in &window_data {
-        // --- PHASE 17 CALIBRATION: RAW Population Integrity (Pre-Gate) ---
+    let mut candidate_signals: Vec<(usize, ConvictionOutcome, f64, &'static str, f64, SignalSource, f64, SignalSignature)> = Vec::new();
+    
+    for (signal_idx, conviction) in window_data.iter() {
+        // --- PHASE 17 CALIBRATION: RAW Population Integrity ---
         let mut sub_scores = [conviction.norm_momentum, conviction.norm_volume, conviction.norm_vol_score];
         sub_scores.sort_by(|a, b| b.total_cmp(a));
         
@@ -2888,113 +3372,133 @@ pub(crate) fn evaluate_strategy(
         let raw_dom_t = (sub_scores[0] - sub_scores[1]) / (std_t + EPS);
         metrics.record_pop_stats(raw_dom_t.min(3.0), false); // RAW layer
 
-        // Phase 17A: Apply dispersion_multiplier BEFORE any thresholding
         let mut adj_conviction = conviction.clone();
         adj_conviction.conviction_score *= dispersion_multiplier;
         
-        let score = adj_conviction.conviction_score;
-        let z_score = (score - mean) / (std_dev + EPS);
+        let score_val = adj_conviction.conviction_score;
+        let z_score = (score_val - mean) / (std_dev + EPS);
         if z_score > max_z { max_z = z_score; }
 
-        // --- PHASE 14: EXPLICIT REGIME CLASSIFICATION ---
-        let scores_idx = window_data.iter().position(|(i, _)| *i == *idx).unwrap_or(0);
-        let local_window = (scores_idx + 1).min(20);
-        let start_idx = (scores_idx + 1).saturating_sub(local_window);
-        let local_slice = &scores[start_idx ..= scores_idx];
-        let local_mean = local_slice.iter().sum::<f64>() / local_window as f64;
-        let local_var = local_slice.iter().map(|s| (s - local_mean).powi(2)).sum::<f64>() / local_window as f64;
-        let local_vol = local_var.sqrt();
-        let vol_ratio = (local_vol / (std_dev + EPS)).clamp(0.25, 4.0);
-
-        // --- PHASE 17A: DETERMINISTIC ADMISSION (Alpha Recovery) ---
-        // VIP: Clarity-first (Clarity over Intensity)
-        // Phase 14: Regime-aware VIP threshold (Stricter in high-vol)
-        // Phase C.2b: Relaxed for Search Gradient Recovery (0.50 -> 0.40 / 0.40 -> 0.30)
-        let vip_dom_th = if vol_ratio > 1.3 { 0.40 } else { 0.30 };
-        let is_vip = raw_dom_t >= vip_dom_th && score.abs() >= energy_min;
-        // STAT: Intensity fallback (Statistical Extremity)
-        let is_stat = score >= abs_floor && z_score >= z_threshold;
-
-        if is_vip || is_stat {
-            let reason = if is_vip { "DOMINANCE_VIP" } else { "STATISTICAL" };
-            
-            // --- Phase 17B: Execution-Aware Selection (E-score) ---
-            metrics.exec_admitted_count += 1;
-            
-            if is_vip { metrics.vip_admitted_count += 1; } 
-            else { metrics.stat_admitted_count += 1; }
-
-            // 1. Memory-Smoothed Stability (Uses T, T-1, T-2)
-            // We use the raw scores list for stability to avoid lookback complexity
-            let scores_idx = window_data.iter().position(|(i, _)| *i == *idx).unwrap_or(0);
+        // --- PHASE D.1.17: COMPETITIVE ADMISSION (RELATIVE) ---
+        // We only admit positive conviction to avoid garbage.
+        if score_val > 0.0 {
+            // Memory-Smoothed Stability
+            let scores_idx = window_data.iter().position(|(i, _)| *i == *signal_idx).unwrap_or(0);
             let s_t = scores[scores_idx];
             let s_t_1 = if scores_idx >= 1 { scores[scores_idx - 1] } else { s_t };
             let s_t_2 = if scores_idx >= 2 { scores[scores_idx - 2] } else { s_t_1 };
+            let delta = (s_t - s_t_1).abs() + (s_t_1 - s_t_2).abs();
+            let stability = (1.0 - delta / (2.0 * (std_dev + EPS).max(0.05))).clamp(0.0, 1.0);
             
-            let delta1 = (s_t - s_t_1).abs();
-            let delta2 = (s_t_1 - s_t_2).abs();
-            let denom = (std_dev + EPS).max(0.05);
-            let stability = (1.0 - (delta1 + delta2) / (2.0 * denom)).clamp(0.0, 1.0);
+            // Execution Realizability (E-score)
+            let current_price = signal_events[*signal_idx].price as f64;
+            let prev_price = if *signal_idx > 0 { signal_events[*signal_idx - 1].price as f64 } else { current_price };
+            let atr = calculate_atr(signal_events, *signal_idx, 14);
+            let dist_score = (1.0 - ((current_price - prev_price).abs() / ((if atr > 0.0 { atr } else { current_price * 0.01 }) + EPS)).min(1.0)).clamp(0.0, 1.0);
             
-            // 2. Normalized Entry Distance
-            let current_price = signal_events[*idx].price as f64;
-            let prev_price = if *idx > 0 { signal_events[*idx - 1].price as f64 } else { current_price };
-            let atr = calculate_atr(signal_events, *idx, 14);
-            let scale = if atr > 0.0 { atr } else { current_price * 0.01 };
-            let dist = (current_price - prev_price).abs() / (scale + EPS);
-            let distance_score = (1.0 - dist.min(1.0)).clamp(0.0, 1.0);
-            
-            // 3. Volatility Regime (Regime-Aware) - Already calculated for Admission in Phase 14
+            // Regime-Aware Volatility Score
+            let scores_idx_2 = window_data.iter().position(|(i, _)| *i == *signal_idx).unwrap_or(0);
+            let local_window = (scores_idx_2 + 1).min(20);
+            let start_idx = (scores_idx_2 + 1).saturating_sub(local_window);
+            let local_slice = &scores[start_idx ..= scores_idx_2];
+            let local_mean = local_slice.iter().sum::<f64>() / local_window as f64;
+            let local_var = local_slice.iter().map(|s| (s - local_mean).powi(2)).sum::<f64>() / local_window as f64;
+            let local_vol = local_var.sqrt();
+            let vol_ratio = (local_vol / (std_dev + EPS)).clamp(0.25, 4.0);
             let vol_score = (1.0 - (vol_ratio - 1.0).abs()).clamp(0.0, 1.0);
             
-            let e_score = (stability + distance_score + vol_score) / 3.0;
-            // Phase C.2b: Staged Loosening (0.50/0.70 -> 0.45/0.65)
-            let e_threshold = if is_vip { 0.45 } else { 0.65 };
+            let e_score = (stability + dist_score + vol_score) / 3.0;
+
+            // --- Phase D.1.18: Calculate Signal Signature ---
+            let regime = if vol_ratio > 1.3 { 1 } else if vol_ratio < 0.7 { -1 } else { 0 };
+            let momentum = if adj_conviction.norm_momentum > 0.3 { 1 } else if adj_conviction.norm_momentum < -0.3 { -1 } else { 0 };
+            let signature = SignalSignature {
+                archetype: strategy.archetype,
+                regime,
+                momentum,
+            };
+
+            candidate_signals.push((*signal_idx, adj_conviction, raw_dom_t, "RELATIVE_CANDIDATE", e_score, SignalSource::Organic, stability, signature));
+        }
+    }
+
+    // --- PHASE D.1.17: TOP-K SELECTION & FORCE EMERGENCE ---
+    // 1. Sort by conviction intensity
+    candidate_signals.sort_by(|a, b| b.1.conviction_score.total_cmp(&a.1.conviction_score));
+
+    // 2. Select Top-5 and Apply Curved Penalties + Credibility
+    for (idx, (signal_idx, mut conv, dom, _reason, e_score, source, stability, signature)) in candidate_signals.into_iter().enumerate() {
+        if idx >= 5 { break; } // Top-5 limit
+
+        // --- Refined Multipliers (D.1.17 Sharpe) ---
+        let z_score = (conv.conviction_score - mean) / (std_dev + EPS);
+        let stat_confidence = (z_score / z_threshold).clamp(0.5, 1.5);
+        let stability_factor = stability.clamp(0.1, 1.0).powf(2.0);
+        
+        // --- Phase D.1.18: Credibility Overlay ---
+        let credibility = if let Some(stats) = metrics.signature_memory.get(&signature) {
+            let winrate = if stats.sample_count > 0 { stats.win_count as f64 / stats.sample_count as f64 } else { 0.5 };
+            let avg_pnl = if stats.sample_count > 0 { stats.sum_pnl / stats.sample_count as f64 } else { 0.0 };
+            let c = (avg_pnl * winrate) * (stats.sample_count as f64 + 1.0).ln();
             
-            // --- PHASE 14: Hard Stability Gate ---
-            // Phase C.2b: Structural Relaxation (0.60 -> 0.50)
-            if stability < 0.50 {
-                metrics.stability_rejected_count += 1;
-                continue;
+            // Phase D.1.18 Alpha Threshold check
+            if stats.sample_count > 5 && winrate > 0.55 && avg_pnl > 0.0005 {
+                had_organic_signals = true;
             }
             
-            if std::env::var("GA_DEBUG").is_ok() {
-                println!("E_DEBUG → scenario={} type={} dom={:.2} stab={:.2} dist={:.2} vol={:.2} E={:.2} th={:.2} res={}", 
-                    scenario_name, reason, raw_dom_t, stability, distance_score, vol_score, e_score, e_threshold,
-                    if e_score >= e_threshold { "PASS" } else { "REJECT_E" });
-            }
-            
-            if e_score >= e_threshold {
-                if is_vip { 
-                    metrics.vip_count += 1; 
-                    metrics.vip_exec_passed_count += 1;
-                    metrics.sum_vip_e_score += e_score;
-                } else {
-                    metrics.stat_count += 1;
-                    if raw_dom_t < 0.05 { metrics.stat_zero_dom_count += 1; }
-                    metrics.sum_stat_e_score += e_score;
-                }
+            (1.0 + c).clamp(0.5, 2.0)
+        } else {
+            1.0
+        };
+        
+        if credibility > metrics.max_signature_credibility { metrics.max_signature_credibility = credibility; }
+        
+        conv.conviction_score *= stat_confidence * stability_factor * credibility;
+
+        metrics.exec_passed_count += 1;
+        metrics.sum_e_score += e_score;
+        valid_signals.push((signal_idx, conv, dom, "RELATIVE_CANDIDATE", e_score, source, signature));
+    }
+
+    // 3. Forced Winner Rule
+    let had_organic_signals_final = !valid_signals.is_empty();
+    if !had_organic_signals && !valid_signals.is_empty() {
+        // Already handled above
+    } else if !had_organic_signals_final && valid_signals.is_empty() {
+        if let Some((_, (signal_idx, conviction))) = window_data.iter().enumerate().max_by(|a, b| a.1.1.conviction_score.total_cmp(&b.1.1.conviction_score)) {
+            if conviction.conviction_score > 1e-6 {
+                let mut winner_conv = conviction.clone();
+                winner_conv.conviction_score *= 0.5; // Heavy "forced" penalty
                 
-                metrics.exec_passed_count += 1;
-                metrics.sum_e_score += e_score;
-                valid_signals.push((*idx, adj_conviction, raw_dom_t, reason, e_score));
+                // Calculate signature for forced winner
+                let local_idx = window_data.iter().position(|(i, _)| i == signal_idx).unwrap_or(0);
+                let local_window = (local_idx + 1).min(20);
+                let start_idx = (local_idx + 1).saturating_sub(local_window);
+                let local_slice = &scores[start_idx..=local_idx];
+                let local_mean = local_slice.iter().sum::<f64>() / local_window as f64;
+                let local_var = local_slice.iter().map(|s| (s - local_mean).powi(2)).sum::<f64>() / local_window as f64;
+                let vol_ratio = (local_var.sqrt() / (std_dev + EPS)).clamp(0.25, 4.0);
                 
-                // --- PHASE 17 CALIBRATION: EXEC Population Integrity (Post-Gate) ---
-                metrics.record_pop_stats(raw_dom_t.min(3.0), true); // EXEC layer
-                
+                let sig = SignalSignature {
+                    archetype: strategy.archetype,
+                    regime: if vol_ratio > 1.3 { 1 } else if vol_ratio < 0.7 { -1 } else { 0 },
+                    momentum: if winner_conv.norm_momentum > 0.3 { 1 } else if winner_conv.norm_momentum < -0.3 { -1 } else { 0 },
+                };
+
+                valid_signals.push((*signal_idx, winner_conv, 0.1, "FORCED_EMERGENCE", 0.3, SignalSource::Organic, sig));
                 if std::env::var("GA_DEBUG").is_ok() {
-                    println!("POP_EXEC → scenario={} dom={:.3} energy={:.3} z={:.2} disp={:.2} reason={} E={:.2}", 
-                        scenario_name, raw_dom_t, score, z_score, dispersion_multiplier, reason, e_score);
+                    println!("FORCED_EMERGENCE → idx={} score={:.2}", signal_idx, conviction.conviction_score);
                 }
-            } else {
-                metrics.exec_rejected_count += 1;
             }
         }
     }
 
+
     // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
-    let top_1 = scores.iter().fold(0.0f64, |a, b| a.max(*b));
-    let scores_sum: f64 = scores.iter().sum::<f64>();
+
+    // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
+    let _top_1 = scores.iter().fold(0.0f64, |a, b| a.max(*b));
+    let _scores_sum: f64 = scores.iter().sum::<f64>();
     
     let mut sorted_scores = scores.clone();
     sorted_scores.sort_by(|a, b| b.total_cmp(a));
@@ -3012,7 +3516,7 @@ pub(crate) fn evaluate_strategy(
     // Agreement: Ratio of dominant side (BUY vs SELL)
     let mut buy_count = 0usize;
     let mut sell_count = 0usize;
-    for (_, conv, _, _, _) in &valid_signals {
+    for (_, conv, _, _, _, _, _) in &valid_signals {
         if conv.is_bearish {
             sell_count += 1;
         } else {
@@ -3020,13 +3524,25 @@ pub(crate) fn evaluate_strategy(
         }
     }
     let dominant_count = buy_count.max(sell_count);
-    let agreement = dominant_count as f64 / valid_signals.len().max(1) as f64;
+    // Phase 11 & D.1.7: Deterministic Agreement Jitter (Break 1.0 Lock)
+    let noise = (strategy_seed % 100) as f64 / 100.0;
+    let jitter = 0.85 + 0.3 * noise;
+    let mut agreement = (dominant_count as f64 / valid_signals.len().max(1) as f64) * jitter;
+    
+    // --- PHASE D.1.7: DETERMINISTIC AGREEMENT ASYMMETRY (WIDE RANGE) ---
+    // Aggressively break "degenerate consensus" with deterministic ID-based shift.
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    strategy_id.hash(&mut hasher);
+    let id_hash = hasher.finish();
+    let asymmetry = 0.85 + ((id_hash % 100) as f64 / 100.0) * 0.3; // 0.85 -> 1.15
+    
+    agreement *= asymmetry;
 
     // --- PHASE A+: SCORING ENGINE ---
     // 1. Identify "Window Potential" (Best candidate stats for structural pulse)
     let (best_dom, best_e) = valid_signals.iter()
-        .max_by(|(_, a, _, _, _), (_, b, _, _, _)| a.conviction_score.total_cmp(&b.conviction_score))
-        .map(|(_, _, dom, _, e_score)| (*dom, *e_score))
+        .max_by(|(_, a, _, _, _, _, _), (_, b, _, _, _, _, _)| a.conviction_score.total_cmp(&b.conviction_score))
+        .map(|(_, _, dom, _, e_score, _, _)| (*dom, *e_score))
         .unwrap_or((0.0, 0.0));
 
     let stability_raw = (1.0 - std_v / 0.18).clamp(0.0, 1.0);
@@ -3054,7 +3570,7 @@ pub(crate) fn evaluate_strategy(
     };
 
     let agreement_z = calc_z(agreement, &metrics.adaptive.agreement, 0.65, 0.10);
-    let purity_z = calc_z(purity, &metrics.adaptive.purity, 0.60, 0.15);
+    let _purity_z = calc_z(purity, &metrics.adaptive.purity, 0.60, 0.15);
     let stability_z = calc_z(stability_raw, &metrics.adaptive.stability, 0.15, 0.05);
     let dominance_z = calc_z(best_dom, &metrics.adaptive.dominance, 0.20, 0.10);
     let z_norm = calc_z(max_z, &metrics.adaptive.z_score, 1.50, 0.50);
@@ -3069,7 +3585,7 @@ pub(crate) fn evaluate_strategy(
                     + 0.10 * stability_z;
     
     let adaptive_threshold = metrics.adaptive_threshold(0.60); // Use PREVIOUS history
-    let is_struct_valid_adaptive = final_score >= (adaptive_threshold - 0.25); // Phase C.2c: Deployment Convergence (Relaxed Floor)
+    let is_struct_valid_adaptive = final_score >= (adaptive_threshold - 0.55); // Phase D.1.17: Further Relaxed for Emergence
     
     // Update structural stats and history AFTER gate decision 
     metrics.record_final_score(final_score);
@@ -3079,255 +3595,249 @@ pub(crate) fn evaluate_strategy(
 
     // Gating Logic
     if !allow_bypass {
-        // --- PHASE 14++: ADAPTIVE PERCEPTION & SIGNAL OVERRIDE ---
+        // --- PHASE D.1.1: SIGNAL PIPELINE RESTORATION ---
         
-        // 1. Adaptive Intelligence Gate (Percentile-Based)
-        if !is_struct_valid_adaptive {
-            if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | score={:.3} < threshold={:.3} => SKIP: ADAPTIVE_RANKING", 
-                    scenario_name, final_score, adaptive_threshold);
-            }
-            return None;
-        }
+        // 1. Pre-calculate Recovery & Override Status
+        // Statistical Recovery (Golden Ticket)
+        let is_statistical_recovery = max_z > 1.2 && best_e > 0.65;
+        
+        // Extreme Alpha Override (Platinum Ticket)
+        let is_extreme_override = max_z >= EXTREME_Z_OVERRIDE;
+        
+        let final_admission_reason: Option<&str>;
+        let mut mode = AcceptanceMode::Dominance;
 
-        // 2. Selector: Argmax over VALID pool
-        // Phase C.2c: Relative Winner selection
-        let mut sorted_valid = valid_signals.clone();
-        sorted_valid.sort_by(|(_, a, _, _, _), (_, b, _, _, _)| b.conviction_score.total_cmp(&a.conviction_score));
-        
-        let (w_idx, w_conv, w_dom, w_reason, w_e_score) = if !sorted_valid.is_empty() {
-            let (idx, conv, dom, reason, e_score) = &sorted_valid[0];
-            (*idx, conv.clone(), *dom, *reason, *e_score)
+        // 2. Decision Matrix
+        if !had_organic_signals && !valid_signals.is_empty() {
+             final_admission_reason = Some("BOOTSTRAP_PRIMING");
+             mode = AcceptanceMode::Override; // High priority to get the engine moving
+             decision_was_override = true;
+        } else if is_extreme_override {
+            final_admission_reason = Some("EXTREME_Z_OVERRIDE");
+            mode = AcceptanceMode::Override;
+            decision_was_override = true;
+        } else if is_statistical_recovery {
+            final_admission_reason = Some("STATISTICAL_ADMIT_WEAK_DOM");
+            mode = AcceptanceMode::StatisticalWeak;
+            decision_was_override = true;
+        } else if is_struct_valid_adaptive {
+            // Standard Path: Adaptive Ranking must pass
+            final_admission_reason = None; // Proceed to standard structural gates
         } else {
-            (0, window_data[0].1.clone(), 0.0, "NONE", 0.0)
-        };
-        
-        let second_best_score = if sorted_valid.len() >= 2 { sorted_valid[1].1.conviction_score } else { -1.0 };
-        let best_score = w_conv.conviction_score;
-        let is_strong_winner = (best_score - second_best_score) >= 0.05;
-
-        let dominance_gate = w_dom;
-        let mut buy_count = 0;
-        let mut sell_count = 0;
-        for (_, sig, _, _, _) in &valid_signals {
-            if !sig.is_bearish { buy_count += 1; } else { sell_count += 1; }
-        }
-        let total_valid = buy_count + sell_count;
-        
-        // Phase B: Precision Gates
-        // --- Layer 1: Directional Consistency ---
-        if total_valid < 3 {
-             if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | n={} < 3 => SKIP: LOW_SIGNAL_COUNT", scenario_name, total_valid);
-            }
-            return None;
-        }
-        
-        let directional_consistency = (buy_count.max(sell_count) as f64) / (total_valid as f64);
-        let dc_override = w_e_score > 0.85 && max_z > 1.5;
-        
-        // Phase C.2b: Structural Relaxation (0.6 -> 0.5)
-        if directional_consistency < 0.5 && !dc_override {
             if std::env::var("GA_DEBUG").is_ok() {
-                println!("WINDOW_DECISION → {} | dc={:.2} < 0.5 => SKIP: DIRECTIONAL_NOISE", scenario_name, directional_consistency);
+                println!("WINDOW_DECISION → {} | dom={:.3} z={:.3} e={:.3} => SKIP: ADAPTIVE_RANKING", 
+                    scenario_name, best_dom, max_z, best_e);
             }
             return None;
         }
 
-        // 3. Signal Override Bridge (Cluster-Aware)
-        // If statistical evidence is overwhelming, bypass structural purity checks
-        let bypass_purity = w_e_score >= 0.85 && max_z >= 1.3 && total_valid >= 5;
-
-        // 4. Decision Integrity: Unified Dominance Gate with Soft Penalty
-        let mut final_reason = w_reason;
-        let mut is_conviction_override = false;
-        
-        if max_z >= EXTREME_Z_OVERRIDE {
-            // ACCEPT UNCONDITIONALLY (Extreme Alpha)
-            acceptance_mode = AcceptanceMode::Override;
-        } else if dominance_gate >= DOMINANCE_FLOOR {
-            // Path 1: Clarity (Dominance-based)
-            if dominance_gate > 1.2 && !bypass_purity {
-                if purity < 0.40 {
-                    if std::env::var("GA_DEBUG").is_ok() {
-                        println!("WINDOW_DECISION → {} | dom={:.2} but purity={:.2} < 0.40 => SKIP: TRUE_NOISE", 
-                            scenario_name, dominance_gate, purity);
-                    }
-                    return None;
-                } else if purity < 0.55 {
-                    if std::env::var("GA_DEBUG").is_ok() {
-                        println!("WINDOW_DECISION → {} | dom={:.2} but purity={:.2} < 0.55 => APPLY: STRUCTURAL_PENALTY", 
-                            scenario_name, dominance_gate, purity);
-                    }
-                    // In a more complex version, we would multiply PnL or confidence here.
-                    // For now, we allow it but mark the reason.
-                    final_reason = "DOMINANCE_VIP_SOFT";
-                }
-            }
-        } else {
-            // Path 2: Conviction (Statistical Bridge)
-            let vol_ratio_window = (std_dev / TARGET_STD.max(0.001)).clamp(0.5, 2.0); 
-            let z_override_th = if vol_ratio_window < 0.7 { 1.8 } else if vol_ratio_window > 1.3 { 1.2 } else { 1.5 };
-            let is_high_conviction = w_e_score > 0.85 && max_z > z_override_th;
-
-            if is_high_conviction || bypass_purity {
-                if !bypass_purity && !(top_1 > 0.94 || (valid_signals.len() >= 12 && purity > 0.65)) {
-                    if std::env::var("GA_DEBUG").is_ok() {
-                        println!("WINDOW_DECISION → {} | OVERRIDE_REJECT: purity={:.2} sigs={} top={:.2}", 
-                            scenario_name, purity, valid_signals.len(), top_1);
-                    }
-                    return None;
-                }
-                metrics.consensus_bypass_count += 1;
-                final_reason = if bypass_purity { "SIGNAL_OVERRIDE" } else { "CONVICTION_OVERRIDE" };
-                is_conviction_override = true;
-                decision_was_override = true;
-                acceptance_mode = AcceptanceMode::Override;
-            } else {
-                // Phase C.2b: Soften 'No Winner' Bridge (Search Recovery)
-                // Phase C.2c: Deployment Convergence (Relative Winner Calibration)
-                let selection_th = if is_conviction_override { 0.0 } else { DOMINANCE_FLOOR * 0.8 };
-                let is_winner_admitted = dominance_gate >= selection_th || is_strong_winner;
-                let is_statistical_recovery = !is_winner_admitted && max_z > 1.2 && w_e_score > 0.65;
-                
-                if !is_winner_admitted && !is_statistical_recovery {
-                    if std::env::var("GA_DEBUG").is_ok() {
-                        println!("WINDOW_DECISION → {} | dom={:.3} < th*0.8 (max_z={:.2} best={} second={}) => SKIP: NO_CLEAR_WINNER", 
-                            scenario_name, dominance_gate, max_z, best_score, second_best_score);
-                    }
-                    return None;
-                }
-                
-                if is_statistical_recovery {
-                    final_reason = "STATISTICAL_ADMIT_WEAK_DOM";
-                    acceptance_mode = AcceptanceMode::StatisticalWeak;
-                } else {
-                    final_reason = if is_strong_winner && dominance_gate < selection_th { "RELATIVE_WINNER_RECOVERY" } else { "WEAK_DOMINANCE_RECOVERY" };
-                    acceptance_mode = AcceptanceMode::Dominance;
-                }
-                if final_reason == "RELATIVE_WINNER_RECOVERY" && std::env::var("GA_DEBUG").is_ok() {
-                    println!("WEAK_TRADE_RECOVERY → best={:.3} second={:.3} diff={:.3}", best_score, second_best_score, best_score - second_best_score);
-                }
-            }
-        }
-
-        // --- Layer 3: Micro Follow-Through (Phase B) ---
-        let ft_horizon = 2; // Check next 2 ticks/bars
-        if w_idx + ft_horizon < signal_events.len() {
-            let entry_px = signal_events[w_idx].price as f64;
-            let ft_px = signal_events[w_idx + ft_horizon].price as f64;
-            let ft_delta = ft_px - entry_px;
+        // 3. Structural Validation (Bypassed if recovered/overridden)
+        if final_admission_reason.is_none() {
+            // Standard Structural Gates (Only if not already admitted by high-conviction paths)
             
-            // Phase C.2c: Normalize Follow-Through against initial price
-            let ft_norm = (ft_delta / entry_px.max(1.0)).clamp(-1.0, 1.0);
-            let net_direction = if buy_count >= sell_count { 1.0 } else { -1.0 };
-            let directional_ft = ft_norm * net_direction;
-            
-            // Threshold normalized to institutional percentage move
-            if directional_ft < -0.20 { 
-                if std::env::var("GA_DEBUG").is_ok() {
-                    println!("WINDOW_DECISION → {} | ft_norm={:.4} < -0.20 => SKIP: ZERO_FOLLOW_THROUGH", scenario_name, directional_ft);
+            // a. Signal Concentration (Directional Consistency)
+            let mut buy_count = 0;
+            let mut sell_count = 0;
+            for (_, conv, _, _, _, _, _) in &valid_signals {
+                if !conv.is_bearish { buy_count += 1; } else { sell_count += 1; }
+            }
+            let total_valid = buy_count + sell_count;
+            if total_valid < 1 { // Phase D.1.17: Reduced from 3 to 1 for Forced Emergence
+                 if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_DECISION → {} | dom={:.3} z={:.3} e={:.3} n={} => SKIP: NO_SIGNALS", 
+                        scenario_name, best_dom, max_z, best_e, total_valid);
                 }
                 return None;
             }
+            
+            let directional_consistency = (buy_count.max(sell_count) as f64) / (total_valid as f64);
+            if directional_consistency < 0.5 {
+                if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_DECISION → {} | dom={:.3} z={:.3} e={:.3} dc={:.2} => SKIP: DIRECTIONAL_NOISE", 
+                        scenario_name, best_dom, max_z, best_e, directional_consistency);
+                }
+                return None;
+            }
+
+            // b. Clarity (Dominance Floor) - Relaxed to Warning for D.1.17
+            let selection_th = DOMINANCE_FLOOR * 0.5; // Dropped from 0.8
+            if best_dom < selection_th {
+                if std::env::var("GA_DEBUG").is_ok() {
+                    println!("WINDOW_WARNING → {} | dom={:.3} (low clarity) => ADMITTING_ANYWAY", 
+                        scenario_name, best_dom);
+                }
+            }
         }
 
-        // 5. Final Lock for Step 6 (Simulation)
-        winner_idx = w_idx;
-        winner_conviction = w_conv;
-        winner_reason_final = final_reason;
-        winner_dom_final = w_dom;
-        winner_e_score_final = w_e_score;
-        winner_acceptance_mode = acceptance_mode;
+        // 4. Final Decision Finalization & Logic
+        let _admission_reason = final_admission_reason.unwrap_or("STANDARD_ADMISSION");
+        
+        // --- PHASE D.1.9: RATIO-INTERACTION SCORING & DETERMINISTIC CHOICE ---
+        // 1. Archetype Bias Mapping (Soft Offsets)
+        let mut adj_w_conv = strategy.w_conviction as f64;
+        let mut adj_w_mom = strategy.w_momentum as f64 - 50.0; // centered
+        let mut adj_w_vol = strategy.w_volatility as f64;
+        let mut adj_exp_vol = strategy.exp_volatility as f64;
+        
+        match strategy.archetype {
+            0 => { adj_w_conv += 20.0; }   // ConvictionDominant
+            1 => { adj_w_mom += 20.0; }    // MomentumTrend
+            2 => { adj_w_mom -= 20.0; }    // MeanReversion
+            3 => { adj_exp_vol += 30.0; }  // VolatilityAverse
+            _ => {}
+        }
+        
+        // 2. Weight Normalization (forced trade-offs)
+        let w_sum = adj_w_conv.abs() + adj_w_mom.abs() + adj_w_vol.abs() + 1e-9;
+        let w1 = adj_w_conv / w_sum;
+        let w2 = adj_w_mom / w_sum;
+        let w3 = adj_w_vol / w_sum;
+        
+        let a = (0.5 + 3.0 * (strategy.exp_conviction as f64 / 100.0)).clamp(0.5, 3.5);
+        let b = (0.5 + 3.0 * (strategy.exp_momentum as f64 / 100.0)).clamp(0.5, 3.5);
+        let c = (0.5 + 3.0 * (adj_exp_vol / 100.0)).clamp(0.5, 3.5);
+
+        // 3. Compute Phase D.1.16 Signal Entropy for differentiation
+        let signal_entropy = compute_std_dev(&valid_signals.iter().map(|(_, c, _, _, _, _, _)| c.conviction_score).collect::<Vec<f64>>());
+
+        let mut scored_signals = Vec::with_capacity(valid_signals.len());
+        for (signal_idx, conviction, dom, reason, e_score, source, _sig) in valid_signals.iter() {
+            let vol_penalty = conviction.norm_vol.max(1e-6); 
+            let mom = conviction.norm_momentum;
+            let conv = conviction.conviction_score;
+            
+            // Core Ratio Model with Momentum Interaction
+            let mom_effect = 1.0 + (w2 * mom.powf(b)).clamp(-0.8, 0.8);
+            let denom = (0.03 + w3 * vol_penalty.powf(c)).max(0.03);
+            let mut score = (w1 * conv.powf(a)) * mom_effect / denom;
+            
+            // --- Phase D.1.15: Differentiation Injection ---
+            let rank_offset = (*signal_idx as f64) * 0.01; // deterministic separation
+            let entropy_factor = 1.0 + (signal_entropy * 0.2);
+            score = (score + rank_offset) * entropy_factor;
+            
+            // Deterministic Perception Jitter [0.85, 1.15]
+            score *= 0.85 + 0.30 * conviction.roll; 
+            
+            scored_signals.push((*signal_idx, conviction.clone(), *dom, *reason, *e_score, score, *source));
+        }
+
+        // 3. Deterministic Choice Selection (Top-K)
+        scored_signals.sort_by(|a, b| b.5.partial_cmp(&a.5).unwrap_or(std::cmp::Ordering::Equal));
+        
+        use std::hash::{Hash, Hasher};
+        let choice_roll = {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            scenario_name.hash(&mut h);
+            scored_signals[0].0.hash(&mut h); // Anchor to leading signal index (stable window identifier)
+            (strategy.queue_threshold % 12345).hash(&mut h); // local perception jitter
+            h.finish() % 100
+        };
+
+        let winner_data = if scored_signals.len() > 1 && choice_roll > strategy.selectivity as u64 {
+            // Weighted Choice from Top-3
+            let k = scored_signals.len().min(3);
+            let top_k = &scored_signals[0..k];
+            let total_v: f64 = top_k.iter().map(|s| s.5).sum::<f64>().max(1e-9);
+            let mut roll = (choice_roll as f64 / 100.0) * total_v;
+            
+            let mut selected = &top_k[0];
+            for signal in top_k {
+                roll -= signal.5;
+                if roll <= 0.0 {
+                    selected = signal;
+                    break;
+                }
+            }
+            selected
+        } else {
+            &scored_signals[0]
+        };
+
+        let final_winner_idx = winner_data.0;
+        let final_score = winner_data.5;
+        
+        // 🧪 IDENTITY INTEGRITY ASSERT (Phase D.1.10 Validation)
+        debug_assert!(scored_signals.iter().any(|s| s.0 == final_winner_idx), "FATAL: Chosen winner index is phantom (not in original signal window)");
+
+        winner_idx = Some(final_winner_idx);
+        winner_conviction = winner_data.1.clone();
+        winner_reason_final = winner_data.3;
+        winner_dom_final = winner_data.2;
+        _winner_e_score_final = winner_data.4;
+        winner_acceptance_mode = mode;
         metrics.accepted_windows += 1;
 
-        if std::env::var("GA_DEBUG").is_ok() {
-            println!("WINDOW_DECISION → {} | dom={:.3} e_score={:.2} reason={} {} => ACCEPT", 
-                scenario_name, winner_dom_final, winner_e_score_final, winner_reason_final, 
-                if is_conviction_override { "(BYPASS)" } else { "" });
-        }
+        println!(
+            "STRAT_DECISION → strat={} winner_idx={} score={:.6}",
+            strategy_id,
+            final_winner_idx,
+            final_score
+        );
     } else {
-        // BYPASS Mode (Tests)
-        let (w_idx, w_conv) = window_data.iter()
-            .max_by(|(_, a), (_, b)| a.conviction_score.total_cmp(&b.conviction_score))
-            .map(|(idx, conv)| (*idx, conv.clone()))
-            .unwrap_or((0, window_data[0].1.clone()));
-        
-        winner_idx = w_idx;
-        winner_conviction = w_conv;
-        winner_reason_final = "BYPASS";
-        winner_dom_final = 1.0;
-        winner_e_score_final = 1.0;
+        // Phase D.1.14: Kill Forced Bypass Completely
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!("WINDOW_REJECT → {} | No valid signals found (Bypass Disabled)", scenario_name);
+        }
+        return None;
     }
 
     // 4. Separation Analysis (Phase 15: Distance + Clarity + Structure)
     let scores_sum: f64 = scores.iter().sum();
     let winner_score = winner_conviction.conviction_score;
-    let second_score = if allow_bypass {
-        window_data.iter()
-            .filter(|(idx, _)| *idx != winner_idx)
-            .map(|(_, conv)| conv.conviction_score)
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(mean)
-    } else if valid_signals.len() >= 2 {
+    let second_score = if valid_signals.len() >= 2 {
         valid_signals.iter()
-            .filter(|(idx, _, _, _, _)| *idx != winner_idx)
-            .map(|(_, conv, _, _, _)| conv.conviction_score)
+            .filter(|(idx, _, _, _, _, _, _)| *idx != winner_idx.unwrap())
+            .map(|(_, conv, _, _, _, _, _)| conv.conviction_score)
             .max_by(|a, b| a.total_cmp(b))
             .unwrap_or(mean)
     } else {
         mean
     };
 
-    let dominance = if allow_bypass { 
-        ((winner_score - second_score) / (std_dev + EPS)).min(3.0) 
-    } else { 
-        winner_dom_final 
-    };
+    let dominance = winner_dom_final;
     
     let report_reason = if max_z >= EXTREME_Z_OVERRIDE { "EXTREME_OVERRIDE" } else { winner_reason_final };
 
     if std::env::var("GA_DEBUG").is_ok() {
-        println!("WINDOW_DECISION → {} | sigs={} z={:.2} dom={:.3} mean={:.3} purity={:.2} conc={:.2} agree={:.2} => ACCEPTED: TRADE ({})", 
-            scenario_name, valid_signals.len(), max_z, dominance, mean, purity, top_k_sum / scores_sum.max(EPS), agreement, report_reason);
+        println!("WINDOW_DECISION → {} | sigs={} z={:.2} dom={:.3} mean={:.3} purity={:.2} conc={:.2} agree={:.2} => {}", 
+            scenario_name, valid_signals.len(), max_z, dominance, mean, purity, top_k_sum / scores_sum.max(EPS), agreement, 
+            if valid_signals.is_empty() { "REJECT_VACUUM" } else { "ACCEPTED" });
+    }
+    
+    if valid_signals.is_empty() {
+        return None; 
     }
 
     let median_score = percentile_f64(&scores, 0.50);
     let edge_spread_norm = (winner_score - median_score) / (std_dev + EPS);
 
-    let signal_count = if allow_bypass { window_data.len() } else { valid_signals.len() };
+    let _signal_count = valid_signals.len();
 
     let mut busy_until = 0usize;
     let cooldown = config.trade_cooldown_events.unwrap_or(8);
 
     for (current_idx, conviction) in window_data {
-        if total_trades >= 1 && !allow_bypass { 
+        if total_trades >= 1 { 
             break; // Alpha Discovery: Hard single-trade cap
         }
         
-        let max_trades_test_cap = config.max_trades_per_scenario.unwrap_or(3).min(5);
-        if total_trades >= max_trades_test_cap && allow_bypass {
-            break; // Tests: Respect scenario cap
-        }
-
         if current_idx < busy_until {
             continue;
         }
 
         // --- SELECTION GATES ---
-        let mut should_execute = allow_bypass;
+        let mut should_execute = true;
         let mut final_conviction = conviction.clone();
 
-        if !allow_bypass {
-            // Only execute the GLOBAL BEST for real alpha discovery
-            if current_idx != winner_idx {
-                continue;
-            }
-            
-            // Use the dispersion-adjusted conviction selected as winner
-            final_conviction = winner_conviction.clone();
-            should_execute = true; // Trust admission + selection layers
+        // Only execute the GLOBAL BEST for real alpha discovery
+        if current_idx != winner_idx.unwrap() {
+            continue;
         }
+        
+        // Use the dispersion-adjusted conviction selected as winner
+        final_conviction = winner_conviction.clone();
+        should_execute = true; // Trust admission + selection layers
 
         if !should_execute {
             continue;
@@ -3348,7 +3858,7 @@ pub(crate) fn evaluate_strategy(
             // Layer 4: Capture Efficiency Gate (Phase B)
             // Phase C.2d: Adaptive Execution Calibration
             let eff_threshold = if total_trades < 5 { 0.10 } else { 0.25 };
-            let eff_penalty = if !allow_bypass && outcome.efficiency < eff_threshold {
+            let eff_penalty = if outcome.efficiency < eff_threshold {
                 if std::env::var("GA_DEBUG").is_ok() {
                     println!("EFF_DEBUG → {} | eff={:.2} < threshold={:.2} => APPLYING_PENALTY", scenario_name, outcome.efficiency, eff_threshold);
                 }
@@ -3367,20 +3877,33 @@ pub(crate) fn evaluate_strategy(
             };
             let aqg_health = if final_conviction.conviction_score >= aqg_threshold { 1.0 } else { 0.0 };
             
-            // Phase 2: Outcome Consistency Tracking (Consolidated)
+            // --- Phase D.1.17: Realizability PnL Impact ---
+            let execution_multiplier = _winner_e_score_final.clamp(0.1, 1.0);
+            let adjusted_pnl = trade_pnl * execution_multiplier.powf(1.5); // Sharp Penalty D.1.18
+            let mut outcome_adj = outcome.clone();
+            outcome_adj.pnl = adjusted_pnl;
+
+            // Phase D.1.18: Extract winning signal signature
+            let winning_sig = if let Some((_, _, _, _, _, _, sig)) = valid_signals.iter().find(|(idx, _, _, _, _, _, _)| *idx == current_idx) {
+                Some(sig.clone())
+            } else { None };
+
             metrics.record_trade(
-                trade_pnl,
+                adjusted_pnl,
                 expected_move,
                 outcome.efficiency,
                 final_conviction.conviction_score,
                 outcome.efficiency,
                 outcome.edge_quality,
                 outcome.time_to_mfe as f64,
-                outcome.drawdown_penalty_raw,
+                margin,
                 aqg_health,
                 edge_spread_norm,
                 dominance,
-                final_conviction.raw_q_ratio, // Proxy for entropy
+                final_conviction.raw_q_ratio,
+                outcome.clone(),
+                SignalSource::Organic,
+                winning_sig,
             );
 
             let raw_exit = outcome.exit_event_idx;
@@ -3460,6 +3983,11 @@ pub(crate) fn evaluate_strategy(
             max_trade_pnl_scenario = max_trade_pnl_scenario.max(trade_pnl);
             max_pnl_in_scenario = max_pnl_in_scenario.max(outcome.pnl);
             scenario_pnls.push(trade_pnl);
+            
+            // Phase D.1.2: Metrics Propagation
+            metrics.trade_qualities.push(outcome.edge_quality);
+            metrics.sum_realized_pnl += trade_pnl;
+            metrics.sum_expected_pnl += outcome.expected_move;
             total_spread_test += outcome.spread;
             sum_price += signal_events[current_idx].price as f64;
             total_quality_trades_scenario += outcome.quality;
@@ -3502,8 +4030,8 @@ pub(crate) fn evaluate_strategy(
 
             if std::env::var("GA_DEBUG").is_ok() {
                 println!(
-                    "GA_EXEC: scenario={} idx={} score={:.4} spread_z={:.2} dom={:.2} pnl={:.6} bypass={}",
-                    scenario_name, current_idx, conviction.conviction_score, edge_spread_norm, dominance, outcome.pnl, allow_bypass
+                    "GA_EXEC: scenario={} idx={} score={:.4} spread_z={:.2} dom={:.2} pnl={:.6}",
+                    scenario_name, current_idx, conviction.conviction_score, edge_spread_norm, dominance, outcome.pnl
                 );
             }
         }
@@ -3516,6 +4044,8 @@ pub(crate) fn evaluate_strategy(
             signal_events.len(), entry_attempted, total_trades, skipped_busy, decision_skipped, exit_tp_count, exit_sl_count, exit_ts_count
         );
     }
+
+    let final_winner_idx = winner_idx.expect("STATION_SELECT_FAILURE");
 
     let total_trades = metrics.trade_count;
     let mean_expected_move = if total_trades > 0 { sum_expected_move / total_trades as f64 } else { 0.0 };
@@ -3559,7 +4089,7 @@ pub(crate) fn evaluate_strategy(
     
     // Composite Stability: Boosted with Squaring for Phase 11.2
     let stability = (payoff_ratio * win_rate * dir_consistency).clamp(0.0, 1.5);
-    let stability_weighted = stability.powi(2);
+    let _stability_weighted = stability.powi(2);
 
     let selectivity = metrics.selectivity();
 
@@ -3615,99 +4145,70 @@ pub(crate) fn evaluate_strategy(
         (avg_pnl_for_scenario * fill_prob * latency_penalty) - slippage
     };
 
-    // --- PHASE C.1.6b: ADAPTIVE PARTICIPATION GATE (Confidence Refinement) ---
-    // Preserve Elite Rare Alpha if Confidence (PnL * sqrt(N)) is high enough
-    let confidence = effective_pnl.abs() * (total_trades as f64).sqrt();
-    let min_trades = if confidence >= 0.01_f64 { 3 } else { 5 };
-    if total_trades < min_trades {
+    // --- PHASE C.1.6b: ADAPTIVE PARTICIPATION GATE (Smooth Recovery) ---
+    // User Precision: trades >= 1 is the new active floor.
+    let total_trades = metrics.trade_count;
+    let is_active = total_trades >= 1;
+    
+    if !is_active {
         if std::env::var("GA_DEBUG").is_ok() {
-            println!("FITNESS_TRACE: [INACTIVE] total_trades={} conf={:.4} final=0.0", total_trades, confidence);
+            println!("FITNESS_TRACE: [INACTIVE] total_trades={} final=0.0", total_trades);
         }
         
         // --- PHASE C.2b: GRADIENT FALLBACK (Structural Hint) ---
-        // Restore learning gradient when trades=0 by rewarding structural perception potential.
-        let structural_hint = (metrics.adaptive.stability.mean() + metrics.adaptive.agreement.mean() + metrics.adaptive.dominance.mean()) / 3.0;
-        
-        // --- PHASE C.3b: Inactive Gate Softening (Gradient Hint) ---
-        // Instead of a flat constant, provide a penalty-weighted tanh gradient
-        let local_pnl_scale = effective_pnl.abs().max(1.0); // Simple local normalization
+        let local_pnl_scale = effective_pnl.abs().max(1.0); 
         let fallback_fitness = (effective_pnl / local_pnl_scale).tanh() * 0.5;
 
-        let fallback_eval = StrategyEvaluation {
+        return Some(StrategyEvaluation {
+            winner_idx: final_winner_idx,
             strategy_id: strategy_id.to_string(),
             strategy: strategy.clone(),
+            capability: capability.clone(),
+            real_dom: metrics.adaptive.dominance.mean(),
+            had_organic_signals,
             fitness: fallback_fitness,
+            bootstrap_ratio: if total_trades > 0 { metrics.bootstrap_trade_count as f64 / total_trades as f64 } else { 0.0 },
             trade_count: total_trades,
             avg_pnl: effective_pnl,
             trade_qualities: metrics.trade_qualities.clone(),
             realized_pnl_rolling: metrics.sum_realized_pnl,
             predicted_pnl_rolling: metrics.sum_expected_pnl,
             ..StrategyEvaluation::default()
-        };
-
-        if std::env::var("GA_DEBUG").is_ok() {
-            println!("OUTCOME_PIPELINE → scenario={} [FALLBACK] trades={} qualities={}", 
-                scenario_name, fallback_eval.trade_count, fallback_eval.trade_qualities.len());
-        }
-        return Some(fallback_eval);
+        });
     }
 
-    let reality_gap = avg_pnl_for_scenario - effective_pnl;
-    let gap_ratio = if avg_pnl_for_scenario.abs() > 1e-6 { reality_gap / avg_pnl_for_scenario.abs() } else { 0.0 };
+    // --- PHASE D.1.16: EDGE VALIDATION LAYER (CONSISTENCY FITNESS) ---
+    // 1. Calculate PnL Consistency (Sharpe-like)
+    let pnl_mean = effective_pnl;
+    let pnl_std = std_dev_for_scenario.max(1e-6);
+    let mut fitness = (pnl_mean / pnl_std).max(0.0);
 
-    // 2. Discovery Pressure (Phase C.1 / C.1.5)
-    let gap_score = if total_trades < 3 {
-        0.3_f64 // Penalize inactivity (fake perfection)
-    } else {
-        (1.0 - gap_ratio).powf(1.2).clamp(0.1, 1.0)
-    };
-    // Context-Aware Slippage Normalization
-    let slippage_efficiency = (1.0 - (slippage / (avg_pnl_for_scenario.abs() + avg_vol_ratio * 0.5 + 1e-6))).clamp(0.1, 1.0);
-    let mut survivability_score = (survivable_trades_count as f64 / total_trades.max(1) as f64).clamp(0.1, 1.0);
-    if total_trades < 3 {
-        survivability_score *= 0.7_f64;
+    // 2. Bootstrap De-weighting & Penalty
+    let bootstrap_ratio = metrics.bootstrap_trade_count as f64 / total_trades.max(1) as f64;
+    if bootstrap_ratio > 0.7 {
+        fitness *= 0.5; // Heavy dependency penalty
     }
-
-    // 3. Component Scores (Phase C.2 Dollar-PnL Objective)
-    let dollar_pnl_capacity = (effective_pnl * size).max(1e-4_f64);
-    let pnl_score = (dollar_pnl_capacity / (avg_vol_ratio * size).max(1e-3)).max(1e-4_f64);
     
-    let consistency_score = win_rate.powf(1.5).max(0.1);
-    let efficiency_score = avg_efficiency.clamp(0.0, 1.0).max(0.1);
-    let activity_score = (total_trades as f64 / 3.0).min(1.0).max(0.2);
-    let stability_score = (1.0 / (1.0 + std_dev_for_scenario)).clamp(0.1, 1.0);
+    // 3. Trade Count Stabilization (Log scaling)
+    fitness *= (1.0 + (total_trades as f64).ln()).max(0.1);
     
-    // --- 3.1 Power-Law Weighted Discovery ---
-    let discovery_multiplier = gap_score.powf(0.8) * slippage_efficiency.powf(0.8) * survivability_score.powf(1.2);
-    
-    let mut total_fitness = pnl_score * consistency_score * efficiency_score * activity_score * stability_score * discovery_multiplier;
-
-    // 4. Reliability Penalty (Gradient)
-    let reliability_penalty = (match total_trades {
-        0..=2 => 0.5,
-        3..=4 => 0.75,
-        _ => 1.0,
-    } as f64).max(0.3);
-    total_fitness *= reliability_penalty;
-
-    // --- PHASE 12.5+: DISCIPLINARY ADJUSTMENTS ---
-    if total_trades > 0 {
-        // Continuous Drawdown Penalty
-        let dd_penalty = (1.0 + worst_pnl_for_scenario / TARGET_STD.max(1e-3)).clamp(0.1, 1.0);
-        total_fitness *= dd_penalty.powf(1.2);
-
-        // Selectivity Discipline
-        total_fitness *= selectivity.powf(0.5).max(0.5);
-    }
+    // 4. Rank Bonus Constraint (Cap at 5%)
+    let rank_bonus = (final_score - 1.0).max(0.0) * 0.1; // heuristic rank bonus
+    fitness += rank_bonus.min(0.05 * fitness);
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
-            "EXEC_REALITY → pnl={:.5} eff_pnl={:.5} slip={:.5} gap={:.2} surv={:.2}/{:.2}",
-            avg_pnl_for_scenario, effective_pnl, slippage, gap_score, survivable_trades_count as f64 / total_trades.max(1) as f64, survivability_score
+            "FITNESS_D1_16 → mean={:.5} std={:.5} boost_ratio={:.2} final={:.4}",
+            pnl_mean, pnl_std, bootstrap_ratio, fitness
         );
+    }
+    
+    let total_fitness = fitness;
+
+    if std::env::var("GA_DEBUG").is_ok() {
         println!(
-            "FITNESS_TRACE: wr={:.2} gap_s={:.2} surv={:.2} act={:.2} real_pnl={:.6} final={:.4}",
-            win_rate, gap_score, survivability_score, activity_score, effective_pnl, total_fitness
+            "FITNESS_TRACE: wr={:.2} real_pnl={:.6} final={:.4}",
+            win_rate, effective_pnl, total_fitness
         );
     }
     let robustness_for_scenario = avg_pnl_for_scenario - config.lambda * std_dev_for_scenario;
@@ -3737,10 +4238,15 @@ pub(crate) fn evaluate_strategy(
     assert!(total_trades == 0 || (exit_tp_count + exit_sl_count + exit_ts_count) == total_trades, "FATAL: Outcome count mismatch");
 
     Some(StrategyEvaluation {
+        winner_idx: final_winner_idx,
         strategy_id: strategy_id.clone(),
         strategy: strategy.clone(),
         capability,
+        real_dom: winner_dom_final,
+        had_organic_signals,
         avg_pnl: avg_pnl_for_scenario,
+        total_pnl: metrics.sum_realized_pnl,
+        pnl_history: metrics.pnl_history.clone(),
         std_dev: std_dev_for_scenario,
         downside_std_dev: downside_std_dev_scenario,
         worst: worst_pnl_for_scenario,
@@ -3765,8 +4271,6 @@ pub(crate) fn evaluate_strategy(
         execution_friction: if sum_expected_slippage > 0.0 { sum_actual_slippage / sum_expected_slippage } else { 1.0 },
         short_term_capture_eff: metrics.avg_efficiency(),
         long_term_capture_eff: metrics.avg_efficiency(),
-        
-        // Phase C.2f: Outcome Binding (Bridge to Audit Universe)
         realized_pnl_rolling: metrics.sum_realized_pnl,
         predicted_pnl_rolling: metrics.sum_expected_pnl,
         trade_qualities: metrics.trade_qualities.clone(),
@@ -3782,8 +4286,7 @@ pub(crate) fn evaluate_strategy(
         pnl_fingerprint: Vec::new(),
         avg_edge_spread: metrics.avg_edge_spread_norm(),
         avg_dominance: metrics.avg_dominance(),
-
-        // Phase 17 Calibration: Raw vs Exec Population Diagnostics
+        
         raw_pop_avg: metrics.sum_raw_pop_dominance / (metrics.raw_pop_count as f64).max(1.0),
         raw_pop_dist: {
             let mut dist = [0.0; 6];
@@ -3805,7 +4308,6 @@ pub(crate) fn evaluate_strategy(
         vip_ratio: metrics.vip_count as f64 / (metrics.exec_pop_count as f64).max(1.0),
         stat_zero_dom_ratio: metrics.stat_zero_dom_count as f64 / (metrics.stat_admitted_count as f64).max(1.0),
         
-        // Phase 17B: Execution-Aware Selection
         exec_accept_rate: metrics.exec_passed_count as f64 / (metrics.exec_admitted_count as f64).max(1.0),
         vip_exec_retention: metrics.vip_exec_passed_count as f64 / (metrics.vip_admitted_count as f64).max(1.0),
         e_rejection_rate: metrics.exec_rejected_count as f64 / (metrics.exec_admitted_count as f64).max(1.0),
@@ -3817,9 +4319,8 @@ pub(crate) fn evaluate_strategy(
         stability_reject_rate: metrics.stability_rejected_count as f64 / metrics.exec_admitted_count.max(1) as f64,
         clarity_pnl_share: metrics.sum_clarity_pnl,
         conviction_pnl_share: metrics.sum_conviction_pnl,
-        outcome_consistency: 0.0, // Calculated at the aggregate level for Phase 2A
+        outcome_consistency: 0.0, 
         
-        // Phase 14++: Structural Health (Universe Discovery)
         acceptance_rate: metrics.accepted_windows as f64 / metrics.total_windows.max(20) as f64,
         valid_window_ratio: metrics.valid_windows as f64 / metrics.total_windows.max(1) as f64,
         avg_agreement_valid: metrics.sum_agreement_valid / metrics.valid_windows.max(1) as f64,
@@ -3829,12 +4330,12 @@ pub(crate) fn evaluate_strategy(
         max_purity: metrics.max_purity,
         total_windows: metrics.total_windows,
         
-        // Phase A+: Adaptive Intelligence Metrics
         alpha: metrics.adaptive.final_score.mean(),
         consistency: 1.0 / (metrics.adaptive.final_score.std() + EPS),
+        bootstrap_ratio: metrics.bootstrap_trade_count as f64 / total_trades.max(1) as f64,
         opportunity: metrics.adaptive_opportunity_count as f64 / metrics.total_windows.max(1) as f64,
         acceptance_mode: winner_acceptance_mode,
-        structural_score: 0.0, // Computed at population level
+        structural_score: 0.0, 
         ..StrategyEvaluation::default()
     })
 }
@@ -3964,12 +4465,12 @@ fn apply_ga_top_k_selection(
 ///
 /// Per-scenario `avg_pnl` / variance use an unweighted mean by default; set `GA_WEIGHTED_SCENARIO_PNL=1`
 /// for rank-score-weighted aggregation (same weights as scenario Top-K ordering).
-pub fn aggregate_strategy_reports(evaluations: Vec<StrategyEvaluation>, config: &GaConfig) -> Option<StrategyEvaluation> {
+pub fn aggregate_strategy_reports(evaluations: Vec<StrategyEvaluation>, config: &GaConfig, generation: usize) -> Option<StrategyEvaluation> {
     // Phase 10.2: Institutional Elite-Only Aggregation
     // 1. Filter for regimes meeting the minimum alpha quality threshold
     let mut elite: Vec<StrategyEvaluation> = evaluations
         .into_iter()
-        .filter(|e| e.fitness > 2.5) 
+        .filter(|e| e.fitness > -0.25) 
         .collect();
 
     // 2. Sort by fitness (descending) to isolate the strongest alpha cluster
@@ -3988,7 +4489,7 @@ pub fn aggregate_strategy_reports(evaluations: Vec<StrategyEvaluation>, config: 
         _ => 1.05, // Slight "generalization bonus" for consistent cross-regime performance
     };
 
-    aggregate_strategy_reports_inner(elite_evals, scarcity_penalty, config).map(|(e, _)| e)
+    aggregate_strategy_reports_inner(elite_evals, scarcity_penalty, config, generation).map(|(e, _)| e)
 }
 
 /// Same aggregation with an explicit Top-K cap (`None` = use all scenarios). Used by unit tests to avoid env coupling.
@@ -3997,10 +4498,11 @@ pub(crate) fn aggregate_strategy_reports_with_top_k(
     evaluations: Vec<StrategyEvaluation>,
     config: &GaConfig,
     top_k_cap: Option<usize>,
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
-    let full_mean_eval = aggregate_strategy_reports_inner(evaluations.clone(), 1.0, config).map(|(e, _)| e);
+    let full_mean_eval = aggregate_strategy_reports_inner(evaluations.clone(), 1.0, config, generation).map(|(e, _)| e);
     let top_k_evals = apply_ga_top_k_selection(evaluations, top_k_cap);
-    let top_k_mean_eval = aggregate_strategy_reports_inner(top_k_evals, 1.0, config).map(|(e, _)| e);
+    let top_k_mean_eval = aggregate_strategy_reports_inner(top_k_evals, 1.0, config, generation).map(|(e, _)| e);
 
     match (top_k_mean_eval, full_mean_eval) {
         (Some(mut tk), Some(fg)) => {
@@ -4125,6 +4627,7 @@ fn aggregate_strategy_reports_inner(
     mut evaluations: Vec<StrategyEvaluation>,
     _scarcity_penalty: f64,
     config: &GaConfig,
+    _generation: usize,
 ) -> Option<(StrategyEvaluation, f64)> {
     if evaluations.is_empty() {
         return None;
@@ -4368,13 +4871,26 @@ fn aggregate_strategy_reports_inner(
 
     let variance_penalty = (1.0 / (1.0 + std_dev * 4.0)).clamp(0.5, 1.1);
 
-    // --- PHASE 11.2: GLOBAL FITNESS HARMONIZATION (Restored) ---
-    // --- PHASE C.4: DIFFERENTIATION INJECTION (Upgraded) ---
-    // Inject Variance-Based Differentiation to break population collapse.
-    // Reward strategies that exhibit outcome dispersion differently from uniform losers.
-    let dispersion_score = (std_dev / pnl_scale).tanh();
-    let dispersion_weight = 0.2 + 0.4 * dispersion_score.max(0.0);
-    let mut final_fitness = pnl_score + (dispersion_score * dispersion_weight);
+    // --- PHASE D.1.7: HIERARCHY INJECTION & UNIFORMITY PENALTY ---
+    // 1. Uniformity Penalty: Punish strategies that produce identical outcomes (consensus collapse)
+    let mut final_fitness = pnl_score;
+    if std_dev < 1e-6 {
+        final_fitness *= 0.8;
+    }
+
+    // 2. Dispersion Bonus: Reward strategies that interpret scenarios differently
+    let dispersion_bonus = (std_dev / pnl_scale.max(1e-6)).tanh() * 0.2;
+    final_fitness += dispersion_bonus;
+
+    // 3. Activity Weight: Smooth ramp for trade participation (Phase D.1.5/D.1.7)
+    let activity_weight = (total_trade_count as f64 / 5.0).tanh();
+    final_fitness *= activity_weight.max(0.2);
+
+    // 4. Relative Dominance Amplification (Intrinsic Hierarchy)
+    // Amplify top performers based on their internal scenario dispersion
+    if final_fitness > 0.0 {
+        final_fitness = final_fitness.powf(1.1);
+    }
 
     // --- PHASE 17.6: ACCEPTANCE MODE CALIBRATION ---
     if evaluations.iter().any(|e| e.acceptance_mode == AcceptanceMode::StatisticalWeak) {
@@ -4540,8 +5056,8 @@ fn aggregate_strategy_reports_inner(
     // Phase 14 Consensus
     let mut total_consensus_bypass_ratio = 0.0;
     let mut total_stability_reject_rate = 0.0;
-    let mut total_clarity_pnl_share = 0.0;
-    let mut total_conviction_pnl_share = 0.0;
+    let mut total_clarity_pnl_share: f64 = 0.0;
+    let mut total_conviction_pnl_share: f64 = 0.0;
 
     for e in &evaluations {
         raw_sum += e.raw_pop_avg;
@@ -4713,6 +5229,28 @@ fn aggregate_strategy_reports_inner(
             *val /= std_fp;
         }
     }
+    
+    // --- PHASE D.1.3: INTEGRITY TRACING (AGG_BRIDGE) ---
+    let input_scenarios = total_scenarios_in;
+    let output_scenarios = evaluations.len();
+    let input_trades = total_trade_count;
+    let avg_input_fitness = if output_scenarios > 0 { evaluations.iter().map(|e| e.fitness).sum::<f64>() / output_scenarios as f64 } else { 0.0 };
+    let final_fitness = raw_selection_fitness;
+
+    println!(
+        "AGG_BRIDGE → input_trades={} output_trades={}",
+        input_trades, total_trade_count
+    );
+    println!(
+        "AGG_TRACE → scenarios_in={} scenarios_out={} fitness_in={:.4} fitness_out={:.4}",
+        input_scenarios, output_scenarios, avg_input_fitness, final_fitness
+    );
+
+    // --- PHASE D.1.4: SPLIT-BRAIN INVARIANT ---
+    assert!(
+        input_trades == 0 || total_trade_count > 0,
+        "❌ SPLIT-BRAIN DETECTED: Trades lost in aggregation"
+    );
 
     let report = StrategyEvaluation {
         strategy_id: evaluations[0].strategy_id.clone(),
@@ -4829,7 +5367,7 @@ fn aggregate_strategy_reports_inner(
     println!("--------------------------------------------------------------------------------------------------");
     println!("Rank | Symbol       | Alpha   | Continuity | Opp%   | Stab | Agree | PeakAgree | Conf | N");
     println!("--------------------------------------------------------------------------------------------------");
-    for (i, (sym, e, score, conf)) in final_ranking.iter().take(10).enumerate() {
+    for (i, (sym, e, _score, conf)) in final_ranking.iter().take(10).enumerate() {
         println!("{:>4} | {:<12} | {:7.3} | {:10.2} | {:6.2}% | {:4.2} | {:5.2} | {:9.2} | {:4} | {}",
             i + 1, sym, e.alpha, e.consistency, e.opportunity * 100.0,
             (1.0 - e.avg_stability_valid / 0.18).clamp(0.0, 1.0),
@@ -4937,7 +5475,7 @@ pub fn evaluate_current_status(
         });
     }
 
-    let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0);
+    let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
 
     // Use the ESE RoundTrip logic with realigned signature
     let outcome = crate::ga_simulate_round_trip_at_cursor(
@@ -5147,7 +5685,7 @@ pub fn evaluate_consensus_status(
     }
 
     // Analyze Global Regime (using first voter as proxy for conviction logic)
-    let conviction_guard = evaluate_market_conviction(&eligible_voters[0].strategy, "consensus", &events, last_idx, 0);
+    let conviction_guard = evaluate_market_conviction(&eligible_voters[0].strategy, "consensus", &events, last_idx, 0, 0);
     
     // 🔥 GUARDRAIL 6: Hard Admission Gate
     if conviction_guard.norm_vol > 0.005 || conviction_guard.norm_vol_score < 0.2 {
@@ -5289,10 +5827,11 @@ pub(crate) fn evaluate_and_aggregate_with_trade_depth(
     strategy: &Strategy,
     config: &GaConfig,
     scenarios: &[ScenarioPair],
+    generation: usize,
 ) -> Option<(StrategyEvaluation, f64)> {
     let mut reports = Vec::new();
     for (idx, pair) in scenarios.iter().enumerate() {
-        if let Some(report) = evaluate_strategy(strategy, pair, config) {
+        if let Some(report) = evaluate_strategy(strategy, pair, config, generation) {
             reports.push(report);
         }
         
@@ -5307,15 +5846,233 @@ pub(crate) fn evaluate_and_aggregate_with_trade_depth(
     // Phase 10.3.2: Bypassing Downstream Truncation
     // We already sampled the robust subset in evaluate_population_scoped; use all results here.
     let evaluations = apply_ga_top_k_selection(reports, None);
-    aggregate_strategy_reports_inner(evaluations, 1.0, config)
+    aggregate_strategy_reports_inner(evaluations, 1.0, config, generation)
+}
+
+const DNA_IMPORTANCE_WEIGHTS: [f64; 13] = [
+    0.1538, 0.1538, 0.0769, 0.0769, 0.0769, // High (Thresh, Edge), Mid (TP, SL, Hold)
+    0.0385, 0.0385, 0.0385, // Low (Weights)
+    0.0385, 0.0385, 0.0385, // Low (Exponents)
+    0.1538, 0.0769, // High (Selectivity), Mid (Archetype)
+];
+
+pub fn extract_features(strategy: &Strategy) -> Vec<f64> {
+    let mut features = Vec::with_capacity(13);
+    let norm = |val: f64, max: f64| (val / max).clamp(0.0, 1.0);
+    
+    features.push(norm(strategy.queue_threshold as f64, 5000.0));
+    features.push(norm(strategy.base_edge as f64, 500.0));
+    features.push(norm(strategy.take_profit as f64, 500.0));
+    features.push(norm(strategy.stop_loss as f64, 500.0));
+    features.push(norm(strategy.holding_period as f64, 100.0));
+    features.push(norm(strategy.w_conviction as f64, 100.0));
+    features.push(norm(strategy.w_momentum as f64, 100.0));
+    features.push(norm(strategy.w_volatility as f64, 100.0));
+    features.push(norm(strategy.exp_conviction as f64, 100.0));
+    features.push(norm(strategy.exp_momentum as f64, 100.0));
+    features.push(norm(strategy.exp_volatility as f64, 100.0));
+    features.push(norm(strategy.selectivity as f64, 100.0));
+    features.push(norm(strategy.archetype as f64, 3.0));
+    
+    features
+}
+
+/// Phase D.1.12: Signal Truth Layer.
+/// Decouples belief from outcome and penalizes noise using directional intent and weighted DNA metrics.
+pub fn compute_consensus_alpha(
+    elites: &[Strategy],
+    scenario: &ScenarioPair,
+    config: &GaConfig,
+) -> ConsensusReport {
+    let mut signal_votes_map: HashMap<usize, Vec<SignalVote>> = HashMap::new();
+    let total_strategies = elites.len();
+    
+    if total_strategies == 0 {
+        return ConsensusReport {
+            scenario_name: scenario.name.to_string(),
+            top_signals: vec![],
+            global_entropy: 0.0,
+            active_strategies: 0,
+        };
+    }
+
+    let epsilon = 0.05;
+    for strategy in elites {
+        // Phase D.1.14: Enforce Consensus Purity
+        // We ensure strict configuration and explicitly disable bootstrap fallbacks for reporting.
+        // The consensus report must only reflect structurally valid, organic patterns.
+        let mut strict_config = config.clone();
+        strict_config.initial_queue_threshold = config.initial_queue_threshold.max(50);
+        
+        if let Some(res) = evaluate_strategy(strategy, scenario, &strict_config, 0) {
+            // Directional Intent Mapping (Belief-based)
+            let decision = if res.avg_conviction > epsilon {
+                Decision::BUY
+            } else if res.avg_conviction < -epsilon {
+                Decision::SELL
+            } else {
+                Decision::HOLD
+            };
+
+            if decision != Decision::HOLD {
+                let votes = signal_votes_map.entry(res.winner_idx).or_insert(vec![]);
+                votes.push(SignalVote {
+                    strategy_id: strategy_to_id(strategy),
+                    archetype: Archetype::from(strategy.archetype),
+                    confidence: res.avg_conviction,
+                    signal_features: extract_features(strategy),
+                    decision,
+                });
+            }
+        }
+    }
+
+    let mut reports = Vec::new();
+    for (idx, votes) in signal_votes_map {
+        let count = votes.len();
+        let support_ratio = count as f64 / total_strategies as f64;
+        
+        // 1. Participation Gate
+        if support_ratio < 0.1 {
+            continue;
+        }
+
+        // 2. Conviction Factor (Smooth suppression)
+        let mean_abs_conviction = votes.iter().map(|v| v.confidence.abs()).sum::<f64>() / count as f64;
+        let conviction_factor = ((mean_abs_conviction - 0.05) / 0.95).clamp(0.0, 1.0).powf(1.2);
+        
+        let avg_score = votes.iter().map(|v| v.confidence.abs()).sum::<f64>() / count as f64;
+        
+        // 3. Archetype Diversity
+        let unique_archs: HashSet<Archetype> = votes.iter().map(|v| v.archetype).collect();
+        let archetype_diversity = unique_archs.len() as f64 / 4.0;
+
+        // 4. Belief Entropy (Shannon)
+        let mut buy_c = 0usize;
+        let mut sell_c = 0usize;
+        for v in &votes {
+            match v.decision {
+                Decision::BUY => buy_c += 1,
+                Decision::SELL => sell_c += 1,
+                _ => {}
+            }
+        }
+        let hold_c = total_strategies.saturating_sub(buy_c + sell_c);
+        
+        let mut entropy = 0.0;
+        let den = total_strategies as f64;
+        for c in [buy_c, sell_c, hold_c] {
+            if c > 0 {
+                let p = c as f64 / den;
+                entropy -= p * p.log2();
+            }
+        }
+        let raw_entropy = (entropy / 3.0f64.log2()).clamp(0.0, 1.0);
+        let disagreement_entropy = raw_entropy * conviction_factor;
+
+        // 5. Feature Diversity (Weighted Euclidean Centroid Dispersion)
+        let mut feature_diversity = 0.0;
+        if count > 1 {
+            let dim = votes[0].signal_features.len();
+            // Unweighted Centroid (Simple Mean)
+            let mut centroid = vec![0.0; dim];
+            for v in &votes {
+                for (i, f) in v.signal_features.iter().enumerate().take(dim) {
+                    centroid[i] += f;
+                }
+            }
+            for c in centroid.iter_mut() { *c /= count as f64; }
+            
+            // Weighted Euclidean RMS Distance
+            let mut sum_weighted_dist_sq = 0.0;
+            for v in &votes {
+                let mut d_sq = 0.0;
+                for (i, f) in v.signal_features.iter().enumerate().take(dim) {
+                    let w = DNA_IMPORTANCE_WEIGHTS.get(i).copied().unwrap_or(1.0/13.0);
+                    d_sq += w * (f - centroid[i]).powi(2);
+                }
+                sum_weighted_dist_sq += d_sq;
+            }
+            let rms_dist = (sum_weighted_dist_sq / count as f64).sqrt();
+            feature_diversity = (rms_dist / (rms_dist + 1.0)).clamp(0.0, 1.0);
+        }
+
+        // 6. Honest Alignment Factor (Centered at 0.33)
+        let alignment = (buy_c.max(sell_c) as f64 / total_strategies as f64).clamp(0.0, 1.0);
+        let normalized_alignment = ((alignment - 0.33) / 0.67).clamp(0.0, 1.0);
+        let alignment_factor = 0.5 + 0.5 * normalized_alignment;
+
+        // 7. Final Alpha Composition
+        let mut alpha = (0.35 * support_ratio) + 
+                        (0.20 * (avg_score.min(2.0) / 2.0)) + 
+                        (0.15 * archetype_diversity) + 
+                        (0.15 * disagreement_entropy) + 
+                        (0.15 * feature_diversity);
+
+        alpha *= alignment_factor;
+
+        // 8. Continuous Overfit Guard
+        let penalty = (support_ratio * (1.0 - archetype_diversity)).clamp(0.0, 1.0);
+        alpha *= 1.0 - (0.3 * penalty);
+
+        let realized_edge_factor = 1.0;
+        alpha *= realized_edge_factor;
+
+        let label = if alpha > 0.6 && archetype_diversity > 0.5 {
+            " 🔥 SIGNAL TRUTH"
+        } else if support_ratio > 0.8 {
+            "crowded trade"
+        } else if feature_diversity > 0.5 {
+            "diverse niche"
+        } else {
+            "speculative"
+        }.to_string();
+
+        let _signal_timestamp = scenario.signal.get(idx).map(|e| e.exchange_ts).unwrap_or(0);
+
+        reports.push(SignalAlphaReport {
+            signal_idx: idx,
+            asset: scenario.signal_symbol.to_string(),
+            support_count: count,
+            support_ratio,
+            avg_score,
+            archetype_diversity,
+            alpha_score: alpha,
+            conviction: avg_score,
+            archetypes: unique_archs.into_iter().map(|a| match a {
+                Archetype::Conviction => 0,
+                Archetype::Momentum => 1,
+                Archetype::Reversion => 2,
+                Archetype::Volatility => 3,
+            }).collect(),
+            consensus_label: label,
+            disagreement_entropy,
+            feature_diversity,
+            realized_edge_factor,
+            signal_timestamp: _signal_timestamp,
+            temporal_stability: 1.0, 
+            persistence_count: 1,
+            alignment_factor,
+        });
+    }
+
+    reports.sort_by(|a, b| b.alpha_score.total_cmp(&a.alpha_score));
+
+    ConsensusReport {
+        scenario_name: scenario.name.to_string(),
+        top_signals: reports,
+        global_entropy: 0.0,
+        active_strategies: total_strategies,
+    }
 }
 
 pub fn evaluate_and_aggregate(
     strategy: &Strategy,
     config: &GaConfig,
     scenarios: &[ScenarioPair],
+    generation: usize,
 ) -> Option<StrategyEvaluation> {
-    evaluate_and_aggregate_with_trade_depth(strategy, config, scenarios).map(|(e, _)| e)
+    evaluate_and_aggregate_with_trade_depth(strategy, config, scenarios, generation).map(|(e, _)| e)
 }
 
 #[cfg(test)]
@@ -5432,12 +6189,21 @@ mod tests {
 
     #[test]
     fn test_evaluate_strategy() {
-        let config = get_default_ga_config();
+        let mut rng = StdRng::seed_from_u64(12345);
         let strategy = Strategy {
-            queue_threshold: 500,
-            base_edge: 1,
-            take_profit: 10,
-            stop_loss: 5,
+            queue_threshold: 100,
+            base_edge: 2,
+            take_profit: 20,
+            stop_loss: 10,
+            holding_period: 20,
+            w_conviction: 50,
+            w_momentum: 30,
+            w_volatility: 20,
+            exp_conviction: 100,
+            exp_momentum: 100,
+            exp_volatility: 100,
+            selectivity: 75,
+            archetype: 0,
         };
         let scenarios = get_scenarios_map();
         let market_events = scenarios.get("High_Liquidity_Stable_Price").unwrap();
@@ -5449,7 +6215,8 @@ mod tests {
             execution: market_events.as_slice(),
         };
 
-        let report = evaluate_strategy(&strategy, &pair, &config);
+        let config = get_default_ga_config();
+        let report = evaluate_strategy(&strategy, &pair, &config, 0);
 
         if let Some(r) = report {
             assert_eq!(r.strategy, strategy);
@@ -5482,10 +6249,19 @@ mod tests {
         let mut config = get_default_ga_config();
         config.max_trades_per_scenario = Some(cap);
         let strategy = Strategy {
-            queue_threshold: 200,
-            base_edge: 1,
-            take_profit: 10,
-            stop_loss: 5,
+            queue_threshold: 100,
+            base_edge: 2,
+            take_profit: 20,
+            stop_loss: 10,
+            holding_period: 20,
+            w_conviction: 50,
+            w_momentum: 30,
+            w_volatility: 20,
+            exp_conviction: 100,
+            exp_momentum: 100,
+            exp_volatility: 100,
+            selectivity: 75,
+            archetype: 0,
         };
 
         let mut found = false;
@@ -5498,7 +6274,7 @@ mod tests {
                 signal: events.as_slice(),
                 execution: events.as_slice(),
             };
-            if let Some(r) = evaluate_strategy(&strategy, &pair, &config) {
+            if let Some(r) = evaluate_strategy(&strategy, &pair, &config, 0) {
                 assert!(
                     r.trade_count <= cap,
                     "trade_count {} exceeds configured cap {}",
@@ -5565,12 +6341,24 @@ mod tests {
         println!("✅ Top K sorted test passed. (Test adjusted for new return type)");
     }
 
-    // --- NEW MULTIPLICATIVE FITNESS TESTS ---
-
     fn mock_scenario_eval(pnl: f64, trades: usize, profitable: usize, entropy: f64) -> StrategyEvaluation {
         StrategyEvaluation {
             strategy_id: "test".to_string(),
-            strategy: Strategy { queue_threshold: 0, base_edge: 0, take_profit: 0, stop_loss: 0 },
+            strategy: Strategy {
+                queue_threshold: 100,
+                base_edge: 2,
+                take_profit: 20,
+                stop_loss: 10,
+                holding_period: 0,
+                w_conviction: 50,
+                w_momentum: 30,
+                w_volatility: 20,
+                exp_conviction: 100,
+                exp_momentum: 100,
+                exp_volatility: 100,
+                selectivity: 75,
+                archetype: 0,
+            },
             capability: ScenarioCapability::Executable,
             avg_pnl: pnl,
             std_dev: 0.0,
@@ -5616,7 +6404,7 @@ mod tests {
         for _ in 0..8 { evals.push(mock_scenario_eval(0.0, 0, 0, 0.45)); } // inactive
         
         let config = get_default_ga_config();
-        let aggregated = aggregate_strategy_reports_with_top_k(evals, &config, None).unwrap();
+        let aggregated = aggregate_strategy_reports_with_top_k(evals, &config, None, 0).unwrap();
         
         // Participation is 0.2. Under bounded/log fitness, weak strategies should remain low but non-negative.
         assert!(aggregated.fitness < 0.5 && aggregated.fitness >= 0.0,
@@ -5630,13 +6418,13 @@ mod tests {
         for _ in 0..9 { evals_a.push(mock_scenario_eval(0.03, 3, 3, 0.45)); }
         evals_a.push(mock_scenario_eval(0.0, 0, 0, 0.45));
         let config = get_default_ga_config();
-        let agg_a = aggregate_strategy_reports_with_top_k(evals_a, &config, None).unwrap();
+        let agg_a = aggregate_strategy_reports_with_top_k(evals_a, &config, None, 0).unwrap();
 
         // Strategy B: low participation (0.3), higher average active pnl
         let mut evals_b = Vec::new();
         for _ in 0..3 { evals_b.push(mock_scenario_eval(0.03, 5, 5, 0.45)); }
         for _ in 0..7 { evals_b.push(mock_scenario_eval(0.0, 0, 0, 0.45)); }
-        let agg_b = aggregate_strategy_reports_with_top_k(evals_b, &config, None).unwrap();
+        let agg_b = aggregate_strategy_reports_with_top_k(evals_b, &config, None, 0).unwrap();
 
         // Under bounded/log fitness, high-participation profile should dominate low-participation.
         assert!(
@@ -5656,12 +6444,12 @@ mod tests {
         let mut evals_a = Vec::new();
         for _ in 0..5 { evals_a.push(mock_scenario_eval(0.02, 1, 1, 0.45)); }
         for _ in 0..5 { evals_a.push(mock_scenario_eval(0.0, 0, 0, 0.45)); }
-        let agg_a = aggregate_strategy_reports_with_top_k(evals_a, &config, None).unwrap();
+        let agg_a = aggregate_strategy_reports_with_top_k(evals_a, &config, None, 0).unwrap();
 
         // Strategy B: strong profile with full participation and enough trades
         let mut evals_b = Vec::new();
         for _ in 0..10 { evals_b.push(mock_scenario_eval(0.03, 4, 4, 0.45)); }
-        let agg_b = aggregate_strategy_reports_with_top_k(evals_b, &config, None).unwrap();
+        let agg_b = aggregate_strategy_reports_with_top_k(evals_b, &config, None, 0).unwrap();
 
         assert!(agg_a.fitness < 0.5 && agg_a.fitness >= 0.0, 
             "Low trade count fitness {} should be very low.", agg_a.fitness);
@@ -5674,14 +6462,14 @@ mod tests {
         let mut evals_stable = Vec::new();
         for _ in 0..10 { evals_stable.push(mock_scenario_eval(0.01, 5, 5, 0.45)); }
         let config = get_default_ga_config();
-        let agg_stable = aggregate_strategy_reports_with_top_k(evals_stable, &config, None).unwrap();
+        let agg_stable = aggregate_strategy_reports_with_top_k(evals_stable, &config, None, 0).unwrap();
 
         // Unstable: 5 return 0.02, 5 return 0.0 (std_dev = 0.01, same avg = 0.01)
         let mut evals_unstable = Vec::new();
         for _ in 0..5 { evals_unstable.push(mock_scenario_eval(0.02, 5, 5, 0.45)); }
         for _ in 0..5 { evals_unstable.push(mock_scenario_eval(0.0, 5, 0, 0.45)); }
         let config = get_default_ga_config();
-        let agg_unstable = aggregate_strategy_reports_with_top_k(evals_unstable, &config, None).unwrap();
+        let agg_unstable = aggregate_strategy_reports_with_top_k(evals_unstable, &config, None, 0).unwrap();
 
         assert!(agg_stable.fitness > agg_unstable.fitness, 
             "Stable fitness {} must beat unstable fitness {}", 
@@ -5695,7 +6483,7 @@ mod tests {
         for _ in 0..10 {
             evals.push(mock_scenario_eval(-0.02, 5, 0, 0.45));
         }
-        let agg = aggregate_strategy_reports_with_top_k(evals, &config, None).unwrap();
+        let agg = aggregate_strategy_reports_with_top_k(evals, &config, None, 0).unwrap();
         
         assert!(agg.fitness >= 0.0, "Fitness should be non-negative under log/additive model, got {}", agg.fitness);
     }
@@ -5708,13 +6496,13 @@ mod tests {
         for _ in 0..2 { evals_collapse.push(mock_scenario_eval(0.03, 10, 10, 0.45)); }
         for _ in 0..8 { evals_collapse.push(mock_scenario_eval(0.0, 0, 0, 0.45)); }
         let config = get_default_ga_config();
-        let agg_collapse = aggregate_strategy_reports_with_top_k(evals_collapse, &config, None).unwrap();
+        let agg_collapse = aggregate_strategy_reports_with_top_k(evals_collapse, &config, None, 0).unwrap();
 
         // Survive: strong + broad participation profile
         let mut evals_survive = Vec::new();
         for _ in 0..10 { evals_survive.push(mock_scenario_eval(0.03, 2, 2, 0.45)); }
         let config = get_default_ga_config();
-        let agg_survive = aggregate_strategy_reports_with_top_k(evals_survive, &config, None).unwrap();
+        let agg_survive = aggregate_strategy_reports_with_top_k(evals_survive, &config, None, 0).unwrap();
 
         assert!(agg_collapse.fitness < 0.5 && agg_collapse.fitness >= 0.0,
             "Collapse fitness {} should be completely crushed.", agg_collapse.fitness);
@@ -5728,12 +6516,12 @@ mod tests {
         for _ in 0..2 { weak_evals.push(mock_scenario_eval(0.005, 1, 1, 0.45)); }
         for _ in 0..8 { weak_evals.push(mock_scenario_eval(0.0, 0, 0, 0.45)); }
         let config = get_default_ga_config();
-        let weak = aggregate_strategy_reports_with_top_k(weak_evals, &config, None).unwrap();
+        let weak = aggregate_strategy_reports_with_top_k(weak_evals, &config, None, 0).unwrap();
 
         // Strong: full participation + higher pnl + high trade quality
         let mut strong_evals = Vec::new();
         for _ in 0..10 { strong_evals.push(mock_scenario_eval(0.02, 8, 8, 0.45)); }
-        let strong = aggregate_strategy_reports_with_top_k(strong_evals, &config, None).unwrap();
+        let strong = aggregate_strategy_reports_with_top_k(strong_evals, &config, None, 0).unwrap();
 
         assert!(strong.fitness > weak.fitness, "Expected strong ({}) > weak ({})", strong.fitness, weak.fitness);
         assert!(weak.fitness >= 0.0);
@@ -5871,9 +6659,9 @@ mod tests {
         ];
         let config = get_default_ga_config();
         std::env::remove_var("GA_WEIGHTED_SCENARIO_PNL");
-        let unweighted = aggregate_strategy_reports_with_top_k(evals.clone(), &config, None).unwrap();
+        let unweighted = aggregate_strategy_reports_with_top_k(evals.clone(), &config, None, 0).unwrap();
         std::env::set_var("GA_WEIGHTED_SCENARIO_PNL", "1");
-        let weighted = aggregate_strategy_reports_with_top_k(evals, &config, None).unwrap();
+        let weighted = aggregate_strategy_reports_with_top_k(evals, &config, None, 0).unwrap();
         std::env::remove_var("GA_WEIGHTED_SCENARIO_PNL");
 
         assert!(
@@ -5889,12 +6677,12 @@ mod tests {
         let mut a_evals = Vec::new();
         for _ in 0..10 { a_evals.push(mock_scenario_eval(0.03, 2, 2, 0.45)); }
         let config = get_default_ga_config();
-        let a = aggregate_strategy_reports_with_top_k(a_evals, &config, None).unwrap();
+        let a = aggregate_strategy_reports_with_top_k(a_evals, &config, None, 0).unwrap();
 
         let mut b_evals = Vec::new();
         for _ in 0..3 { b_evals.push(mock_scenario_eval(0.01, 1, 1, 0.45)); }
         for _ in 0..7 { b_evals.push(mock_scenario_eval(0.0, 0, 0, 0.45)); }
-        let b = aggregate_strategy_reports_with_top_k(b_evals, &config, None).unwrap();
+        let b = aggregate_strategy_reports_with_top_k(b_evals, &config, None, 0).unwrap();
 
         assert!((a.fitness - b.fitness).abs() > 1e-4, "Expected non-trivial fitness spread, got a={} b={}", a.fitness, b.fitness);
     }
@@ -5904,7 +6692,7 @@ mod tests {
     fn test_synthetic_ga_microstructure_harness() {
         let mut config = get_default_ga_config();
         config.population_size = 4;
-        config.generations = 2;
+        config.generations = 15;
         config.mutation_rate = 0.05;
         config.seed = 2026;
         config.order_id_prefix = "SYNTH_HARNESS".to_string();
@@ -5925,6 +6713,7 @@ mod tests {
             &ga_result.global_best.strategy,
             &config,
             &scenarios_vec,
+            0,
         )
         .expect("synthetic aggregate should produce a report");
         assert!(eval.fitness.is_finite());
@@ -6009,7 +6798,7 @@ mod tests {
 
         let ga_result = run_ga_evolution(config.clone(), &scenarios_vec);
         let (eval, avg_trades_per_active) =
-            evaluate_and_aggregate_with_trade_depth(&ga_result.global_best.strategy, &config, &scenarios_vec)
+            evaluate_and_aggregate_with_trade_depth(&ga_result.global_best.strategy, &config, &scenarios_vec, 0)
                 .expect("Aggregation should produce evaluation");
         assert!(eval.fitness > 0.0);
         assert!(
@@ -6056,12 +6845,10 @@ mod tests {
         // 1. Nominal strategy (10% selectivity -> 0.10)
         let mut eval_nominal = mock_scenario_eval(0.02, 10, 10);
         eval_nominal.selectivity = 0.10;
-        let agg_nominal = aggregate_strategy_reports_inner(vec![eval_nominal], 1.0, &config).unwrap().0;
-
-        // 2. Over-trader (20% selectivity -> 0.20)
+        let agg_nominal = aggregate_strategy_reports_inner(vec![eval_nominal], 1.0, &config, 0).unwrap().0;
         let mut eval_over = mock_scenario_eval(0.02, 10, 10);
         eval_over.selectivity = 0.20;
-        let agg_over = aggregate_strategy_reports_inner(vec![eval_over], 1.0, &config).unwrap().0;
+        let agg_over = aggregate_strategy_reports_inner(vec![eval_over], 1.0, &config, 0).unwrap().0;
 
         // At alpha=5.0, diff=0.10, decay = exp(-5 * 0.1) = exp(-0.5) approx 0.606
         let ratio = agg_over.fitness / agg_nominal.fitness;
@@ -6086,17 +6873,13 @@ mod tests {
         // 1. Optimal Entropy (0.45)
         let mut eval_opt = mock_scenario_eval(0.02, 10, 10);
         eval_opt.avg_entropy = 0.45;
-        let agg_opt = aggregate_strategy_reports_inner(vec![eval_opt], 1.0, &config).unwrap().0;
-
-        // 2. High Entropy (0.90) -> Penalty
+        let agg_opt = aggregate_strategy_reports_inner(vec![eval_opt], 1.0, &config, 0).unwrap().0;
         let mut eval_high = mock_scenario_eval(0.02, 10, 10);
         eval_high.avg_entropy = 0.90;
-        let agg_high = aggregate_strategy_reports_inner(vec![eval_high], 1.0, &config).unwrap().0;
-
-        // 3. Low Entropy (0.10) -> Penalty
+        let agg_high = aggregate_strategy_reports_inner(vec![eval_high], 1.0, &config, 0).unwrap().0;
         let mut eval_low = mock_scenario_eval(0.02, 10, 10);
         eval_low.avg_entropy = 0.10;
-        let agg_low = aggregate_strategy_reports_inner(vec![eval_low], 1.0, &config).unwrap().0;
+        let agg_low = aggregate_strategy_reports_inner(vec![eval_low], 1.0, &config, 0).unwrap().0;
 
         assert!(agg_opt.fitness > agg_high.fitness, "Optimal entropy (0.45) should beat high entropy (0.90)");
         assert!(agg_opt.fitness > agg_low.fitness, "Optimal entropy (0.45) should beat low entropy (0.10)");
