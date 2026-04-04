@@ -2683,7 +2683,7 @@ fn evolve_generation(evaluations: &Vec<StrategyEvaluation>, config: &GaConfig, r
 
     // Phase D.1.20: Super-Elite Synthesis (Genetic Recombination)
     let super_elites: Vec<&StrategyEvaluation> = evaluations.iter()
-        .filter(|e| e.max_signature_credibility > 1.15 && e.forced_win_ratio < 0.25 && e.trade_count >= 3)
+        .filter(|e: &&StrategyEvaluation| (**e).max_signature_credibility > 1.15 && (**e).forced_win_ratio < 0.25 && (**e).trade_count >= 3)
         .collect();
     
     if !super_elites.is_empty() {
@@ -2784,13 +2784,13 @@ pub fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
 
 pub fn synthesize_super_elite(parents: &Vec<&StrategyEvaluation>, rng: &mut StdRng) -> Strategy {
     // 1. Component: Filters (Best Pattern Credibility)
-    let filter_parent = parents.iter().max_by(|a, b| a.max_signature_credibility.total_cmp(&b.max_signature_credibility)).unwrap();
+    let filter_parent = parents.iter().max_by(|a: &&&StrategyEvaluation, b: &&&StrategyEvaluation| (***a).max_signature_credibility.total_cmp(&(***b).max_signature_credibility)).unwrap();
     
     // 2. Component: Execution (Best Realized PnL)
-    let exec_parent = parents.iter().max_by(|a, b| a.avg_pnl.total_cmp(&b.avg_pnl)).unwrap();
+    let exec_parent = parents.iter().max_by(|a, b| (***a).avg_pnl.total_cmp(&(***b).avg_pnl)).unwrap();
     
     // 3. Component: Thresholds (Best Decision Consistency)
-    let thresh_parent = parents.iter().max_by(|a, b| a.consistency.total_cmp(&b.consistency)).unwrap();
+    let thresh_parent = parents.iter().max_by(|a, b| (***a).consistency.total_cmp(&(***b).consistency)).unwrap();
 
     Strategy {
         // Group: Thresholds
