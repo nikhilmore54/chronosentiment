@@ -112,6 +112,7 @@ struct ScenarioMetrics {
     // Phase D.1.18: Cognitive Layer (Memory)
     pub signature_memory: HashMap<SignalSignature, SignatureStats>,
     pub max_signature_credibility: f64,
+    pub forced_win_count: usize,
     
     // Population Separation Analysis (Phase 17 Diagnostic Calibration)
     pub raw_pop_count: usize,
@@ -635,6 +636,8 @@ pub struct StrategyEvaluation {
     pub downside_std_dev: f64,
     pub worst: f64,
     pub robustness: f64,
+    pub max_signature_credibility: f64,
+    pub forced_win_ratio: f64,
     /// Aggregated, canonical fitness (ONLY truth).
     pub fitness: f64,
     pub trade_count: usize,
@@ -1055,6 +1058,8 @@ impl Default for StrategyEvaluation {
             capability: ScenarioCapability::default(),
             real_dom: 0.0,
             had_organic_signals: false,
+            max_signature_credibility: 0.0,
+            forced_win_ratio: 0.0,
             avg_pnl: 0.0,
             std_dev: 0.0,
             downside_std_dev: 0.0,
@@ -2676,6 +2681,34 @@ fn evolve_generation(evaluations: &Vec<StrategyEvaluation>, config: &GaConfig, r
 
     let mutation_rate = config.mutation_rate * (1.0 + diversity_pressure);
 
+    // Phase D.1.20: Super-Elite Synthesis (Genetic Recombination)
+    let super_elites: Vec<&StrategyEvaluation> = evaluations.iter()
+        .filter(|e| e.max_signature_credibility > 1.15 && e.forced_win_ratio < 0.25 && e.trade_count >= 3)
+        .collect();
+    
+    if !super_elites.is_empty() {
+        let synthesis_count = (config.population_size as f64 * 0.15).ceil() as usize;
+        for _ in 0..synthesis_count {
+            if next_gen.len() >= config.population_size { break; }
+            
+            // Randomly pick a subset of super-elites for synthesis
+            let n_parents = (super_elites.len().min(3)).max(1);
+            let mut parents = Vec::new();
+            for _ in 0..n_parents {
+                parents.push(super_elites[rng.gen_range(0..super_elites.len())]);
+            }
+            
+            let mut synthetic = synthesize_super_elite(&parents, rng);
+            
+            // Apply slight mutation to the synthetic offspring to refine
+            let mut evo_lite = current_evo.clone();
+            evo_lite.mutation_scale *= 0.5; // Fine-tuning mutation only
+            mutate_strategy(&mut synthetic, rng, 10, &evo_lite);
+            
+            next_gen.push(synthetic);
+        }
+    }
+
     while next_gen.len() < config.population_size {
         // Diversified Tournament: Penalize similarity to existing elites
         let parent_eval = tournament_selection_diverse(evaluations, k, rng, &elites, pnl_mu, pnl_sigma, std_mu, std_sigma);
@@ -2746,6 +2779,39 @@ pub fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
         exp_volatility: rng.gen_range(70..=200),
         selectivity: rng.gen_range(60..=90),
         archetype: rng.gen_range(0..=3),
+    }
+}
+
+pub fn synthesize_super_elite(parents: &Vec<&StrategyEvaluation>, rng: &mut StdRng) -> Strategy {
+    // 1. Component: Filters (Best Pattern Credibility)
+    let filter_parent = parents.iter().max_by(|a, b| a.max_signature_credibility.total_cmp(&b.max_signature_credibility)).unwrap();
+    
+    // 2. Component: Execution (Best Realized PnL)
+    let exec_parent = parents.iter().max_by(|a, b| a.avg_pnl.total_cmp(&b.avg_pnl)).unwrap();
+    
+    // 3. Component: Thresholds (Best Decision Consistency)
+    let thresh_parent = parents.iter().max_by(|a, b| a.consistency.total_cmp(&b.consistency)).unwrap();
+
+    Strategy {
+        // Group: Thresholds
+        queue_threshold: thresh_parent.strategy.queue_threshold,
+        base_edge: thresh_parent.strategy.base_edge,
+        selectivity: thresh_parent.strategy.selectivity,
+        
+        // Group: Execution
+        take_profit: exec_parent.strategy.take_profit,
+        stop_loss: exec_parent.strategy.stop_loss,
+        holding_period: exec_parent.strategy.holding_period,
+        
+        // Group: Filters
+        w_conviction: filter_parent.strategy.w_conviction,
+        w_momentum: filter_parent.strategy.w_momentum,
+        w_volatility: filter_parent.strategy.w_volatility,
+        exp_conviction: filter_parent.strategy.exp_conviction,
+        exp_momentum: filter_parent.strategy.exp_momentum,
+        exp_volatility: filter_parent.strategy.exp_volatility,
+        
+        archetype: filter_parent.strategy.archetype,
     }
 }
 
@@ -3496,6 +3562,7 @@ pub(crate) fn evaluate_strategy(
                 };
 
                 valid_signals.push((*signal_idx, winner_conv, 0.1, "FORCED_EMERGENCE", 0.3, SignalSource::Organic, sig));
+                metrics.forced_win_count += 1;
                 if std::env::var("GA_DEBUG").is_ok() {
                     println!("FORCED_EMERGENCE → idx={} score={:.2}", signal_idx, conviction.conviction_score);
                 }
@@ -4183,6 +4250,8 @@ pub(crate) fn evaluate_strategy(
             trade_qualities: metrics.trade_qualities.clone(),
             realized_pnl_rolling: metrics.sum_realized_pnl,
             predicted_pnl_rolling: metrics.sum_expected_pnl,
+            max_signature_credibility: metrics.max_signature_credibility,
+            forced_win_ratio: if metrics.total_windows > 0 { metrics.forced_win_count as f64 / metrics.total_windows as f64 } else { 0.0 },
             ..StrategyEvaluation::default()
         });
     }
@@ -4345,10 +4414,16 @@ pub(crate) fn evaluate_strategy(
             let edge_strength = (metrics.sum_pnl.abs() / (metrics.trade_count.max(1) as f64)).max(1e-9);
             let edge_min = 0.0005;
             let pressure_penalty = (edge_strength / edge_min).powi(2).min(1.0);
-            raw_alpha * pressure_penalty
+            
+            // Phase D.1.20 Vagueness Penalty (Condensation)
+            let vagueness_penalty = if metrics.max_signature_credibility < 1.1 { 0.7 } else { 1.0 };
+            
+            raw_alpha * pressure_penalty * vagueness_penalty
         },
         consistency: 1.0 / (metrics.adaptive.final_score.std() + EPS),
         bootstrap_ratio: metrics.bootstrap_trade_count as f64 / total_trades.max(1) as f64,
+        forced_win_ratio: metrics.forced_win_count as f64 / (metrics.total_windows.max(1) as f64),
+        max_signature_credibility: metrics.max_signature_credibility,
         opportunity: metrics.adaptive_opportunity_count as f64 / metrics.total_windows.max(1) as f64,
         acceptance_mode: winner_acceptance_mode,
         structural_score: 0.0, 
