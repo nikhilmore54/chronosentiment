@@ -31,6 +31,95 @@ pub enum MarketRegime {
     HighVolatilityNoise,
 }
 
+impl std::fmt::Display for MarketRegime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            MarketRegime::MeanReversion => "MeanReversion",
+            MarketRegime::BullTrend => "BullTrend",
+            MarketRegime::BearTrend => "BearTrend",
+            MarketRegime::HighVolatilityNoise => "HighVolatilityNoise",
+        };
+        write!(f, "{s}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectionArchetype {
+    LongSpecialist,
+    ShortSpecialist,
+    DualCore,
+}
+
+#[inline]
+pub fn classify_direction_bias(direction_bias: u8) -> DirectionArchetype {
+    match direction_bias {
+        0..=25 => DirectionArchetype::ShortSpecialist,
+        75..=100 => DirectionArchetype::LongSpecialist,
+        _ => DirectionArchetype::DualCore,
+    }
+}
+
+#[inline]
+pub fn regime_multiplier(regime: MarketRegime, bias: DirectionArchetype) -> f64 {
+    match regime {
+        MarketRegime::BullTrend => match bias {
+            DirectionArchetype::LongSpecialist => 2.0,
+            DirectionArchetype::ShortSpecialist => 0.3, // Skeptic weight
+            DirectionArchetype::DualCore => 1.0,
+        },
+        MarketRegime::BearTrend => match bias {
+            DirectionArchetype::ShortSpecialist => 2.0,
+            DirectionArchetype::LongSpecialist => 0.3, // Skeptic weight
+            DirectionArchetype::DualCore => 1.0,
+        },
+        MarketRegime::MeanReversion => match bias {
+            DirectionArchetype::DualCore => 1.3,
+            DirectionArchetype::LongSpecialist => 0.7,
+            DirectionArchetype::ShortSpecialist => 0.7,
+        },
+        MarketRegime::HighVolatilityNoise => 0.7, // Soft penalty for all
+    }
+}
+
+/// Institutional Regime Detector (Phase D.1.24)
+#[inline]
+pub fn detect_market_regime(
+    price: f64,
+    sma20: f64,
+    momentum: f64,
+    norm_vol: f64,
+) -> MarketRegime {
+    const HIGH_VOL_THRESHOLD: f64 = 0.005;
+    const MOMENTUM_STRONG: f64 = 0.6;
+    const TREND_STRENGTH_MIN: f64 = 0.55;
+    const NEAR_SMA_EPS: f64 = 0.0015;
+
+    if norm_vol > HIGH_VOL_THRESHOLD {
+        return MarketRegime::HighVolatilityNoise;
+    }
+
+    let dist = if sma20.abs() > f64::EPSILON {
+        (price - sma20) / sma20
+    } else {
+        0.0
+    };
+    let trend_strength = 0.5 * momentum + 0.5 * dist.abs().min(1.0);
+
+    if momentum > MOMENTUM_STRONG && trend_strength > TREND_STRENGTH_MIN {
+        if price > sma20 {
+            return MarketRegime::BullTrend;
+        } else if price < sma20 {
+            return MarketRegime::BearTrend;
+        }
+    }
+
+    if dist.abs() < NEAR_SMA_EPS {
+        return MarketRegime::MeanReversion;
+    }
+
+    MarketRegime::MeanReversion
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum SignalType {
     #[default]
@@ -50,6 +139,8 @@ pub struct DecisionReport {
     pub horizon_bars: u64,
     pub participation: f64,
     pub regime: MarketRegime,
+    pub aligned_weight: f64,
+    pub opposing_weight: f64,
     pub consistency: usize,
     pub conviction_score: f64,
     pub agreement_strength: String,
@@ -1410,139 +1501,15 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
             let evaluations_option = evaluate_population_scoped(&population, &config, scenarios, generation);
 
             if let Some(mut evaluations) = evaluations_option {
-                // --- PHASE D.1.7: AGGRESSIVE HIERARCHY INJECTION ---
-                let n_eval = (evaluations.len() as f64).max(1.0);
-                let scores: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
-                let total_score: f64 = scores.iter().sum::<f64>();
-                let convictions: Vec<f64> = evaluations.iter().map(|e| e.avg_conviction).collect();
-                let avg_conviction = convictions.iter().sum::<f64>() / n_eval;
-                let std_dev_pop = compute_std_dev(&scores);
+                // Sort by final fitness returned by the aggregator (Single Source of Truth)
+                evaluations.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
 
-                for e in &mut evaluations {
-                    // 1. Relative Dominance (Aggressive)
-                    let relative_dominance = e.fitness / (total_score + 1e-9);
-                    e.fitness *= (1.0 + 2.0 * relative_dominance).powf(2.5);
-
-                    // 2. Conviction Divergence Bonus (Amplified)
-                    let divergence = (e.avg_conviction - avg_conviction).abs();
-                    e.fitness *= 1.0 + 1.5 * divergence;
-
-                    // 3. Anti-Collapse Kill Switch (Hard)
-                    if std_dev_pop < 1e-6 {
-                        e.fitness *= 0.3;
-                    }
-                }
-
-                // --- PHASE C.4.2: ADAPTIVE AMPLIFICATION (Refined for D.1.7) ---
-                let mut fit_vals: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
-                let new_std = compute_std_dev(&fit_vals);
-                let scale = (1.0 / (new_std + 1e-3)).clamp(1.0, 500.0);
-                
-                for e in &mut evaluations {
-                    e.fitness *= scale;
-                }
-
-                fit_vals = evaluations.iter().map(|e| e.fitness).collect();
-                fit_vals.sort_by(|a, b| a.total_cmp(b));
-                
-                println!("GEN_STATS → std_dev={:.6}, scale={:.2}", new_std, scale);
-                println!("ADAPTIVE_DYNAMICS → Best: {:.4}, Median: {:.4}, Worst: {:.4}", 
-                    fit_vals.last().unwrap_or(&0.0), 
-                    fit_vals[fit_vals.len() / 2], 
-                    fit_vals.first().unwrap_or(&0.0));
-
-                if evaluations.is_empty() {
-                    println!("  [{}|{}] Gen {} → ALL STRATEGIES REJECTED AFTER INITIAL EVALUATION", asset, regime, generation);
-                    population = initialize_population(&config, &mut rng);
-                    continue;
-                }
-
-                // --- PHENOTYPE DIVERSITY PENALTY (Phase 11.1) ---
-                let evaluations_copy = evaluations.clone();
-                
-                // Population Stats for Distance Normalization
-                let pnl_mu = evaluations.iter().map(|e| e.avg_pnl).sum::<f64>() / evaluations.len() as f64;
-                let pnl_sigma = (evaluations.iter().map(|e| (e.avg_pnl - pnl_mu).powi(2)).sum::<f64>() / evaluations.len() as f64).sqrt().max(1e-9);
-                let std_mu = evaluations.iter().map(|e| e.std_dev).sum::<f64>() / evaluations.len() as f64;
-                let std_sigma = (evaluations.iter().map(|e| (e.std_dev - std_mu).powi(2)).sum::<f64>() / evaluations.len() as f64).sqrt().max(1e-9);
-
-                for i in 0..evaluations.len() {
-                    let mut niche_count = 1.0;
-                    for j in 0..evaluations_copy.len() {
-                        if i == j { continue; }
-                        let dist = calculate_behavioral_distance(
-                            &evaluations[i], 
-                            &evaluations_copy[j],
-                            pnl_mu, pnl_sigma,
-                            std_mu, std_sigma
-                        );
-                        if dist < 0.2 { // High behavioral similarity
-                            niche_count += 1.0 - (dist / 0.2);
-                        }
-                    }
-                    // Institutional Niche Penalty: f' = f / niche_count^alpha
-                    evaluations[i].fitness /= niche_count.powf(0.5);
-                    
-                    // DETERMINISTIC FITNESS JITTER (Break ties)
-                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                    evaluations[i].strategy_id.hash(&mut hasher);
-                    generation.hash(&mut hasher); // Salt with generation
-                    let jitter_rng_seed = hasher.finish();
-                    let mut jitter_rng = StdRng::seed_from_u64(jitter_rng_seed);
-                    let epsilon = jitter_rng.gen_range(0..1000) as f64 * 1e-10;
-                    evaluations[i].fitness = (evaluations[i].fitness + epsilon).min(1.0);
-                }
-
-                // Diagnostics + strict consistency before selection/ranking.
                 for evaluation in &evaluations {
-                    println!(
-                        "SELECTION_INPUT → strat={}, fitness={:.6}",
-                        evaluation.strategy_id, evaluation.fitness
-                    );
-                    println!(
-                        "GA_DEBUG → fitness={:.4}, trades={}, participation={:.2}",
-                        evaluation.fitness, evaluation.trade_count, evaluation.participation_rate
-                    );
-                    assert!(
-                        evaluation.fitness.is_finite(),
-                        "GA using non-finite fitness: {}",
-                        evaluation.fitness
-                    );
+                     println!("GA_FINAL_FITNESS_USED → strat={}, fitness={:.6}", evaluation.strategy_id, evaluation.fitness);
+                     if std::env::var("GA_DEBUG").is_ok() {
+                        println!("GA_DEBUG → trades={}, participation={:.2}", evaluation.trade_count, evaluation.participation_rate);
+                     }
                 }
-
-                // Sort by final fitness only (single source of truth).
-                evaluations.sort_by(|a, b| a.fitness.total_cmp(&b.fitness).reverse());
-                
-                if std::env::var("GA_DEBUG").is_ok() {
-                    let all_fit: Vec<String> = evaluations.iter().map(|e| format!("{:.4}", e.fitness)).collect();
-                    println!("GA_POP_FITNESS → [{}]", all_fit.join(", "));
-                }
-
-                // 3. Apply similarity penalty
-                let pre_similarity = evaluations.clone();
-                apply_similarity_penalty(&mut evaluations);
-                let had_positive_before = pre_similarity.iter().any(|e| e.fitness > 0.0);
-                let has_positive_after = evaluations.iter().any(|e| e.fitness > 0.0);
-                if had_positive_before && !has_positive_after {
-                    println!(
-                        "SIMILARITY_GUARD → penalty collapsed all positive fitness; restoring pre-penalty evaluations"
-                    );
-                    evaluations = pre_similarity;
-                }
-
-                // --- PHASE D.1.13.5: UNIVERSAL FITNESS PENALTY (CRITICAL) ---
-                // Severely penalize strategies that failed to produce organic signals.
-                for eval in evaluations.iter_mut() {
-                    if !eval.had_organic_signals {
-                        eval.fitness *= 0.1; // 90% penalty for "ghost" strategies
-                        if std::env::var("GA_DEBUG").is_ok() {
-                            println!("FITNESS_PENALTY → strat={} | Organic Signal Void", eval.strategy_id);
-                        }
-                    }
-                }
-                
-                // Re-sort after penalty
-                evaluations.sort_by(|a, b| b.fitness.total_cmp(&a.fitness));
 
                 // --- INSTITUTIONAL ADAPTIVE EVOLUTION (EvoState) ---
                 if let Some(best_ref) = evaluations.first() {
@@ -4194,16 +4161,17 @@ pub(crate) fn evaluate_strategy(
             is_long // DUAL_CORE fallback
         };
         
-        // Specialization Gate: Kill the trade if the signal side conflicts with specialized bias
+        // 🚀 PHASE D.1.25: Soft-Bias Specialization Lock (Execution Gradient)
         let signal_is_long = conviction.bullish_score >= conviction.bearish_score;
+        let mut special_bias_mult = 1.0;
         if (strategy.direction_bias <= 25 && signal_is_long) || (strategy.direction_bias >= 75 && !signal_is_long) {
+             special_bias_mult = 0.5; // Institutional Soft Bias Penalty
              if std::env::var("GA_DEBUG").is_ok() {
-                println!("REJECT_SPECIALIZATION → bias={} signal={}", strategy.direction_bias, if signal_is_long { "LONG" } else { "SHORT" });
+                println!("SPECIALIZATION_BIAS_PENALTY → bias={} signal={} | Applying 0.5x", strategy.direction_bias, if signal_is_long { "LONG" } else { "SHORT" });
              }
-             continue;
         }
 
-        entry_attempted += 1; // Only count attempt if we pass all filters (Selectivity + Specialization)
+        entry_attempted += 1; // Now correctly counting all attempts (including mismatched bias)
 
         // --- EXECUTION ---
         if let Some(outcome) = ga_simulate_round_trip_at_cursor(
@@ -4214,7 +4182,7 @@ pub(crate) fn evaluate_strategy(
             current_idx,
             total_trades,
             &final_conviction,
-            side_is_long, // Passed as determined side
+            side_is_long, 
         ) {
             // Layer 4: Capture Efficiency Gate (Phase B)
             // Phase C.2d: Adaptive Execution Calibration
@@ -4239,7 +4207,7 @@ pub(crate) fn evaluate_strategy(
             
             // --- Phase D.1.17: Realizability PnL Impact ---
             let execution_multiplier = _winner_e_score_final.clamp(0.1, 1.0);
-            let adjusted_pnl = trade_pnl * execution_multiplier.powf(1.5); // Sharp Penalty D.1.18
+            let adjusted_pnl = trade_pnl * execution_multiplier.powf(1.5) * special_bias_mult; // Applied Specialist Bias
             let mut outcome_adj = outcome.clone();
             outcome_adj.pnl = adjusted_pnl;
 
@@ -4531,33 +4499,7 @@ pub(crate) fn evaluate_strategy(
         });
     }
 
-    // --- PHASE D.1.16: EDGE VALIDATION LAYER (CONSISTENCY FITNESS) ---
-    // 1. Calculate PnL Consistency (Sharpe-like)
-    let pnl_mean = effective_pnl;
-    let pnl_std = std_dev_for_scenario.max(1e-6);
-    let mut fitness = (pnl_mean / pnl_std).max(0.0);
-
-    // 2. Bootstrap De-weighting & Penalty
-    let bootstrap_ratio = metrics.bootstrap_trade_count as f64 / total_trades.max(1) as f64;
-    if bootstrap_ratio > 0.7 {
-        fitness *= 0.5; // Heavy dependency penalty
-    }
-    
-    // 3. Trade Count Stabilization (Log scaling)
-    fitness *= (1.0 + (total_trades as f64).ln()).max(0.1);
-    
-    // 4. Rank Bonus Constraint (Cap at 5%)
-    let rank_bonus = (final_score - 1.0).max(0.0) * 0.1; // heuristic rank bonus
-    fitness += rank_bonus.min(0.05 * fitness);
-
-    if std::env::var("GA_DEBUG").is_ok() {
-        println!(
-            "FITNESS_D1_16 → mean={:.5} std={:.5} boost_ratio={:.2} final={:.4}",
-            pnl_mean, pnl_std, bootstrap_ratio, fitness
-        );
-    }
-    
-    let total_fitness = fitness;
+    let total_fitness: f64 = 0.0; // Local fitness killed in Phase D.1.25 HARD FIX
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
@@ -5249,164 +5191,16 @@ fn aggregate_strategy_reports_inner(
         1.0 + (unique_assets as f64 / total_assets_available as f64) * 0.5
     };
 
-    let variance_penalty = (1.0 / (1.0 + std_dev * 4.0)).clamp(0.5, 1.1);
+    let _variance_penalty = (1.0 / (1.0 + std_dev * 4.0)).clamp(0.5, 1.1);
 
     // --- PHASE D.1.7: HIERARCHY INJECTION & UNIFORMITY PENALTY ---
-    // 1. Uniformity Penalty: Punish strategies that produce identical outcomes (consensus collapse)
-    let mut final_fitness = pnl_score;
-    if std_dev < 1e-6 {
-        final_fitness *= 0.8;
-    }
-
-    // 2. Dispersion Bonus: Reward strategies that interpret scenarios differently
-    let dispersion_bonus = (std_dev / pnl_scale.max(1e-6)).tanh() * 0.2;
-    final_fitness += dispersion_bonus;
-
-    // 3. Activity Weight: Smooth ramp for trade participation (Phase D.1.5/D.1.7)
-    let activity_weight = (total_trade_count as f64 / 5.0).tanh();
-    final_fitness *= activity_weight.max(0.2);
-
-    // 4. Relative Dominance Amplification (Intrinsic Hierarchy)
-    // Amplify top performers based on their internal scenario dispersion
-    if final_fitness > 0.0 {
-        final_fitness = final_fitness.powf(1.1);
-    }
-
-    // --- PHASE 17.6: ACCEPTANCE MODE CALIBRATION ---
-    if evaluations.iter().any(|e| e.acceptance_mode == AcceptanceMode::StatisticalWeak) {
-        // Apply a slight penalty if the majority of evidence is 'weak'
-        let weak_ratio = evaluations.iter().filter(|e| e.acceptance_mode == AcceptanceMode::StatisticalWeak).count() as f64 / total_scenarios.max(1.0);
-        if weak_ratio > 0.5 {
-            final_fitness *= 0.85; 
-        }
-    }
-
-
-    // 1. Scalable Mode Pressure (Linear Participation)
-    if config.fitness_mode == FitnessMode::Scalable {
-        final_fitness *= 0.5 + 0.5 * (participation_rate / 0.5).clamp(0.0, 1.0);
-    }
-
-    // --- PHASE 17.5: PARTICIPATION INTEGRITY (Ghost Strategy Guard) ---
-    // If a strategy avoids all trades, it is a degenerate optimum (avoiding loss by not playing).
-    // We enforce a minimum trade density to ensure structural validity.
-    let min_trades_required = (total_scenarios * 0.15).max(2.0); // At least 3 trades for 20 windows
-    if (total_trade_count as f64) < min_trades_required {
-        let trade_penalty = (total_trade_count as f64 / min_trades_required).clamp(0.01, 1.0);
-        final_fitness *= trade_penalty * 0.1; // Aggressive 90% floor penalty for ghosting
-        if std::env::var("GA_DEBUG").is_ok() && total_trade_count == 0 {
-            println!("FITNESS_DEGENERATE_GUARD → trades=0 | Killing degenerate fitness");
-        }
-    }
-
-    // 2. Sniper Mode Pressure (Quad Participation)
-    if config.fitness_mode == FitnessMode::Sniper {
-        final_fitness *= (participation_rate / 0.4).clamp(0.0, 1.0).powi(2);
-    }
-
-    final_fitness *= asset_generalization_multiplier;
-    final_fitness *= variance_penalty;
-    final_fitness *= quality_score;
-
-    // --- PHASE 13.5: SELECTIVITY DISCIPLINE (ALPHA-STREAK) ---
-    let alpha_penalty = 5.0; // Institutional over-trade friction
-    let selectivity_diff = (selectivity - 0.10).max(0.0);
-    final_fitness *= (-alpha_penalty * selectivity_diff).exp();
+    // [MISPLACED BLOCK REMOVED IN D.1.26 RE-ANCHORING]
     
-    // --- NON-LINEAR GLOBAL MORTALITY GATE (Generation-Aware) ---
-    // Quadrative decay if win rate below 30%; softened in early generations for Discovery
-    // Note: We use participation as a proxy for exploration progress if GEN count is not passed
-    let global_wr_penalty = (win_rate / 0.30).clamp(0.2, 1.0).powi(2);
-    final_fitness *= global_wr_penalty;
+    // diagnostic variables for reporting (not used in fitness calculation in Phase D.1.25)
+    let avg_aqg_health = evaluations.iter().map(|e| e.avg_aqg_health).sum::<f64>() / total_scenarios.max(1.0);
+    let aqg_skip_ratio = evaluations.iter().filter(|e| e.trade_count == 0).count() as f64 / total_scenarios.max(1.0);
 
-    // --- PHASE 13.5: DISAGREEMENT ENTROPY (CONTINUOUS) ---
-    let avg_entropy = if total_scenarios > 0.0 {
-        evaluations.iter().map(|e| e.avg_entropy).sum::<f64>() / total_scenarios
-    } else {
-        0.0
-    };
-    let mut entropy_weight = 1.0;
-    if avg_entropy > 1e-6 {
-        let entropy_score = 1.0 - ((avg_entropy - 0.45).abs() / 0.45);
-        entropy_weight = entropy_score.clamp(0.5, 1.2);
-    }
-    final_fitness *= entropy_weight;
-
-    // --- PHASE 13.6: INSTITUTIONAL HEALTH PRESSURES ---
-    let avg_aqg_health = if total_trade_count > 0 {
-        evaluations.iter().map(|e| e.avg_aqg_health).sum::<f64>() / total_scenarios.max(1.0)
-    } else {
-        0.0
-    };
-    let aqg_skip_ratio = if total_scenarios > 0.0 {
-        evaluations.iter().filter(|e| e.trade_count == 0).count() as f64 / total_scenarios
-    } else {
-        1.0
-    };
-
-    // 1. AQG Pressure (Smooth linear curve)
-    let aqg_penalty = 0.6 + 0.4 * avg_aqg_health.clamp(0.0, 1.0);
-    final_fitness *= aqg_penalty;
-
-    // 2. Effective Participation (Honesty Gate - Hard Collapse)
-    let participation = participation_rate;
-    let effective_participation = participation * (1.0 - aqg_skip_ratio);
-    final_fitness *= effective_participation.powi(2); // Institutional Hard Collapse
-
-    // (Restoring Phase 13.6 DEBUG variables)
-    let _ = (selectivity, avg_entropy, avg_aqg_health, aqg_skip_ratio, effective_participation);
-
-    // 2. Numerical Safety
-    if !final_fitness.is_finite() {
-        final_fitness = -1.0;
-    }
-
-    // --- PHASE C.3b: REMOVAL OF HARD FLOOR ---
-    // We allow negative fitness to persist to provide a gradient for selection ranking.
-    // Binary floors (1e-6) are deleted here to restore causality in learning.
-    // TODO: Remove clamp once adaptive scaling stabilizes
-    final_fitness = final_fitness.clamp(-2.0, 2.0);
-    let raw_selection_fitness = final_fitness;
-    println!("SELECTION_INPUT_RAW → fitness={:.6}", raw_selection_fitness);
-
-    // 14. DEBUG TRACE
-    if std::env::var("GA_DEBUG").is_ok() {
-        println!(
-            "FITNESS_TRACE → mode={:?} | pnl={:.4} scenarios={}/{} participation={:.2} win={:.3} pay={:.3} final={:.4}",
-            config.fitness_mode,
-            pnl_score,
-            active_scenarios,
-            total_scenarios,
-            participation_rate,
-            win_rate,
-            global_payoff_ratio,
-            final_fitness
-        );
-    }
-
-
-    println!(
-        "FITNESS_FINAL → pnl_score: {:.4}, quality: {:.4}, final_fitness: {:.4}",
-        pnl_score, quality_score, final_fitness
-    );
-
-    // --- AGGREGATE LOGGING ---
-    println!(
-        "AGG_DEBUG: avg_pnl={:.6} (scenario_agg={}), active={}, total={}, participation={:.2}, fitness={:.4}, payoff={:.2}, selectivity={:.2}",
-        global_avg_pnl,
-        if use_rank_weights { "rank_weighted" } else { "mean" },
-        active_scenarios,
-        total_scenarios,
-        participation_rate,
-        final_fitness,
-        global_payoff_ratio,
-        selectivity
-    );
-
-    println!(
-        "QUALITY_DEBUG: trades={}, zero_pnl={}, effectiveness={:.2}",
-        total_trade_count, total_zero_pnl_trades, effectiveness
-    );
+    // [DEBUG TRACE MOVED TO RE-ANCHOR POINT]
 
     // --- PHASE 17.7: OUTCOME INTEGRITY ASSERTION ---
     // Prevent 'Silent Execution Collapse' where simulated trades are lost during aggregation.
@@ -5609,6 +5403,71 @@ fn aggregate_strategy_reports_inner(
         }
     }
     
+    // 🚀 PHASE D.1.28: THE PROFITABILITY BRIDGE (Smooth PnL Grounding)
+    // 1. Asymmetry Detection (Upside vs Downside Skew)
+    let mut positive_pnl_sum = 0.0;
+    let mut negative_pnl_sum = 0.0;
+    for e in &evaluations {
+        for &q in &e.trade_qualities {
+            if q > 0.0 {
+                positive_pnl_sum += q;
+            } else {
+                negative_pnl_sum += q;
+            }
+        }
+    }
+    // Hard cap at 10.0 prevents blow-up dominance
+    let asymmetry = ((positive_pnl_sum + 1e-6) / (negative_pnl_sum.abs() + 1e-6)).min(10.0);
+
+    // 2. PnL Bridge Multiplier (Mandatory Anchor to realized execution)
+    // Uses a continuous tanh gradient [-1, +1] to reward profit and penalize loss proportionally.
+    let pnl_bridge = (global_avg_pnl * 50.0).tanh(); 
+    
+    // 3. Asymmetry Softening (D.1.26.1 refinement)
+    let asymmetry_factor = 1.0 + (asymmetry - 1.0) * 0.4;
+
+    // 3. Risk-Adjusted Edge Score (Clamped at [-5, 5])
+    let edge_score = (global_mean_quality / (global_std_quality + 1e-6)).clamp(-5.0, 5.0);
+    
+    // 4. Refined Consistency Scaling
+    let refined_consistency = (1.0 + global_consistency).max(0.1);
+    
+    // 5. Stabilized Maturity
+    let maturity = ((total_trade_count as f64 + 1.0).ln()).max(0.5);
+    
+    // 6. Unified Grounded Product (Phase D.1.28: Integrated Bridge)
+    let raw_selection_fitness_input = edge_score * refined_consistency * asymmetry_factor * maturity * quality_score * asset_generalization_multiplier * (1.0 + pnl_bridge * 2.0);
+    
+    // 7. Tanh Normalization & Grounding
+    let final_fitness_val = raw_selection_fitness_input.tanh() * 5.0;
+
+    // Numerical Safety & Minimum Floor (Phase D.1.28)
+    let final_fitness = if final_fitness_val.is_finite() { 
+        final_fitness_val.max(0.0001) 
+    } else { -1.0 };
+    
+    println!("🔥 FITNESS_D1_28 ACTIVE → {:.6} (edge={:.3} asym_f={:.2} pnl_b={:.2} c={:.2} m={:.2} raw={:.4})", 
+        final_fitness, edge_score, asymmetry_factor, pnl_bridge, refined_consistency, maturity, raw_selection_fitness_input);
+
+    let raw_selection_fitness = final_fitness;
+
+    // --- PHASE D.1.26: ENHANCED DEBUG TRACE (Unified Logic) ---
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "FITNESS_TRACE → pnl_bridge={:.4} active_scen={}/{} part={:.2} win={:.3} final={:.4}",
+            pnl_bridge, active_scenarios, total_scenarios, participation_rate, win_rate, final_fitness
+        );
+        println!(
+            "AGG_DEBUG → edge={:.3} asymmetry_f={:.2} consistency={:.2} maturity={:.2}",
+            edge_score, asymmetry_factor, refined_consistency, maturity
+        );
+    }
+
+    println!(
+        "QUALITY_DEBUG → trades={} zero_pnl={} effectiveness={:.2} quality_score={:.3}",
+        total_trade_count, total_zero_pnl_trades, effectiveness, quality_score
+    );
+
     // --- PHASE D.1.3: INTEGRITY TRACING (AGG_BRIDGE) ---
     let input_scenarios = total_scenarios_in;
     let output_scenarios = evaluations.len();
@@ -5787,6 +5646,8 @@ pub fn evaluate_current_status(
             horizon_bars: config.max_hold_bars as u64,
             participation: 0.0,
             regime: MarketRegime::MeanReversion,
+            aligned_weight: 0.0,
+            opposing_weight: 0.0,
             consistency: consistency_count,
             conviction_score: 0.0,
             agreement_strength: "WEAK".to_string(),
@@ -5865,6 +5726,8 @@ pub fn evaluate_current_status(
         horizon_bars: config.max_hold_bars as u64,
         participation: conviction.norm_vol_score,
         regime: conviction.regime,
+        aligned_weight: 0.0,
+        opposing_weight: 0.0,
         consistency: new_consistency,
         conviction_score: confidence,
         agreement_strength: if confidence > 0.75 { "STRONG".to_string() } else if confidence > 0.6 { "MEDIUM".to_string() } else { "WEAK".to_string() },
@@ -5966,6 +5829,8 @@ pub fn evaluate_consensus_status(
             horizon_bars: config.max_hold_bars as u64,
             participation: 0.0,
             regime: MarketRegime::MeanReversion,
+            aligned_weight: 0.0,
+            opposing_weight: 0.0,
             consistency: consistency_count,
             conviction_score: 0.0,
             agreement_strength: "WEAK".to_string(),
@@ -6009,6 +5874,8 @@ pub fn evaluate_consensus_status(
             horizon_bars: config.max_hold_bars as u64,
             participation: 0.0,
             regime: MarketRegime::MeanReversion,
+            aligned_weight: 0.0,
+            opposing_weight: 0.0,
             consistency: consistency_count,
             conviction_score: 0.0,
             agreement_strength: "WEAK".to_string(),
@@ -6023,46 +5890,24 @@ pub fn evaluate_consensus_status(
         };
     }
 
-    // Analyze Global Regime (using first voter as proxy for conviction logic)
-    let conviction_guard = evaluate_market_conviction(&eligible_voters[0].strategy, "consensus", &events, last_idx, 0, 0);
+    // 🚀 PHASE D.1.24: INSTITUTIONAL REGIME DETECTION (Window-Level)
+    let (mean_px, std_dev, _) = calculate_lookback_stats(history, last_idx, 20);
+    let ref_price = history[last_idx].close as f64;
+    let lookback_price = history[last_idx.saturating_sub(20)].close as f64;
+    let price_delta = (ref_price - lookback_price).abs() / ref_price.max(1.0);
+    let norm_momentum = (price_delta / 0.001).clamp(0.0, 1.0);
+    let norm_vol = std_dev / mean_px.max(1.0);
     
-    // 🔥 GUARDRAIL 6: Hard Admission Gate
-    if conviction_guard.norm_vol > 0.005 || conviction_guard.norm_vol_score < 0.2 {
-         return DecisionReport {
-            trade_id: 0,
-            symbol: symbol.to_string(),
-            timestamp: history[last_idx].timestamp,
-            signal: SignalType::WAIT,
-            confidence: 0.0,
-            expected_return: 0.0,
-            horizon_bars: config.max_hold_bars as u64,
-            participation: conviction_guard.norm_vol_score,
-            regime: conviction_guard.regime,
-            consistency: consistency_count,
-            conviction_score: 0.0,
-            agreement_strength: "WEAK".to_string(),
-            voters: format!("0/{}", eligible_voters.len()),
-            execution_feasible: false,
-            execution_score: 0.0,
-            execution_threshold: 0.7,
-            threshold: 0.7,
-            realized_return: None,
-            capture_efficiency: None,
-            efficiency_label: String::new(),
-        };
-    }
-
-    // 🚀 PHASE D.1.24: REGIME-AWARE ROUTING
-    let current_regime = conviction_guard.regime;
-    if std::env::var("GA_DEBUG").is_ok() {
-        println!("REGIME_DETECT → {:?} (vol={:.4} mom={:.4})", current_regime, conviction_guard.norm_vol, conviction_guard.norm_momentum);
-    }
+    let current_regime = detect_market_regime(ref_price, mean_px, norm_momentum, norm_vol);
+    
+    // Legacy conviction guard for backward compatibility with ESE simulation logic
+    let conviction_guard = evaluate_market_conviction(&eligible_voters[0].strategy, "consensus", &events, last_idx, 0, 0);
 
     // 🚀 PHASE 10.10: Execution Feasibility Reality Check
     let ctx = ExecutionContext {
-        queue_depth: conviction_guard.raw_q_ratio.min(1.0), // Normalizing proxy
-        liquidity_score: conviction_guard.norm_volume,      // Volume velocity proxy
-        latency_impact: conviction_guard.norm_vol * 100.0,  // Volatility proxy
+        queue_depth: conviction_guard.raw_q_ratio.min(1.0), 
+        liquidity_score: conviction_guard.norm_volume,      
+        latency_impact: norm_vol * 100.0,
     };
     let exec_score = calculate_execution_score(&ctx);
 
@@ -6077,32 +5922,23 @@ pub fn evaluate_consensus_status(
     let mut normalized_weights: Vec<f64> = raw_weights.iter().map(|w| (w / total_raw_fitness).min(0.25)).collect();
     let capped_total_weight: f64 = normalized_weights.iter().sum::<f64>().max(1e-9);
     for w in &mut normalized_weights {
-        *w /= capped_total_weight; // Re-normalize to 1.0 sum
+        *w /= capped_total_weight; 
+    }
+
+    // 🚀 PHASE D.1.24: High-Volatility Safety Adjustment
+    let mut dynamic_threshold = calculate_dynamic_threshold(norm_vol, eligible_voters[0].fitness as f64).min(0.85);
+    let mut universal_multiplier = 1.0;
+    if current_regime == MarketRegime::HighVolatilityNoise {
+        dynamic_threshold = (dynamic_threshold * 1.5).min(0.95);
+        universal_multiplier = 0.7;
     }
 
     for (i, voter) in eligible_voters.iter().enumerate() {
         let mut weight = normalized_weights[i];
         
         // 🔥 PHASE D.1.24: Institutional Specialist Weighting Logic
-        let voter_bias = voter.strategy.direction_bias;
-        let regime_multiplier = match current_regime {
-            MarketRegime::BullTrend => {
-                if voter_bias >= 75 { 2.0 } // Aligned Expert
-                else if voter_bias <= 25 { 0.3 } // Opposing Skeptic
-                else { 1.0 } // Dual-Core Bridge
-            },
-            MarketRegime::BearTrend => {
-                if voter_bias <= 25 { 2.0 } // Aligned Expert
-                else if voter_bias >= 75 { 0.3 } // Opposing Skeptic
-                else { 1.0 } // Dual-Core Bridge
-            },
-            MarketRegime::MeanReversion => {
-                if voter_bias > 25 && voter_bias < 75 { 1.3 } // Dual-Core Dominance
-                else { 0.7 } // Specialist Suppression
-            },
-            MarketRegime::HighVolatilityNoise => 0.7, // Caution Across Board
-        };
-        weight *= regime_multiplier;
+        let bias_archetype = classify_direction_bias(voter.strategy.direction_bias);
+        weight *= regime_multiplier(current_regime, bias_archetype) * universal_multiplier;
 
         let outcome = crate::ga_simulate_round_trip_at_cursor(
             &voter.strategy,
@@ -6112,11 +5948,10 @@ pub fn evaluate_consensus_status(
             last_idx,
             0,
             &conviction_guard,
-            !conviction_guard.is_bearish, // Directional intent
+            !conviction_guard.is_bearish, 
         );
 
         if let Some(_rt) = outcome {
-            let (mean_px, _, _) = calculate_lookback_stats(history, last_idx, 20);
             let is_bearish = (history[last_idx].close as f64) < mean_px;
             if is_bearish {
                 sell_weight += weight;
@@ -6127,7 +5962,7 @@ pub fn evaluate_consensus_status(
         }
     }
 
-    let dynamic_threshold = calculate_dynamic_threshold(conviction_guard.norm_vol, eligible_voters[0].fitness as f64);
+    // use the dynamic_threshold already calculated and adjusted for High Volatility Noise
     
     let mut buy_count = 0;
     let mut sell_count = 0;
@@ -6164,6 +5999,8 @@ pub fn evaluate_consensus_status(
         horizon_bars: config.max_hold_bars as u64,
         participation: conviction_guard.norm_vol_score,
         regime: current_regime,
+        aligned_weight: buy_weight, // Simplified mapping for diagnostic clarity
+        opposing_weight: sell_weight,
         consistency: if final_signal == last_signal && final_signal != SignalType::WAIT { consistency_count + 1 } else { 0 },
         conviction_score: final_conviction,
         agreement_strength: strength,
