@@ -1,12 +1,15 @@
+use chronosentiment_core::data_source::CandleSource;
+use chronosentiment_core::folder_source::FolderCandleSource;
+use chronosentiment_core::ga::{
+    evaluate_ensemble_robustness, evaluate_robustness, ga_top_k_pick_diverse, GaConfig, Strategy,
+    StrategyEvaluation,
+};
 use chronosentiment_core::pipeline;
 use chronosentiment_core::PRICE_SCALE;
-use chronosentiment_core::ga::{GaConfig, evaluate_robustness, evaluate_ensemble_robustness, ga_top_k_pick_diverse, Strategy, StrategyEvaluation};
-use chronosentiment_core::folder_source::FolderCandleSource;
-use chronosentiment_core::data_source::CandleSource;
-use std::path::PathBuf;
+use clap::Parser;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use clap::Parser;
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -49,11 +52,14 @@ fn test_assets_dir() -> PathBuf {
 
 fn main() {
     let args = Args::parse();
-    let data_source = std::env::var("DATA_SOURCE").unwrap_or_else(|_| "folder".to_string()).to_lowercase();
-    let folder_path = std::env::var("FOLDER_PATH").unwrap_or_else(|_| "/Users/nikhil/ChronoSentiment_MEGA_FINAL/data/nse/5m".to_string());
+    let data_source = std::env::var("DATA_SOURCE")
+        .unwrap_or_else(|_| "folder".to_string())
+        .to_lowercase();
+    let folder_path = std::env::var("FOLDER_PATH")
+        .unwrap_or_else(|_| "/Users/nikhil/ChronoSentiment_MEGA_FINAL/data/nse/5m".to_string());
 
     let mut config = GaConfig::default();
-    
+
     // Mode Resolution: CLI > ENV > Default
     if let Some(m) = &args.mode {
         config.fitness_mode = match m.to_lowercase().as_str() {
@@ -75,7 +81,10 @@ fn main() {
     }
 
     println!("⚙️ FITNESS MODE ACTIVE → {:?}", config.fitness_mode);
-    println!("⚙️ CONFIG: Pop={}, Gen={}", config.population_size, config.generations);
+    println!(
+        "⚙️ CONFIG: Pop={}, Gen={}",
+        config.population_size, config.generations
+    );
 
     if args.deep_validation {
         println!("🚨 DEEP_VALIDATION_MODE: Elevating search depth (Pop=20, Gen=15) and stabilizing mutation...");
@@ -89,15 +98,17 @@ fn main() {
 
     if data_source == "folder" {
         println!("📂 Loading assets from folder: {}", folder_path);
-        let source = FolderCandleSource { folder_path: folder_path.clone() };
+        let source = FolderCandleSource {
+            folder_path: folder_path.clone(),
+        };
         for (asset, candles) in source.load_all_flexible() {
             folder_candles.insert(asset.clone(), candles);
             discovered_assets.push(asset);
         }
         println!("DEBUG_LOADED_KEYS:");
-for k in folder_candles.keys() {
-    println!(" -> {}", k);
-}
+        for k in folder_candles.keys() {
+            println!(" -> {}", k);
+        }
     }
 
     let sweep_assets: Vec<String> = if let Some(target) = &args.asset {
@@ -108,7 +119,9 @@ for k in folder_candles.keys() {
         vec!["VODAFONEIDEA".to_string()]
     };
 
-    let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "full".to_string()).to_lowercase();
+    let run_mode = std::env::var("RUN_MODE")
+        .unwrap_or_else(|_| "full".to_string())
+        .to_lowercase();
 
     if run_mode == "train" {
         println!("RUN_MODE=train -> GA Discovery with Institutional Certification...");
@@ -131,7 +144,7 @@ for k in folder_candles.keys() {
                 .iter()
                 .find(|(k, _)| k.contains(&normalized_asset))
                 .map(|(_, v)| v);
-            
+
             let signal_scenario_map = pipeline::scenario_map_for_signal_generation(
                 &normalized_asset,
                 &data_source,
@@ -149,7 +162,10 @@ for k in folder_candles.keys() {
             let exec_asset = if std::path::Path::new(&fut_path).exists() {
                 exec_asset_raw
             } else {
-                println!("  [!] No Futures data found for {}, falling back to Spot for execution.", asset_name);
+                println!(
+                    "  [!] No Futures data found for {}, falling back to Spot for execution.",
+                    asset_name
+                );
                 normalized_asset.clone()
             };
 
@@ -170,12 +186,22 @@ for k in folder_candles.keys() {
             };
 
             if exec_scenario_map.is_empty() {
-                println!("  [!] No execution scenarios found for asset: {}", exec_asset);
+                println!(
+                    "  [!] No execution scenarios found for asset: {}",
+                    exec_asset
+                );
                 continue;
             }
 
-            let scenarios = pipeline::pair_scenarios_by_index(&normalized_asset, &exec_asset, &signal_scenario_map, &exec_scenario_map);
-            if scenarios.is_empty() { continue; }
+            let scenarios = pipeline::pair_scenarios_by_index(
+                &normalized_asset,
+                &exec_asset,
+                &signal_scenario_map,
+                &exec_scenario_map,
+            );
+            if scenarios.is_empty() {
+                continue;
+            }
 
             // Determinism Twin Run
             let mut det_status = "N/A".to_string();
@@ -194,16 +220,25 @@ for k in folder_candles.keys() {
                 let hash1 = compute_state_hash(&res1);
                 let res2 = chronosentiment_core::ga::run_ga_evolution(config.clone(), &scenarios);
                 let hash2 = compute_state_hash(&res2);
-                
-                det_status = if hash1 == hash2 { format!("{:X}", hash1) } else { "FAIL".to_string() };
+
+                det_status = if hash1 == hash2 {
+                    format!("{:X}", hash1)
+                } else {
+                    "FAIL".to_string()
+                };
             }
 
             let ga_res = chronosentiment_core::ga::run_ga_evolution(config.clone(), &scenarios);
-            
+
             // --- PHASE 13: DIVERSIFIED ENSEMBLE SELECTION ---
             // 1. Gather all unique evaluations from the final population
             let mut final_evals = Vec::new();
-            if let Some(evs) = chronosentiment_core::ga::evaluate_population_scoped(&ga_res.final_population, &config, &scenarios, ga_res.final_generation_best.fitness as usize % 100) {
+            if let Some(evs) = chronosentiment_core::ga::evaluate_population_scoped(
+                &ga_res.final_population,
+                &config,
+                &scenarios,
+                ga_res.final_generation_best.fitness as usize % 100,
+            ) {
                 for (i, e) in evs.into_iter().enumerate() {
                     let rank_score = chronosentiment_core::ga::ga_scenario_rank_score(&e);
                     final_evals.push((i, rank_score, e));
@@ -212,30 +247,53 @@ for k in folder_candles.keys() {
 
             // 2. Select Top-5 Diverse Elite Cluster (Repel mode)
             let ensemble_evals = if final_evals.len() >= 5 {
-                ga_top_k_pick_diverse(final_evals, 5, 1.0, chronosentiment_core::selection_cap::GaDiversityMode::Repel)
+                ga_top_k_pick_diverse(
+                    final_evals,
+                    5,
+                    1.0,
+                    chronosentiment_core::selection_cap::GaDiversityMode::Repel,
+                )
             } else {
                 // Fallback to whatever we have
                 final_evals.into_iter().map(|(_, _, e)| e).collect()
             };
-            
-            let ensemble_strategies: Vec<Strategy> = ensemble_evals.iter().map(|e| e.strategy.clone()).collect();
-            
+
+            let ensemble_strategies: Vec<Strategy> =
+                ensemble_evals.iter().map(|e| e.strategy.clone()).collect();
+
             // 3. Final Institutional Ensemble Validation
-            println!("🧠 ENSEMBLE_CONSENSUS: Evaluating 5-member diversified ensemble on {}...", asset_name);
-            let robustness = evaluate_ensemble_robustness(&ensemble_strategies, &config, &scenarios, 0);
-            
+            println!(
+                "🧠 ENSEMBLE_CONSENSUS: Evaluating 5-member diversified ensemble on {}...",
+                asset_name
+            );
+            let robustness =
+                evaluate_ensemble_robustness(&ensemble_strategies, &config, &scenarios, 0);
+
             let baseline_fitness = robustness.regime_fitness[0]; // Regime C
-            let jitter_fitness = robustness.regime_fitness[2];   // Regime D (index changed in evaluate_ensemble_robustness)
-            let path_drift = ((jitter_fitness - baseline_fitness).abs() / baseline_fitness.max(1e-9)) * 100.0;
-            let pressure = ga_res.global_best.fitness / (1e-9_f64).max(ga_res.final_generation_best.fitness);
+            let jitter_fitness = robustness.regime_fitness[2]; // Regime D (index changed in evaluate_ensemble_robustness)
+            let path_drift =
+                ((jitter_fitness - baseline_fitness).abs() / baseline_fitness.max(1e-9)) * 100.0;
+            let pressure =
+                ga_res.global_best.fitness / (1e-9_f64).max(ga_res.final_generation_best.fitness);
 
             // Cross-Asset Transfer Test (If last asset available)
             if let Some((from_asset, strat)) = &last_best_strategy {
-                println!("🧪 CROSS_ASSET_TRANSFER: Evaluating strategy from {} on {}...", from_asset, asset_name);
+                println!(
+                    "🧪 CROSS_ASSET_TRANSFER: Evaluating strategy from {} on {}...",
+                    from_asset, asset_name
+                );
                 let trans_robustness = evaluate_robustness(strat, &config, &scenarios, 0);
                 let trans_fit = trans_robustness.regime_fitness[0];
-                let deg = ((ga_res.global_best.fitness - trans_fit) / ga_res.global_best.fitness.max(1e-9)) * 100.0;
-                transfer_matrix.push((from_asset.clone(), asset_name.clone(), ga_res.global_best.fitness, trans_fit, deg));
+                let deg = ((ga_res.global_best.fitness - trans_fit)
+                    / ga_res.global_best.fitness.max(1e-9))
+                    * 100.0;
+                transfer_matrix.push((
+                    from_asset.clone(),
+                    asset_name.clone(),
+                    ga_res.global_best.fitness,
+                    trans_fit,
+                    deg,
+                ));
             }
             last_best_strategy = Some((asset_name.clone(), ga_res.global_best.strategy.clone()));
 
@@ -254,7 +312,10 @@ for k in folder_candles.keys() {
             // Institutional Sharpness Guard (The 1.05 Logic)
             if pressure <= 1.05 && robustness.cv * 100.0 > 10.0 {
                 println!("⚠️ SHARPNESS_ALERT: [{}] Weak differentiation detected (Pressure: {:.2}, CV: {:.2}%). System may be overfitting noise.", asset_name, pressure, robustness.cv * 100.0);
-            } else if pressure <= 1.05 && robustness.cv * 100.0 < 8.0 && robustness.robustness_score > 0.8 {
+            } else if pressure <= 1.05
+                && robustness.cv * 100.0 < 8.0
+                && robustness.robustness_score > 0.8
+            {
                 println!("✅ PLATEAU_CERTIFIED: [{}] Robust genetic convergence reached. No further sharpening required.", asset_name);
             }
         }
@@ -263,10 +324,12 @@ for k in folder_candles.keys() {
         println!("\n\n{}", "=".repeat(100));
         println!("📜 INSTITUTIONAL GENERALIZATION LEDGER (PHASE 8)");
         println!("{}", "-".repeat(100));
-        println!("{:<12} | {:<7} | {:<7} | {:<8} | {:<10} | {:<12} | {:<12} | {:<8} | {:<8}", 
-                 "Asset", "Fit", "ActCV%", "Cover%", "Robust", "Det (Hash)", "Class", "Press", "Drift%");
+        println!(
+            "{:<12} | {:<7} | {:<7} | {:<8} | {:<10} | {:<12} | {:<12} | {:<8} | {:<8}",
+            "Asset", "Fit", "ActCV%", "Cover%", "Robust", "Det (Hash)", "Class", "Press", "Drift%"
+        );
         println!("{}", "-".repeat(110));
-        
+
         for e in &ledger {
             println!("{:<12} | {:<7.4} | {:<7.2} | {:<8.1} | {:<10.2} | {:<12} | {:<12} | {:<8.2} | {:<8.2}", 
                      e.asset, e.fitness, e.act_cv, e.coverage, e.robustness, e.determinism, e.classification, e.pressure, e.path_drift);
@@ -276,15 +339,23 @@ for k in folder_candles.keys() {
         if !transfer_matrix.is_empty() {
             println!("\n🎭 CROSS-ASSET TRANSFER MATRIX");
             println!("{}", "-".repeat(60));
-            println!("{:<10} -> {:<10} | {:<7} | {:<7} | {:<6}", "From", "To", "OrigFit", "TransFit", "Drop%");
+            println!(
+                "{:<10} -> {:<10} | {:<7} | {:<7} | {:<6}",
+                "From", "To", "OrigFit", "TransFit", "Drop%"
+            );
             println!("{}", "-".repeat(60));
             for (f, t, o, tr, d) in &transfer_matrix {
-                println!("{:<10} -> {:<10} | {:<7.4} | {:<7.4} | {:<6.1}%", f, t, o, tr, d);
+                println!(
+                    "{:<10} -> {:<10} | {:<7.4} | {:<7.4} | {:<6.1}%",
+                    f, t, o, tr, d
+                );
             }
             println!("{}", "=".repeat(60));
         }
         return;
     }
 
-    println!("Pipeline completed. Run with RUN_MODE=train --deep-validation for Institutional Sweep.");
+    println!(
+        "Pipeline completed. Run with RUN_MODE=train --deep-validation for Institutional Sweep."
+    );
 }

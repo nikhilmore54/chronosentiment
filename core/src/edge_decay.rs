@@ -1,8 +1,10 @@
-use crate::pnl_overlay::{ExecutionConfig, ExecutionModel, run_pnl_overlay_with_config};
-use crate::replay_evaluator::{run_replay_with_evaluator, ReplayMetrics, TradabilityBand};
-use crate::strategy_ranking::{LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile, StrategyRegistry, LiveRegime};
-use crate::tick_replay::{ReplayConfig, ReplayMode, TickReplayEngine};
 use crate::ga::Strategy;
+use crate::pnl_overlay::{run_pnl_overlay_with_config, ExecutionConfig, ExecutionModel};
+use crate::replay_evaluator::{run_replay_with_evaluator, ReplayMetrics, TradabilityBand};
+use crate::strategy_ranking::{
+    LiveEvaluator, LiveMarketState, LiveRegime, RankingWeights, StrategyProfile, StrategyRegistry,
+};
+use crate::tick_replay::{ReplayConfig, ReplayMode, TickReplayEngine};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -33,10 +35,11 @@ fn map_regime_local(regime: &str) -> LiveRegime {
 // Local helper to parse strategy from ID (simplified for reporting)
 fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
     let parts: Vec<&str> = id.split('v').collect();
-    if parts.len() < 13 { return None; }
-    
-    // The parts are our parameters (queue_threshold to archetype)
-    // Format: STRAT_QvEvTPvSLvHPvW_CONVvW_MOMvW_VOLvEXP_CONVvEXP_MOMvEXP_VOLvSELvARCH
+    if parts.len() < 13 {
+        return None;
+    }
+
+    // Format: STRAT_QvEvTPvSLvHPvW_CONVvW_MOMvW_VOLvEXP_CONVvEXP_MOMvEXP_VOLvSELvARCH[vBIASvVFLOORvMFLOORvRRvPART]
     let q = parts[0].trim_start_matches("STRAT_").parse().ok()?;
     let e = parts[1].parse().ok()?;
     let tp = parts[2].parse().ok()?;
@@ -44,13 +47,20 @@ fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
     let holding = parts[4].parse().ok()?;
     let w_conv = parts[5].parse().ok()?;
     let w_mom = parts[6].parse().ok()?;
-    let w_vol = parts[7].parse().ok()?;
-    let exp_conv = parts[8].parse().ok()?;
-    let exp_mom = parts[9].parse().ok()?;
-    let exp_vol = parts[10].parse().ok()?;
-    let selectivity = parts[11].parse().ok()?;
-    let archetype = parts[12].parse().ok()?;
-    
+    let w_vol = parts[7].parse().ok().unwrap_or(20);
+    let exp_conv = parts[8].parse().ok().unwrap_or(100);
+    let exp_mom = parts[9].parse().ok().unwrap_or(100);
+    let exp_vol = parts[10].parse().ok().unwrap_or(100);
+    let selectivity = parts[11].parse().ok().unwrap_or(75);
+    let archetype = parts[12].parse().ok().unwrap_or(0);
+
+    // Phase D.1.21 Extended Genes
+    let direction_bias: u8 = parts.get(13).and_then(|p| p.parse().ok()).unwrap_or(50);
+    let vol_floor: u8 = parts.get(14).and_then(|p| p.parse().ok()).unwrap_or(20);
+    let mom_floor: u8 = parts.get(15).and_then(|p| p.parse().ok()).unwrap_or(20);
+    let edge_ratio: u8 = parts.get(16).and_then(|p| p.parse().ok()).unwrap_or(150);
+    let participation_threshold: u8 = parts.get(17).and_then(|p| p.parse().ok()).unwrap_or(30);
+
     Some(Strategy {
         queue_threshold: q,
         base_edge: e,
@@ -65,6 +75,11 @@ fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
         exp_volatility: exp_vol,
         selectivity,
         archetype,
+        direction_bias,
+        vol_floor,
+        mom_floor,
+        edge_ratio,
+        participation_threshold,
     })
 }
 
@@ -83,10 +98,18 @@ fn _parse_fallback(sig: &StrategyProfile) -> Strategy {
         exp_volatility: 100,
         selectivity: 75,
         archetype: 0,
+        direction_bias: 50,
+        vol_floor: 20,
+        mom_floor: 20,
+        edge_ratio: 150,
+        participation_threshold: 30,
     })
 }
 
-fn build_evaluator_from_snapshot(snapshot_signals: &[crate::pipeline::TradeSignal], asset_name: String) -> LiveEvaluator {
+fn build_evaluator_from_snapshot(
+    snapshot_signals: &[crate::pipeline::TradeSignal],
+    asset_name: String,
+) -> LiveEvaluator {
     let mut registry_rows: Vec<StrategyProfile> = Vec::new();
     for sig in snapshot_signals {
         let strategy = parse_strategy_from_id_local(&sig.strategy_id).unwrap_or(Strategy {
@@ -103,6 +126,11 @@ fn build_evaluator_from_snapshot(snapshot_signals: &[crate::pipeline::TradeSigna
             exp_volatility: 100,
             selectivity: 75,
             archetype: 0,
+            direction_bias: 50,
+            vol_floor: 20,
+            mom_floor: 20,
+            edge_ratio: 150,
+            participation_threshold: 30,
         });
         registry_rows.push(StrategyProfile {
             strategy_id: sig.strategy_id.clone(),
@@ -130,7 +158,11 @@ pub fn run_edge_decay(
     slippage_bps: f64,
     initial_signal_snapshot: &crate::pipeline::SignalsSnapshot,
 ) -> Vec<EdgeDecayResult> {
-    let models = [ExecutionModel::Ideal, ExecutionModel::Spread, ExecutionModel::SpreadSlippage];
+    let models = [
+        ExecutionModel::Ideal,
+        ExecutionModel::Spread,
+        ExecutionModel::SpreadSlippage,
+    ];
     let mut results = Vec::new();
 
     for model in models {
@@ -149,7 +181,10 @@ pub fn run_edge_decay(
             }
         };
 
-        let mut evaluator = build_evaluator_from_snapshot(initial_signal_snapshot.signals.as_slice(), asset_name.clone());
+        let mut evaluator = build_evaluator_from_snapshot(
+            initial_signal_snapshot.signals.as_slice(),
+            asset_name.clone(),
+        );
         let replay_out = run_replay_with_evaluator(&mut replay, &mut evaluator, top_k);
 
         let mut replay_for_pnl = match TickReplayEngine::from_binance_jsonl(
@@ -162,15 +197,29 @@ pub fn run_edge_decay(
         ) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("Failed to load replay ticks for PnL overlay on {:?} model: {}", model, e);
+                eprintln!(
+                    "Failed to load replay ticks for PnL overlay on {:?} model: {}",
+                    model, e
+                );
                 continue;
             }
         };
-        let mut evaluator_for_pnl = build_evaluator_from_snapshot(initial_signal_snapshot.signals.as_slice(), asset_name.clone());
+        let mut evaluator_for_pnl = build_evaluator_from_snapshot(
+            initial_signal_snapshot.signals.as_slice(),
+            asset_name.clone(),
+        );
 
-        let exec_config = ExecutionConfig { model, slippage_bps };
-        let (_trades, pnl_metrics) =
-            run_pnl_overlay_with_config(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks, top_k, &exec_config);
+        let exec_config = ExecutionConfig {
+            model,
+            slippage_bps,
+        };
+        let (_trades, pnl_metrics) = run_pnl_overlay_with_config(
+            &mut replay_for_pnl,
+            &mut evaluator_for_pnl,
+            horizon_ticks,
+            top_k,
+            &exec_config,
+        );
 
         let edge_decay_pct = 1.0 - pnl_metrics.edge_retention;
 

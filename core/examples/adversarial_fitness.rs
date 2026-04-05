@@ -1,7 +1,6 @@
 use chronosentiment_core::ga::{
-    StrategyEvaluation, Strategy, GaConfig, FitnessMode, 
-    aggregate_strategy_reports, ExecutionMetrics, ScenarioExecutionSignature,
-    ScenarioCapability
+    aggregate_strategy_reports, ExecutionMetrics, FitnessMode, GaConfig, ScenarioCapability,
+    ScenarioExecutionSignature, Strategy, StrategyEvaluation,
 };
 
 fn mock_eval(pnl: f64, trades: usize, fill_eff: f64) -> StrategyEvaluation {
@@ -60,12 +59,12 @@ fn mock_eval(pnl: f64, trades: usize, fill_eff: f64) -> StrategyEvaluation {
 
 fn main() {
     let mut config = GaConfig::default();
-    
+
     // Test Set: A, B, C, D
     let genomes = vec![
-        ("A (Lucky Spike)",     mock_eval(0.05, 1,   1.0)),
+        ("A (Lucky Spike)", mock_eval(0.05, 1, 1.0)),
         ("B (Scalable Winner)", mock_eval(0.01, 100, 1.0)),
-        ("C (Unfillable Edge)", mock_eval(0.10, 5,   0.2)),
+        ("C (Unfillable Edge)", mock_eval(0.10, 5, 0.2)),
         ("D (Overtrading Noise)", mock_eval(0.001, 300, 0.1)),
     ];
 
@@ -73,7 +72,10 @@ fn main() {
         config.fitness_mode = mode;
         println!("\n🚀 TESTING MODE: {:?} 🚀", mode);
         println!("{:-<100}", "");
-        println!("{:<25} | {:<10} | {:<10} | {:<10} | {:<10}", "Genome", "Trades", "PnL", "Fill", "FITNESS");
+        println!(
+            "{:<25} | {:<10} | {:<10} | {:<10} | {:<10}",
+            "Genome", "Trades", "PnL", "Fill", "FITNESS"
+        );
         println!("{:-<100}", "");
 
         let mut results = Vec::new();
@@ -82,8 +84,14 @@ fn main() {
             // We need to pass a Vec because aggregation works on scenarios
             let evals = vec![eval.clone()];
             if let Some(agg) = aggregate_strategy_reports(evals, &config) {
-                println!("{:<25} | {:<10} | {:<10.4} | {:<10.2} | {:<10.4}", 
-                    name, agg.trade_count, agg.avg_pnl, agg.execution_metrics.fill_efficiency, agg.fitness);
+                println!(
+                    "{:<25} | {:<10} | {:<10.4} | {:<10.2} | {:<10.4}",
+                    name,
+                    agg.trade_count,
+                    agg.avg_pnl,
+                    agg.execution_metrics.fill_efficiency,
+                    agg.fitness
+                );
                 results.push((name, agg.fitness));
             }
         }
@@ -98,9 +106,17 @@ fn main() {
             }
             FitnessMode::Scalable => {
                 println!("🧠 SCALABLE AUDIT:");
-                let fitness_a = results.iter().find(|(n, _)| **n == "A (Lucky Spike)").map(|(_, f)| *f).unwrap_or(0.0);
-                let fitness_b = results.iter().find(|(n, _)| **n == "B (Scalable Winner)").map(|(_, f)| *f).unwrap_or(0.0);
-                
+                let fitness_a = results
+                    .iter()
+                    .find(|(n, _)| **n == "A (Lucky Spike)")
+                    .map(|(_, f)| *f)
+                    .unwrap_or(0.0);
+                let fitness_b = results
+                    .iter()
+                    .find(|(n, _)| **n == "B (Scalable Winner)")
+                    .map(|(_, f)| *f)
+                    .unwrap_or(0.0);
+
                 if fitness_b > fitness_a {
                     println!("✅ SUCCESS: Scalable B (consistent) beats A (lucky spike)");
                 } else {

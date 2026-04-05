@@ -62,7 +62,8 @@ impl LiveMarketState {
             self.volatility = 0.9 * self.volatility + 0.1 * ret.abs();
             self.confidence = confidence_from_features(self.momentum, self.volatility);
             self.expected_edge = edge_from_features(self.momentum, self.spread, self.price);
-            self.execution_score = execution_score_from_features(self.spread, self.volatility, self.price);
+            self.execution_score =
+                execution_score_from_features(self.spread, self.volatility, self.price);
             self.regime = regime_from_features(self.momentum, self.volatility);
         }
     }
@@ -138,8 +139,8 @@ impl StrategyRegistry {
                 };
                 let confidence_component =
                     state.confidence.clamp(0.0, 1.0) * profile.confidence_weight.clamp(0.0, 1.0);
-                let execution_component =
-                    state.execution_score.clamp(0.0, 1.0) * profile.execution_weight.clamp(0.0, 1.0);
+                let execution_component = state.execution_score.clamp(0.0, 1.0)
+                    * profile.execution_weight.clamp(0.0, 1.0);
                 let edge_component = edge_to_unit(state.expected_edge);
                 let live_score = weights.edge * edge_component
                     + weights.execution * execution_component
@@ -160,7 +161,11 @@ impl StrategyRegistry {
             b.live_score
                 .partial_cmp(&a.live_score)
                 .unwrap_or(Ordering::Equal)
-                .then_with(|| b.expected_edge.partial_cmp(&a.expected_edge).unwrap_or(Ordering::Equal))
+                .then_with(|| {
+                    b.expected_edge
+                        .partial_cmp(&a.expected_edge)
+                        .unwrap_or(Ordering::Equal)
+                })
                 .then_with(|| a.strategy_id.cmp(&b.strategy_id))
         });
         rows.truncate(top_k.min(rows.len()));
@@ -181,7 +186,11 @@ pub struct LiveEvaluator {
 }
 
 impl LiveEvaluator {
-    pub fn new(state: LiveMarketState, registry: StrategyRegistry, weights: RankingWeights) -> Self {
+    pub fn new(
+        state: LiveMarketState,
+        registry: StrategyRegistry,
+        weights: RankingWeights,
+    ) -> Self {
         Self {
             state,
             registry,
@@ -200,7 +209,9 @@ impl LiveEvaluator {
     }
 
     pub fn rank_current(&mut self, top_k: usize) -> Vec<RankedStrategy> {
-        let ranked = self.registry.rank_live(&self.state, top_k.max(5), self.weights);
+        let ranked = self
+            .registry
+            .rank_live(&self.state, top_k.max(5), self.weights);
         let mut filtered: Vec<RankedStrategy> = Vec::new();
         for row in ranked {
             if row.action == "HOLD" {
@@ -330,6 +341,11 @@ mod tests {
                 exp_volatility: 150,
                 selectivity: 75,
                 archetype: 0,
+                direction_bias: 50,
+                vol_floor: 20,
+                mom_floor: 20,
+                edge_ratio: 150,
+                participation_threshold: 30,
             },
             preferred_regimes: regimes,
             confidence_weight: 0.8,

@@ -1,5 +1,5 @@
+use crate::{MarketEventType, SimEvent};
 use serde::{Deserialize, Serialize};
-use crate::{SimEvent, MarketEventType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Candle {
@@ -49,7 +49,7 @@ pub struct CandleRow {
 }
 
 fn parse_timestamp(ts: &str) -> i64 {
-    use chrono::{NaiveDateTime, DateTime};
+    use chrono::{DateTime, NaiveDateTime};
 
     NaiveDateTime::parse_from_str(ts, "%Y-%m-%d %H:%M:%S")
         .unwrap_or_else(|_| {
@@ -63,16 +63,16 @@ fn parse_timestamp(ts: &str) -> i64 {
 const PRICE_SCALE: f64 = 10000.0;
 
 pub fn rows_to_candles(rows: Vec<CandleRow>) -> Vec<Candle> {
-    rows.into_iter().map(|row| {
-        Candle {
+    rows.into_iter()
+        .map(|row| Candle {
             timestamp: parse_timestamp(&row.timestamp) as u64,
             open: (row.open * PRICE_SCALE) as u64,
             high: (row.high * PRICE_SCALE) as u64,
             low: (row.low * PRICE_SCALE) as u64,
             close: (row.close * PRICE_SCALE) as u64,
             volume: row.volume as u64,
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 pub fn convert_candle_to_events(candle: &Candle, mut seq_id: u64) -> (Vec<SimEvent>, u64) {
@@ -100,7 +100,11 @@ pub fn convert_candle_to_events(candle: &Candle, mut seq_id: u64) -> (Vec<SimEve
     // Low
     add_event(candle.low, vol_chunk, candle.timestamp + time_step * 2);
     // Close
-    add_event(candle.close, candle.volume - (vol_chunk * 3), candle.timestamp + time_step * 3);
+    add_event(
+        candle.close,
+        candle.volume - (vol_chunk * 3),
+        candle.timestamp + time_step * 3,
+    );
 
     (events, seq_id)
 }
@@ -119,14 +123,16 @@ pub fn convert_series_to_events(candles: &[Candle], start_seq_id: u64) -> Vec<Si
 }
 
 pub fn convert_events_to_candles(events: &[crate::MarketEvent]) -> Vec<Candle> {
-    if events.is_empty() { return Vec::new(); }
+    if events.is_empty() {
+        return Vec::new();
+    }
     let open = events[0].price as u64;
     let mut high = open;
     let mut low = open;
     let mut close = open;
     let mut volume = 0;
     let timestamp = events[0].exchange_ts;
-    
+
     for ev in events {
         let px = ev.price as u64;
         high = high.max(px);
@@ -134,6 +140,13 @@ pub fn convert_events_to_candles(events: &[crate::MarketEvent]) -> Vec<Candle> {
         close = px;
         volume += ev.quantity as u64;
     }
-    
-    vec![Candle { timestamp, open, high, low, close, volume }]
+
+    vec![Candle {
+        timestamp,
+        open,
+        high,
+        low,
+        close,
+        volume,
+    }]
 }

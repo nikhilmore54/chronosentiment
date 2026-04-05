@@ -7,11 +7,7 @@
 
 #[cfg(test)]
 mod demo_tests {
-    use chronosentiment_core::{
-        ExecutionMode,
-        run_simulation,
-        run_ga,
-    };
+    use chronosentiment_core::{run_ga, run_simulation, ExecutionMode};
 
     // Test 1 — Determinism: same seed → identical output
     // This test will require a way to set a seed for the simulation/GA

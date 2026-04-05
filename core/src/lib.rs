@@ -1,50 +1,50 @@
+pub mod binance_adapter;
+pub mod csv_source;
+pub mod data_source;
+pub mod edge_decay;
+pub mod ensemble;
+pub mod ese;
+pub mod exit;
+pub mod folder_source;
 pub mod ga;
-pub mod selection_cap;
 pub mod harness;
 pub mod inspector;
 pub mod kernel;
-pub mod replay;
-pub mod ese;
-pub mod market_adapter;
-pub mod data_source;
-pub mod csv_source;
 pub mod live_source;
-pub mod folder_source;
+pub mod market_adapter;
 pub mod pipeline;
-pub mod binance_adapter;
+pub mod pnl_overlay;
+pub mod replay;
+pub mod replay_evaluator;
+pub mod selection_cap;
 pub mod strategy_ranking;
 pub mod tick_replay;
-pub mod replay_evaluator;
-pub mod pnl_overlay;
-pub mod edge_decay;
-pub mod ensemble;
-pub mod exit;
 
+pub use binance_adapter::*;
+pub use csv_source::*;
+pub use data_source::CandleSource;
+pub use edge_decay::*;
+pub use ensemble::*;
+pub use ese::FIXED_LATENCY;
+pub use exit::{ExitDecision, ExitEvaluator, ExitMetadata, ExitReason};
+pub use folder_source::*;
 pub use ga::*;
 pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_harness};
 pub use inspector::*;
 pub use kernel::*;
-pub use replay::*;
-pub use ese::{FIXED_LATENCY};
-pub use market_adapter::*;
-pub use data_source::CandleSource;
-pub use csv_source::*;
 pub use live_source::*;
-pub use folder_source::*;
+pub use market_adapter::*;
 pub use pipeline::*;
-pub use binance_adapter::*;
+pub use pnl_overlay::*;
+pub use replay::*;
+pub use replay_evaluator::*;
 pub use strategy_ranking::*;
 pub use tick_replay::*;
-pub use replay_evaluator::*;
-pub use pnl_overlay::*;
-pub use edge_decay::*;
-pub use ensemble::*;
-pub use exit::{ExitReason, ExitDecision, ExitEvaluator, ExitMetadata};
 
 /// System-wide institutional price scaling factor.
 /// 1.0000 = 10,000 units (1/100th of a paisa precision).
 /// This is the SINGLE SOURCE OF TRUTH for internal math.
-pub const PRICE_SCALE: u64 = 10000; 
+pub const PRICE_SCALE: u64 = 10000;
 
 /// Converts internal scaled integer to real-unit float (Rupees).
 pub fn to_real(price: u64) -> f64 {
@@ -68,7 +68,10 @@ mod precision_tests {
         // 432.85 * 10000 = 4,328,500
         assert_eq!(scaled, 4328500, "Scaling must be exactly 10,000x");
         // Float precision safe comparison
-        assert!((to_real(scaled) - value_rs).abs() < 1e-6, "Round-trip must be lossless for 2-decimal prices");
+        assert!(
+            (to_real(scaled) - value_rs).abs() < 1e-6,
+            "Round-trip must be lossless for 2-decimal prices"
+        );
     }
 }
 
@@ -228,12 +231,24 @@ impl SimEvent {
 
     pub fn parent_sequence_id(&self) -> Option<u64> {
         match self {
-            SimEvent::MarketEvent { parent_sequence_id, .. } => *parent_sequence_id,
-            SimEvent::OrderIntent { parent_sequence_id, .. } => *parent_sequence_id,
-            SimEvent::OrderEnteredQueue { parent_sequence_id, .. } => *parent_sequence_id,
-            SimEvent::PartialFill { parent_sequence_id, .. } => *parent_sequence_id,
-            SimEvent::QueueProgression { parent_sequence_id, .. } => *parent_sequence_id,
-            SimEvent::OrderFilled { parent_sequence_id, .. } => *parent_sequence_id,
+            SimEvent::MarketEvent {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
+            SimEvent::OrderIntent {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
+            SimEvent::OrderEnteredQueue {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
+            SimEvent::PartialFill {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
+            SimEvent::QueueProgression {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
+            SimEvent::OrderFilled {
+                parent_sequence_id, ..
+            } => *parent_sequence_id,
         }
     }
 

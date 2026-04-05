@@ -1,6 +1,6 @@
-use chronosentiment_core::ga::{Strategy, GaConfig, random_strategy, deterministic_strategy_id};
-use rand::SeedableRng;
+use chronosentiment_core::ga::{deterministic_strategy_id, random_strategy, GaConfig, Strategy};
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 use std::collections::HashSet;
 
 fn main() {
@@ -9,7 +9,10 @@ fn main() {
     let mut seen = HashSet::new();
     let iterations = 10_000;
 
-    println!("🚀 Starting Identity Integrity Stress Test ({} iterations)...", iterations);
+    println!(
+        "🚀 Starting Identity Integrity Stress Test ({} iterations)...",
+        iterations
+    );
 
     for i in 0..iterations {
         let strat = random_strategy(&config, &mut rng);
@@ -19,7 +22,10 @@ fn main() {
         let id = deterministic_strategy_id(&strat, &scenarios, seed);
 
         if !seen.insert(id.clone()) {
-            panic!("🔥 DUPLICATE STRATEGY ID DETECTED at iteration {}: {}", i, id);
+            panic!(
+                "🔥 DUPLICATE STRATEGY ID DETECTED at iteration {}: {}",
+                i, id
+            );
         }
     }
 

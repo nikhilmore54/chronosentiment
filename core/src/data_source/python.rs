@@ -1,5 +1,5 @@
-use crate::market_adapter::Candle;
 use crate::data_source::CandleSource;
+use crate::market_adapter::Candle;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -31,15 +31,25 @@ impl PythonCandleSource {
             }
         };
 
-        parsed.iter().filter_map(|c| {
-            let timestamp = c["timestamp"].as_u64()?;
-            let open  = (c["open"].as_f64()?  * 10000.0) as u64;
-            let high  = (c["high"].as_f64()?  * 10000.0) as u64;
-            let low   = (c["low"].as_f64()?   * 10000.0) as u64;
-            let close = (c["close"].as_f64()? * 10000.0) as u64;
-            let volume = c["volume"].as_u64().unwrap_or(0);
-            Some(Candle { timestamp, open, high, low, close, volume })
-        }).collect()
+        parsed
+            .iter()
+            .filter_map(|c| {
+                let timestamp = c["timestamp"].as_u64()?;
+                let open = (c["open"].as_f64()? * 10000.0) as u64;
+                let high = (c["high"].as_f64()? * 10000.0) as u64;
+                let low = (c["low"].as_f64()? * 10000.0) as u64;
+                let close = (c["close"].as_f64()? * 10000.0) as u64;
+                let volume = c["volume"].as_u64().unwrap_or(0);
+                Some(Candle {
+                    timestamp,
+                    open,
+                    high,
+                    low,
+                    close,
+                    volume,
+                })
+            })
+            .collect()
     }
 }
 
@@ -69,9 +79,9 @@ impl CandleSource for PythonCandleSource {
     }
 
     async fn get_candles_async(&self) -> Vec<Candle> {
-        let symbol   = self.symbol.clone();
+        let symbol = self.symbol.clone();
         let interval = self.interval.clone();
-        let n        = self.min_required_candles;
+        let n = self.min_required_candles;
 
         // Spawn in a blocking thread so we don't block the tokio executor
         let result = tokio::task::spawn_blocking(move || {
@@ -95,7 +105,8 @@ impl CandleSource for PythonCandleSource {
                     Vec::new()
                 }
             }
-        }).await;
+        })
+        .await;
 
         result.unwrap_or_default()
     }

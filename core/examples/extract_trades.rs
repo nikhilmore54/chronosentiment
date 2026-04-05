@@ -20,9 +20,11 @@ fn main() {
         .collect();
 
     trades.sort_by(|a, b| {
-        a.asset
-            .cmp(&b.asset)
-            .then_with(|| b.composite_score.partial_cmp(&a.composite_score).unwrap_or(std::cmp::Ordering::Equal))
+        a.asset.cmp(&b.asset).then_with(|| {
+            b.composite_score
+                .partial_cmp(&a.composite_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     });
 
     println!("assets={:?}", assets);

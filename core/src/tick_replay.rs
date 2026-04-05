@@ -58,7 +58,11 @@ impl TickReplayEngine {
     }
 
     /// Parse JSONL where each line is a Binance trade/depth payload (possibly wrapped in metadata).
-    pub fn from_binance_jsonl(path: &str, config: ReplayConfig, depth_top_k: usize) -> std::io::Result<Self> {
+    pub fn from_binance_jsonl(
+        path: &str,
+        config: ReplayConfig,
+        depth_top_k: usize,
+    ) -> std::io::Result<Self> {
         let events = crate::binance_adapter::load_binance_events_from_jsonl(path, depth_top_k)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(Self::from_events(events, config))

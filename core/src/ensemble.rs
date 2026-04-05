@@ -26,33 +26,33 @@ pub struct EnsembleInput<'a> {
 #[derive(Debug, Clone)]
 pub struct ConsensusDecision {
     pub combined_action: SignalAction,
-    pub consensus_score: f64,     // Normalized Σ(w_i * signal_i) / Σ|w_i|
-    pub disagreement_score: f64,  // std(signals) / (mean|signals| + ε)
-    pub is_conflict_hold: bool,   // true if disagreement > threshold
+    pub consensus_score: f64,    // Normalized Σ(w_i * signal_i) / Σ|w_i|
+    pub disagreement_score: f64, // std(signals) / (mean|signals| + ε)
+    pub is_conflict_hold: bool,  // true if disagreement > threshold
     pub effective_edge: f64,
     pub contributing_members: Vec<String>,
 }
 
-/// Computes the dynamic weighting for an ensemble member based on 
+/// Computes the dynamic weighting for an ensemble member based on
 /// normalized long-term fitness, consistency, and current regime alignment.
 /// Allows for negative weights (penalizing historically bad strategies in this regime).
 pub fn calculate_member_weight(
     eval: &StrategyEvaluation,
     regime_alignment: f64,
-    pop_fitness_mu: f64, pop_fitness_sigma: f64,
-    pop_consistency_mu: f64, pop_consistency_sigma: f64,
-    pop_recent_mu: f64, pop_recent_sigma: f64,
+    pop_fitness_mu: f64,
+    pop_fitness_sigma: f64,
+    pop_consistency_mu: f64,
+    pop_consistency_sigma: f64,
+    pop_recent_mu: f64,
+    pop_recent_sigma: f64,
 ) -> f64 {
     let f_norm = (eval.fitness - pop_fitness_mu) / pop_fitness_sigma.max(1e-6);
     let c_norm = (eval.consistency_score - pop_consistency_mu) / pop_consistency_sigma.max(1e-6);
     let r_norm = (eval.recent_performance - pop_recent_mu) / pop_recent_sigma.max(1e-6);
 
     // Final multi-factor weight (Phase 11.2) - ALLOWING SIGNED WEIGHTS
-    let w = 0.4 * f_norm + 
-            0.2 * c_norm + 
-            0.2 * r_norm + 
-            0.2 * regime_alignment;
-    
+    let w = 0.4 * f_norm + 0.2 * c_norm + 0.2 * r_norm + 0.2 * regime_alignment;
+
     // Soft magnitude floor to prevent total collapse, but allowing sign preservation
     if w.abs() < 0.01 {
         0.0
@@ -61,7 +61,7 @@ pub fn calculate_member_weight(
     }
 }
 
-/// Computes the relative disagreement across a set of signals using 
+/// Computes the relative disagreement across a set of signals using
 /// Welford's algorithm for numerical stability.
 pub fn calculate_relative_disagreement(inputs: &[EnsembleInput]) -> f64 {
     let mut mean = 0.0;
@@ -103,7 +103,7 @@ pub fn calculate_relative_disagreement(inputs: &[EnsembleInput]) -> f64 {
 pub fn compute_consensus(
     inputs: &[EnsembleInput],
     decision_threshold: f64,
-    disagreement_limit: f64
+    disagreement_limit: f64,
 ) -> ConsensusDecision {
     if inputs.is_empty() {
         return ConsensusDecision {
@@ -123,7 +123,7 @@ pub fn compute_consensus(
     for input in inputs {
         // 0. SIGNAL CLIPPING (Phase 11.2 Safeguard: Outlier suppression)
         let x = input.signal.value.clamp(-1.0, 1.0);
-        
+
         weighted_signal_sum += input.member.weight * x;
         weight_abs_sum += input.member.weight.abs();
         contributing_members.push(input.member.strategy_id.to_string());

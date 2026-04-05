@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
 use crate::ensemble::ConsensusDecision;
 use crate::pipeline::SignalAction;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ExitReason {
@@ -58,9 +58,9 @@ impl ExitEvaluator {
         // Only flip if current consensus is opposite AND strong enough to not be noise.
         let flip_threshold = (entry_edge.abs() * 0.1).max(0.0002);
         let _current_action = current_consensus.combined_action.clone();
-        
-        let signal_flipped = (current_consensus.consensus_score * entry_edge < 0.0) && 
-                            (current_consensus.consensus_score.abs() > flip_threshold);
+
+        let signal_flipped = (current_consensus.consensus_score * entry_edge < 0.0)
+            && (current_consensus.consensus_score.abs() > flip_threshold);
 
         if signal_flipped {
             return ExitDecision {
@@ -105,8 +105,8 @@ impl ExitEvaluator {
         let time_factor = if holding_time_bars < self.min_hold_bars {
             0.0
         } else {
-            ((holding_time_bars - self.min_hold_bars) as f64 / 
-             (self.max_hold_bars - self.min_hold_bars).max(1) as f64)
+            ((holding_time_bars - self.min_hold_bars) as f64
+                / (self.max_hold_bars - self.min_hold_bars).max(1) as f64)
                 .clamp(0.0, 1.0)
         };
 
@@ -123,9 +123,14 @@ impl ExitEvaluator {
             should_exit,
             exit_pressure,
             reason: if should_exit {
-                if decay > 0.5 { Some(ExitReason::ConsensusDecay) }
-                else { Some(ExitReason::TimeExpiry) }
-            } else { None },
+                if decay > 0.5 {
+                    Some(ExitReason::ConsensusDecay)
+                } else {
+                    Some(ExitReason::TimeExpiry)
+                }
+            } else {
+                None
+            },
             metadata: ExitMetadata {
                 decay,
                 time_factor,

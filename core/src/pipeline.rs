@@ -1,17 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::cmp::Ordering;
+use crate::binance_adapter::load_binance_events_from_jsonl;
+use crate::csv_source::CsvCandleSource;
+use crate::data_source::CandleSource;
+use crate::folder_source::FolderCandleSource;
 use crate::ga::{self, GaConfig};
+use crate::market_adapter::{convert_series_to_events, Candle};
+use crate::selection_cap;
 use crate::{MarketEvent, SimEvent};
-use crate::market_adapter::{Candle, convert_series_to_events};
-use serde::{Serialize, Deserialize};
-use std::path::Path;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use crate::data_source::CandleSource;
-use crate::csv_source::CsvCandleSource;
-use crate::folder_source::FolderCandleSource;
-use crate::binance_adapter::load_binance_events_from_jsonl;
-use crate::selection_cap;
+use std::path::Path;
 
 /// Float tolerance for deterministic comparisons (not `f64::EPSILON`, which is ~2e-16 and too tight for scaled money/weights).
 const F64_TOL: f64 = 1e-12;
@@ -144,7 +144,11 @@ impl From<ga::StrategyEvaluation> for UnifiedStrategyEvaluation {
     }
 }
 
-pub fn deterministic_strategy_id(strategy: &ga::Strategy, _scenario_names: &[String], _seed: u64) -> String {
+pub fn deterministic_strategy_id(
+    strategy: &ga::Strategy,
+    _scenario_names: &[String],
+    _seed: u64,
+) -> String {
     ga::strategy_to_id(strategy)
 }
 
@@ -158,7 +162,7 @@ pub fn run_evaluation_orchestration(
     scenario_names.sort();
 
     let strategy_id = deterministic_strategy_id(&strategy, &scenario_names, seed);
-    
+
     let ga_config = GaConfig {
         seed,
         ..GaConfig::default()
@@ -184,14 +188,15 @@ pub fn run_comparison_orchestration(
         let res = run_evaluation_orchestration(asset_name, strategy, scenarios, seed)?;
         results.push(res);
     }
-    
+
     // Sort by execution fitness descending
     results.sort_by(|a, b| {
-        b.execution_fitness.partial_cmp(&a.execution_fitness)
+        b.execution_fitness
+            .partial_cmp(&a.execution_fitness)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.strategy_id.cmp(&b.strategy_id))
     });
-    
+
     Ok(results)
 }
 
@@ -503,15 +508,9 @@ fn detect_regime_from_events(events: &[MarketEvent]) -> (Regime, f64) {
 
     let dominance_denominator = trend_strength + vol_strength + 1e-6;
     let confidence = match regime {
-        Regime::TrendingUp | Regime::TrendingDown => {
-            trend_strength / dominance_denominator
-        }
-        Regime::Volatile => {
-            vol_strength / dominance_denominator
-        }
-        Regime::Sideways => {
-            1.0 - trend_strength.max(vol_strength)
-        }
+        Regime::TrendingUp | Regime::TrendingDown => trend_strength / dominance_denominator,
+        Regime::Volatile => vol_strength / dominance_denominator,
+        Regime::Sideways => 1.0 - trend_strength.max(vol_strength),
         Regime::Mixed => 0.0,
     }
     .clamp(0.0, 1.0);
@@ -519,7 +518,10 @@ fn detect_regime_from_events(events: &[MarketEvent]) -> (Regime, f64) {
     (regime, confidence)
 }
 
-pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String, Vec<MarketEvent>> {
+pub fn scenarios_from_candles(
+    asset: &str,
+    candles: &[Candle],
+) -> HashMap<String, Vec<MarketEvent>> {
     let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
     if candles.len() < 60 {
         return scenarios;
@@ -543,7 +545,8 @@ pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String
                 side,
                 timestamp,
                 ..
-            } = ev {
+            } = ev
+            {
                 market_events.push(MarketEvent {
                     subtype,
                     price,
@@ -555,7 +558,10 @@ pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String
         }
 
         if !market_events.is_empty() {
-            scenarios.insert(format!("{}_csv_window_{}", asset, scenario_id), market_events);
+            scenarios.insert(
+                format!("{}_csv_window_{}", asset, scenario_id),
+                market_events,
+            );
         }
 
         start += stride;
@@ -624,7 +630,7 @@ pub fn pair_scenarios_by_index<'a>(
 ) -> Vec<ga::ScenarioPair<'a>> {
     let mut s_names: Vec<&String> = signal_scenarios.keys().collect();
     s_names.sort();
-    
+
     let mut e_names: Vec<&String> = execution_scenarios.keys().collect();
     e_names.sort();
 
@@ -635,18 +641,18 @@ pub fn pair_scenarios_by_index<'a>(
     let total_potential = s_names.len().min(e_names.len());
     let mut paired = 0usize;
     let mut skipped = 0usize;
-    
+
     for i in 0..total_potential {
         let s_name = s_names[i];
         let e_name = e_names[i];
-        
+
         let s_events = signal_scenarios.get(s_name).unwrap();
         let e_events = execution_scenarios.get(e_name).unwrap();
-        
+
         // Unbreakable: Hard check on length and timestamps
         let len_mismatch = s_events.len() != e_events.len();
         let mut ts_mismatch = false;
-        
+
         if !len_mismatch {
             for (se, ee) in s_events.iter().zip(e_events.iter()) {
                 if se.exchange_ts != ee.exchange_ts {
@@ -658,7 +664,10 @@ pub fn pair_scenarios_by_index<'a>(
 
         if len_mismatch || ts_mismatch {
             if strict {
-                panic!("FATAL: Scenario alignment mismatch for {}/{} (strict mode)", s_name, e_name);
+                panic!(
+                    "FATAL: Scenario alignment mismatch for {}/{} (strict mode)",
+                    s_name, e_name
+                );
             } else {
                 skipped += 1;
                 continue;
@@ -670,10 +679,11 @@ pub fn pair_scenarios_by_index<'a>(
             assert!(
                 !std::ptr::eq(s_events.as_ptr(), e_events.as_ptr()),
                 "FATAL: Dual-stream collapsed into single stream for symbol pair {} -> {}",
-                signal_symbol, execution_symbol
+                signal_symbol,
+                execution_symbol
             );
         }
-        
+
         pairs.push(ga::ScenarioPair {
             name: s_name.as_str(),
             signal_symbol,
@@ -688,13 +698,16 @@ pub fn pair_scenarios_by_index<'a>(
     let ratio = paired as f64 / (paired + skipped).max(1) as f64;
     println!(
         "PAIR_HEALTH → paired={} skipped={} ratio={:.2}",
-        paired,
-        skipped,
-        ratio
+        paired, skipped, ratio
     );
 
     if strict {
-        assert!(ratio >= 0.6, "Too many windows skipped for {} (ratio={:.2}); check data alignment", signal_symbol, ratio);
+        assert!(
+            ratio >= 0.6,
+            "Too many windows skipped for {} (ratio={:.2}); check data alignment",
+            signal_symbol,
+            ratio
+        );
     }
 
     pairs
@@ -716,8 +729,7 @@ pub fn load_strategy_store(path: &str) -> Result<PersistedStrategyStore, String>
 fn save_strategy_store(path: &str, store: &PersistedStrategyStore) -> Result<(), String> {
     let json = serde_json::to_string_pretty(store)
         .map_err(|e| format!("failed to serialize strategy store: {}", e))?;
-    fs::write(path, json)
-        .map_err(|e| format!("failed to write strategy store '{}': {}", path, e))
+    fs::write(path, json).map_err(|e| format!("failed to write strategy store '{}': {}", path, e))
 }
 
 fn train_asset_strategy(
@@ -729,8 +741,16 @@ fn train_asset_strategy(
         return None;
     }
 
-    let initial_price = paired_scenarios[0].signal.first().map(|e| e.price).unwrap_or(0);
-    let initial_timestamp = paired_scenarios[0].signal.first().map(|e| e.exchange_ts).unwrap_or(0);
+    let initial_price = paired_scenarios[0]
+        .signal
+        .first()
+        .map(|e| e.price)
+        .unwrap_or(0);
+    let initial_timestamp = paired_scenarios[0]
+        .signal
+        .first()
+        .map(|e| e.exchange_ts)
+        .unwrap_or(0);
 
     let config = GaConfig {
         population_size: 5,
@@ -745,7 +765,7 @@ fn train_asset_strategy(
         initial_queue_threshold: 200,
         ..GaConfig::default()
     };
-    
+
     let mut sorted_pairs = paired_scenarios.to_vec();
     sorted_pairs.sort_by(|a, b| a.name.cmp(&b.name));
 
@@ -812,7 +832,7 @@ pub fn train_and_persist_strategies(
         let exec_asset = resolve_execution_symbol(asset_name);
         let exec_folder_candles = folder_candles_by_asset.get(&exec_asset);
         let strict = std::env::var("CS_STRICT").unwrap_or_else(|_| "1".into()) == "1";
-        
+
         // Remove ALL silent fallbacks: MUST load separately if symbols differ
         let exec_scenario_map = if exec_asset != *asset_name {
             let map = scenario_map_for_signal_generation(
@@ -821,12 +841,18 @@ pub fn train_and_persist_strategies(
                 exec_folder_candles,
                 folder_path.as_str(),
             );
-            
+
             if map.is_empty() {
                 if strict {
-                    panic!("FATAL: Missing execution data for {} (strict mode)", exec_asset);
+                    panic!(
+                        "FATAL: Missing execution data for {} (strict mode)",
+                        exec_asset
+                    );
                 } else {
-                    println!("SKIPPING → Missing execution scenario map for symbol={} (non-strict)", exec_asset);
+                    println!(
+                        "SKIPPING → Missing execution scenario map for symbol={} (non-strict)",
+                        exec_asset
+                    );
                     continue;
                 }
             }
@@ -836,7 +862,12 @@ pub fn train_and_persist_strategies(
             signal_scenario_map.clone()
         };
 
-        let aligned_pairs = pair_scenarios_by_index(asset_name, &exec_asset, &signal_scenario_map, &exec_scenario_map);
+        let aligned_pairs = pair_scenarios_by_index(
+            asset_name,
+            &exec_asset,
+            &signal_scenario_map,
+            &exec_scenario_map,
+        );
         if aligned_pairs.is_empty() {
             continue;
         }
@@ -857,48 +888,86 @@ pub fn train_and_persist_strategies(
     };
     let target = path.unwrap_or_else(strategy_store_path_from_env);
     save_strategy_store(&target, &store)?;
-    println!("STRATEGY_STORE_SAVED path={} assets={}", target, trained_assets.len());
+    println!(
+        "STRATEGY_STORE_SAVED path={} assets={}",
+        target,
+        trained_assets.len()
+    );
     Ok(trained_assets.len())
 }
 
-pub fn map_to_pairs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, Vec<MarketEvent>>) -> Vec<ga::ScenarioPair<'a>> {
-    scenarios.iter().map(|(n, ev)| ga::ScenarioPair {
-        name: n.as_str(),
-        signal_symbol: symbol,
-        execution_symbol: symbol,
-        signal: ev.as_slice(),
-        execution: ev.as_slice(),
-    }).collect()
+pub fn map_to_pairs<'a>(
+    symbol: &'a str,
+    scenarios: &'a HashMap<String, Vec<MarketEvent>>,
+) -> Vec<ga::ScenarioPair<'a>> {
+    scenarios
+        .iter()
+        .map(|(n, ev)| ga::ScenarioPair {
+            name: n.as_str(),
+            signal_symbol: symbol,
+            execution_symbol: symbol,
+            signal: ev.as_slice(),
+            execution: ev.as_slice(),
+        })
+        .collect()
 }
 
-pub fn map_to_hash_pairs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, Vec<MarketEvent>>) -> HashMap<String, ga::ScenarioPair<'a>> {
-    scenarios.iter().map(|(n, ev)| (n.clone(), ga::ScenarioPair {
-        name: n.as_str(),
-        signal_symbol: symbol,
-        execution_symbol: symbol,
-        signal: ev.as_slice(),
-        execution: ev.as_slice(),
-    })).collect()
+pub fn map_to_hash_pairs<'a>(
+    symbol: &'a str,
+    scenarios: &'a HashMap<String, Vec<MarketEvent>>,
+) -> HashMap<String, ga::ScenarioPair<'a>> {
+    scenarios
+        .iter()
+        .map(|(n, ev)| {
+            (
+                n.clone(),
+                ga::ScenarioPair {
+                    name: n.as_str(),
+                    signal_symbol: symbol,
+                    execution_symbol: symbol,
+                    signal: ev.as_slice(),
+                    execution: ev.as_slice(),
+                },
+            )
+        })
+        .collect()
 }
 
-pub fn map_to_pairs_from_refs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, &'a [MarketEvent]>) -> Vec<ga::ScenarioPair<'a>> {
-    scenarios.iter().map(|(n, ev)| ga::ScenarioPair {
-        name: n.as_str(),
-        signal_symbol: symbol,
-        execution_symbol: symbol,
-        signal: ev,
-        execution: ev,
-    }).collect()
+pub fn map_to_pairs_from_refs<'a>(
+    symbol: &'a str,
+    scenarios: &'a HashMap<String, &'a [MarketEvent]>,
+) -> Vec<ga::ScenarioPair<'a>> {
+    scenarios
+        .iter()
+        .map(|(n, ev)| ga::ScenarioPair {
+            name: n.as_str(),
+            signal_symbol: symbol,
+            execution_symbol: symbol,
+            signal: ev,
+            execution: ev,
+        })
+        .collect()
 }
 
-pub fn map_to_hash_pairs_from_refs<'a>(symbol: &'a str, scenarios: &'a HashMap<String, &'a [MarketEvent]>) -> HashMap<String, ga::ScenarioPair<'a>> {
-    scenarios.iter().map(|(n, ev)| (n.clone(), ga::ScenarioPair {
-        name: n.as_str(),
-        signal_symbol: symbol,
-        execution_symbol: symbol,
-        signal: ev,
-        execution: ev,
-    })).collect()
+pub fn map_to_hash_pairs_from_refs<'a>(
+    symbol: &'a str,
+    scenarios: &'a HashMap<String, &'a [MarketEvent]>,
+) -> HashMap<String, ga::ScenarioPair<'a>> {
+    scenarios
+        .iter()
+        .map(|(n, ev)| {
+            (
+                n.clone(),
+                ga::ScenarioPair {
+                    name: n.as_str(),
+                    signal_symbol: symbol,
+                    execution_symbol: symbol,
+                    signal: ev,
+                    execution: ev,
+                },
+            )
+        })
+        .collect()
 }
 
 pub fn run_ga_orchestration(
@@ -921,7 +990,10 @@ pub fn run_ga_orchestration(
         let holdout_count = ((scenario_names.len() as f64) * holdout_ratio).round() as usize;
         let holdout_count = holdout_count.clamp(1, scenario_names.len() - 1);
         let split_at = scenario_names.len() - holdout_count;
-        (scenario_names[..split_at].to_vec(), scenario_names[split_at..].to_vec())
+        (
+            scenario_names[..split_at].to_vec(),
+            scenario_names[split_at..].to_vec(),
+        )
     };
 
     let mut train_scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
@@ -943,9 +1015,15 @@ pub fn run_ga_orchestration(
     let ga_result = ga::run_ga_evolution(config.clone(), &train_pairs);
 
     // Cross-evaluate best strategies on holdout data for "Execution Fitness"
-    let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
+    let execution_scenarios = if holdout_scenarios.is_empty() {
+        &train_scenarios
+    } else {
+        &holdout_scenarios
+    };
 
-    let to_unified = |ga_eval: ga::StrategyEvaluation, exec_eval: ga::StrategyEvaluation| -> UnifiedStrategyEvaluation {
+    let to_unified = |ga_eval: ga::StrategyEvaluation,
+                      exec_eval: ga::StrategyEvaluation|
+     -> UnifiedStrategyEvaluation {
         let mut unified = UnifiedStrategyEvaluation::from(ga_eval);
         unified.execution_fitness = exec_eval.fitness;
         unified
@@ -953,42 +1031,37 @@ pub fn run_ga_orchestration(
 
     let exec_hash_pairs = map_to_hash_pairs(asset_name, execution_scenarios);
     let exec_vec_pairs: Vec<ga::ScenarioPair> = exec_hash_pairs.values().cloned().collect();
-    
+
     let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
         let generation = 0; // Standard non-evolutionary evaluation
-        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation)
-            .unwrap_or_else(|| ga::StrategyEvaluation {
+        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation).unwrap_or_else(
+            || ga::StrategyEvaluation {
                 strategy: strategy.clone(),
                 ..ga::StrategyEvaluation::default()
-            })
+            },
+        )
     };
 
     let global_best = to_unified(
         ga_result.global_best.clone(),
-        evaluate_on_exec(&ga_result.global_best.strategy)
+        evaluate_on_exec(&ga_result.global_best.strategy),
     );
 
     let final_generation_best = to_unified(
         ga_result.final_generation_best.clone(),
-        evaluate_on_exec(&ga_result.final_generation_best.strategy)
+        evaluate_on_exec(&ga_result.final_generation_best.strategy),
     );
 
     let mut generation_history = Vec::new();
     for eval in ga_result.generation_history {
-        generation_history.push(to_unified(
-            eval.clone(),
-            evaluate_on_exec(&eval.strategy)
-        ));
+        generation_history.push(to_unified(eval.clone(), evaluate_on_exec(&eval.strategy)));
     }
 
     let mut best_per_regime = HashMap::new();
     for (regime, eval) in ga_result.best_per_regime {
         best_per_regime.insert(
             regime,
-            to_unified(
-                eval.clone(),
-                evaluate_on_exec(&eval.strategy)
-            )
+            to_unified(eval.clone(), evaluate_on_exec(&eval.strategy)),
         );
     }
 
@@ -1076,7 +1149,10 @@ fn evaluate_gate(
     let effective_confidence = calibrated_confidence(edge_aligned_confidence, execution_fitness);
     let override_by_edge = execution_fitness >= edge_override_threshold;
     let sideways_allowed_conf = confidence_floor.max(SIDEWAYS_CONFIDENCE_FLOOR);
-    if matches!(regime, Regime::Sideways) && effective_confidence < sideways_allowed_conf && !override_by_edge {
+    if matches!(regime, Regime::Sideways)
+        && effective_confidence < sideways_allowed_conf
+        && !override_by_edge
+    {
         return GateDecision {
             trade_allowed: false,
             position_size: 0.0,
@@ -1094,8 +1170,9 @@ fn evaluate_gate(
         };
     }
 
-    let score =
-        0.5 * effective_confidence + 0.3 * edge_norm(execution_fitness) + 0.2 * regime_quality(regime);
+    let score = 0.5 * effective_confidence
+        + 0.3 * edge_norm(execution_fitness)
+        + 0.2 * regime_quality(regime);
     if score < score_floor && !override_by_edge {
         return GateDecision {
             trade_allowed: false,
@@ -1126,8 +1203,9 @@ fn intrinsic_gate_strength(
     }
     let edge_aligned_confidence = raw_confidence.max(edge_to_confidence(execution_fitness));
     let effective_confidence = calibrated_confidence(edge_aligned_confidence, execution_fitness);
-    let score =
-        0.5 * effective_confidence + 0.3 * edge_norm(execution_fitness) + 0.2 * regime_quality(regime);
+    let score = 0.5 * effective_confidence
+        + 0.3 * edge_norm(execution_fitness)
+        + 0.2 * regime_quality(regime);
     Some((effective_confidence, score))
 }
 
@@ -1245,108 +1323,127 @@ fn build_trade_signal(
     atr: f64,
 ) -> TradeSignal {
     let trade_allowed = gate.trade_allowed;
-    let (action, entry_type, entry_zone, stop_loss, target, expected_holding_time, reason) = if trade_allowed {
-        match regime {
-            Regime::TrendingUp => {
-                let entry_lo = crate::round_to_tick((last_price * 0.996).round() as u64) as f64;
-                let entry_hi = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
-                let entry_zone = (entry_lo, entry_hi);
-                let effective_atr = atr.max(last_price * 0.003);
-                let mut stop_loss = crate::round_to_tick((last_price - (1.5 * effective_atr)).round() as u64) as f64;
-                // Ensure stop loss is below entry zone after rounding
-                if stop_loss >= entry_lo {
-                    stop_loss = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
+    let (action, entry_type, entry_zone, stop_loss, target, expected_holding_time, reason) =
+        if trade_allowed {
+            match regime {
+                Regime::TrendingUp => {
+                    let entry_lo = crate::round_to_tick((last_price * 0.996).round() as u64) as f64;
+                    let entry_hi = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
+                    let entry_zone = (entry_lo, entry_hi);
+                    let effective_atr = atr.max(last_price * 0.003);
+                    let mut stop_loss =
+                        crate::round_to_tick((last_price - (1.5 * effective_atr)).round() as u64)
+                            as f64;
+                    // Ensure stop loss is below entry zone after rounding
+                    if stop_loss >= entry_lo {
+                        stop_loss = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
+                    }
+                    let risk = (last_price - stop_loss).abs();
+                    let mut target =
+                        crate::round_to_tick((last_price + (2.0 * risk)).round() as u64) as f64;
+                    // Ensure target is above entry zone after rounding
+                    if target <= entry_hi {
+                        target = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
+                    }
+                    assert!(
+                        target > entry_zone.1,
+                        "Target must exceed entry zone for BUY"
+                    );
+                    assert!(
+                        stop_loss < entry_zone.0,
+                        "Stop loss must be below entry zone for BUY"
+                    );
+                    (
+                        SignalAction::BUY,
+                        EntryType::PULLBACK,
+                        Some(entry_zone),
+                        Some(stop_loss),
+                        Some(target),
+                        "30m-2h".to_string(),
+                        format!(
+                            "Regime={} with confidence {:.2}, execution fitness {:.2}",
+                            regime.as_str(),
+                            confidence,
+                            report_fitness
+                        ),
+                    )
                 }
-                let risk = (last_price - stop_loss).abs();
-                let mut target = crate::round_to_tick((last_price + (2.0 * risk)).round() as u64) as f64;
-                // Ensure target is above entry zone after rounding
-                if target <= entry_hi {
-                    target = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
+                Regime::TrendingDown => {
+                    let entry_lo = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
+                    let entry_hi = crate::round_to_tick((last_price * 1.004).round() as u64) as f64;
+                    let entry_zone = (entry_lo, entry_hi);
+                    let effective_atr = atr.max(last_price * 0.003);
+                    let mut stop_loss =
+                        crate::round_to_tick((last_price + (1.5 * effective_atr)).round() as u64)
+                            as f64;
+                    // Ensure stop loss is above entry zone after rounding
+                    if stop_loss <= entry_hi {
+                        stop_loss = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
+                    }
+                    let risk = (stop_loss - last_price).abs();
+                    let mut target =
+                        crate::round_to_tick((last_price - (2.0 * risk)).round() as u64) as f64;
+                    // Ensure target is below entry zone after rounding
+                    if target >= entry_lo {
+                        target = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
+                    }
+                    assert!(
+                        target < entry_zone.0,
+                        "Target must be below entry zone for SELL"
+                    );
+                    assert!(
+                        stop_loss > entry_zone.1,
+                        "Stop loss must be above entry zone for SELL"
+                    );
+                    (
+                        SignalAction::SELL,
+                        EntryType::PULLBACK,
+                        Some(entry_zone),
+                        Some(stop_loss),
+                        Some(target),
+                        "30m-2h".to_string(),
+                        format!(
+                            "Regime={} with confidence {:.2}, execution fitness {:.2}",
+                            regime.as_str(),
+                            confidence,
+                            report_fitness
+                        ),
+                    )
                 }
-                assert!(target > entry_zone.1, "Target must exceed entry zone for BUY");
-                assert!(stop_loss < entry_zone.0, "Stop loss must be below entry zone for BUY");
-                (
-                    SignalAction::BUY,
-                    EntryType::PULLBACK,
-                    Some(entry_zone),
-                    Some(stop_loss),
-                    Some(target),
-                    "30m-2h".to_string(),
-                    format!(
-                        "Regime={} with confidence {:.2}, execution fitness {:.2}",
-                        regime.as_str(),
-                        confidence,
-                        report_fitness
-                    ),
-                )
+                Regime::Sideways => (
+                    SignalAction::HOLD,
+                    EntryType::MARKET,
+                    None,
+                    None,
+                    None,
+                    "N/A".to_string(),
+                    "Low directional edge (sideways regime)".to_string(),
+                ),
+                _ => (
+                    SignalAction::HOLD,
+                    EntryType::MARKET,
+                    None,
+                    None,
+                    None,
+                    "N/A".to_string(),
+                    "Non-directional regime routed to HOLD for phase-1 safety".to_string(),
+                ),
             }
-            Regime::TrendingDown => {
-                let entry_lo = crate::round_to_tick((last_price * 1.000).round() as u64) as f64;
-                let entry_hi = crate::round_to_tick((last_price * 1.004).round() as u64) as f64;
-                let entry_zone = (entry_lo, entry_hi);
-                let effective_atr = atr.max(last_price * 0.003);
-                let mut stop_loss = crate::round_to_tick((last_price + (1.5 * effective_atr)).round() as u64) as f64;
-                // Ensure stop loss is above entry zone after rounding
-                if stop_loss <= entry_hi {
-                    stop_loss = entry_hi + (if entry_hi >= 2000.0 { 5.0 } else { 1.0 });
-                }
-                let risk = (stop_loss - last_price).abs();
-                let mut target = crate::round_to_tick((last_price - (2.0 * risk)).round() as u64) as f64;
-                // Ensure target is below entry zone after rounding
-                if target >= entry_lo {
-                    target = entry_lo - (if entry_lo >= 2000.0 { 5.0 } else { 1.0 });
-                }
-                assert!(target < entry_zone.0, "Target must be below entry zone for SELL");
-                assert!(stop_loss > entry_zone.1, "Stop loss must be above entry zone for SELL");
-                (
-                    SignalAction::SELL,
-                    EntryType::PULLBACK,
-                    Some(entry_zone),
-                    Some(stop_loss),
-                    Some(target),
-                    "30m-2h".to_string(),
-                    format!(
-                        "Regime={} with confidence {:.2}, execution fitness {:.2}",
-                        regime.as_str(),
-                        confidence,
-                        report_fitness
-                    ),
-                )
-            }
-            Regime::Sideways => (
+        } else {
+            let reject_code = gate
+                .reject_reason
+                .map(|r| r.as_str())
+                .unwrap_or("REJECT_UNKNOWN");
+            (
                 SignalAction::HOLD,
                 EntryType::MARKET,
                 None,
                 None,
                 None,
                 "N/A".to_string(),
-                "Low directional edge (sideways regime)".to_string(),
-            ),
-            _ => (
-                SignalAction::HOLD,
-                EntryType::MARKET,
-                None,
-                None,
-                None,
-                "N/A".to_string(),
-                "Non-directional regime routed to HOLD for phase-1 safety".to_string(),
-            ),
-        }   
-    } else {
-        let reject_code = gate
-            .reject_reason
-            .map(|r| r.as_str())
-            .unwrap_or("REJECT_UNKNOWN");
-        (
-            SignalAction::HOLD,
-            EntryType::MARKET,
-            None,
-            None,
-            None,
-            "N/A".to_string(),
-            format!("Rejected by gate: {}", reject_code),
-        )
-    };
+                format!("Rejected by gate: {}", reject_code),
+            )
+        };
 
     let risk_reward = match (entry_zone, stop_loss, target, &action) {
         (Some((entry_lo, entry_hi)), Some(sl), Some(tp), SignalAction::BUY) => {
@@ -1364,7 +1461,11 @@ fn build_trade_signal(
         _ => 0.0,
     };
     if matches!(action, SignalAction::BUY | SignalAction::SELL) {
-        assert!(risk_reward >= 1.5, "Risk-reward below minimum threshold: {}", risk_reward);
+        assert!(
+            risk_reward >= 1.5,
+            "Risk-reward below minimum threshold: {}",
+            risk_reward
+        );
     }
 
     TradeSignal {
@@ -1379,7 +1480,11 @@ fn build_trade_signal(
         expected_edge: report_fitness,
         scenario_pnl: if trade_allowed { report_pnl } else { 0.0 },
         risk_reward,
-        position_size: if trade_allowed { gate.position_size } else { 0.0 },
+        position_size: if trade_allowed {
+            gate.position_size
+        } else {
+            0.0
+        },
         conviction: confidence * report_fitness.max(0.0),
         composite_score: gate.composite_score,
         reject_reason: gate.reject_reason.map(|r| r.as_str().to_string()),
@@ -1426,45 +1531,51 @@ const RANK_BIAS_FACTOR: f64 = 1.0;
 const EDGE_AWARE_SIZING_FACTOR: f64 = 0.3; // 0.7 * rank_score + 0.3 * effective_eval_edge
 
 /// `total_capital_rupees` comes from `TOTAL_CAPITAL` (rupees). All sizing, caps, and `allocated_capital` are computed in **paise** only.
-fn allocate_capital(
-    signals: &mut Vec<TradeSignal>,
-    total_capital_rupees: f64,
-) {
+fn allocate_capital(signals: &mut Vec<TradeSignal>, total_capital_rupees: f64) {
     let scale = crate::PRICE_SCALE as f64;
     let budget_paise = (total_capital_rupees * scale).max(0.0);
     if signals.is_empty() || budget_paise <= F64_TOL {
         return;
     }
 
-    let entry_mid_paise = |s: &TradeSignal| -> f64 {
-        s.entry_zone.map(|(lo, hi)| (lo + hi) * 0.5).unwrap_or(0.0)
-    };
+    let entry_mid_paise =
+        |s: &TradeSignal| -> f64 { s.entry_zone.map(|(lo, hi)| (lo + hi) * 0.5).unwrap_or(0.0) };
 
     let min_trade_paise = resolved_min_trade_value_rupees() * scale;
     let max_allocation_ratio = resolved_max_allocation_ratio();
 
-    let k_cap = selection_cap::resolved_signal_top_k().map(|k| k as f64).unwrap_or(1.0).max(1.0);
+    let k_cap = selection_cap::resolved_signal_top_k()
+        .map(|k| k as f64)
+        .unwrap_or(1.0)
+        .max(1.0);
     let mut total_adjusted_score = 0.0;
 
     // Step 5: Add rank bias and edge-aware sizing
     // Calculate adjusted scores for all signals
-    let mut adjusted_signals: Vec<(usize, f64)> = signals.iter().enumerate().filter_map(|(i, s)| {
-        if matches!(s.action, SignalAction::BUY | SignalAction::SELL) && s.rank_position.is_some() {
-            let rank_position = s.rank_position.unwrap_or(1) as f64;
-            let rank_bias = (k_cap - rank_position) / k_cap;
-            
-            // Apply rank bias
-            let rank_score_biased = s.rank_score * (1.0 + RANK_BIAS_FACTOR * rank_bias);
+    let mut adjusted_signals: Vec<(usize, f64)> = signals
+        .iter()
+        .enumerate()
+        .filter_map(|(i, s)| {
+            if matches!(s.action, SignalAction::BUY | SignalAction::SELL)
+                && s.rank_position.is_some()
+            {
+                let rank_position = s.rank_position.unwrap_or(1) as f64;
+                let rank_bias = (k_cap - rank_position) / k_cap;
 
-            // Apply edge-aware sizing
-            let final_score = (1.0 - EDGE_AWARE_SIZING_FACTOR) * rank_score_biased + (EDGE_AWARE_SIZING_FACTOR * s.expected_edge);
-            
-            total_adjusted_score += final_score;
-            Some((i, final_score))
-        } else {
-            None
-        }
-    }).collect();
+                // Apply rank bias
+                let rank_score_biased = s.rank_score * (1.0 + RANK_BIAS_FACTOR * rank_bias);
+
+                // Apply edge-aware sizing
+                let final_score = (1.0 - EDGE_AWARE_SIZING_FACTOR) * rank_score_biased
+                    + (EDGE_AWARE_SIZING_FACTOR * s.expected_edge);
+
+                total_adjusted_score += final_score;
+                Some((i, final_score))
+            } else {
+                None
+            }
+        })
+        .collect();
 
     if total_adjusted_score <= F64_TOL {
         // If all adjusted scores are zero, we cannot allocate
@@ -1478,7 +1589,7 @@ fn allocate_capital(
     // Step 1-4, and NSE constraints (all amounts in paise)
     for (idx, adjusted_score) in adjusted_signals.iter_mut() {
         let s = &mut signals[*idx];
-        
+
         // Step 1: normalize weights
         let weight_i = *adjusted_score / total_adjusted_score;
 
@@ -1503,7 +1614,7 @@ fn allocate_capital(
         if entry_p > F64_TOL {
             qty_i = (allocation_i / entry_p).floor() as u64;
         }
-        
+
         // NSE Constraint: Lot size / liquidity guard (minimum trade value on filled notional)
         if (qty_i as f64 * entry_p) < min_trade_paise {
             qty_i = 0;
@@ -1541,10 +1652,7 @@ fn allocate_capital(
             Some((rp, i, entry))
         })
         .collect();
-    ranked_active.sort_by(|a, b| {
-        a.0.cmp(&b.0)
-            .then_with(|| a.1.cmp(&b.1))
-    });
+    ranked_active.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
 
     let mut used_total: f64 = signals
         .iter()
@@ -1618,9 +1726,10 @@ fn allocate_capital(
                     }
                 })
                 .collect();
-            
-            current_allocated_signals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
-            
+
+            current_allocated_signals
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+
             for i in max_positions_k..current_allocated_signals.len() {
                 let (idx_to_demote, _) = current_allocated_signals[i];
                 let s = &mut signals[idx_to_demote];
@@ -1712,10 +1821,7 @@ fn apply_capacity_selection(signals: &mut Vec<TradeSignal>, transfers: &mut Vec<
     }
 }
 
-pub fn run_pipeline_with_config(
-    jsonl_path: &str,
-    ga_config: GaConfig,
-) -> SignalsSnapshot {
+pub fn run_pipeline_with_config(jsonl_path: &str, ga_config: GaConfig) -> SignalsSnapshot {
     let (auto_confidence_floor, auto_score_floor) =
         select_optimal_signal_thresholds_for_jsonl(jsonl_path, &ga_config);
     let confidence_floor = resolved_signal_confidence_floor(auto_confidence_floor);
@@ -1761,7 +1867,10 @@ fn select_optimal_signal_thresholds_for_jsonl(
     let all_events = match load_binance_events_from_jsonl(jsonl_path, 1) {
         Ok(events) => events,
         Err(e) => {
-            eprintln!("Error loading Binance events for threshold sweep from {}: {}", jsonl_path, e);
+            eprintln!(
+                "Error loading Binance events for threshold sweep from {}: {}",
+                jsonl_path, e
+            );
             return (DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR);
         }
     };
@@ -1912,7 +2021,10 @@ pub fn generate_latest_signals_from_saved_strategies(
     ))
 }
 
-fn scenarios_from_binance_events(asset: &str, events: &[crate::binance_adapter::NormalizedMarketEvent]) -> HashMap<String, Vec<MarketEvent>> {
+fn scenarios_from_binance_events(
+    asset: &str,
+    events: &[crate::binance_adapter::NormalizedMarketEvent],
+) -> HashMap<String, Vec<MarketEvent>> {
     let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
     if events.is_empty() {
         return scenarios;
@@ -1925,16 +2037,22 @@ fn scenarios_from_binance_events(asset: &str, events: &[crate::binance_adapter::
 
     while start + window_size <= events.len() && scenario_id < 20 {
         let slice = &events[start..start + window_size];
-        let market_events: Vec<MarketEvent> = slice.iter().map(|e| MarketEvent {
-            subtype: crate::MarketEventType::Trade,
-            price: (e.price * crate::PRICE_SCALE as f64).round() as u64,
-            quantity: e.volume as u64,
-            side: e.side.clone(),
-            exchange_ts: e.exchange_ts,
-        }).collect();
+        let market_events: Vec<MarketEvent> = slice
+            .iter()
+            .map(|e| MarketEvent {
+                subtype: crate::MarketEventType::Trade,
+                price: (e.price * crate::PRICE_SCALE as f64).round() as u64,
+                quantity: e.volume as u64,
+                side: e.side.clone(),
+                exchange_ts: e.exchange_ts,
+            })
+            .collect();
 
         if !market_events.is_empty() {
-            scenarios.insert(format!("{}_jsonl_window_{}", asset, scenario_id), market_events);
+            scenarios.insert(
+                format!("{}_jsonl_window_{}", asset, scenario_id),
+                market_events,
+            );
         }
 
         start += stride;
@@ -1965,7 +2083,8 @@ fn generate_latest_signals_with_thresholds_internal(
         resolved_edge_override_threshold()
     };
 
-    let mut all_scenarios_by_asset: HashMap<String, HashMap<String, Vec<MarketEvent>>> = HashMap::new();
+    let mut all_scenarios_by_asset: HashMap<String, HashMap<String, Vec<MarketEvent>>> =
+        HashMap::new();
 
     if let Some(path) = jsonl_path {
         let all_events = match load_binance_events_from_jsonl(path, 1) {
@@ -1977,7 +2096,11 @@ fn generate_latest_signals_with_thresholds_internal(
         };
 
         for asset_name in &assets {
-            let asset_events: Vec<_> = all_events.iter().filter(|e| &e.asset == asset_name).cloned().collect();
+            let asset_events: Vec<_> = all_events
+                .iter()
+                .filter(|e| &e.asset == asset_name)
+                .cloned()
+                .collect();
             let scenarios = scenarios_from_binance_events(asset_name, &asset_events);
             if !scenarios.is_empty() {
                 all_scenarios_by_asset.insert(asset_name.clone(), scenarios);
@@ -2041,7 +2164,8 @@ fn generate_latest_signals_with_thresholds_internal(
         let mut acc_pnls: Vec<f64> = Vec::new();
         let mut traded_gate_count = 0usize;
         let mut weak_exec_rank_metric = 0usize;
-        let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(scenario_map)
+        let Some((initial_price, initial_timestamp)) =
+            initial_order_from_scenario_map(scenario_map)
         else {
             continue;
         };
@@ -2106,7 +2230,8 @@ fn generate_latest_signals_with_thresholds_internal(
 
         for scenario_name in &sorted_names {
             if let Some(events) = scenario_map.get(scenario_name) {
-                max_timestamp = max_timestamp.max(events.last().map(|e| e.exchange_ts).unwrap_or(0));
+                max_timestamp =
+                    max_timestamp.max(events.last().map(|e| e.exchange_ts).unwrap_or(0));
                 let (detected_regime, confidence) = detect_regime_from_events(events.as_slice());
                 let regime_key = format!("{}_{}", asset_name, detected_regime.as_str());
                 let selected_eval = ga_result
@@ -2117,7 +2242,12 @@ fn generate_latest_signals_with_thresholds_internal(
                 one_scenario.insert(scenario_name.clone(), events.clone());
                 let one_scenario_vec = map_to_pairs(asset_name, &one_scenario);
                 let generation = 0; // Standard non-evolutionary evaluation
-                if let Some(report) = ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_vec, generation) {
+                if let Some(report) = ga::evaluate_and_aggregate(
+                    &selected_eval.strategy,
+                    &config,
+                    &one_scenario_vec,
+                    generation,
+                ) {
                     max_observed_eval_edge = max_observed_eval_edge.max(report.fitness.max(0.0));
                     if sweep_disable_edge_override {
                         if let Some(sink) = sweep_gate_metrics_sink.as_mut() {
@@ -2157,7 +2287,10 @@ fn generate_latest_signals_with_thresholds_internal(
                     let regime_name = detected_regime.as_str().to_string();
                     *regime_eval_sums.entry(regime_name.clone()).or_insert(0.0) += report.fitness;
                     *regime_eval_counts.entry(regime_name).or_insert(0usize) += 1;
-                    let last_price = events.last().map(|e| e.price as f64).unwrap_or(config.order_price as f64);
+                    let last_price = events
+                        .last()
+                        .map(|e| e.price as f64)
+                        .unwrap_or(config.order_price as f64);
                     let atr = compute_atr(events.as_slice());
                     let mut signal = build_trade_signal(
                         asset_name,
@@ -2238,18 +2371,23 @@ fn generate_latest_signals_with_thresholds_internal(
                     let weak_eval_edge =
                         (confidence * avg_eval_edge_per_regime.clamp(0.0, 1.0)).clamp(0.0, 1.0);
                     let effective_eval_edge = weak_eval_edge;
-                    let effective_conf_floor =
-                        (confidence_floor - (effective_eval_edge * 0.25)).clamp(confidence_floor.min(0.20), confidence_floor);
+                    let effective_conf_floor = (confidence_floor - (effective_eval_edge * 0.25))
+                        .clamp(confidence_floor.min(0.20), confidence_floor);
                     let first_price = events.first().map(|e| e.price as f64).unwrap_or(0.0);
-                    let last_price_for_move = events.last().map(|e| e.price as f64).unwrap_or(first_price);
+                    let last_price_for_move =
+                        events.last().map(|e| e.price as f64).unwrap_or(first_price);
                     let move_abs = (last_price_for_move - first_price).abs();
-                    let min_move = if first_price > 0.0 { first_price * 0.001 } else { 0.0 };
-                    let low_volatility = detected_regime == Regime::Sideways || (first_price > 0.0 && move_abs < min_move);
-                    let weak_execution_allowed =
-                        !low_volatility
-                            && (effective_eval_edge >= edge_override_threshold
-                                || (confidence >= effective_conf_floor
-                                    && effective_eval_edge >= min_tradable_edge));
+                    let min_move = if first_price > 0.0 {
+                        first_price * 0.001
+                    } else {
+                        0.0
+                    };
+                    let low_volatility = detected_regime == Regime::Sideways
+                        || (first_price > 0.0 && move_abs < min_move);
+                    let weak_execution_allowed = !low_volatility
+                        && (effective_eval_edge >= edge_override_threshold
+                            || (confidence >= effective_conf_floor
+                                && effective_eval_edge >= min_tradable_edge));
                     let weak_scaled_size = (0.7
                         * blended_position_size(
                             confidence.max(edge_to_confidence(effective_eval_edge)),
@@ -2258,7 +2396,11 @@ fn generate_latest_signals_with_thresholds_internal(
                     .clamp(0.1, 0.7);
                     let weak_gate = GateDecision {
                         trade_allowed: weak_execution_allowed,
-                        position_size: if weak_execution_allowed { weak_scaled_size } else { 0.0 },
+                        position_size: if weak_execution_allowed {
+                            weak_scaled_size
+                        } else {
+                            0.0
+                        },
                         composite_score: 0.0,
                         reject_reason: if weak_execution_allowed {
                             None
@@ -2266,8 +2408,10 @@ fn generate_latest_signals_with_thresholds_internal(
                             Some(RejectReason::LowConfidence)
                         },
                     };
-                    let last_price =
-                        events.last().map(|e| e.price as f64).unwrap_or(config.order_price as f64);
+                    let last_price = events
+                        .last()
+                        .map(|e| e.price as f64)
+                        .unwrap_or(config.order_price as f64);
                     let atr = compute_atr(events.as_slice());
                     let signal = build_trade_signal(
                         asset_name,
@@ -2321,7 +2465,11 @@ fn generate_latest_signals_with_thresholds_internal(
                             })
                         .max(0.0),
                         confidence,
-                        reason: if low_volatility { EdgeLossReason::WeakLowVol } else { EdgeLossReason::WeakEvalSurrogate },
+                        reason: if low_volatility {
+                            EdgeLossReason::WeakLowVol
+                        } else {
+                            EdgeLossReason::WeakEvalSurrogate
+                        },
                         current_pnl,
                         peak_pnl,
                         exit_triggered: exit_reason.is_some(),
@@ -2366,11 +2514,7 @@ fn generate_latest_signals_with_thresholds_internal(
         .map(|(_, _, _, w)| *w)
         .max()
         .unwrap_or(0);
-    let weak_den = if max_weak == 0 {
-        1.0
-    } else {
-        max_weak as f64
-    };
+    let weak_den = if max_weak == 0 { 1.0 } else { max_weak as f64 };
     let mut asset_rankings: Vec<AssetRanking> = asset_ranking_rows
         .into_iter()
         .map(|(asset, avg_pnl, participation, weak_exec_rank_metric)| {
@@ -2400,13 +2544,19 @@ fn generate_latest_signals_with_thresholds_internal(
         .unwrap_or(10000.0); // Default to 10,000 as per example
 
     allocate_capital(&mut all_signals, total_capital);
-    
+
     trade_count = all_signals
         .iter()
-        .filter(|s| matches!(s.action, SignalAction::BUY | SignalAction::SELL) && s.quantity.unwrap_or(0) > 0)
+        .filter(|s| {
+            matches!(s.action, SignalAction::BUY | SignalAction::SELL)
+                && s.quantity.unwrap_or(0) > 0
+        })
         .count();
 
-    let holds = all_signals.iter().filter(|s| s.action == SignalAction::HOLD).count();
+    let holds = all_signals
+        .iter()
+        .filter(|s| s.action == SignalAction::HOLD)
+        .count();
     let participation = if total_scenarios == 0 {
         0.0
     } else {
@@ -2477,7 +2627,11 @@ fn generate_latest_signals_with_thresholds_internal(
                 pct: ((*loss / total_loss) * 100.0).clamp(0.0, 100.0),
             })
             .collect();
-        rows.sort_by(|a, b| b.pct.partial_cmp(&a.pct).unwrap_or(std::cmp::Ordering::Equal));
+        rows.sort_by(|a, b| {
+            b.pct
+                .partial_cmp(&a.pct)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         rows
     } else {
         Vec::new()
@@ -2516,7 +2670,10 @@ fn generate_latest_signals_with_thresholds_internal(
             selection_cap_k: selection_cap::resolved_signal_top_k(),
             edge_loss_breakdown,
         },
-        asset_name: assets.first().cloned().unwrap_or_else(|| "UNKNOWN".to_string()),
+        asset_name: assets
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "UNKNOWN".to_string()),
         asset_rankings,
     }
 }
@@ -2544,7 +2701,7 @@ pub fn run_threshold_sweep(
             // f105: Temporarily relax floors for debugging
             let confidence_floor = (conf_raw * 0.5).max(0.01);
             let score_floor = (score_raw * 0.5).max(0.01);
-            
+
             let snapshot = if first_cell && sweep_gate_debug {
                 generate_latest_signals_with_thresholds_internal(
                     assets.clone(),
@@ -2668,7 +2825,9 @@ pub fn evaluate_on_real_data(
                 .unwrap_or_default();
             scenarios_from_candles(&asset_name, &candles)
         } else if data_source == "csv" && !csv_path.is_empty() && Path::new(&csv_path).exists() {
-            let source: Box<dyn CandleSource> = Box::new(CsvCandleSource { path: csv_path.clone() });
+            let source: Box<dyn CandleSource> = Box::new(CsvCandleSource {
+                path: csv_path.clone(),
+            });
             let candles = source.get_candles_sync();
             scenarios_from_candles(&asset_name, &candles)
         } else {
@@ -2679,11 +2838,12 @@ pub fn evaluate_on_real_data(
             continue;
         }
 
-        let Some((initial_price, initial_timestamp)) = initial_order_from_scenario_map(&scenario_map)
+        let Some((initial_price, initial_timestamp)) =
+            initial_order_from_scenario_map(&scenario_map)
         else {
             continue;
         };
-        
+
         let config = GaConfig {
             population_size: 5,
             generations: 3,
@@ -2697,13 +2857,13 @@ pub fn evaluate_on_real_data(
             initial_queue_threshold: 200,
             ..GaConfig::default()
         };
-        
+
         let mut sorted_names: Vec<String> = scenario_map.keys().cloned().collect();
         sorted_names.sort();
-        
+
         let test_index = (config.seed as usize) % sorted_names.len();
         let test_scenario_name = sorted_names[test_index].clone();
-        
+
         let mut train_scenarios_map: HashMap<String, Vec<MarketEvent>> = HashMap::new();
         for name in &sorted_names {
             if name != &test_scenario_name {
@@ -2714,13 +2874,13 @@ pub fn evaluate_on_real_data(
         }
         let train_px_pairs = map_to_pairs(&asset_name, &train_scenarios_map);
         let ga_result = ga::run_ga_evolution(config.clone(), &train_px_pairs);
-        
+
         let mut pnls_all = Vec::with_capacity(sorted_names.len());
         let mut execution_fitnesses_all = Vec::with_capacity(sorted_names.len());
         let mut traded_pnls = Vec::with_capacity(sorted_names.len());
         let mut traded_scenarios = 0usize;
         let mut weak_executed_count = 0usize;
-        
+
         for name in &sorted_names {
             if let Some(events) = scenario_map.get(name) {
                 let mut one_scenario_map: HashMap<String, Vec<MarketEvent>> = HashMap::new();
@@ -2734,9 +2894,12 @@ pub fn evaluate_on_real_data(
                     .get(&regime_key)
                     .unwrap_or(&ga_result.global_best);
 
-                if let Some(report) =
-                    ga::evaluate_and_aggregate(&selected_eval.strategy, &config, &one_scenario_px_pairs, 0)
-                {
+                if let Some(report) = ga::evaluate_and_aggregate(
+                    &selected_eval.strategy,
+                    &config,
+                    &one_scenario_px_pairs,
+                    0,
+                ) {
                     let gate = evaluate_gate(
                         detected_regime,
                         confidence,
@@ -2765,22 +2928,16 @@ pub fn evaluate_on_real_data(
                 execution_fitnesses_all.push(0.0);
             }
         }
-        
+
         if !pnls_all.is_empty() {
             let mean_pnl = pnls_all.iter().sum::<f64>() / pnls_all.len() as f64;
-            let pnl_variance = pnls_all
-                .iter()
-                .map(|p| (p - mean_pnl).powi(2))
-                .sum::<f64>()
+            let pnl_variance = pnls_all.iter().map(|p| (p - mean_pnl).powi(2)).sum::<f64>()
                 / pnls_all.len() as f64;
             let std_dev = pnl_variance.sqrt();
-            let worst = pnls_all
-                .iter()
-                .copied()
-                .fold(f64::INFINITY, f64::min);
+            let worst = pnls_all.iter().copied().fold(f64::INFINITY, f64::min);
             let _mean_execution_fitness =
                 execution_fitnesses_all.iter().sum::<f64>() / execution_fitnesses_all.len() as f64;
-            
+
             let participation_rate = traded_scenarios as f64 / sorted_names.len() as f64;
 
             if data_source == "folder" {
@@ -2835,10 +2992,34 @@ mod tests {
     #[test]
     fn test_detect_regime_is_deterministic() {
         let events = vec![
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 1 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 101, quantity: 1, side: None, exchange_ts: 2 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 102, quantity: 1, side: None, exchange_ts: 3 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 103, quantity: 1, side: None, exchange_ts: 4 },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 1,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 101,
+                quantity: 1,
+                side: None,
+                exchange_ts: 2,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 102,
+                quantity: 1,
+                side: None,
+                exchange_ts: 3,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 103,
+                quantity: 1,
+                side: None,
+                exchange_ts: 4,
+            },
         ];
         let r1 = detect_regime_from_events(&events);
         let r2 = detect_regime_from_events(&events);

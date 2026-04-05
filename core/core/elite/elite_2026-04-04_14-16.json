@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-04-04_14-24",
+    "timestamp": "2026-04-04_14-16",
     "avg_fitness": 0.05886431831350379,
     "avg_pnl": 0.0002586454431315273,
     "cv": 0.7083743418178489,
@@ -9,7 +9,7 @@
       "liquidity": 0.5,
       "participation": 0.6571428571428573,
       "label": "multi_regime_elite",
-      "timestamp": 1775312642
+      "timestamp": 1775312198
     },
     "strategies_count": 7,
     "fitness_mode": "Scalable"

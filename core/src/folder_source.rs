@@ -13,7 +13,7 @@ fn extract_symbol(path: &Path) -> String {
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or_default();
-    
+
     file_name
         .to_lowercase()
         .replace("_5m_clean.csv", "")
@@ -143,9 +143,17 @@ impl FolderCandleSource {
         for entry in entries {
             if let Ok(entry) = entry {
                 let path = entry.path();
-                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_ascii_lowercase();
+                let file_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_default()
+                    .to_ascii_lowercase();
                 if file_name.ends_with(".csv") && file_name != "results.csv" {
-                    let symbol = path.file_stem().and_then(|s| s.to_str()).unwrap_or("UNKNOWN").to_uppercase();
+                    let symbol = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("UNKNOWN")
+                        .to_uppercase();
                     symbols.push(symbol);
                 }
             }

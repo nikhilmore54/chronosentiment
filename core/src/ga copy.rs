@@ -633,21 +633,44 @@ pub enum FitnessMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ScenarioCapability {
-    Executable,   // Symbol for which full order-matching is valid (Cash/Futs)
-    ContextOnly,  // Index or data-only stream for multi-agent perception
-}
-
-impl ScenarioCapability {
-    pub fn is_executable(&self) -> bool {
-        matches!(self, ScenarioCapability::Executable)
-    }
-}
+// Moved to header
 
 impl Default for ScenarioCapability {
     fn default() -> Self {
         ScenarioCapability::Executable
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+pub enum SignalType {
+    #[default]
+    WAIT,
+    BUY,
+    SELL,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DecisionReport {
+    pub trade_id: u64,
+    pub symbol: String,
+    pub timestamp: u64,
+    pub signal: SignalType,
+    pub confidence: f64,
+    pub expected_return: f64,
+    pub horizon_bars: u64,
+    pub participation: f64,
+    pub regime: MarketRegime,
+    pub consistency: usize,
+    pub conviction_score: f64,
+    pub agreement_strength: String,
+    pub voters: String,
+    pub execution_feasible: bool,
+    pub execution_score: f64,
+    pub execution_threshold: f64,
+    pub threshold: f64,
+    pub realized_return: Option<f64>,
+    pub capture_efficiency: Option<f64>,
+    pub efficiency_label: String,
 }
 
 pub fn determine_scenario_capability(name: &str) -> ScenarioCapability {
@@ -2205,6 +2228,8 @@ pub fn evaluate_ensemble_strategy(
 
     if let Some(outcome) = ga_simulate_round_trip_at_cursor(
         &ensemble[0], // Proxy for execution config
+        &ensemble[0].base_edge.to_string(),
+        scenario_name,
         signal_events,
         execution_events,
         config,
@@ -3231,7 +3256,6 @@ ConvictionOutcome {
 }
 
 pub(crate) fn ga_simulate_round_trip_at_cursor(
-    strategy: &Strategy,
     signal_events: &[crate::MarketEvent],
     execution_events: &[crate::MarketEvent],
     config: &GaConfig,
@@ -3281,7 +3305,6 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         (market_price, false)
     };
 
-    let strategy_id = strategy_to_id(strategy);
     let entry_order_id = format!("{}_t{}_entry", strategy_id, trade_idx);
     let exit_order_id = format!("{}_t{}_exit", strategy_id, trade_idx);
 
@@ -3493,8 +3516,6 @@ pub(crate) fn evaluate_strategy(
         );
     }
     let strategy_id = strategy_to_id(strategy);
-    let mut sum_actual_slippage = 0.0;
-    let mut sum_expected_slippage = 0.0;
     let capability = determine_scenario_capability(scenario_name);
 
     // --- Phase 9: Environment Gating (Scenario-Level) ---
@@ -3598,7 +3619,7 @@ pub(crate) fn evaluate_strategy(
 
     // Phase 8.8 Aggregators
     let mut sum_expected_slippage = 0.0;
-    let mut_actual_slippage = 0.0;
+    let mut sum_actual_slippage = 0.0;
     let mut max_pnl_in_scenario: f64 = 0.0;
     let mut pnl_from_tp_scenario: f64 = 0.0;
     let mut pnl_from_sl_scenario: f64 = 0.0;
@@ -3779,10 +3800,20 @@ pub(crate) fn evaluate_strategy(
         } else {
             1.0
         };
+        
+        if credibility > metrics.max_signature_credibility { metrics.max_signature_credibility = credibility; }
+        
+        conv.conviction_score *= stat_confidence * stability_factor * credibility;
 
-        conv.edge_weight = (stat_confidence * stability_factor * credibility).clamp(0.2, 2.5);
+        metrics.exec_passed_count += 1;
+        metrics.sum_e_score += e_score;
+        let had_organic_signals_final = !valid_signals.is_empty();
+        if had_organic_signals_final {
+            had_organic_signals = true;
+        }
         valid_signals.push((signal_idx, conv, dom, "RELATIVE_CANDIDATE", e_score, source, signature));
     }
+
 
     // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
 
@@ -4208,6 +4239,8 @@ pub(crate) fn evaluate_strategy(
         // --- EXECUTION ---
         if let Some(outcome) = ga_simulate_round_trip_at_cursor(
             strategy,
+            &strategy_id,
+            scenario_name,
             signal_events,
             execution_events,
             config,
@@ -4339,14 +4372,13 @@ pub(crate) fn evaluate_strategy(
 
             let expected_slippage = conviction.conviction_score.abs() * 0.1;
             sum_expected_slippage += expected_slippage;
-            let actual_slippage = outcome.total_slippage_bps;
-            sum_actual_slippage += actual_slippage;
+            sum_actual_slippage += outcome.total_slippage_bps;
             
             max_trade_pnl_scenario = max_trade_pnl_scenario.max(trade_pnl);
             max_pnl_in_scenario = max_pnl_in_scenario.max(outcome.pnl);
             scenario_pnls.push(trade_pnl);
             
-            // Phase D.1: Metrics Propagation
+            // Phase D.1.2: Metrics Propagation
             metrics.trade_qualities.push(outcome.edge_quality);
             metrics.sum_realized_pnl += trade_pnl;
             metrics.sum_expected_pnl += outcome.expected_move;
@@ -5126,6 +5158,7 @@ fn aggregate_strategy_reports_inner(
 
     let active_scenarios: f64 = evaluations.iter().filter(|e| e.trade_count > 0).count() as f64;
 
+
     // --- DEBUG (MANDATORY) ---
     println!("SCENARIO_DIST: {:?}", scenario_results);
 
@@ -5133,7 +5166,7 @@ fn aggregate_strategy_reports_inner(
     // With a single scenario, std dev is legitimately zero; weighted mean can also differ from
     // `scenario_results[0]` by floating-point rounding — do not require bitwise equality.
     if total_scenarios > 1.0 {
-        let tol = 1e-9_f64.max(global_avg_pnl.abs() * 12.0);
+        let tol = 1e-9_f64.max(global_avg_pnl.abs() * 12);
         assert!(
             std_dev > 1e-18
                 || scenario_results
@@ -5364,6 +5397,7 @@ fn aggregate_strategy_reports_inner(
     // --- PHASE C.3b: REMOVAL OF HARD FLOOR ---
     // We allow negative fitness to persist to provide a gradient for selection ranking.
     // Binary floors (1e-6) are deleted here to restore causality in learning.
+
     // TODO: Remove clamp once adaptive scaling stabilizes
     final_fitness = final_fitness.clamp(-2.0, 2.0);
     let raw_selection_fitness = final_fitness;
@@ -5762,7 +5796,6 @@ fn aggregate_strategy_reports_inner(
     Some((report, mean_depth))
 }
 
-
 // SignalType moved to header.
 
 /// Phase 10.6: Decision Evaluation Mode
@@ -5820,6 +5853,8 @@ pub fn evaluate_current_status(
     // Use the ESE RoundTrip logic with realigned signature
     let outcome = crate::ga_simulate_round_trip_at_cursor(
         strategy,
+        "live_strategy",
+        symbol,
         &events,
         &events,
         config,
@@ -6035,7 +6070,7 @@ pub fn evaluate_consensus_status(
             signal: SignalType::WAIT,
             confidence: 0.0,
             expected_return: 0.0,
-            horizon_bars: config.max_hold_bars as u64,
+            horizon_bars: config.max_hold_bars,
             participation: conviction_guard.norm_vol_score,
             regime: conviction_guard.regime,
             consistency: consistency_count,
@@ -6106,6 +6141,8 @@ pub fn evaluate_consensus_status(
 
         let outcome = crate::ga_simulate_round_trip_at_cursor(
             &voter.strategy,
+            "consensus_voter",
+            symbol,
             &events,
             &events,
             config,
@@ -6800,7 +6837,7 @@ mod tests {
         evals_a.push(mock_scenario_eval(0.0, 0, 0, 0.45));
         let config = get_default_ga_config();
         let agg_a = aggregate_strategy_reports_with_top_k(evals_a, &config, None, 0).unwrap();
-        
+
         // Strategy B: low participation (0.3), higher average active pnl
         let mut evals_b = Vec::new();
         for _ in 0..3 { evals_b.push(mock_scenario_eval(0.03, 5, 5, 0.45)); }
@@ -7266,3 +7303,4 @@ mod tests {
         assert!(agg_opt.fitness > agg_low.fitness, "Optimal entropy (0.45) should beat low entropy (0.10)");
     }
 }
+    

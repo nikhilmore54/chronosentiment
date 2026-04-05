@@ -1,7 +1,7 @@
-use yahoo_finance_api as yahoo;
-use crate::market_adapter::Candle;
 use crate::data_source::CandleSource;
+use crate::market_adapter::Candle;
 use async_trait::async_trait;
+use yahoo_finance_api as yahoo;
 
 pub struct YahooCandleSource {
     pub symbol: String,
@@ -39,14 +39,17 @@ impl CandleSource for YahooCandleSource {
         // MODIFIED: Compute range from interval to guarantee >= min_required_candles bars
         // Yahoo constraints: 1m→7d max, 5m/15m→60d max, 1h→730d max, 1d→unlimited
         let range = match self.interval.as_str() {
-            "1m"  => "5d",   // 5d × 24h × 60m = 7200 bars (crypto 24/7)
-            "5m"  => "1mo",  // 1mo × 24h × 12 = 8640 bars
-            "15m" => "1mo",  // 1mo × 24h × 4  = 2880 bars
-            "1h"  => "3mo",  // 3mo × 24h      = 2160 bars
-            "1d"  => "6mo",  // 6mo            ≈ 125 trading days
-            _     => "1mo",
+            "1m" => "5d",   // 5d × 24h × 60m = 7200 bars (crypto 24/7)
+            "5m" => "1mo",  // 1mo × 24h × 12 = 8640 bars
+            "15m" => "1mo", // 1mo × 24h × 4  = 2880 bars
+            "1h" => "3mo",  // 3mo × 24h      = 2160 bars
+            "1d" => "6mo",  // 6mo            ≈ 125 trading days
+            _ => "1mo",
         };
-        match connector.get_quote_range(&self.symbol, &self.interval, range).await {
+        match connector
+            .get_quote_range(&self.symbol, &self.interval, range)
+            .await
+        {
             Ok(response) => {
                 match response.quotes() {
                     Ok(quotes) => {
@@ -90,7 +93,10 @@ impl CandleSource for YahooCandleSource {
                                 self.symbol, self.interval
                             );
                         } else {
-                            eprintln!("ERROR: Yahoo ({} @ {}): Parse error: {:?}", self.symbol, self.interval, e);
+                            eprintln!(
+                                "ERROR: Yahoo ({} @ {}): Parse error: {:?}",
+                                self.symbol, self.interval, e
+                            );
                         }
                         Vec::new()
                     }
@@ -106,7 +112,10 @@ impl CandleSource for YahooCandleSource {
                         self.symbol, self.interval, self.interval
                     );
                 } else {
-                    eprintln!("ERROR: Yahoo ({} @ {}): Network error: {:?}", self.symbol, self.interval, e);
+                    eprintln!(
+                        "ERROR: Yahoo ({} @ {}): Network error: {:?}",
+                        self.symbol, self.interval, e
+                    );
                 }
                 Vec::new()
             }

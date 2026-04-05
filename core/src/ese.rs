@@ -1,4 +1,7 @@
-use crate::{CreateOrder, ExecutionMode, MarketEvent, MarketEventType, OrderOutcome, Side, SimEvent, SimulationResult};
+use crate::{
+    CreateOrder, ExecutionMode, MarketEvent, MarketEventType, OrderOutcome, Side, SimEvent,
+    SimulationResult,
+};
 use std::collections::HashMap;
 
 pub const FIXED_LATENCY: u64 = 5;
@@ -25,7 +28,11 @@ pub fn run_simulation_harness(
     create_orders: Vec<CreateOrder>,
 ) -> (String, SimulationResult, String) {
     let result = run_simulation_with_data(mode, market_events, create_orders);
-    ("OK".to_string(), result, "System state fetched successfully".to_string())
+    (
+        "OK".to_string(),
+        result,
+        "System state fetched successfully".to_string(),
+    )
 }
 
 pub fn run_simulation_with_data(
@@ -75,7 +82,7 @@ pub fn run_simulation_with_data(
                     outcome.arrival_time = order.timestamp;
                     outcome.queue_ahead = 0;
                 }
-                
+
                 let enter_seq = next_seq_id;
                 events_log.push(SimEvent::OrderEnteredQueue {
                     sequence_id: enter_seq,
@@ -87,7 +94,7 @@ pub fn run_simulation_with_data(
                 });
                 next_seq_id += 1;
                 last_seq_for_order.insert(order.order_id.clone(), enter_seq);
-                
+
                 let fill_seq = next_seq_id;
                 events_log.push(SimEvent::PartialFill {
                     sequence_id: fill_seq,
@@ -181,7 +188,7 @@ pub fn run_simulation_with_data(
                         }
                         active_order_ids.push(order.order_id.clone());
                         q_ahead_map.insert(order.order_id.clone(), qa);
-                        
+
                         let enter_seq = next_seq_id;
                         events_log.push(SimEvent::OrderEnteredQueue {
                             sequence_id: enter_seq,
@@ -195,7 +202,9 @@ pub fn run_simulation_with_data(
                         last_seq_for_order.insert(order.order_id.clone(), enter_seq);
                     }
                     InternalEvent::Market(me) => {
-                        if reference_price == 0 { reference_price = me.price; }
+                        if reference_price == 0 {
+                            reference_price = me.price;
+                        }
                         events_log.push(SimEvent::MarketEvent {
                             sequence_id: next_seq_id,
                             parent_sequence_id: None,
@@ -220,29 +229,33 @@ pub fn run_simulation_with_data(
                         if let MarketEventType::Trade = me.subtype {
                             // 🔴 HARDER liquidity constraint (was 0.3 → now 0.2)
                             let mut remaining_liquidity = (me.quantity as f64 * 0.5) as u64;
-                        
+
                             for id in &active_order_ids {
-                                let order_intent = if let Some(o) = create_orders.iter().find(|o| o.order_id == *id) {
+                                let order_intent = if let Some(o) =
+                                    create_orders.iter().find(|o| o.order_id == *id)
+                                {
                                     o
                                 } else {
                                     continue;
                                 };
-                        
+
                                 // ✅ STRICT LIMIT CHECK (already correct)
                                 let price_ok = match order_intent.side {
                                     Side::Buy => order_intent.price >= me.price,
                                     Side::Sell => order_intent.price <= me.price,
                                 };
-                                if !price_ok { continue; }
-                        
+                                if !price_ok {
+                                    continue;
+                                }
+
                                 let qa = if let Some(q) = q_ahead_map.get_mut(id) {
                                     q
                                 } else {
                                     continue;
                                 };
-                        
+
                                 let parent_seq = *last_seq_for_order.get(id).unwrap_or(&0);
-                        
+
                                 // Bypass experimental anchor validation (temporary fix to ensure GA makes entries)
                                 // let dynamic_anchor = reference_price as f64 + drift;
                                 // let anchor_buffer = (dynamic_anchor * 0.0001).max(1.0);
@@ -250,23 +263,24 @@ pub fn run_simulation_with_data(
                                 //     Side::Buy => (me.price as f64) <= dynamic_anchor + anchor_buffer,
                                 //     Side::Sell => (me.price as f64) >= dynamic_anchor - anchor_buffer,
                                 // };
-                        
+
                                 if remaining_liquidity == 0 {
                                     continue;
                                 }
-                        
+
                                 // 🔴 Deterministic RNG (unchanged but reused)
-                                let mut fill_hasher = std::collections::hash_map::DefaultHasher::new();
+                                let mut fill_hasher =
+                                    std::collections::hash_map::DefaultHasher::new();
                                 use std::hash::Hasher;
                                 fill_hasher.write(id.as_bytes());
                                 fill_hasher.write_u64(me.exchange_ts);
                                 let fill_roll = (fill_hasher.finish() % 1000) as f64 / 1000.0;
-                        
+
                                 // 🔴 APPLY probability EARLY (before queue clear)
                                 if fill_roll > order_intent.fill_probability {
                                     continue;
                                 }
-                        
+
                                 // 🔴 QUEUE CLEARING WITH FRICTION (NEW)
                                 if *qa > 0 {
                                     let penetration_factor = 0.6; // NEW
@@ -276,7 +290,7 @@ pub fn run_simulation_with_data(
 
                                     *qa = qa.saturating_sub(consumed);
                                     remaining_liquidity -= consumed;
-                        
+
                                     let prog_seq = next_seq_id;
                                     events_log.push(SimEvent::QueueProgression {
                                         sequence_id: prog_seq,
@@ -287,37 +301,40 @@ pub fn run_simulation_with_data(
                                     });
                                     next_seq_id += 1;
                                     last_seq_for_order.insert(id.clone(), prog_seq);
-                        
+
                                     if let Some(outcome) = order_outcomes.get_mut(id) {
                                         outcome.queue_ahead = *qa;
                                     }
-                        
+
                                     // 🔴 CRITICAL: NEVER fill in same tick after queue clearing
                                     continue;
                                 }
-                        
+
                                 // 🔴 ONLY fill if queue fully cleared BEFORE this tick
                                 if *qa == 0 && remaining_liquidity > 0 {
-                                    let current_parent_seq = *last_seq_for_order.get(id).unwrap_or(&0);
-                        
+                                    let current_parent_seq =
+                                        *last_seq_for_order.get(id).unwrap_or(&0);
+
                                     if let Some(outcome) = order_outcomes.get_mut(id) {
                                         if outcome.remaining_quantity > 0 {
-                        
-                                            let fill = remaining_liquidity.min(outcome.remaining_quantity);
-                        
+                                            let fill =
+                                                remaining_liquidity.min(outcome.remaining_quantity);
+
                                             // 🔴 SECOND probability check (optional but realistic)
                                             // let fill_roll_2 = ((fill_hasher.finish() >> 10) % 1000) as f64 / 1000.0;
                                             // if fill_roll_2 > order_intent.fill_probability {
                                             //     continue;
                                             // }
-                        
+
                                             // 🔴 SLIPPAGE + EXECUTION LOGGING (NEW)
-                                            let mut slippage_hasher = std::collections::hash_map::DefaultHasher::new();
+                                            let mut slippage_hasher =
+                                                std::collections::hash_map::DefaultHasher::new();
                                             slippage_hasher.write(id.as_bytes());
                                             slippage_hasher.write_u64(me.exchange_ts);
                                             slippage_hasher.write_u64(outcome.filled_quantity);
-                                            let slippage_roll = (slippage_hasher.finish() % 100) as f64 / 100.0;
-                                            
+                                            let slippage_roll =
+                                                (slippage_hasher.finish() % 100) as f64 / 100.0;
+
                                             // Spread ≈ 0.01% of price
                                             let spread = (me.price as f64 * 0.0001).max(1.0);
                                             let slippage = (spread * slippage_roll) as u64;
@@ -330,14 +347,15 @@ pub fn run_simulation_with_data(
                                             outcome.filled_quantity += fill;
                                             outcome.remaining_quantity -= fill;
                                             remaining_liquidity -= fill;
-                        
+
                                             let side_multiplier = match order_intent.side {
                                                 Side::Buy => -1i64,
                                                 Side::Sell => 1i64,
                                             };
-                                            pnl += side_multiplier * (fill * execution_price) as i64;
+                                            pnl +=
+                                                side_multiplier * (fill * execution_price) as i64;
                                             total_trades += 1;
-                        
+
                                             let fill_seq_current = next_seq_id;
                                             events_log.push(SimEvent::PartialFill {
                                                 sequence_id: fill_seq_current,
@@ -349,7 +367,7 @@ pub fn run_simulation_with_data(
                                             });
                                             next_seq_id += 1;
                                             last_seq_for_order.insert(id.clone(), fill_seq_current);
-                        
+
                                             if outcome.remaining_quantity == 0 {
                                                 let final_fill_seq = next_seq_id;
                                                 events_log.push(SimEvent::OrderFilled {
@@ -359,12 +377,13 @@ pub fn run_simulation_with_data(
                                                     timestamp: t,
                                                 });
                                                 next_seq_id += 1;
-                                                last_seq_for_order.insert(id.clone(), final_fill_seq);
+                                                last_seq_for_order
+                                                    .insert(id.clone(), final_fill_seq);
                                             }
                                         }
                                     }
                                 }
-                        
+
                                 if remaining_liquidity == 0 {
                                     // allow small chance to still fill (edge liquidity)
                                     if fill_roll < 0.1 {
@@ -396,32 +415,46 @@ pub fn parse_market_event(json_str: &str) -> MarketEvent {
     let mut side = None;
     let mut exchange_ts = 0;
 
-    for part in json_str.trim_start_matches('{').trim_end_matches('}').split(',') {
+    for part in json_str
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .split(',')
+    {
         let parts: Vec<&str> = part.split(':').collect();
         if parts.len() == 2 {
             let key = parts[0].trim().trim_matches('"');
             let value = parts[1].trim().trim_matches('"').trim();
 
             match key {
-                "subtype" => subtype = match value {
-                    "NEW_ORDER" => MarketEventType::NewOrder,
-                    "TRADE" => MarketEventType::Trade,
-                    "CANCEL" => MarketEventType::Cancel,
-                    _ => MarketEventType::NewOrder,
-                },
+                "subtype" => {
+                    subtype = match value {
+                        "NEW_ORDER" => MarketEventType::NewOrder,
+                        "TRADE" => MarketEventType::Trade,
+                        "CANCEL" => MarketEventType::Cancel,
+                        _ => MarketEventType::NewOrder,
+                    }
+                }
                 "price" => price = value.parse::<u64>().unwrap_or(0),
                 "quantity" => quantity = value.parse::<u64>().unwrap_or(0),
-                "side" => side = Some(match value {
-                    "BUY" => Side::Buy,
-                    "SELL" => Side::Sell,
-                    _ => Side::Buy,
-                }),
+                "side" => {
+                    side = Some(match value {
+                        "BUY" => Side::Buy,
+                        "SELL" => Side::Sell,
+                        _ => Side::Buy,
+                    })
+                }
                 "exchange_ts" => exchange_ts = value.parse::<u64>().unwrap_or(0),
                 _ => {}
             }
         }
     }
-    MarketEvent { subtype, price, quantity, side, exchange_ts }
+    MarketEvent {
+        subtype,
+        price,
+        quantity,
+        side,
+        exchange_ts,
+    }
 }
 
 pub fn parse_create_order(json_str: &str) -> CreateOrder {
@@ -432,7 +465,11 @@ pub fn parse_create_order(json_str: &str) -> CreateOrder {
     let mut timestamp = 0;
     let mut fill_probability = 1.0;
 
-    for part in json_str.trim_start_matches('{').trim_end_matches('}').split(',') {
+    for part in json_str
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .split(',')
+    {
         let parts: Vec<&str> = part.split(':').collect();
         if parts.len() == 2 {
             let key = parts[0].trim().trim_matches('"');
@@ -440,11 +477,13 @@ pub fn parse_create_order(json_str: &str) -> CreateOrder {
 
             match key {
                 "order_id" => order_id = value.to_string(),
-                "side" => side = match value {
-                    "BUY" => Side::Buy,
-                    "SELL" => Side::Sell,
-                    _ => Side::Buy,
-                },
+                "side" => {
+                    side = match value {
+                        "BUY" => Side::Buy,
+                        "SELL" => Side::Sell,
+                        _ => Side::Buy,
+                    }
+                }
                 "price" => price = value.parse::<u64>().unwrap_or(0),
                 "quantity" => quantity = value.parse::<u64>().unwrap_or(0),
                 "ts" => timestamp = value.parse::<u64>().unwrap_or(0),
@@ -453,5 +492,12 @@ pub fn parse_create_order(json_str: &str) -> CreateOrder {
             }
         }
     }
-    CreateOrder { order_id, side, price, quantity, timestamp, fill_probability }
+    CreateOrder {
+        order_id,
+        side,
+        price,
+        quantity,
+        timestamp,
+        fill_probability,
+    }
 }

@@ -12,23 +12,53 @@ mod tests {
         let sim = run_simulation(ExecutionMode::Real);
         for event in &sim.events {
             match event {
-                SimEvent::OrderIntent { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_none(), "OrderIntent must be a root (None parent)");
+                SimEvent::OrderIntent {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_none(),
+                        "OrderIntent must be a root (None parent)"
+                    );
                 }
-                SimEvent::MarketEvent { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_none(), "MarketEvent must be a root (None parent)");
+                SimEvent::MarketEvent {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_none(),
+                        "MarketEvent must be a root (None parent)"
+                    );
                 }
-                SimEvent::OrderEnteredQueue { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_some(), "OrderEnteredQueue must have a parent");
+                SimEvent::OrderEnteredQueue {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_some(),
+                        "OrderEnteredQueue must have a parent"
+                    );
                 }
-                SimEvent::QueueProgression { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_some(), "QueueProgression must have a parent");
+                SimEvent::QueueProgression {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_some(),
+                        "QueueProgression must have a parent"
+                    );
                 }
-                SimEvent::PartialFill { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_some(), "PartialFill must have a parent");
+                SimEvent::PartialFill {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_some(),
+                        "PartialFill must have a parent"
+                    );
                 }
-                SimEvent::OrderFilled { parent_sequence_id, .. } => {
-                    assert!(parent_sequence_id.is_some(), "OrderFilled must have a parent");
+                SimEvent::OrderFilled {
+                    parent_sequence_id, ..
+                } => {
+                    assert!(
+                        parent_sequence_id.is_some(),
+                        "OrderFilled must have a parent"
+                    );
                 }
             }
         }
@@ -68,11 +98,14 @@ mod tests {
     fn test_chain_determinism() {
         let sim1 = run_simulation(ExecutionMode::Real);
         let sim2 = run_simulation(ExecutionMode::Real);
-        
+
         assert_eq!(sim1.events.len(), sim2.events.len());
         for i in 0..sim1.events.len() {
             assert_eq!(sim1.events[i].sequence_id(), sim2.events[i].sequence_id());
-            assert_eq!(sim1.events[i].parent_sequence_id(), sim2.events[i].parent_sequence_id());
+            assert_eq!(
+                sim1.events[i].parent_sequence_id(),
+                sim2.events[i].parent_sequence_id()
+            );
         }
     }
 
@@ -97,10 +130,16 @@ mod tests {
         for event in &sim.events {
             let mut visited = std::collections::HashSet::new();
             let mut curr = Some(event.sequence_id());
-            
+
             while let Some(sid) = curr {
-                assert!(visited.insert(sid), "Causal loop detected at seq_id {}", sid);
-                curr = sim.events.iter()
+                assert!(
+                    visited.insert(sid),
+                    "Causal loop detected at seq_id {}",
+                    sid
+                );
+                curr = sim
+                    .events
+                    .iter()
                     .find(|e| e.sequence_id() == sid)
                     .and_then(|e| e.parent_sequence_id());
             }

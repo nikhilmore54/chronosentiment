@@ -1,10 +1,10 @@
+use chronosentiment_core::edge_decay::run_edge_decay;
+use chronosentiment_core::ga::GaConfig;
+use chronosentiment_core::pipeline::run_pipeline_with_config;
 use clap::Parser;
+use prettytable::{Cell, Row, Table};
 use std::fs::File;
 use std::io::{self, Write};
-use prettytable::{Table, Row, Cell};
-use chronosentiment_core::edge_decay::run_edge_decay;
-use chronosentiment_core::pipeline::{run_pipeline_with_config};
-use chronosentiment_core::ga::GaConfig;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -50,7 +50,10 @@ fn main() -> io::Result<()> {
     let initial_signal_snapshot = run_pipeline_with_config(&args.input, ga_config);
 
     if initial_signal_snapshot.signals.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::Other, "GA pipeline produced no signals. Check your input data."));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "GA pipeline produced no signals. Check your input data.",
+        ));
     }
 
     // 2. Run the edge decay comparative analysis
@@ -80,13 +83,22 @@ fn main() -> io::Result<()> {
 
     // 4. Output to CSV
     let mut csv_file = File::create(&args.csv)?;
-    writeln!(csv_file, "model,avg_pnl,total_pnl,win_rate,edge_retention,eff_rate,band,decay_pct")?;
+    writeln!(
+        csv_file,
+        "model,avg_pnl,total_pnl,win_rate,edge_retention,eff_rate,band,decay_pct"
+    )?;
     for res in &results {
         writeln!(
             csv_file,
             "{:?},{:.6},{:.6},{:.2},{:.4},{:.4},{:?},{:.4}",
-            res.model, res.avg_pnl, res.total_pnl, res.win_rate, res.edge_retention,
-            res.effective_signal_rate, res.tradability_band, res.edge_decay_pct
+            res.model,
+            res.avg_pnl,
+            res.total_pnl,
+            res.win_rate,
+            res.edge_retention,
+            res.effective_signal_rate,
+            res.tradability_band,
+            res.edge_decay_pct
         )?;
     }
     println!("✅ CSV report saved to {}", args.csv);

@@ -7,7 +7,8 @@ use chronosentiment_core::strategy_ranking::{
 use chronosentiment_core::tick_replay::{ReplayConfig, ReplayMode, TickReplayEngine};
 
 fn main() {
-    let jsonl_path = std::env::var("BINANCE_JSONL").unwrap_or_else(|_| "test_assets/binance_ticks.jsonl".to_string());
+    let jsonl_path = std::env::var("BINANCE_JSONL")
+        .unwrap_or_else(|_| "test_assets/binance_ticks.jsonl".to_string());
     let top_k = std::env::var("TOP_K")
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
@@ -116,7 +117,10 @@ fn main() {
     ) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("Failed to reload replay file {} for pnl overlay: {}", jsonl_path, e);
+            eprintln!(
+                "Failed to reload replay file {} for pnl overlay: {}",
+                jsonl_path, e
+            );
             return;
         }
     };
@@ -173,7 +177,8 @@ fn main() {
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(20);
-    let (_trades, pnl) = run_pnl_overlay(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks);
+    let (_trades, pnl) =
+        run_pnl_overlay(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks);
     println!(
         "PNL_OVERLAY: trades={} win_rate={:.2}% avg_pnl={:.6} total_pnl={:.6} edge_retention={:.6}",
         pnl.total_trades,
