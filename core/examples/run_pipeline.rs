@@ -233,12 +233,16 @@ fn main() {
             // --- PHASE 13: DIVERSIFIED ENSEMBLE SELECTION ---
             // 1. Gather all unique evaluations from the final population
             let mut final_evals = Vec::new();
-            if let Some(evs) = chronosentiment_core::ga::evaluate_population_scoped(
+            let (evals_opt, _best) = chronosentiment_core::ga::evaluate_population_scoped(
                 &ga_res.final_population,
                 &config,
                 &scenarios,
                 ga_res.final_generation_best.fitness as usize % 100,
-            ) {
+                1.0, 
+                ga_res.final_population.len(),
+            );
+            
+            if let Some(evs) = evals_opt {
                 for (i, e) in evs.into_iter().enumerate() {
                     let rank_score = chronosentiment_core::ga::ga_scenario_rank_score(&e);
                     final_evals.push((i, rank_score, e));
@@ -269,8 +273,8 @@ fn main() {
             let robustness =
                 evaluate_ensemble_robustness(&ensemble_strategies, &config, &scenarios, 0);
 
-            let baseline_fitness = robustness.regime_fitness[0]; // Regime C
-            let jitter_fitness = robustness.regime_fitness[2]; // Regime D (index changed in evaluate_ensemble_robustness)
+            let baseline_fitness = *robustness.regime_fitness.get(0).unwrap_or(&0.0); // Regime C
+            let jitter_fitness = *robustness.regime_fitness.get(2).unwrap_or(&0.0); // Regime D
             let path_drift =
                 ((jitter_fitness - baseline_fitness).abs() / baseline_fitness.max(1e-9)) * 100.0;
             let pressure =
