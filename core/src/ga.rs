@@ -1890,7 +1890,7 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
             let report = compute_consensus_alpha(&elite_genomes, scenario, &config);
             for sig in report.top_signals {
                 let identity = SignalIdentity {
-                    bucket_ts: sig.signal_timestamp / 60,
+                    bucket_ts: sig.signal_timestamp / 500,
                     direction: if sig.alpha_score > 0.0 {
                         Decision::BUY
                     } else {
