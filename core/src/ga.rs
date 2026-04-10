@@ -5613,22 +5613,30 @@ pub(crate) fn evaluate_strategy(
         }
 
         if current_idx < busy_until {
-            continue;
+            // 🔥 TEMP: disable execution lock to test concurrency
+            // continue; 
         }
 
         // --- SELECTION GATES (CLEAN + COMPLETE) ---
 
-        // 1. Top-K selection (core pressure)
-        let is_top_candidate = valid_signals
+        // 1. Core Selection (Check if it's in the expanded candidate pool)
+        let pass = valid_signals
             .iter()
-            .take(5)
+            .take(30)
             .any(|(idx, _, _, _, _, _, _)| *idx == current_idx);
 
-        // 2. Controlled exploration (only when stagnating)
+        // 2. Exploration Bypass (Probabilistic soft-pass)
+        let mut is_valid_signal = pass;
+        if !pass {
+            if rand::random::<f64>() < 0.25 {
+                is_valid_signal = true;
+            }
+        }
+
         let force_explore = rand::random::<f64>() < 0.08;
 
         // soften rejection instead of killing
-        let should_execute = is_top_candidate || force_explore || total_trades < 3; // 🔥 ensure minimum participation
+        let should_execute = is_valid_signal || force_explore || total_trades < 3; // 🔥 ensure minimum participation
         funnel_after_signal_filter += 1;
         // 3. Use selected conviction (global or local)
         let final_conviction = conviction.clone();
