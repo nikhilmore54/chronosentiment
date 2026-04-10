@@ -9,8 +9,8 @@ use std::collections::HashSet;
 fn main() {
     let mut rng = StdRng::seed_from_u64(42);
     let mut config = GaConfig::default();
-    config.population_size = 20;
-    config.generations = 15; // Phase D.1.14: 15 generations to watch alpha emerge
+    config.population_size = 50;
+    config.generations = 50; // Phase Discovery: 50 generations
     config.preserve_top_k = 5;
 
     println!("--- 🧪 VALIDATION: Phase D.1.13.5 & D.1.14 Stress Test ---");
@@ -57,7 +57,7 @@ fn main() {
 
     // 3. Configure Gates
     config.initial_queue_threshold = 50;
-    std::env::set_var("GA_DEBUG", "1"); // Trace Bootstrap & Purity
+    std::env::set_var("GA_DEBUG", "0");
 
     println!("🚀 Launching GA Evolution (15 Generations)...");
     let result = run_ga_evolution(config, &scenarios);

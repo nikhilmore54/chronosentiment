@@ -1915,51 +1915,45 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
         let mut final_top_signals = Vec::new();
         for (identity, history) in registry {
             let count = history.len();
-            if count == 0 {
+            
+            // 🛠️ 1. Signal Persistence (Stabilizer)
+            // Require at least 2 independent strategies to converge on this signal
+            let min_support = 2;
+            if count < min_support {
                 continue;
             }
 
-            // 1. Persistence Factor (Non-linear)
-            let persistence_factor = (count as f64 / 5.0).powf(1.2);
-
             // 2. Persistence Quality (Mean Alpha)
-            let persistence_quality =
-                history.iter().map(|s| s.alpha_score).sum::<f64>() / count as f64;
+            let persistence_quality = history.iter().map(|s| s.alpha_score).sum::<f64>() / count as f64;
 
-            // 3. Robust Stability Factor (CV-based clamping)
+            // 🛠️ 2. Temporal Stability Weight (Clustering)
             let mut stability_factor = 1.0;
-            if count > 1 {
-                let mean = persistence_quality;
-                let variance = history
-                    .iter()
-                    .map(|s| (s.alpha_score - mean).powi(2))
-                    .sum::<f64>()
-                    / count as f64;
-                let std_dev = variance.sqrt();
-                let cv = (std_dev / (mean.abs() + 1e-6)).clamp(0.0, 5.0);
-                stability_factor = (-1.5 * cv).exp();
-            }
+            let mean_idx = history.iter().map(|s| s.signal_idx as f64).sum::<f64>() / count as f64;
+            let variance_idx = history.iter().map(|s| (s.signal_idx as f64 - mean_idx).powi(2)).sum::<f64>() / count as f64;
+            let std_dev_idx = variance_idx.sqrt();
+            
+            // Assuming default window ~500
+            let temporal_stability = (1.0 - (std_dev_idx / 500.0)).clamp(0.0, 1.0);
+            stability_factor = 0.7 + 0.3 * temporal_stability;
 
             let mut aggregated = history[0].clone();
-            aggregated.alpha_score = persistence_quality * stability_factor * persistence_factor;
-            aggregated.temporal_stability = stability_factor;
+            
+            // 🛠️ 3. Cap Runaway Scores
+            let raw_alpha = persistence_quality * stability_factor;
+            aggregated.alpha_score = raw_alpha.tanh();
+
+            aggregated.temporal_stability = temporal_stability;
             aggregated.persistence_count = count;
 
-            // Penalize or reject low persistence
-            if count < 2 {
-                aggregated.alpha_score *= 0.5;
-            }
-
-            if aggregated.alpha_score > 0.4 {
-                aggregated.consensus_label = if aggregated.alpha_score > 0.7 {
-                    "🏆 TEMPORAL ALPHA"
-                } else {
-                    "stable signal"
-                }
-                .to_string();
+            if aggregated.alpha_score > 0.1 {
+                aggregated.consensus_label = "🔥 TOP ALPHA SIGNAL".to_string();
                 final_top_signals.push(aggregated);
             }
         }
+
+        // Global Rank Step: Extract Top N (5-10)
+        final_top_signals.sort_by(|a, b| b.alpha_score.total_cmp(&a.alpha_score));
+        final_top_signals.truncate(10);
 
         final_top_signals.sort_by(|a, b| b.alpha_score.total_cmp(&a.alpha_score));
 
@@ -8622,25 +8616,9 @@ pub fn compute_consensus_alpha(
         let count = votes.len();
         let support_ratio = count as f64 / total_strategies as f64;
 
-        // 1. Participation Gate
-        if support_ratio < 0.05 {
-            continue;
-        }
-
-        // 2. Conviction Factor (Smooth suppression)
-        let mean_abs_conviction =
-            votes.iter().map(|v| v.confidence.abs()).sum::<f64>() / count as f64;
-        let conviction_factor = ((mean_abs_conviction - 0.05) / 0.95)
-            .clamp(0.0, 1.0)
-            .powf(1.2);
-
+        // --- NEW HYBRID RECOMMENDATION LAYER (Union Mode) ---
         let avg_score = votes.iter().map(|v| v.confidence.abs()).sum::<f64>() / count as f64;
-
-        // 3. Archetype Diversity
-        let unique_archs: HashSet<Archetype> = votes.iter().map(|v| v.archetype).collect();
-        let archetype_diversity = unique_archs.len() as f64 / 4.0;
-
-        // 4. Belief Entropy (Shannon)
+        
         let mut buy_c = 0usize;
         let mut sell_c = 0usize;
         for v in &votes {
@@ -8650,79 +8628,29 @@ pub fn compute_consensus_alpha(
                 _ => {}
             }
         }
-        let hold_c = total_strategies.saturating_sub(buy_c + sell_c);
+        
+        let consistency = (buy_c.max(sell_c) as f64 / count.max(1) as f64).clamp(0.0, 1.0);
+        let exec_prob_proxy = (support_ratio * 2.0).clamp(0.5, 1.0);
+        
+        let hybrid_score = avg_score * exec_prob_proxy * consistency;
+        
+        let unique_archs: HashSet<Archetype> = votes.iter().map(|v| v.archetype).collect();
+        let archetype_diversity = unique_archs.len() as f64 / 4.0;
 
-        let mut entropy = 0.0;
-        let den = total_strategies as f64;
-        for c in [buy_c, sell_c, hold_c] {
-            if c > 0 {
-                let p = c as f64 / den;
-                entropy -= p * p.log2();
-            }
-        }
-        let raw_entropy = (entropy / 3.0f64.log2()).clamp(0.0, 1.0);
-        let disagreement_entropy = raw_entropy * conviction_factor;
-
-        // 5. Feature Diversity (Weighted Euclidean Centroid Dispersion)
-        let mut feature_diversity = 0.0;
-        if count > 1 {
-            let dim = votes[0].signal_features.len();
-            // Unweighted Centroid (Simple Mean)
-            let mut centroid = vec![0.0; dim];
-            for v in &votes {
-                for (i, f) in v.signal_features.iter().enumerate().take(dim) {
-                    centroid[i] += f;
-                }
-            }
-            for c in centroid.iter_mut() {
-                *c /= count as f64;
-            }
-
-            // Weighted Euclidean RMS Distance
-            let mut sum_weighted_dist_sq = 0.0;
-            for v in &votes {
-                let mut d_sq = 0.0;
-                for (i, f) in v.signal_features.iter().enumerate().take(dim) {
-                    let w = DNA_IMPORTANCE_WEIGHTS.get(i).copied().unwrap_or(1.0 / 13.0);
-                    d_sq += w * (f - centroid[i]).powi(2);
-                }
-                sum_weighted_dist_sq += d_sq;
-            }
-            let rms_dist = (sum_weighted_dist_sq / count as f64).sqrt();
-            feature_diversity = (rms_dist / (rms_dist + 1.0)).clamp(0.0, 1.0);
-        }
-
-        // 6. Honest Alignment Factor (Centered at 0.33)
-        let alignment = (buy_c.max(sell_c) as f64 / total_strategies as f64).clamp(0.0, 1.0);
-        let normalized_alignment = ((alignment - 0.33) / 0.67).clamp(0.0, 1.0);
-        let alignment_factor = 0.5 + 0.5 * normalized_alignment;
-
-        // 7. Final Alpha Composition
-        let mut alpha = (0.35 * support_ratio)
-            + (0.20 * (avg_score.min(2.0) / 2.0))
-            + (0.15 * archetype_diversity)
-            + (0.15 * disagreement_entropy)
-            + (0.15 * feature_diversity);
-
-        alpha *= alignment_factor;
-
-        // 8. Continuous Overfit Guard
-        let penalty = (support_ratio * (1.0 - archetype_diversity)).clamp(0.0, 1.0);
-        alpha *= 1.0 - (0.3 * penalty);
-
-        let realized_edge_factor = 1.0;
-        alpha *= realized_edge_factor;
-
-        let label = if alpha > 0.6 && archetype_diversity > 0.5 {
-            " 🔥 SIGNAL TRUTH"
-        } else if support_ratio > 0.8 {
-            "crowded trade"
-        } else if feature_diversity > 0.5 {
-            "diverse niche"
+        let label = if hybrid_score > 1.0 {
+            " 🔥 STRONG SIGNAL"
+        } else if support_ratio > 0.3 {
+            "consensus trade"
         } else {
             "speculative"
         }
         .to_string();
+
+        let alpha = hybrid_score;
+        let disagreement_entropy = 0.0;
+        let feature_diversity = 0.0;
+        let alignment_factor = consistency;
+        let realized_edge_factor = 1.0;
 
         let _signal_timestamp = scenario.signal.get(idx).map(|e| e.exchange_ts).unwrap_or(0);
 
