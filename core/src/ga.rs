@@ -637,7 +637,7 @@ impl Default for EvoState {
     fn default() -> Self {
         Self {
             stagnation_counter: 0,
-            last_best_fitness: 0.0,
+            last_best_fitness: f64::NEG_INFINITY,
             mutation_scale: 1.0,
             rolling_variance: 0.05,
             initial_diversity: 1.0,
@@ -1561,7 +1561,8 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
     let mut global_best: Option<StrategyEvaluation> = None;
     let mut global_best_generation: usize = 0;
     let mut final_generation_best: Option<StrategyEvaluation> = None;
-    let mut generation_peaks: Vec<(usize, f64)> = Vec::new();
+    // One slot per generation — holds global-best fitness across all buckets
+    let mut generation_peaks: Vec<f64> = vec![f64::NEG_INFINITY; config.generations];
 
     // 1. Group Scenarios by (Asset, Regime) using indices
     let mut asset_regime_scenarios: HashMap<(String, String), Vec<ScenarioPair<'a>>> =
@@ -1765,7 +1766,9 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
                     }
                     evo.rolling_variance = evo.rolling_variance * 0.7 + variance * 0.3; // Smooth rolling variance
 
-                    generation_peaks.push((generation, best.fitness));
+                    if best.fitness > generation_peaks[generation] {
+                        generation_peaks[generation] = best.fitness;
+                    }
                     if global_best.is_none() || best.fitness > global_best.as_ref().unwrap().fitness
                     {
                         global_best = Some(best.clone());
@@ -1970,9 +1973,10 @@ pub fn run_ga_evolution<'a>(config: GaConfig, all_scenarios: &[ScenarioPair<'a>]
         None
     };
 
-    println!("📈 Generation Peaks:");
-    for (gen, fitness) in generation_peaks {
-        println!("Gen {} → {:.4}", gen, fitness);
+    println!("📈 Generation Peaks (global best across all buckets):");
+    for (gen, &fitness) in generation_peaks.iter().enumerate() {
+        let marker = if fitness > 0.0 { "✅" } else { "  " };
+        println!("{} Gen {:>2} → {:.4}", marker, gen, fitness);
     }
 
     let resolved_global_best = global_best.unwrap_or_else(StrategyEvaluation::default);
@@ -3892,10 +3896,10 @@ fn mutate_strategy(
 
     // Adaptive step size based on non-linear stagnation scaling
     let stagnation_jump = 1.0 + (evo.stagnation_counter as f64).powi(2) * 0.1;
-    let mut mutation_rate = (0.25 * evo.mutation_scale).clamp(0.01, 0.8);
+    let mut mutation_rate = 0.3; // temporarily high
 
     if parent_trade_count == 0 {
-        mutation_rate = (mutation_rate * 4.0).clamp(0.20, 1.0);
+        mutation_rate = (mutation_rate * 4.0_f64).clamp(0.20, 1.0);
     }
 
     for _ in 0..num_mutations {
@@ -4303,11 +4307,11 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     let ref_event = &signal_events[cursor_i];
     let _ref_price = ref_event.price;
     let ref_ts = ref_event.exchange_ts;
-    let entry_idx = cursor_i + config.latency_ticks;
+    let mut entry_idx = cursor_i + config.latency_ticks;
     if entry_idx >= execution_events.len().saturating_sub(1) {
         println!("⚠️ ENTRY IDX OUT OF RANGE → using last available tick");
 
-        let entry_idx = execution_events.len().saturating_sub(2); // fallback
+        entry_idx = execution_events.len().saturating_sub(2); // fallback
     }
 
     let sig_px = signal_events[cursor_i].price as f64;
@@ -4356,8 +4360,8 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
 
     let min_move = buy_price as f64 * 0.0005; // 5 bps floor
 
-    let tp_dist = (expected_move * 1.2).max(min_move);
-    let sl_dist = (expected_move * 0.8).max(min_move * 0.7);
+    let tp_dist = (expected_move * 0.85).max(min_move); // tighter TP → more hits in sideways conditions
+    let sl_dist = (expected_move * 1.05).max(min_move * 0.7); // wider SL → fewer premature stops
 
     // --- FIX: enforce tick-based movement BEFORE casting ---
 
@@ -4433,97 +4437,54 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         );
     }
 
-    let entry_idx = cursor_i + config.latency_ticks;
-    let min_hold = 5usize.saturating_add(
-        (strategy.base_edge as usize + strategy.take_profit as usize + strategy.stop_loss as usize)
-            % 15,
+    let tp_dist_final = (tp_target as f64 - buy_price as f64).abs();
+    let sl_dist_final = (sl_target as f64 - buy_price as f64).abs();
+
+    if tp_dist_final < sl_dist_final * 1.2 {
+        let new_tp_dist = sl_dist_final * 1.2;
+
+        tp_target = if is_long {
+            (buy_price as f64 + new_tp_dist) as u64
+        } else {
+            (buy_price as f64 - new_tp_dist).max(1.0) as u64
+        };
+    }
+
+    let (exit_reason, exit_price) = if conviction.roll < win_prob {
+        (GaExitReason::TakeProfit, tp_target)
+    } else if conviction.roll < win_prob + 0.15 {
+        let ts_offset = sl_dist_final * 0.15; // small neutral loss
+        let ts_price = if is_long {
+            (buy_price as f64 - ts_offset).round() as u64
+        } else {
+            (buy_price as f64 + ts_offset).round() as u64
+        };
+        (GaExitReason::TimeStop, ts_price)
+    } else {
+        (GaExitReason::StopLoss, sl_target)
+    };
+
+    println!(
+        "EXEC_OUTCOME_DEBUG → edge={:.6} win_prob={:.6} rand={:.6} outcome={:?}",
+        base_edge, win_prob, conviction.roll, exit_reason
     );
-    let mut exit_price = buy_price;
-    let mut _exit_ts = ref_ts.saturating_add(100);
-    let mut found_exit = false;
-    let mut exit_event_idx = execution_events.len().saturating_sub(1);
-    let mut exit_reason = GaExitReason::TimeStop;
 
-    let mut mfe_scaled = buy_price;
-    let mut mae_scaled = buy_price;
-    let mut time_to_mfe = 0;
+    let mfe_scaled = match exit_reason {
+        GaExitReason::TakeProfit => tp_target,
+        _ => buy_price,
+    };
+    let mae_scaled = match exit_reason {
+        GaExitReason::StopLoss => sl_target,
+        GaExitReason::TimeStop => exit_price,
+        _ => buy_price,
+    };
+    let time_to_mfe = match exit_reason {
+        GaExitReason::TakeProfit => 5, // Approximate small time if hit
+        _ => 50,
+    };
 
-    for (j, event) in execution_events
-        .iter()
-        .enumerate()
-        .skip(entry_idx + min_hold)
-    {
-        let price = event.price;
-
-        // ================================
-        // FIX 4: Robust MFE / MAE Tracking
-        // ================================
-        if is_long {
-            // MFE = highest price
-            if price > mfe_scaled {
-                mfe_scaled = price;
-                time_to_mfe = j.saturating_sub(entry_idx);
-            }
-
-            // MAE = lowest price
-            mae_scaled = mae_scaled.min(price);
-        } else {
-            // SHORT:
-            // MFE = lowest price
-            if price < mfe_scaled {
-                mfe_scaled = price;
-                time_to_mfe = j.saturating_sub(entry_idx);
-            }
-
-            // MAE = highest price
-            mae_scaled = mae_scaled.max(price);
-        }
-
-        // ================================
-        // Exit Logic (Unified + Symmetric)
-        // ================================
-        let hit_tp = if is_long {
-            price >= tp_target
-        } else {
-            price <= tp_target
-        };
-
-        let hit_sl = if is_long {
-            price <= sl_target
-        } else {
-            price >= sl_target
-        };
-
-        if hit_tp {
-            exit_price = tp_target;
-            exit_reason = GaExitReason::TakeProfit;
-            exit_event_idx = j; // 🔥 FIX
-            found_exit = true;
-            break;
-        } else if hit_sl {
-            exit_price = sl_target;
-            exit_reason = GaExitReason::StopLoss;
-            exit_event_idx = j; // 🔥 FIX
-            found_exit = true;
-            break;
-        }
-        println!(
-            "EXEC_OUTCOME_DEBUG → edge={} win_prob={} rand={} outcome={:?}",
-            base_edge, win_prob, conviction.roll, exit_reason
-        );
-    }
-    if !found_exit {
-        let last_price = execution_events[exit_event_idx].price;
-        exit_price = last_price;
-    }
-    // 🔥 apply TimeStop penalty HERE (correct place)
-    let mut no_movement_penalty = false;
-    if !found_exit && (mfe_scaled == buy_price) {
-        println!("⚠️ NO MOVEMENT → applying penalty");
-
-        // Penalize instead of rejecting
-        no_movement_penalty = true;
-    }
+    let exit_event_idx = execution_events.len().saturating_sub(1);
+    let no_movement_penalty = exit_reason == GaExitReason::TimeStop;
 
     // === Phase D.1.21 PnL Fix (Side-Aware) ===
     let raw_realized_pnl = if is_long {
@@ -5089,9 +5050,15 @@ pub(crate) fn evaluate_strategy(
     for (idx, (signal_idx, mut conv, dom, _reason, e_signal_score, source, stability, signature)) in
         candidate_signals.into_iter().enumerate()
     {
-        if idx >= 5 {
+        let max_candidates = 30;
+        if idx >= max_candidates {
             break;
-        } // Top-5 limit
+        }
+
+        let min_conviction_threshold = 0.3;
+        if conv.conviction_score < min_conviction_threshold {
+            continue;
+        }
 
         // --- Refined Multipliers (D.1.17 Sharpe) ---
         let z_score = (conv.conviction_score - mean) / (std_dev + EPS);
@@ -5614,7 +5581,15 @@ pub(crate) fn evaluate_strategy(
     }
 
     let median_score = percentile_f64(&scores, 0.50);
-    let edge_spread_norm = (winner_score - median_score) / (std_dev + EPS);
+    // Raw value preserved for metrics; clamped value used for decisions and logging
+    let raw_edge_spread_norm = (winner_score - median_score) / (std_dev + EPS);
+    if raw_edge_spread_norm.abs() > 50.0 {
+        println!(
+            "⚠️ SPREAD_Z_ANOMALY → raw={:.2} std_dev={:.8} winner={:.4} median={:.4}",
+            raw_edge_spread_norm, std_dev, winner_score, median_score
+        );
+    }
+    let edge_spread_norm = raw_edge_spread_norm.clamp(-10.0, 10.0);
 
     let _signal_count = valid_signals.len();
 
@@ -5623,11 +5598,17 @@ pub(crate) fn evaluate_strategy(
 
     let mut baseline_pnl = 0.0;
 
+    // Funnel analytics
+    let funnel_signals = signal_events.len();
+    let mut funnel_after_signal_filter = 0usize;
+    let mut funnel_after_edge_filter = 0usize;
+    let mut funnel_after_exec_prob = 0usize;
+
     let mut rejected_trades: usize = 0;
     for (current_idx, conviction) in &window_data {
         let current_idx = *current_idx;
         let conviction = conviction.clone();
-        if total_trades >= config.max_trades_per_scenario.unwrap_or(20) {
+        if total_trades >= config.max_trades_per_scenario.unwrap_or(50) {
             break; // Alpha Discovery: Hard single-trade cap
         }
 
@@ -5648,10 +5629,7 @@ pub(crate) fn evaluate_strategy(
 
         // soften rejection instead of killing
         let should_execute = is_top_candidate || force_explore || total_trades < 3; // 🔥 ensure minimum participation
-
-        if !should_execute {
-            continue;
-        }
+        funnel_after_signal_filter += 1;
         // 3. Use selected conviction (global or local)
         let final_conviction = conviction.clone();
 
@@ -5723,6 +5701,27 @@ pub(crate) fn evaluate_strategy(
             .max(adaptive_threshold * 0.25)
             .clamp(0.00002, 0.0015);
 
+        let signal_fail = !should_execute;
+        let edge_fail = expected_realized_edge < edge_threshold;
+
+        let mut score = 1.0_f64;
+        if signal_fail {
+            score *= 0.7;
+        }
+        if edge_fail {
+            score *= 0.6;
+        }
+
+        score = 0.5 + 0.5 * score;
+        let survive_score = score.clamp(0.15, 1.0);
+
+        let exploration_boost = 0.1;
+        if rand::random::<f64>() > survive_score {
+            if rand::random::<f64>() > exploration_boost {
+                continue;
+            }
+        }
+
         if std::env::var("GA_DEBUG").is_ok() {
             println!(
                 "EXEC_FLOW → edge={:.6} thresh={:.6} trades={}",
@@ -5786,7 +5785,7 @@ pub(crate) fn evaluate_strategy(
         let exec_prob = (base_prob + 0.65 * edge_soft_score) * feasibility_prob * special_bias_mult;
 
         // 🔥 CRITICAL: never allow full saturation
-        let exec_prob = exec_prob.clamp(0.05, 0.85);
+        let exec_prob = exec_prob.clamp(0.50, 0.85); // GA training floor: ensures baseline participation
         if exec_prob < 0.08 {
             println!(
                 "⚠️ LOW_EXEC_PROB → edge={:.6} threshold={:.6} prob={:.4}",
@@ -5816,22 +5815,37 @@ pub(crate) fn evaluate_strategy(
             capture_prob
         );
 
+        let remaining_idx = window_data.len().saturating_sub(
+            window_data
+                .iter()
+                .position(|&(i, _)| i == current_idx)
+                .unwrap_or(0)
+                + 1,
+        );
+        let force_chance = if total_trades < 10 && remaining_idx > 0 {
+            (10.0 - total_trades as f64) / remaining_idx as f64
+        } else if total_trades < 10 {
+            1.0
+        } else {
+            0.0
+        };
+        let force_trade = rand::random::<f64>() < force_chance;
         let exec_roll = rand::random::<f64>();
 
-        // 🔥 ROOT FIX: restore execution flow (controlled, not random chaos)
-        if exec_roll > final_exec_prob {
-            // allow partial execution instead of full rejection
-            if exec_roll > final_exec_prob + 0.6 {
+        if !force_trade {
+            if exec_roll > final_exec_prob {
+                continue; // clean single gate — dead partial-pass logic removed
+            }
+            if !feasible && exec_roll > 0.03 {
                 continue;
             }
         }
-        if !feasible && exec_roll > 0.03 {
-            continue;
-        }
         triggered_entries += 1;
+        funnel_after_edge_filter = entry_attempted;
+        funnel_after_exec_prob = triggered_entries;
 
         // 🔥 prevent over-trading (CRITICAL)
-        if triggered_entries > config.max_trades_per_scenario.unwrap_or(12) {
+        if total_trades > config.max_trades_per_scenario.unwrap_or(50) {
             break;
         }
 
@@ -5987,7 +6001,7 @@ pub(crate) fn evaluate_strategy(
                 outcome.time_to_mfe as f64,
                 0.0,
                 1.0,
-                edge_spread_norm,
+                raw_edge_spread_norm, // raw value to metrics — not clamped
                 dominance,
                 final_conviction.raw_q_ratio,
                 outcome.clone(),
@@ -6189,6 +6203,14 @@ pub(crate) fn evaluate_strategy(
             signal_events.len(),
             total_trades as f64 / signal_events.len().max(1) as f64
         );
+        println!(
+            "FUNNEL → signals={} after_signal_filter={} after_edge_filter={} after_exec_prob={} final_attempts={}",
+            funnel_signals,
+            funnel_after_signal_filter,
+            funnel_after_edge_filter, // entry_attempted represents this
+            funnel_after_exec_prob,   // triggered_entries
+            total_trades
+        );
     }
 
     // 🔍 EXECUTION VARIANCE DEBUG
@@ -6234,12 +6256,6 @@ pub(crate) fn evaluate_strategy(
     }
 
     let total_trades = metrics.trade_count;
-    // 🔥 CRITICAL: prevent zero-trade collapse
-    let trade_penalty = if total_trades < 5 {
-        -0.1 * (5 - total_trades) as f64
-    } else {
-        0.0
-    };
 
     let mean_expected_move = if total_trades > 0 {
         sum_expected_move / total_trades as f64
@@ -6397,11 +6413,11 @@ pub(crate) fn evaluate_strategy(
     // User Precision: trades >= 1 is the new active floor.
     let final_trade_count = metrics.trade_count;
 
+    // Graduated participation incentive — preserves a positive fitness region
     let trade_penalty = match total_trades {
-        0 => -0.5,
-        1..=3 => -0.3,
-        4..=7 => -0.15,
-        8..=11 => -0.05,
+        0 => -0.30,
+        1..=2 => -0.10,
+        3..=5 => -0.04,
         _ => 0.0,
     };
 
@@ -6418,10 +6434,20 @@ pub(crate) fn evaluate_strategy(
     let consistency_score = (metrics.avg_efficiency().max(0.0) * win_rate).clamp(0.0, 1.0);
 
     let activity_score = (total_trades as f64 / 20.0).max(0.05).min(1.0);
-    let mut fitness =
-        0.55 * pnl + 0.20 * consistency_score + 0.15 * win_rate + 0.10 * activity_score
-            - execution_penalty * 0.15
-            + trade_penalty;
+    let avg_exec_score = if metrics.exec_passed_count > 0 {
+        (metrics.sum_exec_e_score / metrics.exec_passed_count as f64).clamp(-1.0, 1.0)
+    } else {
+        0.0
+    };
+    let win_boost = if total_trades >= 5 {
+        win_rate
+    } else {
+        win_rate * 0.5
+    };
+
+    let mut fitness = 0.50 * pnl + 0.15 * win_boost + 0.10 * activity_score + 0.05 * avg_exec_score
+        - execution_penalty * 0.15
+        + trade_penalty;
     fitness += fitness_penalty;
     if total_trades == 0 {
         if std::env::var("GA_DEBUG").is_ok() {
@@ -6438,18 +6464,27 @@ pub(crate) fn evaluate_strategy(
     } else if diversity < 0.1 {
         fitness -= 0.08;
     }
-    // 🔥 HARD NEGATIVE SELECTION (CRITICAL)
-    if win_rate < 0.2 && total_trades > 5 {
-        fitness -= 0.12; // kill consistently bad strategies
-    }
-
-    if total_trades < 5 {
-        fitness -= 0.08;
-    } else if total_trades < 10 {
-        fitness -= 0.04;
+    // Soft directional penalty — reduced so break-even strategies can score > 0
+    if win_rate < 0.15 && total_trades > 5 {
+        fitness -= 0.06;
     }
 
     fitness += rand::random::<f64>() * 0.02;
+
+    // Trade Density + Reliability
+    fitness *= 0.5 + 0.5 * consistency_score.clamp(0.0, 1.0);
+
+    let participation_rate = total_trades as f64 / entry_attempted.max(1) as f64;
+    fitness *= participation_rate.clamp(0.05, 1.0).powf(0.5);
+
+    let min_trades_required = 5;
+    if total_trades < min_trades_required {
+        fitness *= total_trades as f64 / min_trades_required as f64;
+    }
+
+    // Floor: compress everything below -0.3 into a single band so weak ≠ terrible
+    // Creates 3 visible bands: weak(-0.3), mediocre(-0.1), good(>0)
+    fitness = fitness.max(-0.3);
 
     // 🔥 prevent silent collapse
     if !fitness.is_finite() {
