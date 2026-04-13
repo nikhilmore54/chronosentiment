@@ -74,20 +74,33 @@ fn main() {
     );
 
     if let Some(ref report) = result.consensus_recommendations {
-        println!(
-            "\n🔥 PHASE D.1.14: CONSENSUS TRUTH ({} active strategies):",
-            report.active_strategies
-        );
-        for sig in &report.top_signals {
-            println!("  - Signal #{} (Asset: {}): Alpha={:.3}, Stability={:.2}, Persistence={}/5, support={:.1}%, Label={}", 
-                sig.signal_idx, sig.asset, sig.alpha_score, sig.temporal_stability, sig.persistence_count, sig.support_ratio * 100.0, sig.consensus_label);
+        println!("\n🔥 PORTFOLIO SIGNALS:");
+        for cluster in &report.portfolio_clusters {
+            println!("\n[Cluster: {} | Archetype: {:?} | weight: {:.2}]", cluster.label, cluster.archetype, cluster.total_weight);
+            for sig in &cluster.signals {
+                let dir_str = if sig.alpha_score > 0.0 { "LONG" } else { "SHORT" };
+                println!("  {} idx={} | score={:.2} | support={} | {}", 
+                    dir_str, sig.signal_idx, sig.avg_score, sig.persistence_count, sig.consensus_label);
+            }
         }
 
         // Assertions for Success
-        if report.top_signals.is_empty() {
-            println!("⚠️ WARNING: No consensus recommendations. Alpha search might be too strict.");
+        if report.portfolio_clusters.is_empty() {
+            println!("⚠️ WARNING: No portfolio recommendations. Alpha search might be too strict.");
         } else {
-            println!("\n✅ SUCCESS: Consensus signals emerged organically.");
+            // Check validation rules
+            let mut valid = true;
+            if report.portfolio_clusters.len() < 2 { valid = false; }
+            for cluster in &report.portfolio_clusters {
+                if cluster.total_weight > 0.5 { valid = false; }
+                let avg_support = cluster.signals.iter().map(|s| s.persistence_count as f64).sum::<f64>() / cluster.signals.len() as f64;
+                if avg_support <= 1.5 { valid = false; }
+            }
+            if valid {
+                println!("\n✅ SUCCESS: Validation Rules Passed.");
+            } else {
+                println!("\n⚠️ VALIDATION WARNING: Portfolio did not pass all assertions, but signals were generated.");
+            }
         }
     } else {
         println!("\n⚠️ No consensus recommendations generated.");

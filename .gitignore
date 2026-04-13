@@ -24,3 +24,8 @@ logs/
 # Temp
 tmp/
 *.tmp
+
+# Data Artifacts
+clusters.json
+clusters_output.png
+core/elite/elite_*.json
