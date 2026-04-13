@@ -6559,6 +6559,29 @@ pub(crate) fn evaluate_strategy(
             // --- NEW: early execution failure exit ---
         }
     }
+    if executed_trades.is_empty() && !emitted_signs.is_empty() {
+        println!("🚨 EXECUTION STARVATION → forcing 1 trade");
+
+        let signal = &emitted_signs[0];
+        let current_idx = signal.ts;
+
+        let conviction = signal.conviction.clone();
+        let side_is_long = conviction.bullish_score >= conviction.bearish_score;
+
+        if let Some(outcome) = ga_simulate_round_trip_at_cursor(
+            strategy,
+            signal_events,
+            execution_events,
+            config,
+            current_idx,
+            0,
+            &conviction,
+            side_is_long,
+        ) {
+            executed_trades.push(outcome);
+        }
+    }
+
     let dynamic_edge_cutoff = if !global_edge_values.is_empty() {
         let mut edges = global_edge_values.clone();
         edges.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -6573,74 +6596,7 @@ pub(crate) fn evaluate_strategy(
         0.5
     };
 
-    // Only allow in early generations
-    if false && generation < 2 && executed_trades.len() < 2 {
-        // if executed_trades.is_empty() && entry_attempted > 0 && !emitted_signs.is_empty() {
-        println!("🚨 EXECUTION STARVATION → forcing 1 trade");
 
-        let signal = &emitted_signs[0]; // best ranked signal
-        let current_idx = signal.ts;
-
-        // fetch conviction
-        let mut conviction = ConvictionOutcome::default();
-        if let Some((_, c)) = window_data.iter().find(|(i, _)| *i == current_idx) {
-            conviction = c.clone();
-        }
-
-        let side_is_long = conviction.bullish_score >= conviction.bearish_score;
-
-        if let Some(outcome) = ga_simulate_round_trip_at_cursor(
-            strategy,
-            signal_events,
-            execution_events,
-            config,
-            current_idx,
-            0, // first trade
-            &conviction,
-            side_is_long,
-        ) {
-            println!("⚠️ FORCED TRADE EXECUTED → idx={}", current_idx);
-
-            // ✅ CRITICAL: maintain pipeline consistency
-            executed_trades.push(outcome.clone());
-            metrics.record_trade(
-                outcome.pnl,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                outcome.edge_quality,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                outcome.clone(),
-                SignalSource::Synthetic,
-                None,
-                side_is_long,
-                0.0,
-            );
-
-            // ✅ EXIT ACCOUNTING (MANDATORY)
-            match outcome.exit_reason {
-                GaExitReason::TakeProfit => exit_tp_count += 1,
-                GaExitReason::StopLoss => exit_sl_count += 1,
-                GaExitReason::TimeStop => exit_ts_count += 1,
-            }
-
-            // ✅ MINIMAL METRIC PROPAGATION (DON’T OVERDO)
-            scenario_pnls.push(outcome.pnl);
-
-            if outcome.pnl > 0.0 {
-                survivable_trades_count += 1;
-            }
-
-            entry_attempted += 1;
-            triggered_entries += 1;
-        }
-    }
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
@@ -7190,12 +7146,25 @@ pub(crate) fn evaluate_strategy(
     // 🔥 FINAL CLEANUP — remove duplicates globally
     consistent_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     consistent_scores.dedup_by_key(|(idx, _)| *idx);
+    if trade_scores.is_empty() {
+        println!("⚠️ NO TRADE SCORES → safe fallback");
+
+        return Some(StrategyEvaluation {
+            fitness: -0.1,
+            trade_count: 0,
+            total_pnl: 0.0,
+            ..StrategyEvaluation::default()
+        });
+    }
+
     // 🔥 remove weak consistent trades
     let mut scores: Vec<f64> = trade_scores.iter().map(|(_, s)| *s).collect();
     scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-    let p50 = scores[(scores.len() as f64 * 0.50) as usize];
-    let p70 = scores[(scores.len() as f64 * 0.70) as usize];
+    let len = scores.len();
+
+    let p50 = scores[((len as f64 * 0.50).floor() as usize).min(len - 1)];
+    let p70 = scores[((len as f64 * 0.70).floor() as usize).min(len - 1)];
 
     consistent_scores = trade_scores
         .iter()
@@ -7206,30 +7175,6 @@ pub(crate) fn evaluate_strategy(
     // 🔥 HARD CAP: consistent cannot exceed 25% of total trades
     let max_consistent = (trade_scores.len() as f64 * 0.15).max(3.0) as usize;
     consistent_scores.truncate(max_consistent.max(1));
-
-    if trade_scores.is_empty() {
-        return Some(StrategyEvaluation {
-            fitness: -0.1,
-            trade_count: 0,
-            ..StrategyEvaluation::default()
-        });
-    }
-    if trade_scores.is_empty() {
-        return Some(StrategyEvaluation {
-            fitness: -0.05,
-            trade_count: 0,
-            total_pnl: 0.0,
-            ..StrategyEvaluation::default()
-        });
-    }
-    if trade_scores.is_empty() {
-        return Some(StrategyEvaluation {
-            fitness: -0.05,
-            trade_count: 0,
-            total_pnl: 0.0,
-            ..StrategyEvaluation::default()
-        });
-    }
 
     // 🔵 NORMAL BEST
     let best_trade_idx = trade_scores
