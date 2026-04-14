@@ -116,7 +116,7 @@ pub enum MarketEventType {
     Cancel,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Hash, Deserialize)]
 pub enum Side {
     Buy,
     Sell,

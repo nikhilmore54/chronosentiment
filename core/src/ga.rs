@@ -2807,6 +2807,10 @@ pub fn evaluate_ensemble_strategy(
                 regime: MarketRegime::MeanReversion,
             };
 
+            let directional_edge = (conviction.bullish_score - conviction.bearish_score).abs().powf(0.7);
+            let score_norm = (conviction.conviction_score).min(1.0);
+            let strength = (0.8 * directional_edge + 0.2 * score_norm).clamp(0.05, 1.0);
+
             if let Some(outcome) = ga_simulate_round_trip_at_cursor(
                 &ensemble[0], // Proxy for execution config
                 signal_events,
@@ -2816,6 +2820,7 @@ pub fn evaluate_ensemble_strategy(
                 scenario_pnls.len(), // trade_idx
                 &conviction,
                 !conviction.is_bearish, // Phase D.1.23: Pass side intent
+                strength,
             ) {
                 let trade_pnl = outcome.pnl;
 
@@ -4320,23 +4325,34 @@ pub fn evaluate_market_conviction(
     let mom_scale = (n_mom / mom_floor.max(1.0)).clamp(0.5, 1.5);
     let anchor_scale = vol_scale.min(mom_scale);
 
-    // Phase D.1.21: Directional Split Scoring
-    let is_bullish = (ref_price as f64) > mean_px;
-    let is_bearish = (ref_price as f64) < mean_px;
+    // Phase D.1.21: Directional Split Scoring (Symmetric Z-Score Fix)
+    let rolling_std = variance.sqrt();
+    let dir_signal = (ref_price as f64 - mean_px) / rolling_std.max(1e-6);
+    let dir_signal = dir_signal.clamp(-3.0, 3.0);
 
-    let raw_bull = if is_bullish {
-        (0.5 * norm_momentum) + (0.3 * norm_volume) + (0.2 * norm_vol_score)
-    } else {
-        0.0
-    };
-    let raw_bear = if is_bearish {
-        (0.5 * norm_momentum) + (0.3 * norm_volume) + (0.2 * norm_vol_score)
-    } else {
-        0.0
-    };
+    println!(
+        "DIR_DEBUG → price={} mean={} z={:.4}",
+        ref_price, mean_px, dir_signal
+    );
+    let scaled_dir = (dir_signal * 0.5).clamp(-2.0, 2.0);
 
-    let bullish_score = raw_bull * anchor_scale;
-    let bearish_score = raw_bear * anchor_scale;
+    let temperature = 2.5; // 🔥 critical tuning parameter
+
+    let raw_bull = (scaled_dir / temperature).exp();
+    let raw_bear = (-scaled_dir / temperature).exp();
+
+    let sum = raw_bull + raw_bear;
+
+    let bullish_score = raw_bull / sum;
+    let bearish_score = raw_bear / sum;
+
+    println!(
+        "CONVICTION_TEMP → dir={:.3} temp={} bull={:.3} bear={:.3}",
+        scaled_dir,
+        temperature,
+        bullish_score,
+        bearish_score
+    );
 
     // --- Phase D.1.21: Apply Direction Bias ---
     let final_score = match strategy.direction_bias {
@@ -4358,9 +4374,9 @@ pub fn evaluate_market_conviction(
     let regime = if norm_vol > high_vol_threshold {
         MarketRegime::HighVolatilityNoise
     } else if trend_consistency > 0.55 {
-        if is_bullish {
+        if dir_signal > 0.0 {
             MarketRegime::BullTrend
-        } else if is_bearish {
+        } else if dir_signal <= 0.0 {
             MarketRegime::BearTrend
         } else {
             MarketRegime::MeanReversion
@@ -4419,10 +4435,11 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     trade_idx: usize,
     conviction: &ConvictionOutcome,
     is_long: bool,
+    strength: f64,
 ) -> Option<GaRoundTripOutcome> {
     println!(
-        "SIM_START → idx={} price={} is_long={}",
-        cursor_i, signal_events[cursor_i].price, is_long
+        "SIM_START → idx={} price={} is_long={} strength={:.3}",
+        cursor_i, signal_events[cursor_i].price, is_long, strength
     );
     // Refinement 4: Strict cursor-based contract
     assert!(
@@ -4450,10 +4467,6 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         return None;
     }
 
-    let slippage = spread * config.slippage_factor;
-
-    // Side-aware Entry Price (Passed from evaluate_strategy)
-
     let market_price = exe_px as u64;
     let edge_bias = ((strategy.base_edge as f64 - 5.0) / 50.0).clamp(-0.12, 0.12);
     // Use aggressiveness from conviction
@@ -4461,15 +4474,13 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     let agg_threshold = ((aggressiveness / 1.1) + edge_bias).clamp(0.05, 0.98);
     let tick_01 = (0.01 * crate::PRICE_SCALE as f64).round() as u64;
 
-    // Side-aware Entry Price
-    let (buy_price, _is_aggressive) = if conviction.roll < agg_threshold {
-        if is_long {
-            (market_price.saturating_add(tick_01), true) // Pay up for Long
-        } else {
-            (market_price.saturating_sub(tick_01), true) // Sell down for Short
-        }
+    let slippage = 1.0;
+    let entry_price = execution_events[entry_idx].price;
+
+    let buy_price = if is_long {
+        entry_price + slippage as u64
     } else {
-        (market_price, false)
+        entry_price.saturating_sub(slippage as u64)
     };
 
     let strategy_id = strategy_to_id(strategy);
@@ -4564,36 +4575,94 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         );
     }
 
-    let tp_dist_final = (tp_target as f64 - buy_price as f64).abs();
-    let sl_dist_final = (sl_target as f64 - buy_price as f64).abs();
+    // 🔥 MANDATORY TP/SL COUPLING
+    let tp_multiplier = 1.0 + 1.5 * strength;
+    let sl_multiplier = (0.8 - 0.4 * strength).max(0.4);
 
-    if tp_dist_final < sl_dist_final * 1.2 {
-        let new_tp_dist = sl_dist_final * 1.2;
+    let base_tp = (tp_target as f64 - buy_price as f64).abs();
+    let base_sl = (sl_target as f64 - buy_price as f64).abs();
 
-        tp_target = if is_long {
-            (buy_price as f64 + new_tp_dist) as u64
+    let tp_dist_final = (base_tp * tp_multiplier).max(5.0);
+    let sl_dist_final = (base_sl * sl_multiplier).max(3.0);
+
+    // IMPORTANT: DO NOT derive from sl_dist_final (prevents distortion)
+    let ts_offset = base_sl * (0.2 + 0.6 * (1.0 - strength));
+
+    println!(
+        "TP_SL_DEBUG → strength={:.3} tp={:.2} sl={:.2} ts_offset={:.2}",
+        strength, tp_dist_final, sl_dist_final, ts_offset
+    );
+
+    // Update targets for the tape-walk loop
+    tp_target = if is_long {
+        (buy_price as f64 + tp_dist_final).round() as u64
+    } else {
+        (buy_price as f64 - tp_dist_final).round().max(1.0) as u64
+    };
+    sl_target = if is_long {
+        (buy_price as f64 - sl_dist_final).round().max(1.0) as u64
+    } else {
+        (buy_price as f64 + sl_dist_final).round() as u64
+    };
+
+    // 🔥 ACTUAL TAPE-WALK SIMULATION
+    let mut exit_event_idx = entry_idx;
+    let mut exit_reason = GaExitReason::TimeStop;
+    let mut exit_price = buy_price; // fallback
+
+    let max_hold = config.max_hold_bars;
+    let end_idx = (entry_idx + max_hold).min(execution_events.len());
+
+    for i in entry_idx..end_idx {
+        let current_price = execution_events[i].price;
+
+        if is_long {
+            if current_price >= tp_target {
+                exit_reason = GaExitReason::TakeProfit;
+                exit_price = tp_target;
+                exit_event_idx = i;
+                break;
+            }
+            if current_price <= sl_target {
+                exit_reason = GaExitReason::StopLoss;
+                exit_price = sl_target;
+                exit_event_idx = i;
+                break;
+            }
         } else {
-            (buy_price as f64 - new_tp_dist).max(1.0) as u64
-        };
+            if current_price <= tp_target {
+                exit_reason = GaExitReason::TakeProfit;
+                exit_price = tp_target;
+                exit_event_idx = i;
+                break;
+            }
+            if current_price >= sl_target {
+                exit_reason = GaExitReason::StopLoss;
+                exit_price = sl_target;
+                exit_event_idx = i;
+                break;
+            }
+        }
     }
 
-    let (exit_reason, exit_price) = if conviction.roll < win_prob {
-        (GaExitReason::TakeProfit, tp_target)
-    } else if conviction.roll < win_prob + 0.15 {
-        let ts_offset = sl_dist_final * 0.15; // small neutral loss
-        let ts_price = if is_long {
+    if exit_reason == GaExitReason::TimeStop {
+        exit_event_idx = (entry_idx + max_hold).min(execution_events.len() - 1);
+
+        // neutralize TimeStop price (soft neutral loss)
+        let ts_offset = sl_dist_final * 0.15;
+        exit_price = if is_long {
             (buy_price as f64 - ts_offset).round() as u64
         } else {
             (buy_price as f64 + ts_offset).round() as u64
         };
-        (GaExitReason::TimeStop, ts_price)
-    } else {
-        (GaExitReason::StopLoss, sl_target)
-    };
+    }
+
+    // SAFETY CLAMP
+    exit_event_idx = exit_event_idx.min(execution_events.len() - 1);
 
     println!(
-        "EXEC_OUTCOME_DEBUG → edge={:.6} win_prob={:.6} rand={:.6} outcome={:?}",
-        base_edge, win_prob, conviction.roll, exit_reason
+        "EXIT_TRACE → entry={} exit={} reason={:?}",
+        cursor_i, exit_event_idx, exit_reason
     );
 
     let mfe_scaled = match exit_reason {
@@ -4610,7 +4679,6 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
         _ => 50,
     };
 
-    let exit_event_idx = execution_events.len().saturating_sub(1);
     let no_movement_penalty = exit_reason == GaExitReason::TimeStop;
 
     // === Phase D.1.21 PnL Fix (Side-Aware) ===
@@ -5717,12 +5785,17 @@ pub(crate) fn evaluate_strategy(
         emitted_signs.clear();
 
         for (signal_idx, conv, _, _, e_score, score, source) in scored_signals.iter() {
+            let directional_edge = (conv.bullish_score - conv.bearish_score).abs().powf(0.7);
+            let score_norm = (*score).clamp(0.0, 1.0);
+            let raw_strength = 0.8 * directional_edge + 0.2 * score_norm;
+            let strength = (raw_strength * (0.7 + 0.3 * e_score)).clamp(0.05, 1.0);
+
             emitted_signs.push(SignalAlpha {
                 ts: *signal_idx,
                 price: signal_events[*signal_idx].price as f64,
                 archetype: strategy.archetype,
                 direction: if conv.is_bearish { -1 } else { 1 },
-                strength: (*score).max(0.01) * e_score.max(0.2),
+                strength,
                 source: *source,
                 conviction: conv.clone(),
             });
@@ -5742,12 +5815,17 @@ pub(crate) fn evaluate_strategy(
 
         println!("🚨 FORCED EMISSION → fallback activated");
 
+        let directional_edge = (conv.bullish_score - conv.bearish_score).abs().powf(0.7);
+        let score_norm = (*score).clamp(0.0, 1.0);
+        let raw_strength = 0.8 * directional_edge + 0.2 * score_norm;
+        let strength = (raw_strength * (0.7 + 0.3 * e_score)).clamp(0.05, 1.0);
+
         emitted_signs.push(SignalAlpha {
             ts: *signal_idx,
             price: signal_events[*signal_idx].price as f64,
             archetype: strategy.archetype,
             direction: if conv.is_bearish { -1 } else { 1 },
-            strength: (*score).max(0.01) * e_score.max(0.2),
+            strength,
             source: *source,
             conviction: conv.clone(),
         });
@@ -6053,28 +6131,60 @@ pub(crate) fn evaluate_strategy(
             0.0
         };
 
-        // --- specialization bias ---
-        let signal_is_long = final_conviction.bullish_score >= final_conviction.bearish_score;
+        let bull = signal.conviction.bullish_score;
+        let bear = signal.conviction.bearish_score;
 
-        let side_is_long = if strategy.direction_bias <= 25 {
-            false
-        } else if strategy.direction_bias >= 75 {
-            true
-        } else {
-            signal_is_long
-        };
+        // 🔥 STEP 6 — SANITY GUARD (NO DEAD SIDE)
+        if bull < 1e-6 && bear < 1e-6 {
+            continue; // skip dead signals
+        }
+
+        // 🔥 FILTER: require directional conviction
+        if bull.max(bear) < 0.55 {
+            continue;
+        }
+
+        // 🔥 FILTER: avoid ambiguous signals
+        if (bull - bear).abs() < 0.05 {
+            continue;
+        }
+
+        let is_long = bull > bear;
+
+        println!(
+            "ENTRY_DEBUG → ts={} price={} bull={:.3} bear={:.3} dir={}",
+            signal.ts,
+            execution_events[current_idx].price,
+            bull,
+            bear,
+            if is_long { "LONG" } else { "SHORT" }
+        );
+
+        println!(
+            "CONVICTION_CHECK → bull={:.3} bear={:.3}",
+            signal.conviction.bullish_score,
+            signal.conviction.bearish_score
+        );
+
+        println!(
+            "CONVICTION_CHECK → bull={:.3} bear={:.3}",
+            signal.conviction.bullish_score,
+            signal.conviction.bearish_score
+        );
+
+        let side_is_long = is_long;
 
         // 🚀 PHASE D.1.25: Soft-Bias Specialization Lock (Execution Gradient)
         let mut special_bias_mult = 1.0;
-        if (strategy.direction_bias <= 25 && signal_is_long)
-            || (strategy.direction_bias >= 75 && !signal_is_long)
+        if (strategy.direction_bias <= 25 && side_is_long)
+            || (strategy.direction_bias >= 75 && !side_is_long)
         {
             special_bias_mult = 0.5; // Institutional Soft Bias Penalty
             if std::env::var("GA_DEBUG").is_ok() {
                 println!(
                     "SPECIALIZATION_BIAS_PENALTY → bias={} signal={} | Applying 0.5x",
                     strategy.direction_bias,
-                    if signal_is_long { "LONG" } else { "SHORT" }
+                    if side_is_long { "LONG" } else { "SHORT" }
                 );
             }
         }
@@ -6103,6 +6213,8 @@ pub(crate) fn evaluate_strategy(
         }
 
         let mut final_exec_prob = exec_prob; // ✅ use correct variable
+                                             // enforce minimum execution floor for stability
+        final_exec_prob = final_exec_prob.max(0.25);
 
         if !final_exec_prob.is_finite() {
             final_exec_prob = 0.0;
@@ -6201,6 +6313,7 @@ pub(crate) fn evaluate_strategy(
             executed_trades.len(),
             &final_conviction,
             side_is_long,
+            signal.strength,
         );
 
         if let Some(outcome) = trade_result {
@@ -6213,6 +6326,11 @@ pub(crate) fn evaluate_strategy(
 
             let quality_penalty = if expected_return < 1e-5 { 0.5 } else { 1.0 };
 
+            println!(
+                "EXEC_APPEND → ts={:?} idx={}",
+                signal.ts,
+                executed_trades.len()
+            );
             executed_trades.push(outcome.clone());
             let idx = executed_trades.len() - 1;
             trade_edges.push((idx, pre_edge));
@@ -6365,10 +6483,7 @@ pub(crate) fn evaluate_strategy(
                 raw_pnl = max_loss;
             }
 
-            let edge_strength = final_conviction.edge_weight.max(0.0);
-
-            // softened + stable scaling (recommended)
-            let edge_scale = 0.5 + edge_strength.powf(0.6);
+            let edge_scale = 0.5 + signal.strength.powf(0.6);
 
             let capture_ratio = if outcome.expected_move.abs() > 1e-9 {
                 (raw_pnl / outcome.expected_move).clamp(-2.0, 2.0)
@@ -6559,6 +6674,15 @@ pub(crate) fn evaluate_strategy(
             // --- NEW: early execution failure exit ---
         }
     }
+
+    println!(
+        "POST-EXEC CHECK → emitted={} executed={}",
+        emitted_signs.len(),
+        executed_trades.len()
+    );
+
+    // Statistical pruning removed to preserve win/loss distribution.
+
     if executed_trades.is_empty() && !emitted_signs.is_empty() {
         println!("🚨 EXECUTION STARVATION → forcing 1 trade");
 
@@ -6566,7 +6690,7 @@ pub(crate) fn evaluate_strategy(
         let current_idx = signal.ts;
 
         let conviction = signal.conviction.clone();
-        let side_is_long = conviction.bullish_score >= conviction.bearish_score;
+        let is_long = conviction.bullish_score >= conviction.bearish_score;
 
         if let Some(outcome) = ga_simulate_round_trip_at_cursor(
             strategy,
@@ -6576,11 +6700,78 @@ pub(crate) fn evaluate_strategy(
             current_idx,
             0,
             &conviction,
-            side_is_long,
+            is_long,
+            signal.strength,
         ) {
             executed_trades.push(outcome);
         }
     }
+
+    // 🔥 HYBRID DEDUPLICATION (Exit bucket + Side)
+    let mut seen_ts = std::collections::HashSet::new();
+
+    executed_trades.retain(|trade| {
+        // 🔥 HYBRID KEY: bucketed exit index + direction
+        let key = (trade.exit_event_idx / 5, trade.side);
+
+        if seen_ts.contains(&key) {
+            false
+        } else {
+            seen_ts.insert(key);
+            true
+        }
+    });
+
+    // 🔥 SIMPLE CLUSTERING BY EXIT INDEX PROXIMITY
+    let mut clusters: Vec<Vec<&GaRoundTripOutcome>> = Vec::new();
+
+    let mut current_cluster: Vec<&GaRoundTripOutcome> = Vec::new();
+    let mut last_exit: Option<usize> = None;
+
+    for trade in executed_trades.iter() {
+        let exit_idx = trade.exit_event_idx;
+
+        if let Some(prev) = last_exit {
+            // if close in time → same cluster
+            if exit_idx.abs_diff(prev) <= 5 {
+                current_cluster.push(trade);
+            } else {
+                if !current_cluster.is_empty() {
+                    clusters.push(current_cluster);
+                }
+                current_cluster = vec![trade];
+            }
+        } else {
+            current_cluster.push(trade);
+        }
+
+        last_exit = Some(exit_idx);
+    }
+
+    // push last cluster
+    if !current_cluster.is_empty() {
+        clusters.push(current_cluster);
+    }
+
+    // 🚨 GUARANTEE AT LEAST ONE CLUSTER
+    if clusters.is_empty() && !executed_trades.is_empty() {
+        clusters.push(executed_trades.iter().collect());
+    }
+
+    // 🔍 DEBUG
+    println!(
+        "[CLUSTER_DEBUG] total_trades={} clusters={} avg_size={:.2}",
+        executed_trades.len(),
+        clusters.len(),
+        if clusters.len() > 0 {
+            executed_trades.len() as f64 / clusters.len() as f64
+        } else {
+            0.0
+        }
+    );
+
+    let selected_trades: Vec<&GaRoundTripOutcome> =
+        clusters.iter().filter_map(|c| c.get(0).cloned()).collect();
 
     let dynamic_edge_cutoff = if !global_edge_values.is_empty() {
         let mut edges = global_edge_values.clone();
@@ -6595,8 +6786,6 @@ pub(crate) fn evaluate_strategy(
     } else {
         0.5
     };
-
-
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
@@ -6696,6 +6885,13 @@ pub(crate) fn evaluate_strategy(
 
     let total_pnl: f64 = executed_trades.iter().map(|t| t.pnl).sum();
 
+    println!(
+        "FITNESS_AUDIT → total={} wins={} losses={}",
+        executed_trades.len(),
+        executed_trades.iter().filter(|t| t.pnl > 0.0).count(),
+        executed_trades.iter().filter(|t| t.pnl < 0.0).count()
+    );
+
     let profitable_trades = executed_trades.iter().filter(|t| t.pnl > 0.0).count();
 
     let win_rate = if total_trades > 0 {
@@ -6744,6 +6940,11 @@ pub(crate) fn evaluate_strategy(
     } else {
         0.0
     };
+
+    println!(
+        "FITNESS_SANITY → avg_win={:.6} avg_loss={:.6}",
+        avg_win, avg_loss
+    );
 
     // Stabilized Payoff Ratio
     let payoff_ratio = if avg_loss.abs() > 1e-6 {
@@ -7295,70 +7496,39 @@ pub(crate) fn evaluate_strategy(
     // 🔥 LIVE TRADE RECOMMENDER (NEW)
     // =============================
 
-    println!("\n🔥 LIVE TRADE RECOMMENDATIONS:");
+    println!("\n🔥 DIVERSIFIED TRADE RECOMMENDATIONS (CLUSTER-BASED):");
 
-    if executed_trades.is_empty() {
-        println!("⚠️ NO TRADES AVAILABLE");
+    // 🔥 CLUSTER WEIGHTING (PNL-BASED)
+    let mut weights: Vec<f64> = Vec::new();
+    let mut total_score = 0.0;
+
+    // compute raw scores (use pnl as proxy)
+    for trade in selected_trades.iter() {
+        let score = trade.pnl.max(0.0); // ensure non-negative
+        weights.push(score);
+        total_score += score;
+    }
+
+    // normalize weights
+    if total_score > 0.0 {
+        for w in weights.iter_mut() {
+            *w /= total_score;
+        }
     } else {
-        // 🔴 SNIPERS
-        println!("\n🔴 SNIPER TRADES:");
-
-        let mut snipers = raw_trades.clone();
-        snipers.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap()); // sort by sniper
-
-        for (idx, edge, exec, surv, sniper, _) in snipers.iter().take(3) {
-            println!(
-                "SNIPER → idx={} edge={:.5} exec={:.3} surv={:.3} sniper={:.4}",
-                idx, edge, exec, surv, sniper
-            );
+        // fallback: equal weights
+        let n = weights.len().max(1) as f64;
+        for w in weights.iter_mut() {
+            *w = 1.0 / n;
         }
-        // 🟢 CONSISTENT
-        println!("\n🟢 CONSISTENT TRADES:");
-        println!("\n🟢 CONSISTENT TRADES:");
+    }
 
-        let mut consistent_vec = raw_trades.clone();
-        consistent_vec.sort_by(|a, b| b.5.partial_cmp(&a.5).unwrap());
+    for (i, trade) in selected_trades.iter().enumerate() {
+        let trade_idx = i;
 
-        for (idx, edge, exec, surv, _, consistent) in consistent_vec.iter().take(5) {
-            println!(
-                "CONSISTENT → idx={} edge={:.5} exec={:.3} surv={:.3} consistent={:.4}",
-                idx, edge, exec, surv, consistent
-            );
-        }
-
-        // 🔥 TOP EXECUTION-AWARE (BEST OVERALL)
-        println!("\n🔥 TOP EXECUTION TRADES:");
-
-        println!("\n🔥 TOP EXECUTION TRADES:");
-
-        let mut ranked: Vec<(usize, f64)> = raw_trades
-            .iter()
-            .map(|(idx, edge, exec, surv, _, _)| (*idx, edge * exec * surv))
-            .collect();
-
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-
-        for (idx, score) in ranked.iter().take(5) {
-            if let Some(trade) = executed_trades.get(*idx) {
-                println!(
-                    "TOP → idx={} edge={:.5} exec={:.3} FINAL={:.5}",
-                    idx, trade.edge_quality, trade.fill_efficiency, score
-                );
-            }
-        }
-
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-
-        for (idx, score) in ranked.iter().take(5) {
-            if let Some(trade) = executed_trades.get(*idx) {
-                let exec_quality = (trade.fill_efficiency + trade.edge_quality) / 2.0;
-
-                println!(
-                    "TOP → idx={} pnl={:.5} edge={:.5} execQ={:.3} score={:.4}",
-                    idx, trade.pnl, trade.edge_quality, exec_quality, score
-                );
-            }
-        }
+        println!(
+            "CLUSTER {} → idx={} pnl={:.5} weight={:.3} exit_idx={}",
+            i, trade_idx, trade.pnl, weights[i], trade.exit_event_idx
+        );
     }
     println!(
         "📊 UNIQUE CHECK → n={} s={} c={}",
@@ -7498,10 +7668,10 @@ pub(crate) fn evaluate_strategy(
 
         alpha: {
             let raw_alpha = metrics.adaptive.final_score.mean();
-            let edge_strength =
+            let avg_edge_pnl =
                 (metrics.sum_pnl.abs() / (metrics.trade_count.max(1) as f64)).max(1e-9);
             let edge_min = 0.0005;
-            let pressure_penalty = (edge_strength / edge_min).powi(2).min(1.0);
+            let pressure_penalty = (avg_edge_pnl / edge_min).powi(2).min(1.0);
 
             // Phase D.1.20 Vagueness Penalty (Condensation)
             let vagueness_penalty = if metrics.max_signature_credibility < 1.1 {
@@ -8880,6 +9050,9 @@ pub fn evaluate_current_status(
 
     let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
 
+    let directional_edge = (conviction.bullish_score - conviction.bearish_score).abs().powf(0.7);
+    let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
+
     // Use the ESE RoundTrip logic with realigned signature
     let outcome = crate::ga_simulate_round_trip_at_cursor(
         strategy,
@@ -8890,6 +9063,7 @@ pub fn evaluate_current_status(
         0,
         &conviction,
         !conviction.is_bearish, // Phase D.1.23: Signal-derived side intent
+        strength,
     );
 
     let (signal, confidence) = if let Some(ref rt) = outcome {
@@ -9204,6 +9378,9 @@ pub fn evaluate_consensus_status(
         let bias_archetype = classify_direction_bias(voter.strategy.direction_bias);
         weight *= regime_multiplier(current_regime, bias_archetype) * universal_multiplier;
 
+        let directional_edge = (conviction_guard.bullish_score - conviction_guard.bearish_score).abs().powf(0.7);
+        let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
+
         let outcome = crate::ga_simulate_round_trip_at_cursor(
             &voter.strategy,
             &events,
@@ -9213,6 +9390,7 @@ pub fn evaluate_consensus_status(
             0,
             &conviction_guard,
             !conviction_guard.is_bearish,
+            strength,
         );
 
         if let Some(_rt) = outcome {
@@ -9269,7 +9447,7 @@ pub fn evaluate_consensus_status(
         gated_signal
     };
 
-    let strength = if final_conviction > 0.75 {
+    let strength_label = if final_conviction > 0.75 {
         "STRONG".to_string()
     } else if final_conviction > 0.60 {
         "MEDIUM".to_string()
@@ -9295,7 +9473,7 @@ pub fn evaluate_consensus_status(
             0
         },
         conviction_score: final_conviction,
-        agreement_strength: strength,
+        agreement_strength: strength_label,
         voters: format!(
             "{}/{}",
             if gated_signal == SignalType::BUY {
