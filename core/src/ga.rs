@@ -892,6 +892,7 @@ pub struct StrategyEvaluation {
     pub decisiveness: f64,
     pub execution_friction: f64, // Actual / Expected Slippage
     pub emitted_signals: Vec<SignalAlpha>,
+    pub trades: Vec<GaRoundTripOutcome>,
 
     // Phase 10.3: Institutional Feedback Loop
     #[serde(default = "default_capture_eff")]
@@ -1442,6 +1443,7 @@ impl Default for StrategyEvaluation {
             pnl_fingerprint: Vec::new(),
             acceptance_mode: AcceptanceMode::default(),
             bootstrap_ratio: 0.0,
+            trades: Vec::new(),
         }
     }
 }
@@ -2818,7 +2820,9 @@ pub fn evaluate_ensemble_strategy(
                 regime: MarketRegime::MeanReversion,
             };
 
-            let directional_edge = (conviction.bullish_score - conviction.bearish_score).abs().powf(0.7);
+            let directional_edge = (conviction.bullish_score - conviction.bearish_score)
+                .abs()
+                .powf(0.7);
             let score_norm = (conviction.conviction_score).min(1.0);
             let strength = (0.8 * directional_edge + 0.2 * score_norm).clamp(0.05, 1.0);
 
@@ -2864,12 +2868,6 @@ pub fn evaluate_ensemble_strategy(
                     total_win += trade_pnl;
                 } else if trade_pnl < 0.0 {
                     total_loss += trade_pnl.abs();
-                }
-
-                match outcome.exit_reason {
-                    GaExitReason::TakeProfit => exit_tp_count += 1,
-                    GaExitReason::StopLoss => exit_sl_count += 1,
-                    GaExitReason::TimeStop => exit_ts_count += 1,
                 }
 
                 busy_until = outcome.exit_event_idx + (config.trade_cooldown_events.unwrap_or(5));
@@ -4341,10 +4339,12 @@ pub fn evaluate_market_conviction(
     let dir_signal = (ref_price as f64 - mean_px) / rolling_std.max(1e-6);
     let dir_signal = dir_signal.clamp(-3.0, 3.0);
 
-    println!(
-        "DIR_DEBUG → price={} mean={} z={:.4}",
-        ref_price, mean_px, dir_signal
-    );
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "DIR_DEBUG → price={} mean={} z={:.4}",
+            ref_price, mean_px, dir_signal
+        );
+    }
     let scaled_dir = (dir_signal * 0.5).clamp(-2.0, 2.0);
 
     let temperature = 2.5; // 🔥 critical tuning parameter
@@ -4357,13 +4357,12 @@ pub fn evaluate_market_conviction(
     let bullish_score = raw_bull / sum;
     let bearish_score = raw_bear / sum;
 
-    println!(
-        "CONVICTION_TEMP → dir={:.3} temp={} bull={:.3} bear={:.3}",
-        scaled_dir,
-        temperature,
-        bullish_score,
-        bearish_score
-    );
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "CONVICTION_TEMP → dir={:.3} temp={} bull={:.3} bear={:.3}",
+            scaled_dir, temperature, bullish_score, bearish_score
+        );
+    }
 
     // --- Phase D.1.21: Apply Direction Bias ---
     let final_score = match strategy.direction_bias {
@@ -4399,7 +4398,7 @@ pub fn evaluate_market_conviction(
     // Phase D.1.21: Participation Filter
     let p_threshold = strategy.participation_threshold as f64 / 100.0;
     let s_threshold = strategy.selectivity as f64 / 100.0;
-    
+
     if final_score < p_threshold || roll > s_threshold {
         return ConvictionOutcome {
             conviction_score: 0.0,
@@ -4439,7 +4438,7 @@ pub fn evaluate_market_conviction(
     }
 }
 
-pub(crate) fn ga_simulate_round_trip_at_cursor(
+pub fn ga_simulate_round_trip_at_cursor(
     strategy: &Strategy,
     signal_events: &[crate::MarketEvent],
     execution_events: &[crate::MarketEvent],
@@ -4450,10 +4449,12 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     is_long: bool,
     strength: f64,
 ) -> Option<GaRoundTripOutcome> {
-    println!(
-        "SIM_START → idx={} price={} is_long={} strength={:.3}",
-        cursor_i, signal_events[cursor_i].price, is_long, strength
-    );
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "SIM_START → idx={} price={} is_long={} strength={:.3}",
+            cursor_i, signal_events[cursor_i].price, is_long, strength
+        );
+    }
     // Refinement 4: Strict cursor-based contract
     assert!(
         cursor_i < signal_events.len(),
@@ -4548,13 +4549,17 @@ pub(crate) fn ga_simulate_round_trip_at_cursor(
     // final win probability
     let win_prob = (0.7 * base_edge + 0.3 * rr_bias).clamp(0.05, 0.95);
 
-    println!(
-        "TRADE_FIX_DEBUG → entry={} tp={} sl={} tp_dist={} sl_dist={}",
-        buy_price, tp_target, sl_target, tp_dist, sl_dist
-    );
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "TRADE_FIX_DEBUG → entry={} tp={} sl={} tp_dist={} sl_dist={}",
+            buy_price, tp_target, sl_target, tp_dist, sl_dist
+        );
+    }
 
     if tp_target <= 1 || sl_target <= 1 {
-        println!("⚠️ INVALID TP/SL → applying fallback");
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!("⚠️ INVALID TP/SL → applying fallback");
+        }
 
         // fallback: minimal valid distances
         let min_tick = 1;
@@ -4983,7 +4988,9 @@ pub fn evaluate_strategy(
     strategy.hash(&mut hasher);
     let genome_hash = hasher.finish();
 
-    println!("GENOME_TRACE → {}", genome_hash);
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!("GENOME_TRACE → {}", genome_hash);
+    }
     let mut sum_actual_slippage = 0.0;
     let mut sum_expected_slippage = 0.0;
     let capability = determine_scenario_capability(scenario_name);
@@ -5202,6 +5209,7 @@ pub fn evaluate_strategy(
         return Some(StrategyEvaluation {
             fitness: -0.2,
             trade_count: 0,
+            trades: executed_trades.clone(),
             ..StrategyEvaluation::default()
         });
     }
@@ -5475,9 +5483,9 @@ pub fn evaluate_strategy(
             _ => organic_count += 1,
         }
     }
-
-    println!("SIGNAL_COMPOSITION → organic={}", organic_count);
-
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!("SIGNAL_COMPOSITION → organic={}", organic_count);
+    }
     // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
 
     // --- PHASE 14++: STRUCTURAL METRICS & DISTRIBUTION AWARENESS ---
@@ -5580,11 +5588,9 @@ pub fn evaluate_strategy(
     }
     metrics.record_structural_health(agreement, purity, std_v, is_struct_valid_adaptive);
 
-
-
     // --- PHASE D.1.9: RATIO-INTERACTION SCORING & DETERMINISTIC CHOICE ---
     // Moved outside of gating to ensure emission even in bypass mode.
-    
+
     // 1. Archetype Bias Mapping (Soft Offsets)
     let mut adj_w_conv = strategy.w_conviction as f64;
     let mut adj_w_mom = strategy.w_momentum as f64 - 50.0; // centered
@@ -5592,10 +5598,18 @@ pub fn evaluate_strategy(
     let mut adj_exp_vol = strategy.exp_volatility as f64;
 
     match strategy.archetype {
-        0 => { adj_w_conv += 20.0; } // ConvictionDominant
-        1 => { adj_w_mom += 20.0; }  // MomentumTrend
-        2 => { adj_w_mom -= 20.0; }  // MeanReversion
-        3 => { adj_exp_vol += 30.0; } // VolatilityAverse
+        0 => {
+            adj_w_conv += 20.0;
+        } // ConvictionDominant
+        1 => {
+            adj_w_mom += 20.0;
+        } // MomentumTrend
+        2 => {
+            adj_w_mom -= 20.0;
+        } // MeanReversion
+        3 => {
+            adj_exp_vol += 30.0;
+        } // VolatilityAverse
         _ => {}
     }
 
@@ -5611,7 +5625,10 @@ pub fn evaluate_strategy(
 
     // 3. Compute Phase D.1.16 Signal Entropy
     let signal_entropy = compute_std_dev(
-        &valid_signals.iter().map(|(_, c, _, _, _, _, _)| c.conviction_score).collect::<Vec<f64>>()
+        &valid_signals
+            .iter()
+            .map(|(_, c, _, _, _, _, _)| c.conviction_score)
+            .collect::<Vec<f64>>(),
     );
 
     scored_signals.clear();
@@ -5635,17 +5652,34 @@ pub fn evaluate_strategy(
         let adjusted_score = (survival_score.max(0.0)) * clarity_penalty;
 
         scored_signals.push((
-            *signal_idx, conviction.clone(), *dom, *reason, *e_score, adjusted_score, *source
+            *signal_idx,
+            conviction.clone(),
+            *dom,
+            *reason,
+            *e_score,
+            adjusted_score,
+            *source,
         ));
     }
 
     scored_signals.sort_by(|a, b| b.5.total_cmp(&a.5));
 
-    let probs: Vec<f64> = valid_signals.iter().map(|(_, c, _, _, _, _, _)| c.conviction_score.max(1e-6)).collect();
+    let probs: Vec<f64> = valid_signals
+        .iter()
+        .map(|(_, c, _, _, _, _, _)| c.conviction_score.max(1e-6))
+        .collect();
     let sum_probs: f64 = probs.iter().sum();
     let entropy = if sum_probs > 0.0 {
-        probs.iter().map(|p| { let p_norm = p / sum_probs; -p_norm * p_norm.ln() }).sum::<f64>()
-    } else { 0.0 };
+        probs
+            .iter()
+            .map(|p| {
+                let p_norm = p / sum_probs;
+                -p_norm * p_norm.ln()
+            })
+            .sum::<f64>()
+    } else {
+        0.0
+    };
 
     let max_entropy = (probs.len() as f64).ln().max(1.0);
     let dispersion_metrics = (entropy / max_entropy).clamp(0.0, 1.0);
@@ -5703,14 +5737,15 @@ pub fn evaluate_strategy(
         });
     }
 
-    println!(
-        "EMISSION_DEBUG → valid={} scored={} emitted={}",
-        valid_signals.len(),
-        scored_signals.len(),
-        emitted_signs.len()
-    );
-    println!("SIGNALS_EMITTED → {}", emitted_signs.len());
-
+    if std::env::var("GA_DEBUG").is_ok() {
+        println!(
+            "EMISSION_DEBUG → valid={} scored={} emitted={}",
+            valid_signals.len(),
+            scored_signals.len(),
+            emitted_signs.len()
+        );
+        println!("SIGNALS_EMITTED → {}", emitted_signs.len());
+    }
     // if emitted_signs.len() > 50 {
     //     emitted_signs.sort_by(|a, b| b.strength.total_cmp(&a.strength));
     //     emitted_signs.truncate(50); // hard safety cap
@@ -5788,7 +5823,8 @@ pub fn evaluate_strategy(
         });
     }
 
-    let mut global_edge_values: Vec<f64> = Vec::new();
+    // 🔥 SINGLE SOURCE OF TRUTH
+    let mut edge_vals_snapshot: Vec<f64> = Vec::new();
     for signal in &emitted_signs {
         // 🔥 EXECUTION CAP (NEW)
         // 🔥 FIXED: dynamic participation cap
@@ -5862,7 +5898,10 @@ pub fn evaluate_strategy(
         let expected_move = ((atr / entry_price.max(0.0001)) * final_conviction.edge_weight * 1.5)
             .max((atr / entry_price.max(1e-6)) * 0.5);
         let mut expected_realized_edge = (expected_move * capture_prob).max(avg_edge * 0.4);
-
+        if expected_realized_edge < 0.0004 {
+            continue;
+        }
+        edge_vals_snapshot.push(expected_realized_edge);
         // 🔥 INSERT THIS FULL BLOCK HERE (MISSING IN YOUR CODE)
         let baseline = 0.0005;
         // let scaled = aqg_threshold * capture_prob;
@@ -5971,17 +6010,19 @@ pub fn evaluate_strategy(
         }
 
         // ✅ CORRECT EDGE GATE (ABSOLUTE, NOT RATIO-BASED)
-        // if expected_realized_edge < edge_threshold {
-        //     if std::env::var("GA_DEBUG").is_ok() {
-        //         println!(
-        //             "EXEC_HARD_REJECT → edge={:.6} < thresh={:.6}",
-        //             expected_realized_edge, edge_threshold
-        //         );
-        //     }
-        //     continue;
-        // }
+        if expected_realized_edge < edge_threshold * 0.5 {
+            if std::env::var("GA_DEBUG").is_ok() {
+                println!(
+                    "EXEC_HARD_REJECT → edge={:.6} < thresh={:.6}",
+                    expected_realized_edge, edge_threshold
+                );
+            }
+            continue;
+        } else {
+            survival_prob *= 0.85; // 🔥 soften instead of kill
+        }
 
-        let dynamic_edge_cutoff = (0.55 + 0.10 * (1.0 - capture_prob)).clamp(0.50, 0.70);
+        let dynamic_edge_cutoff = (0.50 + 0.08 * (1.0 - capture_prob)).clamp(0.45, 0.65);
 
         if edge_ratio < dynamic_edge_cutoff {
             if std::env::var("GA_DEBUG").is_ok() {
@@ -5990,9 +6031,11 @@ pub fn evaluate_strategy(
                     expected_realized_edge, edge_threshold, edge_ratio, dynamic_edge_cutoff
                 );
             }
-            survival_prob *= 0.7;
+            survival_prob *= 0.85;
         }
         let _aqg_threshold_local = adaptive_threshold; // Phase D.1.23: Use historical threshold for trade metrics
+                                                       // 🔥 HARD FLOOR (CRITICAL)
+        survival_prob = survival_prob.clamp(0.4, 0.95);
 
         entry_attempted += 1;
         let (_feasible, dynamic_threshold) = is_execution_feasible(conviction_score, capture_prob);
@@ -6012,7 +6055,7 @@ pub fn evaluate_strategy(
         }
 
         // 🔥 FILTER: require directional conviction
-        if bull.max(bear) < 0.55 {
+        if bull.max(bear) < 0.52 {
             continue;
         }
 
@@ -6022,27 +6065,26 @@ pub fn evaluate_strategy(
         }
 
         let is_long = bull > bear;
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!(
+                "ENTRY_DEBUG → ts={} price={} bull={:.3} bear={:.3} dir={}",
+                signal.ts,
+                execution_events[current_idx].price,
+                bull,
+                bear,
+                if is_long { "LONG" } else { "SHORT" }
+            );
 
-        println!(
-            "ENTRY_DEBUG → ts={} price={} bull={:.3} bear={:.3} dir={}",
-            signal.ts,
-            execution_events[current_idx].price,
-            bull,
-            bear,
-            if is_long { "LONG" } else { "SHORT" }
-        );
+            println!(
+                "CONVICTION_CHECK → bull={:.3} bear={:.3}",
+                signal.conviction.bullish_score, signal.conviction.bearish_score
+            );
 
-        println!(
-            "CONVICTION_CHECK → bull={:.3} bear={:.3}",
-            signal.conviction.bullish_score,
-            signal.conviction.bearish_score
-        );
-
-        println!(
-            "CONVICTION_CHECK → bull={:.3} bear={:.3}",
-            signal.conviction.bullish_score,
-            signal.conviction.bearish_score
-        );
+            println!(
+                "CONVICTION_CHECK → bull={:.3} bear={:.3}",
+                signal.conviction.bullish_score, signal.conviction.bearish_score
+            );
+        }
 
         let side_is_long = is_long;
 
@@ -6069,7 +6111,14 @@ pub fn evaluate_strategy(
         let signal_weight = signal.strength;
         let base_prob = 0.2;
 
-        let base_score = base_prob + 0.5 * signal_weight + 0.3 * edge_soft_score;
+        // // 🔴 SNIPER → edge dominant
+        // let sniper_score = 0.7 * edge_ratio + 0.2 * expected_move + 0.1 * volatility;
+
+        // // 🟢 CONSISTENT → execution dominant
+        // let consistent_score = 0.5 * final_exec_prob + 0.3 * survival_prob + 0.2 * expected_efficiency;
+
+        // // ⚪ NORMAL → balanced
+        // let normal_score = 0.4 * edge_ratio + 0.3 * execution_prob + 0.3 * survival_prob;
 
         let penalty_factor = (0.4 * feasibility_prob + 0.3 * special_bias_mult + 0.3).powf(0.5);
         let exec_prob = (0.6 * edge_soft_score + 0.4 * feasibility_prob).clamp(0.05, 0.95);
@@ -6086,11 +6135,22 @@ pub fn evaluate_strategy(
 
         let mut final_exec_prob = exec_prob; // ✅ use correct variable
                                              // enforce minimum execution floor for stability
-        final_exec_prob = final_exec_prob.max(0.25);
+        final_exec_prob = final_exec_prob.max(0.20);
 
         if !final_exec_prob.is_finite() {
             final_exec_prob = 0.0;
         }
+        println!(
+            "EXEC_GATE → edge_ratio={:.3} cutoff={:.3} exec_prob={:.3} survive={:.3}",
+            edge_ratio, dynamic_edge_cutoff, final_exec_prob, survival_prob
+        );
+        println!(
+            "EXEC_FLOW → edge={:.5} exec={:.3} surv={:.3} weight={:.3}",
+            expected_realized_edge,
+            final_exec_prob,
+            survival_prob,
+            final_exec_prob * survival_prob
+        );
 
         // 🟢 PRE-FILTER CONSISTENT CAPTURE (CRITICAL FIX)
         let pre_consistent_score = final_exec_prob * survival_prob;
@@ -6110,7 +6170,6 @@ pub fn evaluate_strategy(
             );
         }
         let pre_edge = edge_ratio;
-        global_edge_values.push(pre_edge);
         let pre_exec = final_exec_prob;
         let pre_survive = survival_prob;
         if std::env::var("GA_DEBUG").is_ok() {
@@ -6143,27 +6202,24 @@ pub fn evaluate_strategy(
             (0.45 + 0.15 * (1.0 - feasibility_prob) - 0.10 * edge_soft_score).clamp(0.35, 0.70);
 
         let is_edge_pass = expected_realized_edge >= edge_threshold;
-        println!(
-            "EDGE_GATE → raw_edge={:.6} threshold={:.6} pass={}",
-            expected_realized_edge,
-            edge_threshold,
-            is_edge_pass
-        );
-
-        println!(
-            "EXEC_GATE_FINAL → prob={:.4} threshold={:.4} survive={:.3}",
-            final_exec_prob, dynamic_exec_threshold, survive_score
-        );
-
-        if final_exec_prob < dynamic_exec_threshold {
-            final_exec_prob *= 0.9; // mild penalty only
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!(
+                "EDGE_GATE → raw_edge={:.6} threshold={:.6} pass={}",
+                expected_realized_edge, edge_threshold, is_edge_pass
+            );
         }
+        if std::env::var("GA_DEBUG").is_ok() {
+            println!(
+                "EXEC_GATE_FINAL → prob={:.4} threshold={:.4} survive={:.3}",
+                final_exec_prob, dynamic_exec_threshold, survive_score
+            );
+        }
+        // 🔥 REMOVE HARD EXECUTION GATE → keep soft scaling only
+        final_exec_prob = final_exec_prob.max(dynamic_exec_threshold * 0.8);
 
         let exec_roll = rand::random::<f64>();
 
-        if exec_roll > final_exec_prob {
-            continue;
-        }
+        let exec_weight = final_exec_prob * survival_prob;
 
         exec_passed += 1;
         exec_probs_history.push(final_exec_prob);
@@ -6223,26 +6279,70 @@ pub fn evaluate_strategy(
                 * volatility_component.powf(0.7);
 
             // 🟢 CONSISTENT score
-            let consistent_score =
-                final_exec_prob.powf(1.4) * survive_score.powf(1.3) * (1.0 - volatility).powf(1.2);
-
+            let exec_consistent_score = final_exec_prob.powf(1.2)
+                * survive_score.powf(1.2)
+                * (1.0 / (1.0 + volatility)).powf(0.8);
             // 🔥 FIX 9 — TYPE SEPARATION (INSERT HERE)
             // 🔥 FIX 10 — HARD REGIME SEPARATION
 
-            let ratio = sniper_score / (consistent_score + 1e-6);
+            // 🔥 GENOME-DRIVEN REGIME LOGIC (REPLACE ENTIRE BLOCK)
 
-            // 🔴 SNIPER (less strict)
-            if ratio > 1.4 && sniper_score > 0.25 {
-                sniper_scores.push((idx, sniper_score));
+            // derive thresholds from genome
+            let edge_thresh = strategy.base_edge as f64 / 10000.0;
+            let exec_thresh = strategy.queue_threshold as f64 / 100.0;
+            let holding = (strategy.holding_period as f64 / 10.0).max(2.0);
+            let surv_thresh = (holding / 10.0).clamp(0.4, 0.8);
 
-            // 🟢 CONSISTENT (less strict)
-            } else if ratio < 1.0 && consistent_score > 0.28 {
-                consistent_scores.push((idx, consistent_score));
+            let edge_ratio_local = expected_realized_edge / (edge_thresh + 1e-9);
 
-            // 🟡 FALLBACK (VERY IMPORTANT)
+            let mut edge_vals = edge_vals_snapshot.clone();
+
+            if edge_vals.len() < 5 {
+                edge_vals.push(expected_realized_edge);
+            }
+
+            edge_vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+            let len = edge_vals.len();
+
+            let p30 = edge_vals[((len as f64 * 0.30).floor() as usize).min(len - 1)];
+            let p60 = edge_vals[((len as f64 * 0.60).floor() as usize).min(len - 1)];
+            let p70 = edge_vals[((len as f64 * 0.70).floor() as usize).min(len - 1)];
+            let p85 = edge_vals[((len as f64 * 0.85).floor() as usize).min(len - 1)];
+            println!(
+                "REGIME_BANDS → p30={:.6} p60={:.6} p85={:.6}",
+                p30, p60, p85
+            );
+
+            let exec_p60 = percentile_f64(&exec_probs_history, 0.60);
+            let surv_p50 = percentile_f64(&survive_scores_history, 0.50);
+
+            // 🔥 BOOTSTRAP GUARD (early trades unstable)
+            let (is_sniper, is_consistent) = if edge_vals.len() < 8 {
+                (
+                    edge_ratio_local > 1.5, // fallback sniper
+                    survival_prob > 0.6,    // fallback consistent
+                )
             } else {
-                // allow mid-quality trades to survive as consistent
-                consistent_scores.push((idx, consistent_score * 0.9));
+                (
+                    expected_realized_edge >= p85 && final_exec_prob >= exec_p60,
+                    expected_realized_edge >= p30
+                        && expected_realized_edge <= p70
+                        && survival_prob >= surv_p50,
+                )
+            };
+
+            // let is_sniper = expected_realized_edge >= p85 && final_exec_prob >= exec_p60;
+
+            // let is_consistent = expected_realized_edge >= p30
+            //     && expected_realized_edge <= p70
+            //     && survival_prob >= surv_p50;
+
+            if is_sniper {
+                sniper_scores.push((idx, sniper_score));
+            }
+            if is_consistent {
+                consistent_scores.push((idx, exec_consistent_score));
             }
             // legacy (optional keep)
             let trade_score =
@@ -6250,15 +6350,17 @@ pub fn evaluate_strategy(
             trade_scores.push((idx, trade_score));
 
             // 🔍 FIX 5: TYPE DEBUG VISIBILITY
-            println!(
+            if std::env::var("GA_DEBUG").is_ok() {
+                println!(
                 "TYPE_DEBUG → idx={} edge={:.5} exec={:.3} surv={:.3} sniper={:.6} consistent={:.6}",
                 idx,
                 expected_realized_edge,
                 final_exec_prob,
                 survive_score,
                 sniper_score,
-                consistent_score
+                exec_consistent_score
             );
+            }
             // ✅ EXIT ACCOUNTING IMMEDIATELY
             match outcome.exit_reason {
                 GaExitReason::TakeProfit => exit_tp_count += 1,
@@ -6365,7 +6467,12 @@ pub fn evaluate_strategy(
                 0.0
             };
 
-            let trade_pnl = raw_pnl * capture_prob * edge_scale * (1.0 + 0.3 * capture_ratio.abs());
+            let trade_pnl = raw_pnl
+                * capture_prob
+                * edge_scale
+                * (1.0 + 0.3 * capture_ratio.abs())
+                * exec_weight; // 🔥 APPLY EXECUTION REALISM
+
             let tail_penalty = if raw_pnl < 0.0 {
                 (-raw_pnl).min(0.01)
             } else {
@@ -6558,27 +6665,17 @@ pub fn evaluate_strategy(
     // Statistical pruning removed to preserve win/loss distribution.
 
     if executed_trades.is_empty() && !emitted_signs.is_empty() {
-        println!("🚨 EXECUTION STARVATION → forcing 1 trade");
+        println!(
+            "🚫 EXECUTION STARVATION → no trades executed (emitted={})",
+            emitted_signs.len()
+        );
 
-        let signal = &emitted_signs[0];
-        let current_idx = signal.ts;
-
-        let conviction = signal.conviction.clone();
-        let is_long = conviction.bullish_score >= conviction.bearish_score;
-
-        if let Some(outcome) = ga_simulate_round_trip_at_cursor(
-            strategy,
-            signal_events,
-            execution_events,
-            config,
-            current_idx,
-            0,
-            &conviction,
-            is_long,
-            signal.strength,
-        ) {
-            executed_trades.push(outcome);
-        }
+        return Some(StrategyEvaluation {
+            fitness: -0.2,
+            trade_count: 0,
+            total_pnl: 0.0,
+            ..StrategyEvaluation::default()
+        });
     }
 
     // 🔥 HYBRID DEDUPLICATION (Exit bucket + Side)
@@ -6603,10 +6700,9 @@ pub fn evaluate_strategy(
     let mut last_exit: Option<usize> = None;
 
     for trade in executed_trades.iter() {
-        let exit_idx = trade.exit_event_idx;
+        let exit_idx = trade.exit_event_idx; // ✅ MOVE HERE (TOP)
 
         if let Some(prev) = last_exit {
-            // if close in time → same cluster
             if exit_idx.abs_diff(prev) <= 5 {
                 current_cluster.push(trade);
             } else {
@@ -6619,7 +6715,7 @@ pub fn evaluate_strategy(
             current_cluster.push(trade);
         }
 
-        last_exit = Some(exit_idx);
+        last_exit = Some(exit_idx); // ✅ NOW VALID
     }
 
     // push last cluster
@@ -6643,23 +6739,39 @@ pub fn evaluate_strategy(
             0.0
         }
     );
+    // =============================
+    // 🔥 FIX: REBUILD METRICS FROM FINAL TRADES
+    // =============================
+    let mut rebuilt_metrics = ScenarioMetrics::default();
+
+    let mut rebuilt_tp = 0;
+    let mut rebuilt_sl = 0;
+    let mut rebuilt_ts = 0;
+
+    for trade in &executed_trades {
+        match trade.exit_reason {
+            GaExitReason::TakeProfit => rebuilt_tp += 1,
+            GaExitReason::StopLoss => rebuilt_sl += 1,
+            GaExitReason::TimeStop => rebuilt_ts += 1,
+        }
+
+        rebuilt_metrics.trade_count += 1;
+
+        if trade.pnl > 0.0 {
+            rebuilt_metrics.profitable_trades += 1;
+        }
+
+        rebuilt_metrics.sum_pnl += trade.pnl;
+    }
+
+    // overwrite corrupted values
+    metrics = rebuilt_metrics;
+    exit_tp_count = rebuilt_tp;
+    exit_sl_count = rebuilt_sl;
+    exit_ts_count = rebuilt_ts;
 
     let selected_trades: Vec<&GaRoundTripOutcome> =
         clusters.iter().filter_map(|c| c.get(0).cloned()).collect();
-
-    let dynamic_edge_cutoff = if !global_edge_values.is_empty() {
-        let mut edges = global_edge_values.clone();
-        edges.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-        let cutoff_idx = (edges.len() as f64 * 0.80) as usize;
-
-        edges
-            .get(cutoff_idx.min(edges.len().saturating_sub(1)))
-            .cloned()
-            .unwrap_or(0.0)
-    } else {
-        0.5
-    };
 
     if std::env::var("GA_DEBUG").is_ok() {
         println!(
@@ -7049,9 +7161,14 @@ pub fn evaluate_strategy(
     fitness *= participation_rate.clamp(0.05, 1.0).powf(0.5);
 
     let min_trades_required = 3;
-    if total_trades < min_trades_required {
-        fitness *= total_trades as f64 / min_trades_required as f64;
-    }
+
+    let trade_penalty = if total_trades == 0 {
+        0.2
+    } else {
+        (total_trades as f64 / min_trades_required as f64).clamp(0.4, 1.0)
+    };
+
+    fitness *= trade_penalty;
 
     // Floor: compress everything below -0.3 into a single band so weak ≠ terrible
     // Creates 3 visible bands: weak(-0.3), mediocre(-0.1), good(>0)
@@ -7203,6 +7320,9 @@ pub fn evaluate_strategy(
     }
 
     println!("EXEC_PASSED → {}", exec_passed);
+    if exec_passed == 0 {
+        println!("🚨 ALL TRADES BLOCKED → CHECK EDGE/CUTOFF");
+    }
     println!("TRADES_EXECUTED → {}", executed_trades.len());
     println!("FUNNEL:");
     println!("SIGNALS_GENERATED → {}", signal_events.len());
@@ -7214,13 +7334,9 @@ pub fn evaluate_strategy(
         total_trades, total_pnl, fitness
     );
 
-    // 🔥 FIX 5B: FORCE METRICS ALIGNMENT (TEMP STABILIZER)
-    metrics.trade_count = executed_trades.len();
-    metrics.profitable_trades = executed_trades.iter().filter(|t| t.pnl > 0.0).count();
-
     // 🔥 FINAL CLEANUP — remove duplicates globally
-    consistent_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     consistent_scores.dedup_by_key(|(idx, _)| *idx);
+    sniper_scores.dedup_by_key(|(idx, _)| *idx);
     if trade_scores.is_empty() {
         println!("⚠️ NO TRADE SCORES → safe fallback");
 
@@ -7232,24 +7348,36 @@ pub fn evaluate_strategy(
         });
     }
 
-    // 🔥 remove weak consistent trades
-    let mut scores: Vec<f64> = trade_scores.iter().map(|(_, s)| *s).collect();
-    scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // 🔥 FIX: use CONSISTENT distribution only
 
-    let len = scores.len();
+    if !consistent_scores.is_empty() {
+        let mut cs_values: Vec<f64> = consistent_scores.iter().map(|(_, s)| *s).collect();
 
-    let p50 = scores[((len as f64 * 0.50).floor() as usize).min(len - 1)];
-    let p70 = scores[((len as f64 * 0.70).floor() as usize).min(len - 1)];
+        cs_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-    consistent_scores = trade_scores
-        .iter()
-        .filter(|(_, s)| *s >= p50 && *s <= p70)
-        .cloned()
-        .collect();
+        let len = cs_values.len();
+
+        let p30 = cs_values[((len as f64 * 0.30).floor() as usize).min(len - 1)];
+        let p80 = cs_values[((len as f64 * 0.80).floor() as usize).min(len - 1)];
+
+        let mut filtered_consistent: Vec<(usize, f64)> = consistent_scores
+            .iter()
+            .filter(|(_, s)| *s >= p30)
+            .cloned()
+            .collect();
+
+        if filtered_consistent.is_empty() {
+            filtered_consistent = consistent_scores.clone();
+        }
+
+        consistent_scores = filtered_consistent;
+    }
+
+    let max_consistent = (trade_scores.len() as f64 * 0.15).max(3.0) as usize;
+    consistent_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    consistent_scores.truncate(max_consistent);
 
     // 🔥 HARD CAP: consistent cannot exceed 25% of total trades
-    let max_consistent = (trade_scores.len() as f64 * 0.15).max(3.0) as usize;
-    consistent_scores.truncate(max_consistent.max(1));
 
     // 🔵 NORMAL BEST
     let best_trade_idx = trade_scores
@@ -7262,31 +7390,32 @@ pub fn evaluate_strategy(
     sniper_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
     // limit sniper population
-    let max_snipers = ((trade_scores.len() as f64) * 0.08).clamp(1.0, 5.0) as usize;
+    let max_snipers = ((trade_scores.len() as f64) * 0.15).clamp(2.0, 6.0) as usize;
     sniper_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     sniper_scores.truncate(max_snipers);
 
-    // 🔴 SNIPER BEST (MUTABLE)
-    let mut best_sniper_idx = if !sniper_scores.is_empty() {
-        sniper_scores
-            .iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-            .map(|(idx, _)| *idx)
-            .unwrap()
-    } else {
-        best_trade_idx // fallback
-    };
+    use std::collections::HashSet;
 
-    // 🟢 CONSISTENT BEST (MUST EXIST BEFORE USING)
-    let mut best_consistent_idx = if !consistent_scores.is_empty() {
-        consistent_scores
-            .iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-            .map(|(idx, _)| *idx)
-            .unwrap()
-    } else {
-        best_trade_idx // fallback
-    };
+    let mut used = HashSet::new();
+
+    // 🔴 SNIPER FIRST
+    let mut best_sniper_idx = sniper_scores
+        .iter()
+        .filter(|(i, _)| !used.contains(i))
+        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .map(|(i, _)| {
+            used.insert(*i);
+            *i
+        })
+        .unwrap_or(best_trade_idx);
+
+    // 🟢 CONSISTENT SECOND (avoid reuse)
+    let mut best_consistent_idx = consistent_scores
+        .iter()
+        .filter(|(i, _)| !used.contains(i))
+        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .map(|(i, _)| *i)
+        .unwrap_or(best_trade_idx);
 
     // 🔥 FORCE DISTINCT IDENTITY
 
@@ -7316,23 +7445,45 @@ pub fn evaluate_strategy(
     // (you can remove this entire block if unsure)
     let _cs_len = consistent_scores.len();
     if consistent_scores.is_empty() {
-        consistent_scores = trade_scores.iter().skip(1).take(3).cloned().collect();
+        // consistent_scores = trade_scores.iter().skip(2).take(3).cloned().collect();
     }
 
+    if trade_scores.len() < 5 {
+        println!(
+            "⚠️ REGIME SKIPPED → insufficient trades: {}",
+            trade_scores.len()
+        );
+
+        return Some(StrategyEvaluation {
+            fitness: fitness,
+            trade_count: total_trades,
+            ..StrategyEvaluation::default()
+        });
+    }
+
+    let overlap_count = sniper_scores
+        .iter()
+        .filter(|(i, _)| consistent_scores.iter().any(|(j, _)| i == j))
+        .count();
+
+    println!(
+        "REGIME_OVERLAP → overlap={} sniper={} consistent={}",
+        overlap_count,
+        sniper_scores.len(),
+        consistent_scores.len()
+    );
+    println!(
+        "REGIME_RAW → sniper={} consistent={} total={}",
+        sniper_scores.len(),
+        consistent_scores.len(),
+        trade_scores.len()
+    );
     if best_trade_idx == best_sniper_idx {
-        println!("⚠️ NORMAL == SNIPER");
+        println!("⚠️NORMAL == SNIPER");
     }
 
     if best_trade_idx == best_consistent_idx {
         println!("⚠️ NORMAL == CONSISTENT");
-    }
-
-    if sniper_scores.is_empty() && !trade_scores.is_empty() {
-        sniper_scores.push(trade_scores[0]);
-    }
-
-    if consistent_scores.is_empty() && !trade_scores.is_empty() {
-        consistent_scores = trade_scores.iter().take(3).cloned().collect();
     }
 
     println!(
@@ -7422,7 +7573,11 @@ pub fn evaluate_strategy(
     };
     let edge_std_dev = if realized_edges_history.len() > 1 {
         let mean = realized_edges_history.iter().sum::<f64>() / realized_edges_history.len() as f64;
-        let variance = realized_edges_history.iter().map(|e| (e - mean).powi(2)).sum::<f64>() / realized_edges_history.len() as f64;
+        let variance = realized_edges_history
+            .iter()
+            .map(|e| (e - mean).powi(2))
+            .sum::<f64>()
+            / realized_edges_history.len() as f64;
         variance.sqrt()
     } else {
         0.0
@@ -7586,6 +7741,7 @@ pub fn evaluate_strategy(
             / metrics.total_windows.max(1) as f64,
         acceptance_mode: _acceptance_mode,
         structural_score: 0.0,
+        trades: executed_trades.clone(),
         ..StrategyEvaluation::default()
     })
 }
@@ -8946,7 +9102,9 @@ pub fn evaluate_current_status(
 
     let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
 
-    let directional_edge = (conviction.bullish_score - conviction.bearish_score).abs().powf(0.7);
+    let directional_edge = (conviction.bullish_score - conviction.bearish_score)
+        .abs()
+        .powf(0.7);
     let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
 
     // Use the ESE RoundTrip logic with realigned signature
@@ -9274,7 +9432,9 @@ pub fn evaluate_consensus_status(
         let bias_archetype = classify_direction_bias(voter.strategy.direction_bias);
         weight *= regime_multiplier(current_regime, bias_archetype) * universal_multiplier;
 
-        let directional_edge = (conviction_guard.bullish_score - conviction_guard.bearish_score).abs().powf(0.7);
+        let directional_edge = (conviction_guard.bullish_score - conviction_guard.bearish_score)
+            .abs()
+            .powf(0.7);
         let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
 
         let outcome = crate::ga_simulate_round_trip_at_cursor(

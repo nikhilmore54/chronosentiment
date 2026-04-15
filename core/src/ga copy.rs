@@ -4199,7 +4199,8 @@ pub(crate) fn evaluate_strategy(
         let should_execute = conviction.conviction_score >= threshold;
 
         if !should_execute {
-            println!("ENTRY_REJECT → score={:.4} threshold={:.4}", conviction.conviction_score, threshold);
+            if std::env::var("GA_DEBUG").is_ok()
+            {println!("ENTRY_REJECT → score={:.4} threshold={:.4}", conviction.conviction_score, threshold);}
             continue;
         }
 
