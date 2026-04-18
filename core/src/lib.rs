@@ -10,36 +10,62 @@ pub mod ga;
 pub mod harness;
 pub mod inspector;
 pub mod kernel;
-pub mod live_source;
 pub mod market_adapter;
 pub mod pipeline;
 pub mod pnl_overlay;
+pub mod reco;
 pub mod replay;
 pub mod replay_evaluator;
 pub mod selection_cap;
 pub mod strategy_ranking;
 pub mod tick_replay;
 
-pub use binance_adapter::*;
+pub use binance_adapter::load_binance_events_from_jsonl;
 pub use csv_source::*;
 pub use data_source::CandleSource;
 pub use edge_decay::*;
 pub use ensemble::*;
-pub use ese::FIXED_LATENCY;
+pub use ese::*;
 pub use exit::{ExitDecision, ExitEvaluator, ExitMetadata, ExitReason};
 pub use folder_source::*;
 pub use ga::*;
 pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_harness};
 pub use inspector::*;
 pub use kernel::*;
-pub use live_source::*;
 pub use market_adapter::*;
 pub use pipeline::*;
 pub use pnl_overlay::*;
+pub use reco::*;
 pub use replay::*;
 pub use replay_evaluator::*;
+pub use selection_cap::*;
 pub use strategy_ranking::*;
 pub use tick_replay::*;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NormalizedMarketEvent {
+    pub asset: String,
+    pub exchange_ts: u64,
+    pub price: f64,
+    pub volume: f64,
+    pub side: Option<Side>,
+    pub best_bid: Option<f64>,
+    pub best_ask: Option<f64>,
+    pub bids: Option<Vec<(f64, f64)>>,
+    pub asks: Option<Vec<(f64, f64)>>,
+}
+
+impl NormalizedMarketEvent {
+    pub fn to_legacy_market_event(&self) -> Option<MarketEvent> {
+        Some(MarketEvent {
+            subtype: MarketEventType::Trade,
+            price: from_real(self.price),
+            quantity: self.volume as u64,
+            side: self.side,
+            exchange_ts: self.exchange_ts,
+        })
+    }
+}
 
 /// System-wide institutional price scaling factor.
 /// 1.0000 = 10,000 units (1/100th of a paisa precision).
@@ -114,6 +140,14 @@ pub enum MarketEventType {
     NewOrder,
     Trade,
     Cancel,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GaExitReason {
+    TakeProfit,
+    StopLoss,
+    TimeStop,
+    NoFill, // New: Market interaction failed (queue pressure, etc)
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Hash, Deserialize)]
@@ -302,4 +336,14 @@ pub struct TradeInspection {
     pub decision: DecisionLayer,
     pub execution: ExecutionLayer,
     pub outcome: OutcomeLayer,
+}
+pub fn compute_trend_deltas(market: &[MarketEvent], idx: usize, lookback: usize) -> i64 {
+    if idx < lookback || idx >= market.len() {
+        return 0;
+    }
+    let mut trend = 0i64;
+    for j in (idx - lookback)..idx {
+        trend += market[j + 1].price as i64 - market[j].price as i64;
+    }
+    trend
 }
