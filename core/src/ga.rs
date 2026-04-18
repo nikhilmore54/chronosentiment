@@ -7079,16 +7079,17 @@ pub fn evaluate_strategy(
             metrics.record_trade(
                 trade_pnl,
                 outcome.ideal_pnl,
-                0.0,
-                final_conviction.raw_q_ratio,
-                realized_efficiency,
-                outcome.edge_quality,
-                outcome.time_to_mfe as f64,
-                0.0,
-                1.0,
-                raw_edge_spread_norm, // raw value to metrics — not clamped
-                dominance,
-                final_conviction.raw_q_ratio,
+                0.0, // expected_pnl
+                0.0, // entropy
+                final_conviction.raw_q_ratio, // conviction
+                realized_efficiency, // efficiency
+                outcome.edge_quality, // edge_quality
+                outcome.time_to_mfe as f64, // time_to_mfe
+                0.0, // margin
+                1.0, // aqg_health
+                raw_edge_spread_norm, // edge_spread
+                dominance, // dominance
+                final_conviction.raw_q_ratio, // signal_entropy
                 outcome.clone(),
                 SignalSource::Organic,
                 winning_sig,
