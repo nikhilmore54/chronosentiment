@@ -7250,20 +7250,24 @@ pub fn evaluate_strategy(
         }
     }
 
-    println!(
-        "POST-EXEC CHECK → emitted={} executed={}",
-        emitted_signs.len(),
-        executed_trades.len()
-    );
+    if ga_debug_enabled() {
+        println!(
+            "POST-EXEC CHECK → emitted={} executed={}",
+            emitted_signs.len(),
+            executed_trades.len()
+        );
 
-    println!(
-        "PROBE_AUDIT → probes={} real_trades={}",
-        probe_count,
-        real_trade_count
-    );
+        println!(
+            "PROBE_AUDIT → probes={} real_trades={}",
+            probe_count,
+            real_trade_count
+        );
+    }
 
-    if real_trade_count > 0 && real_trade_count <= probe_count {
-        println!("⚠️ INVARIANT WARNING: real_trades ({}) <= probes ({})", real_trade_count, probe_count);
+    if ga_debug_enabled() {
+        if real_trade_count > 0 && real_trade_count <= probe_count {
+            println!("⚠️ INVARIANT WARNING: real_trades ({}) <= probes ({})", real_trade_count, probe_count);
+        }
     }
 
     // Statistical pruning removed to preserve win/loss distribution.
@@ -7900,16 +7904,18 @@ pub fn evaluate_strategy(
     }
 
     // 🔥 ARCHETYPE VISIBILITY
-    println!(
-        "ARCHETYPE → id={} type={} edge_ratio={} hold_time={} trades={} avg_q_fill={:.1} offset={}",
-        strategy_id,
-        strategy.archetype,
-        strategy.edge_ratio,
-        metrics.sum_time_to_mfe / total_trades.max(1) as f64,
-        total_trades,
-        scenario_signature.avg_queue_ahead,
-        strategy.entry_offset
-    );
+    if ga_debug_enabled() {
+        println!(
+            "ARCHETYPE → id={} type={} edge_ratio={} hold_time={} trades={} avg_q_fill={:.1} offset={}",
+            strategy_id,
+            strategy.archetype,
+            strategy.edge_ratio,
+            metrics.sum_time_to_mfe / total_trades.max(1) as f64,
+            total_trades,
+            scenario_signature.avg_queue_ahead,
+            strategy.entry_offset
+        );
+    }
 
     if ga_debug_enabled() {
         println!("================ GA HEALTH DASHBOARD ================");
@@ -8116,18 +8122,20 @@ pub fn evaluate_strategy(
             consistent_scores.len()
         );
     }
-    println!(
-        "REGIME_RAW → sniper={} consistent={} total={}",
-        sniper_scores.len(),
-        consistent_scores.len(),
-        trade_scores.len()
-    );
-    if best_trade_idx == best_sniper_idx {
-        println!("⚠️NORMAL == SNIPER");
-    }
+    if ga_debug_enabled() {
+        println!(
+            "REGIME_RAW → sniper={} consistent={} total={}",
+            sniper_scores.len(),
+            consistent_scores.len(),
+            trade_scores.len()
+        );
+        if best_trade_idx == best_sniper_idx {
+            println!("⚠️NORMAL == SNIPER");
+        }
 
-    if best_trade_idx == best_consistent_idx {
-        println!("⚠️ NORMAL == CONSISTENT");
+        if best_trade_idx == best_consistent_idx {
+            println!("⚠️ NORMAL == CONSISTENT");
+        }
     }
 
     if ga_debug_enabled() {
@@ -8136,12 +8144,14 @@ pub fn evaluate_strategy(
             best_trade_idx, best_sniper_idx, best_consistent_idx
         );
     }
-    println!(
-        "📊 SCORE DIST → total={} sniper={} consistent={}",
-        trade_scores.len(),
-        sniper_scores.len(),
-        consistent_scores.len()
-    );
+    if ga_debug_enabled() {
+        println!(
+            "📊 SCORE DIST → total={} sniper={} consistent={}",
+            trade_scores.len(),
+            sniper_scores.len(),
+            consistent_scores.len()
+        );
+    }
 
     // =============================
     // 🔥 TRUE TRADE METRICS (FIX)
@@ -8205,10 +8215,12 @@ pub fn evaluate_strategy(
             );
         }
     }
-    println!(
-        "📊 UNIQUE CHECK → n={} s={} c={}",
-        best_trade_idx, best_sniper_idx, best_consistent_idx
-    );
+    if ga_debug_enabled() {
+        println!(
+            "📊 UNIQUE CHECK → n={} s={} c={}",
+            best_trade_idx, best_sniper_idx, best_consistent_idx
+        );
+    }
 
     // Phase 17C: Finalize Parity Metrics
     let avg_exec_prob = if !exec_probs_history.is_empty() {
@@ -9278,14 +9290,16 @@ fn aggregate_strategy_reports_inner(
         raw_sum / total_evals.max(1.0),
         raw_p95
     );
-    println!(
-        "POP_EXEC_DEBUG: avg={:.3}, p95={:.3} | DELTA={:.3} | CCR={:.3}",
-        avg_e_score, exec_p95, pop_delta, ccr
-    );
-    println!(
-        "VIP_AUDIT:      ratio={:.4} | band={} | energy_min=max(p80, p75)",
-        avg_vip_ratio, vip_band
-    );
+    if ga_debug_enabled() {
+        println!(
+            "POP_EXEC_DEBUG: avg={:.3}, p95={:.3} | DELTA={:.3} | CCR={:.3}",
+            avg_e_score, exec_p95, pop_delta, ccr
+        );
+        println!(
+            "VIP_AUDIT:      ratio={:.4} | band={} | energy_min=max(p80, p75)",
+            avg_vip_ratio, vip_band
+        );
+    }
     if ga_debug_enabled() {
         println!(
             "STAT_AUDIT:     zero_dom_ratio={:.4} | interpretation: {}",
@@ -9319,22 +9333,24 @@ fn aggregate_strategy_reports_inner(
             avg_exec_accept_rate, avg_e_rejection_rate, avg_e_score
         );
     }
-    println!(
-        "VIP_RETENTION:   retention={:.4} | drop_off={:.4} | selectivity_gradient={:.3}",
-        avg_vip_exec_retention, avg_clarity_to_exec_drop, e_gradient
-    );
-    println!(
-        "E_SCORE_BANDS:  VIP_E={:.3} | STAT_E={:.3} | status: {}",
-        avg_vip_e,
-        avg_stat_e,
-        if e_gradient > 0.10 {
-            "HEALTHY SEPARATION"
-        } else if e_gradient > 0.0 {
-            "WEAK SELECTIVITY"
-        } else {
-            "INVERSION RISK"
-        }
-    );
+    if ga_debug_enabled() {
+        println!(
+            "VIP_RETENTION:   retention={:.4} | drop_off={:.4} | selectivity_gradient={:.3}",
+            avg_vip_exec_retention, avg_clarity_to_exec_drop, e_gradient
+        );
+        println!(
+            "E_SCORE_BANDS:  VIP_E={:.3} | STAT_E={:.3} | status: {}",
+            avg_vip_e,
+            avg_stat_e,
+            if e_gradient > 0.10 {
+                "HEALTHY SEPARATION"
+            } else if e_gradient > 0.0 {
+                "WEAK SELECTIVITY"
+            } else {
+                "INVERSION RISK"
+            }
+        );
+    }
     if ga_debug_enabled() {
         println!(
             "CONSENSUS_BRIDGE: bypass_ratio={:.4} | stability_reject={:.4} | clarity_share={:.2} | conviction_share={:.2}",
@@ -9377,26 +9393,28 @@ fn aggregate_strategy_reports_inner(
         println!("\n[GA_HEALTH_DASHBOARD]");
     }
 
-    println!(
-        "ACCEPT_RATE: {:.3} | REJECT_RATE: {:.3}",
-        avg_exec_accept_rate,
-        1.0 - avg_exec_accept_rate
-    );
+    if ga_debug_enabled() {
+        println!(
+            "ACCEPT_RATE: {:.3} | REJECT_RATE: {:.3}",
+            avg_exec_accept_rate,
+            1.0 - avg_exec_accept_rate
+        );
 
-    println!(
-        "EXEC_SPREAD: min={:.5} max={:.5} avg={:.5}",
-        min_e_score, max_e_score, avg_e_score
-    );
+        println!(
+            "EXEC_SPREAD: min={:.5} max={:.5} avg={:.5}",
+            min_e_score, max_e_score, avg_e_score
+        );
 
-    println!(
-        "VIP vs STAT: VIP_E={:.5} | STAT_E={:.5} | GRADIENT={:.5}",
-        avg_vip_e, avg_stat_e, e_gradient
-    );
+        println!(
+            "VIP vs STAT: VIP_E={:.5} | STAT_E={:.5} | GRADIENT={:.5}",
+            avg_vip_e, avg_stat_e, e_gradient
+        );
 
-    println!(
-        "DIVERSITY: unique={} | entropy={:.3}",
-        unique_count, entropy
-    );
+        println!(
+            "DIVERSITY: unique={} | entropy={:.3}",
+            unique_count, entropy
+        );
+    }
 
     if ga_debug_enabled() {
         println!(
@@ -9448,14 +9466,16 @@ fn aggregate_strategy_reports_inner(
             phase2_total_quality_count, phase2_total_quality_count, global_mean_quality, global_std_quality, global_consistency, global_capture_eff
         );
     }
-    println!(
-        "RAW_HIST:  [0-0.05]: {:.1}%, [0.05-0.10]: {:.1}%, [0.10-0.20]: {:.1}%, [0.20-0.25]: {:.1}%, [0.25-0.50]: {:.1}%, [0.50+]: {:.1}%",
-        raw_dist[0]*100.0, raw_dist[1]*100.0, raw_dist[2]*100.0, raw_dist[3]*100.0, raw_dist[4]*100.0, raw_dist[5]*100.0
-    );
-    println!(
-        "EXEC_HIST: [0-0.05]: {:.1}%, [0.05-0.10]: {:.1}%, [0.10-0.20]: {:.1}%, [0.20-0.25]: {:.1}%, [0.25-0.50]: {:.1}%, [0.50+]: {:.1}%",
-        exec_dist[0]*100.0, exec_dist[1]*100.0, exec_dist[2]*100.0, exec_dist[3]*100.0, exec_dist[4]*100.0, exec_dist[5]*100.0
-    );
+    if ga_debug_enabled() {
+        println!(
+            "RAW_HIST:  [0-0.05]: {:.1}%, [0.05-0.10]: {:.1}%, [0.10-0.20]: {:.1}%, [0.20-0.25]: {:.1}%, [0.25-0.50]: {:.1}%, [0.50+]: {:.1}%",
+            raw_dist[0]*100.0, raw_dist[1]*100.0, raw_dist[2]*100.0, raw_dist[3]*100.0, raw_dist[4]*100.0, raw_dist[5]*100.0
+        );
+        println!(
+            "EXEC_HIST: [0-0.05]: {:.1}%, [0.05-0.10]: {:.1}%, [0.10-0.20]: {:.1}%, [0.20-0.25]: {:.1}%, [0.25-0.50]: {:.1}%, [0.50+]: {:.1}%",
+            exec_dist[0]*100.0, exec_dist[1]*100.0, exec_dist[2]*100.0, exec_dist[3]*100.0, exec_dist[4]*100.0, exec_dist[5]*100.0
+        );
+    }
 
     // --- PHASE 11.1 Behavioral Fingerprint (50-bucket) ---
     let mut consolidated_fingerprint = vec![0.0_f32; config.pnl_fingerprint_len];
@@ -9522,10 +9542,12 @@ fn aggregate_strategy_reports_inner(
         );
     }
 
-    println!(
-        "QUALITY_DEBUG → trades={} zero_pnl={} effectiveness={:.2} quality_score={:.3}",
-        total_trade_count, total_zero_pnl_trades, effectiveness, quality_score
-    );
+    if ga_debug_enabled() {
+        println!(
+            "QUALITY_DEBUG → trades={} zero_pnl={} effectiveness={:.2} quality_score={:.3}",
+            total_trade_count, total_zero_pnl_trades, effectiveness, quality_score
+        );
+    }
 
     // --- CORE SIGNAL (DO NOT DISTORT) ---
     // ================================
