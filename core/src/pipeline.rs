@@ -1,6 +1,7 @@
-use crate::binance_adapter::load_binance_events_from_jsonl;
-use crate::csv_source::CsvCandleSource;
-use crate::data_source::CandleSource;
+// use crate::NormalizedMarketEvent;
+use crate::load_binance_events_from_jsonl;
+use crate::CsvCandleSource;
+use crate::CandleSource;
 use crate::folder_source::FolderCandleSource;
 use crate::ga::{self, GaConfig};
 use crate::market_adapter::{convert_series_to_events, Candle};
@@ -12,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::Path;
+
 
 /// Float tolerance for deterministic comparisons (not `f64::EPSILON`, which is ~2e-16 and too tight for scaled money/weights).
 const F64_TOL: f64 = 1e-12;
@@ -169,7 +171,7 @@ pub fn run_evaluation_orchestration(
     };
 
     let scenarios_vec = map_to_pairs(asset_name, scenarios);
-    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec, 0, 0.0, 0)
+    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec, 0, 0.0, 0, 1.0)
         .ok_or_else(|| "Strategy produced no evaluable trades".to_string())?;
 
     let mut unified = UnifiedStrategyEvaluation::from(eval);
@@ -646,8 +648,8 @@ pub fn pair_scenarios_by_index<'a>(
         let s_name = s_names[i];
         let e_name = e_names[i];
 
-        let s_events = signal_scenarios.get(s_name).unwrap();
-        let e_events = execution_scenarios.get(e_name).unwrap();
+        let s_events = signal_scenarios.get(s_name).expect("Scenarios map missing expected signal key");
+        let e_events = execution_scenarios.get(e_name).expect("Scenarios map missing expected execution key");
 
         // Unbreakable: Hard check on length and timestamps
         let len_mismatch = s_events.len() != e_events.len();
@@ -779,7 +781,8 @@ fn train_asset_strategy(
         }
     }
 
-    Some(ga::run_ga_evolution(config, &train_scenarios))
+    let (res, _) = ga::run_ga_evolution(config, &train_scenarios, &ga::GlobalEvoState::default());
+    Some(res)
 }
 
 pub fn train_and_persist_strategies(
@@ -1012,7 +1015,7 @@ pub fn run_ga_orchestration(
 
     // Run GA Evolution
     let train_pairs = map_to_pairs(asset_name, &train_scenarios);
-    let ga_result = ga::run_ga_evolution(config.clone(), &train_pairs);
+    let (ga_result, _) = ga::run_ga_evolution(config.clone(), &train_pairs, &ga::GlobalEvoState::default());
 
     // Cross-evaluate best strategies on holdout data for "Execution Fitness"
     let execution_scenarios = if holdout_scenarios.is_empty() {
@@ -1034,11 +1037,16 @@ pub fn run_ga_orchestration(
 
     let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
         let generation = 0; // Standard non-evolutionary evaluation
-        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation, 0.0, 0).unwrap_or_else(
-            || ga::StrategyEvaluation {
-                strategy: strategy.clone(),
-                ..ga::StrategyEvaluation::default()
-            },
+        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation, 0.0, 0, 1.0).unwrap_or_else(
+            || ga::StrategyEvaluation::new_legacy(
+                format!("fallback_{}", asset_name),
+                strategy.clone(),
+                -0.1,
+                0.0,
+                0,
+                0,
+                0.5,
+            ),
         )
     };
 
@@ -1839,7 +1847,7 @@ pub fn run_pipeline_with_config(jsonl_path: &str, ga_config: GaConfig) -> Signal
     let all_events = match load_binance_events_from_jsonl(jsonl_path, 1) {
         Ok(events) => events,
         Err(e) => {
-            eprintln!("Error loading Binance events from {}: {}", jsonl_path, e);
+            println!("Error loading Binance events from {}: {}", jsonl_path, e);
             return SignalsSnapshot::default();
         }
     };
@@ -1867,7 +1875,7 @@ fn select_optimal_signal_thresholds_for_jsonl(
     let all_events = match load_binance_events_from_jsonl(jsonl_path, 1) {
         Ok(events) => events,
         Err(e) => {
-            eprintln!(
+            println!(
                 "Error loading Binance events for threshold sweep from {}: {}",
                 jsonl_path, e
             );
@@ -2023,7 +2031,7 @@ pub fn generate_latest_signals_from_saved_strategies(
 
 fn scenarios_from_binance_events(
     asset: &str,
-    events: &[crate::binance_adapter::NormalizedMarketEvent],
+    events: &[crate::NormalizedMarketEvent],
 ) -> HashMap<String, Vec<MarketEvent>> {
     let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
     if events.is_empty() {
@@ -2090,7 +2098,7 @@ fn generate_latest_signals_with_thresholds_internal(
         let all_events = match load_binance_events_from_jsonl(path, 1) {
             Ok(events) => events,
             Err(e) => {
-                eprintln!("Error loading Binance events from {}: {}", path, e);
+                println!("Error loading Binance events from {}: {}", path, e);
                 return SignalsSnapshot::default();
             }
         };
@@ -2202,9 +2210,9 @@ fn generate_latest_signals_with_thresholds_internal(
             } else {
                 // If asset not in store, return empty/zero result instead of running GA during "recommend" phase
                 ga::GaResult {
-                    global_best: ga::StrategyEvaluation::default(),
+                    global_best: ga::StrategyEvaluation::new_legacy("EMPTY".to_string(), ga::Strategy::from_seed(0), 0.0, 0.0, 0, 0, 0.0),
                     global_best_generation: 0,
-                    final_generation_best: ga::StrategyEvaluation::default(),
+                    final_generation_best: ga::StrategyEvaluation::new_legacy("EMPTY".to_string(), ga::Strategy::from_seed(0), 0.0, 0.0, 0, 0, 0.0),
                     generation_history: Vec::new(),
                     best_per_regime: std::collections::HashMap::new(),
                     clusters_per_regime: std::collections::HashMap::new(),
@@ -2225,7 +2233,8 @@ fn generate_latest_signals_with_thresholds_internal(
                 }
             }
             let train_pairs = map_to_pairs_from_refs(asset_name, &train_scenarios);
-            ga::run_ga_evolution(config.clone(), &train_pairs)
+            let (res, _) = ga::run_ga_evolution(config.clone(), &train_pairs, &ga::GlobalEvoState::default());
+            res
         };
 
         for scenario_name in &sorted_names {
@@ -2234,10 +2243,18 @@ fn generate_latest_signals_with_thresholds_internal(
                     max_timestamp.max(events.last().map(|e| e.exchange_ts).unwrap_or(0));
                 let (detected_regime, confidence) = detect_regime_from_events(events.as_slice());
                 let regime_key = format!("{}_{}", asset_name, detected_regime.as_str());
-                let selected_eval = ga_result
+                let selected_eval_opt = ga_result
                     .best_per_regime
                     .get(&regime_key)
-                    .unwrap_or(&ga_result.global_best);
+                    .cloned()
+                    .or(Some(ga_result.global_best.clone()));
+
+                let Some(selected_eval) = selected_eval_opt else {
+                    println!("⚠️ SKIP_EVAL → no strategy for regime {}", regime_key);
+                    acc_pnls.push(0.0);
+                    continue;
+                };
+
                 let mut one_scenario: HashMap<String, Vec<MarketEvent>> = HashMap::new();
                 one_scenario.insert(scenario_name.clone(), events.clone());
                 let one_scenario_vec = map_to_pairs(asset_name, &one_scenario);
@@ -2249,6 +2266,7 @@ fn generate_latest_signals_with_thresholds_internal(
                     generation,
                     0.0,
                     0,
+                    1.0,
                 ) {
                     max_observed_eval_edge = max_observed_eval_edge.max(report.fitness.max(0.0));
                     if sweep_disable_edge_override {
@@ -2875,7 +2893,7 @@ pub fn evaluate_on_real_data(
             }
         }
         let train_px_pairs = map_to_pairs(&asset_name, &train_scenarios_map);
-        let ga_result = ga::run_ga_evolution(config.clone(), &train_px_pairs);
+        let (ga_result, _) = ga::run_ga_evolution(config.clone(), &train_px_pairs, &ga::GlobalEvoState::default());
 
         let mut pnls_all = Vec::with_capacity(sorted_names.len());
         let mut execution_fitnesses_all = Vec::with_capacity(sorted_names.len());
@@ -2891,48 +2909,57 @@ pub fn evaluate_on_real_data(
 
                 let (detected_regime, confidence) = detect_regime_from_events(events.as_slice());
                 let regime_key = format!("{}_{}", asset_name, detected_regime.as_str());
-                let selected_eval = ga_result
+                let selected_eval_opt = ga_result
                     .best_per_regime
                     .get(&regime_key)
-                    .unwrap_or(&ga_result.global_best);
+                    .or(Some(&ga_result.global_best));
 
-                if let Some(report) = ga::evaluate_and_aggregate(
-                    &selected_eval.strategy,
-                    &config,
-                    &one_scenario_px_pairs,
-                    0,
-                    0.0,
-                    0,
-                ) {
-                    let gate = evaluate_gate(
-                        detected_regime,
-                        confidence,
-                        report.fitness,
-                        confidence_floor,
-                        score_floor,
-                        min_tradable_edge,
-                        edge_override_threshold,
-                    );
+                if let Some(eval) = selected_eval_opt {
+                    if let Some(report) = ga::evaluate_and_aggregate(
+                        &eval.strategy,
+                        &config,
+                        &one_scenario_px_pairs,
+                        0,
+                        0.0,
+                        0,
+                        1.0,
+                    ) {
+                        let gate = evaluate_gate(
+                            detected_regime,
+                            confidence,
+                            report.fitness,
+                            confidence_floor,
+                            score_floor,
+                            min_tradable_edge,
+                            edge_override_threshold,
+                        );
 
-                    if gate.trade_allowed {
-                        traded_scenarios += 1;
-                        if confidence < 0.60 {
-                            weak_executed_count += 1;
+                        if gate.trade_allowed {
+                            traded_scenarios += 1;
+                            if confidence < 0.60 {
+                                weak_executed_count += 1;
+                            }
+                            traded_pnls.push(report.avg_pnl);
+                            pnls_all.push(report.avg_pnl);
+                            execution_fitnesses_all.push(report.fitness);
+                        } else {
+                            pnls_all.push(0.0);
+                            execution_fitnesses_all.push(0.0);
                         }
-                        traded_pnls.push(report.avg_pnl);
-                        pnls_all.push(report.avg_pnl);
-                        execution_fitnesses_all.push(report.fitness);
                     } else {
                         pnls_all.push(0.0);
                         execution_fitnesses_all.push(0.0);
                     }
+                } else {
+                    pnls_all.push(0.0);
+                    execution_fitnesses_all.push(0.0);
                 }
             } else {
                 pnls_all.push(0.0);
                 execution_fitnesses_all.push(0.0);
             }
         }
-
+        
         if !pnls_all.is_empty() {
             let mean_pnl = pnls_all.iter().sum::<f64>() / pnls_all.len() as f64;
             let pnl_variance = pnls_all.iter().map(|p| (p - mean_pnl).powi(2)).sum::<f64>()

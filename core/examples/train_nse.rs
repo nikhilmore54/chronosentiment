@@ -12,10 +12,13 @@ use chronosentiment_core::folder_source::FolderCandleSource;
 ///
 /// Usage (validate mode):
 ///   RUN_MODE=validate cargo run --example train_nse -- --validate-on IRCTC.NS
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use chronosentiment_core::ga::{
-    evaluate_and_aggregate, load_elite_strategies, run_ga_evolution, save_elite_population,
-    GaConfig, Strategy, StrategyEvaluation,
+    evaluate_and_aggregate, load_elite_strategies, save_elite_population,
+    GaConfig, Strategy, StrategyEvaluation, AssetEvoState, GlobalEvoState, AssetSnapshot,
 };
+use chronosentiment_core::reco::{RecommendationEngine, RecoConfig, RecommendationResult};
 use chronosentiment_core::market_adapter::Candle;
 use chronosentiment_core::pipeline;
 use chronosentiment_core::MarketEvent;
@@ -56,6 +59,17 @@ pub struct AssetDataset {
     pub symbol: String,
     pub candles: Vec<Candle>,
     pub is_large_cap: bool,
+}
+
+/// [NEW V3.6.1] Session state for synchronous distributed evolution.
+struct DistributedAssetSession<'a> {
+    symbol: String,
+    scenarios: Vec<chronosentiment_core::ga::ScenarioPair<'a>>,
+    population: Vec<Strategy>,
+    evo_state: AssetEvoState,
+    best_evaluations: Vec<StrategyEvaluation>,
+    global_best: Option<StrategyEvaluation>,
+    current_evaluations: Vec<StrategyEvaluation>,
 }
 
 // ─── NEW: Multi-asset math helpers ───────────────────────────────────────────
@@ -152,7 +166,7 @@ struct CrossAssetMetrics {
     aqg_skip_ratio: f64,
     avg_payoff: f64,
     avg_participation: f64,
-    avg_trade_count: f64,
+
     avg_hold_time: f64,
     total_trades: usize,
     profitable_trades: usize,
@@ -181,7 +195,7 @@ fn evaluate_cross_asset(
     let mut participations = Vec::new();
     let mut hold_times = Vec::new();
     let mut assets_evaluated = 0;
-    let mut active_scenarios = 0;
+    let mut _active_scenarios = 0;
     let mut edge_spreads = Vec::new();
     let mut dominances = Vec::new();
 
@@ -192,7 +206,7 @@ fn evaluate_cross_asset(
         }
 
         assets_evaluated += 1;
-        if let Some(eval) = evaluate_and_aggregate(strategy, config, &scenarios) {
+        if let Some(eval) = evaluate_and_aggregate(strategy, config, &scenarios, 0, 1.0, 0, 1.0) {
             if eval.trade_count > 0 {
                 pnl_all.push(eval.avg_pnl);
                 total_trades += eval.trade_count;
@@ -209,7 +223,7 @@ fn evaluate_cross_asset(
                 hold_times.push(eval.avg_hold_time);
                 edge_spreads.push(eval.avg_edge_spread);
                 dominances.push(eval.avg_dominance);
-                active_scenarios += 1;
+                _active_scenarios += 1;
 
                 if *is_large_cap {
                     pnl_large.push(eval.avg_pnl);
@@ -248,11 +262,7 @@ fn evaluate_cross_asset(
         aqg_skip_ratio: mean_f64(&aqg_skips),
         avg_payoff: mean_f64(&payoffs),
         avg_participation: mean_f64(&participations),
-        avg_trade_count: if assets_evaluated > 0 {
-            total_trades as f64 / assets_evaluated as f64
-        } else {
-            0.0
-        },
+
         avg_hold_time: mean_f64(&hold_times),
         total_trades,
         profitable_trades,
@@ -300,48 +310,267 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
     );
     println!("{}", "-".repeat(70));
 
-    // Step 2: Run one GA evolution per asset, collect candidate strategies
+    // Step 2: Initialize Distributed Organism
     let mut candidate_strategies: Vec<Strategy> = Vec::new();
     let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    for (pass_idx, (symbol, _is_lc, signal_map)) in per_asset_maps.iter().enumerate() {
+    let global_state_path = "global_state.json";
+    let mut global_evo = if std::path::Path::new(global_state_path).exists() {
+        let content = std::fs::read_to_string(global_state_path).unwrap_or_default();
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        GlobalEvoState::default()
+    };
+
+    println!("🌐 INITIAL_GLOBAL_STATE | bias: {:.2} | agreement: {:.2} | progress: {:.4}", 
+        global_evo.expansion_bias, global_evo.agreement_ema, global_evo.progress_ema);
+
+    let mut sessions: Vec<DistributedAssetSession> = Vec::new();
+    let mut rng = StdRng::seed_from_u64(config.seed);
+
+    for (symbol, _is_lc, signal_map) in &per_asset_maps {
         let scenarios = build_scenarios(symbol, signal_map);
-        if scenarios.is_empty() {
-            continue;
+        if scenarios.is_empty() { continue; }
+        
+        sessions.push(DistributedAssetSession {
+            symbol: symbol.clone(),
+            scenarios,
+            population: chronosentiment_core::ga::initialize_population(config, &mut rng),
+            evo_state: AssetEvoState { symbol: symbol.clone(), ..AssetEvoState::default() },
+            best_evaluations: Vec::new(),
+            global_best: None,
+            current_evaluations: Vec::new(),
+        });
+    }
+
+    println!("\n🧬 STARTING SYNCHRONOUS DISTRIBUTED EVOLUTION ({} Assets, {} Gens)", sessions.len(), config.generations);
+    println!("{}", "-".repeat(90));
+
+    // MAIN GENERATIONAL LOOP (V3.6.1 Strict 5-Phase)
+    for gen in 0..config.generations {
+        let mut snapshots: std::collections::HashMap<String, AssetSnapshot> = std::collections::HashMap::new();
+
+        // PHASE 1: EVALUATE & PHASE 2: CAPTURE
+        for session in &mut sessions {
+            let diversity = chronosentiment_core::ga::calculate_population_diversity(&session.population);
+            let unique_count = session.population.iter().collect::<std::collections::HashSet<_>>().len();
+
+            let (evals_opt, _) = chronosentiment_core::ga::evaluate_population_scoped(
+                &session.population,
+                config,
+                &session.scenarios,
+                gen,
+                diversity,
+                unique_count,
+                global_evo.expansion_bias,
+            );
+
+            if let Some(mut evaluations) = evals_opt {
+                evaluations.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
+                
+                if let Some(best) = evaluations.first() {
+                    // Update session bests
+                    if session.global_best.is_none() || best.fitness > session.global_best.as_ref().unwrap().fitness {
+                        session.global_best = Some(best.clone());
+                    }
+                    if gen == config.generations - 1 {
+                        session.best_evaluations.extend(evaluations.clone());
+                    }
+                    
+                    // Diversity Guard Log (V3.6.7+ Hardening)
+                    println!("🧬 DIVERSITY  | {:<12} | unique_genomes: {}", session.symbol, unique_count);
+
+                    session.current_evaluations = evaluations.clone();
+
+                    // Update local evolution state (primitive fields)
+                    let log_queues: Vec<f64> = evaluations.iter()
+                        .map(|e| (1.0 + e.scenario_signature.avg_queue_ahead).ln())
+                        .collect();
+                    session.evo_state.prev_max_log_queue = session.evo_state.max_log_queue;
+                    session.evo_state.max_log_queue = log_queues.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                    session.evo_state.delta_log_q = session.evo_state.max_log_queue - session.evo_state.prev_max_log_queue;
+                    session.evo_state.trade_density = evaluations.iter().map(|e| e.trade_count).sum::<usize>() as f64 / evaluations.len() as f64;
+                    session.evo_state.fill_rate = evaluations.iter().map(|e| e.execution_metrics.fill_rate as f64).sum::<f64>() / evaluations.len() as f64;
+                    
+                    // [V3.6.2] Relative Stability: Ignore early noise phase
+                    // [V3.6.3 Hardened] Lagged Stability Perception & Relative Maturity
+                    let maturity = session.evo_state.max_log_queue / global_evo.global_max_log_q.max(1e-6);
+                    let is_stable = maturity > 0.3 && session.evo_state.delta_log_q.abs() < (0.5 * global_evo.energy_ema_prev);
+                    
+                    if is_stable {
+                        session.evo_state.stability_streak += 1;
+                    } else {
+                        session.evo_state.stability_streak = 0;
+                    }
+                    
+                    // HARDENING 1: Snapshot Integrity Check
+                    let snap = AssetSnapshot {
+                        symbol: session.symbol.clone(),
+                        max_log_queue: session.evo_state.max_log_queue,
+                        delta_log_q: session.evo_state.delta_log_q,
+                        trade_density: session.evo_state.trade_density,
+                        fill_rate: session.evo_state.fill_rate,
+                        stability_streak: session.evo_state.stability_streak,
+                    };
+                    
+                    #[cfg(debug_assertions)]
+                    {
+                        debug_assert!(snap.fill_rate >= 0.0 && snap.fill_rate <= 2.0); // fill_rate can occasionally be > 1 due to slippage artifacts
+                        debug_assert!(!snap.delta_log_q.is_nan());
+                    }
+
+                    snapshots.insert(session.symbol.clone(), snap);
+                }
+            }
         }
 
-        let ga_result = run_ga_evolution(config.clone(), &scenarios);
-        let best = &ga_result.global_best;
-        let final_gen = &ga_result.final_generation_best;
+        // PHASE 3: AGGREGATE
+        global_evo.aggregate(&snapshots, gen);
 
-        println!(
-            "  PASS {:02}/{:02} — {:18} | best={:.4} | final_gen={:.4} | pnl={:.4} | trades={}",
-            pass_idx + 1,
-            per_asset_maps.len(),
-            symbol,
-            best.fitness,
-            final_gen.fitness,
-            best.avg_pnl,
-            best.trade_count,
-        );
+        // [V3.6.6] Alignment Anchor Capture
+        if global_evo.post_strike_cooldown == 3 {
+            let mut converged_evals = Vec::new();
+            for session in &sessions {
+                if session.evo_state.stability_streak >= 3 {
+                    if let Some(best) = &session.global_best {
+                        converged_evals.push(best);
+                    }
+                }
+            }
+            if !converged_evals.is_empty() {
+                global_evo.alignment_anchor = Some(chronosentiment_core::ga::calculate_alignment_centroid(converged_evals));
+                println!("🧠 ANCHOR_CAPTURED | assets_aligned: {} | Genes Anchored", global_evo.prev_converged_assets);
+            }
+        }
+        if global_evo.post_strike_cooldown == 0 {
+            global_evo.alignment_anchor = None;
+        }
 
-        // Collect unique strategies from generation history + global best
-        let mut candidates_this_asset = ga_result.generation_history.clone();
-        candidates_this_asset.push(ga_result.global_best.clone());
+        // [V3.6.7] Global Mean Capture (Maturity Gated)
+        if global_evo.global_max_log_q > 0.15 {
+            let mut best_evals = Vec::new();
+            for session in &sessions {
+                if let Some(best) = &session.global_best {
+                    best_evals.push(best);
+                }
+            }
+            if !best_evals.is_empty() {
+                global_evo.global_mean = Some(chronosentiment_core::ga::calculate_alignment_centroid(best_evals));
+            }
+        } else {
+            global_evo.global_mean = None;
+        }
 
-        for eval in candidates_this_asset {
-            let id = format!(
-                "{}-{}-{}-{}",
-                eval.strategy.queue_threshold,
-                eval.strategy.base_edge,
-                eval.strategy.take_profit,
-                eval.strategy.stop_loss
+        // Diagnostic Reporting (V3.6.7)
+        if global_evo.pull_strength > 0.0 && global_evo.global_mean.is_some() {
+            println!("🧲 MEAN_PULL_ACTIVE | strength: {:.4} | maturity: {:.4}", 
+                global_evo.pull_strength, global_evo.global_max_log_q);
+        }
+
+        // [V3.6.1] LOG SAMPLES (2-3 assets per gen as requested)
+        let sample_count = if sessions.len() > 3 { 3 } else { sessions.len() };
+        for i in 0..sample_count {
+            let s = &sessions[i];
+            println!("  🧬 ASSET_SAMPLE | {:<12} | gen: {:<2} | best={:.4} | delta_q={:+.4} | trades={} | anchor={}", 
+                s.symbol, gen, s.global_best.as_ref().map(|b| b.fitness).unwrap_or(0.0), 
+                s.evo_state.delta_log_q, s.evo_state.trade_density as usize,
+                if global_evo.alignment_anchor.is_some() { "ACTIVE" } else { "OFF" });
+        }
+
+        // PHASE 4: APPLY BIAS & PHASE 5: EVOLVE
+        for session in &mut sessions {
+            // [V3.6.8] DETERMINISTIC DIVERSITY CONTROL
+            let effective_diversity = chronosentiment_core::ga::calculate_effective_diversity(&session.current_evaluations);
+            let progress = gen as f64 / config.generations as f64;
+            let threshold = 0.3f64.max(1.0 - progress);
+
+            if effective_diversity < threshold {
+                let severity = (threshold - effective_diversity) / threshold;
+                let inject_rate = (0.05 + 0.1 * severity).clamp(0.05, 0.15);
+                let inject_count = (session.population.len() as f64 * inject_rate).ceil() as usize;
+                
+                // Elite Protection: Never replace the Top 10% (min 2)
+                let elite_k = ((session.population.len() as f64 * 0.1).ceil() as usize).max(2);
+                
+                // Deterministic Injection from bottom-up
+                let start_idx = session.population.len().saturating_sub(inject_count).max(elite_k);
+                for i in start_idx..session.population.len() {
+                    let seed = chronosentiment_core::ga::stable_deterministic_hash((gen as u64, i as u64, (effective_diversity * 1000.0) as u64));
+                    if let Some(best) = &session.global_best {
+                        // Orthogonal Mutant of the best individual
+                        session.population[i] = best.strategy.orthogonal_mutant(seed);
+                    } else {
+                        // Total Reset if no alpha found yet
+                        session.population[i] = chronosentiment_core::ga::Strategy::from_seed(seed);
+                    }
+                }
+                println!("  🧬 DIVERSITY_INJECTION | asset={} | div={:.2} | threshold={:.2} | inject={}", 
+                    session.symbol, effective_diversity, threshold, inject_count);
+            }
+
+            // [V3.6.3 Hardened] Sigmoid Exploration Cooling
+            let phase = gen as f64 / config.generations as f64;
+            let cooling_factor = 1.0 - 0.5 * (1.0 / (1.0 + (-10.0 * (phase - 0.6)).exp()));
+            
+            // [V3.6.5] Survival Dynamics: Dampening & Stabilization
+            let effective_bias = 1.0 + (global_evo.expansion_bias - 1.0) * 0.5;
+            let mut survival_multiplier = 1.0;
+            
+            // Post-Strike Stabilization Window (3 gens)
+            if global_evo.post_strike_cooldown > 0 {
+                survival_multiplier *= 0.7; // V3.6.6: Stronger Elitism
+            }
+
+            // [V3.6.7] Pre-alignment damping: Catch the regime before it dissipates
+            if global_evo.agreement_ema > 0.25 {
+                survival_multiplier *= 0.92;
+            }
+
+            // [V3.6.7+] Behavioral Stability Detection
+            let is_asset_stable = session.evo_state.delta_log_q.abs() < (0.5 * global_evo.energy_ema_prev);
+            let eval_stability = vec![is_asset_stable; session.population.len()];
+            
+            // Energy Rebound Guard: Prevent chaos spikes
+            let energy_jump = global_evo.energy_ema / global_evo.energy_ema_prev.max(1e-6);
+            if energy_jump > 1.5 {
+                survival_multiplier *= 0.8;
+            }
+
+            // [V3.6.8] Anti-Correlated Mutation Floor: Scale mutation up as diversity drops
+            let mutation_boost = (1.0 - effective_diversity).max(0.0) * 0.3;
+            let mut local_evo = session.evo_state.clone();
+            local_evo.mutation_scale = (session.evo_state.mutation_scale * cooling_factor + mutation_boost) * effective_bias * survival_multiplier;
+
+            session.population = chronosentiment_core::ga::evolve_generation(
+                &session.current_evaluations, // Restored population-based evolution pool
+                config,
+                &mut rng,
+                &local_evo,
+                global_evo.post_strike_cooldown,
+                global_evo.alignment_anchor.as_ref(),
+                global_evo.global_mean.as_ref(),
+                global_evo.pull_strength,
+                &eval_stability,
             );
+        }
+    }
+
+    // Wrap up results
+    for session in &sessions {
+        if let Some(best) = &session.global_best {
+            candidate_strategies.push(best.strategy.clone());
+        }
+        for eval in &session.best_evaluations {
+            let id = format!("{}-{}-{}-{}", eval.strategy.queue_threshold, eval.strategy.base_edge, eval.strategy.take_profit, eval.strategy.stop_loss);
             if seen_ids.insert(id) {
                 candidate_strategies.push(eval.strategy.clone());
             }
         }
     }
+
+    // Persist finalized global state for the next session
+    let global_json = serde_json::to_string_pretty(&global_evo).unwrap_or_default();
+    let _ = std::fs::write(global_state_path, global_json);
 
     println!(
         "\n📦 Candidate pool: {} unique strategies from {} assets",
@@ -416,8 +645,12 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
             execution_metrics: chronosentiment_core::ga::ExecutionMetrics {
                 fill_efficiency: metrics.avg_capture_eff, // Using capture_eff as proxy
                 capture_efficiency: metrics.avg_capture_eff,
+                fill_rate: metrics.avg_capture_eff as f32,
                 avg_slippage: 0.0,
                 latency_impact: 0.0,
+                queue_blocked_count: 0,
+                liquidity_starved_count: 0,
+                total_attempts: metrics.total_trades,
             },
             scenario_signature: chronosentiment_core::ga::ScenarioExecutionSignature {
                 avg_queue_ahead: 0.0,
@@ -548,6 +781,58 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
         }
         Err(e) => eprintln!("❌ Failed to save elites: {}", e),
     }
+
+    // Step 7: Final Recommendation Dashboard (V4.1.0)
+    println!("\n🚀 FINAL RECOMMENDATION DASHBOARD — Identifying high-confidence opportunities");
+    println!("{}", "=".repeat(90));
+    println!(
+        "{:<12} | {:<4} | {:<12} | {:<7} | {:<15} | {:<5}",
+        "Asset", "Act", "Decision", "Conf", "Execution", "Cons"
+    );
+    println!("{}", "-".repeat(90));
+
+    let reco_config = RecoConfig::default();
+    
+    for (symbol, _is_lc, signal_map) in &per_asset_maps {
+        // Find the latest evaluations for this session
+        if let Some(session) = sessions.iter().find(|s| &s.symbol == symbol) {
+            // Pick a representative market snapshot (last available window)
+            let latest_window_id = signal_map.keys().last().cloned().unwrap_or_default();
+            let market_snapshot = signal_map.get(&latest_window_id).cloned().unwrap_or_default();
+
+            let result = RecommendationEngine::process(
+                &session.current_evaluations,
+                &market_snapshot,
+                &reco_config,
+                symbol
+            );
+
+            match result {
+                RecommendationResult::Trade(r) => {
+                    println!("\x1b[92m{:<12} | {:<4} | {:<12} | {:.2}    | {:<15} | {:<5}\x1b[0m",
+                        symbol, format!("{:?}", r.action), "TRADE", r.confidence.total, 
+                        format!("Fill:{:.2}", r.execution.fill_probability),
+                        format!("{:.2}", r.consensus.agreement_score)
+                    );
+                },
+                RecommendationResult::WeakSignal(r) => {
+                    println!("\x1b[93m{:<12} | {:<4} | {:<12} | {:.2}    | {:<15} | {:<5}\x1b[0m",
+                        symbol, format!("{:?}", r.action), "WEAK_SIGNAL", r.confidence.total,
+                        format!("Fill:{:.2}", r.execution.fill_probability),
+                        format!("{:.2}", r.consensus.agreement_score)
+                    );
+                },
+                RecommendationResult::NoTrade { reason, metrics } => {
+                    println!("{:<12} | {:<4} | {:<12} | {:.2}    | {:<15} | {:<5}",
+                        symbol, "---", format!("{:?}", reason), 0.0,
+                        format!("F:{:.2} S:{:.2}", metrics.execution_score, metrics.stability),
+                        format!("{:.2}", metrics.agreement)
+                    );
+                }
+            }
+        }
+    }
+    println!("{}", "=".repeat(90));
 }
 
 // ─── VALIDATE MODE ────────────────────────────────────────────────────────────
@@ -616,7 +901,7 @@ fn run_validate(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str, 
     let mut eval_count = 0_usize;
 
     for (i, elite) in elites.iter().enumerate() {
-        if let Some(eval) = evaluate_and_aggregate(&elite.strategy, config, &scenarios) {
+        if let Some(eval) = evaluate_and_aggregate(&elite.strategy, config, &scenarios, 0, 1.0, 0, 1.0) {
             let exec_ratio = if eval.trade_count > 0 {
                 (eval.profitable_trades + eval.zero_pnl_trades) as f64 / eval.trade_count as f64
             } else {

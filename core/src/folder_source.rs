@@ -1,5 +1,5 @@
-use crate::csv_source::CsvCandleSource;
-use crate::data_source::CandleSource;
+use crate::CsvCandleSource;
+use crate::CandleSource;
 use crate::market_adapter::Candle;
 use std::fs;
 use std::path::Path;

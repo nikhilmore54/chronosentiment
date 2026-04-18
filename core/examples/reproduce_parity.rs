@@ -1,7 +1,7 @@
 use chronosentiment_core::ga::{
     evaluate_strategy, GaConfig, ScenarioPair, Strategy, StrategyEvaluation,
 };
-use chronosentiment_core::{from_real, Candle, MarketEvent, MarketEventType, Side, PRICE_SCALE};
+use chronosentiment_core::{from_real, Candle, MarketEvent, MarketEventType, Side};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -61,6 +61,7 @@ fn main() {
         mom_floor: 0,
         edge_ratio: 150,
         participation_threshold: 0,
+        entry_offset: 0,
     };
 
     let mut best_sniper_error = f64::MAX;
@@ -89,7 +90,7 @@ fn main() {
                     strat.w_volatility = w_vol;
                     strat.exp_volatility = exp_vol as u64;
 
-                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1) {
+                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0) {
                         // 🔴 SNIPER ONLY
                         let min_trades = if eval.avg_pnl > 0.0012 {
                             2 // allow exceptional high edge
@@ -135,7 +136,7 @@ fn main() {
                     strat.w_volatility = w_vol;
                     strat.exp_volatility = exp_vol as u64;
 
-                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1) {
+                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0) {
                         // 🔵 CONSISTENT ONLY
                         if eval.avg_pnl > 0.0003 && eval.trade_count >= 6 {
                             let err = calculate_error(&eval);
@@ -213,7 +214,7 @@ fn main() {
         println!("SNIPER GENOME:");
         println!("\n🔴 SNIPER TRADES:");
 
-        for t in &eval.trades {
+        for t in &eval.pnl_history {
             println!(
         "exit_idx={} side={:?} pnl={:.6} quality={:.3} e_score={:.3} eff={:.3} edge_q={:.3} reason={:?}",
         t.exit_event_idx,
@@ -245,7 +246,7 @@ fn main() {
         println!("CONSISTENT GENOME:");
         println!("\n🔵 CONSISTENT TRADES:");
 
-        for t in &eval.trades {
+        for t in &eval.pnl_history {
             println!(
         "exit_idx={} side={:?} pnl={:.6} quality={:.3} e_score={:.3} eff={:.3} edge_q={:.3} reason={:?}",
         t.exit_event_idx,

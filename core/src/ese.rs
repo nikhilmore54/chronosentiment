@@ -1,3 +1,7 @@
+// ⚠️ EXECUTION SIMULATION ENGINE (ESE)
+// ⚠️ DO NOT MODIFY WITHOUT FAILING TEST SUITE
+// ⚠️ Determinism and Causality are protected by the Microstructure Test Harness.
+
 use crate::{
     CreateOrder, ExecutionMode, MarketEvent, MarketEventType, OrderOutcome, Side, SimEvent,
     SimulationResult,
@@ -5,6 +9,283 @@ use crate::{
 use std::collections::HashMap;
 
 pub const FIXED_LATENCY: u64 = 5;
+
+#[derive(Default, Debug, Clone)]
+pub struct ExecutionEngine {}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExecutionStatus {
+    Filled,
+    Partial,
+    Rejected,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    pub realized_pnl: f64,
+    pub filled_quantity: u64,
+    pub exit_reason: crate::GaExitReason,
+    pub exit_price: u64,
+    pub exit_index: usize,
+    pub status: ExecutionStatus,
+    pub queue_pressure: f64,
+    pub arrival_liquidity: f64,
+}
+
+impl ExecutionResult {
+    pub fn rejected() -> Self {
+        Self {
+            realized_pnl: 0.0,
+            filled_quantity: 0,
+            exit_reason: crate::GaExitReason::NoFill,
+            exit_price: 0,
+            exit_index: 0,
+            status: ExecutionStatus::Rejected,
+            queue_pressure: 0.0,
+            arrival_liquidity: 0.0,
+        }
+    }
+}
+
+impl ExecutionEngine {
+    pub fn simulate_round_trip(
+        &mut self,
+        entry_price: u64,
+        tp_target: u64,
+        sl_target: u64,
+        side: crate::Side,
+        quantity: u32,
+        execution_events: &[crate::MarketEvent],
+        entry_idx: usize,
+        max_hold: usize,
+    ) -> ExecutionResult {
+        let mut exit_reason = crate::GaExitReason::TimeStop;
+        let mut exit_price = entry_price;
+        let mut exit_idx = entry_idx;
+
+        let end_idx = (entry_idx + max_hold).min(execution_events.len());
+
+        for i in entry_idx..end_idx {
+            let current_price = execution_events[i].price;
+
+            if side == crate::Side::Buy {
+                if current_price >= tp_target {
+                    exit_reason = crate::GaExitReason::TakeProfit;
+                    exit_price = tp_target;
+                    exit_idx = i;
+                    break;
+                }
+                if current_price <= sl_target {
+                    exit_reason = crate::GaExitReason::StopLoss;
+                    exit_price = sl_target;
+                    exit_idx = i;
+                    break;
+                }
+            } else {
+                if current_price <= tp_target {
+                    exit_reason = crate::GaExitReason::TakeProfit;
+                    exit_price = tp_target;
+                    exit_idx = i;
+                    break;
+                }
+                if current_price >= sl_target {
+                    exit_reason = crate::GaExitReason::StopLoss;
+                    exit_price = sl_target;
+                    exit_idx = i;
+                    break;
+                }
+            }
+        }
+
+        if exit_reason == crate::GaExitReason::TimeStop {
+            exit_idx = (entry_idx + max_hold).min(execution_events.len().saturating_sub(1));
+            exit_price = execution_events[exit_idx].price;
+        }
+
+        let realized_pnl = if side == crate::Side::Buy {
+            (exit_price as f64 - entry_price as f64) / entry_price.max(1) as f64
+        } else {
+            (entry_price as f64 - exit_price as f64) / entry_price.max(1) as f64
+        };
+
+        ExecutionResult {
+            realized_pnl,
+            filled_quantity: quantity as u64,
+            exit_reason,
+            exit_price,
+            exit_index: exit_idx,
+            status: ExecutionStatus::Filled,
+            queue_pressure: 0.0,
+            arrival_liquidity: 0.0,
+        }
+    }
+
+    /// Canonical live execution interface.
+    /// Execution is NOT guaranteed. It depends on:
+    /// 1. Latency (FIXED_LATENCY)
+    /// 2. Queue Pressure (Sum of volume during latency period)
+    /// 3. Arrival Liquidity (Volume at the activation event)
+    pub fn execute(
+        &mut self, 
+        intent: crate::ga::OrderIntent, 
+        market: &[crate::MarketEvent],
+        current_index: usize,
+    ) -> ExecutionResult {
+        let latency = FIXED_LATENCY as usize;
+        let activation_idx = current_index + latency;
+
+        if activation_idx >= market.len() {
+            return ExecutionResult::rejected();
+        }
+
+        // --- STEP 1: COMPUTE QUEUE PRESSURE ---
+        // Slicing safety: Skip to end of window
+        let start = current_index.min(market.len().saturating_sub(1));
+        let end = activation_idx.min(market.len());
+        let queue_pressure: f64 = market[start..end]
+            .iter()
+            .map(|e| e.quantity as f64)
+            .sum();
+
+        // --- STEP 2: ARRIVAL LIQUIDITY ---
+        let arrival_event = &market[activation_idx];
+        let arrival_liquidity = arrival_event.quantity as f64;
+
+        // --- STEP 3: FILL CONDITION ---
+        // --- STEP 3: DYNAMIC QUEUE DRAIN MODEL ---
+        let max_lookahead = 60;
+        let mut weighted_price = 0.0;
+        let mut remaining_qty = intent.quantity as u64;
+        let mut filled_qty: u64 = 0;
+        let mut fill_index = activation_idx;
+        
+        // Normalized starting queue ahead (0.7 factor + hard clamp)
+        let mut remaining_queue = (queue_pressure * 0.7).min(500.0);
+        let mut queue_cleared = false;
+
+        for i in activation_idx..(activation_idx + max_lookahead).min(market.len()) {
+            let event = &market[i];
+
+            // Queue evolution based on microstructure interaction
+            match event.subtype {
+                MarketEventType::Trade => {
+                    remaining_queue -= event.quantity as f64;
+                }
+                MarketEventType::NewOrder => {
+                    remaining_queue += event.quantity as f64 * 0.3;
+                }
+                MarketEventType::Cancel => {
+                    remaining_queue -= event.quantity as f64 * 0.5;
+                }
+            }
+            
+            // Hard clamp to prevent unbounded growth/starvation
+            remaining_queue = remaining_queue.max(0.0).min(500.0);
+
+            // Gating: Only fill when queue threshold is met AND we have an active trade event
+            if remaining_queue <= 25.0 {
+                // Microstructure separation: queue cleared -> then next trade fills
+                if !queue_cleared {
+                    queue_cleared = true;
+                    continue; 
+                }
+
+                if event.subtype != MarketEventType::Trade {
+                    continue;
+                }
+
+                // Apply competition factor (15%) to available liquidity
+                let mut available = (event.quantity as f64 * 0.15) as u64;
+                
+                // Ensure minimum execution granularity
+                if available == 0 && event.quantity > 0 {
+                    available = 1;
+                }
+
+                // Hybrid Dynamic Liquidity Cap (Blend 10% arrival + 10% current)
+                let dynamic_cap = ((arrival_liquidity * 0.1) + (event.quantity as f64 * 0.1)) as u64;
+                available = available.min(dynamic_cap.max(1));
+
+                // Microstructure Friction (Phase V7: Path Independence & Continuous Dist)
+                let friction = 0.9;
+                let raw_fill = available.min(remaining_qty);
+
+                // Apply friction as continuous probabilistic survival (Path-dependent)
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                use std::hash::Hasher;
+                hasher.write_u64(event.exchange_ts);
+                hasher.write_usize(i);
+                hasher.write_u64(raw_fill);
+                hasher.write_u64(intent.quantity as u64);
+                hasher.write_u64(intent.price);
+                hasher.write_u64(filled_qty); // Path-dependent entropy
+
+                let roll = (hasher.finish() % 1000) as f64 / 1000.0;
+
+                // Continuous distribution (0.7-1.0 or 0.1-0.3) instead of discrete clusters
+                let fill_ratio = if roll < friction {
+                    0.7 + (0.3 * roll)
+                } else {
+                    0.1 + (0.2 * roll)
+                };
+
+                let fill_qty = ((raw_fill as f64) * fill_ratio) as u64;
+                
+                if fill_qty > 0 {
+                    filled_qty += fill_qty;
+                    remaining_qty -= fill_qty;
+                    weighted_price += (fill_qty as f64) * (event.price as f64);
+                    fill_index = i;
+                }
+
+                if remaining_qty == 0 {
+                    break;
+                }
+            } else {
+                // LOST QUEUE POSITION: If queue rebuilds beyond threshold, reset priority
+                queue_cleared = false;
+                continue;
+            }
+        }
+
+        // --- FINALIZATION ---
+        if filled_qty == 0 {
+            return ExecutionResult::rejected();
+        }
+
+        let avg_price = (weighted_price / filled_qty as f64).round() as u64;
+
+        let status = if remaining_qty == 0 {
+            ExecutionStatus::Filled
+        } else {
+            ExecutionStatus::Partial
+        };
+
+        // --- STATISTICAL VALIDATION LOG (Phase V8) ---
+        if std::env::var("ESE_DEBUG").is_ok() {
+            println!(
+                "Q:{:.2} AL:{:.2} FQ:{} RQ:{} IDX:{}",
+                queue_pressure,
+                arrival_liquidity,
+                filled_qty,
+                remaining_qty,
+                fill_index - activation_idx
+            );
+        }
+
+        ExecutionResult {
+            realized_pnl: 0.0,
+            filled_quantity: filled_qty,
+            exit_reason: crate::GaExitReason::NoFill,
+            exit_price: avg_price,
+            exit_index: fill_index,
+            status,
+            queue_pressure,
+            arrival_liquidity,
+        }
+    }
+}
+
 
 pub enum InternalEvent {
     Market(MarketEvent),

@@ -1,0 +1,69 @@
+{
+  "expansion_bias": 1.0,
+  "agreement_ema": 0.7496117007214655,
+  "stability_ema": 0.24009999999999992,
+  "progress_ema": 0.006328406343334417,
+  "frontier_velocity_ema": 0.006328406343334417,
+  "velocity_history": [
+    0.010400483222172657,
+    0.011164280943231068,
+    0.006328406343334417
+  ],
+  "last_expansion_gen": 0,
+  "asset_states": {
+    "RELIANCE": {
+      "symbol": "RELIANCE",
+      "max_log_queue": 0.1986299056889334,
+      "prev_max_log_queue": 0.201991546985219,
+      "delta_log_q": -0.0033616412962856057,
+      "stability_streak": 0,
+      "trade_density": 7.4,
+      "fill_rate": 0.8,
+      "last_smoothed_fill": 0.0,
+      "mutation_scale": 0.6264074999999999,
+      "last_weight": 0.51,
+      "stagnation_counter": 3,
+      "last_best_fitness": 0.23176893399046627,
+      "rolling_variance": 0.05,
+      "initial_diversity": 0.0803992,
+      "current_diversity": 0.11002880000000001,
+      "selection_pressure": 100.0
+    },
+    "HDFCBANK": {
+      "symbol": "HDFCBANK",
+      "max_log_queue": 0.22912168003537392,
+      "prev_max_log_queue": 0.20872857567817263,
+      "delta_log_q": 0.02039310435720129,
+      "stability_streak": 0,
+      "trade_density": 19.6,
+      "fill_rate": 1.0,
+      "last_smoothed_fill": 0.0,
+      "mutation_scale": 0.5324463749999999,
+      "last_weight": 0.7599,
+      "stagnation_counter": 0,
+      "last_best_fitness": 0.2139637824061447,
+      "rolling_variance": 0.05,
+      "initial_diversity": 0.0803992,
+      "current_diversity": 0.30227360000000003,
+      "selection_pressure": 10.141810411568638
+    },
+    "TATAMOTORS": {
+      "symbol": "TATAMOTORS",
+      "max_log_queue": 0.09227714872300107,
+      "prev_max_log_queue": 0.16414918228437547,
+      "delta_log_q": -0.07187203356137441,
+      "stability_streak": 0,
+      "trade_density": 18.2,
+      "fill_rate": 1.0,
+      "last_smoothed_fill": 0.0,
+      "mutation_scale": 0.45257941875,
+      "last_weight": 0.3,
+      "stagnation_counter": 1,
+      "last_best_fitness": 0.4395940706385892,
+      "rolling_variance": 0.05,
+      "initial_diversity": 0.0803992,
+      "current_diversity": 0.23038799999999998,
+      "selection_pressure": 1.0642540372196474
+    }
+  }
+}

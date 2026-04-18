@@ -199,6 +199,8 @@ mod tests {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+                entry_offset: 0, // TODO: replace with latency-derived offset
             },
             preferred_regimes: vec![LiveRegime::TrendingUp, LiveRegime::Mixed],
             confidence_weight: 1.0,

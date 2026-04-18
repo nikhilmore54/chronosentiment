@@ -80,7 +80,9 @@ fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
         mom_floor,
         edge_ratio,
         participation_threshold,
-    })
+        entry_offset: parts.get(18).and_then(|p| p.parse().ok()).unwrap_or(0),
+        exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+        })
 }
 
 fn _parse_fallback(sig: &StrategyProfile) -> Strategy {
@@ -103,7 +105,9 @@ fn _parse_fallback(sig: &StrategyProfile) -> Strategy {
         mom_floor: 20,
         edge_ratio: 150,
         participation_threshold: 30,
-    })
+        entry_offset: 0,
+        exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+        })
 }
 
 fn build_evaluator_from_snapshot(
@@ -131,6 +135,8 @@ fn build_evaluator_from_snapshot(
             mom_floor: 20,
             edge_ratio: 150,
             participation_threshold: 30,
+            entry_offset: 0,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
         });
         registry_rows.push(StrategyProfile {
             strategy_id: sig.strategy_id.clone(),

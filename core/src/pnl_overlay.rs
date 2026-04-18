@@ -2,7 +2,7 @@ use crate::strategy_ranking::LiveEvaluator;
 use crate::tick_replay::TickReplayEngine;
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_MAX_SLIPPAGE: f64 = 0.0005; // 0.05%
+pub const DEFAULT_MAX_SLIPPAGE: f64 = 0.0005; // 0.05%
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TradeDirection {
@@ -341,6 +341,8 @@ mod tests {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 50,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+                entry_offset: 0, // TODO: replace with latency-derived offset
             },
             preferred_regimes: vec![LiveRegime::TrendingUp, LiveRegime::Mixed],
             confidence_weight: 1.0,

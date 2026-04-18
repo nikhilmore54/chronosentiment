@@ -1,151 +1,217 @@
-use serde_json::Value;
-use std::{process::Command, thread, time::Duration};
+use chronosentiment_core::{
+    ese::{ExecutionEngine, ExecutionResult},
+    ga::{compute_consensus_alpha, GaConfig, ScenarioPair, Strategy, OrderIntent},
+    csv_source::CsvCandleSource,
+    data_source::CandleSource,
+    market_adapter::Candle,
+    MarketEvent, MarketEventType, Side,
+};
 
-use chronosentiment_core::ga::*;
-use chronosentiment_core::{from_real, Candle, MarketEvent, MarketEventType, Side, PRICE_SCALE};
 
-fn fetch_live_candles(symbol: &str, interval: &str, n: usize) -> Vec<Value> {
-    let script_path = format!(
-        "{}/scripts/fetch_candles.py",
-        std::env::current_dir().unwrap().display()
-    );
 
-    let output = Command::new("python3")
-        .arg(script_path)
-        .arg(symbol)
-        .arg(interval)
-        .arg(n.to_string())
-        .output()
-        .expect("failed to fetch candles");
+// ==============================
+// CONFIG
+// ==============================
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    serde_json::from_str(&stdout).unwrap_or_default()
+const ALPHA_THRESHOLD: f64 = 0.0001; // Extremely low for the demo
+
+const WINDOW_SIZE: usize = 60;
+
+// ==============================
+// LIVE ENGINE
+// ==============================
+
+struct LiveEngine {
+    strategies: Vec<Strategy>,
+    ese: ExecutionEngine,
+    total_pnl: f64,
+    trades_count: usize,
 }
 
-fn json_to_candles(data: Vec<Value>) -> Vec<Candle> {
-    data.into_iter()
-        .map(|c| Candle {
-            timestamp: c["timestamp"].as_u64().unwrap_or(0),
-            open: from_real(c["open"].as_f64().unwrap_or(0.0)),
-            high: from_real(c["high"].as_f64().unwrap_or(0.0)),
-            low: from_real(c["low"].as_f64().unwrap_or(0.0)),
-            close: from_real(c["close"].as_f64().unwrap_or(0.0)),
-            volume: 1000,
-        })
-        .collect()
-}
-
-fn convert_candles_to_events(candles: &[Candle]) -> Vec<MarketEvent> {
-    let mut events = Vec::new();
-
-    for c in candles {
-        let prices = [c.open, c.high, c.low, c.close];
-
-        for (i, &px) in prices.iter().enumerate() {
-            events.push(MarketEvent {
-                subtype: MarketEventType::Trade,
-                price: px,
-                quantity: 100,
-                side: Some(Side::Buy),
-                exchange_ts: c.timestamp + i as u64,
-            });
+impl LiveEngine {
+    fn new(strategies: Vec<Strategy>) -> Self {
+        Self {
+            strategies,
+            ese: ExecutionEngine::default(),
+            total_pnl: 0.0,
+            trades_count: 0,
         }
     }
 
-    events
-}
+    fn run(&mut self) {
+        println!("🚀 Starting Live Engine (ESE-Aligned)...");
 
-fn main() {
-    println!("🚀 LIVE ENGINE (CONSENSUS + EXECUTION)");
+        let source = CsvCandleSource {
+            path: "../data/nse/5m/AXISBANK.NS.csv".to_string(),
+        };
 
-    let symbols = vec![
-        "HDFCBANK.NS",
-        "RELIANCE.NS",
-        "INFY.NS",
-        "ICICIBANK.NS",
-        "SBIN.NS",
-        "IDEA.NS",
-    ];
+        let all_candles = source.get_candles_sync();
+        if all_candles.len() < WINDOW_SIZE + 100 {
+            println!("❌ Insufficient data in CSV");
+            return;
+        }
 
-    loop {
-        println!("\n================ NEW ITERATION ================\n");
-
-        for symbol in &symbols {
-            println!("🔍 {}", symbol);
-
-            let raw = fetch_live_candles(symbol, "5m", 200);
-            if raw.is_empty() {
-                println!("❌ No data");
-                continue;
+        // Simulate a sliding window moving through time
+        for i in 0..(all_candles.len() - WINDOW_SIZE) {
+            let window = &all_candles[i..i + WINDOW_SIZE];
+            
+            // ==============================
+            // 1. CONVERT TO EVENTS (REALITY CONSTRUCTION)
+            // ==============================
+            let mut market_events = Vec::new();
+            for candle in window {
+                market_events.extend(self.candle_to_market_events(candle));
             }
 
-            let candles = json_to_candles(raw);
-            let events = convert_candles_to_events(&candles);
-
+            // ==============================
+            // 2. CONSTRUCT SCENARIO (CANONICAL)
+            // ==============================
             let scenario = ScenarioPair {
-                name: "LIVE",
-                signal_symbol: symbol,
-                execution_symbol: symbol,
-                signal: &events,
-                execution: &events,
+                name: "live_stream",
+                signal_symbol: "NSE:NIFTY",
+                execution_symbol: "NSE:NIFTY",
+                signal: &market_events,
+                execution: &market_events,
             };
 
             let config = GaConfig::default();
 
-            // 🔥 YOUR ELITE STRATEGIES (replace later with GA output)
-            let elites = vec![Strategy::default()];
+            // ==============================
+            // 3. CONSENSUS ALPHA (GROUND TRUTH)
+            // ==============================
+            let report = compute_consensus_alpha(&self.strategies, &scenario, &config);
 
-            // 🔥 CONSENSUS ENGINE
-            let report = compute_consensus_alpha(&elites, &scenario, &config);
+            // ==============================
+            // 4. EXTRACT SIGNAL
+            // ==============================
+            if let Some(top_signal) = report.top_signals.first() {
+                println!("🔍 Best Signal Alpha: {:.4} (Report Size: {})", top_signal.alpha_score, report.top_signals.len());
+                if top_signal.alpha_score >= ALPHA_THRESHOLD {
 
-            if report.top_signals.is_empty() {
-                println!("⚠️ No signals");
-                continue;
-            }
+                    let strategy = &self.strategies[0]; // Simplified for demo
+                    let tp_offset = strategy.take_profit as u64;
+                    let sl_offset = strategy.stop_loss as u64;
 
-            let top = &report.top_signals[0];
+                    let side = if top_signal.alpha_score > 0.0 { Side::Buy } else { Side::Sell };
+                    let last_price = market_events.last().map(|e| e.price).unwrap_or(0);
 
-            let idx = top.signal_idx;
-            let strength = top.alpha_score.clamp(0.0, 1.0);
+                    let tp_target = if side == Side::Buy { last_price + tp_offset } else { last_price.saturating_sub(tp_offset) };
+                    let sl_target = if side == Side::Buy { last_price.saturating_sub(sl_offset) } else { last_price + sl_offset };
 
-            let is_long = top.conviction >= 0.0;
+                    let intent = OrderIntent {
+                        symbol: "NSE:NIFTY".to_string(),
+                        side,
+                        quantity: 1,
+                        price: last_price,
+                        tp_target,
+                        sl_target,
+                        holding_period: strategy.holding_period as u32,
+                    };
 
-            // 🔥 FAKE minimal conviction (only required fields)
-            let mut conviction = ConvictionOutcome::default();
+                    // ==============================
+                    // 5. EXECUTION (STRICT ESE ROUTING)
+                    // ==============================
+                    let execution = self.ese.execute(intent, &market_events, i % WINDOW_SIZE);
 
-            // minimal required overrides
-            conviction.bullish_score = if is_long { 1.0 } else { 0.0 };
-            conviction.bearish_score = if is_long { 0.0 } else { 1.0 };
-            conviction.conviction_score = strength;
-            conviction.edge_weight = strength;
-            conviction.is_valid = true;
+                    // ==============================
+                    // 6. UPDATE STATE (FROM OUTCOME)
+                    // ==============================
+                    self.apply_execution_result(&execution);
 
-            // 🔥 EXECUTION SIMULATION (YOUR CORE ENGINE)
-            if let Some(outcome) = ga_simulate_round_trip_at_cursor(
-                &elites[0],
-                &events,
-                &events,
-                &config,
-                idx,
-                0,
-                &conviction,
-                is_long,
-                strength,
-            ) {
-                let entry = candles.last().unwrap().close as f64 / PRICE_SCALE as f64;
-
-                println!(
-                    "{} → {:?} | entry {:.2} | pnl {:.6} | e_score {:.3}",
-                    symbol,
-                    outcome.side,
-                    entry,
-                    outcome.pnl,
-                    outcome.e_score
-                );
+                    println!(
+                        "📊 Status: {:?} | Reason: {:?} | PnL: {:.4} | Queue: {:.0} | Liq: {:.0}",
+                        execution.status,
+                        execution.exit_reason,
+                        execution.realized_pnl,
+                        execution.queue_pressure,
+                        execution.arrival_liquidity
+                    );
+                }
             }
         }
 
-        println!("\n⏳ Waiting 30 sec...\n");
-        thread::sleep(Duration::from_secs(30));
+        println!("🏁 Demo Complete. Final Trades: {} | Final PnL: {:.4}", self.trades_count, self.total_pnl);
     }
+
+    fn candle_to_market_events(&self, candle: &Candle) -> Vec<MarketEvent> {
+        vec![
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: candle.open,
+                quantity: candle.volume / 4,
+                side: None,
+                exchange_ts: candle.timestamp,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: candle.high,
+                quantity: candle.volume / 4,
+                side: None,
+                exchange_ts: candle.timestamp + 1,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: candle.low,
+                quantity: candle.volume / 4,
+                side: None,
+                exchange_ts: candle.timestamp + 2,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: candle.close,
+                quantity: candle.volume / 4,
+                side: None,
+                exchange_ts: candle.timestamp + 3,
+            },
+        ]
+    }
+
+    fn apply_execution_result(&mut self, result: &ExecutionResult) {
+        if result.filled_quantity > 0 {
+            self.total_pnl += result.realized_pnl;
+            self.trades_count += 1;
+        }
+    }
+}
+
+fn main() {
+    let strategies = load_elite_strategies();
+    let mut engine = LiveEngine::new(strategies);
+    engine.run();
+}
+
+fn load_elite_strategies() -> Vec<Strategy> {
+    println!("🧪 Loading real elite strategies from core/elite/latest.json");
+    let path = "core/elite/latest.json";
+    let content = std::fs::read_to_string(path).unwrap_or_else(|_| {
+        println!("⚠️  Could not find latest.json, falling back to dummy");
+        String::from("{\"strategies\": []}")
+    });
+    
+    let json: serde_json::Value = serde_json::from_str(&content).unwrap();
+    let mut strategies = Vec::new();
+    
+    if let Some(strats) = json.get("strategies").and_then(|s| s.as_array()) {
+        for s_obj in strats {
+            if let Some(s) = s_obj.get("strategy") {
+                let strategy: Strategy = serde_json::from_value(s.clone()).unwrap();
+                strategies.push(strategy);
+            }
+        }
+    }
+
+    if strategies.is_empty() {
+        strategies.push(Strategy {
+            take_profit: 150,
+            stop_loss: 75,
+            selectivity: 1, 
+            w_conviction: 10,
+            w_volatility: 5,
+            holding_period: 50,
+            ..Strategy::default()
+        });
+    }
+
+    println!("✅ Loaded {} strategies", strategies.len());
+    strategies
 }

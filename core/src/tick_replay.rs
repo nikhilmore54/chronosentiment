@@ -1,4 +1,4 @@
-use crate::binance_adapter::NormalizedMarketEvent;
+use crate::NormalizedMarketEvent;
 use crate::MarketEvent;
 use std::time::{SystemTime, UNIX_EPOCH};
 
