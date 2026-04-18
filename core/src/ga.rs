@@ -330,6 +330,7 @@ struct ScenarioMetrics {
     pub trade_qualities: Vec<f64>,
     pub sum_realized_pnl: f64,
     pub sum_expected_pnl: f64,
+    pub sum_ideal_pnl: f64, // Ideal baseline (frictionless) tracking
 
     // Phase 14: Consensus Bridge Audit
     pub vip_count: usize,
@@ -516,6 +517,7 @@ impl ScenarioMetrics {
     fn record_trade(
         &mut self,
         realized_pnl: f64,
+        ideal_pnl: f64, // Corrected parameter
         expected_pnl: f64,
         entropy: f64,
         conviction: f64,
@@ -557,9 +559,10 @@ impl ScenarioMetrics {
             }
         }
 
-        // Phase 2: Consistency Engine Tracking
+        // Phase 2/3: Consistency & Efficiency Tracking
         self.sum_realized_pnl += realized_pnl;
         self.sum_expected_pnl += expected_pnl;
+        self.sum_ideal_pnl += ideal_pnl;
 
         let denom = expected_pnl.abs().max(1e-9);
         let quality = (realized_pnl / denom).clamp(-2.0, 2.0);
@@ -3149,6 +3152,7 @@ pub fn evaluate_ensemble_strategy(
                 metrics.sum_exec_e_score += outcome.e_score;
                 metrics.record_trade(
                     trade_pnl,
+                    outcome.ideal_pnl,
                     trade_pnl, // expected_pnl (placeholder)
                     entropy_norm,
                     conviction.conviction_score,
@@ -5432,9 +5436,9 @@ pub fn ga_simulate_round_trip_at_cursor(
         panic!("NORMALIZATION STILL ACTIVE in Pipeline A: norm_pnl={}", realized_pnl);
     }
     
-    // NEW Phase 3 Efficiency: Realized / Ideal
+    // NEW Phase 3 Efficiency: Realized / Ideal (Sign preserved)
     let efficiency = if ideal_pnl.abs() > 1e-6 {
-        (realized_pnl / ideal_pnl.abs()).clamp(-1.0, 1.0)
+        (realized_pnl / ideal_pnl).clamp(-1.0, 1.0)
     } else {
         0.0
     };
@@ -7053,7 +7057,6 @@ pub fn evaluate_strategy(
                 * edge_scale
                 * (1.0 + 0.3 * capture_ratio.abs())
                 * exec_weight; // 🔥 APPLY EXECUTION REALISM
-
             let tail_penalty = if raw_pnl < 0.0 {
                 (-raw_pnl).min(0.01)
             } else {
@@ -7075,7 +7078,7 @@ pub fn evaluate_strategy(
             let is_long = outcome.side == crate::Side::Buy;
             metrics.record_trade(
                 trade_pnl,
-                0.0,
+                outcome.ideal_pnl,
                 0.0,
                 final_conviction.raw_q_ratio,
                 realized_efficiency,
