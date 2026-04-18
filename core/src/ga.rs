@@ -4870,6 +4870,7 @@ pub struct GaRoundTripOutcome {
     pub source: SignalSource,
     pub exit_reason: GaExitReason,
     pub pnl: f64,
+    pub ideal_pnl: f64, // Ideal outcome (no latency/slippage)
     pub quality: f64,
     pub e_score: f64,
     pub exit_event_idx: usize,
@@ -4882,7 +4883,7 @@ pub struct GaRoundTripOutcome {
     pub expected_move: f64, // Realized move
     pub m_favorable: f64,   // MFE (Max Favorable Excursion)
     pub m_adverse: f64,     // MAE (Max Adverse Excursion)
-    pub efficiency: f64,    // Realized / MFE
+    pub efficiency: f64,    // Realized / Ideal
     pub edge_quality: f64,  // MFE / |MAE|
     pub time_to_mfe: usize, // Bars to MFE
     pub raw_q_ratio: f64,
@@ -5178,6 +5179,7 @@ pub fn ga_simulate_round_trip_at_cursor(
             source: SignalSource::Synthetic,
             exit_reason: GaExitReason::TimeStop,
             pnl: 0.0,
+            ideal_pnl: 0.0,
             quality: 0.0,
             e_score: 0.0,
             exit_event_idx: cursor_i + 1,
@@ -5362,25 +5364,38 @@ pub fn ga_simulate_round_trip_at_cursor(
     let ts_offset = base_sl * (0.2 + 0.6 * (1.0 - strength));
 
     // ==========================================
-    // ✅ CANONICAL: ESE-DRIVEN EXECUTION
+    // ✅ CANONICAL: ESE-DRIVEN EXECUTION (REAL VS IDEAL)
     // ==========================================
 
     let mut ese = ExecutionEngine::default();
 
-    // Route through ESE (The Single Source of Truth)
+    // 1. REAL EXECUTION (Ground Truth)
     let execution = ese.simulate_round_trip(
         buy_price,
         tp_target,
         sl_target,
         if is_long { Side::Buy } else { Side::Sell },
-        1, // quantity
+        1,
         execution_events,
         entry_idx,
         strategy.holding_period as usize,
     );
 
+    // 2. IDEAL EXECUTION (Zero Friction Baseline)
+    let ideal_execution = ese.simulate_round_trip(
+        signal_events[cursor_i].price, // No slippage
+        tp_target,
+        sl_target,
+        if is_long { Side::Buy } else { Side::Sell },
+        1,
+        execution_events,
+        cursor_i, // No latency
+        strategy.holding_period as usize,
+    );
+
     // Extract Outcome Data from Event Execution
     let realized_pnl = execution.realized_pnl;
+    let ideal_pnl = ideal_execution.realized_pnl;
     let exit_reason = execution.exit_reason;
     let exit_event_idx = execution.exit_index;
     let exit_price = execution.exit_price;
@@ -5416,8 +5431,13 @@ pub fn ga_simulate_round_trip_at_cursor(
     if realized_pnl.abs() >= 0.1 {
         panic!("NORMALIZATION STILL ACTIVE in Pipeline A: norm_pnl={}", realized_pnl);
     }
-    let norm_pnl = realized_pnl; // raw, no division
-    let efficiency = (norm_pnl * 1.2).tanh(); // same smoothing as Pipeline B
+    
+    // NEW Phase 3 Efficiency: Realized / Ideal
+    let efficiency = if ideal_pnl.abs() > 1e-6 {
+        (realized_pnl / ideal_pnl.abs()).clamp(-1.0, 1.0)
+    } else {
+        0.0
+    };
 
     let edge_quality = (mfe_pnl / mae_pnl.abs().max(1e-9)).clamp(0.0, 5.0);
     let edge_boost = (edge_quality / 5.0).clamp(0.0, 1.0);
@@ -5428,6 +5448,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         source: SignalSource::Organic,
         exit_reason,
         pnl: realized_pnl,
+        ideal_pnl,
         quality: if realized_pnl > 0.0005 { 1.0 } else { 0.0 },
         e_score,
         exit_event_idx,
