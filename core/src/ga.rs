@@ -5020,13 +5020,15 @@ pub fn evaluate_market_conviction(
     let adjusted_vol_floor = (vol_floor * adaptive_factor).max(vol_floor * 0.2);
     let adjusted_mom_floor = (mom_floor * adaptive_factor).max(mom_floor * 0.2);
 
-    println!(
-        "GATE_CHECK → n_vol={:.3} vol_floor={:.3} adjusted={:.3} pass={}",
-        n_vol,
-        vol_floor,
-        adjusted_vol_floor,
-        n_vol >= adjusted_vol_floor * 0.08
-    );
+    if ga_debug_enabled() {
+        println!(
+            "GATE_CHECK → n_vol={:.3} vol_floor={:.3} adjusted={:.3} pass={}",
+            n_vol,
+            vol_floor,
+            adjusted_vol_floor,
+            n_vol >= adjusted_vol_floor * 0.08
+        );
+    }
 
     if n_vol < adjusted_vol_floor * 0.08 || n_mom < adjusted_mom_floor * 0.08 {
         return ConvictionOutcome {
@@ -5699,7 +5701,9 @@ pub fn evaluate_strategy(
     }
 
     if candidate_edges.is_empty() {
-        println!("⚠️ EDGE STARVATION → forcing alpha injection");
+        if ga_debug_enabled() {
+            println!("⚠️ EDGE STARVATION → forcing alpha injection");
+        }
         // FIX 5: Mark for outer loop to inject fresh random strategies
         return Some(StrategyEvaluation {
             strategy: strategy.clone(),
@@ -6759,26 +6763,30 @@ pub fn evaluate_strategy(
             final_execute = true;
         }
 
-        println!(
-            "EXEC_DECISION → symbol={} passed_gate={} size={:.2} risk_ok={} fill_prob={:.3} is_probe={} final_execute={}",
-            scenario_name,
-            passed_gate,
-            size,
-            risk_ok,
-            effective_fill_prob,
-            signal.is_probe,
-            final_execute
-        );
+        if ga_debug_enabled() {
+            println!(
+                "EXEC_DECISION → symbol={} passed_gate={} size={:.2} risk_ok={} fill_prob={:.3} is_probe={} final_execute={}",
+                scenario_name,
+                passed_gate,
+                size,
+                risk_ok,
+                effective_fill_prob,
+                signal.is_probe,
+                final_execute
+            );
+        }
 
         if !final_execute {
-            println!(
-                "EXEC_REJECT_REASON → gate={} risk={} size={} fill_prob={:.3} threshold={:.3}",
-                passed_gate,
-                risk_ok,
-                size > 0.0,
-                effective_fill_prob,
-                threshold
-            );
+            if ga_debug_enabled() {
+                println!(
+                    "EXEC_REJECT_REASON → gate={} risk={} size={} fill_prob={:.3} threshold={:.3}",
+                    passed_gate,
+                    risk_ok,
+                    size > 0.0,
+                    effective_fill_prob,
+                    threshold
+                );
+            }
             continue;
         }
 
@@ -7936,29 +7944,30 @@ pub fn evaluate_strategy(
             );
         }
 
-        println!(
-            "ALPHA → pnl={:.6} effective={:.6} fitness={:.4}",
-            total_pnl, effective_pnl, fitness
-        );
-
-        println!("=====================================================");
+        if ga_debug_enabled() {
+            println!(
+                "ALPHA → pnl={:.6} effective={:.6} fitness={:.4}",
+                total_pnl, effective_pnl, fitness
+            );
+            println!("=====================================================");
+        }
     }
 
-    println!("EXEC_PASSED → {}", exec_passed);
-    if exec_passed == 0 {
-        println!("🚨 ALL TRADES BLOCKED → CHECK EDGE/CUTOFF");
-    }
-    println!("TRADES_EXECUTED → {}", executed_trades.len());
-    println!("FUNNEL:");
     if ga_debug_enabled() {
+        println!("EXEC_PASSED → {}", exec_passed);
+        if exec_passed == 0 {
+            println!("🚨 ALL TRADES BLOCKED → CHECK EDGE/CUTOFF");
+        }
+        println!("TRADES_EXECUTED → {}", executed_trades.len());
+        println!("FUNNEL:");
         println!("SIGNALS_GENERATED → {}", signal_events.len());
+        println!("EXEC_PASSED → {}", exec_passed);
+        println!("TRADES_EXECUTED → {}", executed_trades.len());
+        println!(
+            "FINAL_EVAL → trades={} pnl={} fitness={}",
+            total_trades, total_pnl, fitness
+        );
     }
-    println!("EXEC_PASSED → {}", exec_passed);
-    println!("TRADES_EXECUTED → {}", executed_trades.len());
-    println!(
-        "FINAL_EVAL → trades={} pnl={} fitness={}",
-        total_trades, total_pnl, fitness
-    );
 
     // 🔥 FINAL CLEANUP — remove duplicates globally
     consistent_scores.dedup_by_key(|(idx, _)| *idx);
