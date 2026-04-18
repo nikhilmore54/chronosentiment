@@ -5025,10 +5025,10 @@ pub fn evaluate_market_conviction(
         n_vol,
         vol_floor,
         adjusted_vol_floor,
-        n_vol >= adjusted_vol_floor * 0.8
+        n_vol >= adjusted_vol_floor * 0.08
     );
 
-    if n_vol < adjusted_vol_floor * 0.8 || n_mom < adjusted_mom_floor * 0.8 {
+    if n_vol < adjusted_vol_floor * 0.08 || n_mom < adjusted_mom_floor * 0.08 {
         return ConvictionOutcome {
             conviction_score: 0.0,
             bullish_score: 0.0,
