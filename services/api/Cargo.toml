@@ -16,3 +16,6 @@ rand = "0.8.5"
 blake3 = "1.5.0"
 
 chronosentiment_core = { path = "../../core" }
+
+[features]
+debug_decision = ["chronosentiment_core/debug_decision"]

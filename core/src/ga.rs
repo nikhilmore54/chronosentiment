@@ -3316,8 +3316,8 @@ pub fn evaluate_ensemble_strategy(
             let conviction_score = decision.consensus_score.abs();
             let conviction = ConvictionOutcome {
                 conviction_score,
-                bullish_score: conviction_score,
-                bearish_score: 0.0,
+                bullish_score: conviction_score.max(0.0),
+                bearish_score: (-conviction_score).max(0.0),
                 is_valid: true,
                 expected_edge: 0.0,
                 edge_weight: conviction_score.clamp(0.5, 2.0),
@@ -3332,9 +3332,7 @@ pub fn evaluate_ensemble_strategy(
                 regime: MarketRegime::MeanReversion,
             };
 
-            let directional_edge = (conviction.bullish_score - conviction.bearish_score)
-                .abs()
-                .powf(0.7);
+            let directional_edge = conviction.conviction_score.abs().powf(0.7);
             let score_norm = (conviction.conviction_score).min(1.0);
             let strength = (0.8 * directional_edge + 0.2 * score_norm).clamp(0.05, 1.0);
 
@@ -6904,7 +6902,7 @@ pub fn evaluate_strategy(
             ts: *signal_idx,
             price: signal_events[*signal_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conv.is_bearish { -1 } else { 1 },
+            direction: if conv.conviction_score < 0.0 { -1 } else { 1 },
             strength,
             source: *source,
             conviction: conv.clone(),
@@ -6928,7 +6926,7 @@ pub fn evaluate_strategy(
             ts: *signal_idx,
             price: signal_events[*signal_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conv.is_bearish { -1 } else { 1 },
+            direction: if conv.conviction_score < 0.0 { -1 } else { 1 },
             strength,
             source: *source,
             conviction: conv.clone(),
@@ -7033,7 +7031,7 @@ pub fn evaluate_strategy(
             ts: fallback_idx,
             price: signal_events[fallback_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conviction.is_bearish { -1 } else { 1 },
+            direction: if conviction.conviction_score < 0.0 { -1 } else { 1 },
             strength: 0.1,
             source: SignalSource::Synthetic,
             conviction,
@@ -7071,20 +7069,16 @@ pub fn evaluate_strategy(
         );
     }
 
+    // ✅ USE PREVIOUS SNAPSHOT (no intra-generation feedback)
     // 🔒 Freeze snapshot BEFORE using it
     // 🔒 HARD SNAPSHOT (NO FEEDBACK)
     const EDGE_WINDOW: usize = 200;
 
-    // maintain rolling window
-    if edge_vals_build.len() > EDGE_WINDOW {
-        edge_vals_build.remove(0);
-    }
-
     // 🔥 USE ONLY PREVIOUS BUILD (NOT MUTATING ONE)
-    let edge_dist_snapshot = if edge_vals_build.len() >= 10 {
-        edge_vals_build.clone()
-    } else if edge_vals_build.len() > 0 {
-        edge_vals_build.clone()
+    let edge_dist_snapshot = if edge_vals_snapshot.len() >= 10 {
+        edge_vals_snapshot.clone()
+    } else if edge_vals_snapshot.len() > 0 {
+        edge_vals_snapshot.clone()
     } else {
         vec![0.0003, 0.0008, 0.0015, 0.002, 0.003]
     };
@@ -7092,8 +7086,14 @@ pub fn evaluate_strategy(
     // 🔥 CONSISTENT EDGE DISTRIBUTION
     // ===============================
 
+    println!(
+        "SNAPSHOT_SOURCE_CHECK → using_snapshot={} snapshot_size={} build_size={}",
+        edge_vals_snapshot.len() > 0,
+        edge_vals_snapshot.len(),
+        edge_vals_build.len()
+    );
     // Use ONLY candidate_edges (single source of truth)
-    let mut edge_dist: Vec<f64> = candidate_edges
+    let mut edge_dist: Vec<f64> = edge_dist_snapshot
         .iter()
         .cloned()
         .filter(|v| v.is_finite() && *v > 0.0)
@@ -7158,12 +7158,6 @@ pub fn evaluate_strategy(
         &edge_dist[..]
     };
     let t_len = trimmed.len();
-
-    // 🔥 ROBUST PERCENTILES
-    let e_p30 = trimmed[t_len * 30 / 100];
-    let e_p50 = trimmed[t_len * 50 / 100];
-    let e_p90 = trimmed[t_len * 90 / 100];
-
     let spread_ratio = e_p90 / (e_p30 + 1e-9);
 
     if spread_ratio < 1.2 {
@@ -7300,11 +7294,6 @@ pub fn evaluate_strategy(
         fill_probability += (noise - 0.05) * 0.5;
         fill_probability = fill_probability.clamp(0.05, 0.95);
 
-        println!(
-            "[EXEC_VAR_CHECK] strat={} queue={:.1} liq={:.1} vol={:.4} fill={:.4}",
-            strategy_index, queue_ahead, liquidity, volatility, fill_probability
-        );
-
         let latency_impact = (volatility * config.latency_ticks as f64).min(0.5);
         let adverse_selection = (volatility * 0.5).clamp(0.0, 0.5);
 
@@ -7320,11 +7309,6 @@ pub fn evaluate_strategy(
         capture_prob += cap_noise - 0.05;
 
         capture_prob = capture_prob.clamp(0.05, 0.98);
-
-        println!(
-            "[EXEC_DEBUG] strat={} cap={:.3} fill={:.3}",
-            strategy_index, capture_prob, fill_probability
-        );
 
         let entry_price = signal_events[current_idx].price as f64;
         let atr = calculate_atr(signal_events, current_idx, 14);
@@ -7360,11 +7344,6 @@ pub fn evaluate_strategy(
         let jitter = ((strategy_index ^ signal.ts) % 10) as f64 * 1e-5;
         // 🔥 FIX: build distribution from raw edge, NOT realized
 
-        println!(
-            "[EDGE_BUILD] raw_edge={:.6} realized={:.6}",
-            raw_edge, expected_realized_edge
-        );
-
         // ✅ FIX 5: Edge collapse detector
         // if edge_vals_snapshot.len() >= 10 {
         //     let mean_e = edge_vals_snapshot.iter().sum::<f64>() / edge_vals_snapshot.len() as f64;
@@ -7399,10 +7378,6 @@ pub fn evaluate_strategy(
         let lower_spread = (e_p50 - e_p30).max(1e-5);
 
         // 3. Normalize WITHOUT bias
-        println!(
-            "[EDGE_DEBUG_PRE] strat={} expected_edge={:.8}",
-            strategy_index, expected_realized_edge
-        );
 
         // 🔥 CORE EXECUTION CONTEXT (MUST EXIST BEFORE EVERYTHING)
         let e_p70 = trimmed[t_len * 70 / 100];
@@ -7429,7 +7404,7 @@ pub fn evaluate_strategy(
         // ===============================
 
         // Prevent divide-by-zero
-        let denom = (e_p90 - e_p30).max(1e-9);
+        let denom = (e_p90 - e_p30).abs().max(1e-6);
         let mut edge_norm = (expected_realized_edge - e_p30) / denom;
 
         // 🔥 SOFT FLOOR (instead of hard zero)
@@ -7457,10 +7432,6 @@ pub fn evaluate_strategy(
         let mut edge_raw = raw_edge;
         // preserve true scale
         let edge_raw = expected_realized_edge;
-        println!(
-            "[EDGE_DEBUG_POST] strat={} edge_raw={:.8}",
-            strategy_index, edge_raw
-        );
 
         println!(
             "EDGE_NORM_FIXED → raw={:.6} realized={:.6} p30={:.6} p50={:.6} p90={:.6}",
@@ -7586,14 +7557,13 @@ pub fn evaluate_strategy(
         let exec_pct = (exec_margin / exec_scale).clamp(-1.0, 1.0);
 
         // 4. Combine in score space (NOT probability space)
-        let combined_score =
-            0.5 * edge_pct + 0.3 * capture_pct + 0.2 * exec_pct;
+        let combined_score = 0.5 * edge_pct + 0.3 * capture_pct + 0.2 * exec_pct;
 
         // 🔥 NEW: center around neutral regime
         let centered_score = combined_score - 0.2;
 
         // 5. Convert to probability using sigmoid (adaptive curve)
-        let mut final_prob = 1.0 / (1.0 + (-2.5 * centered_score).exp());
+        let mut final_prob = 1.0 / (1.0 + (-1.5 * centered_score).exp());
 
         // 6. Regime adjustment (soft degradation)
         if !is_live_regime {
@@ -7613,13 +7583,10 @@ pub fn evaluate_strategy(
 
         // --- ACCOUNTING ---
         if final_execute {
-            edge_vals_build.push(expected_realized_edge + jitter);
+            // ✅ FIX: build distribution ONLY from raw edge (pre-execution signal)
+            edge_vals_build.push(raw_edge + jitter);
             exec_pass_count_local += 1;
         }
-        println!(
-            "[EXEC_DEBUG] strat={} cap={:.3} fill={:.3}",
-            strategy_index, capture_prob, fill_probability
-        );
 
         if std::env::var("GA_TRACE").is_ok() {
             println!(
@@ -8089,11 +8056,12 @@ pub fn evaluate_strategy(
     }
 
     println!(
-        "[GATE_STATS] total={} priority={} edge={} exec={}",
+        "[GATE_STATS] total={} priority={} edge={} exec={} real_trades={}",
         emitted_signs.len(),
         priority_pass_count,
         edge_pass_count,
-        exec_pass_count_local
+        exec_pass_count_local,
+        real_trade_count
     );
 
     if trade_scores.is_empty() && !executed_trades.is_empty() {
@@ -8108,6 +8076,26 @@ pub fn evaluate_strategy(
         edge_vals_snapshot = edge_vals_build.clone();
     }
 
+    // maintain rolling window
+    // 🔥 Apply rolling window to SNAPSHOT (not build)
+    if edge_vals_snapshot.len() > EDGE_WINDOW {
+        edge_vals_snapshot.drain(0..edge_vals_snapshot.len() - EDGE_WINDOW);
+    }
+
+    if edge_vals_snapshot.len() >= 10 {
+        let mean_e = edge_vals_snapshot.iter().sum::<f64>() / edge_vals_snapshot.len() as f64;
+        let var_e = edge_vals_snapshot
+            .iter()
+            .map(|v| (v - mean_e).powi(2))
+            .sum::<f64>()
+            / edge_vals_snapshot.len() as f64;
+
+        let std_e = var_e.sqrt();
+
+        if std_e < 1e-4 {
+            println!("🚨 EDGE COLLAPSE DETECTED → std={:.8}", std_e);
+        }
+    }
     // 🔥 Phase 3.6.8: Minimum Trade Guarantee (Fallback Injector)
     // If we have massive starvation (< 5 trades), force-inject high-conviction signals to create learning gradient.
     if real_trade_count < 5 && real_trade_count > 0 { // at least one valid pass
@@ -8910,12 +8898,6 @@ pub fn evaluate_strategy(
 
         cs_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        println!(
-            "EDGE_DIST_DEBUG → min={:.6} max={:.6}",
-            cs_values.first().unwrap_or(&0.0),
-            cs_values.last().unwrap_or(&0.0),
-        );
-
         let len = cs_values.len();
 
         let p30 = cs_values[((len as f64 * 0.30).floor() as usize).min(len - 1)];
@@ -9175,6 +9157,10 @@ pub fn evaluate_strategy(
     // FINAL SAFETY MERGE (no-op if already merged)
     if !injected_trades.is_empty() {
         executed_trades.extend(injected_trades.drain(..));
+    }
+    if !fitness.is_finite() {
+        println!("🚨 FINAL FITNESS INVALID");
+        fitness = -0.5;
     }
     Some(StrategyEvaluation {
         winner_idx: best_trade_idx,
@@ -10866,10 +10852,17 @@ pub fn evaluate_current_status(
 
     let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
 
-    let directional_edge = (conviction.bullish_score - conviction.bearish_score)
-        .abs()
-        .powf(0.7);
-    let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
+    let directional_edge = conviction.conviction_score.abs().powf(0.7);
+    let strength = (0.8_f64 * directional_edge + 0.2_f64 * 0.5_f64).clamp(0.05_f64, 1.0_f64); // manual proxy for live
+
+    #[cfg(feature = "debug_decision")]
+    println!(
+        "[DECISION_TRACE] idx={} score={:.5} entropy={:.3} action={:?}",
+        current_idx,
+        decision.consensus_score,
+        entropy_norm,
+        decision.combined_action
+    );
 
     let outcome = crate::ga_simulate_round_trip_at_cursor(
         strategy,
@@ -10886,11 +10879,20 @@ pub fn evaluate_current_status(
         0, // generation fallback
     );
 
+    if cfg!(feature = "debug_decision") && last_idx % 50 == 0 {
+        println!(
+            "[EXEC_TRACE] sym={} exec={} e_score={:.4} exp_move={:.5}",
+            symbol,
+            outcome.is_some(),
+            outcome.as_ref().map(|o| o.e_score).unwrap_or(0.0),
+            outcome.as_ref().map(|o| o.expected_move).unwrap_or(0.0),
+        );
+    }
     let (signal, confidence) = if let Some(ref rt) = outcome {
         let (mean_px, _, _) =
             calculate_lookback_stats(history, last_idx, (GA_GENE_SCALE as usize).max(20));
         let ref_price = history[last_idx].close;
-        let is_bearish = (ref_price as f64) < mean_px;
+        let is_bearish = conviction.conviction_score < 0.0;
 
         let side = if is_bearish { Side::Sell } else { Side::Buy };
         let sig = match side {
@@ -11404,12 +11406,21 @@ pub fn compute_consensus_alpha(
                 );
             }
             // Directional Intent Mapping (Belief-based)
-            let decision = if res.avg_conviction > epsilon {
-                Decision::BUY
-            } else if res.avg_conviction < -epsilon {
-                Decision::SELL
-            } else {
+            let decision = if res.emitted_signals.is_empty() {
                 Decision::HOLD
+            } else {
+                let net: f64 = res.emitted_signals
+                    .iter()
+                    .map(|s| s.strength * s.direction as f64)
+                    .sum();
+
+                if net > epsilon {
+                    Decision::BUY
+                } else if net < -epsilon {
+                    Decision::SELL
+                } else {
+                    Decision::HOLD
+                }
             };
 
             if decision != Decision::HOLD {
@@ -11421,7 +11432,7 @@ pub fn compute_consensus_alpha(
                         archetype: Archetype::from(strategy.archetype),
                         confidence: sig.strength,
                         signal_features: extract_features(strategy),
-                        decision: if sig.direction > 0 {
+                        decision: if sig.strength * sig.direction as f64 > 0.0 {
                             Decision::BUY
                         } else {
                             Decision::SELL
