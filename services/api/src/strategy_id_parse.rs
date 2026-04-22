@@ -21,13 +21,14 @@ pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), St
         let exp_vol: u64 = parts[10].parse().ok().unwrap_or(100);
         let selectivity: u8 = parts[11].parse().ok().unwrap_or(75);
         let archetype: u8 = parts[12].parse().ok().unwrap_or(0);
+        let entry_offset: i32 = parts.get(13).and_then(|p| p.parse().ok()).unwrap_or(0);
 
         // Phase D.1.21 Extended Genes (Optional for backwards compatibility)
-        let direction_bias: u8 = parts.get(13).and_then(|p| p.parse().ok()).unwrap_or(50);
-        let vol_floor: u8 = parts.get(14).and_then(|p| p.parse().ok()).unwrap_or(20);
-        let mom_floor: u8 = parts.get(15).and_then(|p| p.parse().ok()).unwrap_or(20);
-        let edge_ratio: u8 = parts.get(16).and_then(|p| p.parse().ok()).unwrap_or(150);
-        let participation_threshold: u8 = parts.get(17).and_then(|p| p.parse().ok()).unwrap_or(30);
+        let direction_bias: u8 = parts.get(14).and_then(|p| p.parse().ok()).unwrap_or(50);
+        let vol_floor: u8 = parts.get(15).and_then(|p| p.parse().ok()).unwrap_or(20);
+        let mom_floor: u8 = parts.get(16).and_then(|p| p.parse().ok()).unwrap_or(20);
+        let edge_ratio: u8 = parts.get(17).and_then(|p| p.parse().ok()).unwrap_or(150);
+        let participation_threshold: u8 = parts.get(18).and_then(|p| p.parse().ok()).unwrap_or(30);
 
         return Ok((
             Strategy {
@@ -44,11 +45,13 @@ pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), St
                 exp_volatility: exp_vol,
                 selectivity,
                 archetype,
+                entry_offset,
                 direction_bias,
                 vol_floor,
                 mom_floor,
                 edge_ratio,
                 participation_threshold,
+                exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
             },
             None,
         ));
@@ -78,11 +81,13 @@ pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), St
                 exp_volatility: 100,
                 selectivity: 75,
                 archetype: 0,
+                entry_offset: 0,
                 direction_bias: 50,
                 vol_floor: 20,
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
             },
             None,
         ));

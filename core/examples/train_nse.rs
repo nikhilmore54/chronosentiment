@@ -206,7 +206,7 @@ fn evaluate_cross_asset(
         }
 
         assets_evaluated += 1;
-        if let Some(eval) = evaluate_and_aggregate(strategy, config, &scenarios, 0, 1.0, 0, 1.0) {
+        if let Some(eval) = evaluate_and_aggregate(strategy, config, &scenarios, 0, 1.0, 0, 1.0, 0) {
             if eval.trade_count > 0 {
                 pnl_all.push(eval.avg_pnl);
                 total_trades += eval.trade_count;
@@ -550,6 +550,7 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
                 global_evo.alignment_anchor.as_ref(),
                 global_evo.global_mean.as_ref(),
                 global_evo.pull_strength,
+                gen,
                 &eval_stability,
             );
         }
@@ -901,7 +902,7 @@ fn run_validate(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str, 
     let mut eval_count = 0_usize;
 
     for (i, elite) in elites.iter().enumerate() {
-        if let Some(eval) = evaluate_and_aggregate(&elite.strategy, config, &scenarios, 0, 1.0, 0, 1.0) {
+        if let Some(eval) = evaluate_and_aggregate(&elite.strategy, config, &scenarios, 0, 1.0, 0, 1.0, 0) {
             let exec_ratio = if eval.trade_count > 0 {
                 (eval.profitable_trades + eval.zero_pnl_trades) as f64 / eval.trade_count as f64
             } else {

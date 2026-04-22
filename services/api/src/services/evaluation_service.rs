@@ -432,11 +432,13 @@ impl EvaluationService {
                 exp_volatility: 100,
                 selectivity: 75,
                 archetype: 0,
+                entry_offset: 0,
                 direction_bias: 50,
                 vol_floor: 20,
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
             });
             registry_rows.push(StrategyProfile {
                 strategy_id: sig.strategy_id.clone(),
@@ -536,11 +538,13 @@ impl EvaluationService {
                 exp_volatility: 100,
                 selectivity: 75,
                 archetype: 0,
+                entry_offset: 0,
                 direction_bias: 50,
                 vol_floor: 20,
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
             });
             registry_rows.push(StrategyProfile {
                 strategy_id: sig.strategy_id.clone(),

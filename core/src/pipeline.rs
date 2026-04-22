@@ -171,7 +171,7 @@ pub fn run_evaluation_orchestration(
     };
 
     let scenarios_vec = map_to_pairs(asset_name, scenarios);
-    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec, 0, 0.0, 0, 1.0)
+    let eval = ga::evaluate_and_aggregate(&strategy, &ga_config, &scenarios_vec, 0, 0.0, 0, 1.0, 0)
         .ok_or_else(|| "Strategy produced no evaluable trades".to_string())?;
 
     let mut unified = UnifiedStrategyEvaluation::from(eval);
@@ -1037,7 +1037,7 @@ pub fn run_ga_orchestration(
 
     let evaluate_on_exec = |strategy: &ga::Strategy| -> ga::StrategyEvaluation {
         let generation = 0; // Standard non-evolutionary evaluation
-        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation, 0.0, 0, 1.0).unwrap_or_else(
+        ga::evaluate_and_aggregate(strategy, &config, &exec_vec_pairs, generation, 0.0, 0, 1.0, 0).unwrap_or_else(
             || ga::StrategyEvaluation::new_legacy(
                 format!("fallback_{}", asset_name),
                 strategy.clone(),
@@ -2267,6 +2267,7 @@ fn generate_latest_signals_with_thresholds_internal(
                     0.0,
                     0,
                     1.0,
+                    0,
                 ) {
                     max_observed_eval_edge = max_observed_eval_edge.max(report.fitness.max(0.0));
                     if sweep_disable_edge_override {
@@ -2923,6 +2924,7 @@ pub fn evaluate_on_real_data(
                         0.0,
                         0,
                         1.0,
+                        0,
                     ) {
                         let gate = evaluate_gate(
                             detected_regime,
