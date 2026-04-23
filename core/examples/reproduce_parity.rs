@@ -63,7 +63,7 @@ fn main() {
         participation_threshold: 0,
         entry_offset: 0,
         exec_aggression: 50,
-        fill_threshold: 50,
+        fill_threshold: 50, lineage: 0,
         latency_bias: 10,
     };
 

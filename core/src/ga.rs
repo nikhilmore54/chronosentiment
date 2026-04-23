@@ -92,9 +92,9 @@ pub struct RankStats {
 impl Default for RankStats {
     fn default() -> Self {
         Self {
-            bucket_mfe_sum: [[0.0018; 5]; 10], // 18bps baseline
-            bucket_mae_sum: [[0.0012; 5]; 10], 
-            bucket_time_sum: [[18.0; 5]; 10],
+            bucket_mfe_sum: [[0.0045; 5]; 10], // 45bps baseline
+            bucket_mae_sum: [[0.0015; 5]; 10], // 15bps risk baseline -> 3:1 RR
+            bucket_time_sum: [[20.0; 5]; 10],
             bucket_count: [[1; 5]; 10],
         }
     }
@@ -184,6 +184,10 @@ impl PercentileBuffer {
 
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
+    }
+
+    pub fn buffer_len(&self) -> usize {
+        self.buffer.len()
     }
 }
 use std::collections::{HashMap, HashSet};
@@ -334,6 +338,15 @@ pub enum SignalType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AlphaConsensus {
+    pub buy_strength: f64,
+    pub sell_strength: f64,
+    pub confidence: f64,
+    pub voter_count: usize,
+    pub agreement_ratio: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DecisionReport {
     pub trade_id: u64,
     pub symbol: String,
@@ -354,9 +367,40 @@ pub struct DecisionReport {
     pub execution_score: f64,
     pub execution_threshold: f64,
     pub threshold: f64,
+    pub raw_edge: f64,
     pub realized_return: Option<f64>,
     pub capture_efficiency: Option<f64>,
+    pub execution_feasibility: f64,
     pub efficiency_label: String,
+    pub recommendation: Option<TradeRecommendation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TradeRecommendation {
+    pub symbol: String,
+    pub signal: SignalType,
+    pub rank: f64,
+    pub raw_edge: f64,
+    pub confidence: f64,
+    pub quality_score: f64,
+    
+    pub entry_price: f64,
+    pub entry_low: f64,
+    pub entry_high: f64,
+    
+    pub tp_target: f64,
+    pub sl_target: f64,
+    
+    pub expected_rr: f64,
+    pub expected_edge_bps: f64,
+    pub risk_bps: f64,
+    
+    pub holding_bars: usize,
+    pub vol_bps: f64,
+    pub vol_bucket: usize,
+    
+    pub is_execution: bool,
+    pub position_size: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -368,6 +412,172 @@ pub struct OrderIntent {
     pub tp_target: u64,
     pub sl_target: u64,
     pub holding_period: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradeIntent {
+    pub symbol: String,
+    pub signal: SignalType,
+    pub reference_price: f64,
+    pub recommendation: TradeRecommendation,
+    pub strategy_id: usize, // Primary strategy
+    pub consensus: Option<AlphaConsensus>,
+    pub age: usize,
+    pub max_age: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveTrade {
+    pub symbol: String,
+    pub entry_price: f64,
+    pub tp_target: f64,
+    pub sl_target: f64,
+    pub hold_limit: usize,
+    pub current_hold: usize,
+    pub signal: SignalType,
+    pub size: f64,
+    pub vol_bps: f64,
+    pub rank: f64,
+    pub strategy_id: usize,
+    pub consensus: Option<AlphaConsensus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaperRegistry {
+    pub active_trades: Vec<ActiveTrade>,
+    pub pending_intents: Vec<TradeIntent>,
+    pub equity: f64,
+    pub peak_equity: f64,
+    pub max_drawdown: f64,
+    pub closed_count: usize,
+    pub wins: usize,
+    pub losses: usize,
+    pub pnl_history: Vec<f64>,
+    pub strategy_pnl: HashMap<usize, f64>,
+    pub strategy_counts: HashMap<usize, usize>,
+    pub equity_curve: Vec<f64>,
+    pub timestamps: Vec<u64>,
+    pub max_concurrent: usize,
+    
+    // 🔥 Robustness Analytics
+    pub rank_pnl_sum: [f64; 10],
+    pub rank_count: [usize; 10],
+    pub vol_pnl_sum: [f64; 5],
+    pub vol_count: [usize; 5],
+    pub rolling_peak: f64,
+    pub adaptation_threshold: usize,
+    pub trade_counts_per_strat: HashMap<usize, usize>,
+}
+
+impl PaperRegistry {
+    pub fn summary(&self) {
+        let win_rate = if self.closed_count > 0 { self.wins as f64 / self.closed_count as f64 } else { 0.0 };
+        let avg_pnl = if !self.pnl_history.is_empty() { self.pnl_history.iter().sum::<f64>() / self.pnl_history.len() as f64 } else { 0.0 };
+        println!("\n=== FINAL PAPER STATS ===");
+        println!("Trades : {} (W: {}, L: {})", self.closed_count, self.wins, self.losses);
+        println!("Win Rate : {:.2}%", win_rate * 100.0);
+        println!("Avg PnL : {:.5}", avg_pnl);
+        println!("Equity Final : {:.4}", self.equity);
+        println!("Max DD       : {:.4}%", self.max_drawdown * 100.0);
+        
+        println!("\n--- PER-RANK ROBUSTNESS ---");
+        for r in 0..10 {
+            if self.rank_count[r] > 0 {
+                let avg = self.rank_pnl_sum[r] / self.rank_count[r] as f64;
+                println!("Rank {:.1} : count={} avg_pnl={:.6}", r as f64 / 10.0, self.rank_count[r], avg);
+            }
+        }
+        println!("---------------------------");
+    }
+
+    pub fn get_strategy_performance(&self, strategy_id: usize) -> f64 {
+        let pnl = self.strategy_pnl.get(&strategy_id).cloned().unwrap_or(0.0);
+        let count = self.strategy_counts.get(&strategy_id).cloned().unwrap_or(0);
+        if count > 0 { pnl / count as f64 } else { 0.0 }
+    }
+
+    pub fn export_csv(&self, path: &str) -> std::io::Result<()> {
+        use std::fs::File;
+        use std::io::Write;
+        let mut file = File::create(path)?;
+        writeln!(file, "timestamp,equity")?;
+        for (ts, eq) in self.timestamps.iter().zip(self.equity_curve.iter()) {
+            writeln!(file, "{},{}", ts, eq)?;
+        }
+        Ok(())
+    }
+}
+
+impl Default for PaperRegistry {
+    fn default() -> Self {
+        Self {
+            active_trades: Vec::new(),
+            pending_intents: Vec::new(),
+            equity: 1.0,
+            peak_equity: 1.0,
+            max_drawdown: 0.0,
+            closed_count: 0,
+            wins: 0,
+            losses: 0,
+            pnl_history: Vec::new(),
+            strategy_pnl: HashMap::new(),
+            strategy_counts: HashMap::new(),
+            equity_curve: Vec::new(),
+            timestamps: Vec::new(),
+            max_concurrent: 3,
+            rank_pnl_sum: [0.0; 10],
+            rank_count: [0; 10],
+            vol_pnl_sum: [0.0; 5],
+            vol_count: [0; 5],
+            rolling_peak: 1.0,
+            adaptation_threshold: 50,
+            trade_counts_per_strat: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ExitType {
+    TakeProfit,
+    StopLoss,
+    Ambiguous,
+}
+
+pub fn apply_slippage(price: f64, is_buy: bool, vol_bps: f64) -> f64 {
+    // 🔥 Dynamic Slippage: Scale with market volatility
+    let base_bps = 2.0;
+    let dynamic_bps = base_bps + (vol_bps * 0.1).min(10.0);
+    
+    let factor = dynamic_bps / 10000.0;
+    if is_buy { price * (1.0 + factor) } else { price * (1.0 - factor) }
+}
+
+pub fn resolve_intracandle_exit(
+    high: f64,
+    low: f64,
+    tp: f64,
+    sl: f64,
+    is_long: bool,
+) -> Option<ExitType> {
+    if is_long {
+        let tp_hit = high >= tp;
+        let sl_hit = low <= sl;
+        match (tp_hit, sl_hit) {
+            (true, false) => Some(ExitType::TakeProfit),
+            (false, true) => Some(ExitType::StopLoss),
+            (true, true) => Some(ExitType::Ambiguous),
+            _ => None,
+        }
+    } else {
+        let tp_hit = low <= tp;
+        let sl_hit = high >= sl;
+        match (tp_hit, sl_hit) {
+            (true, false) => Some(ExitType::TakeProfit),
+            (false, true) => Some(ExitType::StopLoss),
+            (true, true) => Some(ExitType::Ambiguous),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone)]
@@ -1091,7 +1301,7 @@ pub fn calculate_alignment_centroid(evals: Vec<&StrategyEvaluation>) -> Strategy
         participation_threshold: (sum_part / n) as u8,
         exec_aggression: 50,
         latency_bias: 10,
-        fill_threshold: 50,
+        fill_threshold: 50, lineage: 0,
     }
 }
 
@@ -2269,7 +2479,7 @@ impl Default for StrategyEvaluation {
                 entry_offset: 0,
                 exec_aggression: 50,
                 latency_bias: 10,
-                fill_threshold: 50,
+                fill_threshold: 50, lineage: 0,
             },
             direction_ratio: 0.5,
             baseline_pnl: 0.0,
@@ -2430,9 +2640,37 @@ pub struct Strategy {
     pub exec_aggression: u8,
     pub latency_bias: u8,
     pub fill_threshold: u8,
+    pub lineage: usize,
 }
 
 impl Strategy {
+    pub fn mutate(&self, seed: u64) -> Self {
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let mut child = self.clone();
+        
+        // Mutate one core gene significantly
+        match rng.gen_range(0..5) {
+            0 => child.queue_threshold = (child.queue_threshold as f64 * rng.gen_range(0.8..1.2)) as u64,
+            1 => child.base_edge = (child.base_edge as f64 * rng.gen_range(0.8..1.2)) as u64,
+            2 => child.take_profit = (child.take_profit as f64 * rng.gen_range(0.9..1.1)) as u64,
+            3 => child.stop_loss = (child.stop_loss as f64 * rng.gen_range(0.9..1.1)) as u64,
+            _ => child.archetype = rng.gen_range(0..4),
+        }
+        
+        child
+    }
+
+    pub fn save_to_file(&self, path: &str) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        std::fs::write(path, json)
+    }
+
+    pub fn load_from_file(path: &str) -> std::io::Result<Self> {
+        let json = std::fs::read_to_string(path)?;
+        let strategy: Self = serde_json::from_str(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        Ok(strategy)
+    }
+
     /// Perfectly deterministic initialization from a seed.
     /// Used for reproducible diversity injection (V3.6.8).
     pub fn from_seed(seed: u64) -> Self {
@@ -2460,6 +2698,7 @@ impl Strategy {
             exec_aggression: 50,
             latency_bias: 10,
             fill_threshold: 50,
+            lineage: 0,
         }
     }
 
@@ -2488,6 +2727,7 @@ impl Strategy {
             exec_aggression: rng.gen_range(20..80),
             latency_bias: rng.gen_range(0..100),
             fill_threshold: rng.gen_range(20..80),
+            lineage: 0,
         }
     }
 
@@ -3909,7 +4149,7 @@ fn deduplicate_population(
             participation_threshold: rng.gen_range(20..=70),
             exec_aggression: 50,
             latency_bias: 10,
-            fill_threshold: 50,
+            fill_threshold: 50, lineage: 0,
         };
         if unique_strategies.insert(random_strat.clone()) {
             new_population.push(random_strat);
@@ -4964,7 +5204,7 @@ pub fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Strategy {
         participation_threshold: rng.gen_range(5..=70),
         exec_aggression: 50,
         latency_bias: 10,
-        fill_threshold: 50,
+        fill_threshold: 50, lineage: 0,
     }
 }
 
@@ -5021,7 +5261,7 @@ pub fn synthesize_super_elite(parents: &Vec<&StrategyEvaluation>, rng: &mut StdR
         participation_threshold: filter_parent.strategy.participation_threshold,
         exec_aggression: 50,
         latency_bias: 10,
-        fill_threshold: 50,
+        fill_threshold: 50, lineage: 0,
     }
 }
 
@@ -5361,6 +5601,7 @@ pub struct GaRoundTripOutcome {
     pub avg_window_volume: f64,
     pub is_probe: bool,
     pub rank: f64,
+    pub raw_edge: f64,
     pub is_execution: bool,
     pub vol_bucket: usize,
 }
@@ -5408,6 +5649,7 @@ impl Default for GaRoundTripOutcome {
 
             is_probe: true,
             rank: 0.0,
+            raw_edge: 0.0,
             is_execution: false,
             vol_bucket: 1, // default medium
         }
@@ -5513,7 +5755,7 @@ pub fn evaluate_market_conviction(
     // 2. Momentum (Price Velocity)
     let lookback_price = signal_events[start_idx].price as f64;
     let price_delta = (ref_price as f64 - lookback_price).abs() / ref_price as f64;
-    let norm_momentum = (price_delta / 0.001).clamp(0.0, 1.0);
+    let mut norm_momentum = (price_delta / 0.001).clamp(0.0, 1.0);
 
     // 3. Soft Volatility Guard
     let prices: Vec<f64> = signal_events[start_idx..=cursor_i]
@@ -5524,6 +5766,10 @@ pub fn evaluate_market_conviction(
     let variance = prices.iter().map(|p| (p - mean_px).powi(2)).sum::<f64>() / prices.len() as f64;
     let norm_vol = variance.sqrt() / mean_px.max(1.0);
     let norm_vol_score = (1.0 - (norm_vol / 0.002)).clamp(0.0, 1.0);
+    // Normalize momentum against realized local volatility so this feature does not pin at 1.0.
+    // Keeps deterministic behavior while restoring discriminative range in quiet markets.
+    let momentum_scale = (norm_vol.max(1e-6) * 8.0).max(0.0005);
+    norm_momentum = (price_delta / momentum_scale).clamp(0.0, 1.0);
 
     // 4. 🔥 Minimal Signal Asymmetry Patch
     let momentum = (ref_price as f64 - signal_events[cursor_i.saturating_sub(3)].price as f64);
@@ -5552,11 +5798,17 @@ pub fn evaluate_market_conviction(
     // 🔥 Edge Amplification (Non-Linear Separation)
     let edge = signal_score;
     let amplified = edge.signum() * edge.abs().powf(1.5);
-    signal_score = amplified.clamp(-5.0, 5.0);
+    // Stabilize score tails before downstream gating; avoids clipped +/-5 spikes dominating decisions.
+    signal_score = (1.8 * amplified).tanh() * 2.0;
 
     // 🔬 Dead-zone logic (Kill noise)
     if signal_score.abs() < 0.005 {
         signal_score = 0.0;
+    }
+
+    if std::env::var("EDGE_DEBUG").is_ok() {
+        println!("[EDGE_DEBUG] sym={} n_vol={:.4} n_mom={:.4} trend_cons={:.3} score={:.4}", 
+            scenario_name, norm_vol, norm_momentum, (price_delta / (norm_vol.max(1e-9) * 10.0)).clamp(0.0, 1.0), signal_score);
     }
 
     let _base_conviction = signal_score;
@@ -5591,6 +5843,10 @@ pub fn evaluate_market_conviction(
     }
 
     if n_vol < adjusted_vol_floor * 0.08 || n_mom < adjusted_mom_floor * 0.08 {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!("[REJECT_FLOOR] sym={} n_vol={:.3} n_mom={:.3} vol_adj={:.3} mom_adj={:.3}", 
+                scenario_name, n_vol, n_mom, adjusted_vol_floor*0.08, adjusted_mom_floor*0.08);
+        }
         return ConvictionOutcome {
             conviction_score: 0.0,
             bullish_score: 0.0,
@@ -5659,7 +5915,7 @@ pub fn evaluate_market_conviction(
     };
 
     // --- PHASE D.1.24: REGIME DETECTION ---
-    let high_vol_threshold = 0.005; // Institutional Hard Floor for Noise
+    let high_vol_threshold = 0.008; // Institutional Hard Floor for Noise (Relaxed for alpha validation)
     let trend_consistency = (price_delta / (norm_vol.max(1e-9) * 10.0)).clamp(0.0, 1.0);
 
     let regime = if norm_vol > high_vol_threshold {
@@ -5681,6 +5937,10 @@ pub fn evaluate_market_conviction(
     let s_threshold = strategy.selectivity as f64 / 100.0;
 
     if final_score < p_threshold || roll > s_threshold {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!("[REJECT_PART] sym={} score={:.3} thresh={:.3} roll={:.3} s_thresh={:.3}", 
+                scenario_name, final_score, p_threshold, roll, s_threshold);
+        }
         return ConvictionOutcome {
             conviction_score: 0.0,
             bullish_score,
@@ -5773,6 +6033,7 @@ pub fn ga_simulate_round_trip_at_cursor(
             avg_window_volume: 0.0,
             is_probe: true,
             rank: 0.0,
+            raw_edge: 0.0,
             is_execution: false,
             vol_bucket: 1, // Default medium vol for probes
         });
@@ -5812,6 +6073,14 @@ pub fn ga_simulate_round_trip_at_cursor(
     // Institutional hard check: reject corrupt data with spread > 10% of price
     // Note: Probes already returned None/Some above, but we keep this for organic signals.
     if spread > sig_px * 0.1 {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[EARLY_EXIT] sym={} reason=spread_guard spread={:.6} limit={:.6}",
+                scenario_name,
+                spread,
+                sig_px * 0.1
+            );
+        }
         return None;
     }
 
@@ -5860,6 +6129,14 @@ pub fn ga_simulate_round_trip_at_cursor(
     // This allows decent signals to inform the RankStats, creating a real gradient.
     let learn_floor = stats.p10;
     if raw_edge < learn_floor {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[EARLY_EXIT] sym={} reason=raw_edge_below_learn_floor raw_edge={:.6} floor={:.6}",
+                scenario_name,
+                raw_edge,
+                learn_floor
+            );
+        }
         return None; 
     }
 
@@ -5869,6 +6146,14 @@ pub fn ga_simulate_round_trip_at_cursor(
     let exec_pass = rank > 0.7;  // EXECUTION SELECTIVITY GATE
 
     if !learn_pass {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[EARLY_EXIT] sym={} reason=rank_below_learn_pass raw_edge={:.6} rank={:.3}",
+                scenario_name,
+                raw_edge,
+                rank
+            );
+        }
         return None; // No learning value
     }
 
@@ -6110,6 +6395,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         avg_window_volume: 0.0,
         is_probe,
         rank,
+        raw_edge,
         is_execution: exec_pass,
         vol_bucket,
     })
@@ -10963,8 +11249,16 @@ pub fn evaluate_current_status(
     symbol: &str,
     last_signal: SignalType,
     consistency_count: usize,
+    stats: &DistributionStats,
 ) -> DecisionReport {
-    // Refinement 2: Candle window consistency
+    // --- PHASE D.1.25: ORTHOGONAL SPECIALIST GATES (V3.6.11 Fix 5) ---
+    // [L0: Mean Reversion] archetype 2
+    if strategy.archetype == 2 && last_signal == SignalType::WAIT {
+         // We need the regime BEFORE fully evaluating if possible, but conviction engine provides it.
+         // So we continue and check it downstream to avoid double calculation.
+    }
+    
+    // 1. Warm-up Gate
     if history.len() < (config.lambda as usize) + 20 {
         return DecisionReport {
             trade_id: 0,
@@ -10986,15 +11280,17 @@ pub fn evaluate_current_status(
             execution_score: 0.0,
             execution_threshold: 0.7,
             threshold: 0.6,
+            raw_edge: 0.0,
             realized_return: None,
-            capture_efficiency: None,
+            capture_efficiency: None, execution_feasibility: 0.0,
             efficiency_label: String::new(),
+            recommendation: None,
         };
     }
 
     let last_idx = history.len().saturating_sub(1);
 
-    // Mock MarketEvents from history for simulation
+    // 2. Market Event Mapping (Internal)
     let mut events = Vec::with_capacity(history.len());
     for candle in history {
         events.push(crate::MarketEvent {
@@ -11006,10 +11302,10 @@ pub fn evaluate_current_status(
         });
     }
 
+    // 3. Conviction Engine
     let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
-
     let directional_edge = conviction.conviction_score.abs().powf(0.7);
-    let strength = (0.8_f64 * directional_edge + 0.2_f64 * 0.5_f64).clamp(0.05_f64, 1.0_f64); // manual proxy for live
+    let strength = (0.8_f64 * directional_edge + 0.2_f64 * 0.5_f64).clamp(0.05_f64, 1.0_f64);
 
     #[cfg(feature = "debug_decision")]
     println!(
@@ -11022,6 +11318,27 @@ pub fn evaluate_current_status(
         conviction.norm_vol
     );
 
+    // 4. Execution Simulation
+    // --- Fix 5: Hard Orthodoxy Check ---
+    let regime = conviction.regime;
+    let skip_orthogonal = if std::env::var("GA_BOOTSTRAP").is_ok() { false } else {
+        match strategy.archetype {
+            2 => regime != MarketRegime::MeanReversion, // Mean Reversion ONLY
+            1 => regime != MarketRegime::BullTrend && regime != MarketRegime::BearTrend, // Trend ONLY
+            3 => conviction.norm_vol > 0.003, // Defensive: skip high vol
+            0 => conviction.raw_q_ratio > 0.8, // Liquidity Sniper: skip if queue too deep
+            _ => false,
+        }
+    };
+
+    if skip_orthogonal {
+        return DecisionReport {
+            signal: SignalType::WAIT,
+            regime,
+            ..DecisionReport::default()
+        };
+    }
+
     let outcome = crate::ga_simulate_round_trip_at_cursor(
         strategy,
         &events,
@@ -11033,101 +11350,314 @@ pub fn evaluate_current_status(
         !conviction.is_bearish,
         strength,
         false,
-        0, // strategy_index fallback
-        0, // generation fallback
-        &config.stats,
+        0, 
+        0, 
+        stats,
     );
 
-    if cfg!(feature = "debug_decision") && last_idx % 50 == 0 {
-        println!(
-            "[EXEC_TRACE] sym={} exec={} e_score={:.4} exp_move={:.5}",
-            symbol,
-            outcome.is_some(),
-            outcome.as_ref().map(|o| o.e_score).unwrap_or(0.0),
-            outcome.as_ref().map(|o| o.expected_move).unwrap_or(0.0),
-        );
-    }
-    // --- NEW: Proper gating variables ---
+    // 5. Gating & Decision Assembly
     let mut signal = SignalType::WAIT;
     let mut confidence = 0.0;
     let mut execution_feasible = false;
     let mut execution_score = 0.0;
+    let mut trade_rec: Option<TradeRecommendation> = None;
+    let mut final_raw_edge = 0.0;
+    let mut feasibility = 0.0;
 
-    // --- NEW: Edge threshold (institutional floor) ---
     let edge_threshold = 0.0010;
 
     if let Some(ref rt) = outcome {
-        let entry_price = events[last_idx].price as f64;
-        let raw_edge_raw = rt.expected_move.abs() / entry_price;
-        let raw_edge_bounded = raw_edge_raw.clamp(0.0, 0.0050);
-        let raw_edge = (raw_edge_bounded / 0.0050).tanh() * 0.0050;
+        final_raw_edge = rt.raw_edge;
+        let is_bearish = conviction.conviction_score < 0.0;
+        
+        // 5.1 Execution Feasibility Calculation (Capturability Index)
+        // [V3.6.11] NEW DEFINITION: realized / ideal
+        let realized = rt.pnl;
+        let ideal = rt.ideal_pnl;
+        feasibility = if ideal > 1e-7 {
+            (realized / ideal).clamp(0.0, 1.0)
+        } else if realized > 1e-7 {
+            1.0
+        } else {
+            0.0
+        };
+
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[PRE_GATE] sym={} edge={:.6} feas={:.3} conv={:.4} mom={:.4} vol={:.4} regime={:?}",
+                symbol,
+                final_raw_edge,
+                feasibility,
+                conviction.conviction_score,
+                conviction.norm_momentum,
+                conviction.norm_vol,
+                conviction.regime
+            );
+        }
 
         #[cfg(feature = "debug_decision")]
-        println!(
-            "[EDGE_GATE] raw_edge={:.6} threshold={:.6} pass={}",
-            raw_edge,
-            edge_threshold,
-            raw_edge >= edge_threshold
-        );
+        println!("[EXEC_FILTER] ideal={:.6} real={:.6} feas={:.3} regime={:?}", 
+            ideal, realized, feasibility, conviction.regime);
 
-        // --- HARD GATE ---
-        if raw_edge >= edge_threshold {
-            let is_bearish = conviction.conviction_score < 0.0;
+        // 5.2 HARD REALITY GATES (V3.6.11)
+        // A. Regime Guard
+        if conviction.regime == MarketRegime::HighVolatilityNoise && std::env::var("GA_BOOTSTRAP").is_err() {
+             if std::env::var("EDGE_DEBUG").is_ok() {
+                 println!("[REJECT_NOISE] sym={} n_vol={:.4}", symbol, conviction.norm_vol);
+             }
+             return DecisionReport {
+                signal: SignalType::WAIT,
+                execution_feasible: false,
+                execution_feasibility: feasibility,
+                ..DecisionReport::default()
+             };
+        }
 
-            signal = if is_bearish {
-                SignalType::SELL
-            } else {
-                SignalType::BUY
-            };
+        // B. Feasibility Guard
+        let feas_thresh = if std::env::var("GA_BOOTSTRAP").is_ok() { 0.10 } else { 0.30 };
+        let edge_thresh = if std::env::var("GA_BOOTSTRAP").is_ok() { 0.0001 } else { edge_threshold };
 
-            confidence =
-                (raw_edge / (raw_edge + 0.001)).clamp(0.0, 1.0);
-
+        if final_raw_edge >= edge_thresh && feasibility > feas_thresh {
+             signal = if is_bearish { SignalType::SELL } else { SignalType::BUY };
+             // ...
+            
+            // 5.3 Calibrated Ranking (Fix 4)
+            // rank = expected_edge * rolling_capture_eff * fill_prob
+            // We scale expected_edge (final_raw_edge) so that a 50bps edge = 1.0 RawRank
+            let raw_rank = (final_raw_edge / 0.0050).clamp(0.0, 1.0);
+            let fill_prob = rt.fill_efficiency;
+            let adjusted_rank = (raw_rank * feasibility * fill_prob).clamp(0.0, 1.0);
+            
+            confidence = (final_raw_edge / (final_raw_edge + 0.001)).clamp(0.0, 1.0);
             execution_feasible = true;
             execution_score = rt.e_score;
+
+            let entry_price = events[last_idx].price as f64;
+            let vol_bps = (rt.vol_bucket as f64 * 15.0) + 10.0; 
+            let spread = entry_price * (vol_bps / 10000.0) * 0.5;
+            
+            let mfe_raw = config.rank_stats.get_expected_mfe(adjusted_rank, rt.vol_bucket);
+            let mae_raw = config.rank_stats.get_expected_mae(adjusted_rank, rt.vol_bucket);
+            let hold = config.rank_stats.get_expected_time(adjusted_rank, rt.vol_bucket);
+
+            let mfe = mfe_raw * 0.65;
+            let mae = mae_raw * 1.35;
+            let expected_rr = if mae > 0.0 { mfe / mae } else { 2.0 }; 
+            
+            if expected_rr >= 1.25 {
+                let realistic_entry = apply_slippage(entry_price, !is_bearish, vol_bps);
+                trade_rec = Some(TradeRecommendation {
+                    symbol: symbol.to_string(),
+                    signal,
+                    rank: adjusted_rank, // 🔥 Rank is now execution-aware
+                    raw_edge: final_raw_edge,
+                    confidence: (adjusted_rank * (expected_rr.min(3.0) / 3.0)).clamp(0.0, 1.0),
+                    quality_score: adjusted_rank * expected_rr,
+                    entry_price: realistic_entry,
+                    entry_low: realistic_entry - spread,
+                    entry_high: realistic_entry + spread,
+                    tp_target: if is_bearish { realistic_entry * (1.0 - mfe) } else { realistic_entry * (1.0 + mfe) },
+                    sl_target: if is_bearish { realistic_entry * (1.0 + mae) } else { realistic_entry * (1.0 - mae) },
+                    expected_rr,
+                    expected_edge_bps: mfe * 10000.0,
+                    risk_bps: mae * 10000.0,
+                    holding_bars: hold as usize,
+                    vol_bps,
+                    vol_bucket: rt.vol_bucket,
+                    is_execution: rt.is_execution,
+                    position_size: (adjusted_rank * adjusted_rank).clamp(0.01, 1.0),
+                });
+            }
         }
     }
-
-    let new_consistency = if signal == last_signal && signal != SignalType::WAIT {
-        consistency_count + 1
-    } else if signal != SignalType::WAIT {
-        1
-    } else {
-        0
-    };
 
     DecisionReport {
         trade_id: 0,
         symbol: symbol.to_string(),
-        timestamp: history[last_idx].timestamp,
+        timestamp: history.last().map(|c| c.timestamp).unwrap_or(0),
         signal,
         confidence,
-        expected_return: outcome
-            .as_ref()
-            .map(|o| o.expected_move)
-            .unwrap_or(0.0),
+        expected_return: 0.0,
         horizon_bars: config.max_hold_bars as u64,
-        participation: conviction.norm_vol_score,
+        participation: 0.0,
         regime: conviction.regime,
         aligned_weight: 0.0,
         opposing_weight: 0.0,
-        consistency: new_consistency,
+        consistency: consistency_count,
         conviction_score: conviction.conviction_score,
-        agreement_strength: if confidence > 0.75 {
-            "STRONG".to_string()
-        } else if confidence > 0.6 {
-            "MEDIUM".to_string()
-        } else {
-            "WEAK".to_string()
-        },
+        agreement_strength: "ANALYZED".to_string(),
         voters: "1/1".to_string(),
         execution_feasible,
         execution_score,
-        execution_threshold: 0.0,
-        threshold: 0.0,
+        execution_threshold: 0.7,
+        threshold: 0.6,
+        raw_edge: final_raw_edge,
         realized_return: None,
         capture_efficiency: None,
+        execution_feasibility: feasibility,
         efficiency_label: String::new(),
+        recommendation: trade_rec,
+    }
+}
+
+/// A lightweight paper trading virtualizer to validate recommendations.
+pub fn update_paper_registry(
+    registry: &mut PaperRegistry,
+    latest_candle: &Candle,
+) {
+    let high = latest_candle.high as f64;
+    let low = latest_candle.low as f64;
+    let close = latest_candle.close as f64;
+    let ts = latest_candle.timestamp;
+
+    // --- STEP 1: Process Pending Intents (The Discipline Layer) ---
+    let mut j = 0;
+    while j < registry.pending_intents.len() {
+        let mut triggered = false;
+        let mut entry_price = 0.0;
+        
+        {
+            let intent = &mut registry.pending_intents[j];
+            intent.age += 1;
+            
+            let is_long = intent.signal == SignalType::BUY;
+            // 0.1% Pullback Factor (Hardcoded for now, ideal for elite signals)
+            let pullback_factor = 0.999; 
+            let bounce_factor = 1.001;
+
+            if is_long {
+                if low <= intent.reference_price * pullback_factor {
+                    triggered = true;
+                    entry_price = intent.reference_price * pullback_factor;
+                }
+            } else {
+                if high >= intent.reference_price * bounce_factor {
+                    triggered = true;
+                    entry_price = intent.reference_price * bounce_factor;
+                }
+            }
+
+            if intent.age > intent.max_age {
+                #[cfg(feature = "debug_decision")]
+                println!("\x1b[93m[INTENT_EXPIRED] {} signal={:?} ref={:.2}\x1b[0m", intent.symbol, intent.signal, intent.reference_price);
+                registry.pending_intents.remove(j);
+                continue;
+            }
+        }
+
+        if triggered {
+            let intent = registry.pending_intents.remove(j);
+            #[cfg(feature = "debug_decision")]
+            println!("\x1b[96m[INTENT_TRIGGERED] {} @ {:.2} (Ref: {:.2})\x1b[0m", intent.symbol, entry_price, intent.reference_price);
+            
+            registry.active_trades.push(ActiveTrade {
+                symbol: intent.symbol,
+                entry_price,
+                tp_target: intent.recommendation.tp_target,
+                sl_target: intent.recommendation.sl_target,
+                hold_limit: intent.recommendation.holding_bars,
+                current_hold: 0,
+                signal: intent.signal,
+                size: intent.recommendation.position_size,
+                vol_bps: intent.recommendation.vol_bps,
+                rank: intent.recommendation.rank,
+                strategy_id: intent.strategy_id,
+                consensus: intent.consensus,
+            });
+        } else {
+            j += 1;
+        }
+    }
+
+    // --- STEP 2: Process Active Trades (The Execution Layer) ---
+    let mut i = 0;
+    while i < registry.active_trades.len() {
+        let trade = &mut registry.active_trades[i];
+        trade.current_hold += 1;
+        
+        let mut exit_pnl = None;
+        let is_long = trade.signal == SignalType::BUY;
+
+        // 🔥 Intra-Candle Resolution
+        if let Some(exit_type) = resolve_intracandle_exit(
+            high, low, trade.tp_target, trade.sl_target, is_long
+        ) {
+            // Pessimistic: Ambiguous -> StopLoss
+            let resolution = match exit_type {
+                ExitType::Ambiguous => ExitType::StopLoss,
+                other => other,
+            };
+
+            let exit_price = match resolution {
+                ExitType::TakeProfit => apply_slippage(trade.tp_target, !is_long, trade.vol_bps),
+                ExitType::StopLoss => apply_slippage(trade.sl_target, !is_long, trade.vol_bps),
+                _ => unreachable!(),
+            };
+
+            exit_pnl = Some(if is_long {
+                (exit_price - trade.entry_price) / trade.entry_price
+            } else {
+                (trade.entry_price - exit_price) / trade.entry_price
+            });
+        }
+        
+        // Time Stop
+        if exit_pnl.is_none() && trade.current_hold >= trade.hold_limit {
+            let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+            exit_pnl = Some(if is_long {
+                (exit_price - trade.entry_price) / trade.entry_price
+            } else {
+                (trade.entry_price - exit_price) / trade.entry_price
+            });
+        }
+        
+        if let Some(pnl) = exit_pnl {
+             // 🔥 Compounding Equity Update
+            registry.equity *= 1.0 + (pnl * trade.size);
+            
+            if registry.equity > registry.peak_equity {
+                registry.peak_equity = registry.equity;
+                registry.rolling_peak = registry.equity;
+            }
+            let dd = (registry.peak_equity - registry.equity) / registry.peak_equity;
+            if dd > registry.max_drawdown {
+                registry.max_drawdown = dd;
+            }
+
+            // Stats
+            registry.closed_count += 1;
+            if pnl > 0.0 { registry.wins += 1; } else { registry.losses += 1; }
+            registry.pnl_history.push(pnl);
+
+            // 🔥 Strategy Attribution
+            *registry.strategy_pnl.entry(trade.strategy_id).or_insert(0.0) += pnl;
+            *registry.strategy_counts.entry(trade.strategy_id).or_insert(0) += 1;
+
+            // 🔥 Per-Rank Analytics
+            let r_idx = (trade.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+            registry.rank_pnl_sum[r_idx] += pnl;
+            registry.rank_count[r_idx] += 1;
+
+            #[cfg(feature = "debug_decision")]
+            {
+                println!("\x1b[95m[TRADE_CLOSE] {} id={} rank={:.1} pnl={:.6} dur={}\x1b[0m", 
+                    trade.symbol, trade.strategy_id, trade.rank, pnl, trade.current_hold);
+            }
+
+            registry.active_trades.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+
+    // Record time-series
+    registry.equity_curve.push(registry.equity);
+    registry.timestamps.push(ts);
+
+    if registry.closed_count % 20 == 0 && registry.closed_count > 0 {
+         let wr = registry.wins as f64 / registry.closed_count as f64;
+         #[cfg(feature = "debug_decision")]
+         println!("[EQUITY] trades={} equity={:.4} dd={:.4} winrate={:.2}", registry.closed_count, registry.equity, registry.max_drawdown, wr);
     }
 }
 
@@ -11266,9 +11796,11 @@ pub fn evaluate_consensus_status(
             execution_score: 0.0,
             execution_threshold: 0.7,
             threshold: 0.7,
+            raw_edge: 0.0,
             realized_return: None,
-            capture_efficiency: None,
+            capture_efficiency: None, execution_feasibility: 0.0,
             efficiency_label: String::new(),
+            recommendation: None,
         };
     }
 
@@ -11317,9 +11849,11 @@ pub fn evaluate_consensus_status(
             execution_score: 0.0,
             execution_threshold: 0.7,
             threshold: 0.7,
+            raw_edge: 0.0,
             realized_return: None,
-            capture_efficiency: None,
+            capture_efficiency: None, execution_feasibility: 0.0,
             efficiency_label: String::new(),
+            recommendation: None,
         };
     }
 
@@ -11499,9 +12033,11 @@ pub fn evaluate_consensus_status(
         execution_score: exec_score,
         execution_threshold: exec_threshold,
         threshold: dynamic_threshold,
+        raw_edge: 0.0,
         realized_return: None,
-        capture_efficiency: None,
+        capture_efficiency: None, execution_feasibility: 0.0,
         efficiency_label: String::new(),
+        recommendation: None,
     }
 }
 
@@ -11991,7 +12527,7 @@ mod tests {
             participation_threshold: 30,
             exec_aggression: 50,
             latency_bias: 10,
-            fill_threshold: 50,
+            fill_threshold: 50, lineage: 0,
         };
         let scenarios = get_scenarios_map();
         let market_events = scenarios.get("High_Liquidity_Stable_Price").unwrap();
@@ -12060,7 +12596,7 @@ mod tests {
             participation_threshold: 30,
             exec_aggression: 50,
             latency_bias: 10,
-            fill_threshold: 50,
+            fill_threshold: 50, lineage: 0,
         };
 
         let mut found = false;
@@ -12188,7 +12724,7 @@ mod tests {
                 participation_threshold: 30,
                 exec_aggression: 50,
                 latency_bias: 10,
-                fill_threshold: 50,
+                fill_threshold: 50, lineage: 0,
             },
             capability: ScenarioCapability::Executable,
             avg_pnl: pnl,
