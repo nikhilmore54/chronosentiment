@@ -18,6 +18,160 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_json::value::to_value as to_json_value;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
+
+#[derive(Debug, Clone)]
+pub struct DistributionStats {
+    pub p10: f64,
+    pub p30: f64,
+    pub p50: f64,
+    pub p65: f64, // Target Threshold (Top 35%)
+    pub p90: f64,
+    pub p95: f64,
+    pub empirical_samples: Vec<f64>,
+}
+
+impl DistributionStats {
+    pub fn from_slice(values: &mut [f64]) -> Self {
+        if values.is_empty() {
+            return Self::default();
+        }
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let len = values.len();
+
+        let step = (len / 500).max(1);
+        let empirical_samples: Vec<f64> = values.iter().step_by(step).copied().collect();
+
+        Self {
+            p10: values[len * 10 / 100],
+            p30: values[len * 30 / 100],
+            p50: values[len * 50 / 100],
+            p65: values[len * 65 / 100],
+            p90: values[len * 90 / 100],
+            p95: values[len * 95 / 100],
+            empirical_samples,
+        }
+    }
+
+    pub fn rank(&self, value: f64) -> f64 {
+        if self.empirical_samples.is_empty() {
+            return 0.5;
+        }
+        let samples = &self.empirical_samples;
+        let below = samples.partition_point(|&v| v < value);
+        let count_le = samples.partition_point(|&v| v <= value);
+        let equal = count_le - below;
+
+        (below as f64 + 0.5 * equal as f64) / samples.len() as f64
+    }
+}
+
+impl Default for DistributionStats {
+    fn default() -> Self {
+        let default_dist = vec![0.0003, 0.0008, 0.0015, 0.0020, 0.0035, 0.0050];
+        Self {
+            p10: default_dist[0],
+            p30: default_dist[1],
+            p50: default_dist[2],
+            p65: default_dist[3],
+            p90: default_dist[4],
+            p95: default_dist[5],
+            empirical_samples: default_dist,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankStats {
+    pub bucket_mfe_sum: [f64; 10], // Potential
+    pub bucket_mae_sum: [f64; 10], // Risk
+    pub bucket_time_sum: [f64; 10],
+    pub bucket_count: [usize; 10],
+}
+
+impl Default for RankStats {
+    fn default() -> Self {
+        Self {
+            bucket_mfe_sum: [0.0018; 10], // 18bps potential baseline
+            bucket_mae_sum: [0.0012; 10], // 12bps risk baseline
+            bucket_time_sum: [18.0; 10],  // 18 bars baseline
+            bucket_count: [1; 10],
+        }
+    }
+}
+
+impl RankStats {
+    pub fn get_expected_mfe(&self, rank: f64) -> f64 {
+        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let count = self.bucket_count[bucket].max(1);
+        self.bucket_mfe_sum[bucket] / count as f64
+    }
+
+    pub fn get_expected_mae(&self, rank: f64) -> f64 {
+        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let count = self.bucket_count[bucket].max(1);
+        self.bucket_mae_sum[bucket] / count as f64
+    }
+
+    pub fn get_expected_time(&self, rank: f64) -> f64 {
+        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let count = self.bucket_count[bucket].max(1);
+        self.bucket_time_sum[bucket] / count as f64
+    }
+
+    pub fn blend(&mut self, next: Self, alpha: f64) {
+        for i in 0..10 {
+            let next_mfe = next.bucket_mfe_sum[i] / next.bucket_count[i].max(1) as f64;
+            let next_mae = next.bucket_mae_sum[i] / next.bucket_count[i].max(1) as f64;
+            let next_time = next.bucket_time_sum[i] / next.bucket_count[i].max(1) as f64;
+
+            let prev_mfe = self.bucket_mfe_sum[i] / self.bucket_count[i].max(1) as f64;
+            let prev_mae = self.bucket_mae_sum[i] / self.bucket_count[i].max(1) as f64;
+            let prev_time = self.bucket_time_sum[i] / self.bucket_count[i].max(1) as f64;
+
+            // EMA Update values directly to sums to preserve count influence later if needed
+            // But usually we just store smoothed means
+            let smoothed_mfe = (1.0 - alpha) * prev_mfe + alpha * next_mfe;
+            let smoothed_mae = (1.0 - alpha) * prev_mae + alpha * next_mae;
+            let smoothed_time = (1.0 - alpha) * prev_time + alpha * next_time;
+
+            self.bucket_mfe_sum[i] = smoothed_mfe;
+            self.bucket_mae_sum[i] = smoothed_mae;
+            self.bucket_time_sum[i] = smoothed_time;
+            self.bucket_count[i] = 1; // reset counts after smoothing to maintain mean-logic
+        }
+    }
+}
+
+pub struct PercentileBuffer {
+    buffer: VecDeque<f64>,
+    capacity: usize,
+}
+
+impl PercentileBuffer {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            buffer: VecDeque::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    pub fn push(&mut self, value: f64) {
+        if self.buffer.len() >= self.capacity {
+            self.buffer.pop_front();
+        }
+        self.buffer.push_back(value);
+    }
+
+    pub fn get_stats(&self) -> DistributionStats {
+        let mut vals: Vec<f64> = self.buffer.iter().copied().collect();
+        DistributionStats::from_slice(&mut vals)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+}
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
@@ -1388,6 +1542,7 @@ pub enum FitnessMode {
     Sniper,
     #[default]
     Scalable,
+    InstitutionalRealism,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1438,6 +1593,7 @@ pub struct BehavioralSignature {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StrategyEvaluation {
+    pub candidate_edges: Vec<f64>,
     pub winner_idx: usize,
     pub strategy_id: String,
     pub strategy: Strategy,
@@ -1767,6 +1923,7 @@ impl StrategyEvaluation {
 
     pub fn new_legacy_with_flag(flag: &str) -> Self {
         Self {
+            candidate_edges: Vec::new(),
             winner_idx: 0,
             strategy_id: "FLAGGED".to_string(),
             strategy: Strategy::from_seed(0),
@@ -2073,6 +2230,7 @@ pub struct PopulationStats {
 impl Default for StrategyEvaluation {
     fn default() -> Self {
         StrategyEvaluation {
+            candidate_edges: Vec::new(),
             winner_idx: 0,
             strategy_id: "N/A".to_string(),
             strategy: Strategy {
@@ -2463,6 +2621,8 @@ pub struct GaConfig {
     pub max_hold_bars: usize,
     pub fitness_mode: FitnessMode,
     pub pnl_fingerprint_len: usize,
+    pub stats: DistributionStats,
+    pub rank_stats: RankStats,
 }
 
 impl Default for GaConfig {
@@ -2528,14 +2688,16 @@ impl Default for GaConfig {
             lot_size,
             deep_validation: false,
             max_hold_bars,
-            fitness_mode,
+            fitness_mode: FitnessMode::InstitutionalRealism,
             pnl_fingerprint_len: 50,
+            stats: DistributionStats::default(),
+            rank_stats: RankStats::default(),
         }
     }
 }
 
 pub fn run_ga_evolution<'a>(
-    config: GaConfig,
+    mut config: GaConfig,
     all_scenarios: &[ScenarioPair<'a>],
     global: &GlobalEvoState,
 ) -> (GaResult, HashMap<String, AssetEvoState>) {
@@ -2587,6 +2749,7 @@ pub fn run_ga_evolution<'a>(
         let mut population = initialize_population(&config, &mut rng);
         let mut bucket_best_overall: Option<StrategyEvaluation> = None;
         let mut alpha_found = false;
+        let mut edge_tracker = PercentileBuffer::new(5000);
 
         let mut evo = AssetEvoState::default();
         evo.symbol = asset.clone();
@@ -2596,7 +2759,14 @@ pub fn run_ga_evolution<'a>(
             let diversity = calculate_population_diversity(&population);
             let unique_count = population.iter().collect::<HashSet<_>>().len();
 
-            let (evaluations_opt, _best_eval) = evaluate_population_scoped(
+            // Update config with latest distribution before evaluation
+            config.stats = if edge_tracker.is_empty() {
+                DistributionStats::default()
+            } else {
+                edge_tracker.get_stats()
+            };
+
+            let (evaluations_opt, _best_eval, gen_edges) = evaluate_population_scoped(
                 &population,
                 &config,
                 &scenarios,
@@ -2605,6 +2775,34 @@ pub fn run_ga_evolution<'a>(
                 unique_count,
                 global.expansion_bias,
             );
+
+            // Feed discovered edges back into the tracker for the next generation/bucket
+            for edge in gen_edges {
+                let clipped = edge.min(config.stats.p95);
+                edge_tracker.push(clipped);
+            }
+
+            // --- PHASE 11: RANK-CONDITIONED AGGREGATION ---
+            if let Some(ref evals) = evaluations_opt {
+                let mut next_rank_stats = RankStats::default();
+                let mut processed_any = false;
+                for eval in evals {
+                    for outcome in &eval.pnl_history {
+                        if outcome.rank > 0.0 {
+                            let bucket = (outcome.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+                            next_rank_stats.bucket_mfe_sum[bucket] += outcome.m_favorable;
+                            next_rank_stats.bucket_mae_sum[bucket] += outcome.m_adverse.abs();
+                            next_rank_stats.bucket_time_sum[bucket] += outcome.time_to_mfe as f64;
+                            next_rank_stats.bucket_count[bucket] += 1;
+                            processed_any = true;
+                        }
+                    }
+                }
+                if processed_any {
+                    // EMA Smoothing (Learning rate 0.3)
+                    config.rank_stats.blend(next_rank_stats, 0.3);
+                }
+            }
 
             if let Some(mut evaluations) = evaluations_opt {
                 evaluations.sort_by(|a, b| {
@@ -3314,6 +3512,14 @@ pub fn evaluate_ensemble_strategy(
         {
             // 3. Execution (Consensus Weighted simulation)
             let conviction_score = decision.consensus_score.abs();
+            #[cfg(feature = "debug_decision")]
+            println!(
+                "[DECISION_TRACE] idx={} score={:.5} entropy={:.3} action={:?}",
+                current_idx,
+                decision.consensus_score,
+                entropy_norm,
+                decision.combined_action
+            );
             let conviction = ConvictionOutcome {
                 conviction_score,
                 bullish_score: conviction_score.max(0.0),
@@ -3349,6 +3555,7 @@ pub fn evaluate_ensemble_strategy(
                 false,
                 0, // strategy_index fallback
                 0, // generation fallback
+                &config.stats,
             ) {
                 let trade_pnl = outcome.pnl;
 
@@ -3550,10 +3757,10 @@ pub fn evaluate_population_scoped(
     diversity: f64,
     unique_count: usize,
     expansion_bias: f64,
-) -> (Option<Vec<StrategyEvaluation>>, Option<StrategyEvaluation>) {
+) -> (Option<Vec<StrategyEvaluation>>, Option<StrategyEvaluation>, Vec<f64>) {
     let n_in = scenarios.len();
     if n_in == 0 {
-        return (None, None);
+        return (None, None, Vec::new());
     }
 
     let threads = selection_cap::resolved_ga_parallelism_threads();
@@ -3562,10 +3769,6 @@ pub fn evaluate_population_scoped(
             .iter()
             .enumerate()
             .map(|(idx, strategy)| {
-                let genome_seed = config.seed ^ ((generation as u64) << 32) ^ (idx as u64 * 7919);
-                let mut genome_rng = StdRng::seed_from_u64(genome_seed);
-                let is_diagnostic = std::env::var("GA_DIAGNOSTIC_MODE").is_ok();
-
                 evaluate_population_member(
                     strategy,
                     config,
@@ -3585,31 +3788,10 @@ pub fn evaluate_population_scoped(
                     .par_iter()
                     .enumerate()
                     .map(|(idx, strategy)| {
-                        use std::hash::{Hash, Hasher};
-                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                        format!("{}_{}_{}", strategy.base_edge, generation, idx).hash(&mut hasher);
-                        let genome_seed = config.seed ^ hasher.finish();
-                        let mut genome_rng = StdRng::seed_from_u64(genome_seed);
-
-                        let mut local_scenarios = scenarios.to_vec();
-
-                        let is_diagnostic = std::env::var("GA_DIAGNOSTIC_MODE").is_ok();
-                        let dynamic_cap = if is_diagnostic {
-                            n_in
-                        } else {
-                            let jitter_factor = 0.9 + (genome_rng.gen::<f64>() * 0.2);
-                            (((n_in as f64) * 0.3 * jitter_factor).ceil() as usize)
-                                .max(6)
-                                .min(12)
-                                .min(n_in)
-                        };
-
-                        let selected_subset = scenarios; // 🔥 FULL SCENARIO SET
-
                         evaluate_population_member(
                             strategy,
                             config,
-                            selected_subset,
+                            scenarios,
                             generation,
                             diversity,
                             unique_count,
@@ -3623,19 +3805,10 @@ pub fn evaluate_population_scoped(
                 .iter()
                 .enumerate()
                 .map(|(idx, strategy)| {
-                    let genome_seed =
-                        config.seed ^ ((generation as u64) << 32) ^ (idx as u64 * 7919);
-                    let mut genome_rng = StdRng::seed_from_u64(genome_seed);
-                    let mut local_scenarios = scenarios.to_vec();
-                    let dynamic_cap = (((n_in as f32) * 0.3).ceil() as usize)
-                        .max(6)
-                        .min(12)
-                        .min(n_in);
-                    let selected = &local_scenarios[0..dynamic_cap];
                     evaluate_population_member(
                         strategy,
                         config,
-                        selected,
+                        scenarios,
                         generation,
                         diversity,
                         unique_count,
@@ -3647,137 +3820,31 @@ pub fn evaluate_population_scoped(
         }
     };
     let mut evaluations: Vec<StrategyEvaluation> = Vec::new();
+    let mut all_edges: Vec<f64> = Vec::new();
 
-    for (i, maybe_eval) in per_member.into_iter().enumerate() {
-        match maybe_eval {
-            Some(eval) => evaluations.push(eval),
-
-            None => {
-                // 🔥 SKIP instead of corrupting population
-                continue;
-            }
+    for maybe_eval in per_member.into_iter() {
+        if let Some(mut eval) = maybe_eval {
+            all_edges.append(&mut eval.candidate_edges);
+            evaluations.push(eval);
         }
     }
-
-    if evaluations.len() < population.len() / 2 {
-        println!("⚠️ WARNING: Massive evaluation drop detected");
-    }
-
-    println!("FINAL_EVAL_COUNT: {}", evaluations.len());
 
     if evaluations.is_empty() {
-        for strategy in population.iter().take(3) {
-            evaluations.push(StrategyEvaluation {
-                winner_idx: 0,
-                strategy_id: "FALLBACK_ZERO".to_string(),
-                strategy: strategy.clone(),
-                consistency_score: 1.0,
-                recent_performance: 0.0,
-                ..StrategyEvaluation::default()
-            });
-        }
+        return (None, None, all_edges);
     }
+    
+    evaluations.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
+    let best = evaluations.first().cloned();
 
-    let pop_size = evaluations.len().max(1);
-    let mut winner_map: HashMap<usize, usize> = HashMap::new();
-    for e in &evaluations {
-        *winner_map.entry(e.winner_idx).or_insert(0) += 1;
-    }
-
-    let unique_winners: HashSet<usize> = evaluations.iter().map(|e| e.winner_idx).collect();
-    let mut entropy = 0.0;
-    for (&_idx, &count) in &winner_map {
-        let p = count as f64 / pop_size as f64;
-        if p > 0.0 {
-            entropy -= p * p.ln();
-        }
-    }
-
-    for ev in &mut evaluations {
-        let count = *winner_map.get(&ev.winner_idx).unwrap_or(&1);
-        let overlap_ratio = count as f64 / pop_size as f64;
-
-        // OLD (destructive)
-        // let penalty = (1.0 - 0.7 * overlap_ratio).max(0.3);
-
-        // NEW (safe)
-        let penalty = 1.0 - 0.3 * overlap_ratio; // softer
-        let penalty = penalty.clamp(0.7, 1.0); // never below 0.7
-
-        // ev.fitness *= penalty;
-    }
-
-    let mut arch_counts = [0usize; 4];
-    for e in &evaluations {
-        let a = e.strategy.archetype as usize;
-        if a < 4 {
-            arch_counts[a] += 1;
-        }
-    }
-
-    let max_count = winner_map.values().max().cloned().unwrap_or(0);
-    let concentration = if evaluations.is_empty() {
-        0.0
-    } else {
-        max_count as f64 / evaluations.len() as f64
-    };
-
-    if ga_debug_enabled() {
-        println!(
-            "DIVERSITY → unique={} entropy={:.2} concentration={:.2} pop={}",
-            unique_winners.len(),
-            entropy,
-            concentration,
-            pop_size
-        );
-    }
+    // Population Summary Logging
+    let avg_pnl = evaluations.iter().map(|e| e.fitness).sum::<f64>() / evaluations.len() as f64;
+    let avg_trades = evaluations.iter().map(|e| e.trade_count).sum::<usize>() as f64 / evaluations.len() as f64;
     println!(
-        "ARCHETYPE_DIST → C:{} M:{} R:{} V:{}",
-        arch_counts[0], arch_counts[1], arch_counts[2], arch_counts[3]
+        "🌐 [POP_SUMMARY] gen={} unique={} avg_trd={:.1} avg_pnl={:.6}",
+        generation, unique_count, avg_trades, avg_pnl
     );
 
-    println!(
-        "SANITY_CHECK → max={:.4} min={:.4}",
-        evaluations
-            .iter()
-            .map(|e| e.fitness)
-            .fold(f64::MIN, f64::max),
-        evaluations
-            .iter()
-            .map(|e| e.fitness)
-            .fold(f64::MAX, f64::min),
-    );
-
-    // 🔥 Phase 3.6.7: Population-Level Dashboard (Learning Health Indicator)
-    let trade_counts: Vec<usize> = evaluations.iter().map(|e| e.trade_count).collect();
-    let pnls: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
-
-    let avg_trades = trade_counts.iter().sum::<usize>() as f64 / trade_counts.len().max(1) as f64;
-    let min_trades = trade_counts.iter().min().unwrap_or(&0);
-    let max_trades = trade_counts.iter().max().unwrap_or(&0);
-
-    let avg_pnl = pnls.iter().sum::<f64>() / pnls.len().max(1) as f64;
-    let pnl_variance = if pnls.len() > 1 {
-        pnls.iter().map(|p| (p - avg_pnl).powi(2)).sum::<f64>() / (pnls.len() as f64 - 1.0)
-    } else {
-        0.0
-    };
-
-    println!(
-        "🌐 [POP_SUMMARY] gen={} unique={} avg_trd={:.1} spread=[{}-{}] avg_pnl={:.6} pnl_var={:.8}",
-        generation, unique_count, avg_trades, min_trades, max_trades, avg_pnl, pnl_variance
-    );
-
-    let best_eval = evaluations
-        .iter()
-        .max_by(|a, b| {
-            a.fitness
-                .partial_cmp(&b.fitness)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .cloned()
-        .unwrap_or_default();
-    (Some(evaluations), Some(best_eval))
+    (Some(evaluations), best, all_edges)
 }
 
 fn deduplicate_population(
@@ -5271,6 +5338,7 @@ pub struct GaRoundTripOutcome {
     pub spread: f64,
     pub avg_window_volume: f64,
     pub is_probe: bool,
+    pub rank: f64,
 }
 
 impl Default for GaRoundTripOutcome {
@@ -5315,6 +5383,7 @@ impl Default for GaRoundTripOutcome {
             avg_window_volume: 0.0,
 
             is_probe: true,
+            rank: 0.0,
         }
     }
 }
@@ -5637,6 +5706,7 @@ pub fn ga_simulate_round_trip_at_cursor(
     is_probe: bool,
     strategy_index: usize,
     generation: usize,
+    stats: &DistributionStats,
 ) -> Option<GaRoundTripOutcome> {
     if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
         println!(
@@ -5676,6 +5746,7 @@ pub fn ga_simulate_round_trip_at_cursor(
             spread: 0.0,
             avg_window_volume: 0.0,
             is_probe: true,
+            rank: 0.0,
         });
     }
 
@@ -5692,8 +5763,11 @@ pub fn ga_simulate_round_trip_at_cursor(
     let total_offset = (config.latency_ticks as i32 + strategy.entry_offset).max(0);
     let mut entry_idx = cursor_i + total_offset as usize;
 
-    if entry_idx >= execution_events.len().saturating_sub(1) {
-        entry_idx = execution_events.len().saturating_sub(2); // fallback
+    if entry_idx >= execution_events.len() {
+        entry_idx = execution_events.len().saturating_sub(1);
+    }
+    if entry_idx < cursor_i {
+        entry_idx = cursor_i;
     }
 
     // --- DIAGNOSTICS LAYER (EXTERNAL TO ESE) ---
@@ -5742,49 +5816,86 @@ pub fn ga_simulate_round_trip_at_cursor(
     // convert edge → expected price movement
     let expected_move = (conviction.edge_weight * adjusted_atr * 1.5).max(adjusted_atr * 0.5);
 
-    let min_move = buy_price as f64 * 0.0005; // 5 bps floor
+    // 🔥 LAYER 1: Separate RAW vs EXECUTION edge
+    // This MUST exactly match the calculation in evaluate_population_member
+    let raw_edge = (conviction.conviction_score * conviction.edge_weight * (adjusted_atr / buy_price.max(1) as f64)).max(0.0001);
 
-    let tp_dist = (expected_move * 0.85).max(min_move); // tighter TP → more hits in sideways conditions
-    let sl_dist = (expected_move * 1.05).max(min_move * 0.7); // wider SL → fewer premature stops
+    // 🔥 LAYER 2: Robust normalization & softer compression (Soft-sign instead of Tanh)
+    let spread = (stats.p90 - stats.p10).max(1e-6);
+    let z = (raw_edge - stats.p50) / spread;
+    let execution_edge = (z / (1.0 + z.abs()) * stats.p90).clamp(0.0, stats.p95);
 
-    // --- FIX: enforce tick-based movement BEFORE casting ---
+    // 🔥 LAYER 3: Rank-based gating (Percentile-targeted selectivity)
+    let rank = stats.rank(raw_edge);
+    let pass = rank > 0.7;
 
-    let tick_size = 1.0; // TODO: replace with instrument.tick_size
+    #[cfg(feature = "debug_decision")]
+    {
+        // 🔥 FIX 2: Distribution logging (facilitates awk-based percentile check)
+        if strategy_index == 0 && cursor_i % 500 == 0 {
+             println!("[EDGE_DIST]\np10={:.6} p50={:.6} p90={:.6} samples={}", stats.p10, stats.p50, stats.p90, stats.empirical_samples.len());
+        }
 
-    // normalize distances → ticks
-    let tp_ticks = (tp_dist / tick_size).ceil().max(1.0);
-    let sl_ticks = (sl_dist / tick_size).ceil().max(1.0);
+        if strategy_index == 0 {
+            if cursor_i % 250 == 0 {
+                println!(
+                    "[EDGE_RANK] raw={:.6} rank={:.3} -> {}",
+                    raw_edge,
+                    rank,
+                    if pass { "PASS" } else { "REJECT" }
+                );
+            }
+        }
+    }
 
-    // convert back to price movement
-    let tp_move = tp_ticks * tick_size;
-    let sl_move = sl_ticks * tick_size;
+    if !pass {
+        return None; // Reject trade due to insufficient edge selectivity
+    }
 
-    // construct targets
+    // ==========================================
+    // ✅ CANONICAL: DATA-DRIVEN TRADE MODEL
+    // ==========================================
+
+    let exp_mfe = config.rank_stats.get_expected_mfe(rank);
+    let exp_mae = config.rank_stats.get_expected_mae(rank);
+
+    // Dynamic targets based on POTENTIAL (MFE), not just noisy PnL
+    let target_move = (exp_mfe.abs() * buy_price as f64).clamp(buy_price as f64 * 0.0005, buy_price as f64 * 0.05);
+    // Dynamic stops based on RISK (MAE)
+    let stop_move = (exp_mae.abs() * buy_price as f64).clamp(buy_price as f64 * 0.0003, buy_price as f64 * 0.03);
+
+    // Volatility-aware spread
+    let entry_spread = conviction.norm_vol * buy_price as f64 * 0.5;
+    let _entry_min = buy_price as f64 - entry_spread;
+    let _entry_max = buy_price as f64 + entry_spread;
+
     let (mut tp_target, mut sl_target) = if is_long {
         (
-            (buy_price as f64 + tp_move).round() as u64,
-            (buy_price as f64 - sl_move).round().max(1.0) as u64,
+            (buy_price as f64 + target_move).round() as u64,
+            (buy_price as f64 - stop_move).round().max(1.0) as u64,
         )
     } else {
         (
-            (buy_price as f64 - tp_move).round().max(1.0) as u64,
-            (buy_price as f64 + sl_move).round() as u64,
+            (buy_price as f64 - target_move).round().max(1.0) as u64,
+            (buy_price as f64 + stop_move).round() as u64,
         )
     };
 
-    // === FIX: EDGE → OUTCOME PROBABILITY ===
-    let base_edge = conviction.edge_weight.clamp(0.0, 1.0);
-
-    // bias using RR so tighter TP doesn't dominate
-    let rr_bias = tp_move / (tp_move + sl_move);
-
-    // final win probability
-    let _win_prob = (0.7 * base_edge + 0.3 * rr_bias).clamp(0.05, 0.95);
+    let expected_hold_time = config.rank_stats.get_expected_time(rank).clamp(3.0, 300.0) as usize;
+    let final_holding_period = (expected_hold_time as f64 * 1.5) as usize; // p70-like buffer
+    let final_holding_period = final_holding_period.min(config.max_hold_bars);
 
     if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
         println!(
-            "TRADE_FIX_DEBUG → entry={} tp={} sl={} tp_dist={} sl_dist={}",
-            buy_price, tp_target, sl_target, tp_dist, sl_dist
+            "DATA_DRIVEN_TRADE → entry={} tp={} sl={} rank={:.3} exp_mfe={:.6} exp_mae={:.6}",
+            buy_price, tp_target, sl_target, rank, exp_mfe, exp_mae
+        );
+    }
+
+    if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
+        println!(
+            "TRADE_FIX_DEBUG → entry={} tp={} sl={} target_m={:.2} stop_m={:.2}",
+            buy_price, tp_target, sl_target, target_move, stop_move
         );
     }
 
@@ -5851,7 +5962,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         1,
         execution_events,
         entry_idx,
-        strategy.holding_period as usize,
+        final_holding_period,
     );
 
     // 2. IDEAL EXECUTION (Zero Friction Baseline)
@@ -5863,7 +5974,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         1,
         execution_events,
         cursor_i, // No latency
-        strategy.holding_period as usize,
+        final_holding_period,
     );
 
     // Extract Outcome Data from Event Execution
@@ -5899,8 +6010,9 @@ pub fn ga_simulate_round_trip_at_cursor(
     // ✅ FIX 1: Kill normalized division. norm_pnl = pnl / exp_return → both scale with edge
     //           → constant tanh output. Now: use raw pnl directly.
     let buy_price_f = buy_price.max(1) as f64;
-    let expected_return = expected_move / buy_price_f; // kept for logging only
-                                                       // ✅ HARD ASSERT: real pnl is ~0.001; anything ≥ 0.1 means normalization is still active
+    let expected_return = expected_move / buy_price_f;
+
+    // ✅ HARD ASSERT: real pnl is ~0.001; anything ≥ 0.1 means normalization is still active
     if realized_pnl.abs() >= 0.1 {
         panic!(
             "NORMALIZATION STILL ACTIVE in Pipeline A: norm_pnl={}",
@@ -5925,6 +6037,15 @@ pub fn ga_simulate_round_trip_at_cursor(
     let edge_boost = (edge_quality / 5.0).clamp(0.0, 1.0);
     let e_score = (0.7 * efficiency + 0.3 * edge_boost).clamp(-1.0, 1.0);
 
+    #[cfg(feature = "debug_decision")]
+    if strategy_index == 0 {
+        println!(
+            "[EDGE_PNL] rank={:.3} pnl={:.5}",
+            rank,
+            realized_pnl
+        );
+    }
+
     Some(GaRoundTripOutcome {
         side: if is_long { Side::Buy } else { Side::Sell },
         source: SignalSource::Organic,
@@ -5942,19 +6063,20 @@ pub fn ga_simulate_round_trip_at_cursor(
         queue_ahead,
         arrival_liquidity,
         expected_move,
-        m_favorable: mfe_pnl,
-        m_adverse: mae_pnl,
+        m_favorable: execution.mfe,
+        m_adverse: execution.mae,
         efficiency,
         edge_quality,
         time_to_mfe: exit_event_idx.saturating_sub(entry_idx),
         raw_q_ratio: conviction.raw_q_ratio,
-        fill_efficiency: base_edge.clamp(0.1, 1.0),
+        fill_efficiency: conviction.edge_weight.clamp(0.1, 1.0),
         sim_events: Vec::new(),
         entry_order_id,
         exit_order_id,
         spread: (exe_px - sig_px).abs(),
         avg_window_volume: 0.0,
         is_probe: false,
+        rank,
     })
 }
 
@@ -6182,9 +6304,9 @@ pub fn evaluate_strategy(
 
             let dir_abs = conv.norm_momentum.abs().max(0.01);
 
-            let raw_edge = (atr / entry_price.max(0.0001)) * conv.edge_weight * dir_abs * 2.0;
+            let raw_edge = (conv.conviction_score * conv.edge_weight * (atr / entry_price.max(1.0))).max(0.0001);
 
-            candidate_edges.push(raw_edge * 0.7);
+            candidate_edges.push(raw_edge);
         }
     }
 
@@ -6193,6 +6315,7 @@ pub fn evaluate_strategy(
             println!("⚠️ EDGE STARVATION → forcing alpha injection");
         }
         return Some(StrategyEvaluation {
+            candidate_edges: candidate_edges.clone(),
             strategy: strategy.clone(),
             strategy_id: strategy_id.clone(),
             fitness: -0.15, // Special starvation code
@@ -6893,16 +7016,16 @@ pub fn evaluate_strategy(
     emitted_signs.clear();
 
     for (signal_idx, conv, _, _, e_score, score, source) in scored_signals.iter() {
-        let directional_edge = (conv.bullish_score - conv.bearish_score).abs().powf(0.7);
-        let score_norm = (*score).clamp(0.0, 1.0);
-        let raw_strength = 0.8 * directional_edge + 0.2 * score_norm;
-        let strength = (raw_strength * (0.7 + 0.3 * e_score)).clamp(0.05, 1.0);
+        let consensus_score = conv.conviction_score.clamp(-1.0, 1.0);
+        let effective_edge = consensus_score.abs() * e_score;
+        let strength = (0.7 * effective_edge + 0.3 * consensus_score.abs())
+            .clamp(0.05, 1.0);
 
         emitted_signs.push(SignalAlpha {
             ts: *signal_idx,
             price: signal_events[*signal_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conv.conviction_score < 0.0 { -1 } else { 1 },
+            direction: if consensus_score < 0.0 { -1 } else { 1 },
             strength,
             source: *source,
             conviction: conv.clone(),
@@ -6917,16 +7040,17 @@ pub fn evaluate_strategy(
             println!("🚨 FORCED EMISSION → fallback activated");
         }
 
-        let directional_edge = (conv.bullish_score - conv.bearish_score).abs().powf(0.7);
-        let score_norm = (*score).clamp(0.0, 1.0);
-        let raw_strength = 0.8 * directional_edge + 0.2 * score_norm;
-        let strength = (raw_strength * (0.7 + 0.3 * e_score)).clamp(0.05, 1.0);
+        let consensus_score = conv.conviction_score.clamp(-1.0, 1.0);
+        let effective_edge = consensus_score.abs() * e_score;
+
+        let strength = (0.7 * effective_edge + 0.3 * consensus_score.abs())
+            .clamp(0.05, 1.0);
 
         emitted_signs.push(SignalAlpha {
             ts: *signal_idx,
             price: signal_events[*signal_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conv.conviction_score < 0.0 { -1 } else { 1 },
+            direction: if consensus_score < 0.0 { -1 } else { 1 },
             strength,
             source: *source,
             conviction: conv.clone(),
@@ -7027,11 +7151,12 @@ pub fn evaluate_strategy(
             generation,
         );
 
+        let consensus_score = conviction.conviction_score.clamp(-1.0, 1.0);
         emitted_signs.push(SignalAlpha {
             ts: fallback_idx,
             price: signal_events[fallback_idx].price as f64,
             archetype: strategy.archetype,
-            direction: if conviction.conviction_score < 0.0 { -1 } else { 1 },
+            direction: if consensus_score < 0.0 { -1 } else { 1 },
             strength: 0.1,
             source: SignalSource::Synthetic,
             conviction,
@@ -7104,45 +7229,18 @@ pub fn evaluate_strategy(
         if ga_debug_enabled() {
             println!("⚠️ EDGE DIST FALLBACK → insufficient candidate_edges");
         }
-        edge_dist = vec![0.0003, 0.0008, 0.0015, 0.002, 0.003];
+        edge_dist = vec![0.0003, 0.0008, 0.0015, 0.002, 0.003, 0.005];
     }
 
-    // 🔥 Sort once
-    edge_dist.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-    // 🔥 Trim extremes (robust percentiles)
-    let n = edge_dist.len();
-    let lower = n / 20; // 5%
-    let upper = n * 19 / 20; // 95%
-
-    let trimmed: Vec<f64> = if upper > lower {
-        edge_dist[lower..upper].to_vec()
-    } else {
-        edge_dist.clone()
-    };
-
-    // 🔥 Safety fallback after trim
-    let dist = if trimmed.len() >= 5 {
-        trimmed
-    } else {
-        edge_dist.clone()
-    };
-
-    // 🔥 Compute percentiles (FINAL)
-    let len = dist.len();
-
-    let e_p30 = dist[len * 30 / 100];
-    let e_p50 = dist[len * 50 / 100];
-    let e_p90 = dist[len * 90 / 100];
+    let e_stats = DistributionStats::from_slice(&mut edge_dist);
 
     // 🔥 Debug (keep this)
     println!(
-        "EDGE_DIST_DEBUG → min={:.6} p30={:.6} p50={:.6} p90={:.6} max={:.6}",
-        dist.first().unwrap_or(&0.0),
-        e_p30,
-        e_p50,
-        e_p90,
-        dist.last().unwrap_or(&0.0),
+        "EDGE_DIST_DEBUG → p10={:.6} p50={:.6} p90={:.6} max={:.6}",
+        e_stats.p10,
+        e_stats.p50,
+        e_stats.p90,
+        e_stats.empirical_samples.last().unwrap_or(&0.0),
     );
     // 🔥 SORT SAFE
     edge_dist.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -7158,17 +7256,17 @@ pub fn evaluate_strategy(
         &edge_dist[..]
     };
     let t_len = trimmed.len();
-    let spread_ratio = e_p90 / (e_p30 + 1e-9);
+    let spread_ratio = e_stats.p90 / (e_stats.p30 + 1e-9);
 
     if spread_ratio < 1.2 {
         println!(
             "⚠️ EDGE COLLAPSE → p30={:.6} p90={:.6} ratio={:.3}",
-            e_p30, e_p90, spread_ratio
+            e_stats.p30, e_stats.p90, spread_ratio
         );
     }
 
-    if e_p90 / (e_p30 + 1e-9) > 20.0 {
-        println!("⚠️ EDGE DISTORTION → p30={:.6} p90={:.6}", e_p30, e_p90);
+    if e_stats.p90 / (e_stats.p30 + 1e-9) > 20.0 {
+        println!("⚠️ EDGE DISTORTION → p30={:.6} p90={:.6}", e_stats.p30, e_stats.p90);
     }
 
     // 🔥 Percentile Stretching
@@ -7191,7 +7289,7 @@ pub fn evaluate_strategy(
     let mut edge_pass_count = 0;
     let mut exec_pass_count_local = 0;
     // 🔥 HARD BIMODAL SPLIT (GLOBAL CONTEXT)
-    let live_threshold = e_p50; // or e_p60 for stricter
+    let live_threshold = e_stats.p50; // or e_p60 for stricter
     for signal in &emitted_signs {
         // 🔥 Phase 3.6.6: Identity-Based Divergence (Restores Gradient)
         let conviction_val = signal.conviction.conviction_score;
@@ -7316,9 +7414,10 @@ pub fn evaluate_strategy(
         // --- NEW: realized edge directly from signal (d=dir_signal driven) ---
         // ✅ FIX 2: Edge must be a function of the signal's conviction/z-score, not ATR only.
         //   dir_signal ∈ [-3,3] → use its abs as a scaling factor so edge VARIES with signal.
-        let dir_abs = final_conviction.norm_momentum.abs().max(0.01); // proxy for z-score magnitude
+        let consensus_score = final_conviction.conviction_score.clamp(-1.0, 1.0);
+
         let raw_edge =
-            (atr / entry_price.max(0.0001)) * final_conviction.edge_weight * dir_abs * 2.0;
+            consensus_score * final_conviction.edge_weight * (atr / entry_price.max(1e-6));
         // let expected_move = raw_edge.max((atr / entry_price.max(1e-6)) * 0.3);
 
         // ✅ FIX 3: Break edge symmetry — amplify differences
@@ -7326,7 +7425,7 @@ pub fn evaluate_strategy(
         let _ = shaped_edge; // available for future use
 
         // 🔥 FIX: Use REALIZED edge AFTER execution, not synthetic estimate
-        let mut expected_realized_edge = raw_edge * capture_prob;
+        let mut expected_realized_edge = raw_edge * capture_prob * signal.strength;
 
         // DO NOT finalize here — this is only a placeholder
         // It will be CORRECTED after execution
@@ -7334,11 +7433,11 @@ pub fn evaluate_strategy(
         println!(
             "EDGE_RAW_DEBUG → expected={:.6} p30={:.6} p50={:.6} p90={:.6} up={:.6} down={:.6}",
             expected_realized_edge,
-            e_p30,
-            e_p50,
-            e_p90,
-            (e_p90 - e_p50),
-            (e_p50 - e_p30)
+            e_stats.p30,
+            e_stats.p50,
+            e_stats.p90,
+            (e_stats.p90 - e_stats.p50),
+            (e_stats.p50 - e_stats.p30)
         );
         // 🔥 anti-collapse jitter to preserve variance
         let jitter = ((strategy_index ^ signal.ts) % 10) as f64 * 1e-5;
@@ -7374,8 +7473,8 @@ pub fn evaluate_strategy(
         let realized_aqg = aqg_threshold * capture_prob;
 
         // ✅ NEW: robust edge normalization (non-collapsing)
-        let upper_spread = (e_p90 - e_p50).max(1e-5);
-        let lower_spread = (e_p50 - e_p30).max(1e-5);
+        let upper_spread = (e_stats.p90 - e_stats.p50).max(1e-5);
+        let lower_spread = (e_stats.p50 - e_stats.p30).max(1e-5);
 
         // 3. Normalize WITHOUT bias
 
@@ -7383,8 +7482,8 @@ pub fn evaluate_strategy(
         let e_p70 = trimmed[t_len * 70 / 100];
         // 🔥 HARD REGIME CLASSIFICATION
         // 🔥 FIX: compare in SAME SCALE (use raw_edge, not realized)
-        let is_dead_regime = expected_realized_edge < e_p30;
-        let is_live_regime = expected_realized_edge > e_p50;
+        let is_dead_regime = raw_edge < e_stats.p30;
+        let is_live_regime = raw_edge > e_stats.p50;
 
         // ❌ HARD REJECTION (THIS IS THE FIX)
         // 🔥 FIX: degrade instead of kill
@@ -7404,8 +7503,8 @@ pub fn evaluate_strategy(
         // ===============================
 
         // Prevent divide-by-zero
-        let denom = (e_p90 - e_p30).abs().max(1e-6);
-        let mut edge_norm = (expected_realized_edge - e_p30) / denom;
+        let denom = (e_stats.p90 - e_stats.p30).abs().max(1e-6);
+        let mut edge_norm = (expected_realized_edge - e_stats.p30) / denom;
 
         // 🔥 SOFT FLOOR (instead of hard zero)
         if edge_norm < 0.0 {
@@ -7422,20 +7521,20 @@ pub fn evaluate_strategy(
 
         println!(
             "EDGE_DIST_DEBUG_FIXED → raw={:.6} p30={:.6} p90={:.6} norm={:.6}",
-            raw_edge, e_p30, e_p90, edge_norm
+            raw_edge, e_stats.p30, e_stats.p90, edge_norm
         );
         // Debug (keep this)
         println!(
             "EDGE_DIST_DEBUG → raw={:.6} p30={:.6} p50={:.6} p90={:.6} norm={:.6}",
-            raw_edge, e_p30, e_p50, e_p90, edge_norm
+            raw_edge, e_stats.p30, e_stats.p50, e_stats.p90, edge_norm
         );
         let mut edge_raw = raw_edge;
         // preserve true scale
-        let edge_raw = expected_realized_edge;
+        let edge_raw = raw_edge;
 
         println!(
             "EDGE_NORM_FIXED → raw={:.6} realized={:.6} p30={:.6} p50={:.6} p90={:.6}",
-            edge_raw, expected_realized_edge, e_p30, e_p50, e_p90
+            edge_raw, expected_realized_edge, e_stats.p30, e_stats.p50, e_stats.p90
         );
 
         let signal_fail = final_conviction.conviction_score < 0.015;
@@ -7510,7 +7609,7 @@ pub fn evaluate_strategy(
         // 🔥 REGIME-AWARE POSITION SIZING
         let size_multiplier = if is_live_regime { 1.0 } else { 0.6 };
 
-        let size = (final_conviction.conviction_score * size_multiplier).max(0.01);
+        let size = (raw_edge.abs() * size_multiplier).max(0.01);
 
         let effective_fill_prob = if signal.is_probe {
             1.0
@@ -7547,7 +7646,7 @@ pub fn evaluate_strategy(
         // ===============================
 
         // 1. Edge percentile position (distribution anchored)
-        let edge_pct = ((edge_raw - e_p30) / (e_p90 - e_p30).abs().max(1e-9)).clamp(-0.5, 1.5);
+        let edge_pct = ((edge_raw - e_stats.p30) / (e_stats.p90 - e_stats.p30).abs().max(1e-9)).clamp(-0.5, 1.5);
 
         // 2. Capture signal centered
         let capture_pct = (capture_prob - 0.5) * 2.0; // [-1, 1]
@@ -7578,8 +7677,14 @@ pub fn evaluate_strategy(
         final_prob = final_prob.clamp(0.02, 0.98);
 
         // 9. Final execution decision
+        let execution_edge = raw_edge.abs();
+
         let final_execute =
-            passed_gate && risk_ok && size > 0.0 && (rand::random::<f64>() < final_prob);
+            passed_gate
+                && risk_ok
+                && size > 0.0
+                && execution_edge > 0.0001
+                && (rand::random::<f64>() < final_prob);
 
         // --- ACCOUNTING ---
         if final_execute {
@@ -7639,6 +7744,7 @@ pub fn evaluate_strategy(
             signal.is_probe,
             strategy_index,
             generation,
+            &config.stats,
         );
 
         if let Some(outcome) = trade_result {
@@ -7797,7 +7903,7 @@ pub fn evaluate_strategy(
                 raw_pnl = max_loss;
             }
 
-            let edge_scale = 0.5 + signal.strength.powf(0.6);
+            let edge_scale = 0.5 + raw_edge.abs().powf(0.6);
 
             let capture_ratio = if outcome.expected_move.abs() > 1e-9 {
                 (raw_pnl / outcome.expected_move).clamp(-2.0, 2.0)
@@ -8142,6 +8248,7 @@ pub fn evaluate_strategy(
                 signal.is_probe,
                 strategy_index,
                 generation,
+                &config.stats,
             );
 
             if let Some(outcome) = trade_result {
@@ -8414,7 +8521,7 @@ pub fn evaluate_strategy(
         0.0
     };
 
-    let regime = if avg_edge_realized < e_p30 || global_fill_ratio < 0.05 {
+    let regime = if avg_edge_realized < e_stats.p30 || global_fill_ratio < 0.05 {
         -1
     } else {
         1
@@ -9163,6 +9270,7 @@ pub fn evaluate_strategy(
         fitness = -0.5;
     }
     Some(StrategyEvaluation {
+        candidate_edges,
         winner_idx: best_trade_idx,
         strategy_id: strategy_id.clone(),
         strategy: strategy.clone(),
@@ -10857,11 +10965,13 @@ pub fn evaluate_current_status(
 
     #[cfg(feature = "debug_decision")]
     println!(
-        "[DECISION_TRACE] idx={} score={:.5} entropy={:.3} action={:?}",
-        current_idx,
-        decision.consensus_score,
-        entropy_norm,
-        decision.combined_action
+        "[DECISION_TRACE] idx={} conv={:.5} edge={:.5} strength={:.4} regime={:?} vol={:.5}",
+        last_idx,
+        conviction.conviction_score,
+        conviction.expected_edge,
+        strength,
+        conviction.regime,
+        conviction.norm_vol
     );
 
     let outcome = crate::ga_simulate_round_trip_at_cursor(
@@ -10877,6 +10987,7 @@ pub fn evaluate_current_status(
         false,
         0, // strategy_index fallback
         0, // generation fallback
+        &config.stats,
     );
 
     if cfg!(feature = "debug_decision") && last_idx % 50 == 0 {
@@ -10888,25 +10999,46 @@ pub fn evaluate_current_status(
             outcome.as_ref().map(|o| o.expected_move).unwrap_or(0.0),
         );
     }
-    let (signal, confidence) = if let Some(ref rt) = outcome {
-        let (mean_px, _, _) =
-            calculate_lookback_stats(history, last_idx, (GA_GENE_SCALE as usize).max(20));
-        let ref_price = history[last_idx].close;
-        let is_bearish = conviction.conviction_score < 0.0;
+    // --- NEW: Proper gating variables ---
+    let mut signal = SignalType::WAIT;
+    let mut confidence = 0.0;
+    let mut execution_feasible = false;
+    let mut execution_score = 0.0;
 
-        let side = if is_bearish { Side::Sell } else { Side::Buy };
-        let sig = match side {
-            Side::Buy => SignalType::BUY,
-            Side::Sell => SignalType::SELL,
-        };
+    // --- NEW: Edge threshold (institutional floor) ---
+    let edge_threshold = 0.0010;
 
-        // ✅ FIXED CONFIDENCE
-        let conf = (rt.expected_move.abs() / (rt.expected_move.abs() + 0.001)).clamp(0.0, 1.0);
+    if let Some(ref rt) = outcome {
+        let entry_price = events[last_idx].price as f64;
+        let raw_edge_raw = rt.expected_move.abs() / entry_price;
+        let raw_edge_bounded = raw_edge_raw.clamp(0.0, 0.0050);
+        let raw_edge = (raw_edge_bounded / 0.0050).tanh() * 0.0050;
 
-        (sig, conf)
-    } else {
-        (SignalType::WAIT, 0.0)
-    };
+        #[cfg(feature = "debug_decision")]
+        println!(
+            "[EDGE_GATE] raw_edge={:.6} threshold={:.6} pass={}",
+            raw_edge,
+            edge_threshold,
+            raw_edge >= edge_threshold
+        );
+
+        // --- HARD GATE ---
+        if raw_edge >= edge_threshold {
+            let is_bearish = conviction.conviction_score < 0.0;
+
+            signal = if is_bearish {
+                SignalType::SELL
+            } else {
+                SignalType::BUY
+            };
+
+            confidence =
+                (raw_edge / (raw_edge + 0.001)).clamp(0.0, 1.0);
+
+            execution_feasible = true;
+            execution_score = rt.e_score;
+        }
+    }
 
     let new_consistency = if signal == last_signal && signal != SignalType::WAIT {
         consistency_count + 1
@@ -10922,14 +11054,17 @@ pub fn evaluate_current_status(
         timestamp: history[last_idx].timestamp,
         signal,
         confidence,
-        expected_return: 0.008,
+        expected_return: outcome
+            .as_ref()
+            .map(|o| o.expected_move)
+            .unwrap_or(0.0),
         horizon_bars: config.max_hold_bars as u64,
         participation: conviction.norm_vol_score,
         regime: conviction.regime,
         aligned_weight: 0.0,
         opposing_weight: 0.0,
         consistency: new_consistency,
-        conviction_score: confidence,
+        conviction_score: conviction.conviction_score,
         agreement_strength: if confidence > 0.75 {
             "STRONG".to_string()
         } else if confidence > 0.6 {
@@ -10938,8 +11073,8 @@ pub fn evaluate_current_status(
             "WEAK".to_string()
         },
         voters: "1/1".to_string(),
-        execution_feasible: outcome.is_some(),
-        execution_score: outcome.map(|o| o.e_score).unwrap_or(0.0),
+        execution_feasible,
+        execution_score,
         execution_threshold: 0.0,
         threshold: 0.0,
         realized_return: None,
@@ -11201,11 +11336,11 @@ pub fn evaluate_consensus_status(
         let bias_archetype = classify_direction_bias(voter.strategy.direction_bias);
         weight *= regime_multiplier(current_regime, bias_archetype) * universal_multiplier;
 
-        let directional_edge = (conviction_guard.bullish_score - conviction_guard.bearish_score)
-            .abs()
-            .powf(0.7);
-        let strength = (0.8 * directional_edge + 0.2 * 0.5).clamp(0.05, 1.0); // manual proxy for live
+        let consensus_score_v = conviction_guard.conviction_score.clamp(-1.0, 1.0);
+        let directional_edge = consensus_score_v.abs() * exec_score;
 
+        let strength: f64 = (0.8 * directional_edge + 0.2 * consensus_score_v.abs())
+            .clamp(0.05, 1.0);
         let outcome = crate::ga_simulate_round_trip_at_cursor(
             &voter.strategy,
             &events,
@@ -11219,13 +11354,14 @@ pub fn evaluate_consensus_status(
             false,
             i, // strategy_index
             0, // generation fallback
+            &config.stats,
         );
 
         if let Some(_rt) = outcome {
             // ✅ FIX: performance-based voting (NOT market-based)
-            if voter.avg_pnl > 0.0 {
+            if conviction_guard.conviction_score > 0.0 {
                 buy_weight += weight;
-            } else {
+            } else if conviction_guard.conviction_score < 0.0 {
                 sell_weight += weight;
             }
 

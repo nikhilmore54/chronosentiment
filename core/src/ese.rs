@@ -30,6 +30,8 @@ pub struct ExecutionResult {
     pub status: ExecutionStatus,
     pub queue_pressure: f64,
     pub arrival_liquidity: f64,
+    pub mfe: f64, // Max Favorable Excursion (Ratio)
+    pub mae: f64, // Max Adverse Excursion (Ratio)
 }
 
 impl ExecutionResult {
@@ -43,6 +45,8 @@ impl ExecutionResult {
             status: ExecutionStatus::Rejected,
             queue_pressure: 0.0,
             arrival_liquidity: 0.0,
+            mfe: 0.0,
+            mae: 0.0,
         }
     }
 }
@@ -63,10 +67,15 @@ impl ExecutionEngine {
         let mut exit_price = entry_price;
         let mut exit_idx = entry_idx;
 
+        let mut max_px = entry_price;
+        let mut min_px = entry_price;
+
         let end_idx = (entry_idx + max_hold).min(execution_events.len());
 
         for i in entry_idx..end_idx {
             let current_price = execution_events[i].price;
+            max_px = max_px.max(current_price);
+            min_px = min_px.min(current_price);
 
             if side == crate::Side::Buy {
                 if current_price >= tp_target {
@@ -117,6 +126,16 @@ impl ExecutionEngine {
             status: ExecutionStatus::Filled,
             queue_pressure: 0.0,
             arrival_liquidity: 0.0,
+            mfe: if side == crate::Side::Buy {
+                (max_px as f64 - entry_price as f64) / entry_price.max(1) as f64
+            } else {
+                (entry_price as f64 - min_px as f64) / entry_price.max(1) as f64
+            },
+            mae: if side == crate::Side::Buy {
+                (min_px as f64 - entry_price as f64) / entry_price.max(1) as f64
+            } else {
+                (entry_price as f64 - max_px as f64) / entry_price.max(1) as f64
+            },
         }
     }
 
@@ -282,6 +301,8 @@ impl ExecutionEngine {
             status,
             queue_pressure,
             arrival_liquidity,
+            mfe: 0.0,
+            mae: 0.0,
         }
     }
 }

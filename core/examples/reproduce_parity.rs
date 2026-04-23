@@ -62,6 +62,9 @@ fn main() {
         edge_ratio: 150,
         participation_threshold: 0,
         entry_offset: 0,
+        exec_aggression: 50,
+        fill_threshold: 50,
+        latency_bias: 10,
     };
 
     let mut best_sniper_error = f64::MAX;
@@ -90,7 +93,7 @@ fn main() {
                     strat.w_volatility = w_vol;
                     strat.exp_volatility = exp_vol as u64;
 
-                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0) {
+                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0, 0) {
                         // 🔴 SNIPER ONLY
                         let min_trades = if eval.avg_pnl > 0.0012 {
                             2 // allow exceptional high edge
@@ -136,7 +139,7 @@ fn main() {
                     strat.w_volatility = w_vol;
                     strat.exp_volatility = exp_vol as u64;
 
-                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0) {
+                    if let Some(eval) = evaluate_strategy(&strat, &scenario, &config, 0, 0.0, 1, 0.0, 1.0, 0) {
                         // 🔵 CONSISTENT ONLY
                         if eval.avg_pnl > 0.0003 && eval.trade_count >= 6 {
                             let err = calculate_error(&eval);

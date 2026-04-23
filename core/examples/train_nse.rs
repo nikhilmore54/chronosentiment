@@ -355,7 +355,7 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
             let diversity = chronosentiment_core::ga::calculate_population_diversity(&session.population);
             let unique_count = session.population.iter().collect::<std::collections::HashSet<_>>().len();
 
-            let (evals_opt, _) = chronosentiment_core::ga::evaluate_population_scoped(
+            let (evals_opt, _, _gen_edges) = chronosentiment_core::ga::evaluate_population_scoped(
                 &session.population,
                 config,
                 &session.scenarios,
@@ -384,7 +384,7 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
 
                     // Update local evolution state (primitive fields)
                     let log_queues: Vec<f64> = evaluations.iter()
-                        .map(|e| (1.0 + e.scenario_signature.avg_queue_ahead).ln())
+                        .map(|e| (1.0f64 + e.scenario_signature.avg_queue_ahead).ln())
                         .collect();
                     session.evo_state.prev_max_log_queue = session.evo_state.max_log_queue;
                     session.evo_state.max_log_queue = log_queues.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
