@@ -51,7 +51,7 @@ pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), St
                 mom_floor,
                 edge_ratio,
                 participation_threshold,
-                exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+                exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
             },
             None,
         ));
@@ -87,7 +87,7 @@ pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), St
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
             },
             None,
         ));

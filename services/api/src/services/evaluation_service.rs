@@ -438,7 +438,7 @@ impl EvaluationService {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
             });
             registry_rows.push(StrategyProfile {
                 strategy_id: sig.strategy_id.clone(),
@@ -544,7 +544,7 @@ impl EvaluationService {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
             });
             registry_rows.push(StrategyProfile {
                 strategy_id: sig.strategy_id.clone(),

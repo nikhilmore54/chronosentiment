@@ -29,3 +29,6 @@ tmp/
 clusters.json
 clusters_output.png
 core/elite/elite_*.json
+core/core/elite/
+global_state.json
+verify_edge_fix.txt

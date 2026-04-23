@@ -6075,8 +6075,8 @@ pub fn ga_simulate_round_trip_at_cursor(
     if spread > sig_px * 0.1 {
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
-                "[EARLY_EXIT] sym={} reason=spread_guard spread={:.6} limit={:.6}",
-                scenario_name,
+                "[EARLY_EXIT] cursor={} reason=spread_guard spread={:.6} limit={:.6}",
+                cursor_i,
                 spread,
                 sig_px * 0.1
             );
@@ -6131,8 +6131,8 @@ pub fn ga_simulate_round_trip_at_cursor(
     if raw_edge < learn_floor {
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
-                "[EARLY_EXIT] sym={} reason=raw_edge_below_learn_floor raw_edge={:.6} floor={:.6}",
-                scenario_name,
+                "[EARLY_EXIT] cursor={} reason=raw_edge_below_learn_floor raw_edge={:.6} floor={:.6}",
+                cursor_i,
                 raw_edge,
                 learn_floor
             );
@@ -6148,8 +6148,8 @@ pub fn ga_simulate_round_trip_at_cursor(
     if !learn_pass {
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
-                "[EARLY_EXIT] sym={} reason=rank_below_learn_pass raw_edge={:.6} rank={:.3}",
-                scenario_name,
+                "[EARLY_EXIT] cursor={} reason=rank_below_learn_pass raw_edge={:.6} rank={:.3}",
+                cursor_i,
                 raw_edge,
                 rank
             );

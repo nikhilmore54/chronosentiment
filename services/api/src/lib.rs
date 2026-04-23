@@ -1,5 +1,4 @@
 pub mod simulate;
-pub mod ga;
 pub mod inspector;
 pub mod timeline;
 pub mod replay;
@@ -9,7 +8,6 @@ pub mod market_adapter;
 pub mod market_data_simulate;
 
 pub use simulate::*;
-pub use ga::*;
 pub use inspector::{TradeInspectorResponse, MinimalEvent, build_trade_inspector, handle_inspect, to_minimal_event};
 pub use timeline::*;
 pub use replay::*;
