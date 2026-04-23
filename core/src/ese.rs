@@ -72,36 +72,37 @@ impl ExecutionEngine {
 
         let end_idx = (entry_idx + max_hold).min(execution_events.len());
 
+        let mut limit_hit = false;
         for i in entry_idx..end_idx {
             let current_price = execution_events[i].price;
             max_px = max_px.max(current_price);
             min_px = min_px.min(current_price);
 
-            if side == crate::Side::Buy {
-                if current_price >= tp_target {
-                    exit_reason = crate::GaExitReason::TakeProfit;
-                    exit_price = tp_target;
-                    exit_idx = i;
-                    break;
-                }
-                if current_price <= sl_target {
-                    exit_reason = crate::GaExitReason::StopLoss;
-                    exit_price = sl_target;
-                    exit_idx = i;
-                    break;
-                }
-            } else {
-                if current_price <= tp_target {
-                    exit_reason = crate::GaExitReason::TakeProfit;
-                    exit_price = tp_target;
-                    exit_idx = i;
-                    break;
-                }
-                if current_price >= sl_target {
-                    exit_reason = crate::GaExitReason::StopLoss;
-                    exit_price = sl_target;
-                    exit_idx = i;
-                    break;
+            if !limit_hit {
+                if side == crate::Side::Buy {
+                    if current_price >= tp_target {
+                        exit_reason = crate::GaExitReason::TakeProfit;
+                        exit_price = tp_target;
+                        exit_idx = i;
+                        limit_hit = true;
+                    } else if current_price <= sl_target {
+                        exit_reason = crate::GaExitReason::StopLoss;
+                        exit_price = sl_target;
+                        exit_idx = i;
+                        limit_hit = true;
+                    }
+                } else {
+                    if current_price <= tp_target {
+                        exit_reason = crate::GaExitReason::TakeProfit;
+                        exit_price = tp_target;
+                        exit_idx = i;
+                        limit_hit = true;
+                    } else if current_price >= sl_target {
+                        exit_reason = crate::GaExitReason::StopLoss;
+                        exit_price = sl_target;
+                        exit_idx = i;
+                        limit_hit = true;
+                    }
                 }
             }
         }

@@ -83,62 +83,76 @@ impl Default for DistributionStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RankStats {
-    pub bucket_mfe_sum: [f64; 10], // Potential
-    pub bucket_mae_sum: [f64; 10], // Risk
-    pub bucket_time_sum: [f64; 10],
-    pub bucket_count: [usize; 10],
+    pub bucket_mfe_sum: [[f64; 5]; 10], // [Rank][Vol]
+    pub bucket_mae_sum: [[f64; 5]; 10], 
+    pub bucket_time_sum: [[f64; 5]; 10],
+    pub bucket_count: [[usize; 5]; 10],
 }
 
 impl Default for RankStats {
     fn default() -> Self {
         Self {
-            bucket_mfe_sum: [0.0018; 10], // 18bps potential baseline
-            bucket_mae_sum: [0.0012; 10], // 12bps risk baseline
-            bucket_time_sum: [18.0; 10],  // 18 bars baseline
-            bucket_count: [1; 10],
+            bucket_mfe_sum: [[0.0018; 5]; 10], // 18bps baseline
+            bucket_mae_sum: [[0.0012; 5]; 10], 
+            bucket_time_sum: [[18.0; 5]; 10],
+            bucket_count: [[1; 5]; 10],
         }
     }
 }
 
 impl RankStats {
-    pub fn get_expected_mfe(&self, rank: f64) -> f64 {
-        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
-        let count = self.bucket_count[bucket].max(1);
-        self.bucket_mfe_sum[bucket] / count as f64
+    pub fn get_expected_mfe(&self, rank: f64, vol_bucket: usize) -> f64 {
+        let r_bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let v_bucket = vol_bucket.min(4);
+        let count = self.bucket_count[r_bucket][v_bucket].max(1);
+        self.bucket_mfe_sum[r_bucket][v_bucket] / count as f64
     }
 
-    pub fn get_expected_mae(&self, rank: f64) -> f64 {
-        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
-        let count = self.bucket_count[bucket].max(1);
-        self.bucket_mae_sum[bucket] / count as f64
+    pub fn get_expected_mae(&self, rank: f64, vol_bucket: usize) -> f64 {
+        let r_bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let v_bucket = vol_bucket.min(4);
+        let count = self.bucket_count[r_bucket][v_bucket].max(1);
+        self.bucket_mae_sum[r_bucket][v_bucket] / count as f64
     }
 
-    pub fn get_expected_time(&self, rank: f64) -> f64 {
-        let bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
-        let count = self.bucket_count[bucket].max(1);
-        self.bucket_time_sum[bucket] / count as f64
+    pub fn get_expected_time(&self, rank: f64, vol_bucket: usize) -> f64 {
+        let r_bucket = (rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        let v_bucket = vol_bucket.min(4);
+        let count = self.bucket_count[r_bucket][v_bucket].max(1);
+        self.bucket_time_sum[r_bucket][v_bucket] / count as f64
     }
 
     pub fn blend(&mut self, next: Self, alpha: f64) {
-        for i in 0..10 {
-            let next_mfe = next.bucket_mfe_sum[i] / next.bucket_count[i].max(1) as f64;
-            let next_mae = next.bucket_mae_sum[i] / next.bucket_count[i].max(1) as f64;
-            let next_time = next.bucket_time_sum[i] / next.bucket_count[i].max(1) as f64;
+        for r in 0..10 {
+            for v in 0..5 {
+                if next.bucket_count[r][v] < 3 {
+                    // Skip buckets with insufficient data
+                    continue;
+                }
+                
+                let next_mfe = next.bucket_mfe_sum[r][v] / next.bucket_count[r][v] as f64;
+                let next_mae = next.bucket_mae_sum[r][v] / next.bucket_count[r][v] as f64;
+                let next_time = next.bucket_time_sum[r][v] / next.bucket_count[r][v] as f64;
 
-            let prev_mfe = self.bucket_mfe_sum[i] / self.bucket_count[i].max(1) as f64;
-            let prev_mae = self.bucket_mae_sum[i] / self.bucket_count[i].max(1) as f64;
-            let prev_time = self.bucket_time_sum[i] / self.bucket_count[i].max(1) as f64;
+                let prev_mfe = self.bucket_mfe_sum[r][v] / self.bucket_count[r][v].max(1) as f64;
+                let prev_mae = self.bucket_mae_sum[r][v] / self.bucket_count[r][v].max(1) as f64;
+                let prev_time = self.bucket_time_sum[r][v] / self.bucket_count[r][v].max(1) as f64;
 
-            // EMA Update values directly to sums to preserve count influence later if needed
-            // But usually we just store smoothed means
-            let smoothed_mfe = (1.0 - alpha) * prev_mfe + alpha * next_mfe;
-            let smoothed_mae = (1.0 - alpha) * prev_mae + alpha * next_mae;
-            let smoothed_time = (1.0 - alpha) * prev_time + alpha * next_time;
+                let smoothed_mfe = (1.0 - alpha) * prev_mfe + alpha * next_mfe;
+                let smoothed_mae = (1.0 - alpha) * prev_mae + alpha * next_mae;
+                let smoothed_time = (1.0 - alpha) * prev_time + alpha * next_time;
 
-            self.bucket_mfe_sum[i] = smoothed_mfe;
-            self.bucket_mae_sum[i] = smoothed_mae;
-            self.bucket_time_sum[i] = smoothed_time;
-            self.bucket_count[i] = 1; // reset counts after smoothing to maintain mean-logic
+                self.bucket_mfe_sum[r][v] = smoothed_mfe;
+                self.bucket_mae_sum[r][v] = smoothed_mae;
+                self.bucket_time_sum[r][v] = smoothed_time;
+                self.bucket_count[r][v] = 1;
+
+                #[cfg(feature = "debug_decision")]
+                if r >= 7 {
+                     let quality = next_mfe / (next_mae.abs() + 1e-6);
+                     println!("[RANK_SUMMARY] R={}/V={} n={} mfe={:.6} mae={:.6} quality={:.2}", r, v, next.bucket_count[r][v], next_mfe, next_mae, quality);
+                }
+            }
         }
     }
 }
@@ -2788,19 +2802,27 @@ pub fn run_ga_evolution<'a>(
                 let mut processed_any = false;
                 for eval in evals {
                     for outcome in &eval.pnl_history {
-                        if outcome.rank > 0.0 {
-                            let bucket = (outcome.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
-                            next_rank_stats.bucket_mfe_sum[bucket] += outcome.m_favorable;
-                            next_rank_stats.bucket_mae_sum[bucket] += outcome.m_adverse.abs();
-                            next_rank_stats.bucket_time_sum[bucket] += outcome.time_to_mfe as f64;
-                            next_rank_stats.bucket_count[bucket] += 1;
+                        // FIX: Only learn from ORGANIC, PASSED trades. 
+                        // Probes and noise should NOT pollute the empirical model.
+                        if !outcome.is_probe && outcome.rank >= 0.1 {
+                            let r_bucket = (outcome.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+                            let v_bucket = outcome.vol_bucket.min(2);
+                            
+                            // 🔥 Winsorize extreme outcomes (remove outliers)
+                            let mfe = outcome.m_favorable.clamp(0.0, 0.04); 
+                            let mae = outcome.m_adverse.clamp(-0.03, 0.0);
+
+                            next_rank_stats.bucket_mfe_sum[r_bucket][v_bucket] += mfe;
+                            next_rank_stats.bucket_mae_sum[r_bucket][v_bucket] += mae.abs();
+                            next_rank_stats.bucket_time_sum[r_bucket][v_bucket] += outcome.time_to_mfe as f64;
+                            next_rank_stats.bucket_count[r_bucket][v_bucket] += 1;
                             processed_any = true;
                         }
                     }
                 }
                 if processed_any {
-                    // EMA Smoothing (Learning rate 0.3)
-                    config.rank_stats.blend(next_rank_stats, 0.3);
+                    // EMA Smoothing (Learning rate 0.2)
+                    config.rank_stats.blend(next_rank_stats, 0.2);
                 }
             }
 
@@ -5339,6 +5361,8 @@ pub struct GaRoundTripOutcome {
     pub avg_window_volume: f64,
     pub is_probe: bool,
     pub rank: f64,
+    pub is_execution: bool,
+    pub vol_bucket: usize,
 }
 
 impl Default for GaRoundTripOutcome {
@@ -5384,6 +5408,8 @@ impl Default for GaRoundTripOutcome {
 
             is_probe: true,
             rank: 0.0,
+            is_execution: false,
+            vol_bucket: 1, // default medium
         }
     }
 }
@@ -5747,6 +5773,8 @@ pub fn ga_simulate_round_trip_at_cursor(
             avg_window_volume: 0.0,
             is_probe: true,
             rank: 0.0,
+            is_execution: false,
+            vol_bucket: 1, // Default medium vol for probes
         });
     }
 
@@ -5813,51 +5841,56 @@ pub fn ga_simulate_round_trip_at_cursor(
         calculate_atr(signal_events, cursor_i, 14).max(atr_floor * (1.0 + conviction.norm_vol));
 
     let _rr = (strategy.edge_ratio as f64) / 100.0;
-    // convert edge → expected price movement
     let expected_move = (conviction.edge_weight * adjusted_atr * 1.5).max(adjusted_atr * 0.5);
 
-    // 🔥 LAYER 1: Separate RAW vs EXECUTION edge
-    // This MUST exactly match the calculation in evaluate_population_member
-    let raw_edge = (conviction.conviction_score * conviction.edge_weight * (adjusted_atr / buy_price.max(1) as f64)).max(0.0001);
+    // 🔥 5-Bucket Volatility Resolution
+    let vol_bps = (adjusted_atr / buy_price as f64) * 10000.0;
+    let vol_bucket = if vol_bps < 8.0 { 0 } 
+                else if vol_bps < 15.0 { 1 } 
+                else if vol_bps < 25.0 { 2 } 
+                else if vol_bps < 40.0 { 3 } 
+                else { 4 };
 
-    // 🔥 LAYER 2: Robust normalization & softer compression (Soft-sign instead of Tanh)
-    let spread = (stats.p90 - stats.p10).max(1e-6);
-    let z = (raw_edge - stats.p50) / spread;
-    let execution_edge = (z / (1.0 + z.abs()) * stats.p90).clamp(0.0, stats.p95);
+    // 🔥 LAYER 1: Sharpened Ranking Signal
+    let score_base = (conviction.conviction_score * conviction.edge_weight * (adjusted_atr / buy_price.max(1) as f64)).max(0.0001);
+    // Condition rank on stability and momentum to increase purity
+    let raw_edge = score_base * (1.2 - conviction.norm_vol.min(0.4)) * (0.9 + 0.2 * conviction.norm_momentum);
 
-    // 🔥 LAYER 3: Rank-based gating (Percentile-targeted selectivity)
+    // 🔥 LAYER 2: Broad Learning Floor
+    // This allows decent signals to inform the RankStats, creating a real gradient.
+    let learn_floor = stats.p10;
+    if raw_edge < learn_floor {
+        return None; 
+    }
+
+    // 🔥 LAYER 3: Rank-based gating
     let rank = stats.rank(raw_edge);
-    let pass = rank > 0.7;
+    let learn_pass = rank > 0.2; // LEARNING GRADIENT FLOOR
+    let exec_pass = rank > 0.7;  // EXECUTION SELECTIVITY GATE
+
+    if !learn_pass {
+        return None; // No learning value
+    }
 
     #[cfg(feature = "debug_decision")]
     {
-        // 🔥 FIX 2: Distribution logging (facilitates awk-based percentile check)
-        if strategy_index == 0 && cursor_i % 500 == 0 {
-             println!("[EDGE_DIST]\np10={:.6} p50={:.6} p90={:.6} samples={}", stats.p10, stats.p50, stats.p90, stats.empirical_samples.len());
-        }
-
         if strategy_index == 0 {
-            if cursor_i % 250 == 0 {
-                println!(
-                    "[EDGE_RANK] raw={:.6} rank={:.3} -> {}",
-                    raw_edge,
-                    rank,
-                    if pass { "PASS" } else { "REJECT" }
-                );
-            }
+             println!(
+                 "[EDGE_RANK] raw={:.6} rank={:.3} -> L={} E={}",
+                 raw_edge,
+                 rank,
+                 if learn_pass { "LEARN" } else { "SKIP" },
+                 if exec_pass { "EXEC" } else { "REJECT" }
+             );
         }
-    }
-
-    if !pass {
-        return None; // Reject trade due to insufficient edge selectivity
     }
 
     // ==========================================
     // ✅ CANONICAL: DATA-DRIVEN TRADE MODEL
     // ==========================================
 
-    let exp_mfe = config.rank_stats.get_expected_mfe(rank);
-    let exp_mae = config.rank_stats.get_expected_mae(rank);
+    let exp_mfe = config.rank_stats.get_expected_mfe(rank, vol_bucket);
+    let exp_mae = config.rank_stats.get_expected_mae(rank, vol_bucket);
 
     // Dynamic targets based on POTENTIAL (MFE), not just noisy PnL
     let target_move = (exp_mfe.abs() * buy_price as f64).clamp(buy_price as f64 * 0.0005, buy_price as f64 * 0.05);
@@ -5881,7 +5914,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         )
     };
 
-    let expected_hold_time = config.rank_stats.get_expected_time(rank).clamp(3.0, 300.0) as usize;
+    let expected_hold_time = config.rank_stats.get_expected_time(rank, vol_bucket).clamp(3.0, 300.0) as usize;
     let final_holding_period = (expected_hold_time as f64 * 1.5) as usize; // p70-like buffer
     let final_holding_period = final_holding_period.min(config.max_hold_bars);
 
@@ -6039,10 +6072,10 @@ pub fn ga_simulate_round_trip_at_cursor(
 
     #[cfg(feature = "debug_decision")]
     if strategy_index == 0 {
+        let quality = execution.mfe / (execution.mae.abs() + 1e-6);
         println!(
-            "[EDGE_PNL] rank={:.3} pnl={:.5}",
-            rank,
-            realized_pnl
+            "[RAW_OUTCOME] rank={:.3} vol={:.1}bps mfe={:.6} mae={:.6} q={:.2} exec={}",
+            rank, vol_bps, execution.mfe, execution.mae, quality, exec_pass
         );
     }
 
@@ -6075,8 +6108,10 @@ pub fn ga_simulate_round_trip_at_cursor(
         exit_order_id,
         spread: (exe_px - sig_px).abs(),
         avg_window_volume: 0.0,
-        is_probe: false,
+        is_probe,
         rank,
+        is_execution: exec_pass,
+        vol_bucket,
     })
 }
 
@@ -6219,6 +6254,7 @@ pub fn evaluate_strategy(
 ) -> Option<StrategyEvaluation> {
     let mut rng = rand::thread_rng();
     let mut executed_trades: Vec<GaRoundTripOutcome> = Vec::new();
+    let mut pnl_history_learn: Vec<GaRoundTripOutcome> = Vec::new();
     let mut injected_trades: Vec<GaRoundTripOutcome> = Vec::new();
 
     let mut trade_scores: Vec<(usize, f64)> = Vec::new();
@@ -7748,14 +7784,26 @@ pub fn evaluate_strategy(
         );
 
         if let Some(outcome) = trade_result {
-            // 🔥 CRITICAL FIX: override expected edge with REALIZED edge
-            let realized_edge = outcome.pnl; // or outcome.edge_quality if preferred
+            // ALWAYS record organic trades for RankStats learning
+            if !outcome.is_probe {
+                pnl_history_learn.push(outcome.clone());
+            }
 
-            expected_realized_edge = realized_edge;
             if outcome.is_probe {
                 probe_count += 1;
                 continue;
             }
+
+            // GATING: Only high-edge signals count for GA fitness
+            if !outcome.is_execution {
+                continue;
+            }
+
+            // 🔥 CRITICAL FIX: override expected edge with REALIZED edge
+            let realized_edge = outcome.pnl; // or outcome.edge_quality if preferred
+
+            expected_realized_edge = realized_edge;
+
             real_trade_count += 1;
 
             // Layer 4: Capture Efficiency Gate (Phase B)
@@ -9280,7 +9328,7 @@ pub fn evaluate_strategy(
         had_organic_signals,
         avg_pnl: avg_pnl_for_scenario,
         total_pnl,
-        pnl_history: executed_trades.clone(),
+        pnl_history: pnl_history_learn.clone(),
         trade_count: total_trades,
         profitable_trades,
         zero_pnl_trades,
