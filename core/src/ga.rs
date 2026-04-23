@@ -6207,7 +6207,10 @@ pub fn ga_simulate_round_trip_at_cursor(
 
     let expected_hold_time = config.rank_stats.get_expected_time(rank, vol_bucket).clamp(3.0, 300.0) as usize;
     let final_holding_period = (expected_hold_time as f64 * 1.5) as usize; // p70-like buffer
-    let final_holding_period = final_holding_period.min(config.max_hold_bars);
+    let mut final_holding_period = final_holding_period.min(config.max_hold_bars);
+    if std::env::var("GA_BOOTSTRAP").is_ok() {
+        final_holding_period = final_holding_period.max(20);
+    }
 
     if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
         println!(
@@ -6307,6 +6310,17 @@ pub fn ga_simulate_round_trip_at_cursor(
     let exit_reason = execution.exit_reason;
     let exit_event_idx = execution.exit_index;
     let exit_price = execution.exit_price;
+    if std::env::var("EDGE_DEBUG").is_ok() {
+        println!(
+            "[GEOM_DEBUG] cursor={} entry={:.5} exit={:.5} delta={:.5} horizon={} ideal={:.6}",
+            cursor_i,
+            buy_price as f64,
+            exit_price as f64,
+            exit_price as f64 - buy_price as f64,
+            final_holding_period,
+            ideal_pnl
+        );
+    }
 
     let mfe_scaled = match exit_reason {
         crate::GaExitReason::TakeProfit => tp_target,

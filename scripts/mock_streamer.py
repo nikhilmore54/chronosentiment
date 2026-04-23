@@ -4,16 +4,12 @@ import csv
 import sys
 import glob
 import os
-import random
 from datetime import datetime
 
-# --- Alpha Injection Settings (Step/Silence Mode) ---
-# Goal: Create a discrete jump, then hold. 
-# As the rolling window slides, StdDev drops while DeltaPrice remains 100bps.
-# This should eventually hit trend_consistency > 0.55.
-ALPHA_PROBABILITY = 0.04 
-ALPHA_JUMP_SIZE = 0.01   # 1% jump (discrete)
-ALPHA_COOLDOWN = 100     # Silence after jump
+# --- Deterministic Trend-Cycle Settings ---
+# Goal: guarantee persistent directional structure for geometry validation.
+TREND_LENGTH = 60
+DRIFT_PER_TICK = 0.0010
 
 def parse_ts(ts_str):
     try:
@@ -32,12 +28,16 @@ def main():
         readers.append({
             "symbol": os.path.basename(path).replace(".csv", ""),
             "reader": csv.DictReader(f),
-            "alpha_cooldown": 0,
             "current_price": None,
-            "avg_vol": 100
+            "avg_vol": 100,
+            "trend_dir": 1,
+            "trend_step": 0,
         })
 
-    print(f"📡 Mock Streamer: STEP_MODE (1% jumps + 100-tick silence)", file=sys.stderr)
+    print(
+        f"📡 Mock Streamer: TREND_CYCLE_MODE (drift={DRIFT_PER_TICK:.4f}, len={TREND_LENGTH})",
+        file=sys.stderr
+    )
 
     try:
         while True:
@@ -49,20 +49,20 @@ def main():
                     if t["current_price"] is None: t["current_price"] = real_price
                     
                     volume = float(row.get('volume', 100))
-                    
-                    if t["alpha_cooldown"] > 0:
-                        t["alpha_cooldown"] -= 1
-                        # Maintain the new price level
-                    else:
-                        if random.random() < ALPHA_PROBABILITY:
-                            direction = 1 if random.random() > 0.5 else -1
-                            t["current_price"] *= (1.0 + ALPHA_JUMP_SIZE * direction)
-                            t["alpha_cooldown"] = ALPHA_COOLDOWN
-                            volume = 500 # Volume spike on jump
-                            print(f"[ALPHA_EVENT] symbol={t['symbol']} dir={direction} (step jump)", file=sys.stderr)
-                        else:
-                            # Reverting loosely to real price to keep it bounded
-                            t["current_price"] = 0.99 * t["current_price"] + 0.01 * real_price
+
+                    # Deterministic trend cycle with periodic reversal.
+                    t["current_price"] *= (1.0 + (DRIFT_PER_TICK * t["trend_dir"]))
+                    t["trend_step"] += 1
+                    if t["trend_step"] >= TREND_LENGTH:
+                        t["trend_step"] = 0
+                        t["trend_dir"] *= -1
+                        volume = 500
+                        print(
+                            f"[ALPHA_EVENT] symbol={t['symbol']} dir={t['trend_dir']} (trend flip)",
+                            file=sys.stderr
+                        )
+                    # Keep bounded to source regime while preserving deterministic drift.
+                    t["current_price"] = (0.995 * t["current_price"]) + (0.005 * real_price)
 
                     batch.append({
                         "symbol": t["symbol"],
