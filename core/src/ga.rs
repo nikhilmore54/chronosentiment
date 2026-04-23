@@ -6127,7 +6127,13 @@ pub fn ga_simulate_round_trip_at_cursor(
 
     // 🔥 LAYER 2: Broad Learning Floor
     // This allows decent signals to inform the RankStats, creating a real gradient.
-    let learn_floor = stats.p10;
+    // Bootstrap floor should be softer (not zero) to avoid circular starvation:
+    // no passes -> poor stats -> too-high floor -> no passes.
+    let learn_floor = if std::env::var("GA_BOOTSTRAP").is_ok() {
+        (stats.p10 * 0.2).min(0.001)
+    } else {
+        stats.p10
+    };
     if raw_edge < learn_floor {
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
