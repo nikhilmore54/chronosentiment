@@ -11260,6 +11260,14 @@ pub fn evaluate_current_status(
     
     // 1. Warm-up Gate
     if history.len() < (config.lambda as usize) + 20 {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[EARLY_EXIT] sym={} reason=warmup_insufficient history={} required={}",
+                symbol,
+                history.len(),
+                (config.lambda as usize) + 20
+            );
+        }
         return DecisionReport {
             trade_id: 0,
             symbol: symbol.to_string(),
@@ -11332,6 +11340,14 @@ pub fn evaluate_current_status(
     };
 
     if skip_orthogonal {
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[EARLY_EXIT] sym={} reason=orthogonal_regime_mismatch archetype={} regime={:?}",
+                symbol,
+                strategy.archetype,
+                regime
+            );
+        }
         return DecisionReport {
             signal: SignalType::WAIT,
             regime,
@@ -11403,6 +11419,13 @@ pub fn evaluate_current_status(
         // A. Regime Guard
         if conviction.regime == MarketRegime::HighVolatilityNoise && std::env::var("GA_BOOTSTRAP").is_err() {
              if std::env::var("EDGE_DEBUG").is_ok() {
+                 println!(
+                     "[EARLY_EXIT] sym={} reason=high_vol_noise_guard n_vol={:.4}",
+                     symbol,
+                     conviction.norm_vol
+                 );
+             }
+             if std::env::var("EDGE_DEBUG").is_ok() {
                  println!("[REJECT_NOISE] sym={} n_vol={:.4}", symbol, conviction.norm_vol);
              }
              return DecisionReport {
@@ -11469,6 +11492,13 @@ pub fn evaluate_current_status(
                 });
             }
         }
+    } else if std::env::var("EDGE_DEBUG").is_ok() {
+        println!(
+            "[EARLY_EXIT] sym={} reason=no_round_trip_outcome conv={:.4} regime={:?}",
+            symbol,
+            conviction.conviction_score,
+            conviction.regime
+        );
     }
 
     DecisionReport {
