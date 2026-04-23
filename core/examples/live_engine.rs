@@ -179,7 +179,7 @@ fn main() {
                         reject_nonpositive_edge += 1;
                         continue;
                     }
-                    if report.execution_feasibility <= min_feas {
+                    if report.execution_feasibility < min_feas {
                         reject_low_feas += 1;
                         continue;
                     }

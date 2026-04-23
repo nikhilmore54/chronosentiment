@@ -11385,6 +11385,7 @@ pub fn evaluate_current_status(
     let mut trade_rec: Option<TradeRecommendation> = None;
     let mut final_raw_edge = 0.0;
     let mut feasibility = 0.0;
+    let mut effective_feasibility = 0.0;
 
     let edge_threshold = 0.0010;
 
@@ -11403,13 +11404,33 @@ pub fn evaluate_current_status(
         } else {
             0.0
         };
+        let bootstrap_mode = std::env::var("GA_BOOTSTRAP").is_ok();
+        effective_feasibility = if bootstrap_mode {
+            feasibility.max(0.05)
+        } else {
+            feasibility
+        };
+
+        if std::env::var("EDGE_DEBUG").is_ok() {
+            println!(
+                "[FEAS_DEBUG] sym={} ideal={:.6} realized={:.6} raw_feas={:.3} eff_feas={:.3} latency={} spread={:.6} fill_prob={:.3}",
+                symbol,
+                ideal,
+                realized,
+                feasibility,
+                effective_feasibility,
+                config.latency_ticks,
+                rt.spread,
+                rt.fill_efficiency
+            );
+        }
 
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[PRE_GATE] sym={} edge={:.6} feas={:.3} conv={:.4} mom={:.4} vol={:.4} regime={:?}",
                 symbol,
                 final_raw_edge,
-                feasibility,
+                effective_feasibility,
                 conviction.conviction_score,
                 conviction.norm_momentum,
                 conviction.norm_vol,
@@ -11443,10 +11464,10 @@ pub fn evaluate_current_status(
         }
 
         // B. Feasibility Guard
-        let feas_thresh = if std::env::var("GA_BOOTSTRAP").is_ok() { 0.10 } else { 0.30 };
+        let feas_thresh = if bootstrap_mode { 0.03 } else { 0.30 };
         let edge_thresh = if std::env::var("GA_BOOTSTRAP").is_ok() { 0.0001 } else { edge_threshold };
 
-        if final_raw_edge >= edge_thresh && feasibility > feas_thresh {
+        if final_raw_edge >= edge_thresh && effective_feasibility > feas_thresh {
              signal = if is_bearish { SignalType::SELL } else { SignalType::BUY };
              // ...
             
@@ -11455,7 +11476,7 @@ pub fn evaluate_current_status(
             // We scale expected_edge (final_raw_edge) so that a 50bps edge = 1.0 RawRank
             let raw_rank = (final_raw_edge / 0.0050).clamp(0.0, 1.0);
             let fill_prob = rt.fill_efficiency;
-            let adjusted_rank = (raw_rank * feasibility * fill_prob).clamp(0.0, 1.0);
+            let adjusted_rank = (raw_rank * effective_feasibility * fill_prob).clamp(0.0, 1.0);
             
             confidence = (final_raw_edge / (final_raw_edge + 0.001)).clamp(0.0, 1.0);
             execution_feasible = true;
@@ -11530,7 +11551,7 @@ pub fn evaluate_current_status(
         raw_edge: final_raw_edge,
         realized_return: None,
         capture_efficiency: None,
-        execution_feasibility: feasibility,
+        execution_feasibility: effective_feasibility,
         efficiency_label: String::new(),
         recommendation: trade_rec,
     }
