@@ -50,7 +50,7 @@ fn main() {
         let current_window = &candles[..i];
         let latest_candle = &candles[i];
         
-        update_paper_registry(&mut registry, latest_candle);
+        update_paper_registry(&mut registry, latest_candle, symbol);
 
         let report = evaluate_current_status(
             &strategy,
@@ -80,11 +80,16 @@ fn main() {
                 
                 if !already_busy && (registry.active_trades.len() + registry.pending_intents.len()) < registry.max_concurrent {
                     registry.pending_intents.push(TradeIntent {
+                        rec_id: 0,
                         symbol: symbol.clone(),
                         signal: reco.signal,
                         reference_price: reco.entry_price,
                         recommendation: reco,
                         strategy_id: 0,
+                        rec_score: 0.0,
+                        rec_feas: 0.0,
+                        rec_conf: 0.0,
+                        rec_voters: 0,
                         consensus: None,
                         age: 0,
                         max_age: 10,
