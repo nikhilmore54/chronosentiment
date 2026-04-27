@@ -52,6 +52,15 @@ struct RecMeta {
     primary_id: usize,
 }
 
+#[derive(Debug, Clone)]
+struct PendingConfirmation {
+    candidate: RecommendationCandidate,
+    created_symbol_updates: usize,
+    base_price: f64,
+    base_score: f64,
+    base_vol: f64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RecommendationMode {
     Coverage,
@@ -77,6 +86,41 @@ fn env_flag(name: &str) -> bool {
     std::env::var(name).map_or(false, |v| {
         !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false")
     })
+}
+
+fn percentile(mut values: Vec<f64>, p: f64) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let rank = ((p.clamp(0.0, 100.0) / 100.0) * ((values.len() - 1) as f64)).round() as usize;
+    values[rank.min(values.len() - 1)]
+}
+
+fn rolling_close_std(history: &[Candle], window: usize) -> f64 {
+    if history.len() < window || window == 0 {
+        return 0.0;
+    }
+    let values: Vec<f64> = history
+        .iter()
+        .rev()
+        .take(window)
+        .map(|c| c.close as f64)
+        .collect();
+    let n = values.len() as f64;
+    if n <= 0.0 {
+        return 0.0;
+    }
+    let mean = values.iter().sum::<f64>() / n;
+    let var = values
+        .iter()
+        .map(|v| {
+            let d = *v - mean;
+            d * d
+        })
+        .sum::<f64>()
+        / n;
+    var.sqrt()
 }
 
 /// Deterministic fitness proxy for the reco population layer (edge + feas + paper perf).
@@ -201,13 +245,19 @@ fn main() {
     
     let mut config = GaConfig::default();
     let mut paper = PaperRegistry::default();
-    paper.max_concurrent = 10; 
+    paper.max_concurrent = std::env::var("PAPER_MAX_CONCURRENT")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(10);
     paper.adaptation_threshold = 30; 
     
     let mut edge_buffer = PercentileBuffer::new(500);
     let mut current_stats = DistributionStats::default();
     
     let mut history_pipes: HashMap<String, Vec<Candle>> = HashMap::new();
+    let mut score_history: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut symbol_update_counts: HashMap<String, usize> = HashMap::new();
+    let mut pending_confirmations: HashMap<String, PendingConfirmation> = HashMap::new();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
     let mut consistency_counts: HashMap<String, usize> = HashMap::new();
     
@@ -235,6 +285,16 @@ fn main() {
         .ok()
         .and_then(|v| v.parse::<f64>().ok())
         .unwrap_or(0.0005);
+    let confirm_delta = std::env::var("REC_CONFIRM_DELTA")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(3)
+        .max(1);
+    let confirm_vol_mult = std::env::var("REC_CONFIRM_VOL_MULT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.5)
+        .max(1.0);
 
     let live_gate_reco_stability = std::env::var("LIVE_GATE_RECO_STABILITY_MIN")
         .ok()
@@ -280,6 +340,7 @@ fn main() {
             let history = history_pipes.entry(symbol.clone()).or_insert_with(Vec::new);
             history.push(candle.clone());
             if history.len() > 1000 { history.remove(0); }
+            *symbol_update_counts.entry(symbol.clone()).or_insert(0) += 1;
 
             update_paper_registry(&mut paper, &candle, symbol);
             if !paper.closed_observations.is_empty() {
@@ -822,22 +883,160 @@ fn main() {
             println!("EDGE_VARIANCE_CHECK unique_edge_bps_values={}", uniq.len());
         }
 
-        // Emit only top-N deterministic recommendations per input cycle.
-        // This converts the full stream into a strict survivor list.
+        // Stage-1: candidate creation (t0) from recommendation pool.
         recommendations.sort_by(|a, b| {
             b.score
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| a.symbol.cmp(&b.symbol))
         });
+        let current_scores: HashMap<String, f64> = recommendations
+            .iter()
+            .map(|c| (c.symbol.clone(), c.score))
+            .collect();
+        let voter_threshold = percentile(
+            recommendations
+                .iter()
+                .map(|c| c.voters as f64)
+                .collect::<Vec<f64>>(),
+            60.0, // top 40% voters
+        );
+        let conf_threshold = percentile(
+            recommendations
+                .iter()
+                .map(|c| c.conf)
+                .collect::<Vec<f64>>(),
+            75.0, // Q3 confidence
+        );
+        for cand in &recommendations {
+            let duplicate_live = paper.active_trades.iter().any(|t| t.symbol == cand.symbol)
+                || paper.pending_intents.iter().any(|i| i.symbol == cand.symbol);
+            let candidate_gate =
+                (cand.voters as f64) >= voter_threshold && cand.conf >= conf_threshold;
+            if !candidate_gate || duplicate_live || pending_confirmations.contains_key(&cand.symbol) {
+                continue;
+            }
+            let update_count = *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
+            let base_price = history_pipes
+                .get(&cand.symbol)
+                .and_then(|h| h.last())
+                .map(|c| c.close as f64)
+                .unwrap_or(cand.recommendation.entry_price);
+            let base_vol = history_pipes
+                .get(&cand.symbol)
+                .map(|h| rolling_close_std(h, 5))
+                .unwrap_or(0.0);
+            pending_confirmations.insert(
+                cand.symbol.clone(),
+                PendingConfirmation {
+                    candidate: cand.clone(),
+                    created_symbol_updates: update_count,
+                    base_price,
+                    base_score: cand.score,
+                    base_vol,
+                },
+            );
+        }
+
+        // Stage-2: confirmation at t0 + Δ, then execute.
+        let mut confirmed: Vec<RecommendationCandidate> = Vec::new();
+        let pending_symbols: Vec<String> = pending_confirmations.keys().cloned().collect();
+        for sym in pending_symbols {
+            let Some(pending) = pending_confirmations.get(&sym).cloned() else {
+                continue;
+            };
+            let now_updates = *symbol_update_counts.get(&sym).unwrap_or(&0);
+            if now_updates.saturating_sub(pending.created_symbol_updates) < confirm_delta {
+                continue;
+            }
+            let Some(history) = history_pipes.get(&sym) else {
+                pending_confirmations.remove(&sym);
+                continue;
+            };
+            let current_price = history.last().map(|c| c.close as f64).unwrap_or(pending.base_price);
+            let momentum_confirm = current_price - pending.base_price;
+            let vol_confirm = rolling_close_std(history, confirm_delta.saturating_add(1));
+            let score_now_opt = current_scores.get(&sym).copied();
+            let score_trend = score_now_opt.unwrap_or(pending.base_score) - pending.base_score;
+            let vol_limit = pending.base_vol.max(1e-9) * confirm_vol_mult;
+            let vol_ok = if pending.base_vol <= 1e-9 {
+                vol_confirm <= 1e-9
+            } else {
+                vol_confirm <= vol_limit
+            };
+            let confirmed_gate =
+                momentum_confirm > 0.0 && score_now_opt.is_some() && score_trend >= 0.0 && vol_ok;
+            if std::env::var("EMIT_PROBE").is_ok() {
+                println!(
+                    "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} vol_lim={:.6} score_trend={:.6} score_seen={} pass={}",
+                    sym,
+                    now_updates.saturating_sub(pending.created_symbol_updates),
+                    momentum_confirm,
+                    vol_confirm,
+                    vol_limit,
+                    score_trend,
+                    score_now_opt.is_some() as i32,
+                    confirmed_gate as i32
+                );
+            }
+            if confirmed_gate {
+                confirmed.push(pending.candidate.clone());
+            }
+            pending_confirmations.remove(&sym);
+        }
+
         let top_n = match rec_mode {
             RecommendationMode::Coverage => 5usize,
             RecommendationMode::Precision => 3usize,
             RecommendationMode::Top1 => 1usize,
         };
-        for cand in recommendations.into_iter().take(top_n) {
+        confirmed.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.symbol.cmp(&b.symbol))
+        });
+        for cand in confirmed.into_iter().take(top_n) {
             last_signals.insert(cand.symbol.clone(), cand.signal);
             consistency_counts.insert(cand.symbol.clone(), cand.consistency);
+            let momentum_3 = history_pipes
+                .get(&cand.symbol)
+                .and_then(|hist| {
+                    if hist.len() >= 4 {
+                        let last = hist.last()?.close as f64;
+                        let lag3 = hist.get(hist.len() - 4)?.close as f64;
+                        Some(last - lag3)
+                    } else {
+                        Some(0.0)
+                    }
+                })
+                .unwrap_or(0.0);
+            let vol_5 = history_pipes
+                .get(&cand.symbol)
+                .map(|hist| rolling_close_std(hist, 5))
+                .unwrap_or(0.0);
+            let score_std_5 = {
+                let history = score_history.entry(cand.symbol.clone()).or_default();
+                history.push_back(cand.score);
+                while history.len() > 5 {
+                    history.pop_front();
+                }
+                let n = history.len() as f64;
+                if n <= 0.0 {
+                    0.0
+                } else {
+                    let mean = history.iter().sum::<f64>() / n;
+                    let var = history
+                        .iter()
+                        .map(|v| {
+                            let d = *v - mean;
+                            d * d
+                        })
+                        .sum::<f64>()
+                        / n;
+                    var.sqrt()
+                }
+            };
             if std::env::var("EMIT_PROBE").is_ok() && cand.symbol == "AXISBANK.NS" {
                 println!(
                     "[EMIT_TRACE] emit sym={} rec_id={} score={:.6} edge={:.6} feas={:.3} conf={:.3} voters={} S{}",
@@ -896,6 +1095,9 @@ fn main() {
                 rec_feas: cand.feas,
                 rec_conf: cand.conf,
                 rec_voters: cand.voters,
+                momentum_3,
+                vol_5,
+                score_std_5,
                 consensus: None,
                 age: 0,
                 max_age: 10,

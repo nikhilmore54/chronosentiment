@@ -158,8 +158,7 @@ impl ExecutionEngine {
             return ExecutionResult::rejected();
         }
 
-        // --- STEP 1: COMPUTE QUEUE PRESSURE ---
-        // Slicing safety: Skip to end of window
+        // --- STEP 1: QUEUE PRESSURE (volume ahead during latency window [current, activation)) ---
         let start = current_index.min(market.len().saturating_sub(1));
         let end = activation_idx.min(market.len());
         let queue_pressure: f64 = market[start..end]
@@ -167,129 +166,40 @@ impl ExecutionEngine {
             .map(|e| e.quantity as f64)
             .sum();
 
-        // --- STEP 2: ARRIVAL LIQUIDITY ---
+        // --- STEP 2: ARRIVAL LIQUIDITY at activation event ---
         let arrival_event = &market[activation_idx];
         let arrival_liquidity = arrival_event.quantity as f64;
 
-        // --- STEP 3: FILL CONDITION ---
-        // --- STEP 3: DYNAMIC QUEUE DRAIN MODEL ---
-        let max_lookahead = 60;
-        let mut weighted_price = 0.0;
-        let mut remaining_qty = intent.quantity as u64;
-        let mut filled_qty: u64 = 0;
-        let mut fill_index = activation_idx;
-        
-        // Normalized starting queue ahead (0.7 factor + hard clamp)
-        let mut remaining_queue = (queue_pressure * 0.7).min(500.0);
-        let mut queue_cleared = false;
-
-        for i in activation_idx..(activation_idx + max_lookahead).min(market.len()) {
-            let event = &market[i];
-
-            // Queue evolution based on microstructure interaction
-            match event.subtype {
-                MarketEventType::Trade => {
-                    remaining_queue -= event.quantity as f64;
-                }
-                MarketEventType::NewOrder => {
-                    remaining_queue += event.quantity as f64 * 0.3;
-                }
-                MarketEventType::Cancel => {
-                    remaining_queue -= event.quantity as f64 * 0.5;
-                }
-            }
-            
-            // Hard clamp to prevent unbounded growth/starvation
-            remaining_queue = remaining_queue.max(0.0).min(500.0);
-
-            // Gating: Only fill when queue threshold is met AND we have an active trade event
-            if remaining_queue <= 25.0 {
-                // Microstructure separation: queue cleared -> then next trade fills
-                if !queue_cleared {
-                    queue_cleared = true;
-                    continue; 
-                }
-
-                if event.subtype != MarketEventType::Trade {
-                    continue;
-                }
-
-                // Apply competition factor (15%) to available liquidity
-                let mut available = (event.quantity as f64 * 0.15) as u64;
-                
-                // Ensure minimum execution granularity
-                if available == 0 && event.quantity > 0 {
-                    available = 1;
-                }
-
-                // Hybrid Dynamic Liquidity Cap (Blend 10% arrival + 10% current)
-                let dynamic_cap = ((arrival_liquidity * 0.1) + (event.quantity as f64 * 0.1)) as u64;
-                available = available.min(dynamic_cap.max(1));
-
-                // Microstructure Friction (Phase V7: Path Independence & Continuous Dist)
-                let friction = 0.9;
-                let raw_fill = available.min(remaining_qty);
-
-                // Apply friction as continuous probabilistic survival (Path-dependent)
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                use std::hash::Hasher;
-                hasher.write_u64(event.exchange_ts);
-                hasher.write_usize(i);
-                hasher.write_u64(raw_fill);
-                hasher.write_u64(intent.quantity as u64);
-                hasher.write_u64(intent.price);
-                hasher.write_u64(filled_qty); // Path-dependent entropy
-
-                let roll = (hasher.finish() % 1000) as f64 / 1000.0;
-
-                // Continuous distribution (0.7-1.0 or 0.1-0.3) instead of discrete clusters
-                let fill_ratio = if roll < friction {
-                    0.7 + (0.3 * roll)
-                } else {
-                    0.1 + (0.2 * roll)
-                };
-
-                let fill_qty = ((raw_fill as f64) * fill_ratio) as u64;
-                
-                if fill_qty > 0 {
-                    filled_qty += fill_qty;
-                    remaining_qty -= fill_qty;
-                    weighted_price += (fill_qty as f64) * (event.price as f64);
-                    fill_index = i;
-                }
-
-                if remaining_qty == 0 {
-                    break;
-                }
-            } else {
-                // LOST QUEUE POSITION: If queue rebuilds beyond threshold, reset priority
-                queue_cleared = false;
-                continue;
-            }
+        // --- STEP 3: DETERMINISTIC FILL (microstructure harness contract) ---
+        // If printed liquidity at activation does not exceed backlog, the order is rejected.
+        // Otherwise fill up to min(order qty, arrival print) — path depends on *where* volume sits.
+        if arrival_liquidity <= queue_pressure {
+            return ExecutionResult {
+                realized_pnl: 0.0,
+                filled_quantity: 0,
+                exit_reason: crate::GaExitReason::NoFill,
+                exit_price: 0,
+                exit_index: activation_idx,
+                status: ExecutionStatus::Rejected,
+                queue_pressure,
+                arrival_liquidity,
+                mfe: 0.0,
+                mae: 0.0,
+            };
         }
 
-        // --- FINALIZATION ---
-        if filled_qty == 0 {
-            return ExecutionResult::rejected();
-        }
-
-        let avg_price = (weighted_price / filled_qty as f64).round() as u64;
-
-        let status = if remaining_qty == 0 {
+        let filled_qty = (intent.quantity as f64).min(arrival_liquidity) as u64;
+        let remaining_after = intent.quantity as u64 - filled_qty;
+        let status = if remaining_after == 0 {
             ExecutionStatus::Filled
         } else {
             ExecutionStatus::Partial
         };
 
-        // --- STATISTICAL VALIDATION LOG (Phase V8) ---
         if std::env::var("ESE_DEBUG").is_ok() {
             println!(
-                "Q:{:.2} AL:{:.2} FQ:{} RQ:{} IDX:{}",
-                queue_pressure,
-                arrival_liquidity,
-                filled_qty,
-                remaining_qty,
-                fill_index - activation_idx
+                "ESE_DEBUG Q={:.2} AL={:.2} filled={} qty={}",
+                queue_pressure, arrival_liquidity, filled_qty, intent.quantity
             );
         }
 
@@ -297,8 +207,8 @@ impl ExecutionEngine {
             realized_pnl: 0.0,
             filled_quantity: filled_qty,
             exit_reason: crate::GaExitReason::NoFill,
-            exit_price: avg_price,
-            exit_index: fill_index,
+            exit_price: arrival_event.price,
+            exit_index: activation_idx,
             status,
             queue_pressure,
             arrival_liquidity,

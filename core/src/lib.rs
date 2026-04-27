@@ -11,6 +11,7 @@ pub mod harness;
 pub mod inspector;
 pub mod kernel;
 pub mod market_adapter;
+pub mod paper;
 pub mod pipeline;
 pub mod pnl_overlay;
 pub mod reco;
@@ -18,6 +19,7 @@ pub mod replay;
 pub mod replay_evaluator;
 pub mod selection_cap;
 pub mod strategy_ranking;
+pub mod synthetic;
 pub mod tick_replay;
 
 pub use binance_adapter::load_binance_events_from_jsonl;
@@ -33,6 +35,7 @@ pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_har
 pub use inspector::*;
 pub use kernel::*;
 pub use market_adapter::*;
+pub use paper::*;
 pub use pipeline::*;
 pub use pnl_overlay::*;
 pub use reco::*;
@@ -40,6 +43,7 @@ pub use replay::*;
 pub use replay_evaluator::*;
 pub use selection_cap::*;
 pub use strategy_ranking::*;
+pub use synthetic::*;
 pub use tick_replay::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

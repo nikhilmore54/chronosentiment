@@ -27,6 +27,9 @@ TRADE_RE = re.compile(
     r"(?:rec_feas=(?P<rec_feas>[-\d.]+) )?"
     r"(?:rec_conf=(?P<rec_conf>[-\d.]+) )?"
     r"(?:rec_voters=(?P<rec_voters>\d+) )?"
+    r"(?:momentum_3=(?P<momentum_3>[-\d.]+) )?"
+    r"(?:vol_5=(?P<vol_5>[-\d.]+) )?"
+    r"(?:score_std_5=(?P<score_std_5>[-\d.]+) )?"
     r"(?:vol_bps=(?P<vol_bps>[-\d.]+) )?"
     r"dur=(?P<dur>\d+) armed=(?P<armed>\d+) "
     r"state=(?P<state>[^ ]+) exit_type=(?P<exit_type>\S+)"
@@ -47,6 +50,9 @@ class Trade:
     rec_feas: float
     rec_conf: float
     rec_voters: int
+    momentum_3: float
+    vol_5: float
+    score_std_5: float
     vol_bps: float
     dur: int
     armed: int
@@ -74,6 +80,9 @@ def read_trades(path: Path) -> list[Trade]:
                 rec_feas=float(m.group("rec_feas") or 0.0),
                 rec_conf=float(m.group("rec_conf") or 0.0),
                 rec_voters=int(m.group("rec_voters") or 0),
+                momentum_3=float(m.group("momentum_3") or 0.0),
+                vol_5=float(m.group("vol_5") or 0.0),
+                score_std_5=float(m.group("score_std_5") or 0.0),
                 vol_bps=float(m.group("vol_bps") or 0.0),
                 dur=int(m.group("dur")),
                 armed=int(m.group("armed")),
@@ -371,6 +380,9 @@ def print_feature_separation(trades: list[Trade], proxy: str, pct: int) -> None:
         "rec_feas",
         "rec_conf",
         "rec_voters",
+        "momentum_3",
+        "vol_5",
+        "score_std_5",
         "vol_bps",
         "mfe",
         "mae",
@@ -385,14 +397,29 @@ def print_feature_separation(trades: list[Trade], proxy: str, pct: int) -> None:
         print(f"{feat}\t{g:.6f}\t{r:.6f}\t{(g-r):.6f}")
 
 
-def print_survival_diagnostics(trades: list[Trade], features: list[str], q: int = 5) -> None:
+def print_survival_diagnostics(
+    trades: list[Trade],
+    features: list[str],
+    q: int = 5,
+    survive_dur_ge: int = 10,
+    survive_requires_ret_positive: bool = False,
+) -> None:
     if not trades:
         print("\n=== SURVIVAL DIAGNOSTICS ===")
         print("No trades.")
         return
     print("\n=== SURVIVAL DIAGNOSTICS ===")
+    survive_desc = f"dur>={survive_dur_ge}"
+    if survive_requires_ret_positive:
+        survive_desc += " AND ret_at_exit>0"
+    print(f"target: survive = {survive_desc}")
     print("feature\tcorr_survive\tcorr_pnl\tmonotonic_survival\tq1_survive\tq5_survive\tdelta_q5_q1")
-    survive = [1.0 if t.dur >= 10 else 0.0 for t in trades]
+    survive = [
+        1.0
+        if (t.dur >= survive_dur_ge and (t.ret_at_exit > 0.0 or not survive_requires_ret_positive))
+        else 0.0
+        for t in trades
+    ]
     pnl = [t.pnl for t in trades]
 
     def corr(a: list[float], b: list[float]) -> float:
@@ -420,7 +447,15 @@ def print_survival_diagnostics(trades: list[Trade], features: list[str], q: int 
             if not b:
                 surv_rates.append(0.0)
             else:
-                surv_rates.append(sum(1 for t in b if t.dur >= 10) / len(b))
+                surv_rates.append(
+                    sum(
+                        1
+                        for t in b
+                        if t.dur >= survive_dur_ge
+                        and (t.ret_at_exit > 0.0 or not survive_requires_ret_positive)
+                    )
+                    / len(b)
+                )
         mono = all(surv_rates[i] <= surv_rates[i + 1] + 1e-12 for i in range(len(surv_rates) - 1))
         q1 = surv_rates[0]
         q5 = surv_rates[-1]
@@ -562,6 +597,17 @@ def main() -> int:
         action="store_true",
         help="Print feature survival diagnostics (quantiles + correlations)",
     )
+    ap.add_argument(
+        "--survival-dur-ge",
+        type=int,
+        default=10,
+        help="Survival target threshold: dur >= N (default: 10)",
+    )
+    ap.add_argument(
+        "--survival-requires-ret-positive",
+        action="store_true",
+        help="Survival target additionally requires ret_at_exit > 0",
+    )
     args = ap.parse_args()
 
     primary = str(Path(args.primary_log).resolve()) if args.primary_log else ""
@@ -580,6 +626,9 @@ def main() -> int:
         return 2
     if args.label_requires_dur_ge < 0:
         print("ERROR: --label-requires-dur-ge must be >= 0")
+        return 2
+    if args.survival_dur_ge < 0:
+        print("ERROR: --survival-dur-ge must be >= 0")
         return 2
 
     all_results: list[dict[str, object]] = []
@@ -635,7 +684,20 @@ def main() -> int:
         if args.survival_diagnostics:
             print_survival_diagnostics(
                 raw_trades,
-                ["rec_feas", "rec_conf", "rec_score", "vol_bps", "rank", "rec_voters", "edge_bps"],
+                [
+                    "rec_feas",
+                    "rec_conf",
+                    "rec_score",
+                    "rec_voters",
+                    "momentum_3",
+                    "vol_5",
+                    "score_std_5",
+                    "vol_bps",
+                    "rank",
+                    "edge_bps",
+                ],
+                survive_dur_ge=args.survival_dur_ge,
+                survive_requires_ret_positive=args.survival_requires_ret_positive,
             )
     if args.matrix and all_results:
         print_matrix(all_results)

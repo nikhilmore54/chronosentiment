@@ -19,6 +19,12 @@ pub struct TradeIntent {
     pub rec_conf: f64,
     #[serde(default)]
     pub rec_voters: usize,
+    #[serde(default)]
+    pub momentum_3: f64,
+    #[serde(default)]
+    pub vol_5: f64,
+    #[serde(default)]
+    pub score_std_5: f64,
     pub consensus: Option<AlphaConsensus>,
     pub age: usize,
     pub max_age: usize,
@@ -60,7 +66,23 @@ pub struct ActiveTrade {
     pub rec_conf: f64,
     #[serde(default)]
     pub rec_voters: usize,
+    #[serde(default)]
+    pub momentum_3: f64,
+    #[serde(default)]
+    pub vol_5: f64,
+    #[serde(default)]
+    pub score_std_5: f64,
+    #[serde(default)]
+    pub partial_tp_done: bool,
+    #[serde(default = "default_remaining_fraction")]
+    pub remaining_fraction: f64,
+    #[serde(default)]
+    pub realized_partial_pnl: f64,
     pub consensus: Option<AlphaConsensus>,
+}
+
+fn default_remaining_fraction() -> f64 {
+    1.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -342,6 +364,26 @@ pub fn update_paper_registry(
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(30)
         .max(1);
+    let tp_min_hold_bars = std::env::var("PAPER_TP_MIN_HOLD")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1)
+        .max(1);
+    let partial_tp_min_hold_bars = std::env::var("PAPER_PARTIAL_TP_MIN_HOLD")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(3)
+        .max(1);
+    let partial_tp_fraction = std::env::var("PAPER_PARTIAL_TP_FRACTION")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.4)
+        .clamp(0.0, 0.9);
+    let min_hold_bars = std::env::var("PAPER_MIN_HOLD_BARS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1)
+        .max(1);
     let hybrid_tp = std::env::var("PAPER_HYBRID_TP")
         .ok()
         .and_then(|v| v.parse::<f64>().ok())
@@ -582,6 +624,24 @@ pub fn update_paper_registry(
     let paper_tp_ladder_allow_tp_at_t2 = std::env::var("PAPER_TP_LADDER_ALLOW_TP_AT_T2")
         .map(|v| !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off")))
         .unwrap_or(false);
+    let paper_partial_tp = std::env::var("PAPER_PARTIAL_TP")
+        .map(|v| !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off")))
+        .unwrap_or(true);
+    let paper_partial_tp_min_hold = std::env::var("PAPER_PARTIAL_TP_MIN_HOLD")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(3)
+        .max(1);
+    let paper_partial_tp_min_ret = std::env::var("PAPER_PARTIAL_TP_MIN_RET")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0002)
+        .max(0.0);
+    let paper_partial_tp_fraction = std::env::var("PAPER_PARTIAL_TP_FRACTION")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.4)
+        .clamp(0.1, 0.9);
 
     let mut j = 0;
     while j < registry.pending_intents.len() {
@@ -669,6 +729,12 @@ pub fn update_paper_registry(
                 rec_feas: intent.rec_feas,
                 rec_conf: intent.rec_conf,
                 rec_voters: intent.rec_voters,
+                momentum_3: intent.momentum_3,
+                vol_5: intent.vol_5,
+                score_std_5: intent.score_std_5,
+                partial_tp_done: false,
+                remaining_fraction: 1.0,
+                realized_partial_pnl: 0.0,
                 consensus: intent.consensus,
             });
         } else {
@@ -712,6 +778,31 @@ pub fn update_paper_registry(
         } else {
             (trade.entry_price - mark_exit) / trade.entry_price
         };
+
+        // Partial TP proxy: after a short hold and sufficient favorable move, lock a fraction of
+        // volatility-scaled gains in stop level while keeping the trade alive for full TP window.
+        if paper_partial_tp
+            && !trade.partial_tp_done
+            && trade.current_hold >= paper_partial_tp_min_hold
+        {
+            if mark_pnl >= paper_partial_tp_min_ret {
+                let frac = paper_partial_tp_fraction.clamp(0.0, 0.95);
+                trade.realized_partial_pnl += frac * mark_pnl;
+                trade.remaining_fraction = (1.0 - frac).max(0.05);
+                let lock_ret = (paper_partial_tp_fraction * mark_pnl).max(0.0);
+                let lock_price = if is_long {
+                    trade.entry_price * (1.0 + lock_ret)
+                } else {
+                    trade.entry_price * (1.0 - lock_ret)
+                };
+                trade.sl_target = if is_long {
+                    trade.sl_target.max(lock_price)
+                } else {
+                    trade.sl_target.min(lock_price)
+                };
+                trade.partial_tp_done = true;
+            }
+        }
         if mark_pnl > trade.max_pnl {
             trade.max_pnl = mark_pnl;
             // Track true MFE timing (latest peak), not first improvement.
@@ -1039,6 +1130,45 @@ pub fn update_paper_registry(
             }
         }
 
+        if exit_pnl.is_some() && exit_tag == "TP" && trade.current_hold < tp_min_hold_bars {
+            // Deterministic TP hold gate: disable full take-profit before TP_MIN_HOLD bars.
+            if !trade.partial_tp_done
+                && trade.current_hold >= partial_tp_min_hold_bars
+                && partial_tp_fraction > 0.0
+            {
+                let exit_price = apply_slippage(trade.tp_target, !is_long, trade.vol_bps);
+                let partial_pnl = if is_long {
+                    (exit_price - trade.entry_price) / trade.entry_price
+                } else {
+                    (trade.entry_price - exit_price) / trade.entry_price
+                };
+                let clipped = (trade.size * partial_tp_fraction).min(trade.size).max(0.0);
+                if clipped > 0.0 {
+                    registry.equity *= 1.0 + (partial_pnl * clipped);
+                    trade.size = (trade.size - clipped).max(0.0);
+                    trade.partial_tp_done = true;
+                    if exit_probe {
+                        println!(
+                            "[PARTIAL_TP] rec_id={} sym={} hold={} frac={:.3} pnl={:.6} remaining_size={:.3}",
+                            trade.rec_id,
+                            trade.symbol,
+                            trade.current_hold,
+                            clipped,
+                            partial_pnl,
+                            trade.size
+                        );
+                    }
+                }
+            }
+            exit_pnl = None;
+            exit_tag = "";
+        }
+        if exit_pnl.is_some() && trade.current_hold < min_hold_bars {
+            // Deterministic minimum hold: suppress all early exits until minimum bars elapse.
+            exit_pnl = None;
+            exit_tag = "";
+        }
+
         let allow_time_exit = !tpsl_only;
         let hold_limit = if time_exit_only
             || hybrid_exit
@@ -1187,7 +1317,8 @@ pub fn update_paper_registry(
             );
         }
 
-        if let Some(pnl) = exit_pnl {
+        if let Some(pnl_raw) = exit_pnl {
+            let pnl = trade.realized_partial_pnl + (trade.remaining_fraction * pnl_raw);
             registry.equity *= 1.0 + (pnl * trade.size);
             if registry.equity > registry.peak_equity {
                 registry.peak_equity = registry.equity;
@@ -1219,7 +1350,7 @@ pub fn update_paper_registry(
                 0.0
             };
             println!(
-                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
+                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
                 trade.rec_id,
                 trade.symbol,
                 trade.max_pnl,
@@ -1232,6 +1363,9 @@ pub fn update_paper_registry(
                 trade.rec_feas,
                 trade.rec_conf,
                 trade.rec_voters,
+                trade.momentum_3,
+                trade.vol_5,
+                trade.score_std_5,
                 trade.vol_bps,
                 trade.current_hold,
                 if trade.trailing_armed_seen { 1 } else { 0 },
@@ -1278,11 +1412,12 @@ pub fn finalize_paper_registry(
             .unwrap_or(trade.entry_price);
         let is_long = trade.signal == SignalType::BUY;
         let exit_price = apply_slippage(mark_close, !is_long, trade.vol_bps);
-        let pnl = if is_long {
+        let pnl_raw = if is_long {
             (exit_price - trade.entry_price) / trade.entry_price.max(1e-9)
         } else {
             (trade.entry_price - exit_price) / trade.entry_price.max(1e-9)
         };
+        let pnl = trade.realized_partial_pnl + (trade.remaining_fraction * pnl_raw);
 
         registry.equity *= 1.0 + (pnl * trade.size);
         if registry.equity > registry.peak_equity {
@@ -1317,7 +1452,7 @@ pub fn finalize_paper_registry(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} vol_bps={:.2} dur={} exit_type=FINALIZE_TIME",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} exit_type=FINALIZE_TIME",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1330,6 +1465,9 @@ pub fn finalize_paper_registry(
             trade.rec_feas,
             trade.rec_conf,
             trade.rec_voters,
+            trade.momentum_3,
+            trade.vol_5,
+            trade.score_std_5,
             trade.vol_bps,
             trade.current_hold
         );
@@ -1362,11 +1500,12 @@ pub fn close_active_trades_for_symbol(
         let trade = &registry.active_trades[i];
         let is_long = trade.signal == SignalType::BUY;
         let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
-        let pnl = if is_long {
+        let pnl_raw = if is_long {
             (exit_price - trade.entry_price) / trade.entry_price.max(1e-9)
         } else {
             (trade.entry_price - exit_price) / trade.entry_price.max(1e-9)
         };
+        let pnl = trade.realized_partial_pnl + (trade.remaining_fraction * pnl_raw);
 
         registry.equity *= 1.0 + (pnl * trade.size);
         if registry.equity > registry.peak_equity {
@@ -1401,7 +1540,7 @@ pub fn close_active_trades_for_symbol(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1414,6 +1553,9 @@ pub fn close_active_trades_for_symbol(
             trade.rec_feas,
             trade.rec_conf,
             trade.rec_voters,
+            trade.momentum_3,
+            trade.vol_5,
+            trade.score_std_5,
             trade.vol_bps,
             trade.current_hold,
             if trade.trailing_armed_seen { 1 } else { 0 },

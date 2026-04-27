@@ -36,6 +36,9 @@ pub struct Recommendation {
     pub capture_efficiency: f64,
     pub execution: ExecutionSummary,
     pub consensus: ConsensusSummary,
+    /// Population / consensus basis used to build this recommendation (for live gating and audits).
+    #[serde(default)]
+    pub ensemble_metrics: RecoMetrics,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,6 +74,9 @@ pub struct RecoMetrics {
     pub cohesion: f64,
     pub execution_score: f64,
     pub capture_efficiency: f64,
+    /// Medoid genome fitness after clustering; 0 if no medoid was selected.
+    #[serde(default)]
+    pub medoid_fitness: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,11 +119,16 @@ impl RecommendationEngine {
             .filter(|e| e.fitness > mean + 0.5 * std)
             .collect();
 
-        // 2. Safeguard: Fallback to Top 20% if pool is too small
+        // 2. Safeguard: if the strict tail is too small, expand the pool by fitness rank.
+        // IMPORTANT: do not use only ceil(20% × n) — for n=5 that is 1 genome, which forces
+        // identical agreement_global (1/n) and agreement_local (1) for every asset in the dashboard.
         if candidates.len() < config.min_pool_size {
             let mut all: Vec<&StrategyEvaluation> = population.iter().collect();
             all.sort_by(|a, b| b.fitness.total_cmp(&a.fitness));
-            candidates = all.into_iter().take((population.len() as f64 * 0.2).ceil() as usize).collect();
+            let n = population.len();
+            let k_tail = (n as f64 * 0.2).ceil() as usize;
+            let k_need = config.min_pool_size.min(n).max(k_tail).max(1);
+            candidates = all.into_iter().take(k_need).collect();
         }
 
         if candidates.is_empty() {
@@ -125,6 +136,23 @@ impl RecommendationEngine {
                 reason: NoTradeReason::EmptyCandidatePool,
                 metrics: RecoMetrics::default(),
             };
+        }
+
+        if std::env::var("POOL_DEBUG").map_or(false, |v| {
+            !v.is_empty() && v != "0" && v.to_lowercase() != "false"
+        }) {
+            let fs: Vec<f64> = candidates.iter().map(|e| e.fitness).collect();
+            let mm = fs.iter().sum::<f64>() / fs.len() as f64;
+            let var = fs.iter().map(|f| (f - mm).powi(2)).sum::<f64>() / fs.len() as f64;
+            let sd = var.sqrt();
+            println!(
+                "POOL_DEBUG sym={} pool_size={} fitness_mean={:.6} fitness_std={:.6} values={:?}",
+                symbol,
+                candidates.len(),
+                mm,
+                sd,
+                fs
+            );
         }
 
         // 3. Cluster by behavioral axes
@@ -146,9 +174,22 @@ impl RecommendationEngine {
             let size = members.len() as f64;
             let avg_fitness = members.iter().map(|e| e.fitness).sum::<f64>() / size;
             
-            // Stability: avg_fitness / (fitness_std + EPS) capped at 5.0
+            // Stability: cluster fitness dispersion; if the cluster is a singleton (or numerically flat),
+            // use population-wide fitness std so different assets get different scores.
             let cluster_std = (members.iter().map(|e| (e.fitness - avg_fitness).powi(2)).sum::<f64>() / size).sqrt();
-            let stability = (avg_fitness / (cluster_std + 1e-6)).min(5.0);
+            let stability = if size >= 2.0 && cluster_std > 1e-9 {
+                (avg_fitness / (cluster_std + 1e-6)).min(5.0)
+            } else {
+                let pn = population.len().max(1) as f64;
+                let pop_mean = population.iter().map(|e| e.fitness).sum::<f64>() / pn;
+                let pop_std = (population
+                    .iter()
+                    .map(|e| (e.fitness - pop_mean).powi(2))
+                    .sum::<f64>()
+                    / pn)
+                    .sqrt();
+                (avg_fitness / (pop_std + 1e-6)).min(5.0)
+            };
 
             // Coherence: 1.0 - Normalized Genomic Variance
             let mut sum_var = 0.0;
@@ -187,8 +228,9 @@ impl RecommendationEngine {
                     agreement_local,
                     stability,
                     cohesion,
-                    execution_score: 0.0, 
+                    execution_score: 0.0,
                     capture_efficiency: 0.0,
+                    medoid_fitness: 0.0,
                 };
             }
         }
@@ -230,13 +272,14 @@ impl RecommendationEngine {
 
         // 9. Rolling Capture Efficiency (Using strategy's proven capture).
         best_metrics.capture_efficiency = medoid_eval.execution_metrics.capture_efficiency;
+        best_metrics.medoid_fitness = medoid_eval.fitness;
 
         // 10. Gating Logic
         let action = if medoid_eval.avg_conviction > 0.0 { Side::Buy } else { Side::Sell };
         
         // 🔥 Consensus Tension: Context-Aware Maturity
-        let G = best_metrics.agreement_global;
-        let L = best_metrics.agreement_local;
+        let g = best_metrics.agreement_global;
+        let l = best_metrics.agreement_local;
         let stability = best_metrics.stability;
         let cohesion = best_metrics.cohesion;
         
@@ -245,7 +288,7 @@ impl RecommendationEngine {
         let variance_penalty = cohesion.clamp(0.5, 1.0); // Cohesion is 1.0 - genomic variance
         let stability_signal = stab_norm.sqrt() * variance_penalty;
         
-        let maturity = (0.6 * G + 0.4 * stability_signal).clamp(0.0, 1.0);
+        let maturity = (0.6 * g + 0.4 * stability_signal).clamp(0.0, 1.0);
         
         // Continuous alpha blend: 0 -> Discovery (elite), 1 -> Confirmation (collective)
         let alpha = ((maturity - 0.2) / 0.2).clamp(0.0, 1.0);
@@ -254,7 +297,7 @@ impl RecommendationEngine {
         let weight_global = 0.4 + alpha * (0.7 - 0.4);
         let weight_local  = 0.6 - alpha * (0.6 - 0.3);
         
-        let agreement = weight_global * G + weight_local * L;
+        let agreement = weight_global * g + weight_local * l;
         let raw_consensus = agreement * agreement;
         
         // Final Consensus Confidence with Entropy Penalty (Phase D.1.22)
@@ -269,11 +312,18 @@ impl RecommendationEngine {
         
         let total_conf = 0.45 * consensus_conf + 0.35 * execution_conf + 0.20 * capture_conf;
 
-        // Expanded diagnostic for decision maturity mapping
-        println!("CONF_BREAKDOWN → G={:.3} L={:.3} STAB={:.3} MAT={:.3} α={:.3} H={:.3} FINAL={:.3} | E={:.3} R={:.3} TOTAL={:.3}", 
-            G, L, stability, maturity, alpha, normalized_entropy, consensus_conf,
-            execution_conf, capture_conf, total_conf);
+        // Optional: very chatty; enable with RECO_DEBUG=1 when tuning the reco layer.
+        if std::env::var("RECO_DEBUG").map_or(false, |v| {
+            !v.is_empty() && v != "0" && v.to_lowercase() != "false"
+        }) {
+            println!(
+                "CONF_BREAKDOWN sym={} → G={:.3} L={:.3} STAB={:.3} MAT={:.3} α={:.3} H={:.3} FINAL={:.3} | E={:.3} R={:.3} TOTAL={:.3}",
+                symbol, g, l, stability, maturity, alpha, normalized_entropy, consensus_conf,
+                execution_conf, capture_conf, total_conf
+            );
+        }
 
+        // `ensemble_metrics` == `best_metrics` for this tick: same winning cluster, same medoid (S/G/F coherent).
         let rec = Recommendation {
             symbol: symbol.to_string(),
             action,
@@ -292,6 +342,7 @@ impl RecommendationEngine {
                 stability_score: best_metrics.stability,
                 energy: max_energy,
             },
+            ensemble_metrics: best_metrics.clone(),
         };
 
         // Emit final Decision

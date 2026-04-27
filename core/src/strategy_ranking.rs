@@ -347,6 +347,7 @@ mod tests {
                 edge_ratio: 150,
                 participation_threshold: 30,
             exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
+                lineage: 0,
                 entry_offset: 0, // TODO: replace with latency-derived offset
             },
             preferred_regimes: regimes,

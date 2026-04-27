@@ -10,6 +10,12 @@ use chronosentiment_core::folder_source::FolderCandleSource;
 ///   GA_POPULATION_SIZE=60 GA_GENERATIONS=30 GA_MAX_HOLD_BARS=30 \
 ///   cargo run --example train_nse
 ///
+/// Logging (quiet by default; set when debugging):
+///   `GA_DEBUG=1` — broad GA / scenario diagnostics in `ga.rs`
+///   `GA_LOG_PROGRESS=1` — periodic population / bucket lines (`GEN=`, `POP_SUMMARY`, etc.)
+///   `GA_TRACE` / `GA_HOT_LOG=1` — per-signal / per-trade hot-path lines inside `evaluate_strategy`
+///   `GA_SIGNAL_DEBUG=1` — signal composition / window decision traces
+///
 /// Usage (validate mode):
 ///   RUN_MODE=validate cargo run --example train_nse -- --validate-on IRCTC.NS
 use rand::SeedableRng;
@@ -96,7 +102,7 @@ fn load_nse_datasets(folder: &str, min_candles: usize) -> Vec<AssetDataset> {
     let source = FolderCandleSource {
         folder_path: folder.to_string(),
     };
-    let raw = source.load_all_flexible();
+    let raw = source.load_all();
 
     println!("📂 Found {} CSV files in '{}'", raw.len(), folder);
 
@@ -146,7 +152,28 @@ fn build_scenarios<'a>(
     symbol: &'a str,
     signal_map: &'a HashMap<String, Vec<MarketEvent>>,
 ) -> Vec<chronosentiment_core::ga::ScenarioPair<'a>> {
-    pipeline::pair_scenarios_by_index(symbol, symbol, signal_map, signal_map)
+    let mut keys: Vec<&str> = signal_map.keys().map(|k| k.as_str()).collect();
+    keys.sort_unstable();
+    let mut out = Vec::with_capacity(keys.len());
+    for key in keys {
+        if let Some(events) = signal_map.get(key) {
+            out.push(chronosentiment_core::ga::ScenarioPair {
+                name: key,
+                signal_symbol: symbol,
+                execution_symbol: symbol,
+                signal: events.as_slice(),
+                execution: events.as_slice(),
+            });
+        }
+    }
+    out
+}
+
+fn scenario_map_for_signal_generation(
+    symbol: &str,
+    candles: &[Candle],
+) -> HashMap<String, Vec<MarketEvent>> {
+    pipeline::scenarios_from_candles(symbol, candles)
 }
 
 // ─── NEW: Multi-asset fitness ─────────────────────────────────────────────────
@@ -284,12 +311,7 @@ fn run_train(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str) {
     // Step 1: Pre-compute scenario maps for every asset (HashMap<String, Vec<MarketEvent>>)
     let mut per_asset_maps: Vec<(String, bool, HashMap<String, Vec<MarketEvent>>)> = Vec::new();
     for asset in datasets {
-        let signal_map = pipeline::scenario_map_for_signal_generation(
-            &asset.symbol,
-            "folder",
-            Some(&asset.candles),
-            "",
-        );
+        let signal_map = scenario_map_for_signal_generation(&asset.symbol, &asset.candles);
         let n_scenarios = build_scenarios(&asset.symbol, &signal_map).len();
         if n_scenarios == 0 {
             println!("  ⚠️  {} — 0 scenarios generated, skipping.", asset.symbol);
@@ -881,8 +903,7 @@ fn run_validate(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str, 
         candles.len()
     );
 
-    let signal_map =
-        pipeline::scenario_map_for_signal_generation(symbol, "folder", Some(candles), "");
+    let signal_map = scenario_map_for_signal_generation(symbol, candles);
     let scenarios = build_scenarios(symbol, &signal_map);
     if scenarios.is_empty() {
         eprintln!("❌ No scenarios generated for {}.", symbol);
@@ -950,9 +971,10 @@ fn run_validate(config: &GaConfig, datasets: &[AssetDataset], elite_path: &str, 
     }
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
+// ─── MAIN / CLI ENTRY ─────────────────────────────────────────────────────────
 
-fn main() {
+/// Shared entry for `train_nse` and `training_nse` examples (env + optional argv).
+pub fn run_nse_training_cli() {
     // ── Config from ENV ──────────────────────────────────────────────────────
     let data_folder = std::env::var("DATA_FOLDER").unwrap_or_else(|_| "data/nse/5m".to_string());
     let run_mode = std::env::var("RUN_MODE")
@@ -967,11 +989,13 @@ fn main() {
 
     // ── CLI args ─────────────────────────────────────────────────────────────
     let cli_args: Vec<String> = std::env::args().collect();
-    let validate_on = cli_args
-        .windows(2)
-        .find(|w| w[0] == "--validate-on")
-        .map(|w| w[1].as_str())
-        .unwrap_or("IRCTC.NS");
+    let validate_on = std::env::var("VALIDATE_ON").unwrap_or_else(|_| {
+        cli_args
+            .windows(2)
+            .find(|w| w[0] == "--validate-on")
+            .map(|w| w[1].clone())
+            .unwrap_or_else(|| "IRCTC.NS".to_string())
+    });
 
     // ── GaConfig ─────────────────────────────────────────────────────────────
     let config = GaConfig::default(); // reads GA_POPULATION_SIZE, GA_GENERATIONS, GA_MAX_HOLD_BARS from ENV
@@ -984,9 +1008,27 @@ fn main() {
     println!("   Pop size   : {}", config.population_size);
     println!("   Generations: {}", config.generations);
     println!("   Max hold   : {} bars", config.max_hold_bars);
+    if std::env::var("NSE_DETERMINISTIC")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        println!("   Deterministic mode: NSE_DETERMINISTIC=1 (fixed GA seed path; no RNG in sim gate)");
+    }
 
     // ── Load datasets ─────────────────────────────────────────────────────────
-    let datasets = load_nse_datasets(&data_folder, min_candles);
+    let mut datasets = load_nse_datasets(&data_folder, min_candles);
+    if let Ok(s) = std::env::var("NSE_TRAIN_MAX_ASSETS") {
+        if let Ok(n) = s.parse::<usize>() {
+            let total = datasets.len();
+            if n > 0 && n < total {
+                println!(
+                    "📎 NSE_TRAIN_MAX_ASSETS={} → using {} of {} assets",
+                    n, n, total
+                );
+                datasets.truncate(n);
+            }
+        }
+    }
     if datasets.is_empty() {
         eprintln!(
             "❌ No valid assets loaded from '{}'. \
@@ -999,10 +1041,17 @@ fn main() {
     // ── Dispatch ──────────────────────────────────────────────────────────────
     match run_mode.as_str() {
         "train" => run_train(&config, &datasets, &elite_path),
-        "validate" => run_validate(&config, &datasets, &elite_path, validate_on),
+        "validate" => run_validate(&config, &datasets, &elite_path, validate_on.as_str()),
         other => eprintln!(
             "❌ Unknown RUN_MODE='{}'. Use 'train' or 'validate'.",
             other
         ),
     }
+}
+
+/// Entry when this file is the example crate root (`cargo run --example train_nse`).
+/// Unused when the same file is `#[path]`-included from `training_nse` (harmless).
+#[allow(dead_code)]
+fn main() {
+    run_nse_training_cli();
 }

@@ -4,12 +4,20 @@ import csv
 import sys
 import glob
 import os
+import math
 from datetime import datetime
 
 # --- Deterministic Trend-Cycle Settings ---
 # Goal: guarantee persistent directional structure for geometry validation.
-TREND_LENGTH = 60
-DRIFT_PER_TICK = 0.0010
+TREND_LENGTH = 100
+DRIFT_PER_TICK = 0.0025
+# Deterministic amplification so mock stream produces measurable edge.
+DRIFT_MULTIPLIER = 10.0
+SHOCK_AMPLITUDE = 0.003
+SHOCK_PERIOD = 20
+# Keep prices in a realistic rupee domain so tick quantization preserves movement.
+PRICE_SCALE = 1.0
+TICK_SIZE = 1.0
 
 def parse_ts(ts_str):
     try:
@@ -35,9 +43,10 @@ def main():
         })
 
     print(
-        f"📡 Mock Streamer: TREND_CYCLE_MODE (drift={DRIFT_PER_TICK:.4f}, len={TREND_LENGTH})",
+        f"📡 Mock Streamer: TREND_CYCLE_MODE (drift={DRIFT_PER_TICK:.4f}, mult={DRIFT_MULTIPLIER:.1f}, shock={SHOCK_AMPLITUDE:.4f}, period={SHOCK_PERIOD}, len={TREND_LENGTH})",
         file=sys.stderr
     )
+    probe_gen = os.getenv("MOCK_GEN_PROBE", "0").lower() not in ("0", "", "false")
 
     try:
         while True:
@@ -45,13 +54,19 @@ def main():
             for t in readers:
                 try:
                     row = next(t["reader"])
-                    real_price = float(row['close'])
-                    if t["current_price"] is None: t["current_price"] = real_price
+                    # Normalize to a stable working price domain to avoid coarse tick geometry
+                    # at very large raw price magnitudes.
+                    real_price = float(row['close']) / PRICE_SCALE
+                    if t["current_price"] is None:
+                        t["current_price"] = real_price
                     
                     volume = float(row.get('volume', 100))
 
                     # Deterministic trend cycle with periodic reversal.
-                    t["current_price"] *= (1.0 + (DRIFT_PER_TICK * t["trend_dir"]))
+                    phase = t["trend_step"] % SHOCK_PERIOD
+                    shock = SHOCK_AMPLITUDE * math.sin((2.0 * math.pi * phase) / SHOCK_PERIOD)
+                    drift = DRIFT_PER_TICK * DRIFT_MULTIPLIER * t["trend_dir"]
+                    t["current_price"] *= (1.0 + drift + shock)
                     t["trend_step"] += 1
                     if t["trend_step"] >= TREND_LENGTH:
                         t["trend_step"] = 0
@@ -63,6 +78,13 @@ def main():
                         )
                     # Keep bounded to source regime while preserving deterministic drift.
                     t["current_price"] = (0.995 * t["current_price"]) + (0.005 * real_price)
+                    # Quantize deterministically to explicit tick resolution.
+                    t["current_price"] = round(round(t["current_price"] / TICK_SIZE) * TICK_SIZE, 8)
+                    if probe_gen:
+                        print(
+                            f"[MOCK_GEN] sym={t['symbol']} price={t['current_price']:.8f}",
+                            file=sys.stderr,
+                        )
 
                     batch.append({
                         "symbol": t["symbol"],

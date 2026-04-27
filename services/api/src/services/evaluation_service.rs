@@ -1,99 +1,155 @@
-use crate::{dto::{
-        CompareStrategiesResponse, ComparisonSummary, EvaluateStrategyResponse, EventWrapper,
-        InspectStrategyResponse, RunGaResponse, TradeInspectorDecision, TradeInspectorOutcome,
-        TradeInspectorResponse,
-    },
+use crate::{dto::{EvaluateStrategyResponse, CompareStrategiesResponse, ComparisonSummary, InspectStrategyResponse, RunGaResponse, EventWrapper, TradeInspectorResponse, StrategyEvaluationDto},
     errors::ApiError,
 };
-use chronosentiment_core::{self, GaConfig, Strategy, SimEvent, SimulationResult};
+use chronosentiment_core::{self, GaConfig, Strategy, ga::StrategyEvaluation, SimEvent, SimulationResult, Candle, convert_series_to_events};
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::sync::{Arc, Mutex};
+use std::env;
 use serde_json::json;
 
 // Placeholder for internal engine functions (these would ideally be in a core library)
 // For now, we'll assume they are accessible or mocked.
 
-/// Legacy default when a scenario has no ticks (should not happen for loaded CSV windows).
-const ORDER_PRICE: u64 = 100 * chronosentiment_core::PRICE_SCALE;
+const ORDER_PRICE: u64 = 100;
 const ORDER_QUANTITY: u64 = 100;
-const ORDER_TIMESTAMP: u64 = 12;
-
-/// Harness order price/time match the first market tick so UI traces reflect real scenario levels (e.g. ~₹420 for TATAMOTORS), not the old ₹100 fixture.
-fn reference_order_from_market_events(events: &[chronosentiment_core::MarketEvent]) -> (u64, u64) {
-    if let Some(e) = events.first() {
-        (e.price, e.exchange_ts)
-    } else {
-        (ORDER_PRICE, ORDER_TIMESTAMP)
-    }
-}
-
-fn parse_strategy_from_id(strategy_id: &str) -> Option<chronosentiment_core::ga::Strategy> {
-    crate::strategy_id_parse::parse_strategy_id_full(strategy_id)
-        .ok()
-        .map(|(s, _)| s)
-}
-
-fn map_regime(regime: &str) -> chronosentiment_core::strategy_ranking::LiveRegime {
-    match regime {
-        "trending_up" => chronosentiment_core::strategy_ranking::LiveRegime::TrendingUp,
-        "trending_down" => chronosentiment_core::strategy_ranking::LiveRegime::TrendingDown,
-        "sideways" => chronosentiment_core::strategy_ranking::LiveRegime::Sideways,
-        "volatile" => chronosentiment_core::strategy_ranking::LiveRegime::Volatile,
-        _ => chronosentiment_core::strategy_ranking::LiveRegime::Mixed,
-    }
-}
+const ORDER_TIMESTAMP: u64 = 12; // A reasonable timestamp for event-driven simulation
 
 #[derive(Clone)]
 pub struct EvaluationService {
     pub last_simulation: Arc<Mutex<Option<SimulationResult>>>,
-    pub strategy_store: Arc<Mutex<Option<chronosentiment_core::pipeline::PersistedStrategyStore>>>,
+    pub last_global_ranking: Arc<Mutex<Vec<crate::dto::StrategyEvaluationDto>>>,
 }
 
 impl EvaluationService {
-    /// Canonical on-disk store used for signals and UI (`PersistedStrategyStore` JSON).
-    pub const STRATEGY_STORE_PATH: &'static str =
-        "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/strategy_store.json";
+    fn deterministic_strategy_id(strategy: &Strategy, scenario_names: &[String], seed: u64) -> String {
+        let mut names = scenario_names.to_vec();
+        names.sort();
+        format!(
+            "strat_{}_{}_{}_{}_{}",
+            strategy.queue_threshold,
+            strategy.base_edge,
+            strategy.take_profit,
+            strategy.stop_loss,
+            seed ^ (names.len() as u64)
+        )
+    }
+
+    fn to_dual_fitness_dto(
+        strategy_id: String,
+        ga_eval: &StrategyEvaluation,
+        execution_eval: &StrategyEvaluation,
+    ) -> crate::dto::StrategyEvaluationDto {
+        assert!(
+            execution_eval.fitness.is_finite() &&
+            execution_eval.fitness >= 0.0 &&
+            execution_eval.fitness <= 1.0,
+            "Execution fitness out of bounds: {}",
+            execution_eval.fitness
+        );
+        crate::dto::StrategyEvaluationDto {
+            strategy_id,
+            avg: execution_eval.avg_pnl,
+            std: execution_eval.std_dev,
+            ga_fitness: Some(ga_eval.fitness),
+            execution_fitness: execution_eval.fitness,
+            classification: chronosentiment_core::ga::get_strategy_classification(execution_eval),
+        }
+    }
 
     pub fn new() -> Self {
-        let strategy_store_path = Self::STRATEGY_STORE_PATH;
-        let loaded_store = chronosentiment_core::pipeline::load_strategy_store(strategy_store_path).ok();
-        if loaded_store.is_some() {
-            println!("API_INFO: Loaded pre-trained strategy store from {}", strategy_store_path);
-        } else {
-            println!("API_INFO: No strategy store found at {}; recommendations will trigger GA evolution", strategy_store_path);
-        }
+        let sample_candles = vec![
+            Candle { timestamp: 10, open: 100, high: 105, low: 99, close: 103, volume: 1000 },
+            Candle { timestamp: 20, open: 103, high: 108, low: 101, close: 107, volume: 1500 },
+            Candle { timestamp: 30, open: 107, high: 110, low: 105, close: 106, volume: 1200 },
+        ];
+
+        let mut events = convert_series_to_events(&sample_candles, 1);
+        let next_seq_id = events.last().map(|e| e.sequence_id()).unwrap_or(0) + 1;
+
+        let mut order_outcomes = HashMap::new();
+        order_outcomes.insert("O1".to_string(), chronosentiment_core::OrderOutcome {
+            order_id: "O1".to_string(),
+            filled_quantity: 100,
+            remaining_quantity: 0,
+            arrival_time: 15,
+            queue_ahead: 500,
+        });
+
+        // Add mock order events interleaved or appended for demonstration
+        events.push(SimEvent::OrderIntent {
+            sequence_id: next_seq_id,
+            parent_sequence_id: None,
+            order_id: "O1".to_string(),
+            side: chronosentiment_core::Side::Buy,
+            price: 100,
+            quantity: 100,
+            timestamp: 12,
+        });
+        events.push(SimEvent::OrderEnteredQueue {
+            sequence_id: next_seq_id + 1,
+            parent_sequence_id: Some(next_seq_id),
+            order_id: "O1".to_string(),
+            timestamp: 15,
+            price: 100,
+            queue_ahead: 500,
+        });
+        events.push(SimEvent::PartialFill {
+            sequence_id: next_seq_id + 2,
+            parent_sequence_id: Some(next_seq_id + 1),
+            order_id: "O1".to_string(),
+            timestamp: 18,
+            filled_qty: 100,
+            price: 100,
+        });
+        events.push(SimEvent::OrderFilled {
+            sequence_id: next_seq_id + 3,
+            parent_sequence_id: Some(next_seq_id + 2),
+            order_id: "O1".to_string(),
+            timestamp: 20,
+        });
+
+        // Ensure events are sorted by timestamp
+        events.sort_by_key(|e| e.timestamp());
+
+        let mock_simulation = SimulationResult {
+            pnl: 0,
+            trades: 1,
+            order_outcomes,
+            events,
+        };
+
+        let initial_ranking = Vec::new();
 
         Self {
-            last_simulation: Arc::new(Mutex::new(None)),
-            strategy_store: Arc::new(Mutex::new(loaded_store)),
+            last_simulation: Arc::new(Mutex::new(Some(mock_simulation))),
+            last_global_ranking: Arc::new(Mutex::new(initial_ranking)),
         }
     }
 
     fn wrap_event(&self, event: &SimEvent) -> EventWrapper {
-        let scale = chronosentiment_core::PRICE_SCALE as f64;
         let payload = match event {
             SimEvent::MarketEvent { subtype, price, quantity, side, .. } => json!({
                 "subtype": format!("{:?}", subtype).to_uppercase(),
-                "price": *price as f64 / scale,
+                "price": price,
                 "quantity": quantity,
                 "side": side.map(|s| format!("{:?}", s).to_uppercase()),
             }),
             SimEvent::OrderIntent { order_id, side, price, quantity, .. } => json!({
                 "order_id": order_id,
                 "side": format!("{:?}", side).to_uppercase(),
-                "price": *price as f64 / scale,
+                "price": price,
                 "quantity": quantity,
             }),
             SimEvent::OrderEnteredQueue { order_id, price, queue_ahead, .. } => json!({
                 "order_id": order_id,
-                "price": *price as f64 / scale,
+                "price": price,
                 "queue_ahead": queue_ahead,
             }),
             SimEvent::PartialFill { order_id, filled_qty, price, .. } => json!({
                 "order_id": order_id,
                 "filled_qty": filled_qty,
-                "price": *price as f64 / scale,
+                "price": price,
             }),
             SimEvent::QueueProgression { order_id, queue_ahead, .. } => json!({
                 "order_id": order_id,
@@ -120,35 +176,65 @@ impl EvaluationService {
         }
     }
 
-    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::MarketEvent>> {
-        let source = chronosentiment_core::FolderCandleSource {
-            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
-        };
-        let assets_with_candles = source.load_all();
-        let mut all_scenarios = HashMap::new();
-        for (asset, candles) in assets_with_candles {
-            let asset_scenarios = chronosentiment_core::pipeline::scenarios_from_candles(&asset, &candles);
-            all_scenarios.extend(asset_scenarios);
-        }
-        all_scenarios
-    }
-
     pub fn evaluate_strategy(
         &self,
         strategy_config: Strategy,
         scenario_names: Vec<String>,
         seed: u64,
     ) -> Result<EvaluateStrategyResponse, ApiError> {
-        let scenarios_map = self.load_all_real_scenarios();
+        let ga_config = GaConfig {
+            population_size: 1, // Only one strategy to evaluate
+            generations: 1,
+            mutation_rate: 0.0,
+            seed,
+            order_id_prefix: "API_EVAL".to_string(),
+            order_price: ORDER_PRICE,
+            order_quantity_for_strategy: ORDER_QUANTITY,
+            order_timestamp: ORDER_TIMESTAMP,
+            lambda: 0.5,
+            initial_queue_threshold: 200,
+        };
+
+        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
 
         // Default to all benchmark scenarios if none provided
         let scenario_names = if scenario_names.is_empty() {
-            let mut names: Vec<String> = scenarios_map.keys().cloned().collect();
-            names.sort();
-            names
+            scenarios_map.keys().cloned().collect::<Vec<String>>()
         } else {
             scenario_names
         };
+
+        // Sort scenario_names for deterministic strategy_id generation
+        let mut sorted_scenario_names = scenario_names.clone();
+        sorted_scenario_names.sort();
+
+        let strategy_id = Self::deterministic_strategy_id(&strategy_config, &sorted_scenario_names, seed);
+
+        for (i, scenario_name) in scenario_names.iter().enumerate() {
+            let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
+                ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
+            })?;
+
+            let (_event_log, simulation_result, _) = chronosentiment_core::harness::run_simulation_harness(
+                chronosentiment_core::ExecutionMode::Real,
+                market_events.clone(),
+                vec![chronosentiment_core::CreateOrder {
+                    order_id: format!("strat_{}_{}", scenario_name, strategy_config.queue_threshold),
+                    side: chronosentiment_core::Side::Buy,
+                    price: ORDER_PRICE,
+                    quantity: ORDER_QUANTITY,
+                    timestamp: ORDER_TIMESTAMP,
+                    fill_probability: 0.5,
+                }],
+            );
+
+            // Store result for the first scenario
+            if i == 0 {
+                let mut last_sim = self.last_simulation.lock().unwrap_or_else(|e| e.into_inner());
+                *last_sim = Some(simulation_result.clone());
+            }
+
+        }
 
         let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
         for scenario_name in &scenario_names {
@@ -158,36 +244,22 @@ impl EvaluationService {
             selected_scenarios.insert(scenario_name.clone(), market_events.clone());
         }
 
-        // Store first scenario's trace for UI visualization
-        if let Some(first_scenario_name) = scenario_names.first() {
-             if let Some(market_events) = selected_scenarios.get(first_scenario_name) {
-                let (ref_price, ref_ts) = reference_order_from_market_events(market_events.as_slice());
-                let (_event_log, simulation_result, _) = chronosentiment_core::harness::run_simulation_harness(
-                    chronosentiment_core::ExecutionMode::Real,
-                    market_events.clone(),
-                    vec![chronosentiment_core::CreateOrder {
-                        order_id: format!("strat_{}_{}", first_scenario_name, strategy_config.queue_threshold),
-                        side: chronosentiment_core::Side::Buy,
-                        price: ref_price,
-                        quantity: ORDER_QUANTITY,
-                        timestamp: ref_ts,
-                        fill_probability: 0.5,
-                    }],
-                );
-                let mut last_sim = self.last_simulation.lock().unwrap_or_else(|e| e.into_inner());
-                *last_sim = Some(simulation_result);
-             }
-        }
-
-        let unified_eval = chronosentiment_core::pipeline::run_evaluation_orchestration(
-            "train",
-            strategy_config,
+        let aggregated_evaluation = match chronosentiment_core::evaluate_and_aggregate(
+            &strategy_config,
+            &ga_config,
             &selected_scenarios,
-            seed,
-        ).map_err(|e| ApiError::InternalError(e))?;
+        ) {
+            Some(mut eval) => {
+                eval.strategy_id = strategy_id.clone();
+                eval
+            },
+            None => {
+                return Err(ApiError::InternalError("Failed to aggregate strategy reports".to_string()));
+            }
+        };
         
-        Ok(EvaluateStrategyResponse {
-            strategy_evaluation: unified_eval,
+        Ok(crate::dto::EvaluateStrategyResponse {
+            strategy_evaluation: aggregated_evaluation.into(),
         })
     }
 
@@ -202,47 +274,70 @@ impl EvaluationService {
                 "At least two strategies are required for comparison".to_string(),
             ));
         }
+        let ga_config = GaConfig {
+            population_size: strategies.len(),
+            generations: 1,
+            mutation_rate: 0.0,
+            seed,
+            order_id_prefix: "API_COMPARE".to_string(),
+            order_price: ORDER_PRICE,
+            order_quantity_for_strategy: ORDER_QUANTITY,
+            order_timestamp: ORDER_TIMESTAMP,
+            lambda: 0.5,
+            initial_queue_threshold: 200,
+        };
 
-        let scenarios_map = self.load_all_real_scenarios();
+        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
 
         // Default to all benchmark scenarios if none provided
         let scenario_names = if scenario_names.is_empty() {
-            let mut names: Vec<String> = scenarios_map.keys().cloned().collect();
-            names.sort();
-            names
+            scenarios_map.keys().cloned().collect::<Vec<String>>()
         } else {
             scenario_names
         };
 
-        let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
-        for scenario_name in &scenario_names {
-            let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
-                ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
-            })?;
-            selected_scenarios.insert(scenario_name.clone(), market_events.clone());
+        let mut rankings: Vec<StrategyEvaluation> = Vec::new();
+
+        // Sort scenario_names for deterministic strategy_id generation in compare_strategies
+        let mut sorted_scenario_names = scenario_names.clone();
+        sorted_scenario_names.sort();
+
+        for strategy_config in strategies {
+            let strategy_id = Self::deterministic_strategy_id(&strategy_config, &sorted_scenario_names, seed);
+            let mut selected_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
+            for scenario_name in &scenario_names {
+                let market_events = scenarios_map.get(scenario_name).ok_or_else(|| {
+                    ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
+                })?;
+                selected_scenarios.insert(scenario_name.clone(), market_events.clone());
+            }
+
+            // Aggregate across scenarios via the canonical helper.
+            let mut aggregated_report = chronosentiment_core::evaluate_and_aggregate(
+                &strategy_config,
+                &ga_config,
+                &selected_scenarios,
+            ).ok_or_else(|| ApiError::InternalError("No scenario reports generated.".to_string()))?;
+            aggregated_report.strategy_id = strategy_id.clone();
+            rankings.push(aggregated_report);
         }
 
-        let rankings = chronosentiment_core::pipeline::run_comparison_orchestration(
-            "train",
-            strategies,
-            &selected_scenarios,
-            seed,
-        ).map_err(|e| ApiError::InternalError(e))?;
+        rankings.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(Ordering::Equal).then_with(|| a.strategy_id.cmp(&b.strategy_id)));
 
         let mut comparison_summary = ComparisonSummary {
-            best_strategy: "".to_string(),
+            best_strategy: "".to_string(), // Will be updated
             reason: "No clear reason".to_string(),
         };
 
         if let Some(best) = rankings.first() {
             comparison_summary.best_strategy = best.strategy_id.clone();
             if rankings.len() >= 2 {
-                comparison_summary.reason = format!("The best strategy {} had a higher fitness of {:.2}.", best.strategy_id, best.execution_fitness);
+                comparison_summary.reason = format!("The best strategy {} had a higher fitness of {:.2}.", best.strategy_id, best.fitness);
             }
         }
 
         Ok(CompareStrategiesResponse {
-            ranking: rankings,
+            ranking: rankings.into_iter().map(|e| e.into()).collect(),
             comparison_summary,
         })
     }
@@ -253,21 +348,35 @@ impl EvaluationService {
         scenario_name: String,
         seed: u64,
     ) -> Result<InspectStrategyResponse, ApiError> {
-        let scenarios_map = self.load_all_real_scenarios();
+        let strategy_id = Self::deterministic_strategy_id(&strategy_config, &vec![scenario_name.clone()], seed);
+
+        let ga_config = GaConfig {
+            population_size: 1,
+            generations: 1,
+            mutation_rate: 0.0,
+            seed,
+            order_id_prefix: "API_INSPECT".to_string(),
+            order_price: ORDER_PRICE,
+            order_quantity_for_strategy: ORDER_QUANTITY,
+            order_timestamp: ORDER_TIMESTAMP,
+            lambda: 0.5,
+            initial_queue_threshold: 200,
+        };
+
+        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
         let market_events = scenarios_map.get(&scenario_name).ok_or_else(|| {
             ApiError::EngineError(format!("Scenario '{}' not found", scenario_name))
         })?;
 
-        let (ref_price, ref_ts) = reference_order_from_market_events(market_events.as_slice());
         let (event_log, simulation_result, _) = chronosentiment_core::harness::run_simulation_harness(
             chronosentiment_core::ExecutionMode::Real,
             market_events.clone(),
             vec![chronosentiment_core::CreateOrder {
                 order_id: format!("strat_{}_{}", scenario_name, strategy_config.queue_threshold),
                 side: chronosentiment_core::Side::Buy,
-                price: ref_price,
+                price: ORDER_PRICE,
                 quantity: ORDER_QUANTITY,
-                timestamp: ref_ts,
+                timestamp: ORDER_TIMESTAMP,
                 fill_probability: 0.5,
             }],
         );
@@ -280,19 +389,17 @@ impl EvaluationService {
 
         let mut one_scenario: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
         one_scenario.insert(scenario_name.clone(), market_events.clone());
-        
-        let unified_eval = chronosentiment_core::pipeline::run_evaluation_orchestration(
-            "train",
-            strategy_config,
+        let strategy_report = chronosentiment_core::evaluate_and_aggregate(
+            &strategy_config,
+            &ga_config,
             &one_scenario,
-            seed,
-        ).map_err(|e| ApiError::InternalError(e))?;
+        ).ok_or_else(|| ApiError::InternalError("Strategy produced no evaluable trades".to_string()))?;
 
         Ok(InspectStrategyResponse {
-            strategy_id: unified_eval.strategy_id.clone(),
+            strategy_id,
             decision_trace: event_log.iter().map(|e| self.wrap_event(e)).collect(), 
             execution_trace: event_log.iter().map(|e| self.wrap_event(e)).collect(), 
-            metrics: unified_eval,
+            metrics: strategy_report.into(),
             event_sequence: event_log.iter().map(|e| self.wrap_event(e)).collect(),
         })
     }
@@ -326,20 +433,105 @@ impl EvaluationService {
             order_timestamp: ORDER_TIMESTAMP,
             lambda: 0.5,
             initial_queue_threshold: 200,
-            ..GaConfig::default()
         };
 
-        println!("API_INFO: Calling Core unified GA pipeline (seed={})", seed);
-        let scenarios_map = self.load_all_real_scenarios();
-        
-        let unified_result = chronosentiment_core::pipeline::run_ga_orchestration(
-            "train",
-            ga_config,
-            &scenarios_map,
-            0.2, // 20% holdout
-        ).map_err(|e| ApiError::InternalError(e))?;
+        // Enforce single source: Only use canonical synthetic scenarios
+        println!("API_INFO: Using canonical synthetic scenarios for GA (seed={})", seed);
+        let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
+        let mut scenario_names: Vec<String> = scenarios_map.keys().cloned().collect();
+        scenario_names.sort();
 
-        Ok(RunGaResponse::from(unified_result))
+        let (train_names, holdout_names): (Vec<String>, Vec<String>) = if scenario_names.len() <= 2 {
+            (scenario_names.clone(), scenario_names.clone())
+        } else {
+            let holdout_count = (scenario_names.len() / 5).max(1);
+            let split_at = scenario_names.len() - holdout_count;
+            (scenario_names[..split_at].to_vec(), scenario_names[split_at..].to_vec())
+        };
+
+        let mut train_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
+        for name in &train_names {
+            if let Some(events) = scenarios_map.get(name) {
+                train_scenarios.insert(name.clone(), events.clone());
+            }
+        }
+        let mut holdout_scenarios: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
+        for name in &holdout_names {
+            if let Some(events) = scenarios_map.get(name) {
+                holdout_scenarios.insert(name.clone(), events.clone());
+            }
+        }
+        println!(
+            "API_INFO: GA split train={} holdout={} (deterministic)",
+            train_scenarios.len(),
+            holdout_scenarios.len()
+        );
+
+        let ga_result = chronosentiment_core::run_ga_evolution(ga_config.clone(), &train_scenarios);
+        let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
+        let global_exec_eval = chronosentiment_core::evaluate_and_aggregate(
+            &ga_result.global_best.strategy,
+            &ga_config,
+            execution_scenarios,
+        ).ok_or_else(|| ApiError::InternalError("Failed to evaluate global best execution fitness".to_string()))?;
+        let final_exec_eval = chronosentiment_core::evaluate_and_aggregate(
+            &ga_result.final_generation_best.strategy,
+            &ga_config,
+            execution_scenarios,
+        ).ok_or_else(|| ApiError::InternalError("Failed to evaluate final generation execution fitness".to_string()))?;
+
+        let global_best_dto = Self::to_dual_fitness_dto(
+            ga_result.global_best.strategy_id.clone(),
+            &ga_result.global_best,
+            &global_exec_eval,
+        );
+        let final_gen_best_dto = Self::to_dual_fitness_dto(
+            ga_result.final_generation_best.strategy_id.clone(),
+            &ga_result.final_generation_best,
+            &final_exec_eval,
+        );
+        let mut generation_history: Vec<StrategyEvaluationDto> = Vec::new();
+        for eval in &ga_result.generation_history {
+            let exec_eval = chronosentiment_core::evaluate_and_aggregate(
+                &eval.strategy,
+                &ga_config,
+                execution_scenarios,
+            ).ok_or_else(|| ApiError::InternalError("Failed to evaluate generation history execution fitness".to_string()))?;
+            generation_history.push(Self::to_dual_fitness_dto(
+                eval.strategy_id.clone(),
+                eval,
+                &exec_eval,
+            ));
+        }
+        let mut best_per_regime: HashMap<String, StrategyEvaluationDto> = HashMap::new();
+        for (regime_key, eval) in &ga_result.best_per_regime {
+            let exec_eval = chronosentiment_core::evaluate_and_aggregate(
+                &eval.strategy,
+                &ga_config,
+                execution_scenarios,
+            ).ok_or_else(|| ApiError::InternalError("Failed to evaluate per-regime execution fitness".to_string()))?;
+            best_per_regime.insert(
+                regime_key.clone(),
+                Self::to_dual_fitness_dto(
+                    eval.strategy_id.clone(),
+                    eval,
+                    &exec_eval,
+                ),
+            );
+        }
+
+        Ok(RunGaResponse {
+            // Backward-compatible fields
+            results: vec![global_best_dto.clone(), final_gen_best_dto.clone()],
+            generation_history,
+            best_per_regime,
+            // New extended fields
+            global_best: global_best_dto,
+            global_best_generation: ga_result.global_best_generation,
+            generation_found: ga_result.global_best_generation,
+            final_generation_best: final_gen_best_dto.clone(),
+            final_gen_best: final_gen_best_dto,
+        })
     }
 
     pub fn get_timeline(&self) -> Result<Vec<EventWrapper>, ApiError> {
@@ -357,298 +549,32 @@ impl EvaluationService {
     }
 
     pub fn get_latest_signals(&self) -> Result<chronosentiment_core::pipeline::SignalsSnapshot, ApiError> {
-        // CSV-only deterministic source: load the canonical clean folder and never synthesize fallback assets.
-        let source = chronosentiment_core::FolderCandleSource {
-            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
-        };
-        let mut assets: Vec<String> = source
-            .load_all()
-            .into_iter()
-            .map(|(asset, _)| asset)
-            .collect();
-        assets.sort();
-        assets.dedup();
-        if assets.is_empty() {
-            return Err(ApiError::EngineError(
-                "No *_5m_clean.csv datasets found in test_assets; recommendations require CSV data.".to_string(),
-            ));
-        }
-        println!("API_INFO: latest_signals CSV-only assets={:?}", assets);
-        
-        let store_guard = self.strategy_store.lock().unwrap_or_else(|e| e.into_inner());
-        let snapshot = if let Some(_store) = store_guard.as_ref() {
-            println!("API_INFO: Generating signals using pre-trained strategy store");
-            chronosentiment_core::pipeline::generate_latest_signals_from_saved_strategies(
-                assets.clone(),
-                0.5,
-                0.45,
-                0.35,
-                Some(Self::STRATEGY_STORE_PATH.to_string())
-            ).unwrap_or_else(|_| chronosentiment_core::pipeline::generate_latest_signals_with_thresholds(assets, 0.5, 0.45, 0.35))
-        } else {
-            chronosentiment_core::pipeline::generate_latest_signals_with_thresholds(assets, 0.5, 0.45, 0.35)
-        };
-
-        Ok(snapshot)
-    }
-
-    /// Same as [`Self::get_latest_signals`], but converts price fields from **paise** (engine) to **rupees** for JSON clients using `PriceDto`.
-    pub fn get_latest_signals_for_api(&self) -> Result<crate::dto::SignalsSnapshotDto, ApiError> {
-        let s = self.get_latest_signals()?;
-        Ok(s.into())
-    }
-
-    /// Real-time style suggestions from pre-trained strategy pool (no online GA).
-    pub fn get_trade_suggestions(&self) -> Result<crate::dto::TradeSuggestionsResponse, ApiError> {
-        use chronosentiment_core::strategy_ranking::{
-            LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile,
-            StrategyRegistry, SuggestionDebug,
-        };
-
-        let snapshot = self.get_latest_signals_for_api()?;
-        if snapshot.signals.is_empty() {
-            return Ok(crate::dto::TradeSuggestionsResponse {
-                asset: "MULTI".to_string(),
-                timestamp: snapshot.timestamp,
-                suggestions: Vec::new(),
-                count: 0,
-                debug: SuggestionDebug::default(),
-            });
-        }
-
-        let mut registry_rows: Vec<StrategyProfile> = Vec::new();
-        for sig in &snapshot.signals {
-            let strategy = parse_strategy_from_id(&sig.strategy_id).unwrap_or(chronosentiment_core::ga::Strategy {
-                queue_threshold: 100,
-                base_edge: 2,
-                take_profit: 20,
-                stop_loss: 10,
-                holding_period: 0,
-                w_conviction: 50,
-                w_momentum: 30,
-                w_volatility: 20,
-                exp_conviction: 100,
-                exp_momentum: 100,
-                exp_volatility: 100,
-                selectivity: 75,
-                archetype: 0,
-                entry_offset: 0,
-                direction_bias: 50,
-                vol_floor: 20,
-                mom_floor: 20,
-                edge_ratio: 150,
-                participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
-            });
-            registry_rows.push(StrategyProfile {
-                strategy_id: sig.strategy_id.clone(),
-                strategy,
-                preferred_regimes: vec![map_regime(&sig.regime)],
-                confidence_weight: sig.confidence.clamp(0.0, 1.0),
-                execution_weight: sig.composite_score.clamp(0.0, 1.0),
-            });
-        }
-        registry_rows.sort_by(|a, b| a.strategy_id.cmp(&b.strategy_id));
-        registry_rows.dedup_by(|a, b| a.strategy_id == b.strategy_id);
-        let registry = StrategyRegistry::new(registry_rows);
-
-        let mut states_by_asset: HashMap<String, LiveMarketState> = HashMap::new();
-        for sig in &snapshot.signals {
-            let state = states_by_asset
-                .entry(sig.asset.clone())
-                .or_insert_with(|| LiveMarketState::new(sig.asset.clone()));
-            state.confidence = state.confidence.max(sig.confidence);
-            state.expected_edge = state.expected_edge.max(sig.expected_edge);
-            state.execution_score = state.execution_score.max(sig.composite_score.clamp(0.0, 1.0));
-            state.regime = map_regime(&sig.regime);
-        }
-
-        let mut all_suggestions = Vec::new();
-        let mut agg_debug = SuggestionDebug::default();
-        for (_asset, state) in states_by_asset {
-            let mut evaluator = LiveEvaluator::new(state, registry.clone(), RankingWeights::default());
-            let mut top = evaluator.rank_current(3);
-            let dbg = evaluator.debug_snapshot();
-            agg_debug.rejected_hold += dbg.rejected_hold;
-            agg_debug.rejected_low_edge += dbg.rejected_low_edge;
-            agg_debug.rejected_low_exec += dbg.rejected_low_exec;
-            agg_debug.suppressed_stability += dbg.suppressed_stability;
-            all_suggestions.append(&mut top);
-        }
-
-        all_suggestions.sort_by(|a, b| {
-            b.live_score
-                .partial_cmp(&a.live_score)
-                .unwrap_or(Ordering::Equal)
-                .then_with(|| a.strategy_id.cmp(&b.strategy_id))
-        });
-        all_suggestions.truncate(5);
-
-        Ok(crate::dto::TradeSuggestionsResponse {
-            asset: "MULTI".to_string(),
-            timestamp: snapshot.timestamp,
-            count: all_suggestions.len(),
-            suggestions: all_suggestions,
-            debug: agg_debug,
-        })
-    }
-
-    pub fn get_replay_suggestions(
-        &self,
-        mode: String,
-        limit: usize,
-        sample_rate: usize,
-        include_full: bool,
-    ) -> Result<crate::dto::ReplaySuggestionsResponse, ApiError> {
-        use chronosentiment_core::pnl_overlay::run_pnl_overlay;
-        use chronosentiment_core::replay_evaluator::run_replay_with_evaluator;
-        use chronosentiment_core::strategy_ranking::{
-            LiveEvaluator, LiveMarketState, RankingWeights, StrategyProfile, StrategyRegistry,
-        };
-        use chronosentiment_core::tick_replay::{ReplayConfig, ReplayMode, TickReplayEngine};
-
-        let jsonl_path = std::env::var("BINANCE_JSONL")
-            .unwrap_or_else(|_| "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets/binance_ticks.jsonl".to_string());
-        let mut replay = TickReplayEngine::from_binance_jsonl(
-            &jsonl_path,
-            ReplayConfig {
-                mode: ReplayMode::Fast,
-                ..ReplayConfig::default()
-            },
-            1,
-        )
-        .map_err(|e| {
-            ApiError::EngineError(format!("Failed to load replay ticks from {}: {}", jsonl_path, e))
-        })?;
-
-        let snapshot = self.get_latest_signals()?;
-        let mut registry_rows: Vec<StrategyProfile> = Vec::new();
-        for sig in &snapshot.signals {
-            let strategy = parse_strategy_from_id(&sig.strategy_id).unwrap_or(chronosentiment_core::ga::Strategy {
-                queue_threshold: 100,
-                base_edge: 2,
-                take_profit: 20,
-                stop_loss: 10,
-                holding_period: 0,
-                w_conviction: 50,
-                w_momentum: 30,
-                w_volatility: 20,
-                exp_conviction: 100,
-                exp_momentum: 100,
-                exp_volatility: 100,
-                selectivity: 75,
-                archetype: 0,
-                entry_offset: 0,
-                direction_bias: 50,
-                vol_floor: 20,
-                mom_floor: 20,
-                edge_ratio: 150,
-                participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
-            });
-            registry_rows.push(StrategyProfile {
-                strategy_id: sig.strategy_id.clone(),
-                strategy,
-                preferred_regimes: vec![map_regime(&sig.regime)],
-                confidence_weight: sig.confidence.clamp(0.0, 1.0),
-                execution_weight: sig.composite_score.clamp(0.0, 1.0),
-            });
-        }
-        registry_rows.sort_by(|a, b| a.strategy_id.cmp(&b.strategy_id));
-        registry_rows.dedup_by(|a, b| a.strategy_id == b.strategy_id);
-        if registry_rows.is_empty() {
-            return Err(ApiError::EngineError(
-                "No strategy profiles available for replay evaluation.".to_string(),
-            ));
-        }
-
-        let registry_rows_for_pnl = registry_rows.clone();
-        let registry = StrategyRegistry::new(registry_rows);
-        let mut evaluator = LiveEvaluator::new(
-            LiveMarketState::new("BTCUSDT".to_string()),
-            registry,
-            RankingWeights::default(),
-        );
-        let replay_out = run_replay_with_evaluator(&mut replay, &mut evaluator, 5);
-
-        // Run PnL overlay on an isolated replay/evaluator instance so results remain deterministic
-        // and independent of timeline sampling mode.
-        let mut replay_for_pnl = TickReplayEngine::from_binance_jsonl(
-            &jsonl_path,
-            ReplayConfig {
-                mode: ReplayMode::Fast,
-                ..ReplayConfig::default()
-            },
-            1,
-        )
-        .map_err(|e| {
-            ApiError::EngineError(format!(
-                "Failed to load replay ticks for pnl overlay from {}: {}",
-                jsonl_path, e
-            ))
-        })?;
-        let mut evaluator_for_pnl = LiveEvaluator::new(
-            LiveMarketState::new("BTCUSDT".to_string()),
-            StrategyRegistry::new(registry_rows_for_pnl),
-            RankingWeights::default(),
-        );
-        let horizon_ticks = std::env::var("PNL_HORIZON_TICKS")
-            .ok()
-            .and_then(|v| v.parse::<usize>().ok())
-            .unwrap_or(20);
-        let (_trades, pnl_metrics) =
-            run_pnl_overlay(&mut replay_for_pnl, &mut evaluator_for_pnl, horizon_ticks);
-
-        let mode_norm = mode.to_lowercase();
-        let include_timeline = include_full || mode_norm == "full" || mode_norm == "sampled";
-        let sample_every = if mode_norm == "sampled" {
-            sample_rate.max(1)
-        } else {
-            1
-        };
-        let cap = limit.max(1);
-
-        let mut timeline: Vec<crate::dto::ReplaySuggestionPoint> = Vec::new();
-        let mut prev_strategy: Option<String> = None;
-        if include_timeline {
-            for (idx, point) in replay_out.timeline.iter().enumerate() {
-                if idx % sample_every != 0 {
-                    continue;
-                }
-                let top = point.suggestions.first().map(|s| crate::dto::TopStrategySnapshot {
-                    strategy_id: s.strategy_id.clone(),
-                    action: s.action.clone(),
-                    live_score: s.live_score,
-                    expected_edge: s.expected_edge,
-                    execution_score: s.execution_score,
-                });
-                timeline.push(crate::dto::ReplaySuggestionPoint {
-                    ts: point.exchange_ts,
-                    decision_ts: point.decision_ts,
-                    execution_ts: point.execution_ts,
-                    suggestion_count: point.suggestions.len(),
-                    prev_strategy: prev_strategy.clone(),
-                    flip_occurred: matches!(
-                        (&prev_strategy, &top),
-                        (Some(prev), Some(curr)) if prev != &curr.strategy_id
-                    ),
-                    top_strategy: top,
-                });
-                prev_strategy = timeline
-                    .last()
-                    .and_then(|p| p.top_strategy.as_ref().map(|x| x.strategy_id.clone()));
-                if timeline.len() >= cap {
-                    break;
-                }
+        // Deterministic signal asset selection; folder mode mirrors filtered clean CSV universe.
+        let data_source = env::var("DATA_SOURCE")
+            .unwrap_or_else(|_| "synthetic".to_string())
+            .to_lowercase();
+        let assets = if data_source == "folder" {
+            let source = chronosentiment_core::FolderCandleSource {
+                folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+            };
+            let mut names: Vec<String> = source
+                .load_all()
+                .into_iter()
+                .map(|(asset, _)| asset)
+                .collect();
+            names.sort();
+            names.dedup();
+            if names.is_empty() {
+                vec!["BTC".to_string()]
+            } else {
+                names
             }
-        }
-
-        Ok(crate::dto::ReplaySuggestionsResponse {
-            asset: "BTCUSDT".to_string(),
-            metrics: replay_out.metrics,
-            timeline,
-            pnl: Some(pnl_metrics),
-        })
+        } else {
+            vec!["BTC".to_string()]
+        };
+        println!("API_INFO: latest_signals assets={:?}", assets);
+        let snapshot = chronosentiment_core::pipeline::generate_latest_signals(assets, 0.5);
+        Ok(snapshot)
     }
 
     pub fn get_order_inspection(&self, order_id: String, include_chain: bool) -> Result<TradeInspectorResponse, ApiError> {
@@ -658,7 +584,6 @@ impl EvaluationService {
         
         // Use the core inspector logic
         let inspection = chronosentiment_core::inspector::inspect_trade(&order_id, sim);
-        let scale = chronosentiment_core::PRICE_SCALE as f64;
         
         let mut execution_steps = Vec::new();
         // Construct execution steps for UI
@@ -685,7 +610,7 @@ impl EvaluationService {
                         execution_steps.push(json!({
                             "type": "PartialFillExecution",
                             "filled_qty": filled_qty,
-                            "price": *price as f64 / scale,
+                            "price": price,
                             "sequence_id": sequence_id,
                             "timestamp": timestamp,
                         }));
@@ -702,31 +627,11 @@ impl EvaluationService {
             }
         }
 
-        let o = &inspection.outcome;
-        let status = if o.remaining_quantity == 0 && o.filled_quantity > 0 {
-            "FILLED"
-        } else if o.filled_quantity > 0 {
-            "PARTIAL"
-        } else {
-            "ACTIVE"
-        };
-
         Ok(TradeInspectorResponse {
             order_id: order_id.clone(),
-            decision: TradeInspectorDecision {
-                order_id: inspection.decision.order_id.clone(),
-                side: inspection.decision.side,
-                price: inspection.decision.price as f64 / scale,
-                quantity: inspection.decision.quantity,
-                timestamp: inspection.decision.timestamp,
-            },
-            outcome: TradeInspectorOutcome {
-                filled_qty: o.filled_quantity,
-                remaining_qty: o.remaining_quantity,
-                avg_price: o.average_price as f64 / scale,
-                status: status.to_string(),
-            },
+            decision: inspection.decision,
             execution: execution_steps,
+            outcome: inspection.outcome,
             causal_chain: if include_chain {
                 Some(inspection.execution.causal_chain.iter().map(|e| self.wrap_event(e)).collect())
             } else {
@@ -759,7 +664,7 @@ impl EvaluationService {
                         quantity_filled: 0,
                         quantity_remaining: *quantity,
                         queue_ahead: 0,
-                        price: *price as f64 / chronosentiment_core::PRICE_SCALE as f64,
+                        price: *price,
                         side: *side,
                     });
                 }
@@ -781,8 +686,7 @@ impl EvaluationService {
                             chronosentiment_core::Side::Sell => -1,
                         };
                         position += multiplier * (*filled_qty as i64);
-                        let p = *price as f64 / chronosentiment_core::PRICE_SCALE as f64;
-                        pnl += multiplier as f64 * (*filled_qty as f64) * p;
+                        pnl += multiplier as f64 * (*filled_qty as f64) * (*price as f64);
                     }
                 }
                 SimEvent::QueueProgression { order_id, queue_ahead, .. } => {
@@ -813,14 +717,49 @@ impl EvaluationService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dto::{RunGaRequest, ScenarioInput};
+    use chronosentiment_core::MarketEvent;
 
     #[test]
-    #[ignore = "slow: runs full GA twice; run with cargo test run_ga_is_deterministic -- --ignored"]
-    fn run_ga_is_deterministic() {
+    fn test_run_ga_api_determinism() {
+        let request = RunGaRequest {
+            population_size: 10,
+            generations: 5,
+            mutation_rate: 0.1,
+            scenarios: vec![ScenarioInput { events: vec![
+                MarketEvent { subtype: chronosentiment_core::MarketEventType::NewOrder, price: 100, quantity: 2000, side: Some(chronosentiment_core::Side::Sell), exchange_ts: 10 },
+                MarketEvent { subtype: chronosentiment_core::MarketEventType::Trade, price: 100, quantity: 500, side: None, exchange_ts: 15 },
+            ]}],
+            seed: 789,
+            top_k: Some(3),
+            lambda: Some(0.5),
+        };
+
         let service = EvaluationService::new();
-        let r1 = service.run_ga().expect("run_ga");
-        let r2 = service.run_ga().expect("run_ga");
-        assert_eq!(r1.global_best.strategy_id, r2.global_best.strategy_id);
-        assert_eq!(r1.global_best.ga_fitness, r2.global_best.ga_fitness);
+        let r1 = service.run_ga(request.clone()).expect("Failed to run GA in test");
+        let r2 = service.run_ga(request).expect("Failed to run GA in test");
+
+        assert_eq!(r1.results.len(), r2.results.len(), "Results length diverged");
+        for i in 0..r1.results.len() {
+            assert_eq!(r1.results[i].strategy_id, r2.results[i].strategy_id, "Strategy ID diverged at index {}", i);
+            assert_eq!(r1.results[i].ga_fitness, r2.results[i].ga_fitness, "GA fitness diverged at index {}", i);
+            assert_eq!(r1.results[i].execution_fitness, r2.results[i].execution_fitness, "Execution fitness diverged at index {}", i);
+        }
+
+        assert_eq!(r1.generation_history.len(), r2.generation_history.len(), "Generation history length diverged");
+        for i in 0..r1.generation_history.len() {
+            assert_eq!(r1.generation_history[i].strategy_id, r2.generation_history[i].strategy_id, "Generation history strategy ID diverged at index {}", i);
+            assert_eq!(r1.generation_history[i].ga_fitness, r2.generation_history[i].ga_fitness, "Generation history GA fitness diverged at index {}", i);
+            assert_eq!(r1.generation_history[i].execution_fitness, r2.generation_history[i].execution_fitness, "Generation history execution fitness diverged at index {}", i);
+        }
+        assert_eq!(r1.best_per_regime.len(), r2.best_per_regime.len(), "Per-regime map length diverged");
+        for (k, v1) in &r1.best_per_regime {
+            let v2 = r2.best_per_regime.get(k).expect("Missing regime key in deterministic run");
+            assert_eq!(v1.strategy_id, v2.strategy_id, "Per-regime strategy ID diverged for key {}", k);
+            assert_eq!(v1.ga_fitness, v2.ga_fitness, "Per-regime GA fitness diverged for key {}", k);
+            assert_eq!(v1.execution_fitness, v2.execution_fitness, "Per-regime execution fitness diverged for key {}", k);
+        }
+
+        println!("✅ run_ga API determinism test passed.");
     }
 }
