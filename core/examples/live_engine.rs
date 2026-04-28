@@ -295,6 +295,26 @@ fn main() {
         .and_then(|v| v.parse::<f64>().ok())
         .unwrap_or(1.5)
         .max(1.0);
+    let intent_max_age_base = std::env::var("INTENT_MAX_AGE_BASE")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(14)
+        .max(1);
+    let intent_max_age_strong = std::env::var("INTENT_MAX_AGE_STRONG")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(14)
+        .max(intent_max_age_base);
+    let intent_high_voters_threshold = std::env::var("INTENT_HIGH_VOTERS_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(6)
+        .max(1);
+    let intent_high_conf_threshold = std::env::var("INTENT_HIGH_CONF_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.70)
+        .clamp(0.0, 1.0);
 
     let live_gate_reco_stability = std::env::var("LIVE_GATE_RECO_STABILITY_MIN")
         .ok()
@@ -310,6 +330,7 @@ fn main() {
         || live_gate_reco_fitness.is_some()
         || env_flag("POOL_DEBUG")
         || env_flag("RECO_DEBUG");
+    let reco_path_probe = env_flag("RECO_PATH_PROBE");
 
     println!("📡 Listening for candles...");
     println!(
@@ -671,11 +692,82 @@ fn main() {
                             RecommendationResult::WeakSignal(r) => &r.ensemble_metrics,
                             RecommendationResult::NoTrade { metrics, .. } => metrics,
                         };
-                        let pass = live_gate_reco_stability.map_or(true, |t| m.stability >= t)
-                            && live_gate_reco_ag_global.map_or(true, |t| m.agreement_global >= t)
-                            && live_gate_reco_fitness.map_or(true, |t| m.medoid_fitness >= t);
+                        let stab_ok =
+                            live_gate_reco_stability.map_or(true, |t| m.stability >= t);
+                        let agree_ok =
+                            live_gate_reco_ag_global.map_or(true, |t| m.agreement_global >= t);
+                        let fit_ok =
+                            live_gate_reco_fitness.map_or(true, |t| m.medoid_fitness >= t);
+                        let pass = stab_ok && agree_ok && fit_ok;
+                        if reco_path_probe && total_processed % 100 == 0 {
+                            println!(
+                                "[RECO_POOL] sym={} run_reco_engine=1 pool_size={} feas={:.3} voters={} reco_S={:.3} reco_G={:.3} reco_F={:.3}",
+                                symbol,
+                                reco_population.len(),
+                                avg_feasibility,
+                                voters,
+                                m.stability,
+                                m.agreement_global,
+                                m.medoid_fitness
+                            );
+                            println!(
+                                "[RECO_BREAKDOWN] sym={} stab_ok={} agree_ok={} fit_ok={} stab_req={} agree_req={} fit_req={}",
+                                symbol,
+                                stab_ok as i32,
+                                agree_ok as i32,
+                                fit_ok as i32,
+                                live_gate_reco_stability
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string()),
+                                live_gate_reco_ag_global
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string()),
+                                live_gate_reco_fitness
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string())
+                            );
+                            println!(
+                                "[RECO_CHECK] sym={} feas={:.3} voters={} reco_S={:.3} reco_G={:.3} reco_F={:.3} pass_reco={}",
+                                symbol,
+                                avg_feasibility,
+                                voters,
+                                m.stability,
+                                m.agreement_global,
+                                m.medoid_fitness,
+                                pass as i32
+                            );
+                        }
                         (pass, m.stability, m.agreement_global, m.medoid_fitness)
                     } else {
+                        if reco_path_probe && total_processed % 100 == 0 {
+                            println!(
+                                "[RECO_POOL] sym={} run_reco_engine={} pool_size={} feas={:.3} voters={} reco_S=0.000 reco_G=0.000 reco_F=0.000",
+                                symbol,
+                                run_reco_engine as i32,
+                                reco_population.len(),
+                                avg_feasibility,
+                                voters
+                            );
+                            println!(
+                                "[RECO_BREAKDOWN] sym={} stab_ok=1 agree_ok=1 fit_ok=1 stab_req={} agree_req={} fit_req={}",
+                                symbol,
+                                live_gate_reco_stability
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string()),
+                                live_gate_reco_ag_global
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string()),
+                                live_gate_reco_fitness
+                                    .map(|v| format!("{:.3}", v))
+                                    .unwrap_or_else(|| "off".to_string())
+                            );
+                            println!(
+                                "[RECO_CHECK] sym={} feas={:.3} voters={} reco_S=0.000 reco_G=0.000 reco_F=0.000 pass_reco=1",
+                                symbol,
+                                avg_feasibility,
+                                voters
+                            );
+                        }
                         (true, 0.0, 0.0, 0.0)
                     };
 
@@ -1100,8 +1192,15 @@ fn main() {
                 score_std_5,
                 consensus: None,
                 age: 0,
-                max_age: 10,
+                max_age: if cand.voters >= intent_high_voters_threshold
+                    && cand.conf >= intent_high_conf_threshold
+                {
+                    intent_max_age_strong
+                } else {
+                    intent_max_age_base
+                },
             });
+            paper.intents_created = paper.intents_created.saturating_add(1);
         }
     }
 

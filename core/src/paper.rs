@@ -78,6 +78,14 @@ pub struct ActiveTrade {
     pub remaining_fraction: f64,
     #[serde(default)]
     pub realized_partial_pnl: f64,
+    #[serde(default)]
+    pub trail_active: bool,
+    #[serde(default)]
+    pub trail_stop: f64,
+    #[serde(default)]
+    pub peak_price: f64,
+    #[serde(default)]
+    pub is_runner: bool,
     pub consensus: Option<AlphaConsensus>,
 }
 
@@ -130,6 +138,15 @@ pub struct PaperRegistry {
     /// Closed-trade observations for online rank-stats warmup (live engine drains each tick).
     #[serde(skip)]
     pub closed_observations: Vec<ClosedTradeObservation>,
+    /// Intent lifecycle diagnostics for deterministic entry-state debugging.
+    #[serde(default)]
+    pub intents_created: usize,
+    #[serde(default)]
+    pub intents_triggered: usize,
+    #[serde(default)]
+    pub intents_expired: usize,
+    #[serde(default)]
+    pub intents_expiry_age_sum: usize,
 }
 
 impl PaperRegistry {
@@ -164,6 +181,19 @@ impl PaperRegistry {
             }
         }
         println!("---------------------------");
+        let avg_expiry_age = if self.intents_expired > 0 {
+            self.intents_expiry_age_sum as f64 / self.intents_expired as f64
+        } else {
+            0.0
+        };
+        println!(
+            "INTENT_STATS created={} triggered={} expired={} pending_final={} avg_expiry_age={:.2}",
+            self.intents_created,
+            self.intents_triggered,
+            self.intents_expired,
+            self.pending_intents.len(),
+            avg_expiry_age
+        );
     }
 
     pub fn get_strategy_performance(&self, strategy_id: usize) -> f64 {
@@ -210,6 +240,10 @@ impl Default for PaperRegistry {
             trade_counts_per_strat: HashMap::new(),
             symbol_bar_ranges: HashMap::new(),
             closed_observations: Vec::new(),
+            intents_created: 0,
+            intents_triggered: 0,
+            intents_expired: 0,
+            intents_expiry_age_sum: 0,
         }
     }
 }
@@ -332,6 +366,43 @@ fn apply_mfe_breakeven_lock(trade: &mut ActiveTrade, is_long: bool, threshold: f
         trade.sl_target = trade.sl_target.max(trade.entry_price);
     } else {
         trade.sl_target = trade.sl_target.min(trade.entry_price);
+    }
+}
+
+/// Close-based and intrabar trail touch (same timing class as TP/SL intrabar). If the bar
+/// pierces `trail_stop` but closes back through, exit PnL is priced at the stop (slippage).
+fn paper_trail_touch_exit_pnl(
+    entry_price: f64,
+    trail_stop: f64,
+    is_long: bool,
+    high: f64,
+    low: f64,
+    close: f64,
+    mark_pnl: f64,
+    vol_bps: f64,
+) -> Option<f64> {
+    let trail_hit_close = if is_long {
+        close <= trail_stop
+    } else {
+        close >= trail_stop
+    };
+    let trail_hit_intrabar = if is_long {
+        low <= trail_stop
+    } else {
+        high >= trail_stop
+    };
+    if !trail_hit_close && !trail_hit_intrabar {
+        return None;
+    }
+    if trail_hit_intrabar && !trail_hit_close {
+        let px = apply_slippage(trail_stop, !is_long, vol_bps);
+        Some(if is_long {
+            (px - entry_price) / entry_price
+        } else {
+            (entry_price - px) / entry_price
+        })
+    } else {
+        Some(mark_pnl)
     }
 }
 
@@ -642,6 +713,43 @@ pub fn update_paper_registry(
         .and_then(|v| v.parse::<f64>().ok())
         .unwrap_or(0.4)
         .clamp(0.1, 0.9);
+    let paper_trail_enable = std::env::var("PAPER_TRAIL_ENABLE")
+        .map(|v| !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off")))
+        .unwrap_or(false);
+    let paper_trail_type = std::env::var("PAPER_TRAIL_TYPE")
+        .unwrap_or_else(|_| "atr".to_string())
+        .to_lowercase();
+    let paper_trail_atr_mult = std::env::var("PAPER_TRAIL_ATR_MULT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.5)
+        .max(0.1);
+    let paper_trail_pct = std::env::var("PAPER_TRAIL_PCT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.002)
+        .max(1e-6);
+    let paper_trail_breakeven = std::env::var("PAPER_TRAIL_BREAKEVEN")
+        .map(|v| !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off")))
+        .unwrap_or(true);
+    let paper_runner_mode = std::env::var("PAPER_RUNNER_MODE")
+        .map(|v| !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off")))
+        .unwrap_or(true);
+    let paper_runner_min_hold = std::env::var("PAPER_RUNNER_MIN_HOLD")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(2)
+        .max(1);
+    let paper_runner_ret_threshold = std::env::var("PAPER_RUNNER_RET_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.001)
+        .max(0.0);
+    let paper_intent_decay_min_score = std::env::var("PAPER_INTENT_DECAY_MIN_SCORE")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0002)
+        .max(0.0);
 
     let mut j = 0;
     while j < registry.pending_intents.len() {
@@ -657,21 +765,38 @@ pub fn update_paper_registry(
             let is_long = intent.signal == SignalType::BUY;
             let pullback_factor = 0.999;
             let bounce_factor = 1.001;
+            let mut touch_trigger = false;
+            let mut touch_entry_price = 0.0;
             if is_long {
                 if low <= intent.reference_price * pullback_factor {
-                    triggered = true;
-                    entry_price = intent.reference_price * pullback_factor;
+                    touch_trigger = true;
+                    touch_entry_price = intent.reference_price * pullback_factor;
                 }
             } else if high >= intent.reference_price * bounce_factor {
-                triggered = true;
-                entry_price = intent.reference_price * bounce_factor;
+                touch_trigger = true;
+                touch_entry_price = intent.reference_price * bounce_factor;
             }
             if intent.age > intent.max_age {
+                registry.intents_expired = registry.intents_expired.saturating_add(1);
+                registry.intents_expiry_age_sum =
+                    registry.intents_expiry_age_sum.saturating_add(intent.age);
                 registry.pending_intents.remove(j);
                 continue;
             }
+            if touch_trigger {
+                // Time-decayed intent quality: later fills require stronger original rec score.
+                let age_ratio =
+                    (intent.age as f64 / intent.max_age.max(1) as f64).clamp(0.0, 1.0);
+                let decay = 1.0 - age_ratio;
+                let adjusted_score = intent.rec_score * decay;
+                if adjusted_score >= paper_intent_decay_min_score {
+                    triggered = true;
+                    entry_price = touch_entry_price;
+                }
+            }
         }
         if triggered {
+            registry.intents_triggered = registry.intents_triggered.saturating_add(1);
             let intent = registry.pending_intents.remove(j);
             let is_long_entry = intent.signal == SignalType::BUY;
             let avg_r_entry = paper_avg_bar_range(registry, symbol, bar_range);
@@ -735,6 +860,10 @@ pub fn update_paper_registry(
                 partial_tp_done: false,
                 remaining_fraction: 1.0,
                 realized_partial_pnl: 0.0,
+                trail_active: false,
+                trail_stop: entry_price,
+                peak_price: entry_price,
+                is_runner: false,
                 consensus: intent.consensus,
             });
         } else {
@@ -778,6 +907,22 @@ pub fn update_paper_registry(
         } else {
             (trade.entry_price - mark_exit) / trade.entry_price
         };
+        let momentum_positive = mark_pnl >= trade.last_mark_pnl;
+        if paper_runner_mode
+            && !trade.is_runner
+            && trade.current_hold >= paper_runner_min_hold
+            && mark_pnl >= paper_runner_ret_threshold
+            && momentum_positive
+        {
+            trade.is_runner = true;
+        }
+        // Runners never use take-profit exits; trailing / SL / time handle remainder (see intrabar + hybrid paths).
+        let tp_allowed_global = !trade.is_runner;
+        if is_long {
+            trade.peak_price = trade.peak_price.max(close);
+        } else {
+            trade.peak_price = trade.peak_price.min(close);
+        }
 
         // Partial TP proxy: after a short hold and sufficient favorable move, lock a fraction of
         // volatility-scaled gains in stop level while keeping the trade alive for full TP window.
@@ -801,6 +946,64 @@ pub fn update_paper_registry(
                     trade.sl_target.min(lock_price)
                 };
                 trade.partial_tp_done = true;
+            }
+        }
+        if paper_trail_enable
+            && trade.is_runner
+            && (trade.partial_tp_done || trade.current_hold >= 2)
+            && trade.remaining_fraction > 0.0
+        {
+            // Runner classification already encodes strength; arm trail from bar 2 (no second profit gate).
+            if trade.current_hold >= 2 {
+                trade.trail_active = true;
+            }
+            if trade.trail_active {
+                let candidate_stop = if paper_trail_type == "percent" {
+                    if is_long {
+                        trade.peak_price * (1.0 - paper_trail_pct)
+                    } else {
+                        trade.peak_price * (1.0 + paper_trail_pct)
+                    }
+                } else {
+                    let atr_proxy = (trade.tp_vol_unit * trade.entry_price).max(1e-9);
+                    if is_long {
+                        trade.peak_price - (paper_trail_atr_mult * atr_proxy)
+                    } else {
+                        trade.peak_price + (paper_trail_atr_mult * atr_proxy)
+                    }
+                };
+                if is_long {
+                    trade.trail_stop = trade.trail_stop.max(candidate_stop);
+                    if paper_trail_breakeven {
+                        trade.trail_stop = trade.trail_stop.max(trade.entry_price);
+                    }
+                } else {
+                    trade.trail_stop = trade.trail_stop.min(candidate_stop);
+                    if paper_trail_breakeven {
+                        trade.trail_stop = trade.trail_stop.min(trade.entry_price);
+                    }
+                }
+            }
+        }
+        // Runner + paper trail: evaluate trail before any TP path so close-based trail competes with TP.
+        if paper_trail_enable
+            && trade.is_runner
+            && trade.trail_active
+            && trade.remaining_fraction > 0.0
+            && trade.current_hold >= min_hold_bars
+        {
+            if let Some(pnl) = paper_trail_touch_exit_pnl(
+                trade.entry_price,
+                trade.trail_stop,
+                is_long,
+                high,
+                low,
+                close,
+                mark_pnl,
+                trade.vol_bps,
+            ) {
+                exit_pnl = Some(pnl);
+                exit_tag = "TRAIL";
             }
         }
         if mark_pnl > trade.max_pnl {
@@ -887,7 +1090,7 @@ pub fn update_paper_registry(
             } else {
                 tp_hit_pre
             };
-            if allow_tp {
+            if tp_allowed_global && allow_tp {
                 let exit_price = apply_slippage(trade.tp_target, !is_long, trade.vol_bps);
                 exit_pnl = Some(if is_long {
                     (exit_price - trade.entry_price) / trade.entry_price
@@ -1048,7 +1251,7 @@ pub fn update_paper_registry(
             } else {
                 hybrid_tp
             };
-            if mark_pnl >= effective_tp {
+            if tp_allowed_global && mark_pnl >= effective_tp {
                 exit_pnl = Some(mark_pnl);
                 exit_tag = "TP";
             } else if trade.current_hold >= delayed_min_bars && mark_pnl <= delayed_sl {
@@ -1067,7 +1270,7 @@ pub fn update_paper_registry(
             } else {
                 (trade.entry_price - mark_exit) / trade.entry_price
             };
-            if mark_pnl >= hybrid_tp {
+            if tp_allowed_global && mark_pnl >= hybrid_tp {
                 exit_pnl = Some(mark_pnl);
                 exit_tag = "TP";
             } else if mark_pnl <= hybrid_sl {
@@ -1106,25 +1309,38 @@ pub fn update_paper_registry(
                     if let Some(exit_type) =
                         intrabar_exit_respecting_entry_bar(trade.current_hold, raw_exit)
                     {
-                        let exit_price = match exit_type {
+                        match exit_type {
                             ExitType::TakeProfit => {
-                                apply_slippage(trade.tp_target, !is_long, trade.vol_bps)
+                                // Runners: TP fully disabled; trail precedence is applied earlier this bar.
+                                if tp_allowed_global {
+                                    let exit_price = apply_slippage(
+                                        trade.tp_target,
+                                        !is_long,
+                                        trade.vol_bps,
+                                    );
+                                    exit_pnl = Some(if is_long {
+                                        (exit_price - trade.entry_price) / trade.entry_price
+                                    } else {
+                                        (trade.entry_price - exit_price) / trade.entry_price
+                                    });
+                                    exit_tag = "TP";
+                                }
                             }
                             ExitType::StopLoss => {
-                                apply_slippage(trade.sl_target, !is_long, trade.vol_bps)
+                                let exit_price = apply_slippage(
+                                    trade.sl_target,
+                                    !is_long,
+                                    trade.vol_bps,
+                                );
+                                exit_pnl = Some(if is_long {
+                                    (exit_price - trade.entry_price) / trade.entry_price
+                                } else {
+                                    (trade.entry_price - exit_price) / trade.entry_price
+                                });
+                                exit_tag = "SL";
                             }
                             ExitType::Ambiguous => unreachable!(),
-                        };
-                        exit_pnl = Some(if is_long {
-                            (exit_price - trade.entry_price) / trade.entry_price
-                        } else {
-                            (trade.entry_price - exit_price) / trade.entry_price
-                        });
-                        exit_tag = match exit_type {
-                            ExitType::TakeProfit => "TP",
-                            ExitType::StopLoss => "SL",
-                            ExitType::Ambiguous => "SL",
-                        };
+                        }
                     }
                 }
             }
@@ -1167,6 +1383,26 @@ pub fn update_paper_registry(
             // Deterministic minimum hold: suppress all early exits until minimum bars elapse.
             exit_pnl = None;
             exit_tag = "";
+        }
+        if paper_trail_enable
+            && trade.trail_active
+            && trade.remaining_fraction > 0.0
+            && exit_pnl.is_none()
+            && trade.current_hold >= min_hold_bars
+        {
+            if let Some(pnl) = paper_trail_touch_exit_pnl(
+                trade.entry_price,
+                trade.trail_stop,
+                is_long,
+                high,
+                low,
+                close,
+                mark_pnl,
+                trade.vol_bps,
+            ) {
+                exit_pnl = Some(pnl);
+                exit_tag = "TRAIL";
+            }
         }
 
         let allow_time_exit = !tpsl_only;
@@ -1350,7 +1586,7 @@ pub fn update_paper_registry(
                 0.0
             };
             println!(
-                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
+                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
                 trade.rec_id,
                 trade.symbol,
                 trade.max_pnl,
@@ -1367,6 +1603,12 @@ pub fn update_paper_registry(
                 trade.vol_5,
                 trade.score_std_5,
                 trade.vol_bps,
+                trade.realized_partial_pnl,
+                exit_tag,
+                if trade.trail_active { 1 } else { 0 },
+                trade.trail_stop,
+                trade.peak_price,
+                if trade.is_runner { 1 } else { 0 },
                 trade.current_hold,
                 if trade.trailing_armed_seen { 1 } else { 0 },
                 trade.exit_state,
@@ -1452,7 +1694,7 @@ pub fn finalize_paper_registry(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} exit_type=FINALIZE_TIME",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type=FINALIZE_TIME trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} exit_type=FINALIZE_TIME",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1469,6 +1711,11 @@ pub fn finalize_paper_registry(
             trade.vol_5,
             trade.score_std_5,
             trade.vol_bps,
+            trade.realized_partial_pnl,
+            if trade.trail_active { 1 } else { 0 },
+            trade.trail_stop,
+            trade.peak_price,
+            if trade.is_runner { 1 } else { 0 },
             trade.current_hold
         );
         registry.closed_observations.push(ClosedTradeObservation {
@@ -1540,7 +1787,7 @@ pub fn close_active_trades_for_symbol(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} dur={} armed={} state={:?} exit_type={}",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1557,6 +1804,12 @@ pub fn close_active_trades_for_symbol(
             trade.vol_5,
             trade.score_std_5,
             trade.vol_bps,
+            trade.realized_partial_pnl,
+            reason,
+            if trade.trail_active { 1 } else { 0 },
+            trade.trail_stop,
+            trade.peak_price,
+            if trade.is_runner { 1 } else { 0 },
             trade.current_hold,
             if trade.trailing_armed_seen { 1 } else { 0 },
             trade.exit_state,

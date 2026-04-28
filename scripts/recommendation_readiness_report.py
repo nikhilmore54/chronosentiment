@@ -31,6 +31,10 @@ TRADE_RE = re.compile(
     r"(?:vol_5=(?P<vol_5>[-\d.]+) )?"
     r"(?:score_std_5=(?P<score_std_5>[-\d.]+) )?"
     r"(?:vol_bps=(?P<vol_bps>[-\d.]+) )?"
+    r"(?:partial_realized_pnl=(?P<partial_realized_pnl>[-\d.]+) )?"
+    r"(?:remainder_exit_type=(?P<remainder_exit_type>[^ ]+) )?"
+    r"(?:trail_active=(?P<trail_active>\d+) )?"
+    r"(?:trail_stop_at_exit=(?P<trail_stop_at_exit>[-\d.]+) )?"
     r"dur=(?P<dur>\d+) armed=(?P<armed>\d+) "
     r"state=(?P<state>[^ ]+) exit_type=(?P<exit_type>\S+)"
 )
@@ -54,6 +58,10 @@ class Trade:
     vol_5: float
     score_std_5: float
     vol_bps: float
+    partial_realized_pnl: float
+    remainder_exit_type: str
+    trail_active: int
+    trail_stop_at_exit: float
     dur: int
     armed: int
     state: str
@@ -84,6 +92,10 @@ def read_trades(path: Path) -> list[Trade]:
                 vol_5=float(m.group("vol_5") or 0.0),
                 score_std_5=float(m.group("score_std_5") or 0.0),
                 vol_bps=float(m.group("vol_bps") or 0.0),
+                partial_realized_pnl=float(m.group("partial_realized_pnl") or 0.0),
+                remainder_exit_type=(m.group("remainder_exit_type") or ""),
+                trail_active=int(m.group("trail_active") or 0),
+                trail_stop_at_exit=float(m.group("trail_stop_at_exit") or 0.0),
                 dur=int(m.group("dur")),
                 armed=int(m.group("armed")),
                 state=m.group("state"),
