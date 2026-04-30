@@ -46,11 +46,46 @@ fn main() {
 
     println!("\n▶️ Replaying {} candles for {}...", candles.len(), symbol);
 
+    let mut symbol_linear_updates: usize = 0;
     for i in lookback..candles.len() {
         let current_window = &candles[..i];
         let latest_candle = &candles[i];
-        
-        update_paper_registry(&mut registry, latest_candle, symbol);
+        symbol_linear_updates = symbol_linear_updates.saturating_add(1);
+        let trigger_momentum_3 = if i >= 3 {
+            let last = candles[i].close as f64;
+            let lag3 = candles[i - 3].close as f64;
+            last - lag3
+        } else {
+            0.0
+        };
+        let lo = i.saturating_sub(4);
+        let mut window_vals: Vec<f64> = Vec::new();
+        for c in &candles[lo..=i] {
+            window_vals.push(c.close as f64);
+        }
+        let trigger_vol_5 = if window_vals.is_empty() {
+            0.0
+        } else {
+            let n = window_vals.len() as f64;
+            let mean = window_vals.iter().sum::<f64>() / n;
+            let var = window_vals
+                .iter()
+                .map(|v| {
+                    let d = *v - mean;
+                    d * d
+                })
+                .sum::<f64>()
+                / n;
+            var.sqrt()
+        };
+        update_paper_registry(
+            &mut registry,
+            latest_candle,
+            symbol,
+            symbol_linear_updates,
+            trigger_momentum_3,
+            trigger_vol_5,
+        );
 
         let report = evaluate_current_status(
             &strategy,
@@ -96,6 +131,8 @@ fn main() {
                         consensus: None,
                         age: 0,
                         max_age: 10,
+                        intent_created_symbol_updates: symbol_linear_updates,
+                        confirm_delta_symbol_updates: 0,
                     });
                 }
             }

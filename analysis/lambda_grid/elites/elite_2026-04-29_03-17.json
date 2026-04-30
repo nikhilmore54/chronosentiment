@@ -1,15 +1,15 @@
 {
   "metadata": {
-    "timestamp": "2026-04-29_03-45",
+    "timestamp": "2026-04-29_03-17",
     "avg_fitness": 0.053786553941291095,
-    "avg_pnl": 0.00006816882731207748,
-    "cv": 0.00012768692877868976,
+    "avg_pnl": 0.00010300572399175924,
+    "cv": 0.03976631284009567,
     "regime_profile": {
-      "volatility": 1.630395178093419e-8,
+      "volatility": 0.0,
       "liquidity": 0.5,
-      "participation": 0.053786553941291095,
-      "label": "multi_asset_nse",
-      "timestamp": 1777434357
+      "participation": 0.0,
+      "label": "multi_regime_elite",
+      "timestamp": 1777432631
     },
     "strategies_count": 5,
     "fitness_mode": "InstitutionalRealism"

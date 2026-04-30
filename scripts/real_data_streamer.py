@@ -10,6 +10,8 @@ from datetime import datetime
 DEFAULT_GLOB = "data/nse/5m/*.csv"
 DEFAULT_MAX_SYMBOLS = 5
 SLEEP_SECONDS = 0.001
+DEFAULT_OFFSET = 0
+DEFAULT_LIMIT = 0
 
 
 def parse_ts(ts_str: str) -> int:
@@ -53,16 +55,19 @@ def row_to_candle(symbol: str, row: dict):
 def main():
     path_glob = os.environ.get("REAL_STREAM_GLOB", DEFAULT_GLOB)
     max_symbols = int(os.environ.get("REAL_STREAM_SYMBOLS", str(DEFAULT_MAX_SYMBOLS)))
+    offset = int(os.environ.get("REAL_STREAM_OFFSET", str(DEFAULT_OFFSET)))
+    limit = int(os.environ.get("REAL_STREAM_LIMIT", str(DEFAULT_LIMIT)))
     readers = load_readers(path_glob, max_symbols)
     if not readers:
         print(f"[REAL_STREAMER] no files matched glob={path_glob}", file=sys.stderr)
         return
 
     print(
-        f"[REAL_STREAMER] mode=historical_csv glob={path_glob} symbols={len(readers)}",
+        f"[REAL_STREAMER] mode=historical_csv glob={path_glob} symbols={len(readers)} offset={offset} limit={limit}",
         file=sys.stderr,
     )
 
+    emitted = 0
     try:
         while True:
             batch = []
@@ -76,7 +81,15 @@ def main():
             if not batch:
                 break
 
+            if offset > 0:
+                offset -= 1
+                continue
+
+            if limit > 0 and emitted >= limit:
+                break
+
             print(json.dumps(batch), flush=True)
+            emitted += 1
             time.sleep(SLEEP_SECONDS)
     finally:
         for item in readers:

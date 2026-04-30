@@ -19,7 +19,15 @@ use serde_json;
 use serde_json::value::to_value as to_json_value;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::OnceLock;
+
+/// Default `GA_FITNESS_EDGE_STD_LAMBDA` when unset (bounded-grid lock). Set env to `0` to disable.
+const DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA: f64 = 0.05;
+/// Soft cap on pooled p75 decisiveness bonus (symmetric); avoids pathological tails dominating fitness.
+const GA_FITNESS_DISPERSION_BONUS_MAX_ABS: f64 = 0.02;
+
+static GA_FITNESS_EDGE_LAMBDA_LOG_ONCE: std::sync::Once = std::sync::Once::new();
 
 #[derive(Debug, Clone)]
 pub struct DistributionStats {
@@ -3021,6 +3029,67 @@ pub fn run_ga_evolution<'a>(
                         generation, evaluations[0].fitness, avg_fitness, diversity_metric
                     );
                 }
+                let dispersion_probe = std::env::var("GA_DISPERSION_PROBE")
+                    .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+                    .unwrap_or(false);
+                if dispersion_probe {
+                    let mut fitness_vals: Vec<f64> = evaluations.iter().map(|e| e.fitness).collect();
+                    let fitness_stats = DistributionStats::from_slice(&mut fitness_vals);
+                    let fitness_std = if fitness_vals.len() >= 2 {
+                        let mean = fitness_vals.iter().sum::<f64>() / fitness_vals.len() as f64;
+                        let var = fitness_vals
+                            .iter()
+                            .map(|v| {
+                                let d = *v - mean;
+                                d * d
+                            })
+                            .sum::<f64>()
+                            / fitness_vals.len() as f64;
+                        var.sqrt()
+                    } else {
+                        0.0
+                    };
+                    let mut edge_vals: Vec<f64> = evaluations
+                        .iter()
+                        .flat_map(|e| e.candidate_edges.iter().copied())
+                        .filter(|v| v.is_finite())
+                        .collect();
+                    let edge_stats = DistributionStats::from_slice(&mut edge_vals);
+                    let edge_std = if edge_vals.len() >= 2 {
+                        let mean = edge_vals.iter().sum::<f64>() / edge_vals.len() as f64;
+                        let var = edge_vals
+                            .iter()
+                            .map(|v| {
+                                let d = *v - mean;
+                                d * d
+                            })
+                            .sum::<f64>()
+                            / edge_vals.len() as f64;
+                        var.sqrt()
+                    } else {
+                        0.0
+                    };
+                    let unique_elites = evaluations
+                        .iter()
+                        .take(5)
+                        .map(|e| e.strategy_id.as_str())
+                        .collect::<HashSet<_>>()
+                        .len();
+                    println!(
+                        "[GA_GEN] gen={} pop={} fitness_p10={:.6} fitness_p50={:.6} fitness_p90={:.6} fitness_std={:.6} raw_edge_p10={:.6} raw_edge_p50={:.6} raw_edge_p90={:.6} raw_edge_std={:.6} unique_elites={}",
+                        generation,
+                        population.len(),
+                        fitness_stats.p10,
+                        fitness_stats.p50,
+                        fitness_stats.p90,
+                        fitness_std,
+                        edge_stats.p10,
+                        edge_stats.p50,
+                        edge_stats.p90,
+                        edge_std,
+                        unique_elites
+                    );
+                }
 
                 if let Some(best_ref) = evaluations.first() {
                     let best = best_ref.clone();
@@ -5942,6 +6011,7 @@ pub fn ga_simulate_round_trip_at_cursor(
     generation: usize,
     stats: &DistributionStats,
 ) -> Option<GaRoundTripOutcome> {
+    let round_trip_probe = std::env::var("ROUND_TRIP_PROBE").is_ok();
     if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
         println!(
             "SIM_START → idx={} price={} is_long={} strength={:.3} is_probe={}",
@@ -6030,14 +6100,60 @@ pub fn ga_simulate_round_trip_at_cursor(
         .map(|e| e.quantity as f64)
         .sum();
     let arrival_liquidity = execution_events[entry_idx].quantity as f64;
+    let queue_norm = (queue_ahead / (queue_ahead + 5000.0)).clamp(0.0, 1.0);
+    let liquidity_norm = (arrival_liquidity / (arrival_liquidity + 1000.0)).clamp(0.0, 1.0);
+    let fill_proxy = (0.5 * liquidity_norm + 0.5 * (1.0 - queue_norm)).clamp(0.0, 1.0);
+    let log_exec_distribution = std::env::var("LOG_EXEC_DISTRIBUTION")
+        .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
 
     let sig_px = signal_events[cursor_i].price as f64;
     let exe_px = execution_events[entry_idx].price as f64;
     let spread = (exe_px - sig_px).abs();
+    let mut rt_fail_log = |reason: &str, raw_edge: Option<f64>, rank: Option<f64>| {
+        if round_trip_probe {
+            println!(
+                "[ROUND_TRIP_FAIL_REASON] reason={} cursor={} strat_idx={} trade_idx={} is_long={} conv={:.4} exp_edge={:.6} spread={:.6} sig_px={:.2} exe_px={:.2} norm_vol={:.4} norm_mom={:.4} raw_edge_pre={:.6} rank_pre={:.6}",
+                reason,
+                cursor_i,
+                strategy_index,
+                trade_idx,
+                is_long as i32,
+                conviction.conviction_score,
+                conviction.expected_edge,
+                spread,
+                sig_px,
+                exe_px,
+                conviction.norm_vol,
+                conviction.norm_momentum,
+                raw_edge.unwrap_or(f64::NAN),
+                rank.unwrap_or(f64::NAN)
+            );
+        }
+    };
+    let dispersion_probe = std::env::var("GA_DISPERSION_PROBE")
+        .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
+    let log_exec_dist = |outcome: &str, reason: &str, raw_edge: Option<f64>, rank: Option<f64>| {
+        if log_exec_distribution {
+            println!(
+                "[EXEC_DIST] outcome={} reason={} fill_proxy={:.6} queue_norm={:.6} liquidity_norm={:.6} raw_edge={:.6} rank={:.6}",
+                outcome,
+                reason,
+                fill_proxy,
+                queue_norm,
+                liquidity_norm,
+                raw_edge.unwrap_or(f64::NAN),
+                rank.unwrap_or(f64::NAN)
+            );
+        }
+    };
 
     // Institutional hard check: reject corrupt data with spread > 10% of price
     // Note: Probes already returned None/Some above, but we keep this for organic signals.
     if spread > sig_px * 0.1 {
+        rt_fail_log("SpreadTooWide", None, None);
+        log_exec_dist("reject", "SpreadTooWide", None, None);
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[EARLY_EXIT] cursor={} reason=spread_guard spread={:.6} limit={:.6}",
@@ -6089,17 +6205,95 @@ pub fn ga_simulate_round_trip_at_cursor(
     let score_base = (conviction.conviction_score * conviction.edge_weight * (adjusted_atr / buy_price.max(1) as f64)).max(0.0001);
     // Condition rank on stability and momentum to increase purity
     let raw_edge = score_base * (1.2 - conviction.norm_vol.min(0.4)) * (0.9 + 0.2 * conviction.norm_momentum);
+    if dispersion_probe && strategy_index == 0 && trade_idx == 0 && cursor_i % 200 == 0 {
+        println!(
+            "[EDGE_PRE] strat_idx={} raw_edge_pre={:.6} conv={:.6} norm_mom={:.6} norm_vol={:.6}",
+            strategy_index,
+            raw_edge,
+            conviction.conviction_score,
+            conviction.norm_momentum,
+            conviction.norm_vol
+        );
+    }
+
+    // Optional strict regime pre-gate in the live round-trip path.
+    let strict_regime_pre_gate = std::env::var("STRICT_REGIME_PRE_GATE")
+        .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
+    if strict_regime_pre_gate {
+        let regime_floor_mult = std::env::var("STRICT_REGIME_FLOOR_MULT")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(1.0)
+            .max(0.0);
+        let regime_floor = (stats.p30 * regime_floor_mult).max(0.0);
+        if raw_edge < regime_floor {
+            if std::env::var("PRE_RT_REJECT_LOG").is_ok() {
+                println!(
+                    "[PRE_RT_REJECT] reason=DeadRegime raw_edge={:.6} regime_floor={:.6} p30={:.6}",
+                    raw_edge, regime_floor, stats.p30
+                );
+            }
+            log_exec_dist("reject", "DeadRegime", Some(raw_edge), None);
+            return None;
+        }
+    }
+
+    // Optional strict execution pre-gate in the live round-trip path.
+    let strict_exec_pre_gate = std::env::var("STRICT_EXEC_PRE_GATE")
+        .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
+    if strict_exec_pre_gate {
+        let fill_floor = std::env::var("STRICT_EXEC_FILL_FLOOR")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.60)
+            .clamp(0.0, 1.0);
+        let liq_floor = std::env::var("STRICT_EXEC_LIQ_FLOOR")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.20)
+            .clamp(0.0, 1.0);
+        let queue_cap = std::env::var("STRICT_EXEC_QUEUE_CAP")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.85)
+            .clamp(0.0, 1.0);
+
+        if fill_proxy < fill_floor || liquidity_norm < liq_floor || queue_norm > queue_cap {
+            if std::env::var("PRE_RT_REJECT_LOG").is_ok() {
+                println!(
+                    "[PRE_RT_REJECT] reason=ExecInfeasible fill_proxy={:.4} fill_floor={:.4} liq_norm={:.4} liq_floor={:.4} queue_norm={:.4} queue_cap={:.4}",
+                    fill_proxy, fill_floor, liquidity_norm, liq_floor, queue_norm, queue_cap
+                );
+            }
+            log_exec_dist("reject", "ExecInfeasible", Some(raw_edge), None);
+            return None;
+        }
+    }
 
     // 🔥 LAYER 2: Broad Learning Floor
     // This allows decent signals to inform the RankStats, creating a real gradient.
     // Bootstrap floor should be softer (not zero) to avoid circular starvation:
     // no passes -> poor stats -> too-high floor -> no passes.
-    let learn_floor = if std::env::var("GA_BOOTSTRAP").is_ok() {
+    let default_learn_floor = if std::env::var("GA_BOOTSTRAP").is_ok() {
         (stats.p10 * 0.2).min(0.001)
     } else {
         stats.p10
     };
+    let learn_floor_mult = std::env::var("GA_LEARN_FLOOR_MULT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.0)
+        .max(0.0);
+    let learn_floor_abs = std::env::var("GA_LEARN_FLOOR_ABS")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .filter(|v| v.is_finite() && *v >= 0.0);
+    let learn_floor = learn_floor_abs.unwrap_or(default_learn_floor * learn_floor_mult);
     if raw_edge < learn_floor {
+        rt_fail_log("EdgeBelowThreshold", Some(raw_edge), None);
+        log_exec_dist("reject", "EdgeBelowThreshold", Some(raw_edge), None);
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[EARLY_EXIT] cursor={} reason=raw_edge_below_learn_floor raw_edge={:.6} floor={:.6}",
@@ -6112,11 +6306,47 @@ pub fn ga_simulate_round_trip_at_cursor(
     }
 
     // 🔥 LAYER 3: Rank-based gating
-    let rank = stats.rank(raw_edge);
-    let learn_pass = rank > 0.2; // LEARNING GRADIENT FLOOR
+    let rank_mode = std::env::var("GA_RANK_MODE").unwrap_or_else(|_| "empirical".to_string());
+    let rank = if rank_mode.eq_ignore_ascii_case("xsec") {
+        let denom = (stats.p90 - stats.p10).abs().max(1e-9);
+        ((raw_edge - stats.p10) / denom).clamp(0.0, 1.0)
+    } else {
+        stats.rank(raw_edge)
+    };
+    // Default global threshold remains GA_LEARN_PASS_MIN (behavior-compatible).
+    let mut learn_pass_min = std::env::var("GA_LEARN_PASS_MIN")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.2)
+        .clamp(0.0, 1.0);
+    // Optional dormant map override:
+    //   GA_LEARN_PASS_MIN_MAP=largecap:0.18,midsmall:0.20,cyclic:0.20
+    //   GA_BUCKET_TAG=largecap
+    // If GA_BUCKET_TAG is unset/empty, global threshold remains in effect.
+    if let Ok(bucket_tag_raw) = std::env::var("GA_BUCKET_TAG") {
+        let bucket_tag = bucket_tag_raw.trim().to_lowercase();
+        if !bucket_tag.is_empty() {
+            if let Ok(map_raw) = std::env::var("GA_LEARN_PASS_MIN_MAP") {
+                for item in map_raw.split(',') {
+                    let mut parts = item.splitn(2, ':');
+                    let k = parts.next().map(|s| s.trim().to_lowercase());
+                    let v = parts.next().and_then(|s| s.trim().parse::<f64>().ok());
+                    if let (Some(k), Some(v)) = (k, v) {
+                        if k == bucket_tag {
+                            learn_pass_min = v.clamp(0.0, 1.0);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let learn_pass = rank > learn_pass_min; // LEARNING GRADIENT FLOOR
     let exec_pass = rank > 0.7;  // EXECUTION SELECTIVITY GATE
 
     if !learn_pass {
+        rt_fail_log("RankFiltered", Some(raw_edge), Some(rank));
+        log_exec_dist("reject", "RankFiltered", Some(raw_edge), Some(rank));
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[EARLY_EXIT] cursor={} reason=rank_below_learn_pass raw_edge={:.6} rank={:.3}",
@@ -6362,6 +6592,8 @@ pub fn ga_simulate_round_trip_at_cursor(
 
     // Real-world windows can be adverse; skip only pathological numeric/outlier cases.
     if !realized_pnl.is_finite() || realized_pnl < -0.5 || realized_pnl > 2.0 {
+        rt_fail_log("PathologicalPnl", Some(raw_edge), Some(rank));
+        log_exec_dist("reject", "PathologicalPnl", Some(raw_edge), Some(rank));
         return None;
     }
 
@@ -6391,6 +6623,7 @@ pub fn ga_simulate_round_trip_at_cursor(
         );
     }
 
+    log_exec_dist("accept", "Accepted", Some(raw_edge), Some(rank));
     Some(GaRoundTripOutcome {
         side: if is_long { Side::Buy } else { Side::Sell },
         source: SignalSource::Organic,
@@ -6681,6 +6914,30 @@ pub fn evaluate_strategy(
     } else {
         candidate_edges.iter().sum::<f64>() / candidate_edges.len() as f64
     };
+    // Pre-rank raw-edge std (per scenario): used for hot-path diagnostics only.
+    // Selection uses pooled p75 decisiveness in `aggregate_strategy_reports_inner` (see
+    // `DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA`); set `GA_FITNESS_EDGE_STD_LAMBDA=0` to disable.
+    let raw_edge_std = if candidate_edges.len() >= 2 {
+        let mean = candidate_edges.iter().sum::<f64>() / candidate_edges.len() as f64;
+        let var = candidate_edges
+            .iter()
+            .map(|v| {
+                let d = *v - mean;
+                d * d
+            })
+            .sum::<f64>()
+            / candidate_edges.len() as f64;
+        var.sqrt()
+    } else {
+        0.0
+    };
+    // Use a fixed scale so lambda remains in intuitive ranges (~0.01-0.30).
+    let fitness_dispersion_lambda = std::env::var("GA_FITNESS_EDGE_STD_LAMBDA")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA)
+        .max(0.0);
+    let scenario_dispersion_term = fitness_dispersion_lambda * (raw_edge_std * 1000.0);
     let avg_atr_pct = avg_edge * 1.2;
     let window_dart_floor = (avg_atr_pct * 0.40).clamp(0.00001, 0.0012);
 
@@ -7615,6 +7872,39 @@ pub fn evaluate_strategy(
     };
     let t_len = trimmed.len();
     let spread_ratio = e_stats.p90 / (e_stats.p30 + 1e-9);
+    if std::env::var("GA_DISPERSION_PROBE")
+        .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(false)
+        && generation % 5 == 0
+    {
+        let raw_edge_std = if !edge_dist.is_empty() {
+            let mean = edge_dist.iter().sum::<f64>() / edge_dist.len() as f64;
+            let var = edge_dist
+                .iter()
+                .map(|v| {
+                    let d = *v - mean;
+                    d * d
+                })
+                .sum::<f64>()
+                / edge_dist.len() as f64;
+            var.sqrt()
+        } else {
+            0.0
+        };
+        let p25 = percentile_f64(&edge_dist, 0.25);
+        let p75 = percentile_f64(&edge_dist, 0.75);
+        println!(
+            "[EDGE_WIN] sym={} window_id={} n={} raw_edge_p10={:.6} raw_edge_p50={:.6} raw_edge_p90={:.6} raw_edge_std={:.6} iqr={:.6}",
+            scenario_name,
+            generation,
+            edge_dist.len(),
+            e_stats.p10,
+            e_stats.p50,
+            e_stats.p90,
+            raw_edge_std,
+            (p75 - p25).max(0.0)
+        );
+    }
 
     if spread_ratio < 1.2 && ga_debug_enabled() {
         println!(
@@ -7850,6 +8140,27 @@ pub fn evaluate_strategy(
         if er_mag < live_threshold {
             continue;
         }
+        // Optional stricter regime pre-gate (dead-regime purge before round-trip ranking).
+        let strict_regime_pre_gate = std::env::var("STRICT_REGIME_PRE_GATE")
+            .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+            .unwrap_or(false);
+        if strict_regime_pre_gate {
+            let regime_floor_mult = std::env::var("STRICT_REGIME_FLOOR_MULT")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .unwrap_or(1.0)
+                .max(0.0);
+            let regime_floor = (e_stats.p30 * regime_floor_mult).max(0.0);
+            if er_mag < regime_floor {
+                if std::env::var("PRE_RT_REJECT_LOG").is_ok() {
+                    println!(
+                        "[PRE_RT_REJECT] reason=DeadRegime er_mag={:.6} regime_floor={:.6} p30={:.6}",
+                        er_mag, regime_floor, e_stats.p30
+                    );
+                }
+                continue;
+            }
+        }
         // Past gate: realized |edge| at or above the p30 of the positive-edge snapshot.
         let is_live_regime = true;
         // ===============================
@@ -8057,6 +8368,37 @@ pub fn evaluate_strategy(
 
         if !final_execute {
             continue;
+        }
+
+        // Optional strict execution pre-gate in clean (post-regime) space.
+        let strict_exec_pre_gate = std::env::var("STRICT_EXEC_PRE_GATE")
+            .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+            .unwrap_or(false);
+        if strict_exec_pre_gate {
+            let fill_floor = std::env::var("STRICT_EXEC_FILL_FLOOR")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .unwrap_or(0.60)
+                .clamp(0.0, 1.0);
+            let liq_floor = std::env::var("STRICT_EXEC_LIQ_FLOOR")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .unwrap_or(0.20)
+                .clamp(0.0, 1.0);
+            let queue_cap = std::env::var("STRICT_EXEC_QUEUE_CAP")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .unwrap_or(0.85)
+                .clamp(0.0, 1.0);
+            if fill_probability < fill_floor || liquidity_norm < liq_floor || queue_norm > queue_cap {
+                if std::env::var("PRE_RT_REJECT_LOG").is_ok() {
+                    println!(
+                        "[PRE_RT_REJECT] reason=ExecInfeasible fill_prob={:.4} fill_floor={:.4} liq_norm={:.4} liq_floor={:.4} queue_norm={:.4} queue_cap={:.4}",
+                        fill_probability, fill_floor, liquidity_norm, liq_floor, queue_norm, queue_cap
+                    );
+                }
+                continue;
+            }
         }
 
         // --- ATOMIC ACCOUNTING (Inside execution branch) ---
@@ -9111,9 +9453,12 @@ pub fn evaluate_strategy(
 
     if ga_log_hotpath() {
         println!(
-            "FITNESS_BREAKDOWN → pnl={:.3} win={:.3} final={:.3}",
+            "FITNESS_BREAKDOWN → pnl={:.3} win={:.3} edge_std={:.6} disp_lambda={:.4} disp_bonus={:.6} final={:.3}",
             metrics.sum_realized_pnl,
             metrics.profitable_trades as f64 / metrics.trade_count.max(1) as f64,
+            raw_edge_std,
+            fitness_dispersion_lambda,
+            scenario_dispersion_term,
             fitness
         );
     }
@@ -10940,6 +11285,53 @@ fn aggregate_strategy_reports_inner(
     let participation_boost = (0.10 + 0.90 * participation_rate).clamp(0.08, 1.0);
     fitness_out *= selectivity_decay * entropy_band * participation_boost;
 
+    // Decisiveness: reward pooled p75 of pre-rank `raw_edge` across scenarios (not pooled std).
+    // Default λ when unset: `DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA`; scale ×1000 matches calibration band.
+    let env_lambda_raw = std::env::var("GA_FITNESS_EDGE_STD_LAMBDA").ok();
+    let (lambda_src, fitness_dispersion_lambda_agg) = match env_lambda_raw.as_deref().map(str::trim) {
+        Some(s) if !s.is_empty() => match s.parse::<f64>() {
+            Ok(v) => ("env", v.max(0.0)),
+            Err(_) => ("default_invalid", DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA),
+        },
+        _ => ("default", DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA),
+    };
+    GA_FITNESS_EDGE_LAMBDA_LOG_ONCE.call_once(|| {
+        eprintln!(
+            "[GA] lambda_source={} lambda={:.4}",
+            lambda_src, fitness_dispersion_lambda_agg
+        );
+    });
+    let mut pooled_edges: Vec<f64> = evaluations
+        .iter()
+        .flat_map(|e| e.candidate_edges.iter().copied())
+        .filter(|v| v.is_finite())
+        .collect();
+    let pooled_raw_edge_p75 = if pooled_edges.is_empty() {
+        0.0
+    } else {
+        pooled_edges.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = pooled_edges.len();
+        if n == 1 {
+            pooled_edges[0]
+        } else {
+            let idx = 0.75_f64 * (n - 1) as f64;
+            let lo = idx.floor() as usize;
+            let hi = idx.ceil() as usize;
+            if lo == hi {
+                pooled_edges[lo]
+            } else {
+                pooled_edges[lo] * (hi as f64 - idx) + pooled_edges[hi] * (idx - lo as f64)
+            }
+        }
+    };
+    let mut dispersion_bonus_agg =
+        fitness_dispersion_lambda_agg * (pooled_raw_edge_p75 * 1000.0);
+    dispersion_bonus_agg = dispersion_bonus_agg.clamp(
+        -GA_FITNESS_DISPERSION_BONUS_MAX_ABS,
+        GA_FITNESS_DISPERSION_BONUS_MAX_ABS,
+    );
+    fitness_out += dispersion_bonus_agg;
+
     // --- TASK 5: GA HEALTH METRICS ---
     let output_scenarios = evaluations.len();
     // --- TASK 5: GA HEALTH METRICS (FIXED - USE REAL SIGNAL) ---
@@ -11247,6 +11639,60 @@ pub fn evaluate_current_status(
     consistency_count: usize,
     stats: &DistributionStats,
 ) -> DecisionReport {
+    static ROUND_TRIP_ATTEMPTS: AtomicUsize = AtomicUsize::new(0);
+    static ROUND_TRIP_FAILS: AtomicUsize = AtomicUsize::new(0);
+    let eval_probe = std::env::var("EVAL_PROBE").is_ok();
+    let probe_symbol = std::env::var("EVAL_PROBE_SYMBOL").unwrap_or_else(|_| "BSE.NS".to_string());
+    let probe_this_symbol = eval_probe && symbol == probe_symbol;
+    let round_trip_probe = std::env::var("ROUND_TRIP_PROBE").is_ok();
+    let bars_seen = history.len();
+    let has_history = bars_seen >= (config.lambda as usize) + 20;
+
+    let price = history.last().map(|c| c.close as f64).unwrap_or(0.0);
+    let momentum_3 = if bars_seen >= 4 {
+        let now = history[bars_seen - 1].close as f64;
+        let lag = history[bars_seen - 4].close as f64;
+        if lag.abs() > 1e-12 { (now / lag) - 1.0 } else { 0.0 }
+    } else {
+        0.0
+    };
+    let momentum_5 = if bars_seen >= 6 {
+        let now = history[bars_seen - 1].close as f64;
+        let lag = history[bars_seen - 6].close as f64;
+        if lag.abs() > 1e-12 { (now / lag) - 1.0 } else { 0.0 }
+    } else {
+        0.0
+    };
+    let calc_std = |window: usize| -> f64 {
+        if bars_seen < window || window == 0 {
+            return 0.0;
+        }
+        let start = bars_seen - window;
+        let vals: Vec<f64> = history[start..bars_seen].iter().map(|c| c.close as f64).collect();
+        let n = vals.len() as f64;
+        if n <= 0.0 {
+            return 0.0;
+        }
+        let mean = vals.iter().sum::<f64>() / n;
+        let var = vals.iter().map(|v| {
+            let d = *v - mean;
+            d * d
+        }).sum::<f64>() / n;
+        var.sqrt()
+    };
+    let vol_5 = calc_std(5);
+    let vol_20 = calc_std(20);
+    let score_std = vol_5;
+    if probe_this_symbol {
+        println!(
+            "[EVAL_INPUT] sym={} price={:.2} mom3={:.6} mom5={:.6} vol5={:.6} vol20={:.6} score={:.6} score_std={:.6} has_history={} bars_seen={}",
+            symbol, price, momentum_3, momentum_5, vol_5, vol_20, 0.0_f64, score_std, has_history as i32, bars_seen
+        );
+        if bars_seen < 20 {
+            println!("[WARMUP] sym={} bars_seen={}", symbol, bars_seen);
+        }
+    }
+
     // --- PHASE D.1.25: ORTHOGONAL SPECIALIST GATES (V3.6.11 Fix 5) ---
     // [L0: Mean Reversion] archetype 2
     if strategy.archetype == 2 && last_signal == SignalType::WAIT {
@@ -11256,6 +11702,17 @@ pub fn evaluate_current_status(
     
     // 1. Warm-up Gate
     if history.len() < (config.lambda as usize) + 20 {
+        if probe_this_symbol {
+            println!(
+                "[EVAL_READY] sym={} ready=0 reason=warmup_insufficient",
+                symbol
+            );
+            println!(
+                "[SCENARIO_INPUT] sym={} scenario_id=None valid=0 features_ok={}",
+                symbol,
+                has_history as i32
+            );
+        }
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[EARLY_EXIT] sym={} reason=warmup_insufficient history={} required={}",
@@ -11308,6 +11765,14 @@ pub fn evaluate_current_status(
 
     // 3. Conviction Engine
     let conviction = evaluate_market_conviction(strategy, "live", &events, last_idx, 0, 0);
+    if probe_this_symbol {
+        println!(
+            "[SCENARIO_INPUT] sym={} scenario_id={:?} valid=1 features_ok={}",
+            symbol,
+            conviction.regime,
+            has_history as i32
+        );
+    }
     let directional_edge = conviction.conviction_score.abs().powf(0.7);
     let strength = (0.8_f64 * directional_edge + 0.2_f64 * 0.5_f64).clamp(0.05_f64, 1.0_f64);
 
@@ -11336,6 +11801,12 @@ pub fn evaluate_current_status(
     };
 
     if skip_orthogonal {
+        if probe_this_symbol {
+            println!(
+                "[EVAL_READY] sym={} ready=0 reason=orthogonal_regime_mismatch",
+                symbol
+            );
+        }
         if std::env::var("EDGE_DEBUG").is_ok() {
             println!(
                 "[EARLY_EXIT] sym={} reason=orthogonal_regime_mismatch archetype={} regime={:?}",
@@ -11366,6 +11837,12 @@ pub fn evaluate_current_status(
         0, 
         stats,
     );
+    if probe_this_symbol {
+        println!(
+            "[EVAL_READY] sym={} ready=1 reason=ok",
+            symbol
+        );
+    }
 
     // 5. Gating & Decision Assembly
     let mut signal = SignalType::WAIT;
@@ -11381,6 +11858,9 @@ pub fn evaluate_current_status(
     let edge_probe = std::env::var("EDGE_PROBE").is_ok();
     let mut edge_components: Option<(f64, f64, f64, f64)> = None; // r1, r3, range, breakout_net
 
+    if round_trip_probe && probe_this_symbol {
+        ROUND_TRIP_ATTEMPTS.fetch_add(1, AtomicOrdering::Relaxed);
+    }
     if let Some(ref rt) = outcome {
         final_raw_edge = rt.raw_edge;
         // Short-horizon price features blended into `raw_edge` for dispersion across bars
@@ -11610,6 +12090,28 @@ pub fn evaluate_current_status(
             );
         }
     } else if std::env::var("EDGE_DEBUG").is_ok() {
+        if round_trip_probe && probe_this_symbol {
+            let fails = ROUND_TRIP_FAILS.fetch_add(1, AtomicOrdering::Relaxed) + 1;
+            let attempts = ROUND_TRIP_ATTEMPTS.load(AtomicOrdering::Relaxed).max(1);
+            let fail_rate = fails as f64 / attempts as f64;
+            println!(
+                "[ROUND_TRIP_FAIL] sym={} reason=no_round_trip_outcome conv={:.4} expected_edge={:.6} norm_mom={:.4} norm_vol={:.4} archetype={} lambda={} bars_seen={}",
+                symbol,
+                conviction.conviction_score,
+                conviction.expected_edge,
+                conviction.norm_momentum,
+                conviction.norm_vol,
+                strategy.archetype,
+                config.lambda,
+                bars_seen
+            );
+            if attempts % 50 == 0 {
+                println!(
+                    "[ROUND_TRIP_STATS] sym={} attempts={} fails={} fail_rate={:.4}",
+                    symbol, attempts, fails, fail_rate
+                );
+            }
+        }
         println!(
             "[EARLY_EXIT] sym={} reason=no_round_trip_outcome conv={:.4} regime={:?}",
             symbol,

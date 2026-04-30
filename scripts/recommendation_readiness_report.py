@@ -27,6 +27,7 @@ TRADE_RE = re.compile(
     r"(?:rec_feas=(?P<rec_feas>[-\d.]+) )?"
     r"(?:rec_conf=(?P<rec_conf>[-\d.]+) )?"
     r"(?:rec_voters=(?P<rec_voters>\d+) )?"
+    r"(?:intent_age=(?P<intent_age>\d+) )?"
     r"(?:momentum_3=(?P<momentum_3>[-\d.]+) )?"
     r"(?:vol_5=(?P<vol_5>[-\d.]+) )?"
     r"(?:score_std_5=(?P<score_std_5>[-\d.]+) )?"
@@ -66,6 +67,7 @@ class Trade:
     armed: int
     state: str
     exit_type: str
+    intent_age: int = 0
 
 
 def read_trades(path: Path) -> list[Trade]:
@@ -100,6 +102,7 @@ def read_trades(path: Path) -> list[Trade]:
                 armed=int(m.group("armed")),
                 state=m.group("state"),
                 exit_type=m.group("exit_type"),
+                intent_age=int(m.group("intent_age") or 0),
             )
         )
     return trades

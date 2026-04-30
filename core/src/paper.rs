@@ -2,6 +2,8 @@ use crate::ga::{AlphaConsensus, SignalType, TradeRecommendation};
 use crate::market_adapter::Candle;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradeIntent {
@@ -28,6 +30,12 @@ pub struct TradeIntent {
     pub consensus: Option<AlphaConsensus>,
     pub age: usize,
     pub max_age: usize,
+    /// Linearized symbol update index when this intent was admitted (log / analysis only).
+    #[serde(default)]
+    pub intent_created_symbol_updates: usize,
+    /// Candidate → confirm wait in symbol updates (live_engine confirmation path; 0 if unknown).
+    #[serde(default)]
+    pub confirm_delta_symbol_updates: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +74,8 @@ pub struct ActiveTrade {
     pub rec_conf: f64,
     #[serde(default)]
     pub rec_voters: usize,
+    #[serde(default)]
+    pub intent_age_at_fill: usize,
     #[serde(default)]
     pub momentum_3: f64,
     #[serde(default)]
@@ -147,6 +157,12 @@ pub struct PaperRegistry {
     pub intents_expired: usize,
     #[serde(default)]
     pub intents_expiry_age_sum: usize,
+    /// Shadow-mode trigger volatility samples for online percentile logging (not serialized).
+    #[serde(skip)]
+    pub shadow_trigger_vol_samples: Vec<f64>,
+    /// Shadow-mode trigger momentum samples for online percentile logging (not serialized).
+    #[serde(skip)]
+    pub shadow_trigger_mom_samples: Vec<f64>,
 }
 
 impl PaperRegistry {
@@ -194,6 +210,18 @@ impl PaperRegistry {
             self.pending_intents.len(),
             avg_expiry_age
         );
+
+        let ev_hits = PAPER_EV_LOOKUP_HIT.load(Ordering::Relaxed);
+        let ev_miss = PAPER_EV_LOOKUP_MISS.load(Ordering::Relaxed);
+        let ev_total = ev_hits + ev_miss;
+        if ev_total > 0 {
+            println!(
+                "[PAPER_EV] lookup hit_rate={:.4} (hits={} misses={})",
+                ev_hits as f64 / ev_total as f64,
+                ev_hits,
+                ev_miss
+            );
+        }
     }
 
     pub fn get_strategy_performance(&self, strategy_id: usize) -> f64 {
@@ -244,8 +272,38 @@ impl Default for PaperRegistry {
             intents_triggered: 0,
             intents_expired: 0,
             intents_expiry_age_sum: 0,
+            shadow_trigger_vol_samples: Vec::new(),
+            shadow_trigger_mom_samples: Vec::new(),
         }
     }
+}
+
+fn linear_percentile_f64(sorted_vals: &[f64], p: f64) -> f64 {
+    if sorted_vals.is_empty() {
+        return 0.0;
+    }
+    if sorted_vals.len() == 1 {
+        return sorted_vals[0];
+    }
+    let n = sorted_vals.len() as f64;
+    let idx = (n - 1.0) * (p / 100.0);
+    let lo = idx.floor() as usize;
+    let hi = (lo + 1).min(sorted_vals.len() - 1);
+    let w = idx - lo as f64;
+    sorted_vals[lo] * (1.0 - w) + sorted_vals[hi] * w
+}
+
+fn percentile_rank(sorted_vals: &[f64], value: f64) -> f64 {
+    if sorted_vals.is_empty() {
+        return 0.0;
+    }
+    let mut le_count = 0usize;
+    for v in sorted_vals {
+        if *v <= value {
+            le_count += 1;
+        }
+    }
+    100.0 * (le_count as f64 / sorted_vals.len() as f64)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -406,10 +464,116 @@ fn paper_trail_touch_exit_pnl(
     }
 }
 
+/// One cell from `analysis/ev_table.json` (built by `scripts/build_ev_table.py`).
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PaperEvCell {
+    count: u64,
+    p_survive: f64,
+    avg_pnl: f64,
+    ev: f64,
+}
+
+type PaperEvTable = HashMap<String, HashMap<String, PaperEvCell>>;
+
+static PAPER_EV_TABLE_CACHE: OnceLock<Option<PaperEvTable>> = OnceLock::new();
+
+/// Budget for `[PAPER_EV] lookup` lines when `PAPER_EV_LOOKUP_DEBUG` is set (avoids flooding huge replays).
+static PAPER_EV_LOOKUP_DEBUG_BUDGET: AtomicUsize = AtomicUsize::new(50);
+
+/// Counts intent-expiry EV key lookups against `PAPER_EV_TABLE_PATH` (cell present vs missing).
+static PAPER_EV_LOOKUP_HIT: AtomicUsize = AtomicUsize::new(0);
+static PAPER_EV_LOOKUP_MISS: AtomicUsize = AtomicUsize::new(0);
+
+fn paper_ev_table_cached() -> Option<&'static PaperEvTable> {
+    PAPER_EV_TABLE_CACHE
+        .get_or_init(|| {
+            let path = std::env::var("PAPER_EV_TABLE_PATH").ok()?;
+            if path.is_empty() {
+                return None;
+            }
+            let data = std::fs::read_to_string(&path).ok()?;
+            let table: PaperEvTable = serde_json::from_str(&data).ok()?;
+            let n_age = table.len();
+            let mut age_keys: Vec<String> = table.keys().cloned().collect();
+            age_keys.sort();
+            let keys_sample: Vec<String> = age_keys.into_iter().take(5).collect();
+            let (pa, pc) = paper_intent_lookup_keys(0, 5, 0.65);
+            println!(
+                "[PAPER_EV] loaded ev_table from {} ({} age-bucket keys) sample_age_keys={:?} probe(age=0,voters=5,conf=0.65) => {} | {}",
+                path, n_age, keys_sample, pa, pc
+            );
+            Some(table)
+        })
+        .as_ref()
+}
+
+/// Integer bin label (`low_high` or `last_plus`); must match `scripts/build_ev_table.py::bucket_int`.
+fn paper_bucket_int(mut v: i32, bins: &[i32]) -> String {
+    if bins.len() < 2 {
+        return "0_plus".to_string();
+    }
+    if v < bins[0] {
+        v = bins[0];
+    }
+    for i in 0..bins.len() - 1 {
+        if v >= bins[i] && v < bins[i + 1] {
+            return format!("{}_{}", bins[i], bins[i + 1]);
+        }
+    }
+    format!("{}_plus", bins[bins.len() - 1])
+}
+
+fn paper_intent_lookup_keys(age: usize, _voters: usize, conf: f64) -> (String, String) {
+    let conf_cent = (conf * 100.0).round() as i32;
+    let conf_cent = conf_cent.clamp(0, 100);
+    (
+        paper_bucket_int(age as i32, &[0, 2, 5, 10, 20]),
+        paper_bucket_int(conf_cent, &[50, 60, 70, 80, 100]),
+    )
+}
+
+/// Returns true when a loaded EV table has a cell for this state and `ev` is below the threshold.
+fn paper_intent_ev_low(
+    age: usize,
+    voters: usize,
+    conf: f64,
+    threshold: f64,
+    table: &PaperEvTable,
+) -> bool {
+    let (age_b, conf_b) = paper_intent_lookup_keys(age, voters, conf);
+    if std::env::var("PAPER_EV_LOOKUP_DEBUG").is_ok() {
+        let left = PAPER_EV_LOOKUP_DEBUG_BUDGET.fetch_sub(1, Ordering::Relaxed);
+        if left > 0 {
+            println!(
+                "[PAPER_EV] lookup age_b={} conf_b={}",
+                age_b, conf_b
+            );
+        }
+    }
+    let cell = table.get(&age_b).and_then(|m| m.get(&conf_b));
+    match cell {
+        Some(c) => {
+            PAPER_EV_LOOKUP_HIT.fetch_add(1, Ordering::Relaxed);
+            c.ev < threshold
+        }
+        None => {
+            PAPER_EV_LOOKUP_MISS.fetch_add(1, Ordering::Relaxed);
+            std::env::var("PAPER_EV_MISS_IS_LOW")
+                .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
+                .unwrap_or(false)
+        }
+    }
+}
+
+/// `symbol_linear_updates`: monotonic per-symbol update count after applying `latest_candle` (replay-stable clock).
 pub fn update_paper_registry(
     registry: &mut PaperRegistry,
     latest_candle: &Candle,
     symbol: &str,
+    symbol_linear_updates: usize,
+    trigger_momentum_3: f64,
+    trigger_vol_5: f64,
 ) {
     let exit_mode = std::env::var("PAPER_EXIT_MODE")
         .unwrap_or_else(|_| "default".to_string())
@@ -750,6 +914,18 @@ pub fn update_paper_registry(
         .and_then(|v| v.parse::<f64>().ok())
         .unwrap_or(0.0002)
         .max(0.0);
+    let paper_intent_pullback_factor = std::env::var("PAPER_INTENT_PULLBACK_FACTOR")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.999);
+    let paper_intent_bounce_factor = std::env::var("PAPER_INTENT_BOUNCE_FACTOR")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.001);
+    let paper_ev_expire_threshold = std::env::var("PAPER_EV_EXPIRE_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0002);
 
     let mut j = 0;
     while j < registry.pending_intents.len() {
@@ -763,8 +939,8 @@ pub fn update_paper_registry(
             let intent = &mut registry.pending_intents[j];
             intent.age += 1;
             let is_long = intent.signal == SignalType::BUY;
-            let pullback_factor = 0.999;
-            let bounce_factor = 1.001;
+            let pullback_factor = paper_intent_pullback_factor;
+            let bounce_factor = paper_intent_bounce_factor;
             let mut touch_trigger = false;
             let mut touch_entry_price = 0.0;
             if is_long {
@@ -776,7 +952,16 @@ pub fn update_paper_registry(
                 touch_trigger = true;
                 touch_entry_price = intent.reference_price * bounce_factor;
             }
-            if intent.age > intent.max_age {
+            let ev_expire = paper_ev_table_cached().is_some_and(|t| {
+                paper_intent_ev_low(
+                    intent.age,
+                    intent.rec_voters,
+                    intent.rec_conf,
+                    paper_ev_expire_threshold,
+                    t,
+                )
+            });
+            if intent.age > intent.max_age || ev_expire {
                 registry.intents_expired = registry.intents_expired.saturating_add(1);
                 registry.intents_expiry_age_sum =
                     registry.intents_expiry_age_sum.saturating_add(intent.age);
@@ -798,6 +983,53 @@ pub fn update_paper_registry(
         if triggered {
             registry.intents_triggered = registry.intents_triggered.saturating_add(1);
             let intent = registry.pending_intents.remove(j);
+            let intent_age_updates = symbol_linear_updates.saturating_sub(intent.intent_created_symbol_updates);
+            eprintln!(
+                "[TRIGGER_METRICS] sym={} rec_id={} confirm_updates={} intent_age_updates={} intent_age_bars={}",
+                intent.symbol,
+                intent.rec_id,
+                intent.confirm_delta_symbol_updates,
+                intent_age_updates,
+                intent.age
+            );
+            eprintln!(
+                "[TRIGGER_STATE] rec_id={} confirm_updates={} intent_age_updates={} trigger_momentum_3={:.6} trigger_vol_5={:.6}",
+                intent.rec_id,
+                intent.confirm_delta_symbol_updates,
+                intent_age_updates,
+                trigger_momentum_3,
+                trigger_vol_5
+            );
+            // Shadow-mode decision telemetry (log-only): compute online percentiles from seen triggers.
+            registry.shadow_trigger_vol_samples.push(trigger_vol_5);
+            registry.shadow_trigger_mom_samples.push(trigger_momentum_3);
+            let mut vol_sorted = registry.shadow_trigger_vol_samples.clone();
+            vol_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let mut mom_sorted = registry.shadow_trigger_mom_samples.clone();
+            mom_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let vol_p85 = linear_percentile_f64(&vol_sorted, 85.0);
+            let mom_p15 = linear_percentile_f64(&mom_sorted, 15.0);
+            let vol_percentile = percentile_rank(&vol_sorted, trigger_vol_5);
+            let mom_percentile = percentile_rank(&mom_sorted, trigger_momentum_3);
+            let would_block_vol = trigger_vol_5 > vol_p85;
+            let would_block_mom = trigger_momentum_3 <= mom_p15;
+            let would_block_any = would_block_vol || would_block_mom;
+            let reason = match (would_block_vol, would_block_mom) {
+                (true, true) => "both",
+                (true, false) => "extreme_volatility",
+                (false, true) => "extreme_negative_momentum",
+                (false, false) => "none",
+            };
+            eprintln!(
+                "[SHADOW_DECISION] rec_id={} would_block_vol={} would_block_mom={} would_block_any={} reason={} vol_percentile={:.2} mom_percentile={:.2}",
+                intent.rec_id,
+                if would_block_vol { 1 } else { 0 },
+                if would_block_mom { 1 } else { 0 },
+                if would_block_any { 1 } else { 0 },
+                reason,
+                vol_percentile,
+                mom_percentile
+            );
             let is_long_entry = intent.signal == SignalType::BUY;
             let avg_r_entry = paper_avg_bar_range(registry, symbol, bar_range);
             // TP uses the tighter of rolling vs entry bar range so TP can sit inside a typical one-bar move.
@@ -854,6 +1086,7 @@ pub fn update_paper_registry(
                 rec_feas: intent.rec_feas,
                 rec_conf: intent.rec_conf,
                 rec_voters: intent.rec_voters,
+                intent_age_at_fill: intent.age,
                 momentum_3: intent.momentum_3,
                 vol_5: intent.vol_5,
                 score_std_5: intent.score_std_5,
@@ -1586,7 +1819,7 @@ pub fn update_paper_registry(
                 0.0
             };
             println!(
-                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
+                "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} intent_age={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
                 trade.rec_id,
                 trade.symbol,
                 trade.max_pnl,
@@ -1599,6 +1832,7 @@ pub fn update_paper_registry(
                 trade.rec_feas,
                 trade.rec_conf,
                 trade.rec_voters,
+                trade.intent_age_at_fill,
                 trade.momentum_3,
                 trade.vol_5,
                 trade.score_std_5,
@@ -1694,7 +1928,7 @@ pub fn finalize_paper_registry(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type=FINALIZE_TIME trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} exit_type=FINALIZE_TIME",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} intent_age={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type=FINALIZE_TIME trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} exit_type=FINALIZE_TIME",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1707,6 +1941,7 @@ pub fn finalize_paper_registry(
             trade.rec_feas,
             trade.rec_conf,
             trade.rec_voters,
+            trade.intent_age_at_fill,
             trade.momentum_3,
             trade.vol_5,
             trade.score_std_5,
@@ -1787,7 +2022,7 @@ pub fn close_active_trades_for_symbol(
             0.0
         };
         println!(
-            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
+            "[TRADE_PATH] rec_id={} sym={} mfe={:.6} mae={:.6} pnl={:.6} ret_at_exit={:.6} edge_bps={:.3} rank={:.4} rec_score={:.6} rec_feas={:.4} rec_conf={:.4} rec_voters={} intent_age={} momentum_3={:.6} vol_5={:.6} score_std_5={:.6} vol_bps={:.2} partial_realized_pnl={:.6} remainder_exit_type={} trail_active={} trail_stop_at_exit={:.6} peak_price_at_exit={:.6} is_runner={} dur={} armed={} state={:?} exit_type={}",
             trade.rec_id,
             trade.symbol,
             trade.max_pnl,
@@ -1800,6 +2035,7 @@ pub fn close_active_trades_for_symbol(
             trade.rec_feas,
             trade.rec_conf,
             trade.rec_voters,
+            trade.intent_age_at_fill,
             trade.momentum_3,
             trade.vol_5,
             trade.score_std_5,

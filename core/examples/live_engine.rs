@@ -295,6 +295,16 @@ fn main() {
         .and_then(|v| v.parse::<f64>().ok())
         .unwrap_or(1.5)
         .max(1.0);
+    let candidate_voter_percentile = std::env::var("REC_CAND_VOTER_PCT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(60.0)
+        .clamp(0.0, 100.0);
+    let candidate_conf_percentile = std::env::var("REC_CAND_CONF_PCT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(75.0)
+        .clamp(0.0, 100.0);
     let intent_max_age_base = std::env::var("INTENT_MAX_AGE_BASE")
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
@@ -331,6 +341,15 @@ fn main() {
         || env_flag("POOL_DEBUG")
         || env_flag("RECO_DEBUG");
     let reco_path_probe = env_flag("RECO_PATH_PROBE");
+    let strat_probe = env_flag("STRAT_PROBE");
+    let reco_single_accept_diag = env_flag("REC_SINGLE_ACCEPT_DIAG");
+    let candidate_probe = env_flag("CANDIDATE_PROBE");
+    let mut cand_batches = 0usize;
+    let mut cand_total_sum = 0usize;
+    let mut cand_voters_pos_sum = 0usize;
+    let mut cand_feas_pos_sum = 0usize;
+    let mut cand_stage1_pass_sum = 0usize;
+    let mut cand_admitted_sum = 0usize;
 
     println!("📡 Listening for candles...");
     println!(
@@ -340,11 +359,18 @@ fn main() {
         "   Live reco uses small proxy pools → S/G/F read weaker than train_nse; start S around 0.35–0.55 (not ~0.8). [DIAG] FINAL=1 = meta-gates only; emission still needs edge/feas/p90/voters/blocklist."
     );
 
+    // One stdin line == one synchronized timestep across symbols (streamer batch) = one AWR window.
+    let mut awr_windows_total: u64 = 0;
+    let mut awr_windows_with_candidates: u64 = 0;
+    let mut awr_windows_triggered: u64 = 0;
+
     for line in stdin.lock().lines() {
         let line = match line { Ok(l) => l, Err(_) => break };
         if line.trim().is_empty() { continue; }
         
         let incoming: Vec<SymbolicCandle> = match serde_json::from_str(&line) { Ok(c) => c, Err(_) => continue };
+        awr_windows_total = awr_windows_total.saturating_add(1);
+        let line_start_triggered = paper.intents_triggered;
         let mut recommendations: Vec<RecommendationCandidate> = Vec::new();
 
         for sym_candle in incoming {
@@ -362,8 +388,24 @@ fn main() {
             history.push(candle.clone());
             if history.len() > 1000 { history.remove(0); }
             *symbol_update_counts.entry(symbol.clone()).or_insert(0) += 1;
+            let sym_updates_now = *symbol_update_counts.get(symbol).unwrap_or(&0);
+            let trigger_momentum_3 = if history.len() >= 4 {
+                let last = history[history.len() - 1].close as f64;
+                let lag3 = history[history.len() - 4].close as f64;
+                last - lag3
+            } else {
+                0.0
+            };
+            let trigger_vol_5 = rolling_close_std(history, 5);
 
-            update_paper_registry(&mut paper, &candle, symbol);
+            update_paper_registry(
+                &mut paper,
+                &candle,
+                symbol,
+                sym_updates_now,
+                trigger_momentum_3,
+                trigger_vol_5,
+            );
             if !paper.closed_observations.is_empty() {
                 for obs in paper.closed_observations.drain(..) {
                     let r_bucket = (obs.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
@@ -537,6 +579,17 @@ fn main() {
                     let last_sig = last_signals.get(symbol).cloned().unwrap_or(SignalType::WAIT);
                     let cons = consistency_counts.get(symbol).cloned().unwrap_or(0);
                     let report = evaluate_current_status(strat, history, &config, symbol, last_sig, cons, &current_stats);
+                    if strat_probe && total_processed % 100 == 0 {
+                        println!(
+                            "[STRAT_OUT] sym={} strat_id={} raw_edge={:.6} feas={:.3} active={} has_reco={}",
+                            symbol,
+                            idx,
+                            report.raw_edge,
+                            report.execution_feasibility,
+                            (report.raw_edge >= edge_gate && report.execution_feasibility >= min_feas) as i32,
+                            report.recommendation.is_some() as i32
+                        );
+                    }
                     if run_reco_engine {
                         let paper_perf = paper.get_strategy_performance(idx);
                         let fit = live_reco_fitness_proxy(&report, paper_perf);
@@ -638,6 +691,24 @@ fn main() {
                     decision_feasibility > min_feas
                 };
                 let voters = buy_voters + sell_voters;
+                let active_strats = voted_count;
+                let voters = if reco_single_accept_diag {
+                    active_strats
+                } else {
+                    voters
+                };
+                if strat_probe && total_processed % 100 == 0 {
+                    println!(
+                        "[STRAT_AGG] sym={} total_strats={} active_strats={} voters={} buy_voters={} sell_voters={} diag_single_accept={}",
+                        symbol,
+                        strategies.len(),
+                        active_strats,
+                        voters,
+                        buy_voters,
+                        sell_voters,
+                        reco_single_accept_diag as i32
+                    );
+                }
                 let edge_after_floor = if shared_raw_edge >= edge_gate {
                     shared_raw_edge
                 } else {
@@ -962,6 +1033,13 @@ fn main() {
             }
         }
 
+        // AWR: "candidates" = batches where the reco pool is non-empty *after* existing path gates
+        // (history length, edge/conf/feas/reco structure, slot/dup/blocklist, `passes_reco_gate`, etc.).
+        // This is not raw strategy hits; use C/W as "eligible-reco coverage", not pre-filter universe.
+        if !recommendations.is_empty() {
+            awr_windows_with_candidates = awr_windows_with_candidates.saturating_add(1);
+        }
+
         if std::env::var("EMIT_PROBE").is_ok() {
             println!("[POOL_SIZE] n={}", recommendations.len());
         }
@@ -991,23 +1069,33 @@ fn main() {
                 .iter()
                 .map(|c| c.voters as f64)
                 .collect::<Vec<f64>>(),
-            60.0, // top 40% voters
+            candidate_voter_percentile,
         );
         let conf_threshold = percentile(
             recommendations
                 .iter()
                 .map(|c| c.conf)
                 .collect::<Vec<f64>>(),
-            75.0, // Q3 confidence
+            candidate_conf_percentile,
         );
+        let batch_total = recommendations.len();
+        let batch_voters_pos = recommendations.iter().filter(|c| c.voters > 0).count();
+        let batch_feas_pos = recommendations.iter().filter(|c| c.feas > 0.0).count();
+        let mut batch_stage1_pass = 0usize;
+        let mut batch_admitted = 0usize;
         for cand in &recommendations {
             let duplicate_live = paper.active_trades.iter().any(|t| t.symbol == cand.symbol)
                 || paper.pending_intents.iter().any(|i| i.symbol == cand.symbol);
             let candidate_gate =
                 (cand.voters as f64) >= voter_threshold && cand.conf >= conf_threshold;
-            if !candidate_gate || duplicate_live || pending_confirmations.contains_key(&cand.symbol) {
+            if candidate_gate {
+                batch_stage1_pass = batch_stage1_pass.saturating_add(1);
+            }
+            let blocked_by_pending = pending_confirmations.contains_key(&cand.symbol);
+            if !candidate_gate || duplicate_live || blocked_by_pending {
                 continue;
             }
+            batch_admitted = batch_admitted.saturating_add(1);
             let update_count = *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
             let base_price = history_pipes
                 .get(&cand.symbol)
@@ -1029,9 +1117,25 @@ fn main() {
                 },
             );
         }
+        cand_batches = cand_batches.saturating_add(1);
+        cand_total_sum = cand_total_sum.saturating_add(batch_total);
+        cand_voters_pos_sum = cand_voters_pos_sum.saturating_add(batch_voters_pos);
+        cand_feas_pos_sum = cand_feas_pos_sum.saturating_add(batch_feas_pos);
+        cand_stage1_pass_sum = cand_stage1_pass_sum.saturating_add(batch_stage1_pass);
+        cand_admitted_sum = cand_admitted_sum.saturating_add(batch_admitted);
+        if candidate_probe && total_processed % 100 == 0 {
+            println!(
+                "[CANDIDATE_STATS] batch_total={} voters_pos={} feas_pos={} stage1_pass={} admitted={}",
+                batch_total,
+                batch_voters_pos,
+                batch_feas_pos,
+                batch_stage1_pass,
+                batch_admitted
+            );
+        }
 
         // Stage-2: confirmation at t0 + Δ, then execute.
-        let mut confirmed: Vec<RecommendationCandidate> = Vec::new();
+        let mut confirmed: Vec<(RecommendationCandidate, u32)> = Vec::new();
         let pending_symbols: Vec<String> = pending_confirmations.keys().cloned().collect();
         for sym in pending_symbols {
             let Some(pending) = pending_confirmations.get(&sym).cloned() else {
@@ -1057,7 +1161,7 @@ fn main() {
                 vol_confirm <= vol_limit
             };
             let confirmed_gate =
-                momentum_confirm > 0.0 && score_now_opt.is_some() && score_trend >= 0.0 && vol_ok;
+                momentum_confirm >= 0.0 && score_now_opt.is_some() && score_trend >= 0.0 && vol_ok;
             if std::env::var("EMIT_PROBE").is_ok() {
                 println!(
                     "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} vol_lim={:.6} score_trend={:.6} score_seen={} pass={}",
@@ -1072,7 +1176,9 @@ fn main() {
                 );
             }
             if confirmed_gate {
-                confirmed.push(pending.candidate.clone());
+                let confirm_updates =
+                    now_updates.saturating_sub(pending.created_symbol_updates) as u32;
+                confirmed.push((pending.candidate.clone(), confirm_updates));
             }
             pending_confirmations.remove(&sym);
         }
@@ -1083,12 +1189,12 @@ fn main() {
             RecommendationMode::Top1 => 1usize,
         };
         confirmed.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
+            b.0.score
+                .partial_cmp(&a.0.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.symbol.cmp(&b.symbol))
+                .then_with(|| a.0.symbol.cmp(&b.0.symbol))
         });
-        for cand in confirmed.into_iter().take(top_n) {
+        for (cand, confirm_delta_symbol_updates) in confirmed.into_iter().take(top_n) {
             last_signals.insert(cand.symbol.clone(), cand.signal);
             consistency_counts.insert(cand.symbol.clone(), cand.consistency);
             let momentum_3 = history_pipes
@@ -1176,6 +1282,8 @@ fn main() {
                     voters: cand.voters,
                     primary_id: cand.primary_id,
                 });
+            let intent_created_symbol_updates =
+                *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
             paper.pending_intents.push(TradeIntent {
                 rec_id: cand.rec_id,
                 symbol: cand.symbol.clone(),
@@ -1199,8 +1307,13 @@ fn main() {
                 } else {
                     intent_max_age_base
                 },
+                intent_created_symbol_updates,
+                confirm_delta_symbol_updates,
             });
             paper.intents_created = paper.intents_created.saturating_add(1);
+        }
+        if paper.intents_triggered > line_start_triggered {
+            awr_windows_triggered = awr_windows_triggered.saturating_add(1);
         }
     }
 
@@ -1217,5 +1330,53 @@ fn main() {
         );
         finalize_paper_registry(&mut paper, &latest_prices);
     }
+    if candidate_probe {
+        println!(
+            "[CANDIDATE_STATS_SUM] batches={} total_candidates={} voters_pos={} feas_pos={} stage1_pass={} admitted={}",
+            cand_batches,
+            cand_total_sum,
+            cand_voters_pos_sum,
+            cand_feas_pos_sum,
+            cand_stage1_pass_sum,
+            cand_admitted_sum
+        );
+    }
     paper.summary();
+
+    let avg_pnl = if !paper.pnl_history.is_empty() {
+        paper.pnl_history.iter().sum::<f64>() / paper.pnl_history.len() as f64
+    } else {
+        0.0
+    };
+    let total_pnl: f64 = paper.pnl_history.iter().sum();
+    let pnl_per_trigger = if paper.intents_triggered > 0 {
+        total_pnl / paper.intents_triggered as f64
+    } else {
+        0.0
+    };
+    let awr = if awr_windows_total > 0 {
+        awr_windows_triggered as f64 / awr_windows_total as f64
+    } else {
+        0.0
+    };
+    let trigger_rate = if awr_windows_with_candidates > 0 {
+        awr_windows_triggered as f64 / awr_windows_with_candidates as f64
+    } else {
+        0.0
+    };
+    eprintln!(
+        "[AWR_SUMMARY] windows_total={} windows_with_candidates={} windows_triggered={} awr={:.4} trigger_rate={:.4} created={} triggered={} expired={} closed_trades={} avg_pnl={:.6} total_pnl={:.6} pnl_per_trigger={:.6}",
+        awr_windows_total,
+        awr_windows_with_candidates,
+        awr_windows_triggered,
+        awr,
+        trigger_rate,
+        paper.intents_created,
+        paper.intents_triggered,
+        paper.intents_expired,
+        paper.closed_count,
+        avg_pnl,
+        total_pnl,
+        pnl_per_trigger
+    );
 }
