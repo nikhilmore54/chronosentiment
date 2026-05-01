@@ -133,6 +133,9 @@ fn main() {
                         max_age: 10,
                         intent_created_symbol_updates: symbol_linear_updates,
                         confirm_delta_symbol_updates: 0,
+                        immediate_market_fill: false,
+                        use_recommendation_tpsl: false,
+                        sketch_risk_span: 0.0,
                     });
                 }
             }

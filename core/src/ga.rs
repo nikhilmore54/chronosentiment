@@ -19,7 +19,7 @@ use serde_json;
 use serde_json::value::to_value as to_json_value;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::OnceLock;
 
 /// Default `GA_FITNESS_EDGE_STD_LAMBDA` when unset (bounded-grid lock). Set env to `0` to disable.
@@ -28,6 +28,34 @@ const DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA: f64 = 0.05;
 const GA_FITNESS_DISPERSION_BONUS_MAX_ABS: f64 = 0.02;
 
 static GA_FITNESS_EDGE_LAMBDA_LOG_ONCE: std::sync::Once = std::sync::Once::new();
+static COMPONENT_MOMENTUM_NEG_COUNT: AtomicU64 = AtomicU64::new(0);
+static COMPONENT_COMPOSITE_NEG_COUNT: AtomicU64 = AtomicU64::new(0);
+static COMPONENT_SCORE_NEG_COUNT: AtomicU64 = AtomicU64::new(0);
+static COMPONENT_NEAR_BEARISH_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ComponentDiagnosticSnapshot {
+    pub momentum_neg_count: u64,
+    pub composite_neg_count: u64,
+    pub score_neg_count: u64,
+    pub near_bearish_count: u64,
+}
+
+pub fn reset_component_diagnostic_counters() {
+    COMPONENT_MOMENTUM_NEG_COUNT.store(0, AtomicOrdering::Relaxed);
+    COMPONENT_COMPOSITE_NEG_COUNT.store(0, AtomicOrdering::Relaxed);
+    COMPONENT_SCORE_NEG_COUNT.store(0, AtomicOrdering::Relaxed);
+    COMPONENT_NEAR_BEARISH_COUNT.store(0, AtomicOrdering::Relaxed);
+}
+
+pub fn component_diagnostic_snapshot() -> ComponentDiagnosticSnapshot {
+    ComponentDiagnosticSnapshot {
+        momentum_neg_count: COMPONENT_MOMENTUM_NEG_COUNT.load(AtomicOrdering::Relaxed),
+        composite_neg_count: COMPONENT_COMPOSITE_NEG_COUNT.load(AtomicOrdering::Relaxed),
+        score_neg_count: COMPONENT_SCORE_NEG_COUNT.load(AtomicOrdering::Relaxed),
+        near_bearish_count: COMPONENT_NEAR_BEARISH_COUNT.load(AtomicOrdering::Relaxed),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DistributionStats {
@@ -496,6 +524,7 @@ pub struct OrderIntent {
 pub use crate::paper::{
     ActiveTrade, ExitType, PaperRegistry, TradeIntent, apply_slippage, resolve_intracandle_exit,
     update_paper_registry, finalize_paper_registry, close_active_trades_for_symbol,
+    close_active_sketch_trades_on_side_flip,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -11918,6 +11947,15 @@ pub fn evaluate_current_status(
                 final_raw_edge = blended;
                 edge_components = Some((r1, r3, range, breakout_up + breakout_dn));
             }
+        }
+        if conviction.norm_momentum < 0.0 {
+            COMPONENT_MOMENTUM_NEG_COUNT.fetch_add(1, AtomicOrdering::Relaxed);
+        }
+        if conviction.conviction_score < 0.0 {
+            COMPONENT_COMPOSITE_NEG_COUNT.fetch_add(1, AtomicOrdering::Relaxed);
+            COMPONENT_SCORE_NEG_COUNT.fetch_add(1, AtomicOrdering::Relaxed);
+        } else if conviction.conviction_score < 0.05 {
+            COMPONENT_NEAR_BEARISH_COUNT.fetch_add(1, AtomicOrdering::Relaxed);
         }
         let is_bearish = conviction.conviction_score < 0.0;
         

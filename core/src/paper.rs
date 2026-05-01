@@ -36,6 +36,15 @@ pub struct TradeIntent {
     /// Candidate → confirm wait in symbol updates (live_engine confirmation path; 0 if unknown).
     #[serde(default)]
     pub confirm_delta_symbol_updates: u32,
+    /// When true, fill at the **open** of the first `update_paper_registry` tick for this symbol after enqueue (no pullback/bounce wait).
+    #[serde(default)]
+    pub immediate_market_fill: bool,
+    /// When true, use `recommendation.sl_target` / `tp_target` at fill instead of vol-scaled paper prices.
+    #[serde(default)]
+    pub use_recommendation_tpsl: bool,
+    /// Risk span used to build sketch SL/TP (high−low window); when >0 with immediate sketch fill, SL/TP are re-anchored to fill open using same fractions as UI (`app.py`).
+    #[serde(default)]
+    pub sketch_risk_span: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +106,21 @@ pub struct ActiveTrade {
     #[serde(default)]
     pub is_runner: bool,
     pub consensus: Option<AlphaConsensus>,
+    /// When true, do not ratchet or ladder-adjust `sl_target` / `tp_target` after open (sketch / fixed levels).
+    #[serde(default)]
+    pub lock_tpsl_levels: bool,
+    /// Frozen SL level captured at fill for sketch-locked trades.
+    #[serde(default)]
+    pub frozen_sl_target: f64,
+    /// Frozen TP level captured at fill for sketch-locked trades.
+    #[serde(default)]
+    pub frozen_tp_target: f64,
+    /// True when this trade came from sketch intent overlay.
+    #[serde(default)]
+    pub from_sketch: bool,
+    /// Minute bucket at fill time (ms-normalized) for side-flip handling.
+    #[serde(default)]
+    pub sketch_minute_bucket: i64,
 }
 
 fn default_remaining_fraction() -> f64 {
@@ -153,6 +177,10 @@ pub struct PaperRegistry {
     pub intents_created: usize,
     #[serde(default)]
     pub intents_triggered: usize,
+    #[serde(default)]
+    pub intents_triggered_buy: usize,
+    #[serde(default)]
+    pub intents_triggered_sell: usize,
     #[serde(default)]
     pub intents_expired: usize,
     #[serde(default)]
@@ -270,6 +298,8 @@ impl Default for PaperRegistry {
             closed_observations: Vec::new(),
             intents_created: 0,
             intents_triggered: 0,
+            intents_triggered_buy: 0,
+            intents_triggered_sell: 0,
             intents_expired: 0,
             intents_expiry_age_sum: 0,
             shadow_trigger_vol_samples: Vec::new(),
@@ -304,6 +334,18 @@ fn percentile_rank(sorted_vals: &[f64], value: f64) -> f64 {
         }
     }
     100.0 * (le_count as f64 / sorted_vals.len() as f64)
+}
+
+fn ts_to_ms(ts: u64) -> i64 {
+    if ts > 10_000_000_000u64 {
+        ts as i64
+    } else {
+        (ts as i64).saturating_mul(1000)
+    }
+}
+
+fn minute_bucket_from_ts(ts: u64) -> i64 {
+    ts_to_ms(ts) / 60_000
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -417,6 +459,9 @@ fn paper_vol_tp_price(
 
 /// After `max_pnl` exceeds `threshold`, ratchet stop to entry so a micro-MFE cannot become a large loss.
 fn apply_mfe_breakeven_lock(trade: &mut ActiveTrade, is_long: bool, threshold: f64, enabled: bool) {
+    if trade.lock_tpsl_levels {
+        return;
+    }
     if !enabled || trade.max_pnl <= threshold {
         return;
     }
@@ -943,7 +988,11 @@ pub fn update_paper_registry(
             let bounce_factor = paper_intent_bounce_factor;
             let mut touch_trigger = false;
             let mut touch_entry_price = 0.0;
-            if is_long {
+            if intent.immediate_market_fill && symbol_linear_updates > intent.intent_created_symbol_updates {
+                // First bar for this symbol after intent is queued: fill at this bar's open (no same-bar close / ref price).
+                touch_trigger = true;
+                touch_entry_price = latest_candle.open as f64;
+            } else if is_long {
                 if low <= intent.reference_price * pullback_factor {
                     touch_trigger = true;
                     touch_entry_price = intent.reference_price * pullback_factor;
@@ -969,12 +1018,17 @@ pub fn update_paper_registry(
                 continue;
             }
             if touch_trigger {
-                // Time-decayed intent quality: later fills require stronger original rec score.
-                let age_ratio =
-                    (intent.age as f64 / intent.max_age.max(1) as f64).clamp(0.0, 1.0);
-                let decay = 1.0 - age_ratio;
-                let adjusted_score = intent.rec_score * decay;
-                if adjusted_score >= paper_intent_decay_min_score {
+                let allow_fill = if intent.immediate_market_fill {
+                    true
+                } else {
+                    // Time-decayed intent quality: later fills require stronger original rec score.
+                    let age_ratio =
+                        (intent.age as f64 / intent.max_age.max(1) as f64).clamp(0.0, 1.0);
+                    let decay = 1.0 - age_ratio;
+                    let adjusted_score = intent.rec_score * decay;
+                    adjusted_score >= paper_intent_decay_min_score
+                };
+                if allow_fill {
                     triggered = true;
                     entry_price = touch_entry_price;
                 }
@@ -983,6 +1037,13 @@ pub fn update_paper_registry(
         if triggered {
             registry.intents_triggered = registry.intents_triggered.saturating_add(1);
             let intent = registry.pending_intents.remove(j);
+            if intent.signal == SignalType::BUY {
+                registry.intents_triggered_buy =
+                    registry.intents_triggered_buy.saturating_add(1);
+            } else {
+                registry.intents_triggered_sell =
+                    registry.intents_triggered_sell.saturating_add(1);
+            }
             let intent_age_updates = symbol_linear_updates.saturating_sub(intent.intent_created_symbol_updates);
             eprintln!(
                 "[TRIGGER_METRICS] sym={} rec_id={} confirm_updates={} intent_age_updates={} intent_age_bars={}",
@@ -1034,33 +1095,64 @@ pub fn update_paper_registry(
             let avg_r_entry = paper_avg_bar_range(registry, symbol, bar_range);
             // TP uses the tighter of rolling vs entry bar range so TP can sit inside a typical one-bar move.
             let tp_vol_input = avg_r_entry.min(bar_range);
-            let sl_target = if paper_vol_sl {
-                paper_vol_sl_price(
-                    entry_price,
-                    is_long_entry,
-                    avg_r_entry,
-                    paper_vol_sl_mult,
-                    paper_vol_range_lo,
-                    paper_vol_range_hi,
-                )
+            // Mirrors `TRADE_SKETCH_SL_FRAC` / `TRADE_SKETCH_TP_FRAC` in `app.py`.
+            const SKETCH_SL_FRAC: f64 = 0.8;
+            const SKETCH_TP_FRAC: f64 = 1.5;
+            const SKETCH_MIN_RISK_FRAC: f64 = 0.0005;
+            if intent.immediate_market_fill
+                && intent.use_recommendation_tpsl
+                && intent.sketch_risk_span < entry_price * SKETCH_MIN_RISK_FRAC
+            {
+                // Defensive guard: skip stale/misaligned sketch intents that violate min-risk at fill time.
+                continue;
+            }
+            let (sl_target, tp_target) = if intent.immediate_market_fill
+                && intent.use_recommendation_tpsl
+                && intent.sketch_risk_span > 0.0
+            {
+                let r = intent.sketch_risk_span;
+                let e = entry_price;
+                if is_long_entry {
+                    (e - SKETCH_SL_FRAC * r, e + SKETCH_TP_FRAC * r)
+                } else {
+                    (e + SKETCH_SL_FRAC * r, e - SKETCH_TP_FRAC * r)
+                }
             } else {
-                intent.recommendation.sl_target
+                let sl = if intent.use_recommendation_tpsl {
+                    intent.recommendation.sl_target
+                } else if paper_vol_sl {
+                    paper_vol_sl_price(
+                        entry_price,
+                        is_long_entry,
+                        avg_r_entry,
+                        paper_vol_sl_mult,
+                        paper_vol_range_lo,
+                        paper_vol_range_hi,
+                    )
+                } else {
+                    intent.recommendation.sl_target
+                };
+                let tp = if intent.use_recommendation_tpsl {
+                    intent.recommendation.tp_target
+                } else if paper_vol_tp {
+                    paper_vol_tp_price(
+                        entry_price,
+                        is_long_entry,
+                        tp_vol_input,
+                        paper_vol_tp_mult,
+                        paper_vol_range_lo,
+                        paper_vol_tp_range_hi,
+                    )
+                } else {
+                    intent.recommendation.tp_target
+                };
+                (sl, tp)
             };
-            let tp_target = if paper_vol_tp {
-                paper_vol_tp_price(
-                    entry_price,
-                    is_long_entry,
-                    tp_vol_input,
-                    paper_vol_tp_mult,
-                    paper_vol_range_lo,
-                    paper_vol_tp_range_hi,
-                )
-            } else {
-                intent.recommendation.tp_target
-            };
+            let lock_tpsl_levels =
+                intent.immediate_market_fill && intent.use_recommendation_tpsl;
             registry.active_trades.push(ActiveTrade {
                 rec_id: intent.rec_id,
-                symbol: intent.symbol,
+                symbol: intent.symbol.clone(),
                 entry_price,
                 tp_target,
                 sl_target,
@@ -1098,7 +1190,29 @@ pub fn update_paper_registry(
                 peak_price: entry_price,
                 is_runner: false,
                 consensus: intent.consensus,
+                lock_tpsl_levels,
+                frozen_sl_target: sl_target,
+                frozen_tp_target: tp_target,
+                from_sketch: lock_tpsl_levels,
+                sketch_minute_bucket: minute_bucket_from_ts(ts),
             });
+            if lock_tpsl_levels {
+                println!(
+                    "[PAPER_SKETCH_FILL] {{\"symbol\":\"{}\",\"side\":\"{}\",\"entry\":{:.8},\"sl\":{:.8},\"tp\":{:.8},\"ts\":{}}}",
+                    intent.symbol,
+                    if is_long_entry { "LONG" } else { "SHORT" },
+                    entry_price,
+                    sl_target,
+                    tp_target,
+                    ts_to_ms(ts)
+                );
+                debug_assert!(sl_target != entry_price && tp_target != entry_price);
+                if is_long_entry {
+                    debug_assert!(tp_target > entry_price && sl_target < entry_price);
+                } else {
+                    debug_assert!(tp_target < entry_price && sl_target > entry_price);
+                }
+            }
         } else {
             j += 1;
         }
@@ -1118,6 +1232,16 @@ pub fn update_paper_registry(
         let mut exit_pnl = None;
         let mut exit_tag = "NONE";
         let is_long = trade.signal == SignalType::BUY;
+        let tp_level = if trade.lock_tpsl_levels {
+            trade.frozen_tp_target
+        } else {
+            trade.tp_target
+        };
+        let sl_level = if trade.lock_tpsl_levels {
+            trade.frozen_sl_target
+        } else {
+            trade.sl_target
+        };
         let bar_best = if is_long {
             (high - trade.entry_price) / trade.entry_price.max(1e-12)
         } else {
@@ -1160,6 +1284,7 @@ pub fn update_paper_registry(
         // Partial TP proxy: after a short hold and sufficient favorable move, lock a fraction of
         // volatility-scaled gains in stop level while keeping the trade alive for full TP window.
         if paper_partial_tp
+            && !trade.lock_tpsl_levels
             && !trade.partial_tp_done
             && trade.current_hold >= paper_partial_tp_min_hold
         {
@@ -1270,7 +1395,7 @@ pub fn update_paper_registry(
         let ladder_tp_enabled = paper_tp_ladder && paper_tp_ladder_allow_tp_at_t2 && stage2_hit;
         let mut stage1_applied = 0i32;
         let mut stage2_applied = 0i32;
-        if default_tpsl_path && paper_tp_ladder {
+        if default_tpsl_path && paper_tp_ladder && !trade.lock_tpsl_levels {
             let prev_sl = trade.sl_target;
             let lock1_price = if is_long {
                 trade.entry_price * (1.0 + paper_tp_ladder_lock1 * trade_tp_vol_unit)
@@ -1308,23 +1433,25 @@ pub fn update_paper_registry(
         // Default TP/SL path: MFE update -> strength-gated TP -> breakeven lock -> intrabar SL/TP.
         if default_tpsl_path && (!paper_tp_ladder || ladder_tp_enabled) {
             let tp_hit_pre = if is_long {
-                high >= trade.tp_target
+                high >= tp_level
             } else {
-                low <= trade.tp_target
+                low <= tp_level
             };
             tp_touch = tp_hit_pre as i32;
             let tp_has_strength = trade.max_pnl >= tp_strength_ret;
             tp_strength_hit = tp_has_strength as i32;
             // Strength-gated TP is only valid when TP target comes from the same vol unit.
             // If PAPER_VOL_TP is off (GA TP target), require actual TP touch.
-            let strength_gate_active = paper_tp_strength_gated && paper_vol_tp;
+            // Sketch-fixed TP/SL: allow TP on level touch without MFE strength (matches frozen levels).
+            let strength_gate_active =
+                paper_tp_strength_gated && paper_vol_tp && !trade.lock_tpsl_levels;
             let allow_tp = if strength_gate_active {
                 tp_has_strength || (paper_tp_use_touch_fallback && tp_hit_pre)
             } else {
                 tp_hit_pre
             };
             if tp_allowed_global && allow_tp {
-                let exit_price = apply_slippage(trade.tp_target, !is_long, trade.vol_bps);
+                let exit_price = apply_slippage(tp_level, !is_long, trade.vol_bps);
                 exit_pnl = Some(if is_long {
                     (exit_price - trade.entry_price) / trade.entry_price
                 } else {
@@ -1515,8 +1642,8 @@ pub fn update_paper_registry(
                 let raw_exit = resolve_intracandle_exit(
                     high,
                     low,
-                    trade.tp_target,
-                    trade.sl_target,
+                    tp_level,
+                    sl_level,
                     is_long,
                 );
                 if paper_tp_ladder && default_tpsl_path && !ladder_tp_enabled {
@@ -1525,7 +1652,7 @@ pub fn update_paper_registry(
                     {
                         let sl_only = matches!(exit_type, ExitType::StopLoss | ExitType::Ambiguous);
                         if sl_only {
-                            let exit_price = apply_slippage(trade.sl_target, !is_long, trade.vol_bps);
+                            let exit_price = apply_slippage(sl_level, !is_long, trade.vol_bps);
                             exit_pnl = Some(if is_long {
                                 (exit_price - trade.entry_price) / trade.entry_price
                             } else {
@@ -1547,7 +1674,7 @@ pub fn update_paper_registry(
                                 // Runners: TP fully disabled; trail precedence is applied earlier this bar.
                                 if tp_allowed_global {
                                     let exit_price = apply_slippage(
-                                        trade.tp_target,
+                                        tp_level,
                                         !is_long,
                                         trade.vol_bps,
                                     );
@@ -1561,10 +1688,10 @@ pub fn update_paper_registry(
                             }
                             ExitType::StopLoss => {
                                 let exit_price = apply_slippage(
-                                    trade.sl_target,
-                                    !is_long,
-                                    trade.vol_bps,
-                                );
+                                    sl_level,
+                                        !is_long,
+                                        trade.vol_bps,
+                                    );
                                 exit_pnl = Some(if is_long {
                                     (exit_price - trade.entry_price) / trade.entry_price
                                 } else {
@@ -1585,7 +1712,7 @@ pub fn update_paper_registry(
                 && trade.current_hold >= partial_tp_min_hold_bars
                 && partial_tp_fraction > 0.0
             {
-                let exit_price = apply_slippage(trade.tp_target, !is_long, trade.vol_bps);
+                let exit_price = apply_slippage(tp_level, !is_long, trade.vol_bps);
                 let partial_pnl = if is_long {
                     (exit_price - trade.entry_price) / trade.entry_price
                 } else {
@@ -1687,9 +1814,9 @@ pub fn update_paper_registry(
                 (0i32, 0i32)
             } else if default_tpsl_path {
                 let tp_pre = if is_long {
-                    high >= trade.tp_target
+                    high >= tp_level
                 } else {
-                    low <= trade.tp_target
+                    low <= tp_level
                 };
                 if tp_pre && (!paper_tp_ladder || ladder_tp_enabled) {
                     (1i32, 0i32)
@@ -1697,8 +1824,8 @@ pub fn update_paper_registry(
                     let raw_intrabar = resolve_intracandle_exit(
                         high,
                         low,
-                        trade.tp_target,
-                        trade.sl_target,
+                        tp_level,
+                        sl_level,
                         is_long,
                     );
                     let raw_intrabar = if paper_tp_ladder && !ladder_tp_enabled {
@@ -1731,8 +1858,8 @@ pub fn update_paper_registry(
                 let raw_intrabar = resolve_intracandle_exit(
                     high,
                     low,
-                    trade.tp_target,
-                    trade.sl_target,
+                    tp_level,
+                    sl_level,
                     is_long,
                 );
                 let intrabar =
@@ -1813,6 +1940,15 @@ pub fn update_paper_registry(
                 "[EXIT] type={} sym={} strategy={} pnl={:.6} dur={}",
                 exit_tag, trade.symbol, trade.strategy_id, pnl, trade.current_hold
             );
+            if trade.lock_tpsl_levels {
+                println!(
+                    "[PAPER_SKETCH_EXIT] {{\"symbol\":\"{}\",\"pnl\":{:.8},\"reason\":\"{}\",\"ts\":{}}}",
+                    trade.symbol,
+                    pnl,
+                    exit_tag,
+                    ts_to_ms(ts)
+                );
+            }
             let ret_at_exit = if trade.max_pnl > 1e-12 {
                 (pnl / trade.max_pnl).clamp(-10.0, 10.0)
             } else {
@@ -1922,6 +2058,20 @@ pub fn finalize_paper_registry(
             "[EXIT] type=FINALIZE_TIME sym={} strategy={} pnl={:.6} dur={}",
             trade.symbol, trade.strategy_id, pnl, trade.current_hold
         );
+        if trade.lock_tpsl_levels {
+            let ts_ms = registry
+                .timestamps
+                .last()
+                .copied()
+                .map(ts_to_ms)
+                .unwrap_or(0);
+            println!(
+                "[PAPER_SKETCH_EXIT] {{\"symbol\":\"{}\",\"pnl\":{:.8},\"reason\":\"FINALIZE_TIME\",\"ts\":{}}}",
+                trade.symbol,
+                pnl,
+                ts_ms
+            );
+        }
         let ret_at_exit = if trade.max_pnl > 1e-12 {
             (pnl / trade.max_pnl).clamp(-10.0, 10.0)
         } else {
@@ -2016,6 +2166,15 @@ pub fn close_active_trades_for_symbol(
             "[EXIT] type={} sym={} strategy={} pnl={:.6} dur={}",
             reason, trade.symbol, trade.strategy_id, pnl, trade.current_hold
         );
+        if trade.lock_tpsl_levels {
+            println!(
+                "[PAPER_SKETCH_EXIT] {{\"symbol\":\"{}\",\"pnl\":{:.8},\"reason\":\"{}\",\"ts\":{}}}",
+                trade.symbol,
+                pnl,
+                reason,
+                ts_to_ms(latest_candle.timestamp)
+            );
+        }
         let ret_at_exit = if trade.max_pnl > 1e-12 {
             (pnl / trade.max_pnl).clamp(-10.0, 10.0)
         } else {
@@ -2050,6 +2209,79 @@ pub fn close_active_trades_for_symbol(
             if trade.trailing_armed_seen { 1 } else { 0 },
             trade.exit_state,
             reason
+        );
+        registry.closed_observations.push(ClosedTradeObservation {
+            rank: trade.rank,
+            vol_bucket: paper_vol_bucket_from_bps(trade.vol_bps),
+            mfe: trade.max_pnl.max(0.0),
+            mae_abs: (-trade.min_pnl).max(0.0),
+            hold_bars: trade.current_hold,
+        });
+        registry.active_trades.remove(i);
+        closed += 1;
+    }
+    closed
+}
+
+pub fn close_active_sketch_trades_on_side_flip(
+    registry: &mut PaperRegistry,
+    symbol: &str,
+    new_signal: SignalType,
+    minute_bucket: i64,
+    latest_candle: &Candle,
+) -> usize {
+    let close = latest_candle.open as f64;
+    let mut closed = 0usize;
+    let mut i = 0usize;
+    while i < registry.active_trades.len() {
+        let trade = &registry.active_trades[i];
+        if trade.symbol != symbol
+            || !trade.from_sketch
+            || trade.sketch_minute_bucket != minute_bucket
+            || trade.signal == new_signal
+        {
+            i += 1;
+            continue;
+        }
+        let is_long = trade.signal == SignalType::BUY;
+        let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+        let pnl_raw = if is_long {
+            (exit_price - trade.entry_price) / trade.entry_price.max(1e-9)
+        } else {
+            (trade.entry_price - exit_price) / trade.entry_price.max(1e-9)
+        };
+        let pnl = trade.realized_partial_pnl + (trade.remaining_fraction * pnl_raw);
+
+        registry.equity *= 1.0 + (pnl * trade.size);
+        if registry.equity > registry.peak_equity {
+            registry.peak_equity = registry.equity;
+            registry.rolling_peak = registry.equity;
+        }
+        let dd = (registry.peak_equity - registry.equity) / registry.peak_equity.max(1e-9);
+        if dd > registry.max_drawdown {
+            registry.max_drawdown = dd;
+        }
+        registry.closed_count += 1;
+        if pnl > 0.0 {
+            registry.wins += 1;
+        } else {
+            registry.losses += 1;
+        }
+        registry.pnl_history.push(pnl);
+        *registry.strategy_pnl.entry(trade.strategy_id).or_insert(0.0) += pnl;
+        *registry.strategy_counts.entry(trade.strategy_id).or_insert(0) += 1;
+        let r_idx = (trade.rank * 10.0).floor().clamp(0.0, 9.0) as usize;
+        registry.rank_pnl_sum[r_idx] += pnl;
+        registry.rank_count[r_idx] += 1;
+        println!(
+            "[EXIT] type=SIDE_FLIP sym={} strategy={} pnl={:.6} dur={}",
+            trade.symbol, trade.strategy_id, pnl, trade.current_hold
+        );
+        println!(
+            "[PAPER_SKETCH_EXIT] {{\"symbol\":\"{}\",\"pnl\":{:.8},\"reason\":\"SIDE_FLIP\",\"ts\":{}}}",
+            trade.symbol,
+            pnl,
+            ts_to_ms(latest_candle.timestamp)
         );
         registry.closed_observations.push(ClosedTradeObservation {
             rank: trade.rank,

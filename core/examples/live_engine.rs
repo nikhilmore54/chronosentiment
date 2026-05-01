@@ -1,8 +1,9 @@
 use chronosentiment_core::ga::{
     evaluate_current_status, load_elite_strategies, strategy_evaluation_for_live_reco_snapshot,
-    update_paper_registry, DecisionReport, GaConfig, PaperRegistry, Strategy, SignalType,
+    update_paper_registry, component_diagnostic_snapshot, reset_component_diagnostic_counters,
+    DecisionReport, GaConfig, PaperRegistry, Strategy, SignalType,
     PercentileBuffer, DistributionStats, RankStats, TradeIntent, TradeRecommendation, finalize_paper_registry,
-    close_active_trades_for_symbol,
+    close_active_trades_for_symbol, close_active_sketch_trades_on_side_flip,
 };
 use chronosentiment_core::reco::{RecommendationEngine, RecommendationResult, RecoConfig};
 use chronosentiment_core::market_adapter::Candle;
@@ -59,6 +60,21 @@ struct PendingConfirmation {
     base_price: f64,
     base_score: f64,
     base_vol: f64,
+}
+
+#[derive(Default)]
+struct SideCounters {
+    raw_bullish_events: u64,
+    raw_bearish_events: u64,
+    raw_wait_events: u64,
+    buy_candidates: u64,
+    sell_candidates: u64,
+    buy_pass: u64,
+    sell_pass: u64,
+    buy_final: u64,
+    sell_final: u64,
+    buy_intents_created: u64,
+    sell_intents_created: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +137,62 @@ fn rolling_close_std(history: &[Candle], window: usize) -> f64 {
         .sum::<f64>()
         / n;
     var.sqrt()
+}
+
+fn median_f64(vals: &mut [f64]) -> f64 {
+    if vals.is_empty() {
+        return 0.0;
+    }
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n = vals.len();
+    if n % 2 == 1 {
+        vals[n / 2]
+    } else {
+        (vals[n / 2 - 1] + vals[n / 2]) / 2.0
+    }
+}
+
+/// Wall-clock minute bucket for dedup: supports ms (>1e10) or second timestamps.
+fn sketch_minute_bucket(ts: u64) -> i64 {
+    let t = ts as i64;
+    if ts > 10_000_000_000u64 {
+        t / 60_000 // ms → minute
+    } else {
+        t / 60 // seconds → minute
+    }
+}
+
+/// Entry (median of last K closes) and risk (max high − min low over last N bars), aligned with `app.py` sketch.
+fn trade_sketch_prices_from_candles(history: &[Candle], price_scale: f64) -> Option<(f64, f64)> {
+    // Same as TRADE_MIN_RISK_FRAC in app.py (0.05% of entry).
+    const MIN_RISK_FRAC: f64 = 0.0005;
+    const MEDIAN_K: usize = 3;
+    const RISK_BARS: usize = 5;
+    if history.is_empty() {
+        return None;
+    }
+    let take_m = MEDIAN_K.min(history.len());
+    let mut closes: Vec<f64> = history[history.len() - take_m..]
+        .iter()
+        .map(|c| c.close as f64 / price_scale)
+        .collect();
+    let entry = median_f64(&mut closes);
+    if !entry.is_finite() || entry <= 0.0 {
+        return None;
+    }
+    let n = RISK_BARS.min(history.len());
+    let slice = &history[history.len() - n..];
+    let mut hi = f64::NEG_INFINITY;
+    let mut lo = f64::INFINITY;
+    for c in slice {
+        hi = hi.max(c.high as f64 / price_scale);
+        lo = lo.min(c.low as f64 / price_scale);
+    }
+    let risk = hi - lo;
+    if !risk.is_finite() || risk <= 0.0 || risk < entry * MIN_RISK_FRAC {
+        return None;
+    }
+    Some((entry, risk))
 }
 
 /// Deterministic fitness proxy for the reco population layer (edge + feas + paper perf).
@@ -258,6 +330,8 @@ fn main() {
     let mut score_history: HashMap<String, VecDeque<f64>> = HashMap::new();
     let mut symbol_update_counts: HashMap<String, usize> = HashMap::new();
     let mut pending_confirmations: HashMap<String, PendingConfirmation> = HashMap::new();
+    let mut side_counters = SideCounters::default();
+    reset_component_diagnostic_counters();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
     let mut consistency_counts: HashMap<String, usize> = HashMap::new();
     
@@ -267,6 +341,8 @@ fn main() {
     let mut next_rec_id: u64 = 1;
     let mut pending_meta: HashMap<String, VecDeque<RecMeta>> = HashMap::new();
     let mut active_meta: HashMap<String, VecDeque<RecMeta>> = HashMap::new();
+    // Per symbol: last sketch minute bucket and side (same-minute side flip allowed; duplicate same side blocked).
+    let mut sketch_emit_state: HashMap<String, (i64, SignalType)> = HashMap::new();
     let mut next_rank_stats = RankStats::zeroed();
     let mut next_rank_obs = 0usize;
     let rankstats_commit_trades = std::env::var("RANKSTATS_COMMIT_TRADES")
@@ -353,6 +429,9 @@ fn main() {
 
     println!("📡 Listening for candles...");
     println!(
+        "   Paper bridge: PAPER_SKETCH_INTENTS=1 → sketch overlay + fill at first post-confirm bar open; minute dedup uses ms timestamps when ts>1e10 else seconds."
+    );
+    println!(
         "   Optional gates: LIVE_GATE_EDGE_STABILITY_MIN=, LIVE_GATE_CONF_MIN=, LIVE_GATE_RECO_STABILITY_MIN= (reco S), LIVE_GATE_RECO_AGREEMENT_GLOBAL_MIN= (reco G), LIVE_GATE_RECO_FITNESS_MIN= (medoid fitness); POOL_DEBUG=1 / RECO_DEBUG=1"
     );
     println!(
@@ -369,6 +448,28 @@ fn main() {
         if line.trim().is_empty() { continue; }
         
         let incoming: Vec<SymbolicCandle> = match serde_json::from_str(&line) { Ok(c) => c, Err(_) => continue };
+        let batch_ts = incoming.first().map(|c| c.timestamp).unwrap_or(0);
+        let mut symbol_ts_parts: Vec<String> = incoming
+            .iter()
+            .map(|c| format!("{}:{}", c.symbol, c.timestamp))
+            .collect();
+        symbol_ts_parts.sort();
+        if !symbol_ts_parts.is_empty() {
+            println!("[SYMBOL_TS] {}", symbol_ts_parts.join(","));
+        }
+        let mut symbol_price_parts: Vec<String> = incoming
+            .iter()
+            .map(|c| {
+                let px = format!("{:.12}", c.close);
+                let px = px.trim_end_matches('0').trim_end_matches('.');
+                let px = if px.is_empty() { "0" } else { px };
+                format!("{}:{}", c.symbol.trim(), px)
+            })
+            .collect();
+        symbol_price_parts.sort();
+        if !symbol_price_parts.is_empty() {
+            println!("[SYMBOL_PRICE] {}", symbol_price_parts.join(","));
+        }
         awr_windows_total = awr_windows_total.saturating_add(1);
         let line_start_triggered = paper.intents_triggered;
         let mut recommendations: Vec<RecommendationCandidate> = Vec::new();
@@ -579,6 +680,11 @@ fn main() {
                     let last_sig = last_signals.get(symbol).cloned().unwrap_or(SignalType::WAIT);
                     let cons = consistency_counts.get(symbol).cloned().unwrap_or(0);
                     let report = evaluate_current_status(strat, history, &config, symbol, last_sig, cons, &current_stats);
+                    match report.signal {
+                        SignalType::BUY => side_counters.raw_bullish_events = side_counters.raw_bullish_events.saturating_add(1),
+                        SignalType::SELL => side_counters.raw_bearish_events = side_counters.raw_bearish_events.saturating_add(1),
+                        SignalType::WAIT => side_counters.raw_wait_events = side_counters.raw_wait_events.saturating_add(1),
+                    }
                     if strat_probe && total_processed % 100 == 0 {
                         println!(
                             "[STRAT_OUT] sym={} strat_id={} raw_edge={:.6} feas={:.3} active={} has_reco={}",
@@ -1084,6 +1190,11 @@ fn main() {
         let mut batch_stage1_pass = 0usize;
         let mut batch_admitted = 0usize;
         for cand in &recommendations {
+            match cand.signal {
+                SignalType::BUY => side_counters.buy_candidates = side_counters.buy_candidates.saturating_add(1),
+                SignalType::SELL => side_counters.sell_candidates = side_counters.sell_candidates.saturating_add(1),
+                SignalType::WAIT => {}
+            }
             let duplicate_live = paper.active_trades.iter().any(|t| t.symbol == cand.symbol)
                 || paper.pending_intents.iter().any(|i| i.symbol == cand.symbol);
             let candidate_gate =
@@ -1094,6 +1205,11 @@ fn main() {
             let blocked_by_pending = pending_confirmations.contains_key(&cand.symbol);
             if !candidate_gate || duplicate_live || blocked_by_pending {
                 continue;
+            }
+            match cand.signal {
+                SignalType::BUY => side_counters.buy_pass = side_counters.buy_pass.saturating_add(1),
+                SignalType::SELL => side_counters.sell_pass = side_counters.sell_pass.saturating_add(1),
+                SignalType::WAIT => {}
             }
             batch_admitted = batch_admitted.saturating_add(1);
             let update_count = *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
@@ -1194,7 +1310,68 @@ fn main() {
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| a.0.symbol.cmp(&b.0.symbol))
         });
-        for (cand, confirm_delta_symbol_updates) in confirmed.into_iter().take(top_n) {
+        let paper_sketch_intents = env_flag("PAPER_SKETCH_INTENTS");
+        for (mut cand, confirm_delta_symbol_updates) in confirmed.into_iter().take(top_n) {
+            let mut immediate_market_fill = false;
+            let mut use_recommendation_tpsl = false;
+            let mut sketch_risk_span: f64 = 0.0;
+            if paper_sketch_intents {
+                if let Some(hist) = history_pipes.get(&cand.symbol) {
+                    if let Some((entry, risk)) = trade_sketch_prices_from_candles(hist, PRICE_SCALE) {
+                        let minute_bucket = sketch_minute_bucket(batch_ts);
+                        let sym_key = cand.symbol.clone();
+                        let allow_sketch = match sketch_emit_state.get(&sym_key) {
+                            Some((b, prev_side)) if *b == minute_bucket => *prev_side != cand.signal,
+                            _ => true,
+                        };
+                        if allow_sketch {
+                            sketch_emit_state.insert(sym_key.clone(), (minute_bucket, cand.signal));
+                            paper.pending_intents.retain(|i| {
+                                i.symbol != cand.symbol || !i.immediate_market_fill
+                            });
+                            if let Some(latest) = hist.last() {
+                                close_active_sketch_trades_on_side_flip(
+                                    &mut paper,
+                                    &cand.symbol,
+                                    cand.signal,
+                                    minute_bucket,
+                                    latest,
+                                );
+                            }
+                            let is_long = cand.signal == SignalType::BUY;
+                            let (sl, tp) = if is_long {
+                                (entry - 0.8 * risk, entry + 1.5 * risk)
+                            } else {
+                                (entry + 0.8 * risk, entry - 1.5 * risk)
+                            };
+                            cand.recommendation.entry_price = entry;
+                            cand.recommendation.sl_target = sl;
+                            cand.recommendation.tp_target = tp;
+                            let hb = cand.consistency.saturating_mul(2).clamp(3, 15);
+                            cand.recommendation.holding_bars = hb;
+                            cand.recommendation.signal = cand.signal;
+                            immediate_market_fill = true;
+                            use_recommendation_tpsl = true;
+                            sketch_risk_span = risk;
+                            println!(
+                                "[PAPER_SKETCH_INTENT] sym={} median_entry={:.6} risk={:.6} sl={:.6} tp={:.6} hold_bars={} ts_bucket={} (fill=reopen-anchored)",
+                                cand.symbol,
+                                entry,
+                                risk,
+                                sl,
+                                tp,
+                                hb,
+                                minute_bucket
+                            );
+                        }
+                    }
+                }
+            }
+            match cand.signal {
+                SignalType::BUY => side_counters.buy_final = side_counters.buy_final.saturating_add(1),
+                SignalType::SELL => side_counters.sell_final = side_counters.sell_final.saturating_add(1),
+                SignalType::WAIT => {}
+            }
             last_signals.insert(cand.symbol.clone(), cand.signal);
             consistency_counts.insert(cand.symbol.clone(), cand.consistency);
             let momentum_3 = history_pipes
@@ -1309,8 +1486,16 @@ fn main() {
                 },
                 intent_created_symbol_updates,
                 confirm_delta_symbol_updates,
+                immediate_market_fill,
+                use_recommendation_tpsl,
+                sketch_risk_span,
             });
             paper.intents_created = paper.intents_created.saturating_add(1);
+            match cand.signal {
+                SignalType::BUY => side_counters.buy_intents_created = side_counters.buy_intents_created.saturating_add(1),
+                SignalType::SELL => side_counters.sell_intents_created = side_counters.sell_intents_created.saturating_add(1),
+                SignalType::WAIT => {}
+            }
         }
         if paper.intents_triggered > line_start_triggered {
             awr_windows_triggered = awr_windows_triggered.saturating_add(1);
@@ -1378,5 +1563,32 @@ fn main() {
         avg_pnl,
         total_pnl,
         pnl_per_trigger
+    );
+    eprintln!(
+        "[RAW_TENDENCY] bullish_events={} bearish_events={} wait_events={}",
+        side_counters.raw_bullish_events,
+        side_counters.raw_bearish_events,
+        side_counters.raw_wait_events
+    );
+    let component_diag = component_diagnostic_snapshot();
+    eprintln!(
+        "[COMPONENT_DIAGNOSTIC] momentum_neg={} composite_neg={} score_neg={} near_bearish={}",
+        component_diag.momentum_neg_count,
+        component_diag.composite_neg_count,
+        component_diag.score_neg_count,
+        component_diag.near_bearish_count
+    );
+    eprintln!(
+        "[SIDE_DISTRIBUTION] candidates_buy={} candidates_sell={} pass_buy={} pass_sell={} final_buy={} final_sell={} intents_created_buy={} intents_created_sell={} intents_triggered_buy={} intents_triggered_sell={}",
+        side_counters.buy_candidates,
+        side_counters.sell_candidates,
+        side_counters.buy_pass,
+        side_counters.sell_pass,
+        side_counters.buy_final,
+        side_counters.sell_final,
+        side_counters.buy_intents_created,
+        side_counters.sell_intents_created,
+        paper.intents_triggered_buy,
+        paper.intents_triggered_sell
     );
 }
