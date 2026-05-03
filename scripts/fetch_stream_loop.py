@@ -52,15 +52,44 @@ def main() -> int:
         file=sys.stderr,
     )
 
+    first_run = True
     while True:
         if args.max_steps > 0 and steps >= args.max_steps:
             print(f"[STREAM] stop max_steps={args.max_steps}", file=sys.stderr)
             return 0
 
+        if first_run:
+            # Warmup: Emit all fetched candles to fill engine history
+            for symbol in symbols:
+                try:
+                    candles = fetch_latest(symbol, args.interval, args.n_candles)
+                    candles = sorted(candles, key=lambda c: int(c.get("timestamp", 0)))
+                    for c in candles:
+                        ts = int(c["timestamp"])
+                        if ts <= last_ts_by_symbol[symbol]:
+                            continue
+                        last_ts_by_symbol[symbol] = ts
+                        batch_item = {
+                            "symbol": symbol,
+                            "timestamp": ts,
+                            "open": float(c["open"]),
+                            "high": float(c["high"]),
+                            "low": float(c["low"]),
+                            "close": float(c["close"]),
+                            "volume": float(c["volume"]),
+                        }
+                        # Emit individual candle for warmup processing
+                        print(json.dumps([batch_item]), flush=True)
+                except Exception as e:
+                    print(f"[STREAM] warmup_error symbol={symbol} err={e}", file=sys.stderr)
+            first_run = False
+            print(f"[STREAM] warmup complete", file=sys.stderr, flush=True)
+            continue
+
         batch: list[dict] = []
         for symbol in symbols:
             try:
-                candles = fetch_latest(symbol, args.interval, args.n_candles)
+                candles = fetch_latest(symbol, args.interval, 3) # Regular polling
             except Exception as e:
                 print(f"[STREAM] fetch_error symbol={symbol} err={e}", file=sys.stderr)
                 continue
@@ -76,27 +105,23 @@ def main() -> int:
             prev_ts = int(last_ts_by_symbol.get(symbol, 0))
             if latest_ts > prev_ts:
                 status = "new_candle"
-            elif latest_ts == prev_ts:
-                status = "same_candle_snapshot"
+                last_ts_by_symbol[symbol] = latest_ts
+                batch.append(
+                    {
+                        "symbol": symbol,
+                        "timestamp": latest_ts,
+                        "open": float(latest["open"]),
+                        "high": float(latest["high"]),
+                        "low": float(latest["low"]),
+                        "close": float(latest["close"]),
+                        "volume": float(latest["volume"]),
+                    }
+                )
             else:
-                status = "backfill_snapshot"
-            last_ts_by_symbol[symbol] = max(prev_ts, latest_ts)
-            batch.append(
-                {
-                    "symbol": symbol,
-                    "timestamp": latest_ts,
-                    "open": float(latest["open"]),
-                    "high": float(latest["high"]),
-                    "low": float(latest["low"]),
-                    "close": float(latest["close"]),
-                    "volume": float(latest["volume"]),
-                }
-            )
-            print(
-                f"[STREAM] symbol={symbol} ts={latest_ts} status={status}",
-                file=sys.stderr,
-                flush=True,
-            )
+                status = "same_candle_snapshot"
+            
+            # (Optional) Log status
+            # print(f"[STREAM] symbol={symbol} ts={latest_ts} status={status}", file=sys.stderr, flush=True)
 
         now = datetime.now().strftime("%H:%M:%S")
         if batch:

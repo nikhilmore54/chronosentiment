@@ -31,6 +31,18 @@ COMP_RE = re.compile(
     r"\[COMPONENT_DIAGNOSTIC\].*?"
     r"momentum_neg=(\d+)\s+composite_neg=(\d+)\s+score_neg=(\d+)\s+near_bearish=(\d+)"
 )
+DIAG_RE = re.compile(
+    r"\[DIAG\].*?"
+    r"edge=([-+]?\d*\.?\d+)\s+conf=([-+]?\d*\.?\d+).*?"
+    r"voters=(\d+)\s+p90=([-+]?\d*\.?\d+).*?"
+    r"rej:no_reco=(\d+)\s+low_edge=(\d+)\s+low_feas=(\d+)"
+)
+EDGE_PIPE_RE = re.compile(
+    r"\[EDGE_PIPE\].*?"
+    r"raw_edge=([-+]?\d*\.?\d+)\s+capture_prob=([-+]?\d*\.?\d+)\s+"
+    r"expected_realized_edge=([-+]?\d*\.?\d+)\s+edge_gate=([-+]?\d*\.?\d+)\s+"
+    r"edge_min=([-+]?\d*\.?\d+)"
+)
 SYMBOL_TS_RE = re.compile(r"\[SYMBOL_TS\]\s+(.+)$")
 SYMBOL_PRICE_RE = re.compile(r"\[SYMBOL_PRICE\]\s+(.+)$")
 REC_OUTCOME_RE = re.compile(r"\[REC_OUTCOME\].*?\ssym=([^\s]+).*?\spnl=([-+]?\d*\.?\d+)")
@@ -38,9 +50,17 @@ REC_OUTCOME_RE = re.compile(r"\[REC_OUTCOME\].*?\ssym=([^\s]+).*?\spnl=([-+]?\d*
 
 def parse_log(path: Path) -> dict[str, Any] | None:
     raw = side = comp = None
+    diag_last: tuple[float, float, int, float, int, int, int] | None = None
     symbol_timestamps: dict[str, int] = {}
     symbol_prices: dict[str, float] = {}
     ticker_trade_summary: dict[str, dict[str, Any]] = {}
+    symbol_ts_count = 0
+    diag_lines = 0
+    diag_nonzero = 0
+    diag_low_edge_sum = 0
+    edge_pipe_last: tuple[float, float, float, float, float] | None = None
+    edge_pipe_lines = 0
+    edge_pipe_nonzero = 0
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             m = SYMBOL_PRICE_RE.search(line)
@@ -60,6 +80,7 @@ def parse_log(path: Path) -> dict[str, Any] | None:
                         continue
             m = SYMBOL_TS_RE.search(line)
             if m:
+                symbol_ts_count += 1
                 payload = m.group(1).strip()
                 for part in payload.split(","):
                     part = part.strip()
@@ -100,18 +121,60 @@ def parse_log(path: Path) -> dict[str, Any] | None:
                     s["wins"] += 1
                 else:
                     s["losses"] += 1
-            if raw is None:
-                m = RAW_RE.search(line)
-                if m:
-                    raw = tuple(map(int, m.groups()))
-            if side is None:
-                m = SIDE_RE.search(line)
-                if m:
-                    side = tuple(map(int, m.groups()))
-            if comp is None:
-                m = COMP_RE.search(line)
-                if m:
-                    comp = tuple(map(int, m.groups()))
+            m = RAW_RE.search(line)
+            if m:
+                raw = tuple(map(int, m.groups()))
+            m = SIDE_RE.search(line)
+            if m:
+                side = tuple(map(int, m.groups()))
+            m = COMP_RE.search(line)
+            if m:
+                comp = tuple(map(int, m.groups()))
+            m = DIAG_RE.search(line)
+            if m:
+                try:
+                    edge = float(m.group(1))
+                    conf = float(m.group(2))
+                    voters = int(m.group(3))
+                    p90 = float(m.group(4))
+                    rej_no_reco = int(m.group(5))
+                    low_edge = int(m.group(6))
+                    low_feas = int(m.group(7))
+                    diag_last = (
+                        edge,
+                        conf,
+                        voters,
+                        p90,
+                        rej_no_reco,
+                        low_edge,
+                        low_feas,
+                    )
+                    diag_lines += 1
+                    diag_low_edge_sum += low_edge
+                    if edge > 0.0 or conf > 0.0 or voters > 0:
+                        diag_nonzero += 1
+                except ValueError:
+                    pass
+            m = EDGE_PIPE_RE.search(line)
+            if m:
+                try:
+                    raw_edge = float(m.group(1))
+                    capture_prob = float(m.group(2))
+                    expected_realized_edge = float(m.group(3))
+                    edge_gate = float(m.group(4))
+                    edge_min = float(m.group(5))
+                    edge_pipe_last = (
+                        raw_edge,
+                        capture_prob,
+                        expected_realized_edge,
+                        edge_gate,
+                        edge_min,
+                    )
+                    edge_pipe_lines += 1
+                    if raw_edge > 0.0 or expected_realized_edge > 0.0:
+                        edge_pipe_nonzero += 1
+                except ValueError:
+                    pass
     has_ticker_level = bool(symbol_timestamps) or bool(ticker_trade_summary)
     if not (raw and side and comp):
         if not has_ticker_level:
@@ -161,7 +224,27 @@ def parse_log(path: Path) -> dict[str, Any] | None:
             "score_neg": score_neg,
             "near_bearish": near_bearish,
         },
+        "diag_signal": {
+            "edge": diag_last[0] if diag_last is not None else 0.0,
+            "conf": diag_last[1] if diag_last is not None else 0.0,
+            "voters": diag_last[2] if diag_last is not None else 0,
+            "p90": diag_last[3] if diag_last is not None else 0.0,
+            "rej_no_reco": diag_last[4] if diag_last is not None else 0,
+            "low_edge": diag_last[5] if diag_last is not None else 0,
+            "low_feas": diag_last[6] if diag_last is not None else 0,
+            "diag_lines": diag_lines,
+            "diag_nonzero": diag_nonzero,
+            "diag_low_edge_sum": diag_low_edge_sum,
+            "edge_pipe_lines": edge_pipe_lines,
+            "edge_pipe_nonzero": edge_pipe_nonzero,
+            "raw_edge": edge_pipe_last[0] if edge_pipe_last is not None else 0.0,
+            "capture_prob": edge_pipe_last[1] if edge_pipe_last is not None else 0.0,
+            "expected_realized_edge": edge_pipe_last[2] if edge_pipe_last is not None else 0.0,
+            "edge_gate": edge_pipe_last[3] if edge_pipe_last is not None else 0.0,
+            "edge_min": edge_pipe_last[4] if edge_pipe_last is not None else 0.0,
+        },
         "symbol_timestamps": symbol_timestamps,
+        "symbol_ts_count": symbol_ts_count,
         "symbol_prices": symbol_prices,
         "ticker_trade_summary": ticker_trade_summary,
         "near_bearish_ratio": near_bearish / (bullish + 1),
@@ -226,6 +309,7 @@ def collect_diagnostic_logs(
 
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(rows)
+    total_slices = sum(int(r.get("symbol_ts_count", 0) or 0) for r in rows)
     near_offsets = sum(1 for r in rows if r["component_diagnostic"]["near_bearish"] > 0)
     bearish_offsets = sum(1 for r in rows if r["raw_tendency"]["bearish_events"] > 0)
     sell_cand_offsets = sum(1 for r in rows if r["side_distribution"]["candidates_sell"] > 0)
@@ -242,6 +326,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "files_parsed": n,
+        "total_slices": total_slices,
         "offsets_with_near_bearish": near_offsets,
         "offsets_with_bearish_events": bearish_offsets,
         "offsets_with_sell_candidates": sell_cand_offsets,

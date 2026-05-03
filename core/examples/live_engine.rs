@@ -12,6 +12,11 @@ use serde::{Deserialize, Serialize};
 use std::io::{self, BufRead};
 use std::collections::{HashMap, VecDeque};
 use rand::prelude::*;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const PRICE_SCALE: f64 = 10000.0;
 const BASE_POSITION_SIZE: f64 = 0.05; 
@@ -27,41 +32,44 @@ struct SymbolicCandle {
     pub volume: f64,
 }
 
-#[derive(Debug, Deserialize)]
+use std::sync::Mutex;
+
+#[derive(Debug, Deserialize, Serialize)]
 struct GovernorControl {
     pub multiplier: f64,
     pub gate_open: bool,
     pub ts: u64,
 }
 
-fn load_governor_multiplier() -> f64 {
-    let path = "analysis/real_live/governor_state.json";
-    let data = match std::fs::read_to_string(path) {
-        Ok(s) => s,
-        Err(_) => return 0.0, // Default to Safe Observation
-    };
-    
-    let gov: GovernorControl = match serde_json::from_str(&data) {
-        Ok(g) => g,
-        Err(_) => return 0.0,
-    };
-    
-    // Safety check: Tight Staleness guard (10s) = Halt
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    
-    if now > gov.ts + 10 {
-        return 0.0;
+/// Shared safety state for decoupling governor from data loop.
+struct SafetyState {
+    pub gov_mult: Arc<Mutex<f64>>,
+    pub execution_enabled: Arc<AtomicBool>,
+}
+
+impl SafetyState {
+    fn new() -> Self {
+        Self {
+            gov_mult: Arc::new(Mutex::new(1.0)), // Default to 1.0 until first read
+            execution_enabled: Arc::new(AtomicBool::new(true)),
+        }
     }
-    
-    if !gov.gate_open {
-        return 0.0;
+
+    fn update(&self, mult: f64, enabled: bool) {
+        {
+            let mut gm = self.gov_mult.lock().unwrap();
+            *gm = mult;
+        }
+        self.execution_enabled.store(enabled, Ordering::Relaxed);
     }
-    
-    // Zero-Trust Clamp
-    gov.multiplier.clamp(0.0, 1.0)
+
+    fn get_multiplier(&self) -> f64 {
+        *self.gov_mult.lock().unwrap()
+    }
+
+    fn is_halted(&self) -> bool {
+        !self.execution_enabled.load(Ordering::Relaxed)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -589,7 +597,58 @@ fn main() {
     let mut cand_stage1_pass_sum = 0usize;
     let mut cand_admitted_sum = 0usize;
 
-    println!("📡 Listening for candles...");
+    // --- SAFETY & DATA DECOUPLING ---
+    let safety = Arc::new(SafetyState::new());
+    let (tx, rx) = mpsc::channel::<String>();
+    
+    // Thread 1: Governor Polling (200ms cadence)
+    let s_thread = Arc::clone(&safety);
+    thread::spawn(move || {
+        let path = "analysis/real_live/governor_state.json";
+        loop {
+            let (mult, enabled) = match std::fs::read_to_string(path) {
+                Ok(data) => {
+                    match serde_json::from_str::<GovernorControl>(&data) {
+                        Ok(gov) => {
+                            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                            let stale = now > gov.ts + 10;
+                            let halt = !gov.gate_open || stale;
+                            if halt {
+                                (0.0, false)
+                            } else {
+                                (gov.multiplier.clamp(0.0, 1.0), true)
+                            }
+                        }
+                        Err(_) => (0.0, false),
+                    }
+                }
+                Err(_) => (0.0, false),
+            };
+            
+            let was_enabled = s_thread.execution_enabled.load(Ordering::Relaxed);
+            s_thread.update(mult, enabled);
+            
+            if !enabled && was_enabled {
+                println!("[SAFETY] HALT enforced (gov_mult=0.00)");
+            } else if enabled && !was_enabled {
+                println!("[SAFETY] Recovery active (gov_mult={:.2})", mult);
+            }
+            
+            thread::sleep(Duration::from_millis(200));
+        }
+    });
+
+    // Thread 2: Stdin Reader (Non-blocking feed)
+    thread::spawn(move || {
+        let stdin = io::stdin();
+        for line in stdin.lock().lines() {
+            if let Ok(l) = line {
+                if tx.send(l).is_err() { break; }
+            }
+        }
+    });
+
+    println!("📡 Listening for candles (Async Safety Loop Active)...");
     println!(
         "   Paper bridge: PAPER_SKETCH_INTENTS=1 → sketch overlay + fill at first post-confirm bar open; minute dedup uses ms timestamps when ts>1e10 else seconds."
     );
@@ -608,8 +667,32 @@ fn main() {
     let mut awr_windows_with_candidates: u64 = 0;
     let mut awr_windows_triggered: u64 = 0;
 
-    for line in stdin.lock().lines() {
-        let line = match line { Ok(l) => l, Err(_) => break };
+    loop {
+        // 1. Safety Heartbeat & Intent Purge
+        if safety.is_halted() {
+            if !paper.pending_intents.is_empty() {
+                println!("[SAFETY] Clearing {} pending intents due to Governor HALT.", paper.pending_intents.len());
+                paper.pending_intents.clear();
+            }
+        }
+
+        // 2. Data Ingestion (Timeout enables time-based safety enforcement)
+        let line = match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(l) => l,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if safety.is_halted() {
+                    println!("[GATE_REJECT] Governor HALT active → skipping tick");
+                }
+                continue; // 10Hz safety heartbeat
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        };
+
+        if safety.is_halted() {
+            println!("[GATE_REJECT] Governor HALT active → skipping tick");
+            continue;
+        }
+
         if line.trim().is_empty() { continue; }
         
         let incoming: Vec<SymbolicCandle> = match serde_json::from_str(&line) { Ok(c) => c, Err(_) => continue };
@@ -1484,7 +1567,7 @@ fn main() {
                     let final_meta_i = u8::from(
                         pass_edge_stability_eff && pass_conf_floor && pass_reco_structure,
                     );
-                    let active_mult = load_governor_multiplier();
+                    let active_mult = safety.get_multiplier();
                     println!(
                         "[DIAG] sym={} edge={:.6} conf={:.2} gov_mult={:.2} edge_stab={:.3} reco_S={:.3} reco_G={:.3} reco_F={:.3} pass_edge={} pass_conf={} pass_reco={} FINAL={} feas={:.2} voters={} p90={:.6} rej:no_reco={} low_edge={} low_feas={}",
                         symbol,
@@ -1594,7 +1677,7 @@ fn main() {
                 if outer_reco_gate && is_high_conf && is_capturable {
                     if let Some((mut reco, sig, cons)) = best_reco_emit {
                         if sig == final_sig {
-                            let gov_mult = load_governor_multiplier();
+                            let gov_mult = safety.get_multiplier();
                             let raw_size = BASE_POSITION_SIZE * (reco.rank * reco.rank) * (conf * 1.5).clamp(0.5, 2.0);
                             reco.position_size = raw_size * gov_mult;
                             
@@ -2199,45 +2282,50 @@ fn main() {
                 });
             let intent_created_symbol_updates =
                 *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
-            let gov_mult = load_governor_multiplier();
+            let gov_mult = safety.get_multiplier();
+            let applied = gov_mult > 0.0;
             println!(
                 "[EXECUTION] sym={} size={:.4} gov_mult={:.2} entry={:.6} tp={:.6} sl={:.6} applied={}", 
-                cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, (gov_mult > 0.0)
+                cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, applied
             );
-            paper.pending_intents.push(TradeIntent {
-                rec_id: cand.rec_id,
-                symbol: cand.symbol.clone(),
-                signal: cand.recommendation.signal,
-                reference_price: cand.recommendation.entry_price,
-                recommendation: cand.recommendation,
-                strategy_id: cand.primary_id,
-                rec_score: cand.score,
-                rec_feas: cand.feas,
-                rec_conf: cand.conf,
-                rec_voters: cand.voters,
-                momentum_3,
-                vol_5,
-                score_std_5,
-                consensus: None,
-                age: 0,
-                max_age: if cand.voters >= intent_high_voters_threshold
-                    && cand.conf >= intent_high_conf_threshold
-                {
-                    intent_max_age_strong
-                } else {
-                    intent_max_age_base
-                },
-                intent_created_symbol_updates,
-                confirm_delta_symbol_updates,
-                immediate_market_fill,
-                use_recommendation_tpsl,
-                sketch_risk_span,
-            });
-            paper.intents_created = paper.intents_created.saturating_add(1);
-            match cand.signal {
-                SignalType::BUY => side_counters.buy_intents_created = side_counters.buy_intents_created.saturating_add(1),
-                SignalType::SELL => side_counters.sell_intents_created = side_counters.sell_intents_created.saturating_add(1),
-                SignalType::WAIT => {}
+            if applied {
+                paper.pending_intents.push(TradeIntent {
+                    rec_id: cand.rec_id,
+                    symbol: cand.symbol.clone(),
+                    signal: cand.recommendation.signal,
+                    reference_price: cand.recommendation.entry_price,
+                    recommendation: cand.recommendation,
+                    strategy_id: cand.primary_id,
+                    rec_score: cand.score,
+                    rec_feas: cand.feas,
+                    rec_conf: cand.conf,
+                    rec_voters: cand.voters,
+                    momentum_3,
+                    vol_5,
+                    score_std_5,
+                    consensus: None,
+                    age: 0,
+                    max_age: if cand.voters >= intent_high_voters_threshold
+                        && cand.conf >= intent_high_conf_threshold
+                    {
+                        intent_max_age_strong
+                    } else {
+                        intent_max_age_base
+                    },
+                    intent_created_symbol_updates,
+                    confirm_delta_symbol_updates,
+                    immediate_market_fill,
+                    use_recommendation_tpsl,
+                    sketch_risk_span,
+                });
+                paper.intents_created = paper.intents_created.saturating_add(1);
+                match cand.signal {
+                    SignalType::BUY => side_counters.buy_intents_created = side_counters.buy_intents_created.saturating_add(1),
+                    SignalType::SELL => side_counters.sell_intents_created = side_counters.sell_intents_created.saturating_add(1),
+                    SignalType::WAIT => {}
+                }
+            } else {
+                println!("[GATE_REJECT] sym={} reason=GovernorHalt gov_mult={:.2}", cand.symbol, gov_mult);
             }
         }
         if paper.intents_triggered > line_start_triggered {
