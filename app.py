@@ -10,6 +10,7 @@ import html
 import json
 import importlib
 import re
+import math
 import statistics
 import sys
 import time
@@ -40,7 +41,7 @@ from scripts.short_side_diagnostic_runner import (  # noqa: E402
 REGISTRY_PATH = "data/experiments.jsonl"
 DEFAULT_DIAG_DIR = "analysis/awr_grid"
 DEFAULT_DIAG_GLOB = "live_run.log"
-LIVE_MULTI_DIAG_DIR = "analysis/live_multi"
+LIVE_MULTI_DIAG_DIR = "analysis/real_live"
 LIVE_MULTI_DIAG_GLOB = "live_*.log*"
 REPLAY_DIAG_DIR = "analysis/awr_grid"
 REPLAY_DIAG_GLOB = "diag_final_distribution_limit400_offset*.log"
@@ -437,7 +438,7 @@ def extract_symbol_from_path(path: Path) -> str | None:
     return m.group(1).replace("_", "-")
 
 
-def resolve_latest_log_per_symbol(paths: list[Path]) -> dict[str, Path]:
+def resolve_logs_per_symbol(paths: list[Path]) -> dict[str, list[Path]]:
     grouped: dict[str, list[Path]] = defaultdict(list)
     for p in paths:
         if not p.exists() or not p.is_file():
@@ -446,19 +447,28 @@ def resolve_latest_log_per_symbol(paths: list[Path]) -> dict[str, Path]:
         if symbol is None:
             continue
         grouped[symbol].append(p)
-    latest: dict[str, Path] = {}
+    out: dict[str, list[Path]] = {}
     for symbol, items in grouped.items():
-        latest[symbol] = max(items, key=lambda x: x.stat().st_mtime)
-    return latest
+        # Deterministic ordering: older -> newer for stable merged timeline.
+        out[symbol] = sorted(items, key=lambda x: x.stat().st_mtime)
+    return out
 
 
 def summarize_multi_symbol(multi_results: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    summaries = [r.get("summary", {}) for r in multi_results.values() if r.get("summary")]
-    n = len(summaries)
-    near_offsets = sum(1 for s in summaries if int(s.get("offsets_with_near_bearish", 0) or 0) > 0)
-    bearish_offsets = sum(1 for s in summaries if int(s.get("offsets_with_bearish_events", 0) or 0) > 0)
-    sell_cand_offsets = sum(1 for s in summaries if int(s.get("offsets_with_sell_candidates", 0) or 0) > 0)
-    sell_final_offsets = sum(1 for s in summaries if int(s.get("offsets_with_final_sell", 0) or 0) > 0)
+    """Merge per-symbol runs like single-path `summarize()` (short_side_diagnostic_runner).
+
+    Uses Σ ``symbol_ts_count`` as ``total_slices`` and sums offset counts across lanes.
+    Previously ``files_parsed`` was set to the lane count (e.g. 3 for BTC/ETH/SOL) with
+    no ``total_slices``, so the UI showed "Slices: 3" instead of aggregated time slices.
+    """
+    summaries = [r.get("summary") or {} for r in multi_results.values() if r.get("summary")]
+    n_files = sum(len(r.get("rows") or []) for r in multi_results.values())
+    total_slices = sum(int((s or {}).get("total_slices", 0) or 0) for s in summaries)
+    near_offsets = sum(int((s or {}).get("offsets_with_near_bearish", 0) or 0) for s in summaries)
+    bearish_offsets = sum(int((s or {}).get("offsets_with_bearish_events", 0) or 0) for s in summaries)
+    sell_cand_offsets = sum(int((s or {}).get("offsets_with_sell_candidates", 0) or 0) for s in summaries)
+    sell_final_offsets = sum(int((s or {}).get("offsets_with_final_sell", 0) or 0) for s in summaries)
+    n = max(n_files, 1)
     if sell_final_offsets > 0 or sell_cand_offsets > 0:
         recommendation = "SHORTS_OBSERVED_REVIEW_GATES"
     elif bearish_offsets > 0:
@@ -468,7 +478,8 @@ def summarize_multi_symbol(multi_results: dict[str, dict[str, Any]]) -> dict[str
     else:
         recommendation = "KEEP_LONG_ONLY"
     return {
-        "files_parsed": n,
+        "files_parsed": n_files,
+        "total_slices": total_slices,
         "offsets_with_near_bearish": near_offsets,
         "offsets_with_bearish_events": bearish_offsets,
         "offsets_with_sell_candidates": sell_cand_offsets,
@@ -479,23 +490,24 @@ def summarize_multi_symbol(multi_results: dict[str, dict[str, Any]]) -> dict[str
 
 def run_multi_symbol_diagnostics(log_dir: str, pattern: str, max_files: int) -> dict[str, dict[str, Any]]:
     base_paths = resolve_log_paths("Live", log_dir, pattern, max_files)
-    latest_by_symbol = resolve_latest_log_per_symbol(base_paths)
+    logs_by_symbol = resolve_logs_per_symbol(base_paths)
     out: dict[str, dict[str, Any]] = {}
-    for symbol, p in latest_by_symbol.items():
-        result = cached_run_diagnostics((str(p.resolve()),))
+    for symbol, files in logs_by_symbol.items():
+        key = tuple(str(p.resolve()) for p in files)
+        if not key:
+            continue
+        result = cached_run_diagnostics(key)
         # Skip empty/partial rotating files; keep UI deterministic and clean.
         if not result.get("rows") and not result.get("summary"):
             continue
-        out[symbol] = {"source": str(p), **result}
+        out[symbol] = {"source": ",".join(str(p) for p in files), **result}
     return out
 
 
 def extract_symbol_ts_from_log_files(paths: list[Path]) -> dict[str, float]:
-    """Extract symbol freshness from live log lines.
-
-    Uses file mtime as freshness timestamp (feed recency), not candle timestamp.
-    """
+    """Extract symbol freshness from live log lines. (Strict Filtering Active)"""
     latest: dict[str, float] = {}
+    ALLOWED_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD"]
     for p in paths:
         if not p.exists() or not p.is_file():
             continue
@@ -514,8 +526,8 @@ def extract_symbol_ts_from_log_files(paths: list[Path]) -> dict[str, float]:
                         if ":" not in part:
                             continue
                         sym, _ts_str = part.rsplit(":", 1)
-                        sym = sym.strip()
-                        if not sym:
+                        sym = sym.strip().upper().replace("_", "-")
+                        if sym not in ALLOWED_SYMBOLS:
                             continue
                         prev = latest.get(sym)
                         if prev is None or file_seen_ts > prev:
@@ -530,11 +542,31 @@ TRADE_SKETCH_TP_FRAC = 1.5
 TRADE_SKETCH_MAX_JSON_BATCHES = 5
 TRADE_BATCH_MAX_GAP_SEC = 10.0
 TRADE_MIN_RISK_FRAC = 0.0005
-TRADE_TAIL_BYTES = 64 * 1024
+TRADE_TAIL_BYTES = 10 * 1024 * 1024
 TRADE_MEDIAN_CLOSES = 3
 TRADE_ENGINE_RISK_WINDOW = 5
 
 SYMBOL_PRICE_LINE_RE = re.compile(r"\[SYMBOL_PRICE\]\s+(.+)$")
+# live_engine: ... src=... [ratio_floor_to_p92=... current_floor=... buffer_size=N] (engine ≥ policy snapshot)
+RECOMMENDATION_LINE_RE = re.compile(
+    r"\[RECOMMENDATION\]\s+rec_id=(?P<rec_id>\d+)\s+sym=(?P<sym>\S+)\s+dir=(?P<dir>\w+)\s+"
+    r"score=(?P<score>[0-9.eE+-]+)\s+edge=(?P<edge>[0-9.eE+-]+)\s+feas=(?P<feas>[0-9.eE+-]+)\s+"
+    r"conf=(?P<conf>[0-9.eE+-]+)\s+voters=(?P<voters>\d+)\s+S(?P<S>\d+)\s+src=(?P<src>strategy|momentum_bootstrap)"
+    r"(?:\s+ratio_floor_to_p92=(?P<ratio>nan|-?[0-9.eE+-]+)\s+current_floor=(?P<floor>[0-9.eE+-]+)\s+buffer_size=(?P<buf>\d+))?"
+)
+# [BOOTSTRAP_DRIFT] p90_mom=... p92_mom=... p95_mom=... current_floor=... ratio_floor_to_p92=... buffer_size=...
+BOOTSTRAP_DRIFT_LINE_RE = re.compile(
+    r"\[BOOTSTRAP_DRIFT\]\s+p90_mom=(?P<p90>[0-9.eE+-]+)\s+p92_mom=(?P<p92>[0-9.eE+-]+)\s+p95_mom=(?P<p95>[0-9.eE+-]+)\s+"
+    r"current_floor=(?P<floor>[0-9.eE+-]+)\s+ratio_floor_to_p92=(?P<ratio>nan|-?[0-9.eE+-]+)\s+"
+    r"buffer_size=(?P<buf>\d+)"
+)
+REC_OUTCOME_LINE_RE = re.compile(
+    r"\[REC_OUTCOME\]\s+rec_id=(?P<rec_id>\d+).*?pnl=(?P<pnl>[0-9.eE+-]+)(?:\s+src=(?P<src>strategy|momentum_bootstrap))?"
+)
+TRADE_RESULT_LINE_RE = re.compile(
+    r"\[TRADE_RESULT\]\s+sym=(?P<sym>\S+)\s+entry=(?P<entry>[0-9.]+)\s+exit=(?P<exit>[0-9.]+)\s+"
+    r"pnl=(?P<pnl>[0-9.eE+-]+)\s+reason=(?P<reason>\w+)\s+duration=(?P<dur>\d+)\s+capture_eff=(?P<cap>[0-9.eE+-]+)"
+)
 
 
 def read_log_tail_text(path: Path, max_bytes: int = TRADE_TAIL_BYTES) -> str:
@@ -546,6 +578,1066 @@ def read_log_tail_text(path: Path, max_bytes: int = TRADE_TAIL_BYTES) -> str:
             return f.read().decode("utf-8", errors="ignore")
     except OSError:
         return ""
+
+
+def normalize_lane_symbol(sym: str) -> str:
+    return sym.strip().upper().replace("_", "-")
+
+
+def _parse_ratio_field(raw: str | None) -> float | None:
+    if raw is None:
+        return None
+    s = raw.strip().lower()
+    if s == "nan":
+        return float("nan")
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_recommendation_lines(text: str) -> list[dict[str, Any]]:
+    """Parse `[RECOMMENDATION]` lines from live_engine (includes src=strategy|momentum_bootstrap)."""
+    out: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        m = RECOMMENDATION_LINE_RE.search(line)
+        if not m:
+            continue
+        try:
+            row: dict[str, Any] = {
+                "rec_id": int(m.group("rec_id")),
+                "sym": normalize_lane_symbol(m.group("sym")),
+                "dir": str(m.group("dir")),
+                "score": float(m.group("score")),
+                "edge": float(m.group("edge")),
+                "feas": float(m.group("feas")),
+                "conf": float(m.group("conf")),
+                "voters": int(m.group("voters")),
+                "primary_id": int(m.group("S")),
+                "src": str(m.group("src")),
+            }
+            ratio_raw = m.group("ratio")
+            if ratio_raw is not None:
+                row["ratio_floor_to_p92"] = _parse_ratio_field(ratio_raw)
+                row["current_floor"] = float(m.group("floor"))
+                row["buffer_size"] = int(m.group("buf"))
+            out.append(row)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def parse_trade_results(text: str) -> list[dict[str, Any]]:
+    """Parse [TRADE_RESULT] lines from the log."""
+    out = []
+    for line in text.splitlines():
+        if "[TRADE_RESULT]" not in line:
+            continue
+        try:
+            parts = line.split("]")[1].strip().split()
+            d = {}
+            for p in parts:
+                if "=" in p:
+                    k, v = p.split("=")
+                    try:
+                        d[k] = float(v) if "." in v or "e" in v.lower() else int(v)
+                    except:
+                        d[k] = v
+            if "sym" in d:
+                d["sym"] = normalize_lane_symbol(str(d["sym"]))
+            out.append(d)
+        except:
+            continue
+    return out
+
+
+def parse_calib_feed_line(line: str) -> dict[str, Any] | None:
+    if "[CALIB_FEED]" not in line:
+        return None
+    try:
+        parts = line.strip().split()
+        d = {}
+        for p in parts:
+            if "=" in p:
+                k, v = p.split("=")
+                d[k] = float(v) if "." in v or "e" in v.lower() else int(v)
+        return d
+    except:
+        return None
+
+
+def to_float(x: Any) -> float:
+    """Robust conversion to prevent TypeError: str - str."""
+    try:
+        if x is None: return 0.0
+        return float(x)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def compute_drift(bt_metrics: dict[str, Any], live_metrics: dict[str, Any]) -> dict[str, float]:
+    """Compute normalized delta between backtest and live metrics."""
+    drift = {}
+    for k in bt_metrics.keys():
+        if k in ["avg_pnl", "capture_eff", "neg_capture_rate"]:
+            drift[k] = to_float(live_metrics.get(k)) - to_float(bt_metrics.get(k))
+    return drift
+
+
+def compute_validation_metrics(df: pd.DataFrame, window: int = 30) -> dict[str, float]:
+    """Compute metrics with normalized velocity and explicit regime classification."""
+    if df.empty:
+        return {}
+    c_key = "capture_eff" if "capture_eff" in df.columns else "capture"
+    
+    # Force strict 1.0 clamp for realism
+    df[c_key] = df[c_key].clip(-1.0, 1.0)
+    
+    # Global metrics
+    m = {
+        "capture_p50": df[c_key].median(),
+        "capture_p90": df[c_key].quantile(0.9),
+        "capture_std": df[c_key].std(),
+        "neg_capture_rate": (df[c_key] < 0).mean(),
+        "avg_pnl": df["pnl"].mean(),
+        "target_hit_rate": (df["reason"] == "target_hit").mean(),
+        "stop_hit_rate": (df["reason"] == "stop_hit").mean(),
+        "timeout_rate": (df["reason"] == "timeout").mean(),
+    }
+    
+    # Decisiveness Check
+    m["decisiveness"] = m["target_hit_rate"] / (m["timeout_rate"] + 1e-6)
+    
+    # Normalized Velocity (Slope / Std)
+    if len(df) > window * 2:
+        recent = df.tail(window)
+        prev = df.iloc[-window*2 : -window]
+        slope = recent[c_key].median() - prev[c_key].median()
+        m["capture_slope_norm"] = slope / max(m["capture_std"], 0.001)
+    else:
+        m["capture_slope_norm"] = 0.0
+
+    # Leading Indicators with Stability Window
+    if "entry_slippage" in df.columns:
+        m["avg_slippage"] = df["entry_slippage"].mean()
+        vol_proxy = df[c_key].std() if len(df) > 10 else 0.01
+        m["avg_slippage_norm"] = m["avg_slippage"] / max(vol_proxy, 0.001)
+        
+    if "feas" in df.columns:
+        m["avg_feas"] = df["feas"].mean()
+        
+    # Explicit Regime Classification
+    std = m.get("capture_std", 0.1)
+    feas = m.get("avg_feas", 0.8)
+    if std > 0.45: m["regime"] = "HIGH_VOL"
+    elif std < 0.25 and feas > 0.75: m["regime"] = "STABLE"
+    else: m["regime"] = "TRANSITION"
+        
+    return m
+
+
+def compute_adaptive_throttle(
+    bt_m: dict[str, float], 
+    lv_roll_m: dict[str, float], 
+    sample_size: int,
+    was_halted: bool = False
+) -> dict[str, Any]:
+    """
+    Non-Linear Predictive Controller with Execution Veto & Stress Injection.
+    """
+    # 0. Stress Scenario Injection (Resilience Matrix - Correlated)
+    scenario = st.session_state.get("stress_scenario", "None")
+    if scenario == "Mild Friction":
+        # Coupled decay: slip ↑ → capture ↓ → fill ↓
+        slip_add = 0.0005 # +5bps
+        lv_roll_m = lv_roll_m.copy()
+        lv_roll_m["avg_slippage"] = lv_roll_m.get("avg_slippage", 0.0) + slip_add
+        lv_roll_m["capture_p50"] *= (1.0 - (slip_add * 200)) # Approx 10% decay
+        lv_roll_m["avg_feas"] = min(lv_roll_m.get("avg_feas", 0.8), 0.70)
+    elif scenario == "Hostile (Flash)":
+        slip_add = 0.0100 # +100bps
+        lv_roll_m = lv_roll_m.copy()
+        lv_roll_m["avg_slippage"] = lv_roll_m.get("avg_slippage", 0.0) + slip_add
+        lv_roll_m["capture_p50"] *= 0.10
+        lv_roll_m["avg_feas"] = 0.40
+        lv_roll_m["regime"] = "HIGH_VOL"
+    elif scenario == "Microstructure Failure":
+        lv_roll_m = lv_roll_m.copy()
+        lv_roll_m["avg_feas"] = 0.15 # Severe fill failure
+        lv_roll_m["avg_slippage_norm"] = lv_roll_m.get("avg_slippage_norm", 0) + 2.5
+        
+    if sample_size < 10:
+        return {
+            "multiplier": 1.0, 
+            "gate_open": True, 
+            "reason": "WARM_UP",
+            "raw_signals": {"cap": 1.0, "slip": 0.0, "fill": 1.0}
+        }
+
+    regime = lv_roll_m.get("regime", "TRANSITION")
+    
+    # 1. Non-Linear Control Signals (Exponential Punishment)
+    import math
+    
+    # Drifts
+    cap_drift = lv_roll_m.get("capture_p50", 0) - bt_m.get("capture_p50", 0)
+    slip_drift_norm = lv_roll_m.get("avg_slippage_norm", 0) - bt_m.get("avg_slippage_norm", 0)
+    fill_drift = lv_roll_m.get("avg_feas", 0.8) - bt_m.get("avg_feas", 0.8)
+    
+    # Weights based on Regime
+    if regime == "HIGH_VOL": w_cap, w_slip, w_fill = 0.2, 0.6, 0.2
+    elif regime == "STABLE": w_cap, w_slip, w_fill = 0.6, 0.2, 0.2
+    else: w_cap, w_slip, w_fill = 0.4, 0.3, 0.3 # TRANSITION: Conservative
+    
+    # Exponential response for leading signals (aggressively punish slippage/fill decay)
+    slip_mult = math.exp(-2.5 * max(0, slip_drift_norm))
+    fill_mult = math.exp(2.0 * min(0, fill_drift))
+    cap_mult = max(0.2, 1.0 + (w_cap * cap_drift))
+    
+    mult = cap_mult * slip_mult * fill_mult
+    
+    # 2. Normalized Velocity Penalty
+    v_norm = lv_roll_m.get("capture_slope_norm", 0)
+    if v_norm < -0.5: # Rapid normalized collapse
+        mult *= 0.7
+    
+    # 2b. Exponential Damping (EMA) to prevent state-flip jitter
+    if "governor_mult_ema" not in st.session_state:
+        st.session_state.governor_mult_ema = 1.0
+    
+    # Alpha = 0.3 (moderate smoothing)
+    alpha = 0.3
+    st.session_state.governor_mult_ema = (alpha * mult) + (1.0 - alpha) * st.session_state.governor_mult_ema
+    mult = st.session_state.governor_mult_ema
+    
+    mult = max(0.1, min(1.0, mult))
+    
+    # 3. Participation Gate & Execution VETO
+    gate_open = True
+    reasons = [regime]
+    
+    # EXECUTION VETO (Microstructure failure, regardless of PnL)
+    veto = (lv_roll_m.get("avg_feas", 1.0) < 0.4 and lv_roll_m.get("avg_slippage_norm", 0) > 1.2)
+    
+    # Outcome Failure Check
+    failure_signal = (
+        (lv_roll_m.get("capture_p50", 0) < 0.25 and lv_roll_m.get("capture_p90", 0) < 0.70) or
+        (lv_roll_m.get("neg_capture_rate", 0) > 0.45)
+    )
+    
+    if veto:
+        gate_open = False
+        reasons.append("VETO:MICROSTRUCTURE_FAILURE")
+        mult = 0.0 # FAST-KILL: Bypass EMA
+        st.session_state.governor_mult_ema = 0.0
+    elif failure_signal:
+        gate_open = False
+        reasons.append("HALT:REGIME_COLLAPSE")
+        mult = 0.0 # FAST-KILL: Bypass EMA
+        st.session_state.governor_mult_ema = 0.0
+
+    # 4. Hysteresis Recovery (Adaptive Step-Up Implementation)
+    if was_halted:
+        recovery_checks = {
+            "P50_Recovery": lv_roll_m.get("capture_p50", 0) > 0.55,
+            "P90_Recovery": lv_roll_m.get("capture_p90", 0) > 0.70, # Balanced for institutional realism
+            "Neg_Rate_Recovery": lv_roll_m.get("neg_capture_rate", 0) < 0.25,
+            "Fill_Recovery": lv_roll_m.get("avg_feas", 0) > 0.60
+        }
+        recovery = all(recovery_checks.values())
+        if not recovery:
+            gate_open = False
+            mult = 0.0
+            failed = [k for k, v in recovery_checks.items() if not v]
+            reasons.append(f"RECOVERY_PENDING:Await_{','.join(failed)}")
+            st.session_state.recovery_cycles = 0
+        else:
+            # 5. ADAPTIVE STEP-UP (0.4 -> 0.7 -> 1.0)
+            if "recovery_cycles" not in st.session_state:
+                st.session_state.recovery_cycles = 0
+            st.session_state.recovery_cycles += 1
+            
+            cyc = st.session_state.recovery_cycles
+            if cyc < 5:
+                mult = min(mult, 0.4)
+                reasons.append(f"STEP_1:PROBE_0.4({cyc}/5)")
+            elif cyc < 10:
+                mult = min(mult, 0.7)
+                reasons.append(f"STEP_2:ESCALATE_0.7({cyc-5}/5)")
+            else:
+                reasons.append("RECOVERY_CONFIRMED:ESCALATED_1.0")
+    else:
+        st.session_state.recovery_cycles = 0
+
+    # 6. Quantified Stability (Rolling StdDev of Multiplier)
+    if "mult_history" not in st.session_state: st.session_state.mult_history = []
+    st.session_state.mult_history.append(mult)
+    if len(st.session_state.mult_history) > 20: st.session_state.mult_history.pop(0)
+    
+    import numpy as np
+    m_std = float(np.std(st.session_state.mult_history)) if len(st.session_state.mult_history) > 1 else 0.0
+    
+    return {
+        "multiplier": round(mult, 3), 
+        "gate_open": gate_open, 
+        "reason": "|".join(reasons),
+        "raw_signals": {
+            "cap": cap_drift, 
+            "slip": slip_drift_norm, 
+            "fill": fill_drift, 
+            "v_norm": v_norm,
+            "m_std": m_std
+        }
+    }
+
+
+def interpret_drift(drift: dict[str, float]) -> list[str]:
+    """Human-readable alerts for performance decay."""
+    alerts = []
+    if drift.get("capture_p50", 0) < -0.1:
+        alerts.append("⚠️ Capture decay → exits too slow or entries late")
+    if drift.get("timeout", 0) > 0.1:
+        alerts.append("⚠️ Timeout spike → duration too long or fill slow")
+    if drift.get("neg_capture_rate", 0) > 0.05:
+        alerts.append("⚠️ Directional error → signals degrading")
+    if drift.get("avg_pnl", 0) < -0.0005:
+        alerts.append("🚨 Severe PnL drift → execution environment mismatch")
+    return alerts
+
+
+def simulate_paper_trades(text: str, latency_sec: int = 10) -> list[dict[str, Any]]:
+    """Simulate paper trading outcomes with time-based latency and probabilistic fills."""
+    lines = text.splitlines()
+    prices: list[dict[str, float]] = []
+    timestamps: list[int] = []
+    
+    for i, line in enumerate(lines):
+        if "[SYMBOL_TS]" in line:
+            # Extract first timestamp as proxy for batch time
+            try:
+                ts_part = line.split("]")[1].strip().split(",")[0]
+                timestamps.append(int(ts_part.split(":")[1]))
+            except: continue
+        if "[SYMBOL_PRICE]" in line:
+            m = SYMBOL_PRICE_LINE_RE.search(line)
+            if m:
+                p_map = {}
+                for p in m.group(1).split(","):
+                    if ":" in p:
+                        s, px = p.split(":")
+                        p_map[normalize_lane_symbol(s)] = float(px)
+                prices.append(p_map)
+                
+    if len(prices) != len(timestamps): return []
+    
+    outcomes = []
+    for i, line in enumerate(lines):
+        m = RECOMMENDATION_LINE_RE.search(line)
+        if not m: continue
+        
+        sym = normalize_lane_symbol(m.group("sym"))
+        direction = m.group("dir")
+        feas = float(m.group("feas")) # Probability proxy
+        
+        # 1. Activation Time
+        start_ts = 0
+        for j in range(i, 0, -1):
+            if "[SYMBOL_TS]" in lines[j]:
+                try: start_ts = int(lines[j].split("]")[1].strip().split(",")[0].split(":")[1]); break
+                except: continue
+        if not start_ts: continue
+        
+        entry_time = start_ts + latency_sec
+        
+        # Leading Indicator: Price at rec time
+        rec_price = None
+        for j in range(i, 0, -1):
+            if "[SYMBOL_PRICE]" in lines[j]:
+                m_p = SYMBOL_PRICE_LINE_RE.search(lines[j])
+                if m_p:
+                    for p in m_p.group(1).split(","):
+                        if ":" in p:
+                            s, px = p.split(":")
+                            if normalize_lane_symbol(s) == sym:
+                                rec_price = float(px); break
+                if rec_price: break
+        
+        # 2. Entry Price (First price after entry_time) + Baseline Friction (0.5 bps)
+        entry_idx = -1
+        for pi, t in enumerate(timestamps):
+            if t >= entry_time:
+                entry_idx = pi; break
+        
+        if entry_idx == -1 or entry_idx >= len(prices): continue
+        raw_px = prices[entry_idx].get(sym)
+        if not raw_px: continue
+        
+        # Apply 0.5 bps slippage penalty for realism
+        entry_price = raw_px * 1.00005 if direction == "BUY" else raw_px * 0.99995
+        
+        # Leading Indicator: Entry Slippage (including latency and friction)
+        slippage = (entry_price - rec_price) / rec_price if rec_price and direction == "BUY" else (rec_price - entry_price) / rec_price if rec_price else 0.0
+
+        # 3. Probabilistic Fill (Execution Realism)
+        import random
+        if random.random() > feas:
+            continue # No fill
+
+        # Calibration target proxy
+        up, down = 0.003, 0.003
+        for j in range(i, 0, -1):
+            if "[CALIB_FEED]" in lines[j] and f"sym={sym}" in lines[j]:
+                crow = parse_calib_feed_line(lines[j])
+                if crow: up, down = crow["up"], abs(crow["down"]); break
+        
+        target = entry_price * (1.0 + up) if direction == "BUY" else entry_price * (1.0 - up)
+        stop = entry_price * (1.0 - down) if direction == "BUY" else entry_price * (1.0 + down)
+        
+        res_reason = "timeout"
+        exit_price = entry_price
+        max_fav = 1e-6
+        
+        for j in range(entry_idx + 1, min(entry_idx + 30, len(prices))):
+            curr_px = prices[j].get(sym)
+            if not curr_px: continue
+            
+            # MFE
+            move = (curr_px - entry_price) / entry_price if direction == "BUY" else (entry_price - curr_px) / entry_price
+            max_fav = max(max_fav, move)
+            
+            if direction == "BUY":
+                if curr_px >= target: res_reason = "target_hit"; exit_price = target; break
+                if curr_px <= stop: res_reason = "stop_hit"; exit_price = stop; break
+            else:
+                if curr_px <= target: res_reason = "target_hit"; exit_price = target; break
+                if curr_px >= stop: res_reason = "stop_hit"; exit_price = stop; break
+            exit_price = curr_px
+            
+        pnl = (exit_price - entry_price) / entry_price if direction == "BUY" else (entry_price - exit_price) / entry_price
+        outcomes.append({
+            "sym": sym,
+            "pnl": pnl,
+            "reason": res_reason,
+            "capture": pnl / max_fav if max_fav > 0 else 0,
+            "entry_slippage": slippage,
+            "feas": feas
+        })
+        
+    return outcomes
+
+
+def latest_recommendation_by_symbol(text: str) -> dict[str, dict[str, Any]]:
+    """Last recommendation per symbol in line order (deterministic tail replay)."""
+    latest: dict[str, dict[str, Any]] = {}
+    for rec in parse_recommendation_lines(text):
+        latest[rec["sym"]] = rec
+    return latest
+
+
+def max_consecutive_bootstrap_run(ordered_src: list[str]) -> int:
+    best = 0
+    cur = 0
+    for s in ordered_src:
+        if s == "momentum_bootstrap":
+            cur += 1
+            best = max(best, cur)
+        else:
+            cur = 0
+    return best
+
+
+def attribution_tail_summary(all_recos: list[dict[str, Any]]) -> dict[str, Any]:
+    n = len(all_recos)
+    n_strat = sum(1 for r in all_recos if r["src"] == "strategy")
+    n_boot = sum(1 for r in all_recos if r["src"] == "momentum_bootstrap")
+    rate = (100.0 * n_boot / n) if n else 0.0
+    avg_edge = sum(r["edge"] for r in all_recos) / n if n else 0.0
+    ord_src = [str(r["src"]) for r in all_recos]
+    max_run = max_consecutive_bootstrap_run(ord_src)
+    return {
+        "n": n,
+        "n_strat": n_strat,
+        "n_boot": n_boot,
+        "bootstrap_rate_pct": rate,
+        "avg_edge": avg_edge,
+        "max_bootstrap_run": max_run,
+    }
+
+
+def parse_bootstrap_drift_lines(text: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        m = BOOTSTRAP_DRIFT_LINE_RE.search(line)
+        if not m:
+            continue
+        try:
+            ratio = _parse_ratio_field(m.group("ratio"))
+            rows.append(
+                {
+                    "p90_mom": float(m.group("p90")),
+                    "p92_mom": float(m.group("p92")),
+                    "p95_mom": float(m.group("p95")),
+                    "current_floor": float(m.group("floor")),
+                    "ratio_floor_to_p92": ratio,
+                    "buffer_size": int(m.group("buf")),
+                }
+            )
+        except (TypeError, ValueError):
+            continue
+    return rows
+
+
+def render_bootstrap_drift_panel_from_tail(merged_tail_text: str) -> None:
+    snaps = parse_bootstrap_drift_lines(merged_tail_text)
+    st.markdown("### Bootstrap calibration (`[BOOTSTRAP_DRIFT]`)")
+    if not snaps:
+        st.caption(
+            "No drift lines in selected tails — enable `BOOTSTRAP_DRIFT_DIAG=1` or "
+            "`MOMENTUM_VOTER_BOOTSTRAP` until buffer ≥300 emits periodic drift."
+        )
+        return
+    latest = snaps[-1]
+    ratio = latest.get("ratio_floor_to_p92")
+    buf_n = int(latest.get("buffer_size", 0) or 0)
+    if isinstance(ratio, float) and not math.isnan(ratio):
+        if ratio < 0.8:
+            state, color = "Permissive", "#f59e0b"
+        elif ratio <= 1.1:
+            state, color = "Aligned", "#16a34a"
+        elif ratio <= 1.2:
+            state, color = "Marginal", "#eab308"
+        else:
+            state, color = "Strict", "#dc2626"
+        ratio_disp = f"{ratio:.2f}"
+    else:
+        state, color = "Warming / N/A", "#64748b"
+        ratio_disp = "—"
+    st.caption("~1.0 target · below 0.8 permissive · 0.8–1.1 aligned · 1.1–1.2 marginal · above 1.2 strict.")
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Floor / P92 ratio", ratio_disp)
+    with c2:
+        st.metric("Buffer size", buf_n)
+    with c3:
+        st.markdown(
+            f"<span style='color:{color};font-weight:600;'>{html.escape(state)}</span>",
+            unsafe_allow_html=True,
+        )
+    with c4:
+        st.caption(
+            f"p92_mom={float(latest.get('p92_mom', 0.0)):.6f} · "
+            f"floor={float(latest.get('current_floor', 0.0)):.6f}"
+        )
+
+
+def parse_rec_outcomes_with_src(text: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        m = REC_OUTCOME_LINE_RE.search(line)
+        if not m:
+            continue
+        src = m.group("src")
+        if not src:
+            continue
+        try:
+            out.append(
+                {
+                    "rec_id": int(m.group("rec_id")),
+                    "pnl": float(m.group("pnl")),
+                    "src": str(src),
+                }
+            )
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def render_source_performance_panel(merged_tail_text: str) -> None:
+    outcomes = parse_rec_outcomes_with_src(merged_tail_text)
+    if not outcomes:
+        return
+    by_src: dict[str, list[float]] = defaultdict(list)
+    for o in outcomes:
+        by_src[str(o["src"])].append(float(o["pnl"]))
+    st.markdown("### Source performance (`[REC_OUTCOME]` · src=)")
+    st.caption(
+        "Realized PnL by recommendation source — requires engine outcomes with `src=` in the tail."
+    )
+    cols = st.columns(2)
+    order = ["strategy", "momentum_bootstrap"]
+    for i, src in enumerate(order):
+        pnls = by_src.get(src) or []
+        if not pnls:
+            with cols[i]:
+                st.metric(label=src, value="—")
+                st.caption("No outcomes in tail")
+            continue
+        hits = sum(1 for p in pnls if p > 0.0)
+        hr = hits / len(pnls)
+        avg = sum(pnls) / len(pnls)
+        with cols[i]:
+            st.metric(label=src, value=f"{avg:+.6f}")
+            st.caption(f"Hit rate {hr:.0%} · n={len(pnls)}")
+
+
+def render_bootstrap_sequence_strip(all_recos: list[dict[str, Any]]) -> None:
+    if not all_recos:
+        return
+    tail = all_recos[-50:]
+    seq = "".join(
+        "B" if r["src"] == "momentum_bootstrap" else "S" for r in tail
+    )
+    st.markdown("##### Source sequence (last ≤50 recos)")
+    st.code(seq or "—")
+    st.caption("B = bootstrap · S = strategy · long B-runs suggest regime-aligned fallback")
+
+
+MOM_POOL_CAPACITY = 500
+
+
+def render_momentum_pool_warmup_bar(buffer_size: int) -> None:
+    """Rolling |mom| pool fill — prevents over-trusting policy early (chronosentiment-core.mdc)."""
+    cap = MOM_POOL_CAPACITY
+    pct = min(1.0, max(0.0, float(buffer_size) / float(cap)))
+    if buffer_size < 100:
+        lab = "Unstable"
+    elif buffer_size < 300:
+        lab = "Warming"
+    else:
+        lab = "Stable"
+    st.markdown("##### Momentum pool confidence")
+    st.progress(pct)
+    st.caption(f"|mom| rolling pool: {buffer_size} / {cap} · {lab}")
+
+
+def parse_calib_feed_line(line: str) -> dict[str, Any] | None:
+    if "[CALIB_FEED]" not in line:
+        return None
+    res = {}
+    parts = line.strip().split()
+    for p in parts:
+        if "=" in p:
+            kv = p.split("=", 1)
+            if len(kv) == 2:
+                k, v = kv
+                if k == "sym": res["sym"] = v
+                else:
+                    try: res[k] = float(v)
+                    except ValueError: pass
+    if "edge_idx" not in res or "pnl" not in res:
+        return None
+    return {
+        "sym": res.get("sym", "UNKNOWN"),
+        "edge": res["edge_idx"],
+        "pnl": res["pnl"],
+        "size": res.get("size", 0.0),
+        "fav": res.get("fav", 0.0),
+        "up": res.get("up", 0.0),
+        "down": res.get("down", 0.0)
+    }
+
+
+def parse_symbol_prices(text: str) -> tuple[dict[str, float], int]:
+    """Extract latest prices and machine timestamp from log tail."""
+    prices = {}
+    latest_ts = 0
+    for line in text.splitlines():
+        if "[SYMBOL_TS]" in line:
+            try:
+                # Extract first timestamp as proxy for frame time
+                ts_part = line.split("]")[1].strip().split(",")[0]
+                latest_ts = int(ts_part.split(":")[1])
+            except: pass
+        if "[SYMBOL_PRICE]" in line:
+            content = line.split("[SYMBOL_PRICE]")[1].strip()
+            for part in content.split(","):
+                if ":" in part:
+                    try:
+                        sym, pr = part.rsplit(":", 1)
+                        prices[sym.strip().upper().replace("_", "-")] = float(pr)
+                    except ValueError: pass
+    return prices, latest_ts
+
+
+def build_ev_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    df = df.copy()
+    df["bucket"] = (df["edge"] // 2) * 2
+    grouped = df.groupby("bucket").agg({
+        "pnl": "mean",
+        "size": "mean",
+        "edge": "count"
+    }).rename(columns={"edge": "count"}).reset_index()
+    return grouped.sort_values("bucket")
+
+
+def render_allocation_panel(merged_text: str) -> None:
+    calib_rows = []
+    for line in merged_text.splitlines():
+        row = parse_calib_feed_line(line)
+        if row:
+            calib_rows.append(row)
+    if not calib_rows:
+        st.caption("No `[CALIB_FEED]` lines in merged tails — allocation metrics N/A.")
+        return
+    
+    calib_df = pd.DataFrame(calib_rows)
+    ev_df = build_ev_table(calib_df)
+    
+    section_rule()
+    st.subheader("📊 Edge → EV + Allocation")
+    st.caption("Empirical Expected Value and capital allocation curves (Phase 9 Engine).")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**EV Curve (Edge → Avg PnL)**")
+        if not ev_df.empty:
+            st.line_chart(ev_df.set_index("bucket")["pnl"])
+    with col2:
+        st.markdown("**Allocation Curve (Edge → Size)**")
+        if not ev_df.empty:
+            st.line_chart(ev_df.set_index("bucket")["size"])
+            
+    if not ev_df.empty:
+        best = ev_df.loc[ev_df["pnl"].idxmax()]
+        st.success(
+            f"🎯 Peak Edge Zone: {int(best['bucket'])} | "
+            f"Avg PnL: {best['pnl']:.6f} | "
+            f"Samples: {int(best['count'])}"
+        )
+        
+    st.subheader("⚠️ Tail Risk (High Edge Decay)")
+    tail = ev_df[ev_df["bucket"] >= 26]
+    if not tail.empty:
+        st.dataframe(tail, use_container_width=True)
+    else:
+        st.caption("No extreme tail signals observed yet.")
+
+    if "fav" in calib_df.columns and not calib_df["fav"].isna().all():
+        calib_df["regime"] = calib_df["fav"].apply(
+            lambda x: "Favorable" if x > 0.55 else "Adverse"
+        )
+        calib_df["bucket"] = (calib_df["edge"] // 2) * 2
+        regime_df = calib_df.groupby(["regime", "bucket"])["pnl"].mean().reset_index()
+        st.subheader("🌍 Regime-wise EV")
+        col1, col2 = st.columns(2)
+        for regime, col in zip(["Favorable", "Adverse"], [col1, col2]):
+            sub = regime_df[regime_df["regime"] == regime]
+            with col:
+                st.markdown(f"**{regime}**")
+                if not sub.empty:
+                    st.line_chart(sub.set_index("bucket")["pnl"])
+    st.subheader("⚡ Recent Calibrations")
+    st.dataframe(
+        calib_df.tail(20)[["sym", "edge", "pnl", "size", "fav"]],
+        use_container_width=True
+    )
+
+
+def render_recommendations_panel(calib_df: pd.DataFrame, price_map: dict[str, float], all_recos: list[dict[str, Any]], latest_ts: int = 0) -> None:
+    """Production-grade Recommendation Engine with High-Precision Safety Guards."""
+    if calib_df.empty or not all_recos:
+        return
+        
+    section_rule()
+    st.subheader("📍 Trade Recommendations (Execution-Aware)")
+    
+    # 0. Asset Filter (Strict Crypto Universe Only)
+    ALLOWED_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD"]
+    price_map = {k: v for k, v in price_map.items() if k in ALLOWED_SYMBOLS}
+    all_recos = [r for r in all_recos if r["sym"] in ALLOWED_SYMBOLS]
+    
+    # 1. State-based Safety Monitors & Continuity Tracking
+    if "prev_prices" not in st.session_state: st.session_state.prev_prices = {}
+    if "missing_data_count" not in st.session_state: st.session_state.missing_data_count = 0
+    
+    now_machine = int(time.time())
+    price_staleness = now_machine - latest_ts if latest_ts > 0 else 999
+    
+    # 2. Mode Detection (Simulation vs Live)
+    expected_btc = 78000.0
+    latest_btc = price_map.get("BTC-USD", 0.0)
+    # Detect if we are in the 78k universe
+    is_live_universe = (latest_btc > 0 and abs(latest_btc - expected_btc) / expected_btc < 0.25)
+    
+    mode_str = "LIVE (Safe Observation)" if is_live_universe else "SIMULATION"
+    mode_color = "#34d399" if is_live_universe else "#60a5fa"
+    st.markdown(f"**MODE: <span style='color:{mode_color}'>{mode_str}</span>**", unsafe_allow_html=True)
+    
+    # 3. Execution Guards (The Safety Veto Layer)
+    safety_reasons = []
+    
+    # High-Precision Staleness Guard (< 15s for Yahoo cadence)
+    if is_live_universe and price_staleness > 15:
+        safety_reasons.append(f"STALE_FEED:{price_staleness}s")
+        
+    # Missing Data Guard (N=3 cycles)
+    if not price_map:
+        st.session_state.missing_data_count += 1
+    else:
+        st.session_state.missing_data_count = 0
+        
+    if st.session_state.missing_data_count >= 3:
+        safety_reasons.append(f"MISSING_DATA:{st.session_state.missing_data_count}cyc")
+        
+    # Price Jump Guard (> 2% per refresh)
+    for sym, price in price_map.items():
+        prev = st.session_state.prev_prices.get(sym)
+        if prev and abs(price - prev) / prev > 0.02:
+            safety_reasons.append(f"PRICE_DISCONTINUITY:{sym}")
+        st.session_state.prev_prices[sym] = price
+        
+    is_safe = len(safety_reasons) == 0
+    safety_status = "HEALTHY" if is_safe else f"HALT:{'|'.join(safety_reasons)}"
+    safety_color = "#34d399" if is_safe else "#ef4444"
+    st.caption(f"Safety Status: <span style='color:{safety_color}; font-weight:bold;'>{safety_status}</span>", unsafe_allow_html=True)
+
+    # 4. Safe Observation Enforcement
+    risk_mult = st.session_state.get("risk_multiplier", 1.0)
+    gate_open = st.session_state.get("trade_gate_open", True) and is_safe
+    
+    # Suppress size in LIVE universe for observation period
+    execution_mult = 0.0 if is_live_universe else 1.0
+    if is_live_universe:
+        st.info("💡 **OBSERVE-ONLY**: Live market data (~78k BTC) detected. Execution sizes forced to 0.00.")
+
+    # 5. Portfolio Exposure & Directional Validation
+    recos_with_intended = []
+    total_intended = 0.0
+    for reco in all_recos:
+        sym = reco["sym"]
+        price = price_map.get(sym)
+        if not price: continue
+        
+        intended = reco.get("ratio_floor_to_p92", 0.1) * risk_mult * execution_mult
+        recos_with_intended.append({**reco, "intended": intended, "price": price})
+        total_intended += intended
+        
+    portfolio_cap = 1.5
+    port_mult = portfolio_cap / total_intended if total_intended > portfolio_cap else 1.0
+
+    # 6. Render Actionable Directives
+    if not recos_with_intended:
+        st.info("Waiting for data alignment (BTC/ETH/SOL filtering active)...")
+        return
+
+    # Regime Check (Enforce Consistency)
+    current_regime = st.session_state.get("governor_reason", "NOMINAL")
+    is_bearish = "BEARISH" in current_regime or "SHORT" in current_regime
+
+    for r in recos_with_intended:
+        final_size = r["intended"] * port_mult
+        target = r["price"] * (1.0 + r["edge"]) if r["dir"] == "BUY" else r["price"] * (1.0 - r["edge"])
+        
+        # Action Logic
+        action = r["dir"]
+        
+        # Enforce Regime Consistency: No BUY in Bearish/Short
+        if is_bearish and action == "BUY": 
+            action = "HOLD"
+            reason = "REGIME_MISMATCH (Short only)"
+        elif not gate_open: 
+            action = "HALT"
+        elif r.get("action", "HOLD") == "HOLD":
+            action = "HOLD"
+
+        if action != "HOLD":
+            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 2])
+            c1.write(f"**{r['sym']}**")
+            clr = "red" if action == "HALT" else ("#00ff00" if action == "BUY" else "#ff4b4b")
+            label = action if not (is_live_universe and action != "HALT") else f"OBS_{action}"
+            
+            c2.markdown(f"<span style='color:{clr}; font-weight:bold;'>{label}</span>", unsafe_allow_html=True)
+            c3.write(f"Entry: {r['price']:,.2f}")
+            c4.write(f"Target: {target:,.2f}")
+            with c5:
+                st.write(f"Size: **{final_size:.2f}** · Edge: {r['edge']*10000:.0f} bps")
+                if final_size > 0:
+                    st.progress(min(max(final_size / portfolio_cap, 0.0), 1.0))
+                else:
+                    st.caption("Execution suppressed (Safe Observation Mode)")
+
+
+def merged_tail_text_paths(paths: list[Path]) -> str:
+    seen: set[str] = set()
+    parts: list[str] = []
+    for p in sorted(paths, key=lambda x: str(x.resolve())):
+        try:
+            key = str(p.resolve())
+        except OSError:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        if p.is_file():
+            parts.append(read_log_tail_text(p))
+    return "\n".join(parts)
+
+
+def infer_lane_activity(sym_summary: dict[str, Any]) -> str:
+    if int(sym_summary.get("offsets_with_near_bearish", 0) or 0) > 0:
+        return "forming"
+    if int(sym_summary.get("offsets_with_bearish_events", 0) or 0) > 0:
+        return "forming"
+    if int(sym_summary.get("offsets_with_sell_candidates", 0) or 0) > 0:
+        return "forming"
+    return "quiet"
+
+
+def execution_context_badges(
+    sym_u: str,
+    latest_prices: dict[str, tuple[float, int | None]],
+    latest_event_ts: int | None,
+    sketch_events: list[dict[str, Any]],
+    warm_gap_threshold: float,
+) -> tuple[str, str, bool]:
+    px_info = latest_prices.get(sym_u)
+    if px_info is None:
+        return "⚪ unknown (no `[SYMBOL_PRICE]`)", "UNKNOWN", True
+    _px, px_ts = px_info
+    stale_info = classify_staleness(px_ts, latest_event_ts)
+    gap_info = compute_event_gap(sketch_events, px_ts)
+    validity = str(stale_info.get("validity", "unknown"))
+    label = str(stale_info.get("label", "unknown"))
+    gap_ratio = gap_info.get("gap_ratio")
+    badge_map = {
+        "execution-valid": "🟢 execution-valid",
+        "potentially drifting": "🟡 potentially drifting",
+        "invalid for decision": "⚫ invalid for decision",
+        "unknown": "⚪ unknown",
+    }
+    badge = badge_map.get(validity, "⚪ unknown")
+    execution_risk = False
+    if label == "stale":
+        execution_risk = True
+    elif label == "warm" and gap_ratio is not None and float(gap_ratio) > warm_gap_threshold:
+        execution_risk = True
+    risk_lbl = "HIGH ⚠" if execution_risk else "LOW"
+    return badge, risk_lbl, execution_risk
+
+
+def render_trade_opportunities_panel(
+    multi_results: dict[str, dict[str, Any]],
+    latest_prices: dict[str, tuple[float, int | None]],
+    latest_event_ts: int | None,
+    sketch_events: list[dict[str, Any]],
+    *,
+    mode: str = "Live",
+    stale_threshold: int = 30,
+) -> None:
+    """Surface `[RECOMMENDATION]` as execution-aware context (chronosentiment-core.mdc — no hidden signals)."""
+    st.markdown("### Trade Opportunities (Execution-Aware)")
+    st.caption(
+        "Conditional opportunities from engine `[RECOMMENDATION]` lines — not a directive to trade. "
+        "Each row is informational until you confirm freshness and policy alignment."
+    )
+    if not multi_results:
+        st.caption(
+            "No per-symbol lanes in context — enable multi-lane logs (`live_*.log*`) for opportunity cards."
+        )
+        return
+
+    warm_gap_threshold = derive_warm_gap_threshold(
+        sketch_events, latest_prices, latest_event_ts, min_samples=10, fallback=0.4
+    )
+    global_all_stale = (
+        mode == "Live"
+        and bool(multi_results)
+        and all_lanes_stale(multi_results, int(stale_threshold))
+    )
+    symbols_sorted = sorted(multi_results.keys())
+    ncols = min(3, max(1, len(symbols_sorted)))
+    cols = st.columns(ncols)
+    for i, sym in enumerate(symbols_sorted):
+        sym_u = normalize_lane_symbol(sym)
+        res = multi_results[sym]
+        sym_summary = res.get("summary", {}) or {}
+        src_paths: list[Path] = []
+        for part in str(res.get("source", "") or "").split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                src_paths.append(Path(part))
+            except (TypeError, ValueError):
+                continue
+        lane_tail = merged_tail_text_paths(src_paths)
+        latest_by_sym = latest_recommendation_by_symbol(lane_tail)
+        reco = latest_by_sym.get(sym_u)
+        if global_all_stale:
+            badge = "⚫ stale (global)"
+            risk_lbl = "HIGH ⚠"
+        else:
+            badge, risk_lbl, _exec_risk = execution_context_badges(
+                sym_u, latest_prices, latest_event_ts, sketch_events, warm_gap_threshold
+            )
+        px_txt = "—"
+        px_info = latest_prices.get(sym_u)
+        if px_info is not None:
+            px_txt = f"{px_info[0]:,.2f}"
+        with cols[i % ncols]:
+            st.markdown(f"**{html.escape(sym, quote=True)}**")
+            if reco:
+                if reco["src"] == "momentum_bootstrap":
+                    st.caption("⚡ Bootstrap")
+                else:
+                    st.caption("🧠 Strategy")
+                src_human = (
+                    "Bootstrap" if reco["src"] == "momentum_bootstrap" else "Strategy"
+                )
+                side = html.escape(str(reco["dir"]), quote=True)
+                st.markdown(f"**{side} ({src_human})** · Conf: {float(reco['conf']):.2f}")
+                st.caption(
+                    f"Price: {px_txt} · Edge: {float(reco['edge']):.6f} · "
+                    f"Feasibility: {float(reco['feas']):.2f} · Voters: {int(reco['voters'])}"
+                )
+                st.caption(f"Source: `{html.escape(reco['src'], quote=True)}`")
+                rf = reco.get("ratio_floor_to_p92")
+                cflo = reco.get("current_floor")
+                bsz = reco.get("buffer_size")
+                if bsz is not None and cflo is not None:
+                    if isinstance(rf, float) and not math.isnan(rf):
+                        st.caption(
+                            "Policy at emit: "
+                            f"ratio_floor/p92={rf:.2f} · floor={float(cflo):.6f} · buffer={int(bsz)}"
+                        )
+                    else:
+                        st.caption(
+                            "Policy at emit: "
+                            f"floor={float(cflo):.6f} · buffer={int(bsz)} "
+                            "(ratio N/A until rolling |mom| pool ≥300 bars)"
+                        )
+                st.markdown(
+                    f"<span style='opacity:0.95'>Exec validity: {badge} · "
+                    f"Execution risk: **{risk_lbl}**</span>",
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "_Opportunity only if feed conditions persist — not 'buy/sell now'._"
+                )
+                st.caption("**Condition:** Valid only if structure persists in the next slice.")
+            else:
+                activity = infer_lane_activity(sym_summary)
+                if activity == "forming":
+                    st.info(
+                        "**WATCH (Forming)** — lane diagnostics show structure; "
+                        "no `[RECOMMENDATION]` in this lane's tail yet."
+                    )
+                    st.caption(
+                        "Momentum / slice activity without a published reco — gates may still be filtering."
+                    )
+                else:
+                    st.warning("**NO TRADE** — no qualifying reco in tail")
+                    st.caption(
+                        "Typical reasons: no voters, edge below threshold, or warmup — see engine logs."
+                    )
+                st.markdown(
+                    f"<span style='opacity:0.95'>Feed context: {badge} · Execution risk: **{risk_lbl}**</span>",
+                    unsafe_allow_html=True,
+                )
+                st.caption("**Condition:** Valid only if structure persists in the next slice.")
 
 
 def _parse_stream_json_batch_line(line: str) -> list[dict[str, Any]] | None:
@@ -1549,22 +2641,29 @@ def build_per_ticker_summary(rows: list[dict[str, Any]]) -> dict[str, dict[str, 
     return out
 
 
-def compute_formation_metrics(rows: list[dict[str, Any]]) -> dict[str, int]:
+def compute_formation_metrics(rows: list[dict[str, Any]], summary: dict[str, Any]) -> dict[str, int]:
     """
     Deterministic formation tracker from parsed slice diagnostics.
     Distinguishes observed-but-not-promoted from no-observation windows.
     """
-    total = len(rows)
+    total = int(summary.get("total_slices", summary.get("files_parsed", len(rows))) or 0)
     formation = 0
     triggered = 0
     dropped = 0
     for r in rows:
         sd = r.get("side_distribution") or {}
+        diag = r.get("diag_signal") or {}
         c_buy = int(sd.get("candidates_buy", 0) or 0)
         c_sell = int(sd.get("candidates_sell", 0) or 0)
         f_buy = int(sd.get("final_buy", 0) or 0)
         f_sell = int(sd.get("final_sell", 0) or 0)
+        # Primary path: explicit candidate counters.
         has_formation = (c_buy + c_sell) > 0
+        # Fallback for live logs that emit [DIAG] without SIDE_DISTRIBUTION.
+        if not has_formation:
+            voters = int(diag.get("voters", 0) or 0)
+            edge = float(diag.get("edge", 0.0) or 0.0)
+            has_formation = voters > 0 or edge > 0.0
         has_trigger = (f_buy + f_sell) > 0
         if has_formation:
             formation += 1
@@ -1577,6 +2676,49 @@ def compute_formation_metrics(rows: list[dict[str, Any]]) -> dict[str, int]:
         "formation_events": formation,
         "triggered_events": triggered,
         "dropped_before_trigger": dropped,
+    }
+
+
+def compute_signal_health_metrics(rows: list[dict[str, Any]]) -> dict[str, float | int]:
+    """
+    Signal-health diagnostics from parsed `[DIAG]` counters.
+    Does not alter engine behavior; visibility only.
+    """
+    diag_lines = 0
+    diag_nonzero = 0
+    low_edge_sum = 0
+    edge_pipe_lines = 0
+    edge_pipe_nonzero = 0
+    raw_edge_sum = 0.0
+    capture_prob_sum = 0.0
+    expected_realized_sum = 0.0
+    for r in rows:
+        d = r.get("diag_signal") or {}
+        diag_lines += int(d.get("diag_lines", 0) or 0)
+        diag_nonzero += int(d.get("diag_nonzero", 0) or 0)
+        low_edge_sum += int(d.get("diag_low_edge_sum", 0) or 0)
+        edge_pipe_lines += int(d.get("edge_pipe_lines", 0) or 0)
+        edge_pipe_nonzero += int(d.get("edge_pipe_nonzero", 0) or 0)
+        raw_edge_sum += float(d.get("raw_edge", 0.0) or 0.0)
+        capture_prob_sum += float(d.get("capture_prob", 0.0) or 0.0)
+        expected_realized_sum += float(d.get("expected_realized_edge", 0.0) or 0.0)
+    pass_rate = (diag_nonzero / diag_lines) if diag_lines > 0 else 0.0
+    low_edge_avg = (low_edge_sum / diag_lines) if diag_lines > 0 else 0.0
+    raw_edge_avg = (raw_edge_sum / edge_pipe_lines) if edge_pipe_lines > 0 else 0.0
+    capture_prob_avg = (capture_prob_sum / edge_pipe_lines) if edge_pipe_lines > 0 else 0.0
+    expected_realized_avg = (
+        expected_realized_sum / edge_pipe_lines if edge_pipe_lines > 0 else 0.0
+    )
+    return {
+        "diag_lines": diag_lines,
+        "diag_nonzero": diag_nonzero,
+        "pass_rate": pass_rate,
+        "low_edge_avg": low_edge_avg,
+        "edge_pipe_lines": edge_pipe_lines,
+        "edge_pipe_nonzero": edge_pipe_nonzero,
+        "raw_edge_avg": raw_edge_avg,
+        "capture_prob_avg": capture_prob_avg,
+        "expected_realized_avg": expected_realized_avg,
     }
 
 
@@ -1640,23 +2782,69 @@ def render_per_ticker_panel(ticker_map: dict[str, dict[str, float | int]], max_c
             )
 
 
-def compute_lane_health(multi_results: dict[str, dict[str, Any]], stale_threshold: int) -> list[tuple[str, str, float | None]]:
+def all_lanes_stale(
+    multi_results: dict[str, dict[str, Any]],
+    stale_threshold: int,
+    ticker_ts: dict[str, float] | None = None,
+) -> bool:
+    """True when every observed lane is stale (operators must not trust timing-sensitive reads)."""
+    health = compute_lane_health(multi_results, stale_threshold, ticker_ts=ticker_ts)
+    if not health:
+        return False
+    return all(status == "stale" for _, status, _ in health)
+
+
+def any_lanes_stale(
+    multi_results: dict[str, dict[str, Any]],
+    stale_threshold: int,
+    ticker_ts: dict[str, float] | None = None,
+) -> bool:
+    """True when at least one observed lane is stale (partial feed failure)."""
+    health = compute_lane_health(multi_results, stale_threshold, ticker_ts=ticker_ts)
+    return any(status == "stale" for _, status, _ in health)
+
+
+def system_regime_from_recommendations(all_recos: list[dict[str, Any]]) -> str:
+    """Display-only regime from merged `[RECOMMENDATION]` src= in tail (transition-aware)."""
+    has_bootstrap = any(r.get("src") == "momentum_bootstrap" for r in all_recos)
+    has_strategy = any(r.get("src") == "strategy" for r in all_recos)
+    if has_bootstrap and has_strategy:
+        return "MIXED"
+    if has_bootstrap:
+        return "BOOTSTRAP_ACTIVE"
+    if has_strategy:
+        return "STRATEGY_ACTIVE"
+    return "BOOTSTRAP_DORMANT"
+
+
+def compute_lane_health(
+    multi_results: dict[str, dict[str, Any]], 
+    stale_threshold: int,
+    ticker_ts: dict[str, float] | None = None
+) -> list[tuple[str, str, float | None]]:
+    """Compute per-lane health using a fusion of row-based and high-frequency machine timestamps."""
     now = time.time()
     health: list[tuple[str, str, float | None]] = []
+    
+    # 1. Start with high-frequency machine timestamps if provided
+    current_health = ticker_ts.copy() if ticker_ts else {}
+    
+    # 2. Iterate lanes and cross-check
     for sym, res in sorted(multi_results.items()):
-        rows = res.get("rows", []) or []
-        latest_ts: float | None = None
-        for r in rows:
-            st_map = r.get("symbol_timestamps", {}) or {}
-            if isinstance(st_map, dict) and sym in st_map:
-                try:
-                    ts = float(st_map[sym])
-                except (TypeError, ValueError):
-                    continue
-                if ts > 1_000_000_000_000:
-                    ts = ts / 1000.0
-                if latest_ts is None or ts > latest_ts:
-                    latest_ts = ts
+        # Prefer ticker_ts (machine time) if fresh; fall back to rows (candle time)
+        latest_ts = current_health.get(sym)
+        
+        if latest_ts is None:
+            rows = res.get("rows", []) or []
+            for r in rows:
+                st_map = r.get("symbol_timestamps", {}) or {}
+                if isinstance(st_map, dict) and sym in st_map:
+                    try:
+                        ts = float(st_map[sym])
+                        if ts > 1_000_000_000_000: ts /= 1000.0
+                        if latest_ts is None or ts > latest_ts: latest_ts = ts
+                    except: continue
+        
         if latest_ts is None:
             status = "unknown"
         else:
@@ -1729,6 +2917,7 @@ def render_live_pipeline_observability(
     stale_threshold: int,
     diag_dir: str,
     diag_pattern: str,
+    ticker_ts: dict[str, float] | None = None,
 ) -> bool:
     """Single Live pipeline + lane block (read-only). Returns whether pipelines look active."""
     pipeline_alive = feed_live and (not is_multi_view or bool(multi_results))
@@ -1739,7 +2928,7 @@ def render_live_pipeline_observability(
     if pipeline_alive:
         st.success("📡 Live pipelines active")
         if multi_results:
-            lane_health = compute_lane_health(multi_results, stale_threshold)
+            lane_health = compute_lane_health(multi_results, stale_threshold, ticker_ts=ticker_ts)
             render_lane_health_strip(lane_health, show_heading=False)
             if expected_symbols:
                 observed = set(multi_results.keys())
@@ -2032,6 +3221,706 @@ def render_recommendation_bar(
     )
 
 
+
+def render_overview_tab(
+    *,
+    mode: str,
+    feed_live: bool,
+    pipeline_alive: bool,
+    live_summary_pending: bool,
+    is_multi_view: bool,
+    multi_results: dict[str, dict[str, Any]],
+    summary: dict[str, Any],
+    phase: str,
+    rec: str,
+    near_n: int,
+    bear_n: int,
+    n_sl: int,
+    sell_c_n: int,
+    ticker_ts: dict[str, float],
+    ticker_map: dict[str, Any],
+    stale_threshold: int,
+    formation_metrics: dict[str, Any],
+    signal_health: dict[str, Any],
+    sketch_trade_slots: int,
+    rows: list[dict[str, Any]],
+    selected_paths: list[Path],
+) -> None:
+    """Tab 1 — status, calibration, interpretation, phase, key slice metrics."""
+    st.markdown("### 📊 Overview")
+    st.caption("What the system believes right now — deterministic log replay only.")
+
+    merged_tail = ""
+    if selected_paths:
+        merged_tail = merged_tail_text_paths(
+            sorted(selected_paths, key=lambda x: str(x.resolve()))
+        )
+    tail_recos = parse_recommendation_lines(merged_tail) if merged_tail else []
+
+    if mode == "Live" and is_multi_view and multi_results:
+        st_th = int(stale_threshold)
+        if all_lanes_stale(multi_results, st_th, ticker_ts=ticker_ts):
+            st.error("⚫ **All feeds stale** — outputs are informational only.")
+        elif any_lanes_stale(multi_results, st_th, ticker_ts=ticker_ts):
+            st.warning(
+                "🟡 **Partial feed staleness** — some symbols may be unreliable; "
+                "cross-check freshness before acting."
+            )
+
+    render_global_status_bar(rec, near_n, bear_n, n_sl)
+    render_recommendation_bar(
+        summary,
+        phase,
+        mode=mode,
+        feed_live=feed_live,
+        pipeline_alive=pipeline_alive,
+        pending_first_slice=live_summary_pending,
+        is_multi_view=is_multi_view,
+    )
+    st.caption(f"System Regime: **{system_regime_from_recommendations(tail_recos)}**")
+    st.caption(
+        "System activity: "
+        f"{int(signal_health['diag_nonzero'])} signals · "
+        f"{int(formation_metrics['formation_events'])} formations · "
+        f"{int(sketch_trade_slots)} trades"
+    )
+
+    st.markdown("##### Active recommendation snapshot")
+    latest_by_sym = latest_recommendation_by_symbol(merged_tail) if merged_tail else {}
+    if not latest_by_sym:
+        st.info("No active recommendations in merged log tails.")
+    else:
+        for sym in sorted(latest_by_sym.keys()):
+            r = latest_by_sym[sym]
+            src_h = (
+                "Bootstrap" if r.get("src") == "momentum_bootstrap" else "Strategy"
+            )
+            edge = float(r.get("edge", 0.0) or 0.0)
+            feas = float(r.get("feas", 0.0) or 0.0)
+            st.write(
+                f"{html.escape(sym, quote=True)} → {html.escape(str(r.get('dir', '')), quote=True)} "
+                f"({src_h}) · edge={edge:.4f} · feas={feas:.2f}"
+            )
+
+    if not tail_recos and int(signal_health.get("diag_nonzero", 0) or 0) == 0:
+        st.info(
+            "System is in **no-signal regime** — no actionable structure detected "
+            "(not necessarily a fault; logs may be quiet or gates idle)."
+        )
+
+    if selected_paths:
+        render_bootstrap_drift_panel_from_tail(merged_tail)
+        snaps = parse_bootstrap_drift_lines(merged_tail)
+        buf_show: int | None = None
+        if snaps:
+            buf_show = int(snaps[-1].get("buffer_size", 0) or 0)
+        else:
+            if tail_recos and tail_recos[-1].get("buffer_size") is not None:
+                buf_show = int(tail_recos[-1]["buffer_size"])
+        if buf_show is not None:
+            render_momentum_pool_warmup_bar(buf_show)
+
+    st.markdown("### 🧠 System Interpretation")
+    st.markdown(
+        f"{auto_explanation(summary)}\n\n"
+        "Short-side logic remains gated until diagnostic thresholds are satisfied."
+    )
+    if int(summary.get("offsets_with_near_bearish", 0) or 0) == 0:
+        st.caption("⏳ Waiting for structural signal conditions...")
+    section_rule()
+    live_consistency_block(summary, rows)
+
+    phase_text = {
+        "LONG_ONLY": "No bearish structure detected",
+        "MONITORING": "Early bearish signals detected",
+        "READY_FOR_MAPPING": "Consistent bearish pressure emerging",
+        "SHORT_ACTIVE": "Short signals active in diagnostic slices",
+    }
+    if "state_history" not in st.session_state:
+        st.session_state.state_history = []
+    current_state = {
+        "time": datetime.now().strftime("%H:%M:%S"),
+        "phase": phase,
+        "near": near_n,
+        "sell": sell_c_n,
+    }
+    if "prev_phase" not in st.session_state:
+        st.session_state.prev_phase = phase
+        st.session_state.state_history = [current_state]
+    elif st.session_state.prev_phase != phase:
+        st.markdown(
+            f"""
+    <div style="
+        padding:14px;
+        border-radius:12px;
+        background: linear-gradient(90deg, #2563eb33, #111827);
+        border:1px solid #2563eb66;
+        margin-bottom:12px;
+    ">
+        <b style="color:#60a5fa;">⚡ Phase transition</b><br>
+        <span style="color:#cbd5e1;">
+        {st.session_state.prev_phase} → {phase}
+        </span>
+    </div>
+    """,
+            unsafe_allow_html=True,
+        )
+        st.caption("State updated based on latest diagnostic window.")
+        st.session_state.prev_phase = phase
+        history = list(st.session_state.state_history)
+        history.append(current_state)
+        st.session_state.state_history = history[-5:]
+
+    phase_index = {
+        "LONG_ONLY": 1,
+        "MONITORING": 2,
+        "READY_FOR_MAPPING": 3,
+        "SHORT_ACTIVE": 4,
+    }.get(phase, 1)
+    st.caption(f"Phase: {phase_text.get(phase, phase)}")
+    inject_phase_progress_color(phase)
+    st.progress(phase_index / 4.0)
+    if phase == "READY_FOR_MAPPING":
+        st.markdown(
+            """
+    <div style="
+        padding:10px;
+        border-radius:10px;
+        background:#1e3a8a33;
+        border:1px solid #3b82f6;
+        margin-bottom:10px;
+        color:#bfdbfe;
+    ">
+    System ready for short-side evaluation (shadow mode) — governance applies.
+    </div>
+    """,
+            unsafe_allow_html=True,
+        )
+    render_state_change_strip(st.session_state.state_history)
+
+    if mode == "Live":
+        if ticker_ts:
+            render_fresh_ticker_pills(ticker_ts, int(stale_threshold))
+        else:
+            st.caption("No per-ticker freshness in this log format yet.")
+        if ticker_map:
+            render_per_ticker_panel(ticker_map, max_cards=4)
+
+    st.caption(
+        "Formation events (window): "
+        f"{formation_metrics['formation_events']} observed · "
+        f"{formation_metrics['triggered_events']} triggered · "
+        f"{formation_metrics['dropped_before_trigger']} dropped before trigger "
+        f"(slices={formation_metrics['total_slices']})."
+    )
+    raw_ov = int(signal_health["diag_nonzero"])
+    total_ov = int(signal_health["diag_lines"])
+    rate_ov = float(signal_health["pass_rate"])
+    low_ov = float(signal_health["low_edge_avg"])
+    st.caption(
+        f"Signal health: raw {raw_ov}/{total_ov} · edge pass {rate_ov:.1%} · "
+        f"rejection pressure avg={low_ov:.2f}"
+    )
+    st.caption(
+        "Edge pipeline: "
+        f"raw_edge_avg={float(signal_health['raw_edge_avg']):.6f} · "
+        f"capture_prob_avg={float(signal_health['capture_prob_avg']):.6f} · "
+        f"expected_realized_avg={float(signal_health['expected_realized_avg']):.6f} · "
+        f"nonzero {int(signal_health['edge_pipe_nonzero'])}/{int(signal_health['edge_pipe_lines'])}"
+    )
+
+
+def render_per_lane_diagnostic_bars(
+    *,
+    mode: str,
+    feed_live: bool,
+    pipeline_alive: bool,
+    is_multi_view: bool,
+    multi_results: dict[str, dict[str, Any]],
+) -> None:
+    """Per-lane recommendation/detail — kept out of Execution to avoid duplicating Overview."""
+    if not multi_results:
+        return
+    with st.expander(
+        "📊 Per-lane diagnostic bars (registry / slice summary)",
+        expanded=False,
+    ):
+        symbols_sorted = sorted(multi_results.keys())
+        cols = st.columns(min(3, len(symbols_sorted)))
+        for i, sym in enumerate(symbols_sorted):
+            with cols[i % len(cols)]:
+                st.markdown(f"**{sym}**")
+                sym_summary = multi_results[sym].get("summary", {}) or {}
+                sym_phase = compute_phase(sym_summary) if sym_summary else "LONG_ONLY"
+                sym_near = int(sym_summary.get("offsets_with_near_bearish", 0) or 0)
+                _, sym_slices = compute_recommendation_confidence(sym_summary, sym_near)
+                lane_slice_pending = mode == "Live" and sym_slices == 0
+                render_recommendation_bar(
+                    sym_summary,
+                    sym_phase,
+                    mode=mode,
+                    feed_live=feed_live,
+                    pipeline_alive=pipeline_alive,
+                    pending_first_slice=lane_slice_pending,
+                    is_per_lane=True,
+                    is_multi_view=is_multi_view,
+                )
+
+
+def render_execution_tab(
+    *,
+    mode: str,
+    feed_live: bool,
+    pipeline_alive: bool,
+    is_multi_view: bool,
+    multi_results: dict[str, dict[str, Any]],
+    latest_prices: dict[str, tuple[float, int | None]],
+    latest_event_ts: int | None,
+    sketch_events: list[dict[str, Any]],
+    active_sketch: dict[str, dict[str, Any]],
+    closed_sketch: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+    summary: dict[str, Any],
+    selected_paths: list[Path],
+    stale_threshold: int,
+) -> None:
+    """Tab 2 — opportunities, sketches, paper fills (no global/lane decision bars — see Overview / Diagnostics)."""
+    st.markdown("### ⚡ Execution")
+    st.caption("What you can reason about this refresh — still not a trading directive.")
+    if multi_results:
+        render_trade_opportunities_panel(
+            multi_results,
+            latest_prices,
+            latest_event_ts,
+            sketch_events,
+            mode=mode,
+            stale_threshold=int(stale_threshold),
+        )
+
+    render_trade_setup_panel(mode, is_multi_view, multi_results, rows, summary, selected_paths)
+    if selected_paths:
+        render_sketch_trade_panels(
+            active_sketch,
+            closed_sketch,
+            latest_prices,
+            latest_event_ts,
+            sketch_events,
+        )
+
+
+def render_attribution_tab(*, selected_paths: list[Path]) -> None:
+    """Tab 3 — `[REC_OUTCOME]` src= performance, then reco attribution (not sketch trades)."""
+    st.markdown("### 📈 Attribution")
+    st.caption("Strategy vs bootstrap — merged log tails only (`chronosentiment-core.mdc`).")
+    if not selected_paths:
+        st.info("Configure log paths in the sidebar to load attribution.")
+        return
+    merged = merged_tail_text_paths(sorted(selected_paths, key=lambda x: str(x.resolve())))
+    all_recos = parse_recommendation_lines(merged)
+    att = attribution_tail_summary(all_recos) if all_recos else None
+    if att:
+        st.success(
+            f"**Strategy:** {int(att['n_strat'])} recos  ·  **Bootstrap:** {int(att['n_boot'])} recos  ·  "
+            f"**Bootstrap dominance:** {float(att['bootstrap_rate_pct']):.1f}%"
+        )
+        dom = float(att["bootstrap_rate_pct"]) / 100.0
+        if dom > 0.8:
+            st.caption("System operating in fallback (bootstrap-dominant) regime.")
+        elif dom < 0.2:
+            st.caption("Strategy-driven regime.")
+        else:
+            st.caption("Mixed regime — transition state.")
+    else:
+        st.caption("No `[RECOMMENDATION]` lines in merged tails — dominance N/A.")
+    render_source_performance_panel(merged)
+    if all_recos and att:
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Strategy recos", int(att["n_strat"]))
+        m2.metric("Bootstrap recos", int(att["n_boot"]))
+        m3.metric("Bootstrap rate", f"{att['bootstrap_rate_pct']:.1f}%")
+        st.markdown(
+            f"Avg edge (all recos): **{att['avg_edge']:.6f}** · "
+            f"Max consecutive bootstrap run: **{att['max_bootstrap_run']}**"
+        )
+        render_bootstrap_sequence_strip(all_recos)
+    else:
+        st.caption("No `[RECOMMENDATION]` lines with `src=` in merged tails for detail metrics.")
+
+    render_allocation_panel(merged)
+    
+    # Integrated Trade Recommendations
+    calib_rows = []
+    for line in merged.splitlines():
+        row = parse_calib_feed_line(line)
+        if row: calib_rows.append(row)
+    
+    if calib_rows:
+        calib_df = pd.DataFrame(calib_rows)
+        price_map, latest_ts = parse_symbol_prices(merged)
+        render_recommendations_panel(calib_df, price_map, all_recos, latest_ts=latest_ts)
+
+
+def render_validation_tab(*, selected_paths: list[Path]) -> None:
+    """Tab 4 — Backtest Validation + Paper Trading Drift."""
+    st.markdown("### 🧪 Validation")
+    st.caption("Closing the loop: Intent → Execution → Outcome.")
+    
+    if not selected_paths:
+        st.info("Configure log paths to load validation metrics.")
+        return
+        
+    merged = merged_tail_text_paths(sorted(selected_paths, key=lambda x: str(x.resolve())))
+    recos = parse_recommendation_lines(merged)
+    bt_results = parse_trade_results(merged)
+    live_results = simulate_paper_trades(merged)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### ⚙️ Backtest Replay (Deterministic)")
+        if not bt_results:
+            st.info("No `[TRADE_RESULT]` lines found.")
+        else:
+            bt_df = pd.DataFrame(bt_results)
+            bt_metrics = compute_validation_metrics(bt_df)
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Win Rate", f"{(bt_df['pnl'] > 0).mean():.1%}")
+            m2.metric("Avg PnL (bps)", f"{bt_metrics['avg_pnl']*10000:.1f}")
+            m3.metric("Capture Avg", f"{bt_df['capture_eff'].mean():.2f}")
+            
+            d1, d2, d3, d4 = st.columns(4)
+            d1.metric("Capture P50", f"{bt_metrics['capture_p50']:.2f}")
+            d2.metric("Capture P90", f"{bt_metrics['capture_p90']:.2f}")
+            d3.metric("Capture Std", f"{bt_metrics['capture_std']:.2f}")
+            d4.metric("Neg Capture Rate", f"{bt_metrics['neg_capture_rate']:.1%}")
+            
+            st.dataframe(bt_df.tail(5), use_container_width=True)
+            
+    with col2:
+        st.markdown("#### 🧪 Live Paper Trading (Simulated Drift)")
+        if not live_results:
+            st.info("Insufficient price data for paper simulation.")
+        else:
+            live_df = pd.DataFrame(live_results)
+            live_metrics = compute_validation_metrics(live_df)
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Live Win Rate", f"{(live_df['pnl'] > 0).mean():.1%}")
+            m2.metric("Live PnL (bps)", f"{live_metrics['avg_pnl']*10000:.1f}")
+            m3.metric("Capture Avg", f"{live_df['capture'].mean():.2f}")
+            
+            d1, d2, d3, d4 = st.columns(4)
+            d1.metric("Live P50", f"{live_metrics['capture_p50']:.2f}")
+            d2.metric("Live P90", f"{live_metrics['capture_p90']:.2f}")
+            d3.metric("Live Std", f"{live_metrics['capture_std']:.2f}")
+            d4.metric("Live Neg Rate", f"{live_metrics['neg_capture_rate']:.1%}")
+            
+            st.dataframe(live_df.tail(5), use_container_width=True)
+
+    if bt_results and live_results:
+        st.markdown("---")
+        st.markdown("#### 🛡️ Multi-Factor Risk Governor & Stability Patch")
+        st.caption("Continuous closed-loop control with Vol-Adjusted Slippage and Hysteresis Recovery.")
+        
+        bt_df = pd.DataFrame(bt_results)
+        lv_df = pd.DataFrame(live_results)
+        
+        bt_m = compute_validation_metrics(bt_df)
+        lv_roll_df = lv_df.tail(30)
+        lv_roll_m = compute_validation_metrics(lv_roll_df)
+        
+        # Stateful Halt Tracking (Streamlit Session State)
+        if "halted" not in st.session_state:
+            st.session_state.halted = False
+            
+        # Continuous Adaptive Control with Stability Patch
+        safety = compute_adaptive_throttle(
+            bt_m, lv_roll_m, len(lv_roll_df), was_halted=st.session_state.halted
+        )
+        st.session_state.halted = not safety["gate_open"]
+        
+        # --- HARDENED PHYSICAL BRIDGE: Atomic Write to Engine ---
+        try:
+            import json
+            import time
+            import os
+            # Derive bridge path from first log path
+            log_dir = os.path.dirname(str(selected_paths[0])) if selected_paths else "analysis/real_live"
+            bridge_path = os.path.join(log_dir, "governor_state.json")
+            tmp_path = bridge_path + ".tmp"
+            
+            bridge_data = {
+                "multiplier": safety["multiplier"] if safety["gate_open"] else 0.0,
+                "gate_open": safety["gate_open"],
+                "reason": safety["reason"],
+                "ts": int(time.time())
+            }
+            
+            # Atomic swap to prevent race conditions
+            with open(tmp_path, "w") as f:
+                json.dump(bridge_data, f)
+            os.replace(tmp_path, bridge_path)
+            
+        except Exception as bridge_err:
+            st.error(f"Bridge Hardening Failed: {bridge_err}")
+        
+        # Status Display
+        s_col1, s_col2, s_col3 = st.columns([2, 1, 1])
+        with s_col1:
+            if not safety["gate_open"]:
+                st.error(f"🚫 TRADE GATE: {safety['reason']}")
+                if "RECOVERY_PENDING" in safety["reason"]:
+                    st.info("Hysteresis Recovery Active: Waiting for P50 > 0.50 and P90 > 0.85.")
+            elif safety["multiplier"] < 0.7:
+                st.warning(f"🟡 GOVERNOR: THROTTLE (x{safety['multiplier']:.2f} - {safety['reason']})")
+            else:
+                st.success(f"🟢 GOVERNOR: NOMINAL (x{safety['multiplier']:.2f})")
+            # Defensive Rendering of Governor Signals
+            rs = safety.get("raw_signals", {"cap": 1.0, "slip": 0.0, "fill": 1.0})
+            st.caption(f"Governor signals: Capture {rs.get('cap', 1.0):.2f} | Slip {rs.get('slip', 0.0):.2f} | Fill {rs.get('fill', 1.0):.2f}")
+
+        with s_col2:
+            st.metric("Adaptive Size", f"x{safety['multiplier']:.2f}")
+        with s_col3:
+            gate_str = "OPEN" if safety["gate_open"] else "CLOSED"
+            st.metric("Trade Gate", gate_str)
+            
+        # Leading Indicator Visuals (Normalized)
+        st.markdown("##### 📡 Stability Indicators (Volatility-Adjusted)")
+        l1, l2, l3, l4 = st.columns(4)
+        slip_norm = lv_roll_m.get("avg_slippage_norm", 0)
+        l1.metric("Vol-Adjusted Slippage", f"{slip_norm:.2f}", 
+                  delta=f"{slip_norm - bt_m.get('avg_slippage_norm', 0):.2f}", delta_color="inverse")
+        l2.metric("Fill Prob Trend", f"{lv_roll_m.get('avg_feas', 0):.2f}", 
+                  delta=f"{lv_roll_m.get('avg_feas', 0) - bt_m.get('avg_feas', 0.8):.2f}")
+        l3.metric("Tail Capture (P90)", f"{lv_roll_m.get('capture_p90', 0):.2f}", 
+                  delta=f"{lv_roll_m.get('capture_p90', 0) - bt_m.get('capture_p90', 0):.2f}")
+        l4.metric("Quantified Stability", f"{safety['raw_signals'].get('m_std', 0):.3f}", 
+                  help="Multiplier StdDev (Last 20). Target < 0.15 for smooth execution.")
+        
+        with st.expander("Rolling Comparison Detail (Last 30 Trades)"):
+            drift = compute_drift(bt_m, lv_roll_m)
+            drift_data = []
+            for k in bt_m.keys():
+                drift_data.append({
+                    "Metric": k,
+                    "Backtest": f"{to_float(bt_m.get(k)):.3f}",
+                    "Live (Rolling)": f"{to_float(lv_roll_m.get(k)):.3f}",
+                    "Drift (Δ)": f"{to_float(drift.get(k, 0)):.3f}"
+                })
+            st.table(pd.DataFrame(drift_data))
+
+
+def render_diagnostics_tab(
+    *,
+    mode: str,
+    feed_live: bool,
+    pipeline_alive: bool,
+    is_multi_view: bool,
+    multi_results: dict[str, dict[str, Any]],
+    summary: dict[str, Any],
+    near_n: int,
+    bear_n: int,
+    n_sl: int,
+    sell_c_n: int,
+    signal_health: dict[str, Any],
+    rows: list[dict[str, Any]],
+    df_filtered: pd.DataFrame,
+    parse_errors: list[str],
+    diag_dir_use: str,
+    diag_pattern_use: str,
+    selected_paths: list[Path],
+) -> None:
+    """Tab 4 — registry, slices, raw tables (runner/global status lives on Overview only)."""
+    st.subheader("🔬 Diagnostics")
+    st.caption("Deep evidence and registry — governance and debugging.")
+
+    st.markdown("#### System status")
+    r2, r3, r4 = st.columns(3)
+    with r2:
+        st.metric("Hypotheses (registry)", len(df_filtered) if not df_filtered.empty else 0)
+    with r3:
+        top_dec = str(df_filtered.iloc[0]["decision"]) if not df_filtered.empty else "—"
+        st.metric("Top filter decision", top_dec)
+    with r4:
+        st.metric("Diagnostic slices", n_sl)
+    raw_n = int(signal_health["diag_nonzero"])
+    total_n = int(signal_health["diag_lines"])
+    rate = float(signal_health["pass_rate"])
+    low_edge = float(signal_health["low_edge_avg"])
+    st.caption(
+        f"Signal health: raw {raw_n}/{total_n} · edge pass {rate:.1%} · "
+        f"rejection pressure avg={low_edge:.2f}"
+    )
+
+    render_per_lane_diagnostic_bars(
+        mode=mode,
+        feed_live=feed_live,
+        pipeline_alive=pipeline_alive,
+        is_multi_view=is_multi_view,
+        multi_results=multi_results,
+    )
+
+    section_rule()
+
+    left, right = st.columns(2, gap="large")
+    with left:
+        section_header("Experiment registry (live)")
+        if df_filtered.empty:
+            st.info("No rows after filters, or empty registry. Adjust sidebar or append batch runs.")
+        else:
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Avg PnL Δ", f"{float(df_filtered['avg_pnl_delta'].mean()):+.5f}")
+            m2.metric("Hit rate Δ", f"{float(df_filtered['hit_rate_delta'].mean()):+.2f}")
+            m3.metric("DD Δ", f"{float(df_filtered['drawdown_delta'].mean()):+.5f}")
+            m4.metric("Retention %", f"{float(df_filtered['retained_pct'].mean()):.2f}")
+            st.caption("Top 5 hypotheses by filtered sort order")
+            st.dataframe(
+                df_filtered.head(5),
+                use_container_width=True,
+                height=260,
+            )
+
+    with right:
+        section_header("Signal readiness (engine)")
+        if not selected_paths:
+            st.warning(
+                f"No logs matched `{diag_pattern_use}` under `{diag_dir_use}`. "
+                "Point to stderr captures from `live_engine`, or run `scripts/snapshot_baseline.sh` for Baseline."
+            )
+        else:
+            prev_near = st.session_state.get("trend_near_n")
+            prev_n_sl = st.session_state.get("trend_n_sl")
+            st.session_state["trend_near_n"] = near_n
+            st.session_state["trend_n_sl"] = n_sl
+            if prev_near is not None and prev_n_sl is not None and prev_n_sl == n_sl:
+                d_off = near_n - int(prev_near)
+                if d_off > 0:
+                    delta_s = f"+{d_off}"
+                elif d_off < 0:
+                    delta_s = str(d_off)
+                else:
+                    delta_s = "0"
+            else:
+                delta_s = "—"
+            st.metric("Near-bearish (offsets)", f"{near_n} / {n_sl}", delta=delta_s)
+            st.caption("Δ vs previous refresh (same slice count). Change “Max log files” resets trend.")
+
+            d1, d2, d3, d4 = st.columns(4)
+            fin_s = int(summary.get("offsets_with_final_sell", 0) or 0)
+            with d1:
+                metric_card("Near-bearish slices", f"{near_n} / {n_sl}")
+            with d2:
+                metric_card("Bearish events", f"{bear_n} / {n_sl}")
+            with d3:
+                metric_card("SELL candidates", f"{sell_c_n} / {n_sl}")
+            with d4:
+                metric_card("Final SELL", f"{fin_s} / {n_sl}")
+            st.caption("Latest diagnostic slices (tail of sorted glob)")
+            if rows:
+                slim = []
+                for r in rows[-5:]:
+                    slim.append(
+                        {
+                            "Offset": extract_offset_label(r["file_name"]),
+                            "Bear": r["raw_tendency"]["bearish_events"],
+                            "Near": r["component_diagnostic"]["near_bearish"],
+                            "SELL_c": r["side_distribution"]["candidates_sell"],
+                            "Class": r["classification"],
+                        }
+                    )
+                st.dataframe(pd.DataFrame(slim), use_container_width=True, height=260)
+
+    section_rule()
+
+    ex_a, ex_b = st.columns(2)
+    with ex_a:
+        with st.expander("Full leaderboard", expanded=False):
+            if df_filtered.empty:
+                st.write("—")
+            else:
+                st.dataframe(df_filtered, use_container_width=True, height=400)
+                if len(df_filtered) > 0:
+                    best = df_filtered.iloc[0]
+                    st.markdown(
+                        f"**Spotlight:** `{best['hypothesis_id']}` · {best['decision']} · {best['state']}"
+                    )
+    with ex_b:
+        with st.expander("Full diagnostic evidence", expanded=False):
+            if not rows:
+                st.write("—")
+            else:
+                table_rows = []
+                for r in rows:
+                    table_rows.append(
+                        {
+                            "Offset": extract_offset_label(r["file_name"]),
+                            "Bull": r["raw_tendency"]["bullish_events"],
+                            "Bear": r["raw_tendency"]["bearish_events"],
+                            "Near": r["component_diagnostic"]["near_bearish"],
+                            "BUY_c": r["side_distribution"]["candidates_buy"],
+                            "SELL_c": r["side_distribution"]["candidates_sell"],
+                            "Final SELL": r["side_distribution"]["final_sell"],
+                            "Class": r["classification"],
+                        }
+                    )
+                st.dataframe(pd.DataFrame(table_rows), use_container_width=True, height=400)
+            if parse_errors:
+                st.error("Some paths failed to parse:")
+                for e in parse_errors:
+                    st.text(e)
+
+    st.markdown("#### Phase 2 unlock checklist")
+    uc1, uc2, uc3 = st.columns(3)
+    with uc1:
+        st.checkbox(
+            "Near-bearish ≥ 4 / N",
+            value=near_n >= 4,
+            disabled=True,
+        )
+    with uc2:
+        st.checkbox(
+            "Bearish events ≥ 2 slices",
+            value=bear_n >= 2,
+            disabled=True,
+        )
+    with uc3:
+        st.checkbox(
+            "SELL candidates observed",
+            value=sell_c_n > 0,
+            disabled=True,
+        )
+
+
+def render_decisions_surface(
+    *,
+    overview: dict[str, Any],
+    execution: dict[str, Any],
+) -> None:
+    """Replay/Baseline: operator-facing surface without tab chrome (.cursor/rules alignment)."""
+    st.markdown("### 🧭 Decision surface")
+    st.caption(
+        "What the engine is publishing now — not execution orders · chronosentiment-core.mdc"
+    )
+    render_overview_tab(**overview)
+    section_rule()
+    render_execution_tab(**execution)
+
+
+def render_dashboard_surface(
+    *,
+    attribution: dict[str, Any],
+    diagnostics: dict[str, Any],
+) -> None:
+    """Replay/Baseline: attribution + deep diagnostics (matches legacy two-panel UX)."""
+    st.markdown("### 📋 Dashboard")
+    st.caption("Attribution and registry/evidence — deterministic replay.")
+    render_attribution_tab(**attribution)
+    section_rule()
+    render_diagnostics_tab(**diagnostics)
+
+
 def build_dashboard() -> None:
     inject_page_style()
 
@@ -2222,9 +4111,15 @@ def build_dashboard() -> None:
             "recommendation": "PENDING_STREAM_SUMMARY",
         }
     ticker_map = build_per_ticker_summary(rows)
-    formation_metrics = compute_formation_metrics(rows)
+    formation_metrics = compute_formation_metrics(rows, summary)
+    signal_health = compute_signal_health_metrics(rows)
 
-    n_sl = int(summary.get("files_parsed", 0) or 0)
+    # Prefer engine-reported time-slice count (matches compute_recommendation_confidence).
+    n_sl = int(summary.get("total_slices", 0) or 0)
+    if n_sl < 1:
+        n_sl = int(summary.get("files_parsed", 0) or 0)
+    if n_sl < 1:
+        n_sl = len(rows)
     if n_sl < 1:
         n_sl = 1
     near_n = int(summary.get("offsets_with_near_bearish", 0) or 0)
@@ -2252,7 +4147,19 @@ def build_dashboard() -> None:
             stale_threshold=int(stale_threshold),
             diag_dir=diag_dir_use,
             diag_pattern=diag_pattern_use,
+            ticker_ts=ticker_ts,
         )
+
+    sketch_events: list[dict[str, Any]] = []
+    active_sketch: dict[str, dict[str, Any]] = {}
+    closed_sketch: list[dict[str, Any]] = []
+    latest_prices: dict[str, tuple[float, int | None]] = {}
+    latest_event_ts: int | None = None
+    if selected_paths:
+        sketch_events = collect_sketch_trade_events(selected_paths)
+        active_sketch, closed_sketch = build_sketch_trade_state(sketch_events)
+        latest_prices = collect_latest_symbol_prices(selected_paths)
+        latest_event_ts = get_latest_event_ts(sketch_events)
 
     if parse_errors and not live_summary_pending:
         st.warning(f"{len(parse_errors)} log path(s) could not be parsed — check paths or format.")
@@ -2260,294 +4167,89 @@ def build_dashboard() -> None:
         st.caption(
             "Log ticker activity is present; full aggregate diagnostics appear when summary lines are emitted."
         )
-    if mode == "Live":
-        if ticker_ts:
-            render_fresh_ticker_pills(ticker_ts, int(stale_threshold))
-        else:
-            st.caption("No per-ticker freshness in this log format yet.")
-        if ticker_map:
-            render_per_ticker_panel(ticker_map, max_cards=4)
-        if multi_results:
-            st.markdown("### 📊 Per-Symbol Decisions")
-            symbols_sorted = sorted(multi_results.keys())
-            cols = st.columns(min(3, len(symbols_sorted)))
-            for i, sym in enumerate(symbols_sorted):
-                with cols[i % len(cols)]:
-                    st.markdown(f"**{sym}**")
-                    sym_summary = multi_results[sym].get("summary", {}) or {}
-                    sym_phase = compute_phase(sym_summary) if sym_summary else "LONG_ONLY"
-                    sym_near = int(sym_summary.get("offsets_with_near_bearish", 0) or 0)
-                    _, sym_slices = compute_recommendation_confidence(sym_summary, sym_near)
-                    lane_slice_pending = mode == "Live" and sym_slices == 0
-                    render_recommendation_bar(
-                        sym_summary,
-                        sym_phase,
-                        mode=mode,
-                        feed_live=feed_live,
-                        pipeline_alive=pipeline_alive,
-                        pending_first_slice=lane_slice_pending,
-                        is_per_lane=True,
-                        is_multi_view=is_multi_view,
-                    )
-
-    render_trade_setup_panel(mode, is_multi_view, multi_results, rows, summary, selected_paths)
-    if selected_paths:
-        sketch_events = collect_sketch_trade_events(selected_paths)
-        active_sketch, closed_sketch = build_sketch_trade_state(sketch_events)
-        latest_prices = collect_latest_symbol_prices(selected_paths)
-        latest_ts = get_latest_event_ts(sketch_events)
-        render_sketch_trade_panels(
-            active_sketch, closed_sketch, latest_prices, latest_ts, sketch_events
-        )
-    st.caption(
-        "Formation events (window): "
-        f"{formation_metrics['formation_events']} observed · "
-        f"{formation_metrics['triggered_events']} triggered · "
-        f"{formation_metrics['dropped_before_trigger']} dropped before trigger "
-        f"(slices={formation_metrics['total_slices']})."
-    )
-
     phase = compute_phase(summary) if summary else "LONG_ONLY"
 
-    # --- Global identity + validation (read-only) ---
-    render_global_status_bar(rec, near_n, bear_n, n_sl)
-    render_recommendation_bar(
-        summary,
-        phase,
+    st.markdown("## 🧭 ChronoSentiment control panel")
+
+    sketch_trade_slots = len(active_sketch) + len(closed_sketch)
+    _overview = dict(
         mode=mode,
         feed_live=feed_live,
         pipeline_alive=pipeline_alive,
-        pending_first_slice=live_summary_pending,
+        live_summary_pending=live_summary_pending,
         is_multi_view=is_multi_view,
+        multi_results=multi_results,
+        summary=summary,
+        phase=phase,
+        rec=rec,
+        near_n=near_n,
+        bear_n=bear_n,
+        n_sl=n_sl,
+        sell_c_n=sell_c_n,
+        ticker_ts=ticker_ts,
+        ticker_map=ticker_map,
+        stale_threshold=int(stale_threshold),
+        formation_metrics=formation_metrics,
+        signal_health=signal_health,
+        sketch_trade_slots=sketch_trade_slots,
+        rows=rows,
+        selected_paths=selected_paths,
     )
-    st.markdown(
-        f"""
-### 🧠 System Interpretation
-{auto_explanation(summary)}  
-Short-side logic remains gated until diagnostic thresholds are satisfied.
-"""
+    _execution = dict(
+        mode=mode,
+        feed_live=feed_live,
+        pipeline_alive=pipeline_alive,
+        is_multi_view=is_multi_view,
+        multi_results=multi_results,
+        latest_prices=latest_prices,
+        latest_event_ts=latest_event_ts,
+        sketch_events=sketch_events,
+        active_sketch=active_sketch,
+        closed_sketch=closed_sketch,
+        rows=rows,
+        summary=summary,
+        selected_paths=selected_paths,
+        stale_threshold=int(stale_threshold),
     )
-    if int(summary.get("offsets_with_near_bearish", 0) or 0) == 0:
-        st.caption("⏳ Waiting for structural signal conditions...")
-    section_rule()
-    live_consistency_block(summary, rows)
+    _attrib = dict(selected_paths=selected_paths)
+    _diagnostics = dict(
+        mode=mode,
+        feed_live=feed_live,
+        pipeline_alive=pipeline_alive,
+        is_multi_view=is_multi_view,
+        multi_results=multi_results,
+        summary=summary,
+        near_n=near_n,
+        bear_n=bear_n,
+        n_sl=n_sl,
+        sell_c_n=sell_c_n,
+        signal_health=signal_health,
+        rows=rows,
+        df_filtered=df_filtered,
+        parse_errors=parse_errors,
+        diag_dir_use=diag_dir_use,
+        diag_pattern_use=diag_pattern_use,
+        selected_paths=selected_paths,
+    )
 
-    if "state_history" not in st.session_state:
-        st.session_state.state_history = []
-    current_state = {
-        "time": datetime.now().strftime("%H:%M:%S"),
-        "phase": phase,
-        "near": near_n,
-        "sell": sell_c_n,
-    }
-
-    if "prev_phase" not in st.session_state:
-        st.session_state.prev_phase = phase
-        st.session_state.state_history = [current_state]
-    elif st.session_state.prev_phase != phase:
-        st.markdown(
-            f"""
-    <div style="
-        padding:14px;
-        border-radius:12px;
-        background: linear-gradient(90deg, #2563eb33, #111827);
-        border:1px solid #2563eb66;
-        margin-bottom:12px;
-    ">
-        <b style="color:#60a5fa;">⚡ Phase transition</b><br>
-        <span style="color:#cbd5e1;">
-        {st.session_state.prev_phase} → {phase}
-        </span>
-    </div>
-    """,
-            unsafe_allow_html=True,
+    if mode == "Live":
+        tab_ov, tab_ex, tab_at, tab_vl, tab_dx = st.tabs(
+            ["Overview", "Execution", "Attribution", "Validation", "Diagnostics"]
         )
-        st.caption("State updated based on latest diagnostic window.")
-        st.session_state.prev_phase = phase
-        history = list(st.session_state.state_history)
-        history.append(current_state)
-        st.session_state.state_history = history[-5:]
+        with tab_ov:
+            render_overview_tab(**_overview)
+        with tab_ex:
+            render_execution_tab(**_execution)
+        with tab_at:
+            render_attribution_tab(**_attrib)
+        with tab_vl:
+            render_validation_tab(selected_paths=selected_paths)
+        with tab_dx:
+            render_diagnostics_tab(**_diagnostics)
+    else:
+        render_decisions_surface(overview=_overview, execution=_execution)
+        render_dashboard_surface(attribution=_attrib, diagnostics=_diagnostics)
 
-    phase_index = {
-        "LONG_ONLY": 1,
-        "MONITORING": 2,
-        "READY_FOR_MAPPING": 3,
-        "SHORT_ACTIVE": 4,
-    }.get(phase, 1)
-    phase_text = {
-        "LONG_ONLY": "No bearish structure detected",
-        "MONITORING": "Early bearish signals detected",
-        "READY_FOR_MAPPING": "Consistent bearish pressure emerging",
-        "SHORT_ACTIVE": "Short signals active in diagnostic slices",
-    }
-    st.caption(f"Phase: {phase_text.get(phase, phase)}")
-    inject_phase_progress_color(phase)
-    st.progress(phase_index / 4.0)
-    if phase == "READY_FOR_MAPPING":
-        st.markdown(
-            """
-    <div style="
-        padding:10px;
-        border-radius:10px;
-        background:#1e3a8a33;
-        border:1px solid #3b82f6;
-        margin-bottom:10px;
-        color:#bfdbfe;
-    ">
-    System ready for short-side evaluation (shadow mode) — governance applies.
-    </div>
-    """,
-            unsafe_allow_html=True,
-        )
-
-    render_state_change_strip(st.session_state.state_history)
-    section_rule()
-
-    # --- Status ribbon (compact metrics) ---
-    st.markdown("#### System status")
-    r2, r3, r4, r5 = st.columns(4)
-    with r2:
-        st.metric("Hypotheses (registry)", len(df_filtered) if not df_filtered.empty else 0)
-    with r3:
-        top_dec = str(df_filtered.iloc[0]["decision"]) if not df_filtered.empty else "—"
-        st.metric("Top filter decision", top_dec)
-    with r4:
-        st.metric("Diagnostic slices", n_sl)
-    with r5:
-        st.metric("Runner recommendation", rec)
-
-    section_rule()
-
-    # --- Two-column live + diagnostics ---
-    left, right = st.columns(2, gap="large")
-
-    with left:
-        section_header("Experiment registry (live)")
-        if df_filtered.empty:
-            st.info("No rows after filters, or empty registry. Adjust sidebar or append batch runs.")
-        else:
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Avg PnL Δ", f"{float(df_filtered['avg_pnl_delta'].mean()):+.5f}")
-            m2.metric("Hit rate Δ", f"{float(df_filtered['hit_rate_delta'].mean()):+.2f}")
-            m3.metric("DD Δ", f"{float(df_filtered['drawdown_delta'].mean()):+.5f}")
-            m4.metric("Retention %", f"{float(df_filtered['retained_pct'].mean()):.2f}")
-            st.caption("Top 5 hypotheses by filtered sort order")
-            st.dataframe(
-                df_filtered.head(5),
-                use_container_width=True,
-                height=260,
-            )
-
-    with right:
-        section_header("Signal readiness (engine)")
-        if not selected_paths:
-            st.warning(
-                f"No logs matched `{diag_pattern_use}` under `{diag_dir_use}`. "
-                "Point to stderr captures from `live_engine`, or run `scripts/snapshot_baseline.sh` for Baseline."
-            )
-        else:
-            prev_near = st.session_state.get("trend_near_n")
-            prev_n_sl = st.session_state.get("trend_n_sl")
-            st.session_state["trend_near_n"] = near_n
-            st.session_state["trend_n_sl"] = n_sl
-            if prev_near is not None and prev_n_sl is not None and prev_n_sl == n_sl:
-                d_off = near_n - int(prev_near)
-                if d_off > 0:
-                    delta_s = f"+{d_off}"
-                elif d_off < 0:
-                    delta_s = str(d_off)
-                else:
-                    delta_s = "0"
-            else:
-                delta_s = "—"
-            st.metric("Near-bearish (offsets)", f"{near_n} / {n_sl}", delta=delta_s)
-            st.caption("Δ vs previous refresh (same slice count). Change “Max log files” resets trend.")
-
-            d1, d2, d3, d4 = st.columns(4)
-            fin_s = int(summary.get("offsets_with_final_sell", 0) or 0)
-            with d1:
-                metric_card("Near-bearish slices", f"{near_n} / {n_sl}")
-            with d2:
-                metric_card("Bearish events", f"{bear_n} / {n_sl}")
-            with d3:
-                metric_card("SELL candidates", f"{sell_c_n} / {n_sl}")
-            with d4:
-                metric_card("Final SELL", f"{fin_s} / {n_sl}")
-            st.caption("Latest diagnostic slices (tail of sorted glob)")
-            if rows:
-                slim = []
-                for r in rows[-5:]:
-                    slim.append(
-                        {
-                            "Offset": extract_offset_label(r["file_name"]),
-                            "Bear": r["raw_tendency"]["bearish_events"],
-                            "Near": r["component_diagnostic"]["near_bearish"],
-                            "SELL_c": r["side_distribution"]["candidates_sell"],
-                            "Class": r["classification"],
-                        }
-                    )
-                st.dataframe(pd.DataFrame(slim), use_container_width=True, height=260)
-
-    section_rule()
-
-    # --- Detail expanders ---
-    ex_a, ex_b = st.columns(2)
-    with ex_a:
-        with st.expander("Full leaderboard", expanded=False):
-            if df_filtered.empty:
-                st.write("—")
-            else:
-                st.dataframe(df_filtered, use_container_width=True, height=400)
-                if len(df_filtered) > 0:
-                    best = df_filtered.iloc[0]
-                    st.markdown(
-                        f"**Spotlight:** `{best['hypothesis_id']}` · {best['decision']} · {best['state']}"
-                    )
-    with ex_b:
-        with st.expander("Full diagnostic evidence", expanded=False):
-            if not rows:
-                st.write("—")
-            else:
-                table_rows = []
-                for r in rows:
-                    table_rows.append(
-                        {
-                            "Offset": extract_offset_label(r["file_name"]),
-                            "Bull": r["raw_tendency"]["bullish_events"],
-                            "Bear": r["raw_tendency"]["bearish_events"],
-                            "Near": r["component_diagnostic"]["near_bearish"],
-                            "BUY_c": r["side_distribution"]["candidates_buy"],
-                            "SELL_c": r["side_distribution"]["candidates_sell"],
-                            "Final SELL": r["side_distribution"]["final_sell"],
-                            "Class": r["classification"],
-                        }
-                    )
-                st.dataframe(pd.DataFrame(table_rows), use_container_width=True, height=400)
-            if parse_errors:
-                st.error("Some paths failed to parse:")
-                for e in parse_errors:
-                    st.text(e)
-
-    st.markdown("#### Phase 2 unlock checklist")
-    uc1, uc2, uc3 = st.columns(3)
-    with uc1:
-        st.checkbox(
-            "Near-bearish ≥ 4 / N",
-            value=near_n >= 4,
-            disabled=True,
-        )
-    with uc2:
-        st.checkbox(
-            "Bearish events ≥ 2 slices",
-            value=bear_n >= 2,
-            disabled=True,
-        )
-    with uc3:
-        st.checkbox(
-            "SELL candidates observed",
-            value=sell_c_n > 0,
-            disabled=True,
-        )
 
     st.caption(
         "Deterministic · Read-only · No strategy mutation · "

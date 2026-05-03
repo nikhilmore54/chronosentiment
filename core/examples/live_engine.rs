@@ -1,6 +1,7 @@
 use chronosentiment_core::ga::{
     evaluate_current_status, load_elite_strategies, strategy_evaluation_for_live_reco_snapshot,
     update_paper_registry, component_diagnostic_snapshot, reset_component_diagnostic_counters,
+    record_momentum_gate_event,
     DecisionReport, GaConfig, PaperRegistry, Strategy, SignalType,
     PercentileBuffer, DistributionStats, RankStats, TradeIntent, TradeRecommendation, finalize_paper_registry,
     close_active_trades_for_symbol, close_active_sketch_trades_on_side_flip,
@@ -26,6 +27,43 @@ struct SymbolicCandle {
     pub volume: f64,
 }
 
+#[derive(Debug, Deserialize)]
+struct GovernorControl {
+    pub multiplier: f64,
+    pub gate_open: bool,
+    pub ts: u64,
+}
+
+fn load_governor_multiplier() -> f64 {
+    let path = "analysis/real_live/governor_state.json";
+    let data = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(_) => return 0.0, // Default to Safe Observation
+    };
+    
+    let gov: GovernorControl = match serde_json::from_str(&data) {
+        Ok(g) => g,
+        Err(_) => return 0.0,
+    };
+    
+    // Safety check: Tight Staleness guard (10s) = Halt
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    
+    if now > gov.ts + 10 {
+        return 0.0;
+    }
+    
+    if !gov.gate_open {
+        return 0.0;
+    }
+    
+    // Zero-Trust Clamp
+    gov.multiplier.clamp(0.0, 1.0)
+}
+
 #[derive(Debug, Clone)]
 struct RecommendationCandidate {
     rec_id: u64,
@@ -39,6 +77,9 @@ struct RecommendationCandidate {
     signal: SignalType,
     consistency: usize,
     recommendation: TradeRecommendation,
+    /// Synthetic reco when strategy pool had no winner but momentum bootstrap qualified.
+    from_bootstrap_bridge: bool,
+    from_fallback: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +92,9 @@ struct RecMeta {
     conf: f64,
     voters: usize,
     primary_id: usize,
+    /// strategy | momentum_bootstrap — mirrors [RECOMMENDATION] src= (PnL attribution).
+    reco_src: &'static str,
+    from_fallback: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -98,10 +142,105 @@ impl RecommendationMode {
     }
 }
 
+/// Default gates from `REC_MODE` + `GA_BOOTSTRAP`, with optional `RECO_EDGE_MIN` override
+/// (single-knob A/B for log-distribution calibration; same inputs → same behavior except the floor).
+fn reco_gate_thresholds(
+    rec_mode: RecommendationMode,
+    bootstrap: bool,
+) -> (f64, f64, f64, usize, f64) {
+    let (mut edge_min, feas_min, conf_min, reco_min_voters, score_min) = match rec_mode {
+        RecommendationMode::Coverage => {
+            if bootstrap {
+                (0.001, 0.05, 0.20, 1usize, 0.0002)
+            } else {
+                (0.0012, 0.40, 0.40, 2usize, 0.0010)
+            }
+        }
+        RecommendationMode::Precision => {
+            if bootstrap {
+                (0.001, 0.70, 0.20, 1usize, 0.0020)
+            } else {
+                (0.0012, 0.70, 0.40, 2usize, 0.0020)
+            }
+        }
+        RecommendationMode::Top1 => {
+            if bootstrap {
+                (0.001, 0.70, 0.20, 1usize, 0.0020)
+            } else {
+                (0.0012, 0.70, 0.40, 2usize, 0.0020)
+            }
+        }
+    };
+    if let Ok(v) = std::env::var("RECO_EDGE_MIN") {
+        if let Ok(parsed) = v.parse::<f64>() {
+            if parsed.is_finite() && parsed > 0.0 {
+                edge_min = parsed;
+            }
+        }
+    }
+    (
+        edge_min,
+        feas_min,
+        conf_min,
+        reco_min_voters,
+        score_min,
+    )
+}
+
 fn env_flag(name: &str) -> bool {
     std::env::var(name).map_or(false, |v| {
         !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false")
     })
+}
+
+fn env_parse_usize(name: &str, default: usize) -> usize {
+    std::env::var(name)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
+}
+
+fn env_parse_f64_pos(name: &str, default: f64) -> f64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|v| v.is_finite() && *v > 0.0)
+        .unwrap_or(default)
+}
+
+/// Deterministic minimal reco when strategy pool is silent but momentum bootstrap qualifies.
+fn synthetic_momentum_trade_reco(
+    symbol: &str,
+    price_now: f64,
+    mom_abs: f64,
+    signal: SignalType,
+) -> TradeRecommendation {
+    let tp_bps = 25.0_f64;
+    let sl_bps = 15.0_f64;
+    TradeRecommendation {
+        symbol: symbol.to_string(),
+        signal,
+        rank: 1.0,
+        raw_edge: mom_abs,
+        confidence: 0.55,
+        quality_score: 0.5,
+        entry_price: price_now,
+        entry_low: price_now * 0.9999,
+        entry_high: price_now * 1.0001,
+        tp_target: price_now * (1.0 + tp_bps / 10_000.0),
+        sl_target: price_now * (1.0 - sl_bps / 10_000.0),
+        expected_rr: tp_bps / sl_bps.max(1.0),
+        expected_edge_bps: mom_abs * 10_000.0,
+        risk_bps: sl_bps,
+        holding_bars: 20,
+        vol_bps: 10.0,
+        vol_bucket: 2,
+        is_execution: true,
+        position_size: BASE_POSITION_SIZE,
+        directional_alpha: 0.0,
+        execution_alpha: 0.0,
+        structural_alpha: 0.0,
+    }
 }
 
 fn percentile(mut values: Vec<f64>, p: f64) -> f64 {
@@ -111,6 +250,15 @@ fn percentile(mut values: Vec<f64>, p: f64) -> f64 {
     values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let rank = ((p.clamp(0.0, 100.0) / 100.0) * ((values.len() - 1) as f64)).round() as usize;
     values[rank.min(values.len() - 1)]
+}
+
+fn percentile_sorted(sorted: &[f64], p: f64) -> f64 {
+    if sorted.is_empty() {
+        return 0.0;
+    }
+    let len = sorted.len();
+    let rank = ((p.clamp(0.0, 100.0) / 100.0) * ((len - 1) as f64)).round() as usize;
+    sorted[rank.min(len - 1)]
 }
 
 fn rolling_close_std(history: &[Candle], window: usize) -> f64 {
@@ -196,11 +344,20 @@ fn trade_sketch_prices_from_candles(history: &[Candle], price_scale: f64) -> Opt
 }
 
 /// Deterministic fitness proxy for the reco population layer (edge + feas + paper perf).
-fn live_reco_fitness_proxy(report: &DecisionReport, paper_perf: f64) -> f64 {
-    let edge_term = (report.raw_edge / (report.raw_edge + 0.002)).clamp(0.0, 1.0);
+fn live_reco_fitness_proxy(report: &DecisionReport, paper_perf: f64, stats: &DistributionStats) -> f64 {
+    let edge = report.raw_edge.max(0.0);
     let feas = report.execution_feasibility.clamp(0.0, 1.0);
-    let perf = (paper_perf * 50.0).clamp(0.0, 1.0);
-    (0.35 * edge_term + 0.35 * feas + 0.3 * perf).clamp(0.0, 1.0)
+    let consistency = report.consistency as f64 / 10.0;
+    let perf = paper_perf.clamp(0.0, 1.0);
+
+    // --- CORE TERMS ---
+
+    let edge_term = (edge / stats.p90.max(0.001)).clamp(0.0, 3.0).powf(1.5);
+    let capture_term = feas.powf(2.0);
+    let stability_term = consistency.powf(1.2).max(0.5);
+    let perf_term = (0.5 + 0.5 * perf).clamp(0.3, 1.5);
+
+    edge_term * capture_term * stability_term * perf_term
 }
 
 impl SymbolicCandle {
@@ -324,14 +481,19 @@ fn main() {
     paper.adaptation_threshold = 30; 
     
     let mut edge_buffer = PercentileBuffer::new(500);
+    let mut mom_abs_buffer = PercentileBuffer::new(500);
+    let mut fallback_history: VecDeque<u8> = VecDeque::with_capacity(500);
     let mut current_stats = DistributionStats::default();
     
     let mut history_pipes: HashMap<String, Vec<Candle>> = HashMap::new();
+    // Last k signs of momentum_contribution for bootstrap consistency (sym → deque).
+    let mut mom_sign_hist: HashMap<String, VecDeque<i8>> = HashMap::new();
     let mut score_history: HashMap<String, VecDeque<f64>> = HashMap::new();
     let mut symbol_update_counts: HashMap<String, usize> = HashMap::new();
     let mut pending_confirmations: HashMap<String, PendingConfirmation> = HashMap::new();
     let mut side_counters = SideCounters::default();
     reset_component_diagnostic_counters();
+    let mut last_component_diag = component_diagnostic_snapshot();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
     let mut consistency_counts: HashMap<String, usize> = HashMap::new();
     
@@ -435,6 +597,9 @@ fn main() {
         "   Optional gates: LIVE_GATE_EDGE_STABILITY_MIN=, LIVE_GATE_CONF_MIN=, LIVE_GATE_RECO_STABILITY_MIN= (reco S), LIVE_GATE_RECO_AGREEMENT_GLOBAL_MIN= (reco G), LIVE_GATE_RECO_FITNESS_MIN= (medoid fitness); POOL_DEBUG=1 / RECO_DEBUG=1"
     );
     println!(
+        "   Momentum voter bootstrap (off unless set): MOMENTUM_VOTER_BOOTSTRAP=1 with MOMENTUM_BOOTSTRAP_FLOOR (tape-calibrated via scripts/grid_search_momentum_bootstrap.py), MOMENTUM_BOOTSTRAP_CONSISTENCY_K — RECOMMENDATION lines include src=strategy|momentum_bootstrap. BOOTSTRAP_DRIFT_DIAG=1 logs [BOOTSTRAP_DRIFT] (p90/92/95, current_floor, ratio_floor_to_p92~1, buffer_size; no gate changes)."
+    );
+    println!(
         "   Live reco uses small proxy pools → S/G/F read weaker than train_nse; start S around 0.35–0.55 (not ~0.8). [DIAG] FINAL=1 = meta-gates only; emission still needs edge/feas/p90/voters/blocklist."
     );
 
@@ -473,6 +638,7 @@ fn main() {
         awr_windows_total = awr_windows_total.saturating_add(1);
         let line_start_triggered = paper.intents_triggered;
         let mut recommendations: Vec<RecommendationCandidate> = Vec::new();
+        let mut symbol_best_reports: HashMap<String, DecisionReport> = HashMap::new();
 
         for sym_candle in incoming {
             total_processed += 1;
@@ -490,6 +656,72 @@ fn main() {
             if history.len() > 1000 { history.remove(0); }
             *symbol_update_counts.entry(symbol.clone()).or_insert(0) += 1;
             let sym_updates_now = *symbol_update_counts.get(symbol).unwrap_or(&0);
+            let price_now = candle.close as f64;
+            let price_prev = if history.len() >= 2 {
+                history[history.len() - 2].close as f64
+            } else {
+                price_now
+            };
+            let volume_now = candle.volume as f64;
+            let volume_prev = if history.len() >= 2 {
+                history[history.len() - 2].volume as f64
+            } else {
+                volume_now
+            };
+            let delta_price = price_now - price_prev;
+            let delta_volume = volume_now - volume_prev;
+            let price_k5 = if history.len() > 5 {
+                history[history.len() - 6].close as f64
+            } else {
+                price_prev
+            };
+            let price_k10 = if history.len() > 10 {
+                history[history.len() - 11].close as f64
+            } else {
+                price_prev
+            };
+            let price_k15 = if history.len() > 15 {
+                history[history.len() - 16].close as f64
+            } else {
+                price_prev
+            };
+            let price_k20 = if history.len() > 20 {
+                history[history.len() - 21].close as f64
+            } else {
+                price_prev
+            };
+            let price_k30 = if history.len() > 30 {
+                history[history.len() - 31].close as f64
+            } else {
+                price_prev
+            };
+            let delta_k5 = price_now - price_k5;
+            let delta_k10 = price_now - price_k10;
+            let delta_k15 = price_now - price_k15;
+            let delta_k20 = price_now - price_k20;
+            let delta_k30 = price_now - price_k30;
+            let mut distinct_ref_price = price_now;
+            let mut events_back_to_distinct: usize = 0;
+            if history.len() >= 2 {
+                for back in 1..history.len() {
+                    let candidate = history[history.len() - 1 - back].close as f64;
+                    if candidate != price_now {
+                        distinct_ref_price = candidate;
+                        events_back_to_distinct = back;
+                        break;
+                    }
+                }
+            }
+            let delta_distinct = price_now - distinct_ref_price;
+            let threshold_bps = 5.0;
+            let threshold_abs_scaled = (threshold_bps / 10_000.0) * price_now.max(1.0);
+            let ratio_bps_tick = 10_000.0 * (delta_price / price_now.max(1.0));
+            let ratio_bps_k5 = 10_000.0 * (delta_k5 / price_now.max(1.0));
+            let ratio_bps_k10 = 10_000.0 * (delta_k10 / price_now.max(1.0));
+            let ratio_bps_k15 = 10_000.0 * (delta_k15 / price_now.max(1.0));
+            let ratio_bps_k20 = 10_000.0 * (delta_k20 / price_now.max(1.0));
+            let ratio_bps_k30 = 10_000.0 * (delta_k30 / price_now.max(1.0));
+            let ratio_bps_distinct = 10_000.0 * (delta_distinct / price_now.max(1.0));
             let trigger_momentum_3 = if history.len() >= 4 {
                 let last = history[history.len() - 1].close as f64;
                 let lag3 = history[history.len() - 4].close as f64;
@@ -598,7 +830,7 @@ fn main() {
                 let new_pnls = &paper.pnl_history[pre_pnl_len..];
                 for (meta, pnl) in closed_metas.into_iter().zip(new_pnls.iter().copied()) {
                     println!(
-                        "[REC_OUTCOME] rec_id={} sym={} score={:.6} edge={:.6} feas={:.3} conf={:.3} voters={} S{} pnl={:.6}",
+                        "[REC_OUTCOME] rec_id={} sym={} score={:.6} edge={:.6} feas={:.3} conf={:.3} voters={} S{} pnl={:.6} src={}",
                         meta.rec_id,
                         meta.symbol,
                         meta.score,
@@ -607,7 +839,8 @@ fn main() {
                         meta.conf,
                         meta.voters,
                         meta.primary_id,
-                        pnl
+                        pnl,
+                        meta.reco_src
                     );
                 }
             }
@@ -641,26 +874,27 @@ fn main() {
             }
 
             if history.len() >= 300 {
+                let mut current_stats = edge_buffer.get_stats();
+                let fallback_ratio = current_stats.p90 / current_stats.p65.max(0.0001);
+                
                 let bootstrap = std::env::var("GA_BOOTSTRAP").is_ok();
-                let mock_edge_blend = std::env::var("MOCK_EDGE_BLEND").is_ok();
-                let short_return = if history.len() >= 2 {
-                    let prev = history[history.len() - 2].close as f64;
-                    let curr = history[history.len() - 1].close as f64;
-                    if prev > 0.0 {
-                        ((curr / prev) - 1.0).clamp(-0.05, 0.05)
-                    } else {
-                        0.0
-                    }
+                let min_feas = if bootstrap { 0.05 } else { 0.40 };
+                let allow_fallback = fallback_ratio < 0.40;
+                let use_fallback = bootstrap && allow_fallback;
+                let edge_gate = if use_fallback {
+                    current_stats.p65.max(0.0002)
                 } else {
-                    0.0
+                    current_stats.p90.max(0.0008)
                 };
+
                 let mut buy_strength = 0.0;
                 let mut sell_strength = 0.0;
-                let mut buy_voters = 0;
-                let mut sell_voters = 0;
+                let mut buy_voters = 0usize;
+                let mut sell_voters = 0usize;
                 let mut shared_raw_edge = 0.0;
                 let mut best_reco = None;
                 let mut max_rank = -1.0;
+                let mut best_report: Option<DecisionReport> = None;
                 let mut primary_id = 0;
                 let mut selected_edge = 0.0;
                 let mut selected_feasibility = 0.0;
@@ -673,8 +907,30 @@ fn main() {
                 let mut edges_with_reco: Vec<f64> = Vec::new();
                 let mut reco_population = Vec::new();
 
-                let min_feas = if bootstrap { 0.05 } else { 0.40 };
-                let edge_gate = if bootstrap { 0.0001 } else { 0.0012 };
+                let mut p90 = 0.0007; // Default/warmup
+                let mut p94 = 0.0009;
+                let mut p95 = 0.0012;
+                let mut p98 = 0.0020;
+
+                if mom_abs_buffer.buffer_len() >= 100 {
+                    let vals = mom_abs_buffer.sorted_values();
+                    p90 = percentile_sorted(&vals, 90.0);
+                    p94 = percentile_sorted(&vals, 94.0);
+                    p95 = percentile_sorted(&vals, 95.0);
+                    p98 = percentile_sorted(&vals, 98.0);
+
+                    if total_processed % 500 == 0 {
+                        println!(
+                            "[BOOTSTRAP_THRESH] p90={:.6} p94={:.6} p95={:.6} p98={:.6}",
+                            p90, p94, p95, p98
+                        );
+                    }
+                }
+
+                let edge_gate = 0.0001;
+                let min_feas = 0.05;
+                let min_conf = 0.00;
+                let min_voters_required = 1;
 
                 for (idx, strat) in strategies.iter().enumerate() {
                     let last_sig = last_signals.get(symbol).cloned().unwrap_or(SignalType::WAIT);
@@ -698,7 +954,7 @@ fn main() {
                     }
                     if run_reco_engine {
                         let paper_perf = paper.get_strategy_performance(idx);
-                        let fit = live_reco_fitness_proxy(&report, paper_perf);
+                        let fit = live_reco_fitness_proxy(&report, paper_perf, &current_stats);
                         let cap = report
                             .capture_efficiency
                             .unwrap_or_else(|| report.execution_feasibility.mul_add(2.0, -1.0))
@@ -712,11 +968,7 @@ fn main() {
                         ));
                     }
                     
-                    let effective_raw_edge = if mock_edge_blend {
-                        (0.7 * report.raw_edge + 0.3 * short_return).max(0.0)
-                    } else {
-                        report.raw_edge
-                    };
+                    let effective_raw_edge = report.raw_edge;
                     if effective_raw_edge > shared_raw_edge {
                         shared_raw_edge = effective_raw_edge;
                     }
@@ -731,7 +983,7 @@ fn main() {
                         reject_low_feas += 1;
                         continue;
                     }
-                    if let Some(reco) = report.recommendation {
+                    if let Some(ref reco) = report.recommendation {
                         edges_with_reco.push(effective_raw_edge);
                         if signal_decay_exit
                             && effective_raw_edge < signal_edge_min
@@ -755,8 +1007,10 @@ fn main() {
                         else if reco.signal == SignalType::SELL { sell_strength += w_rank_sq; sell_voters += 1; }
 
                         if reco.rank > max_rank {
-                            max_rank = reco.rank; primary_id = idx;
+                            max_rank = reco.rank;
+                            primary_id = idx;
                             best_reco = Some((reco.clone(), report.signal, report.consistency));
+                            best_report = Some(report.clone());   // ✅ Capture the winning report
                             selected_edge = effective_raw_edge;
                             selected_feasibility = report.execution_feasibility;
                         }
@@ -771,16 +1025,102 @@ fn main() {
                     }
                 }
 
+                // --- Fallback tracking (CORRECT: Based on winning strategy) ---
+                let fallback_applied_this_symbol = best_report
+                    .as_ref()
+                    .map(|r| r.fallback_applied)
+                    .unwrap_or(false);
+
+                if fallback_applied_this_symbol {
+                    fallback_history.push_back(1);
+                } else {
+                    fallback_history.push_back(0);
+                }
+                if fallback_history.len() > 500 {
+                    fallback_history.pop_front();
+                }
+
+                if let Some(ref r) = best_report {
+                    symbol_best_reports.insert(symbol.clone(), r.clone());
+                }
+
                 if shared_raw_edge > 0.0 {
                     edge_buffer.push(shared_raw_edge);
                     current_stats = edge_buffer.get_stats();
                 }
 
+                let raw_momentum = if price_now.abs() > 1e-12 {
+                    delta_k30 / price_now
+                } else {
+                    0.0
+                };
+                let momentum_weight = 1.0;
+                let momentum_contribution = raw_momentum * momentum_weight;
+                mom_abs_buffer.push(momentum_contribution.abs());
+
+                // --- MOMENTUM BOOTSTRAP (deterministic) ---
+                let mut bootstrap_active = false;
+                let mut bootstrap_edge = 0.0;
+                let mut bootstrap_direction: i32 = 0; // +1 buy, -1 sell
+
+                let momentum_abs = momentum_contribution.abs();
+
+                let floor = p94;
+
+                let k_required: usize = std::env::var("MOMENTUM_BOOTSTRAP_CONSISTENCY_K")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(4);
+
+                // maintain rolling sign history (Vec<i8>)
+                let sign = if momentum_contribution > 0.0 { 1 } else if momentum_contribution < 0.0 { -1 } else { 0 };
+
+                let hist = mom_sign_hist.entry(symbol.clone()).or_default();
+                hist.push_back(sign as i8);
+                if hist.len() > k_required {
+                    hist.pop_front();
+                }
+
+                let consistent = hist.len() == k_required
+                    && hist.iter().all(|&s| s == (sign as i8) && s != 0);
+
+                let raw_voter_sum = buy_voters + sell_voters;
+                let raw_voters = if reco_single_accept_diag {
+                    voted_count.max(raw_voter_sum)
+                } else {
+                    raw_voter_sum
+                };
+                let voters = raw_voters;
+
+                if std::env::var("MOMENTUM_VOTER_BOOTSTRAP").is_ok() && voters == 0 && momentum_abs >= floor && consistent {
+                    bootstrap_active = true;
+                    let dynamic_cap = p98;
+                    let cap = if dynamic_cap > 0.0 { dynamic_cap } else { 0.002 };
+                    let capture_proxy = (total_feasibility/(voted_count as f64)).max(0.05);
+                    bootstrap_edge = (momentum_abs * 0.3 * capture_proxy).min(cap.max(0.0005));
+                    bootstrap_direction = sign;
+                }
+
+                if momentum_abs < 0.0002 {
+                    bootstrap_active = false;
+                }
+
                 let total_strength = buy_strength + sell_strength + 0.001;
-                let conf = (buy_strength - sell_strength).abs() / total_strength;
-                let final_sig = if buy_strength > sell_strength { SignalType::BUY } else { SignalType::SELL };
-                
-                let avg_feasibility = if voted_count > 0 { total_feasibility / voted_count as f64 } else { 0.0 };
+                let mut conf = (buy_strength - sell_strength).abs() / total_strength;
+                if bootstrap_active {
+                    conf = 1.0;
+                }
+                let final_sig = if buy_strength > sell_strength {
+                    SignalType::BUY
+                } else {
+                    SignalType::SELL
+                };
+
+                let avg_feasibility = if voted_count > 0 {
+                    total_feasibility / voted_count as f64
+                } else {
+                    0.0
+                };
                 let decision_feasibility = if selected_feasibility > 0.0 {
                     selected_feasibility
                 } else {
@@ -788,38 +1128,55 @@ fn main() {
                 };
 
                 let min_conf = if bootstrap { 0.10 } else { 0.40 };
-                let min_voters_required = if bootstrap { 1 } else { 2 };
-                let is_high_conf = conf >= min_conf && (buy_voters + sell_voters) >= min_voters_required;
+                let min_voters_required = if bootstrap || bootstrap_active {
+                    1
+                } else {
+                    2
+                };
+                let effective_voters = if bootstrap_active {
+                    1
+                } else {
+                    voters
+                };
+                let voters = effective_voters;
+
+                let is_high_conf = bootstrap_active || (conf >= min_conf
+                    && voters >= min_voters_required);
                 // Bootstrap floors feasibility at 0.05; strict `>` would reject exactly 0.05 (dead zone).
                 let is_capturable = if bootstrap {
                     decision_feasibility >= min_feas
+                } else if bootstrap_active {
+                    decision_feasibility.max(min_feas) > min_feas - 1e-12
                 } else {
                     decision_feasibility > min_feas
-                };
-                let voters = buy_voters + sell_voters;
-                let active_strats = voted_count;
-                let voters = if reco_single_accept_diag {
-                    active_strats
-                } else {
-                    voters
                 };
                 if strat_probe && total_processed % 100 == 0 {
                     println!(
                         "[STRAT_AGG] sym={} total_strats={} active_strats={} voters={} buy_voters={} sell_voters={} diag_single_accept={}",
                         symbol,
                         strategies.len(),
-                        active_strats,
+                        voted_count,
                         voters,
                         buy_voters,
                         sell_voters,
                         reco_single_accept_diag as i32
                     );
                 }
-                let edge_after_floor = if shared_raw_edge >= edge_gate {
+                let effective_edge = if bootstrap_active {
+                    bootstrap_edge
+                } else {
                     shared_raw_edge
+                };
+
+                let edge_after_floor = if effective_edge >= edge_gate {
+                    effective_edge
                 } else {
                     0.0
                 };
+                // Diagnostic proxy only; does not affect strategy decisions.
+                let norm_momentum = (raw_momentum / 0.001).clamp(-1.0, 1.0);
+                let composite_contribution = selected_edge.max(0.0);
+                let score_contribution = (selected_edge * conf).max(0.0);
                 let voters_pre_count = voters;
                 let voters_post_count = if voters_pre_count >= min_voters_required {
                     voters_pre_count
@@ -854,6 +1211,8 @@ fn main() {
                     edge_stability >= req
                 });
                 let pass_conf_floor = live_gate_conf_floor.map_or(true, |req| conf >= req);
+                let pass_edge_stability_eff =
+                    pass_edge_stability || bootstrap_active;
 
                 let (pass_reco_structure, reco_diag_s, reco_diag_g, reco_diag_f) =
                     if run_reco_engine && !reco_population.is_empty() {
@@ -949,32 +1308,153 @@ fn main() {
                     };
 
                 // Deterministic recommendation gate: executable, consistent, and ranked.
-                let (edge_min, feas_min, conf_min, reco_min_voters, score_min) = match rec_mode {
-                    RecommendationMode::Coverage => {
-                        if bootstrap {
-                            // Align with `min_feas` / bootstrap feasibility floor (~0.05) so reco can emit.
-                            (0.001, 0.05, 0.20, 1usize, 0.0002)
+                let (edge_min, feas_min, conf_min, reco_min_voters, score_min) =
+                    reco_gate_thresholds(rec_mode, bootstrap);
+                let dynamic_edge_min = current_stats.p90.max(edge_min);
+
+                let best_reco_emit = match best_reco.clone() {
+                    Some(x) => Some(x),
+                    None if bootstrap_active => {
+                        let sig = if bootstrap_direction > 0 {
+                            SignalType::BUY
                         } else {
-                            (0.0012, 0.40, 0.40, 2usize, 0.0010)
-                        }
+                            SignalType::SELL
+                        };
+                        Some((
+                            synthetic_momentum_trade_reco(symbol.as_str(), price_now, bootstrap_edge, sig),
+                            sig,
+                            1usize,
+                        ))
                     }
-                    RecommendationMode::Precision => {
-                        if bootstrap {
-                            (0.001, 0.70, 0.20, 1usize, 0.0020)
-                        } else {
-                            (0.0012, 0.70, 0.40, 2usize, 0.0020)
-                        }
-                    }
-                    RecommendationMode::Top1 => {
-                        if bootstrap {
-                            (0.001, 0.70, 0.20, 1usize, 0.0020)
-                        } else {
-                            (0.0012, 0.70, 0.40, 2usize, 0.0020)
-                        }
-                    }
+                    None => None,
                 };
 
-                if total_processed % 100 == 0 {
+                // Bridge-only lift: strategy edge ∪ |momentum|; no `edge_min` injection here — gate uses `passes_edge_floor`.
+                let selected_edge_gate = if bootstrap_active {
+                    bootstrap_edge
+                } else {
+                    selected_edge
+                };
+                let passes_edge_floor =
+                    bootstrap_active || selected_edge_gate >= dynamic_edge_min;
+                let feas_gate = if bootstrap_active {
+                    decision_feasibility.max(min_feas + 1e-9)
+                } else {
+                    decision_feasibility
+                };
+
+                let pre_gate_log = if bootstrap_active {
+                    selected_edge_gate
+                } else {
+                    effective_edge
+                };
+                let post_gate_log = if bootstrap_active {
+                    selected_edge_gate
+                } else {
+                    edge_after_floor
+                };
+
+                let diag_emit = total_processed % 5 == 0;
+                if diag_emit {
+                    println!(
+                        "[EDGE_COMPONENTS] sym={} raw_momentum={:.6} norm_momentum={:.6} momentum_weight={:.6} momentum_contribution={:.6} composite_contribution={:.6} score_contribution={:.6} pre_gate_edge={:.6} post_gate_edge={:.6} voters={} p90={:.6} feasibility={:.6}",
+                        symbol,
+                        raw_momentum,
+                        norm_momentum,
+                        momentum_weight,
+                        momentum_contribution,
+                        composite_contribution,
+                        score_contribution,
+                        pre_gate_log,
+                        post_gate_log,
+                        voters_pre_count,
+                        current_stats.p90,
+                        decision_feasibility
+                    );
+                    println!(
+                        "[INPUT_SNAPSHOT] sym={} price_scaled={:.6} delta_tick={:.6} volume={:.6} delta_volume={:.6} history_len={}",
+                        symbol,
+                        price_now,
+                        delta_price,
+                        volume_now,
+                        delta_volume,
+                        history.len()
+                    );
+                    let momentum_condition_met = delta_k30.abs() > threshold_abs_scaled;
+                    record_momentum_gate_event(symbol, momentum_condition_met, delta_k30);
+                    println!(
+                        "[MOMENTUM_CHECK] sym={} price_scaled={:.6} delta_tick={:.6} delta_k5={:.6} delta_k10={:.6} delta_distinct={:.6} events_back_to_distinct={} threshold_abs_scaled={:.6} threshold_bps={:.2} ratio_bps_tick={:.6} ratio_bps_k5={:.6} ratio_bps_k10={:.6} ratio_bps_distinct={:.6} condition_met={}",
+                        symbol,
+                        price_now,
+                        delta_price,
+                        delta_k5,
+                        delta_k10,
+                        delta_distinct,
+                        events_back_to_distinct,
+                        threshold_abs_scaled,
+                        threshold_bps,
+                        ratio_bps_tick,
+                        ratio_bps_k5,
+                        ratio_bps_k10,
+                        ratio_bps_distinct,
+                        if momentum_condition_met { 1 } else { 0 }
+                    );
+                    println!(
+                        "[MOMENTUM_SCAN] sym={} threshold_abs_scaled={:.6} threshold_bps={:.2} k5={:.6} k10={:.6} k15={:.6} k20={:.6} k30={:.6} bps_k5={:.6} bps_k10={:.6} bps_k15={:.6} bps_k20={:.6} bps_k30={:.6}",
+                        symbol,
+                        threshold_abs_scaled,
+                        threshold_bps,
+                        delta_k5,
+                        delta_k10,
+                        delta_k15,
+                        delta_k20,
+                        delta_k30,
+                        ratio_bps_k5,
+                        ratio_bps_k10,
+                        ratio_bps_k15,
+                        ratio_bps_k20,
+                        ratio_bps_k30
+                    );
+                    let component_diag = component_diagnostic_snapshot();
+                    let momentum_pos_delta = component_diag
+                        .momentum_pos_count
+                        .saturating_sub(last_component_diag.momentum_pos_count);
+                    let momentum_delta = component_diag
+                        .momentum_neg_count
+                        .saturating_sub(last_component_diag.momentum_neg_count);
+                    let composite_delta = component_diag
+                        .composite_neg_count
+                        .saturating_sub(last_component_diag.composite_neg_count);
+                    let score_delta = component_diag
+                        .score_neg_count
+                        .saturating_sub(last_component_diag.score_neg_count);
+                    let near_bearish_delta = component_diag
+                        .near_bearish_count
+                        .saturating_sub(last_component_diag.near_bearish_count);
+                    println!(
+                        "[CYCLE_SUMMARY] sym={} momentum_pos={} momentum_neg={} composite_neg={} score_neg={} near_bearish={}",
+                        symbol,
+                        component_diag.momentum_pos_count,
+                        component_diag.momentum_neg_count,
+                        component_diag.composite_neg_count,
+                        component_diag.score_neg_count,
+                        component_diag.near_bearish_count
+                    );
+                    println!(
+                        "[COMPONENT_SNAPSHOT] sym={} momentum_pos={} momentum_neg={} composite_neg={} score_neg={} near_bearish={} d_momentum_pos={} d_momentum={} d_composite={} d_score={} d_near_bearish={}",
+                        symbol,
+                        component_diag.momentum_pos_count,
+                        component_diag.momentum_neg_count,
+                        component_diag.composite_neg_count,
+                        component_diag.score_neg_count,
+                        component_diag.near_bearish_count,
+                        momentum_pos_delta,
+                        momentum_delta,
+                        composite_delta,
+                        score_delta,
+                        near_bearish_delta
+                    );
+                    last_component_diag = component_diag;
                     println!(
                         "[EDGE_TRACE] sym={} raw_edge={:.6} edge_after_floor={:.6} voters_pre={} voters_post={}",
                         symbol,
@@ -983,22 +1463,34 @@ fn main() {
                         voters_pre_count,
                         voters_post_count
                     );
-                    let diag_edge = if selected_edge > 1e-12 {
-                        selected_edge
+                    let expected_realized_edge = 0.0;
+                    println!(
+                        "[EDGE_PIPE] sym={} raw_edge={:.6} capture_prob={:.6} edge_gate={:.6} edge_min={:.6} mom_abs={:.6}",
+                        symbol,
+                        effective_edge,
+                        decision_feasibility,
+                        edge_gate,
+                        edge_min,
+                        momentum_contribution.abs()
+                    );
+                    let diag_edge = if selected_edge_gate > 1e-12 {
+                        selected_edge_gate
                     } else {
                         shared_raw_edge
                     };
-                    let pass_edge_i = u8::from(pass_edge_stability);
+                    let pass_edge_i = u8::from(pass_edge_stability_eff);
                     let pass_conf_i = u8::from(pass_conf_floor);
                     let pass_reco_i = u8::from(pass_reco_structure);
                     let final_meta_i = u8::from(
-                        pass_edge_stability && pass_conf_floor && pass_reco_structure,
+                        pass_edge_stability_eff && pass_conf_floor && pass_reco_structure,
                     );
+                    let active_mult = load_governor_multiplier();
                     println!(
-                        "[DIAG] sym={} edge={:.6} conf={:.2} edge_stab={:.3} reco_S={:.3} reco_G={:.3} reco_F={:.3} pass_edge={} pass_conf={} pass_reco={} FINAL={} feas={:.2} voters={} p90={:.6} rej:no_reco={} low_edge={} low_feas={}",
+                        "[DIAG] sym={} edge={:.6} conf={:.2} gov_mult={:.2} edge_stab={:.3} reco_S={:.3} reco_G={:.3} reco_F={:.3} pass_edge={} pass_conf={} pass_reco={} FINAL={} feas={:.2} voters={} p90={:.6} rej:no_reco={} low_edge={} low_feas={}",
                         symbol,
                         diag_edge,
                         conf,
+                        active_mult,
                         edge_stability,
                         reco_diag_s,
                         reco_diag_g,
@@ -1008,7 +1500,7 @@ fn main() {
                         pass_reco_i,
                         final_meta_i,
                         avg_feasibility,
-                        buy_voters + sell_voters,
+                        voters,
                         current_stats.p90,
                         reject_no_reco,
                         reject_nonpositive_edge,
@@ -1016,28 +1508,39 @@ fn main() {
                     );
                 }
 
+                if bootstrap_active {
+                    println!(
+                        "[MOMENTUM_BOOTSTRAP] sym={} edge={:.6} mom_abs={:.6} k={} floor={:.6}",
+                        symbol,
+                        bootstrap_edge,
+                        momentum_abs,
+                        k_required,
+                        floor
+                    );
+                }
+
                 if std::env::var("EMIT_PROBE").is_ok() && symbol.as_str() == "AXISBANK.NS" {
-                    let p90_ok = current_stats.p90 >= edge_gate;
+                    let p90_ok = current_stats.p90 >= edge_gate || bootstrap_active;
                     let final_meta =
-                        pass_edge_stability && pass_conf_floor && pass_reco_structure;
+                        pass_edge_stability_eff && pass_conf_floor && pass_reco_structure;
                     let blocked = blocked_symbols.contains(symbol);
-                    let (has_best, aligned, rec_score, passes_gate) = match &best_reco {
+                    let (has_best, aligned, rec_score, passes_gate) = match &best_reco_emit {
                         Some((reco, sig, _)) => {
                             let al = *sig == final_sig;
                             let rs = if al {
                                 let delta_ret_abs = reco.expected_edge_bps.abs() / 10000.0;
                                 let move_factor = (delta_ret_abs / rec_min_move).clamp(1.0, 3.0);
-                                (selected_edge * decision_feasibility * conf * move_factor).max(0.0)
+                                (selected_edge_gate * feas_gate * conf).max(0.0)
                             } else {
                                 0.0
                             };
                             let pg = al
-                                && selected_edge >= edge_min
-                                && decision_feasibility >= feas_min
+                                && passes_edge_floor
+                                && feas_gate >= feas_min
                                 && conf >= conf_min
-                                && voters >= reco_min_voters
-                                && rs >= score_min
-                                && pass_edge_stability
+                                && (bootstrap_active || voters >= reco_min_voters)
+                                && (rs >= score_min || bootstrap_active)
+                                && pass_edge_stability_eff
                                 && pass_conf_floor
                                 && pass_reco_structure
                                 && !blocked;
@@ -1068,12 +1571,12 @@ fn main() {
                         edge_gate,
                         is_high_conf as i32,
                         is_capturable as i32,
-                        pass_edge_stability as i32,
+                        pass_edge_stability_eff as i32,
                         pass_conf_floor as i32,
                         pass_reco_structure as i32,
                         final_meta as i32,
-                        selected_edge,
-                        decision_feasibility,
+                        selected_edge_gate,
+                        feas_gate,
                         conf,
                         voters,
                         has_best as i32,
@@ -1087,39 +1590,70 @@ fn main() {
                     );
                 }
 
-                if current_stats.p90 >= edge_gate && is_high_conf && is_capturable {
-                    if let Some((mut reco, sig, cons)) = best_reco {
+                let outer_reco_gate = current_stats.p90 >= edge_gate || bootstrap_active;
+                if outer_reco_gate && is_high_conf && is_capturable {
+                    if let Some((mut reco, sig, cons)) = best_reco_emit {
                         if sig == final_sig {
-                            reco.position_size = BASE_POSITION_SIZE * (reco.rank * reco.rank) * (conf * 1.5).clamp(0.5, 2.0);
-
+                            let gov_mult = load_governor_multiplier();
+                            let raw_size = BASE_POSITION_SIZE * (reco.rank * reco.rank) * (conf * 1.5).clamp(0.5, 2.0);
+                            reco.position_size = raw_size * gov_mult;
+                            
                             if (paper.active_trades.len() + paper.pending_intents.len()) < paper.max_concurrent {
                                 if !paper.active_trades.iter().any(|t| t.symbol == *symbol) && !paper.pending_intents.iter().any(|i| i.symbol == *symbol) {
                                     let delta_ret_abs = reco.expected_edge_bps.abs() / 10000.0;
                                     // Movement factor boosts meaningful price travel but stays bounded.
                                     let move_factor = (delta_ret_abs / rec_min_move).clamp(1.0, 3.0);
-                                    let rec_score = (selected_edge * decision_feasibility * conf * move_factor).max(0.0);
-                                    let passes_reco_gate = selected_edge >= edge_min
-                                        && decision_feasibility >= feas_min
-                                        && conf >= conf_min
-                                        && voters >= reco_min_voters
-                                        && rec_score >= score_min
-                                        && pass_edge_stability
+                                    let best_idx = if bootstrap_active && best_reco.is_none() { 1usize } else { primary_id };
+                                    let best_perf = paper.get_strategy_performance(best_idx);
+                                    let fitness = live_reco_fitness_proxy(
+                                        best_report.as_ref().unwrap_or(&DecisionReport::default()),
+                                        best_perf,
+                                        &current_stats,
+                                    );
+                                    
+                                    let structural_bonus = (edge_stability / 2.0).clamp(0.5, 1.5);
+
+                                    let rec_score =
+                                        fitness.powf(1.2)
+                                        * (0.7 + 0.3 * conf)
+                                        * move_factor
+                                        * structural_bonus;
+                                    let score_ok =
+                                        rec_score >= score_min || bootstrap_active;
+                                    let passes_reco_gate = passes_edge_floor
+                                        && feas_gate >= feas_min
+                                        && (bootstrap_active || conf >= conf_min)
+                                        && (bootstrap_active || voters >= reco_min_voters)
+                                        && score_ok
+                                        && pass_edge_stability_eff
                                         && pass_conf_floor
                                         && pass_reco_structure
                                         && !blocked_symbols.contains(symbol);
                                     if passes_reco_gate {
+                                        let cand_primary = if bootstrap_active && best_reco.is_none() {
+                                            1usize
+                                        } else {
+                                            primary_id
+                                        };
+                                        let fallback_used = best_report
+                                            .as_ref()
+                                            .map(|r| r.fallback_applied)
+                                            .unwrap_or(false);
+
                                         recommendations.push(RecommendationCandidate {
                                             rec_id: next_rec_id,
                                             symbol: symbol.clone(),
                                             score: rec_score,
-                                            edge: selected_edge,
+                                            edge: selected_edge_gate,
                                             conf,
-                                            feas: decision_feasibility,
+                                            feas: feas_gate,
                                             voters,
-                                            primary_id,
+                                            primary_id: cand_primary,
                                             signal: sig,
                                             consistency: cons,
                                             recommendation: reco,
+                                            from_bootstrap_bridge: bootstrap_active,
+                                            from_fallback: fallback_used,
                                         });
                                         next_rec_id += 1;
                                     }
@@ -1128,6 +1662,128 @@ fn main() {
                         }
                     }
                 }
+            } else if total_processed % 25 == 0 {
+                // Emit deterministic warmup telemetry so edge-pipeline visibility exists
+                // even before the 300-sample history gate is satisfied.
+                let bootstrap = std::env::var("GA_BOOTSTRAP").is_ok();
+                let edge_gate = if bootstrap { 0.0001 } else { 0.0012 };
+                let (warm_edge_min, _, _, _, _) = reco_gate_thresholds(rec_mode, bootstrap);
+                let raw_momentum = if price_now.abs() > 1e-12 {
+                    delta_k30 / price_now
+                } else {
+                    0.0
+                };
+                let norm_momentum = (raw_momentum / 0.001).clamp(-1.0, 1.0);
+                println!(
+                    "[EDGE_COMPONENTS] sym={} raw_momentum={:.6} norm_momentum={:.6} momentum_weight={:.6} momentum_contribution={:.6} composite_contribution={:.6} score_contribution={:.6} pre_gate_edge={:.6} post_gate_edge={:.6} voters={} p90={:.6} feasibility={:.6}",
+                    symbol,
+                    raw_momentum,
+                    norm_momentum,
+                    1.0,
+                    raw_momentum,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0,
+                    0.0,
+                    0.0
+                );
+                println!(
+                    "[INPUT_SNAPSHOT] sym={} price_scaled={:.6} delta_tick={:.6} volume={:.6} delta_volume={:.6} history_len={}",
+                    symbol,
+                    price_now,
+                    delta_price,
+                    volume_now,
+                    delta_volume,
+                    history.len()
+                );
+                let momentum_condition_met = delta_k30.abs() > threshold_abs_scaled;
+                record_momentum_gate_event(symbol, momentum_condition_met, delta_k30);
+                println!(
+                    "[MOMENTUM_CHECK] sym={} price_scaled={:.6} delta_tick={:.6} delta_k5={:.6} delta_k10={:.6} delta_distinct={:.6} events_back_to_distinct={} threshold_abs_scaled={:.6} threshold_bps={:.2} ratio_bps_tick={:.6} ratio_bps_k5={:.6} ratio_bps_k10={:.6} ratio_bps_distinct={:.6} condition_met={}",
+                    symbol,
+                    price_now,
+                    delta_price,
+                    delta_k5,
+                    delta_k10,
+                    delta_distinct,
+                    events_back_to_distinct,
+                    threshold_abs_scaled,
+                    threshold_bps,
+                    ratio_bps_tick,
+                    ratio_bps_k5,
+                    ratio_bps_k10,
+                    ratio_bps_distinct,
+                    if momentum_condition_met { 1 } else { 0 }
+                );
+                println!(
+                    "[MOMENTUM_SCAN] sym={} threshold_abs_scaled={:.6} threshold_bps={:.2} k5={:.6} k10={:.6} k15={:.6} k20={:.6} k30={:.6} bps_k5={:.6} bps_k10={:.6} bps_k15={:.6} bps_k20={:.6} bps_k30={:.6}",
+                    symbol,
+                    threshold_abs_scaled,
+                    threshold_bps,
+                    delta_k5,
+                    delta_k10,
+                    delta_k15,
+                    delta_k20,
+                    delta_k30,
+                    ratio_bps_k5,
+                    ratio_bps_k10,
+                    ratio_bps_k15,
+                    ratio_bps_k20,
+                    ratio_bps_k30
+                );
+                let component_diag = component_diagnostic_snapshot();
+                let momentum_pos_delta = component_diag
+                    .momentum_pos_count
+                    .saturating_sub(last_component_diag.momentum_pos_count);
+                let momentum_delta = component_diag
+                    .momentum_neg_count
+                    .saturating_sub(last_component_diag.momentum_neg_count);
+                let composite_delta = component_diag
+                    .composite_neg_count
+                    .saturating_sub(last_component_diag.composite_neg_count);
+                let score_delta = component_diag
+                    .score_neg_count
+                    .saturating_sub(last_component_diag.score_neg_count);
+                let near_bearish_delta = component_diag
+                    .near_bearish_count
+                    .saturating_sub(last_component_diag.near_bearish_count);
+                println!(
+                    "[CYCLE_SUMMARY] sym={} momentum_pos={} momentum_neg={} composite_neg={} score_neg={} near_bearish={}",
+                    symbol,
+                    component_diag.momentum_pos_count,
+                    component_diag.momentum_neg_count,
+                    component_diag.composite_neg_count,
+                    component_diag.score_neg_count,
+                    component_diag.near_bearish_count
+                );
+                println!(
+                    "[COMPONENT_SNAPSHOT] sym={} momentum_pos={} momentum_neg={} composite_neg={} score_neg={} near_bearish={} d_momentum_pos={} d_momentum={} d_composite={} d_score={} d_near_bearish={}",
+                    symbol,
+                    component_diag.momentum_pos_count,
+                    component_diag.momentum_neg_count,
+                    component_diag.composite_neg_count,
+                    component_diag.score_neg_count,
+                    component_diag.near_bearish_count,
+                    momentum_pos_delta,
+                    momentum_delta,
+                    composite_delta,
+                    score_delta,
+                    near_bearish_delta
+                );
+                last_component_diag = component_diag;
+                let mom_abs_warmup = raw_momentum.abs();
+                println!(
+                    "[EDGE_PIPE] sym={} raw_edge={:.6} capture_prob={:.6} expected_realized_edge={:.6} edge_gate={:.6} edge_min={:.6} mom_abs={:.6}",
+                    symbol,
+                    0.0,
+                    0.0,
+                    0.0,
+                    edge_gate,
+                    warm_edge_min,
+                    mom_abs_warmup
+                );
             }
 
             if total_processed % 500 == 0 {
@@ -1137,6 +1793,28 @@ fn main() {
                 for (lin, cnt) in lineages { print!(" L{}:{}", lin, cnt); }
                 println!("\x1b[0m");
             }
+        }
+
+        let drift_diag = env_flag("BOOTSTRAP_DRIFT_DIAG") || env_flag("MOMENTUM_VOTER_BOOTSTRAP");
+        if drift_diag
+            && awr_windows_total % 25 == 0
+            && mom_abs_buffer.buffer_len() >= 300
+        {
+            let vals = mom_abs_buffer.sorted_values();
+            let p90_mom = percentile_sorted(&vals, 90.0);
+            let p92_mom = percentile_sorted(&vals, 92.0);
+            let p95_mom = percentile_sorted(&vals, 95.0);
+            let current_floor = env_parse_f64_pos("MOMENTUM_BOOTSTRAP_FLOOR", 0.000553);
+            let ratio_floor_to_p92 = if p92_mom > 1e-18 {
+                current_floor / p92_mom
+            } else {
+                f64::NAN
+            };
+            let buf_n = mom_abs_buffer.buffer_len();
+            println!(
+                "[BOOTSTRAP_DRIFT] p90_mom={:.6} p92_mom={:.6} p95_mom={:.6} current_floor={:.6} ratio_floor_to_p92={:.6} buffer_size={}",
+                p90_mom, p92_mom, p95_mom, current_floor, ratio_floor_to_p92, buf_n
+            );
         }
 
         // AWR: "candidates" = batches where the reco pool is non-empty *after* existing path gates
@@ -1268,16 +1946,19 @@ fn main() {
             let current_price = history.last().map(|c| c.close as f64).unwrap_or(pending.base_price);
             let momentum_confirm = current_price - pending.base_price;
             let vol_confirm = rolling_close_std(history, confirm_delta.saturating_add(1));
-            let score_now_opt = current_scores.get(&sym).copied();
-            let score_trend = score_now_opt.unwrap_or(pending.base_score) - pending.base_score;
+            // Use pending baseline when this symbol has no fresh candidate this batch (deterministic).
+            let score_now = current_scores
+                .get(&sym)
+                .copied()
+                .unwrap_or(pending.base_score);
+            let score_trend = score_now - pending.base_score;
             let vol_limit = pending.base_vol.max(1e-9) * confirm_vol_mult;
             let vol_ok = if pending.base_vol <= 1e-9 {
                 vol_confirm <= 1e-9
             } else {
                 vol_confirm <= vol_limit
             };
-            let confirmed_gate =
-                momentum_confirm >= 0.0 && score_now_opt.is_some() && score_trend >= 0.0 && vol_ok;
+            let confirmed_gate = momentum_confirm >= 0.0 && score_trend >= 0.0 && vol_ok;
             if std::env::var("EMIT_PROBE").is_ok() {
                 println!(
                     "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} vol_lim={:.6} score_trend={:.6} score_seen={} pass={}",
@@ -1287,7 +1968,7 @@ fn main() {
                     vol_confirm,
                     vol_limit,
                     score_trend,
-                    score_now_opt.is_some() as i32,
+                    (current_scores.get(&sym).is_some() as i32),
                     confirmed_gate as i32
                 );
             }
@@ -1425,8 +2106,59 @@ fn main() {
                     cand.primary_id
                 );
             }
+            let reco_src = if cand.from_fallback {
+                "fallback_strategy"
+            } else if cand.from_bootstrap_bridge {
+                "momentum_bootstrap"
+            } else {
+                "strategy"
+            };
+
+            // Log-only policy snapshot at emit time (same pool as [BOOTSTRAP_DRIFT]; no gate changes).
+            let current_floor_snap = env_parse_f64_pos("MOMENTUM_BOOTSTRAP_FLOOR", 0.000553);
+            let buf_snap = mom_abs_buffer.buffer_len();
+            let ratio_floor_to_p92_snap = if mom_abs_buffer.buffer_len() >= 300 {
+                let vals = mom_abs_buffer.sorted_values();
+                let p92 = percentile_sorted(&vals, 92.0);
+                if p92 > 1e-18 {
+                    current_floor_snap / p92
+                } else {
+                    f64::NAN
+                }
+            } else {
+                f64::NAN
+            };
+
+            // Retrieve best report for this symbol
+            let best_report = symbol_best_reports.get(&cand.symbol);
+
+            // --- FINAL FALLBACK LOG (CORRECT) ---
+            let fallback_used = best_report
+                .as_ref()
+                .map(|r| r.fallback_applied)
+                .unwrap_or(false);
+
+            let final_edge = best_report
+                .as_ref()
+                .map(|r| r.raw_edge)
+                .unwrap_or(0.0);
+
+            let final_feas = best_report
+                .as_ref()
+                .map(|r| r.execution_feasibility)
+                .unwrap_or(0.0);
+
             println!(
-                "[RECOMMENDATION] rec_id={} sym={} dir={:?} score={:.6} edge={:.6} feas={:.3} conf={:.3} voters={} S{}",
+                "[EDGE_FALLBACK_FINAL] sym={} used={} edge={:.6} feas={:.3}",
+                cand.symbol,
+                fallback_used as i32,
+                final_edge,
+                final_feas
+            );
+
+            // Log-only policy snapshot at emit time (same pool as [BOOTSTRAP_DRIFT]; no gate changes).
+            println!(
+                "[RECOMMENDATION] rec_id={} sym={} dir={:?} score={:.6} edge={:.6} feas={:.3} conf={:.3} voters={} S{} src={} ratio_floor_to_p92={:.6} current_floor={:.6} buffer_size={}",
                 cand.rec_id,
                 cand.symbol,
                 cand.signal,
@@ -1435,7 +2167,11 @@ fn main() {
                 cand.feas,
                 cand.conf,
                 cand.voters,
-                cand.primary_id
+                cand.primary_id,
+                reco_src,
+                ratio_floor_to_p92_snap,
+                current_floor_snap,
+                buf_snap
             );
             println!(
                 "\x1b[92m[ADAPTIVE_INTENT] {} conf={:.2} feas={:.2} voters={} size={:.1}% S{}\x1b[0m",
@@ -1458,9 +2194,16 @@ fn main() {
                     conf: cand.conf,
                     voters: cand.voters,
                     primary_id: cand.primary_id,
+                    reco_src,
+                    from_fallback: cand.from_fallback,
                 });
             let intent_created_symbol_updates =
                 *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
+            let gov_mult = load_governor_multiplier();
+            println!(
+                "[EXECUTION] sym={} size={:.4} gov_mult={:.2} entry={:.6} tp={:.6} sl={:.6} applied={}", 
+                cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, (gov_mult > 0.0)
+            );
             paper.pending_intents.push(TradeIntent {
                 rec_id: cand.rec_id,
                 symbol: cand.symbol.clone(),
