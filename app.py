@@ -41,7 +41,7 @@ from scripts.short_side_diagnostic_runner import (  # noqa: E402
 REGISTRY_PATH = "data/experiments.jsonl"
 DEFAULT_DIAG_DIR = "analysis/awr_grid"
 DEFAULT_DIAG_GLOB = "live_run.log"
-LIVE_MULTI_DIAG_DIR = "analysis/real_live"
+LIVE_MULTI_DIAG_DIR = "analysis/live_multi"
 LIVE_MULTI_DIAG_GLOB = "live_*.log*"
 REPLAY_DIAG_DIR = "analysis/awr_grid"
 REPLAY_DIAG_GLOB = "diag_final_distribution_limit400_offset*.log"
@@ -137,6 +137,7 @@ def to_dataframe(records: list[dict[str, Any]]) -> pd.DataFrame:
                 "drawdown_delta": summary.get("avg_delta_max_dd", 0.0),
                 "retained_pct": summary.get("avg_retained_pct", 0.0),
                 "positive_ratio": summary.get("positive_ratio", 0.0),
+                "trades_closed": summary.get("total_closed", 0),
             }
         )
     return pd.DataFrame(rows)
@@ -564,8 +565,14 @@ REC_OUTCOME_LINE_RE = re.compile(
     r"\[REC_OUTCOME\]\s+rec_id=(?P<rec_id>\d+).*?pnl=(?P<pnl>[0-9.eE+-]+)(?:\s+src=(?P<src>strategy|momentum_bootstrap))?"
 )
 TRADE_RESULT_LINE_RE = re.compile(
-    r"\[TRADE_RESULT\]\s+sym=(?P<sym>\S+)\s+entry=(?P<entry>[0-9.]+)\s+exit=(?P<exit>[0-9.]+)\s+"
     r"pnl=(?P<pnl>[0-9.eE+-]+)\s+reason=(?P<reason>\w+)\s+duration=(?P<dur>\d+)\s+capture_eff=(?P<cap>[0-9.eE+-]+)"
+)
+AUDIT_TRADE_LINE_RE = re.compile(
+    r"\[AUDIT_TRADE\]\s+rec_id=(?P<rec_id>\d+)\s+sym=(?P<sym>\S+)\s+dir=(?P<dir>\w+)\s+"
+    r"fill=(?P<fill>[0-9.]+)\s+exit=(?P<exit>[0-9.]+)\s+slippage_bps=(?P<slip>[0-9.eE+-]+)\s+"
+    r"capture=(?P<cap>[0-9.eE+-]+)\s+ideal_pnl=(?P<ideal>[0-9.eE+-]+)\s+"
+    r"realized_pnl=(?P<realized>[0-9.eE+-]+)\s+dur=(?P<dur>\d+)"
+    r"(?:\s+exit_type=(?P<exit_type>\w+))?"
 )
 
 
@@ -628,7 +635,7 @@ def parse_recommendation_lines(text: str) -> list[dict[str, Any]]:
 
 
 def parse_trade_results(text: str) -> list[dict[str, Any]]:
-    """Parse [TRADE_RESULT] lines from the log."""
+    """Parse legacy [TRADE_RESULT] lines as fallback."""
     out = []
     for line in text.splitlines():
         if "[TRADE_RESULT]" not in line:
@@ -646,6 +653,34 @@ def parse_trade_results(text: str) -> list[dict[str, Any]]:
             if "sym" in d:
                 d["sym"] = normalize_lane_symbol(str(d["sym"]))
             out.append(d)
+        except:
+            continue
+    return out
+
+
+def parse_audit_trades(text: str) -> list[dict[str, Any]]:
+    """Parse [AUDIT_TRADE] lines for high-fidelity reality audit."""
+    out = []
+    for line in text.splitlines():
+        m = AUDIT_TRADE_LINE_RE.search(line)
+        if not m:
+            continue
+        try:
+            out.append({
+                "rec_id": int(m.group("rec_id")),
+                "sym": normalize_lane_symbol(m.group("sym")),
+                "dir": m.group("dir"),
+                "fill": float(m.group("fill")),
+                "exit": float(m.group("exit")),
+                "slippage_bps": float(m.group("slip")),
+                "capture": float(m.group("cap")),
+                "ideal_pnl": float(m.group("ideal")),
+                "realized_pnl": float(m.group("realized")),
+                "pnl": float(m.group("realized")),
+                "dur": int(m.group("dur")),
+                "exit_type": m.group("exit_type") or "unknown",
+                "reason": "audit", # Tag for outcome mix
+            })
         except:
             continue
     return out
@@ -3617,6 +3652,65 @@ def render_validation_tab(*, selected_paths: list[Path]) -> None:
             d4.metric("Live Neg Rate", f"{live_metrics['neg_capture_rate']:.1%}")
             
             st.dataframe(live_df.tail(5), use_container_width=True)
+
+    st.markdown("---")
+    audit_results = parse_audit_trades(merged)
+    render_phase2_audit(audit_results)
+
+
+def render_phase2_audit(audit_results: list[dict[str, Any]]) -> None:
+    """Explicit Capital Readiness Gate (Phase 2)."""
+    if not audit_results:
+        st.info("Phase 2 Audit pending: No `[AUDIT_TRADE]` lines detected.")
+        return
+    
+    df = pd.DataFrame(audit_results)
+    metrics = compute_validation_metrics(df)
+    
+    # Audit Thresholds (Target: Institutional Grade)
+    P50_PASS = 0.35
+    P50_CRITICAL = 0.20
+    SLIP_PASS = 8.0 # bps
+    SLIP_CRITICAL = 20.0 # bps
+    NEG_PASS = 0.40
+    NEG_CRITICAL = 0.60
+    COUNT_MIN = 30
+    
+    st.markdown("#### 🚨 Phase 2: Paper Trading Reality Audit")
+    st.metric("Trades Closed", len(df))
+    st.caption(f"Status based on last {len(df)} real recommendation flows (Target: {COUNT_MIN} trades).")
+    
+    m1, m2, m3, m4 = st.columns(4)
+    
+    p50 = metrics.get('capture_p50', 0.0)
+    # p50 delta color: higher is better
+    p50_color = "normal" if p50 >= P50_PASS else "inverse" if p50 < P50_CRITICAL else "off"
+    m1.metric("Capture P50", f"{p50:.2f}", delta=f"{p50 - P50_PASS:.2f}", delta_color=p50_color)
+    
+    slip = df['slippage_bps'].mean()
+    # slip delta color: lower is better
+    slip_color = "normal" if slip <= SLIP_PASS else "inverse" if slip > SLIP_CRITICAL else "off"
+    m2.metric("Avg Slippage", f"{slip:.1f} bps", delta=f"{slip - SLIP_PASS:.1f}", delta_color=slip_color)
+    
+    neg = metrics.get('neg_capture_rate', 0.0)
+    # neg color: lower is better
+    neg_color = "normal" if neg <= NEG_PASS else "inverse" if neg > NEG_CRITICAL else "off"
+    m3.metric("Neg Capture %", f"{neg*100:.1f}%", delta=f"{(neg - NEG_PASS)*100:.1f}%", delta_color=neg_color)
+    
+    m4.metric("Audit Progress", f"{len(df)} / {COUNT_MIN}", delta=f"{len(df) - COUNT_MIN}")
+
+    # Final Verdict
+    if len(df) < COUNT_MIN:
+        st.warning(f"🕒 **AUDIT IN PROGRESS:** Waiting for sample size N={COUNT_MIN} (Current: {len(df)}).")
+    elif p50 >= P50_PASS and slip <= SLIP_PASS and neg <= NEG_PASS:
+        st.success("✅ **AUDIT PASS:** System demonstrates execution efficiency. Ready for capital ramp.")
+    elif p50 < P50_CRITICAL or slip > SLIP_CRITICAL:
+        st.error("❌ **AUDIT FAIL:** Severe execution drift detected. Do not scale.")
+    else:
+        st.info("⚠️ **AUDIT INCONCLUSIVE:** Mixed performance metrics. Maintain paper session.")
+    
+    with st.expander("Audit Raw Ledger"):
+        st.dataframe(df.sort_values("rec_id", ascending=False), use_container_width=True)
 
     if bt_results and live_results:
         st.markdown("---")

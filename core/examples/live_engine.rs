@@ -122,9 +122,13 @@ struct PendingConfirmation {
 struct ShadowTrade {
     symbol: String,
     entry_price: f64,
+    tp_target: f64,
+    sl_target: f64,
     signal: SignalType,
     age: usize,
     max_age: usize,
+    is_blocked: bool,
+    is_random_baseline: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -791,14 +795,33 @@ fn main() {
             for (i, st) in shadow_counterfactuals.iter_mut().enumerate() {
                 if st.symbol == *symbol {
                     st.age += 1;
-                    if st.age >= st.max_age {
-                        let p_now = candle.close as f64 / PRICE_SCALE;
-                        let pnl = if st.signal == SignalType::BUY {
-                            (p_now - st.entry_price) / st.entry_price
+                    let p_now = candle.close as f64 / PRICE_SCALE;
+                    let pnl = if st.signal == SignalType::BUY {
+                        (p_now - st.entry_price) / st.entry_price
+                    } else {
+                        (st.entry_price - p_now) / st.entry_price
+                    };
+                    
+                    let hit_tp = if st.signal == SignalType::BUY { p_now >= st.tp_target } else { p_now <= st.tp_target };
+                    let hit_sl = if st.signal == SignalType::BUY { p_now <= st.sl_target } else { p_now >= st.sl_target };
+                    
+                    if hit_tp || hit_sl || st.age >= st.max_age {
+                        // ALWAYS record to raw baseline
+                        paper.record_raw_signal(pnl);
+                        
+                        // IF blocked, also record to blocked preservation
+                        if st.is_blocked {
+                            paper.record_block_pnl(pnl);
+                        }
+                        
+                        // IF random baseline, record to random pool
+                        if st.is_random_baseline {
+                            paper.record_random_signal(pnl);
                         } else {
-                            (st.entry_price - p_now) / st.entry_price
-                        };
-                        paper.record_block_pnl(pnl);
+                            // IF it's a real/raw candidate signal, record to the pnl variance pool for sigma calculation
+                            paper.record_pnl_sample(pnl);
+                        }
+                        
                         settled_indices.push(i);
                     }
                 }
@@ -1489,10 +1512,29 @@ fn main() {
 
                     // --- EXECUTABLE OPPORTUNITY SCORE (EOS) ---
                     let queue_pressure = imbalance.abs() as f64;
-                    let liquidity_absorb = (vol_5 / 1000.0).max(1.0);
+                    let queue_clearance = 1.0 / (events_back_to_distinct as f64 + 1.0);
+                    let event_density = (updates_60 as f64 / 60.0).clamp(0.1, 1.0); // No price action used
                     let velocity_mult = if is_buy == (accel_imb > 0.0) { 1.2 } else { 0.8 };
-                    let eos = (queue_pressure / liquidity_absorb) * velocity_mult;
+                    let eos = (queue_pressure * queue_clearance * event_density) * velocity_mult;
                     
+                    // RAW SIGNAL TRACKING: Capture everything that passes the first gate for baseline audit
+                    if quality_decision == "PASS" {
+                         // We track the raw signal as a shadow trade to get its 'unfiltered' expectancy
+                         shadow_counterfactuals.push(ShadowTrade {
+                            symbol: symbol.clone(),
+                            entry_price: price_now,
+                            tp_target: if is_buy { price_now * 1.0005 } else { price_now * 0.9995 },
+                            sl_target: if is_buy { price_now * 0.9995 } else { price_now * 1.0005 },
+                            signal: if is_buy { SignalType::BUY } else { SignalType::SELL },
+                            age: 0,
+                            max_age: 20,
+                            is_blocked: false,
+                            is_random_baseline: false,
+                        });
+                        // Record raw signal count/pnl is deferred to shadow settlement but we increment count here for baseline
+                        // Actually, let's just record it at settlement time to paper.record_raw_signal(pnl).
+                    }
+
                     // --- PRE-TRADE MICROSTRUCTURE GATE (ANTICIPATORY) ---
                     let is_exhausting = (is_buy && accel_imb < -0.01) || (!is_buy && accel_imb > 0.01);
                     let is_mature = current_streak > 4;
@@ -1506,14 +1548,10 @@ fn main() {
                             quality_decision = "BLOCKED";
                             paper.record_block();
                             
-                            // RECORD COUNTERFACTUAL
-                            shadow_counterfactuals.push(ShadowTrade {
-                                symbol: symbol.clone(),
-                                entry_price: price_now,
-                                signal: if is_buy { SignalType::BUY } else { SignalType::SELL },
-                                age: 0,
-                                max_age: 20,
-                            });
+                            // UPDATE SHADOW TRADE TO BLOCKED
+                            if let Some(st) = shadow_counterfactuals.iter_mut().rev().find(|s| s.symbol == *symbol && s.age == 0) {
+                                st.is_blocked = true;
+                            }
                         }
                     } else {
                         // POSITIVE SELECTION: Scale by EOS
@@ -2811,6 +2849,23 @@ fn main() {
                 cand.recommendation.position_size * 100.0,
                 cand.primary_id
             );
+            
+            // --- TRUE RANDOM BASELINE GENERATOR ---
+            if total_processed % 500 == 0 {
+                let p_now = cand.recommendation.entry_price;
+                let rand_dir = if total_processed % 2 == 0 { SignalType::BUY } else { SignalType::SELL };
+                shadow_counterfactuals.push(ShadowTrade {
+                    symbol: cand.symbol.clone(),
+                    entry_price: p_now,
+                    tp_target: if rand_dir == SignalType::BUY { p_now * 1.0005 } else { p_now * 0.9995 },
+                    sl_target: if rand_dir == SignalType::BUY { p_now * 0.9995 } else { p_now * 1.0005 },
+                    signal: rand_dir,
+                    age: 0,
+                    max_age: 20,
+                    is_blocked: false,
+                    is_random_baseline: true,
+                });
+            }
             pending_meta
                 .entry(cand.symbol.clone())
                 .or_default()

@@ -14,9 +14,9 @@ def run_silent_halt_drill():
     os.makedirs(os.path.dirname(gov_path), exist_ok=True)
     
     # 1. Initialize Baseline (Gate Open)
-    print("🟢 Initializing Governor: GATE_OPEN")
+    print("🟢 Initializing Governor: GOV_MULT=1.0")
     with open(gov_path, 'w') as f:
-        json.dump({"multiplier": 1.0, "gate_open": True, "ts": int(time.time())}, f)
+        json.dump({"gov_mult": 1.0, "ts": int(time.time())}, f)
     
     print(f"🚀 Starting Live Engine in {core_dir} (Silent Stdin)...")
     # Use pipe for stdin to keep it open but silent
@@ -35,9 +35,9 @@ def run_silent_halt_drill():
     time.sleep(5)
     
     # 2. Trigger HALT
-    print("🛑 Triggering HALT (gate_open=False, mult=0.0)...")
+    print("🛑 Triggering HALT (gov_mult=0.0)...")
     with open(gov_path, 'w') as f:
-        json.dump({"multiplier": 0.0, "gate_open": False, "ts": int(time.time())}, f)
+        json.dump({"gov_mult": 0.0, "ts": int(time.time())}, f)
     
     # Observe for 5 seconds to capture multiple heartbeats
     print("⏳ Observing silent rejection heartbeats (5s)...")

@@ -156,6 +156,11 @@ pub struct PaperRegistry {
     pub probes_confirmed: usize,
     pub blocked_signals: usize,
     pub blocked_pnl_sum: f64,
+    pub signals_raw_count: usize,
+    pub signals_raw_pnl: f64,
+    pub signals_random_count: usize,
+    pub signals_random_pnl: f64,
+    pub signals_pnl_squared_sum: f64, // For variance/stddev calculation
     pub regime_distribution: HashMap<String, usize>,
 }
 
@@ -198,6 +203,12 @@ impl Default for PaperRegistry {
             probes_emitted: 0,
             probes_confirmed: 0,
             blocked_signals: 0,
+            blocked_pnl_sum: 0.0,
+            signals_raw_count: 0,
+            signals_raw_pnl: 0.0,
+            signals_random_count: 0,
+            signals_random_pnl: 0.0,
+            signals_pnl_squared_sum: 0.0,
             regime_distribution: HashMap::new(),
         }
     }
@@ -277,6 +288,23 @@ impl PaperRegistry {
         
         let alpha_preservation = if self.blocked_pnl_sum < 0.0 { self.blocked_pnl_sum.abs() } else { 0.0 };
         println!("[FILTER_PRECISION] alpha_preservation={:.6} (pnl avoided by blocking)", alpha_preservation);
+        
+        let accepted_expectancy = if self.closed_count > 0 { total_pnl / self.closed_count as f64 } else { 0.0 };
+        let raw_expectancy = if self.signals_raw_count > 0 { self.signals_raw_pnl / self.signals_raw_count as f64 } else { 0.0 };
+        let incremental_edge = accepted_expectancy - raw_expectancy;
+        
+        let accepted_variance = if self.closed_count > 1 {
+            (self.signals_pnl_squared_sum / self.closed_count as f64) - (accepted_expectancy * accepted_expectancy)
+        } else { 0.0 };
+        let accepted_std = accepted_variance.sqrt();
+        let z_score = if accepted_std > 1e-9 { incremental_edge / accepted_std } else { 0.0 };
+        
+        println!("[ALPHA_UPLIFT] accepted_exp={:.6} raw_baseline_exp={:.6} incremental_edge={:.6} z_score={:.2} (sigma)", 
+            accepted_expectancy, raw_expectancy, incremental_edge, z_score);
+
+        let random_expectancy = if self.signals_random_count > 0 { self.signals_random_pnl / self.signals_random_count as f64 } else { 0.0 };
+        println!("[RANDOM_BASELINE] random_exp={:.6} vs_random_uplift={:.6}", 
+            random_expectancy, accepted_expectancy - random_expectancy);
 
         println!("[REGIME_DISTRIBUTION] {:?}", self.regime_distribution);
         println!("[REJECTION_PROFILE] drift={} confirm={} imbalance={}", self.rej_drift, self.rej_confirm, self.rej_imbalance);
@@ -678,6 +706,20 @@ impl PaperRegistry {
 
     pub fn record_block_pnl(&mut self, pnl: f64) {
         self.blocked_pnl_sum += pnl;
+    }
+
+    pub fn record_raw_signal(&mut self, pnl: f64) {
+        self.signals_raw_count += 1;
+        self.signals_raw_pnl += pnl;
+    }
+
+    pub fn record_random_signal(&mut self, pnl: f64) {
+        self.signals_random_count += 1;
+        self.signals_random_pnl += pnl;
+    }
+
+    pub fn record_pnl_sample(&mut self, pnl: f64) {
+        self.signals_pnl_squared_sum += pnl * pnl;
     }
 }
 
