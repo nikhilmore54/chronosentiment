@@ -1,81 +1,98 @@
 import time
 import json
-import csv
+import random
 import sys
-import glob
-import os
 import math
 from datetime import datetime
 
-# --- Deterministic Trend-Cycle Settings ---
-TREND_LENGTH = 100
-DRIFT_PER_TICK = 0.0001
-DRIFT_MULTIPLIER = 2.0
-SHOCK_AMPLITUDE = 0.0002 # Reduced shocks to keep momentum in bps range
-SHOCK_PERIOD = 20
-
-def parse_ts(ts_str):
-    try:
-        dt = datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S')
-        return int(dt.timestamp())
-    except:
-        return 0
+# --- Regime Settings ---
+REGIMES = ["STABLE", "TREND", "CHOP", "ADVERSARIAL"]
+SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "AXISBANK.NS", "BSE.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS"]
 
 def main():
-    symbols = ["BTC-USD", "ETH-USD", "SOL-USD", "AXISBANK.NS", "BSE.NS"]
-    
+    duration = 60
+    if "--duration" in sys.argv:
+        duration = int(sys.argv[sys.argv.index("--duration") + 1])
+
     readers = []
-    for i, sym in enumerate(symbols):
+    for i, sym in enumerate(SYMBOLS):
         readers.append({
             "symbol": sym,
-            "current_price": 50000.0 if "BTC" in sym else (3000.0 if "ETH" in sym else (150.0 if "SOL" in sym else 1000.0)),
-            "trend_dir": 1 if i % 2 == 0 else -1,
-            "trend_step": 0,
-            "ts": int(time.time()) - (1000 * 300) # Start with some history
+            "price": 50000.0 if "BTC" in sym else (3000.0 if "ETH" in sym else 1000.0),
+            "regime": "STABLE",
+            "regime_timer": 0,
+            "dir": 1 if i % 2 == 0 else -1,
+            "ts": int(time.time()),
+            "trap_active": False,
+            "trap_phase": 0
         })
 
-    print(
-        f"📡 Mock Streamer (Stable Crypto): drift={DRIFT_PER_TICK * DRIFT_MULTIPLIER:.6f}",
-        file=sys.stderr
-    )
+    print("📡 High-Fidelity Adversarial Streamer Active", file=sys.stderr)
 
+    start_time = time.time()
     try:
-        # Emit 500 bars to fill history and buffers
-        for tick in range(500):
+        while (time.time() - start_time) < duration:
             batch = []
             for t in readers:
-                # Deterministic trend cycle
-                phase = t["trend_step"] % SHOCK_PERIOD
-                shock = SHOCK_AMPLITUDE * math.sin((2.0 * math.pi * phase) / SHOCK_PERIOD)
-                # Cycle drift to test MIXED regime transitions
-                cycle_idx = (tick // 100) % 3
-                current_drift = DRIFT_PER_TICK
-                if cycle_idx == 0:
-                    current_drift = DRIFT_PER_TICK * 0.5 # 0.5 bps -> Bootstrap
-                elif cycle_idx == 1:
-                    current_drift = DRIFT_PER_TICK * 4.0 # 4.0 bps -> Strategy
-                else:
-                    current_drift = -DRIFT_PER_TICK * 4.0 # -4.0 bps -> Strategy (Sell)
-                    
-                t["current_price"] *= (1 + current_drift + shock)
-                t["trend_step"] += 1
-                if t["trend_step"] >= TREND_LENGTH:
-                    t["trend_step"] = 0
-                    t["trend_dir"] *= -1
+                # Regime Switching
+                if t["regime_timer"] <= 0:
+                    t["regime"] = random.choice(REGIMES)
+                    t["regime_timer"] = random.randint(20, 100)
+                    t["dir"] = random.choice([1, -1])
+                    t["trap_active"] = False
+                    t["trap_phase"] = 0
+                
+                t["regime_timer"] -= 1
+                
+                # Base Drift & Microstructure
+                drift = 0.0
+                imb_mod = 0.0 # Force imbalance modification
+                
+                if t["regime"] == "TREND":
+                    drift = t["dir"] * 0.0005 
+                elif t["regime"] == "CHOP":
+                    drift = t["dir"] * 0.0003
+                    t["dir"] *= -1 
+                elif t["regime"] == "ADVERSARIAL":
+                    # MICROSTRUCTURE TRAP LOGIC
+                    if t["trap_phase"] == 0:
+                        # Phase 0: Bait (Positive drift, Positive Imbalance Accel)
+                        drift = t["dir"] * 0.0002
+                        imb_mod = t["dir"] * 0.05 # Strong pressure
+                        if random.random() < 0.2: t["trap_phase"] = 1
+                    elif t["trap_phase"] == 1:
+                        # Phase 1: Exhaustion (Positive drift, NEGATIVE Imbalance Accel)
+                        drift = t["dir"] * 0.0001 # Still moving up
+                        imb_mod = -t["dir"] * 0.1 # Queue is vanishing!
+                        if random.random() < 0.3: t["trap_phase"] = 2
+                    elif t["trap_phase"] == 2:
+                        # Phase 2: Reversal (Violent)
+                        drift = -t["dir"] * 0.0020
+                        imb_mod = -t["dir"] * 0.2
+                        t["trap_phase"] = 0 # Reset
+                
+                # Random Noise
+                noise = (random.random() - 0.5) * 0.0001
+                
+                prev_p = t["price"]
+                t["price"] *= (1.0 + drift + noise)
+                
+                # We "hack" the volume/high/low to reflect imbalance
+                # This isn't perfect but live_engine's tick_imbalance uses (close - prev_close)
                 
                 batch.append({
                     "symbol": t["symbol"],
                     "timestamp": t["ts"],
-                    "open": t["current_price"],
-                    "high": t["current_price"],
-                    "low": t["current_price"],
-                    "close": t["current_price"],
-                    "volume": 1000.0
+                    "open": prev_p,
+                    "high": max(prev_p, t["price"]),
+                    "low": min(prev_p, t["price"]),
+                    "close": t["price"],
+                    "volume": 1000.0 + (imb_mod * 10000.0) # Using volume as proxy for pressure if needed
                 })
-                t["ts"] += 300 # 5m
+                t["ts"] += 60 
             
             print(json.dumps(batch), flush=True)
-            # time.sleep(0.001) 
+            time.sleep(0.01)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
 

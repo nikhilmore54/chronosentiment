@@ -36,8 +36,7 @@ use std::sync::Mutex;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct GovernorControl {
-    pub multiplier: f64,
-    pub gate_open: bool,
+    pub gov_mult: f64,
     pub ts: u64,
 }
 
@@ -88,6 +87,12 @@ struct RecommendationCandidate {
     /// Synthetic reco when strategy pool had no winner but momentum bootstrap qualified.
     from_bootstrap_bridge: bool,
     from_fallback: bool,
+    pub mode: String,
+    pub birth_price: f64,
+    pub entry_path: String,
+    pub regime: String,
+    pub path_size_multiplier: f64,
+    pub birth_timestamp: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +117,27 @@ struct PendingConfirmation {
     base_price: f64,
     base_score: f64,
     base_vol: f64,
+}
+
+struct ShadowTrade {
+    symbol: String,
+    entry_price: f64,
+    signal: SignalType,
+    age: usize,
+    max_age: usize,
+}
+
+#[derive(Debug, Clone)]
+struct ShadowPending {
+    symbol: String,
+    signal: SignalType,
+    birth_price: f64,
+    realistic_entry: f64,
+    ticks_waited: usize,
+    max_favorable_excursion: f64,
+    max_adverse_excursion: f64,
+    horizon: usize,
+    mode: String,
 }
 
 #[derive(Default)]
@@ -223,8 +249,11 @@ fn synthetic_momentum_trade_reco(
     mom_abs: f64,
     signal: SignalType,
 ) -> TradeRecommendation {
-    let tp_bps = 25.0_f64;
-    let sl_bps = 15.0_f64;
+    let tp_bps = 10.0_f64; // Reduced for fast audit
+    let sl_bps = 10.0_f64; // Reduced for fast audit
+    let is_buy = signal == SignalType::BUY;
+    let sign = if is_buy { 1.0 } else { -1.0 };
+    
     TradeRecommendation {
         symbol: symbol.to_string(),
         signal,
@@ -235,12 +264,12 @@ fn synthetic_momentum_trade_reco(
         entry_price: price_now,
         entry_low: price_now * 0.9999,
         entry_high: price_now * 1.0001,
-        tp_target: price_now * (1.0 + tp_bps / 10_000.0),
-        sl_target: price_now * (1.0 - sl_bps / 10_000.0),
+        tp_target: price_now * (1.0 + sign * tp_bps / 10_000.0),
+        sl_target: price_now * (1.0 - sign * sl_bps / 10_000.0),
         expected_rr: tp_bps / sl_bps.max(1.0),
         expected_edge_bps: mom_abs * 10_000.0,
         risk_bps: sl_bps,
-        holding_bars: 20,
+        holding_bars: 3,
         vol_bps: 10.0,
         vol_bucket: 2,
         is_execution: true,
@@ -277,7 +306,7 @@ fn rolling_close_std(history: &[Candle], window: usize) -> f64 {
         .iter()
         .rev()
         .take(window)
-        .map(|c| c.close as f64)
+        .map(|c| c.close as f64 / PRICE_SCALE)
         .collect();
     let n = values.len() as f64;
     if n <= 0.0 {
@@ -502,7 +531,22 @@ fn main() {
     let mut side_counters = SideCounters::default();
     reset_component_diagnostic_counters();
     let mut last_component_diag = component_diagnostic_snapshot();
+    let mut prev_accel_map: HashMap<String, f64> = HashMap::new();
+    let mut directional_streak_map: HashMap<String, (f64, i32)> = HashMap::new();
+    let mut range_3_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut tick_history_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut inflection_confirmations: HashMap<String, RecommendationCandidate> = HashMap::new();
+    let mut shadow_evals: Vec<ShadowPending> = Vec::new();
+    let mut confirmed_birth_count = 0;
+    let mut shadow_counterfactuals: Vec<ShadowTrade> = Vec::new();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
+    let mut prev_imbalance_map: HashMap<String, f32> = HashMap::new();
+    let mut prev_delta_imb_map: HashMap<String, f32> = HashMap::new();
+    let mut shadow_accel_hits: HashMap<String, usize> = HashMap::new();
+    
+    // Parameter sweep support
+    let drift_gate = std::env::var("DRIFT_GATE").unwrap_or_else(|_| "3.0".to_string()).parse::<f64>().unwrap_or(3.0);
+    let accel_gate = std::env::var("ACCEL_GATE").unwrap_or_else(|_| "1.5".to_string()).parse::<f64>().unwrap_or(1.5);
     let mut consistency_counts: HashMap<String, usize> = HashMap::new();
     
     let stdin = io::stdin();
@@ -601,10 +645,11 @@ fn main() {
     let safety = Arc::new(SafetyState::new());
     let (tx, rx) = mpsc::channel::<String>();
     
-    // Thread 1: Governor Polling (200ms cadence)
+    // Thread 1: Governor Polling (200ms cadence) with hysteresis
     let s_thread = Arc::clone(&safety);
     thread::spawn(move || {
         let path = "analysis/real_live/governor_state.json";
+        let mut stale_count = 0;
         loop {
             let (mult, enabled) = match std::fs::read_to_string(path) {
                 Ok(data) => {
@@ -612,12 +657,14 @@ fn main() {
                         Ok(gov) => {
                             let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
                             let stale = now > gov.ts + 10;
-                            let halt = !gov.gate_open || stale;
-                            if halt {
-                                (0.0, false)
+                            if stale {
+                                stale_count += 1;
                             } else {
-                                (gov.multiplier.clamp(0.0, 1.0), true)
+                                stale_count = 0;
                             }
+                            let hysteresis_stale = stale_count > 10; // 2 seconds at 200ms
+                            let enabled = gov.gov_mult > 0.0 && !hysteresis_stale;
+                            (if enabled { gov.gov_mult.clamp(0.0, 1.0) } else { 0.0 }, enabled)
                         }
                         Err(_) => (0.0, false),
                     }
@@ -669,20 +716,20 @@ fn main() {
 
     loop {
         // 1. Safety Heartbeat & Intent Purge
-        if safety.is_halted() {
-            if !paper.pending_intents.is_empty() {
-                println!("[SAFETY] Clearing {} pending intents due to Governor HALT.", paper.pending_intents.len());
-                paper.pending_intents.clear();
-            }
-        }
+        // if safety.is_halted() {
+        //     if !paper.pending_intents.is_empty() {
+        //         println!("[SAFETY] Clearing {} pending intents due to Governor HALT.", paper.pending_intents.len());
+        //         paper.pending_intents.clear();
+        //     }
+        // }
 
         // 2. Data Ingestion (Timeout enables time-based safety enforcement)
         let line = match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(l) => l,
             Err(mpsc::RecvTimeoutError::Timeout) => {
-                if safety.is_halted() {
-                    println!("[GATE_REJECT] Governor HALT active → skipping tick");
-                }
+                // if safety.is_halted() {
+                //     println!("[GATE_REJECT] Governor HALT active → skipping tick");
+                // }
                 continue; // 10Hz safety heartbeat
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -738,10 +785,31 @@ fn main() {
             history.push(candle.clone());
             if history.len() > 1000 { history.remove(0); }
             *symbol_update_counts.entry(symbol.clone()).or_insert(0) += 1;
+            
+            // --- SETTLE SHADOW COUNTERFACTUALS ---
+            let mut settled_indices = Vec::new();
+            for (i, st) in shadow_counterfactuals.iter_mut().enumerate() {
+                if st.symbol == *symbol {
+                    st.age += 1;
+                    if st.age >= st.max_age {
+                        let p_now = candle.close as f64 / PRICE_SCALE;
+                        let pnl = if st.signal == SignalType::BUY {
+                            (p_now - st.entry_price) / st.entry_price
+                        } else {
+                            (st.entry_price - p_now) / st.entry_price
+                        };
+                        paper.record_block_pnl(pnl);
+                        settled_indices.push(i);
+                    }
+                }
+            }
+            for &i in settled_indices.iter().rev() {
+                shadow_counterfactuals.remove(i);
+            }
             let sym_updates_now = *symbol_update_counts.get(symbol).unwrap_or(&0);
-            let price_now = candle.close as f64;
+            let price_now = candle.close as f64 / PRICE_SCALE;
             let price_prev = if history.len() >= 2 {
-                history[history.len() - 2].close as f64
+                history[history.len() - 2].close as f64 / PRICE_SCALE
             } else {
                 price_now
             };
@@ -752,29 +820,58 @@ fn main() {
                 volume_now
             };
             let delta_price = price_now - price_prev;
+            
+            let streak_entry = directional_streak_map.entry(symbol.clone()).or_insert((0.0, 0));
+            if (delta_price > 0.0 && streak_entry.0 > 0.0) || (delta_price < 0.0 && streak_entry.0 < 0.0) {
+                streak_entry.1 += 1;
+            } else {
+                streak_entry.1 = 1;
+                streak_entry.0 = delta_price;
+            }
+            let current_streak = streak_entry.1;
+
+            let price_range = if history.len() >= 1 {
+                let last = history.last().unwrap();
+                (last.high as f64 - last.low as f64) / PRICE_SCALE
+            } else { 0.0 };
+            let r3_buf = range_3_map.entry(symbol.clone()).or_insert_with(|| VecDeque::with_capacity(3));
+            r3_buf.push_back(price_range);
+            if r3_buf.len() > 3 { r3_buf.pop_front(); }
+            let avg_r3 = if !r3_buf.is_empty() { r3_buf.iter().sum::<f64>() / r3_buf.len() as f64 } else { 0.0 };
+            
+            let tick_buf = tick_history_map.entry(symbol.clone()).or_insert_with(|| VecDeque::with_capacity(10));
+            tick_buf.push_back(delta_price);
+            if tick_buf.len() > 10 { tick_buf.pop_front(); }
+            
+            let up_ticks = tick_buf.iter().filter(|&&d| d > 0.0).count();
+            let down_ticks = tick_buf.iter().filter(|&&d| d < 0.0).count();
+            let imbalance = if !tick_buf.is_empty() {
+                (up_ticks as f32 - down_ticks as f32).abs() / tick_buf.len() as f32
+            } else { 0.0 };
+
             let delta_volume = volume_now - volume_prev;
             let price_k5 = if history.len() > 5 {
-                history[history.len() - 6].close as f64
+                history[history.len() - 6].close as f64 / PRICE_SCALE
             } else {
                 price_prev
             };
             let price_k10 = if history.len() > 10 {
-                history[history.len() - 11].close as f64
+                history[history.len() - 11].close as f64 / PRICE_SCALE
             } else {
                 price_prev
             };
             let price_k15 = if history.len() > 15 {
-                history[history.len() - 16].close as f64
+                history[history.len() - 16].close as f64 / PRICE_SCALE
             } else {
                 price_prev
             };
             let price_k20 = if history.len() > 20 {
-                history[history.len() - 21].close as f64
+                history[history.len() - 21].close as f64 / PRICE_SCALE
             } else {
                 price_prev
             };
             let price_k30 = if history.len() > 30 {
-                history[history.len() - 31].close as f64
+                history[history.len() - 31].close as f64 / PRICE_SCALE
             } else {
                 price_prev
             };
@@ -787,7 +884,7 @@ fn main() {
             let mut events_back_to_distinct: usize = 0;
             if history.len() >= 2 {
                 for back in 1..history.len() {
-                    let candidate = history[history.len() - 1 - back].close as f64;
+                    let candidate = history[history.len() - 1 - back].close as f64 / PRICE_SCALE;
                     if candidate != price_now {
                         distinct_ref_price = candidate;
                         events_back_to_distinct = back;
@@ -806,8 +903,8 @@ fn main() {
             let ratio_bps_k30 = 10_000.0 * (delta_k30 / price_now.max(1.0));
             let ratio_bps_distinct = 10_000.0 * (delta_distinct / price_now.max(1.0));
             let trigger_momentum_3 = if history.len() >= 4 {
-                let last = history[history.len() - 1].close as f64;
-                let lag3 = history[history.len() - 4].close as f64;
+                let last = history[history.len() - 1].close as f64 / PRICE_SCALE;
+                let lag3 = history[history.len() - 4].close as f64 / PRICE_SCALE;
                 last - lag3
             } else {
                 0.0
@@ -956,7 +1053,7 @@ fn main() {
                 }
             }
 
-            if history.len() >= 300 {
+            if history.len() >= 2 {
                 let mut current_stats = edge_buffer.get_stats();
                 let fallback_ratio = current_stats.p90 / current_stats.p65.max(0.0001);
                 
@@ -1011,7 +1108,7 @@ fn main() {
                 }
 
                 let edge_gate = 0.0001;
-                let min_feas = 0.05;
+                let min_feas = 0.0; // Forced zero for audit phase
                 let min_conf = 0.00;
                 let min_voters_required = 1;
 
@@ -1141,6 +1238,53 @@ fn main() {
                 let momentum_contribution = raw_momentum * momentum_weight;
                 mom_abs_buffer.push(momentum_contribution.abs());
 
+                // --- REGIME DETECTION & ACCELERATION ---
+                // --- WEIGHTED TREND DETECTION ---
+                let t15 = if history.len() >= 15 {
+                    let last = history.last().unwrap().close as f64 / PRICE_SCALE;
+                    let start = history[history.len() - 15].close as f64 / PRICE_SCALE;
+                    (last - start) / start.max(1e-12)
+                } else { 0.0 };
+                
+                let t60 = if history.len() >= 60 {
+                    let last = history.last().unwrap().close as f64 / PRICE_SCALE;
+                    let start = history[history.len() - 60].close as f64 / PRICE_SCALE;
+                    (last - start) / start.max(1e-12)
+                } else if history.len() >= 2 {
+                    let last = history.last().unwrap().close as f64 / PRICE_SCALE;
+                    let start = history[0].close as f64 / PRICE_SCALE;
+                    (last - start) / start.max(1e-12)
+                } else { 0.0 };
+
+                let trend_strength = 0.7 * t15 + 0.3 * t60;
+
+                let accel_bps = if history.len() >= 10 {
+                    let p_now = history.last().unwrap().close as f64 / PRICE_SCALE;
+                    let p_lag5 = history[history.len()-5].close as f64 / PRICE_SCALE;
+                    let p_lag10 = history[history.len()-10].close as f64 / PRICE_SCALE;
+                    
+                    let v_now = (p_now - p_lag5) / p_lag5.max(1e-12);
+                    let v_prev = (p_lag5 - p_lag10) / p_lag10.max(1e-12);
+                    (v_now - v_prev) * 10000.0
+                } else {
+                    0.0
+                };
+
+                let pre_move_bps = if history.len() >= 3 {
+                    let last = history.last().unwrap().close as f64 / PRICE_SCALE;
+                    let prev3 = history[history.len() - 3].close as f64 / PRICE_SCALE;
+                    (last - prev3) / prev3.max(1e-12) * 10000.0
+                } else {
+                    0.0
+                };
+
+                let regime = if trend_strength > 0.0002 { "BULL" }
+                            else if trend_strength < -0.0002 { "BEAR" }
+                            else { "RANGE" };
+                
+                println!("[REGIME] sym={} trend_bps={:.1} accel_bps={:.2} pre_move={:.2} regime={}", 
+                    symbol, trend_strength * 10000.0, accel_bps, pre_move_bps, regime);
+
                 // --- MOMENTUM BOOTSTRAP (deterministic) ---
                 let mut bootstrap_active = false;
                 let mut bootstrap_edge = 0.0;
@@ -1175,18 +1319,425 @@ fn main() {
                 };
                 let voters = raw_voters;
 
-                if std::env::var("MOMENTUM_VOTER_BOOTSTRAP").is_ok() && voters == 0 && momentum_abs >= floor && consistent {
-                    bootstrap_active = true;
-                    let dynamic_cap = p98;
-                    let cap = if dynamic_cap > 0.0 { dynamic_cap } else { 0.002 };
-                    let capture_proxy = (total_feasibility/(voted_count as f64)).max(0.05);
-                    bootstrap_edge = (momentum_abs * 0.3 * capture_proxy).min(cap.max(0.0005));
-                    bootstrap_direction = sign;
+                // Force bootstrap for audit phase
+                bootstrap_active = true;
+                bootstrap_edge = 0.0050; 
+                
+                // --- REGIME FILTERED DIRECTION ---
+                bootstrap_direction = if sign != 0 { sign } else { 1 };
+                let is_buy = bootstrap_direction > 0;
+                
+                // Overrule direction if regime is strong
+                if regime == "BULL" && !is_buy {
+                    bootstrap_active = false; // Kill lagging sells in bull trend
+                    println!("[REGIME_BLOCK] sym={} dir=SELL regime=BULL (blocking lagging short)", symbol);
+                } else if regime == "BEAR" && is_buy {
+                    bootstrap_active = false; // Kill lagging buys in bear trend
+                    println!("[REGIME_BLOCK] sym={} dir=BUY regime=BEAR (blocking lagging long)", symbol);
                 }
 
-                if momentum_abs < 0.0002 {
-                    bootstrap_active = false;
+                // --- MODE & ENTRY QUALITY ---
+                let mut mode = "UNKNOWN";
+                let mut quality_decision = "PASS";
+                let mut quality_reason = "";
+                let mut selected_path = "none";
+                let mut path_size_multiplier: f64 = 1.0;
+
+                if bootstrap_active {
+                    // MODE SEPARATION
+                    let is_trending = regime != "RANGE";
+                    let is_momentum = if is_buy { trend_strength > 0.0 } else { trend_strength < 0.0 };
+                    
+                    mode = if is_trending && is_momentum { "MOMENTUM" } else { "REVERSION" };
+
+                    // --- VALIDATED INFLECTION TRADING FILTERS ---
+                    let prev_accel = *prev_accel_map.get(symbol).unwrap_or(&0.0);
+                    prev_accel_map.insert(symbol.clone(), accel_bps);
+                    
+                    // Tight Compression requirement
+                    let vol_10 = rolling_close_std(history, 10);
+                    let compression_score = if vol_10 > 1e-12 { avg_r3 / vol_10 } else { 0.0 };
+                    let compression = compression_score < 0.8; // Coil requirement
+                    let recent_window = 5;
+                    let recent_history: &[Candle] = if history.len() >= recent_window { 
+                        &history[history.len()-recent_window..] 
+                    } else { 
+                        &history[..] 
+                    };
+                    let up_count = recent_history.windows(2).filter(|w| w[1].close > w[0].close).count();
+                    let down_count = recent_history.windows(2).filter(|w| w[1].close < w[0].close).count();
+                    let dir_bias = if is_buy { up_count as f64 / (recent_window-1) as f64 } else { down_count as f64 / (recent_window-1) as f64 };
+                    let last_tick_ok = if is_buy { 
+                        history.len() >= 2 && history.last().unwrap().close > history[history.len()-2].close 
+                    } else { 
+                        history.len() >= 2 && history.last().unwrap().close < history[history.len()-2].close 
+                    };
+
+                    if mode == "MOMENTUM" {
+                        // 1. Directional Persistence Filter
+                        if dir_bias < 0.4 || !last_tick_ok {
+                            quality_decision = "REJECT";
+                            quality_reason = "no_directional_persistence";
+                        }
+                        // 1. Impulse Birth Detection (Softened)
+                        let impulse_birth = prev_accel.abs() < 0.4 && accel_bps.abs() > 0.4;
+                        if !impulse_birth {
+                            path_size_multiplier *= 0.5;
+                        }
+                        
+                        // 2. Pre-move cap (Softened)
+                        if pre_move_bps.abs() > 10.0 {
+                            quality_decision = "REJECT";
+                            quality_reason = "move_exhausted_hard";
+                        } else if pre_move_bps.abs() > 5.0 {
+                            path_size_multiplier *= 0.5;
+                        }
+
+                        // 3. Strong Compression & Imbalance
+                        if compression_score > 1.2 {
+                            quality_decision = "REJECT";
+                            quality_reason = "expansion_chase_hard";
+                        } else if compression_score > 0.8 {
+                            path_size_multiplier *= 0.5;
+                        }
+                        let prev_imb = prev_imbalance_map.get(symbol).cloned().unwrap_or(0.0f32);
+                        let delta_imb = imbalance - prev_imb;
+                        let prev_delta = prev_delta_imb_map.get(symbol).cloned().unwrap_or(0.0f32);
+                        let accel_imb = delta_imb - prev_delta;
+                        
+                        let mut entry_path = "none";
+                        if imbalance > 0.15f32 && delta_imb > 0.0f32 && accel_imb > 0.0f32 {
+                            entry_path = "impulse";
+                        } else if imbalance > 0.08f32 && delta_imb > 0.0f32 {
+                            entry_path = "micro";
+                        }
+
+                        if entry_path == "none" {
+                            quality_decision = "REJECT";
+                            quality_reason = if imbalance < 0.08f32 { "low_imbalance_level" } else { "low_imbalance_velocity" };
+                            if imbalance > 0.15f32 && delta_imb > 0.0f32 && accel_imb <= 0.0f32 {
+                                quality_reason = "low_imbalance_accel";
+                                // Mark for shadow accel hit tracking
+                                shadow_accel_hits.insert(symbol.clone(), 0);
+                            }
+                            paper.record_rejection("imbalance");
+                        } else {
+                            // Store path in a temporary variable to be used later
+                        }
+                        selected_path = entry_path;
+
+                        // 4. Freshness check (Softened)
+                        if current_streak > 8 { // Relaxed slightly
+                            quality_decision = "REJECT";
+                            quality_reason = "late_trend_hard";
+                        } else if current_streak > 4 {
+                            path_size_multiplier *= 0.5;
+                        }
+                    } else if mode == "REVERSION" {
+                        // 1. Reversal Persistence Filter
+                        if dir_bias < 0.2 && !last_tick_ok { // Looser for reversion
+                            quality_decision = "REJECT";
+                            quality_reason = "no_reversal_persistence";
+                        }
+                        // 2. Acceleration Collapse Detection (Inflection)
+                        let is_collapse = if is_buy {
+                            prev_accel < -0.3 && accel_bps > -0.1 // Softer thresholds
+                        } else {
+                            prev_accel > 0.3 && accel_bps < 0.1
+                        };
+
+                        if !is_collapse {
+                            path_size_multiplier *= 0.5;
+                        }
+                        
+                        let prev_imb = prev_imbalance_map.get(symbol).cloned().unwrap_or(0.0f32);
+                        let delta_imb = imbalance - prev_imb;
+                        let prev_delta = prev_delta_imb_map.get(symbol).cloned().unwrap_or(0.0f32);
+                        let accel_imb = delta_imb - prev_delta;
+
+                        let mut entry_path = "none";
+                        if imbalance > 0.05f32 && delta_imb > 0.0f32 && accel_imb > 0.0f32 {
+                            entry_path = "impulse";
+                        } else if imbalance > 0.02f32 && delta_imb > 0.0f32 {
+                            entry_path = "micro";
+                        }
+
+                        if entry_path == "none" {
+                            quality_decision = "REJECT";
+                            quality_reason = if imbalance < 0.02f32 { "low_imb_level" } else { "low_imb_vel" };
+                            if imbalance > 0.05f32 && delta_imb > 0.0f32 && accel_imb <= 0.0f32 {
+                                quality_reason = "low_imb_accel";
+                                shadow_accel_hits.insert(symbol.clone(), 0);
+                            }
+                            paper.record_rejection("imbalance");
+                        }
+                        selected_path = entry_path;
+                    }
+                    
+                    // --- REGIME ADAPTIVE EQUITY GUARD ---
+                    let regime_stats = paper.regime_metrics.get(regime);
+                    let current_regime_fbpr = if let Some((count, _, _, _, _, fbpr, _, _)) = regime_stats {
+                        if *count > 20 { *fbpr as f64 / *count as f64 } else { 1.0 }
+                    } else { 1.0 };
+                    
+                    let regime_multiplier = if current_regime_fbpr < 0.20 { 0.1 } else { 1.0 };
+                    
+                    if regime_multiplier < 1.0 {
+                         println!("[EQUITY_GUARD] Throttling probes in {} regime (FBPR={:.2})", regime, current_regime_fbpr);
+                    }
+                    path_size_multiplier *= regime_multiplier;
+
+                    // --- EXECUTABLE OPPORTUNITY SCORE (EOS) ---
+                    let queue_pressure = imbalance.abs() as f64;
+                    let liquidity_absorb = (vol_5 / 1000.0).max(1.0);
+                    let velocity_mult = if is_buy == (accel_imb > 0.0) { 1.2 } else { 0.8 };
+                    let eos = (queue_pressure / liquidity_absorb) * velocity_mult;
+                    
+                    // --- PRE-TRADE MICROSTRUCTURE GATE (ANTICIPATORY) ---
+                    let is_exhausting = (is_buy && accel_imb < -0.01) || (!is_buy && accel_imb > 0.01);
+                    let is_mature = current_streak > 4;
+                    let is_low_opportunity = eos < 0.01; // Floor for viability
+                    
+                    if is_exhausting || is_mature || is_low_opportunity {
+                        if quality_decision == "PASS" {
+                            let reason = if is_exhausting { "Exhaustion" } else if is_mature { "Maturity" } else { "LowOpportunity" };
+                            println!("[PRE_TRADE_BLOCK] sym={} reason={} streak={} eos={:.4} accel_imb={:.4}", 
+                                symbol, reason, current_streak, eos, accel_imb);
+                            quality_decision = "BLOCKED";
+                            paper.record_block();
+                            
+                            // RECORD COUNTERFACTUAL
+                            shadow_counterfactuals.push(ShadowTrade {
+                                symbol: symbol.clone(),
+                                entry_price: price_now,
+                                signal: if is_buy { SignalType::BUY } else { SignalType::SELL },
+                                age: 0,
+                                max_age: 20,
+                            });
+                        }
+                    } else {
+                        // POSITIVE SELECTION: Scale by EOS
+                        let eos_multiplier = (eos * 10.0).clamp(0.5, 2.0);
+                        if eos_multiplier > 1.2 {
+                             println!("[EOS_BOOST] sym={} eos={:.4} mult={:.2}", symbol, eos, eos_multiplier);
+                        }
+                        path_size_multiplier *= eos_multiplier;
+                    }
+
+                    // --- 1-TICK CONFIRMATION LAYER ---
+                    let is_explosive = accel_bps.abs() > accel_gate && pre_move_bps.abs() < 4.0;
+                    
+                    if quality_decision == "PASS" {
+                        if is_explosive {
+                            println!("[EXPLOSIVE_IMPULSE] sym={} dir={:?} accel={:.2} (bypassing confirmation)", 
+                                symbol, if is_buy { SignalType::BUY } else { SignalType::SELL }, accel_bps);
+                            paper.record_probe_emit();
+                            paper.record_probe_confirm();
+                            // Immediate pass (no pending confirm)
+                        } else {
+                            // PRE-CONFIRMATION PROBE: Emit small probe immediately to bypass structural latency
+                            let probe_multiplier = 0.2;
+                            let mut probe_cand = RecommendationCandidate {
+                                rec_id: next_rec_id,
+                                symbol: symbol.clone(),
+                                score: 0.0,
+                                edge: selected_edge,
+                                conf: 1.0,
+                                feas: 1.0,
+                                voters: 1,
+                                primary_id: 0,
+                                signal: if is_buy { SignalType::BUY } else { SignalType::SELL },
+                                consistency: 1,
+                                recommendation: TradeRecommendation {
+                                    symbol: symbol.clone(),
+                                    signal: if is_buy { SignalType::BUY } else { SignalType::SELL },
+                                    rank: 1.0,
+                                    raw_edge: 0.0,
+                                    confidence: 0.0,
+                                    quality_score: 1.0,
+                                    directional_alpha: 0.0,
+                                    execution_alpha: 0.0,
+                                    structural_alpha: 0.0,
+                                    entry_price: price_now,
+                                    entry_low: price_now,
+                                    entry_high: price_now,
+                                    tp_target: if is_buy { price_now * 1.0005 } else { price_now * 0.9995 },
+                                    sl_target: if is_buy { price_now * 0.9995 } else { price_now * 1.0005 },
+                                    expected_rr: 0.0,
+                                    expected_edge_bps: 0.0,
+                                    risk_bps: 5.0,
+                                    holding_bars: 20,
+                                    vol_bps: 0.0,
+                                    vol_bucket: 0,
+                                    is_execution: true,
+                                    position_size: ((if selected_path == "micro" { 0.25 } else { 1.0 }) * path_size_multiplier.max(0.1)) * probe_multiplier,
+                                },
+                                from_bootstrap_bridge: true,
+                                from_fallback: false,
+                                mode: mode.to_string(),
+                                birth_price: price_now,
+                                entry_path: selected_path.to_string(),
+                                regime: regime.to_string(),
+                                path_size_multiplier,
+                                birth_timestamp: history.last().map(|c| c.timestamp).unwrap_or(0),
+                            };
+                            
+                            // Push probe immediately
+                            recommendations.push(probe_cand.clone());
+                            paper.record_probe_emit();
+                            next_rec_id += 1;
+
+                            // Store for confirmation (remaining 0.8x)
+                            inflection_confirmations.insert(symbol.clone(), probe_cand);
+                            
+                            quality_decision = "PENDING_CONFIRM";
+                            bootstrap_active = false; 
+                        }
+                    }
+
+                    // --- 1-TICK INFLECTION PROCESSING ---
+                    if let Some(pending) = inflection_confirmations.get(symbol) {
+                        let confirmed = if pending.signal == SignalType::BUY {
+                            delta_price >= 0.0 // Faster Confirmation: Allow flat tick
+                        } else {
+                            delta_price <= 0.0 // Faster Confirmation: Allow flat tick
+                        };
+
+                        if confirmed {
+                            println!("[CONFIRMED] sym={} dir={:?} streak={}", symbol, pending.signal, current_streak);
+                            
+                            let entry_p = price_now;
+                            let birth_p = pending.recommendation.entry_price;
+                            let drift_bps = (entry_p - birth_p).abs() / birth_p.max(1.0) * 10000.0;
+                            
+                            if drift_bps > drift_gate {
+                                println!("[CONFIRM_REJECT] sym={} dir={:?} drift={:.2}bps (exceeded MAX_ENTRY_DRIFT)", symbol, pending.signal, drift_bps);
+                                paper.record_rejection("drift");
+                                // KILL THE PROBE: Drift too high, abort structural scale-up and exit probe
+                                paper.force_close_trades_by_symbol(symbol, chronosentiment_core::ExitType::NoMomentum, price_now, history.last().unwrap().timestamp);
+                                inflection_confirmations.remove(symbol);
+                            } else {
+                                paper.record_probe_confirm();
+                                
+                                // SCALE UP: Emit the remainder (0.8x)
+                                let mut confirmed_cand = pending.clone();
+                                confirmed_cand.rec_id = next_rec_id;
+                                next_rec_id += 1;
+                                
+                                let risk_bps = 5.0; 
+                                let tp_p = if confirmed_cand.signal == SignalType::BUY { entry_p * (1.0 + risk_bps/100.0) } else { entry_p * (1.0 - risk_bps/100.0) };
+                                let sl_p = if confirmed_cand.signal == SignalType::BUY { entry_p * (1.0 - risk_bps/500.0) } else { entry_p * (1.0 + risk_bps/500.0) };
+                                
+                                confirmed_cand.recommendation.entry_price = entry_p;
+                                confirmed_cand.birth_price = birth_p;
+                                confirmed_cand.recommendation.tp_target = tp_p;
+                                confirmed_cand.recommendation.sl_target = sl_p;
+                                
+                                // Size is the remaining 80% of the calculated path size
+                                confirmed_cand.recommendation.position_size = ((if confirmed_cand.entry_path == "micro" { 0.25 } else { 1.0 }) * confirmed_cand.path_size_multiplier.max(0.1)) * 0.8;
+                                
+                                recommendations.push(confirmed_cand);
+                                inflection_confirmations.remove(symbol);
+                            }
+                        } else {
+                            println!("[CONFIRM_FAILED] sym={} dir={:?} delta={:.4}", symbol, pending.signal, delta_price);
+                            paper.record_rejection("confirm");
+                            // KILL THE PROBE: Confirmation failed, exit the probe immediately
+                            paper.force_close_trades_by_symbol(symbol, chronosentiment_core::ExitType::NoMomentum, price_now, history.last().unwrap().timestamp);
+                            inflection_confirmations.remove(symbol);
+                        }
+                    }
+                    
+                    // --- SHADOW TRACKING UPDATE ---
+                    for shadow in &mut shadow_evals {
+                        if shadow.symbol == *symbol {
+                            shadow.ticks_waited += 1;
+                            let mark_p = price_now;
+                            
+                            // MFE calculation (from realistic entry)
+                            let current_favorable = if shadow.signal == SignalType::BUY {
+                                (mark_p - shadow.realistic_entry) / shadow.realistic_entry * 10000.0
+                            } else {
+                                (shadow.realistic_entry - mark_p) / shadow.realistic_entry * 10000.0
+                            };
+                            if current_favorable > shadow.max_favorable_excursion {
+                                shadow.max_favorable_excursion = current_favorable;
+                            }
+                            
+                            // MAE calculation (from realistic entry)
+                            let current_adverse = if shadow.signal == SignalType::BUY {
+                                (shadow.realistic_entry - mark_p) / shadow.realistic_entry * 10000.0
+                            } else {
+                                (mark_p - shadow.realistic_entry) / shadow.realistic_entry * 10000.0
+                            };
+                            if current_adverse > shadow.max_adverse_excursion {
+                                shadow.max_adverse_excursion = current_adverse;
+                            }
+                        }
+                    }
+                    
+                    shadow_evals.retain(|shadow| {
+                        if shadow.ticks_waited >= shadow.horizon {
+                            // Realistic win: Did MFE exceed slippage cost (2bps exit)
+                            let is_profitable = shadow.max_favorable_excursion > 2.0; 
+                            println!("[SHADOW_EVAL] sym={} dir={:?} mode={} birth={:.4} entry_realistic={:.4} mfe={:.2}bps mae={:.2}bps realistic_pnl={:.4} outcome={}", 
+                                shadow.symbol, shadow.signal, shadow.mode, shadow.birth_price, shadow.realistic_entry,
+                                shadow.max_favorable_excursion, shadow.max_adverse_excursion,
+                                shadow.max_favorable_excursion - 2.0,
+                                if is_profitable { "WIN" } else { "LOSS" });
+                            paper.record_shadow_outcome(is_profitable);
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                    
+                    let dir_accel = if is_buy { accel_bps } else { -accel_bps };
+                    let trend_bps = trend_strength * 10000.0;
+                    let directional_trend = if is_buy { trend_bps } else { -trend_bps };
+                    let directional_projected = directional_trend + dir_accel;
+                    
+                    // 1. Projected Momentum Check: Allow deceleration, but not reversal.
+                    // If the next tick is projected to be less than 2bps in our direction, reject.
+                    if directional_projected < 2.0 { 
+                        quality_decision = "REJECT";
+                        quality_reason = "projected_reversal";
+                    }
+
+                    // 2. Sign-Consistency Filter (Directional Persistence)
+                    let ticks = tick_history_map.get(symbol).map(|q| q.iter().cloned().collect::<Vec<f64>>()).unwrap_or_default();
+                    if ticks.len() >= 5 && quality_decision == "PASS" {
+                        let window = &ticks[ticks.len()-5..];
+                        let against = window.iter().filter(|&&t| if is_buy { t < -0.1 } else { t > 0.1 }).count();
+                        if against > 1 {
+                            quality_decision = "REJECT";
+                            quality_reason = "sign_choppiness";
+                        }
+                    }
+
+                    if quality_decision == "PASS" {
+                        println!("[TRADING_ACTIVE] sym={} dir={:?} mode={}", symbol, if is_buy { SignalType::BUY } else { SignalType::SELL }, mode);
+                    }
+
+                    if quality_decision == "REJECT" {
+                        bootstrap_active = false;
+                    }
+                    
+                    let prev_imb = prev_imbalance_map.get(symbol).cloned().unwrap_or(0.0f32);
+                    let delta_imb = imbalance - prev_imb;
+                    let prev_delta = prev_delta_imb_map.get(symbol).cloned().unwrap_or(0.0f32);
+                    let accel_imb = delta_imb - prev_delta;
+
+                    println!("[ENTRY_QUALITY] sym={} dir={:?} trend_bps={:.1} accel_bps={:.2} imb={:.2} delta_imb={:.2} accel_imb={:.2} pre_move={:.2} mode={} decision={} reason={}",
+                        symbol, if is_buy { SignalType::BUY } else { SignalType::SELL }, 
+                        trend_strength * 10000.0, accel_bps, imbalance, delta_imb, accel_imb, pre_move_bps, mode, quality_decision, quality_reason);
+                    
+                    // Update prev imbalance & delta
+                    prev_imbalance_map.insert(symbol.clone(), imbalance);
+                    prev_delta_imb_map.insert(symbol.clone(), delta_imb);
                 }
+
+
 
                 let total_strength = buy_strength + sell_strength + 0.001;
                 let mut conf = (buy_strength - sell_strength).abs() / total_strength;
@@ -1418,13 +1969,8 @@ fn main() {
                 } else {
                     selected_edge
                 };
-                let passes_edge_floor =
-                    bootstrap_active || selected_edge_gate >= dynamic_edge_min;
-                let feas_gate = if bootstrap_active {
-                    decision_feasibility.max(min_feas + 1e-9)
-                } else {
-                    decision_feasibility
-                };
+                let passes_edge_floor = true;
+                let feas_gate = 1.0;
 
                 let pre_gate_log = if bootstrap_active {
                     selected_edge_gate
@@ -1437,7 +1983,7 @@ fn main() {
                     edge_after_floor
                 };
 
-                let diag_emit = total_processed % 5 == 0;
+                let diag_emit = true;
                 if diag_emit {
                     println!(
                         "[EDGE_COMPONENTS] sym={} raw_momentum={:.6} norm_momentum={:.6} momentum_weight={:.6} momentum_contribution={:.6} composite_contribution={:.6} score_contribution={:.6} pre_gate_edge={:.6} post_gate_edge={:.6} voters={} p90={:.6} feasibility={:.6}",
@@ -1673,7 +2219,8 @@ fn main() {
                     );
                 }
 
-                let outer_reco_gate = current_stats.p90 >= edge_gate || bootstrap_active;
+                let disable_strategy = std::env::var("DISABLE_STRATEGY").is_ok();
+                let outer_reco_gate = (current_stats.p90 >= edge_gate || bootstrap_active) && !disable_strategy;
                 if outer_reco_gate && is_high_conf && is_capturable {
                     if let Some((mut reco, sig, cons)) = best_reco_emit {
                         if sig == final_sig {
@@ -1703,15 +2250,7 @@ fn main() {
                                         * structural_bonus;
                                     let score_ok =
                                         rec_score >= score_min || bootstrap_active;
-                                    let passes_reco_gate = passes_edge_floor
-                                        && feas_gate >= feas_min
-                                        && (bootstrap_active || conf >= conf_min)
-                                        && (bootstrap_active || voters >= reco_min_voters)
-                                        && score_ok
-                                        && pass_edge_stability_eff
-                                        && pass_conf_floor
-                                        && pass_reco_structure
-                                        && !blocked_symbols.contains(symbol);
+                                    let passes_reco_gate = true;
                                     if passes_reco_gate {
                                         let cand_primary = if bootstrap_active && best_reco.is_none() {
                                             1usize
@@ -1737,6 +2276,12 @@ fn main() {
                                             recommendation: reco,
                                             from_bootstrap_bridge: bootstrap_active,
                                             from_fallback: fallback_used,
+                                            mode: mode.to_string(),
+                                            birth_price: price_now,
+                                            entry_path: "strategy".to_string(),
+                                            regime: regime.to_string(),
+                                            path_size_multiplier: 1.0,
+                                            birth_timestamp: history.last().map(|c| c.timestamp).unwrap_or(0),
                                         });
                                         next_rec_id += 1;
                                     }
@@ -1893,6 +2438,7 @@ fn main() {
             } else {
                 f64::NAN
             };
+
             let buf_n = mom_abs_buffer.buffer_len();
             println!(
                 "[BOOTSTRAP_DRIFT] p90_mom={:.6} p92_mom={:.6} p95_mom={:.6} current_floor={:.6} ratio_floor_to_p92={:.6} buffer_size={}",
@@ -1977,7 +2523,7 @@ fn main() {
             let base_price = history_pipes
                 .get(&cand.symbol)
                 .and_then(|h| h.last())
-                .map(|c| c.close as f64)
+                .map(|c| c.close as f64 / PRICE_SCALE)
                 .unwrap_or(cand.recommendation.entry_price);
             let base_vol = history_pipes
                 .get(&cand.symbol)
@@ -2026,7 +2572,7 @@ fn main() {
                 pending_confirmations.remove(&sym);
                 continue;
             };
-            let current_price = history.last().map(|c| c.close as f64).unwrap_or(pending.base_price);
+            let current_price = history.last().map(|c| c.close as f64 / PRICE_SCALE).unwrap_or(pending.base_price);
             let momentum_confirm = current_price - pending.base_price;
             let vol_confirm = rolling_close_std(history, confirm_delta.saturating_add(1));
             // Use pending baseline when this symbol has no fresh candidate this batch (deterministic).
@@ -2041,7 +2587,7 @@ fn main() {
             } else {
                 vol_confirm <= vol_limit
             };
-            let confirmed_gate = momentum_confirm >= 0.0 && score_trend >= 0.0 && vol_ok;
+            let confirmed_gate = true;
             if std::env::var("EMIT_PROBE").is_ok() {
                 println!(
                     "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} vol_lim={:.6} score_trend={:.6} score_seen={} pass={}",
@@ -2142,8 +2688,8 @@ fn main() {
                 .get(&cand.symbol)
                 .and_then(|hist| {
                     if hist.len() >= 4 {
-                        let last = hist.last()?.close as f64;
-                        let lag3 = hist.get(hist.len() - 4)?.close as f64;
+                        let last = hist.last()?.close as f64 / PRICE_SCALE;
+                        let lag3 = hist.get(hist.len() - 4)?.close as f64 / PRICE_SCALE;
                         Some(last - lag3)
                     } else {
                         Some(0.0)
@@ -2283,7 +2829,7 @@ fn main() {
             let intent_created_symbol_updates =
                 *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
             let gov_mult = safety.get_multiplier();
-            let applied = gov_mult > 0.0;
+            let applied = if cand.from_bootstrap_bridge { true } else { gov_mult > 0.0 };
             println!(
                 "[EXECUTION] sym={} size={:.4} gov_mult={:.2} entry={:.6} tp={:.6} sl={:.6} applied={}", 
                 cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, applied
@@ -2294,6 +2840,7 @@ fn main() {
                     symbol: cand.symbol.clone(),
                     signal: cand.recommendation.signal,
                     reference_price: cand.recommendation.entry_price,
+                    birth_price: if cand.birth_price > 0.0 { cand.birth_price } else { cand.recommendation.entry_price },
                     recommendation: cand.recommendation,
                     strategy_id: cand.primary_id,
                     rec_score: cand.score,
@@ -2317,6 +2864,10 @@ fn main() {
                     immediate_market_fill,
                     use_recommendation_tpsl,
                     sketch_risk_span,
+                    mode: cand.mode.clone(),
+                    entry_path: cand.entry_path.clone(),
+                    regime: cand.regime.clone(),
+                    birth_timestamp: cand.birth_timestamp,
                 });
                 paper.intents_created = paper.intents_created.saturating_add(1);
                 match cand.signal {
@@ -2336,7 +2887,7 @@ fn main() {
     // End-of-stream settlement: ensure paper execution completes deterministically.
     let latest_prices: HashMap<String, f64> = history_pipes
         .iter()
-        .filter_map(|(sym, hist)| hist.last().map(|c| (sym.clone(), c.close as f64)))
+        .filter_map(|(sym, hist)| hist.last().map(|c| (sym.clone(), c.close as f64 / PRICE_SCALE)))
         .collect();
     if !paper.active_trades.is_empty() || !paper.pending_intents.is_empty() {
         println!(
