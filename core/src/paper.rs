@@ -160,7 +160,11 @@ pub struct PaperRegistry {
     pub signals_raw_pnl: f64,
     pub signals_random_count: usize,
     pub signals_random_pnl: f64,
-    pub signals_pnl_squared_sum: f64, // For variance/stddev calculation
+    pub signals_pnl_squared_sum: f64, // Variance of accepted trades
+    pub signals_raw_pnl_squared_sum: f64, // Variance of filtered baseline
+    pub signals_random_pnl_squared_sum: f64, // Variance of random baseline
+    pub eos_buckets: HashMap<String, (usize, f64)>, // bucket_id -> (count, pnl_sum)
+    pub pnl_samples: Vec<f64>, // For distribution quantiles
     pub regime_distribution: HashMap<String, usize>,
 }
 
@@ -209,6 +213,10 @@ impl Default for PaperRegistry {
             signals_random_count: 0,
             signals_random_pnl: 0.0,
             signals_pnl_squared_sum: 0.0,
+            signals_raw_pnl_squared_sum: 0.0,
+            signals_random_pnl_squared_sum: 0.0,
+            eos_buckets: HashMap::new(),
+            pnl_samples: Vec::new(),
             regime_distribution: HashMap::new(),
         }
     }
@@ -297,14 +305,29 @@ impl PaperRegistry {
             (self.signals_pnl_squared_sum / self.closed_count as f64) - (accepted_expectancy * accepted_expectancy)
         } else { 0.0 };
         let accepted_std = accepted_variance.sqrt();
-        let z_score = if accepted_std > 1e-9 { incremental_edge / accepted_std } else { 0.0 };
+        let t_stat = if accepted_std > 1e-9 && self.closed_count > 0 { 
+            incremental_edge / (accepted_std / (self.closed_count as f64).sqrt()) 
+        } else { 0.0 };
         
-        println!("[ALPHA_UPLIFT] accepted_exp={:.6} raw_baseline_exp={:.6} incremental_edge={:.6} z_score={:.2} (sigma)", 
-            accepted_expectancy, raw_expectancy, incremental_edge, z_score);
+        println!("[SIGMA] accepted_std={:.6} incremental_edge={:.6} t_stat={:.4} (corrected n={})", 
+            accepted_std, incremental_edge, t_stat, self.closed_count);
 
         let random_expectancy = if self.signals_random_count > 0 { self.signals_random_pnl / self.signals_random_count as f64 } else { 0.0 };
         println!("[RANDOM_BASELINE] random_exp={:.6} vs_random_uplift={:.6}", 
             random_expectancy, accepted_expectancy - random_expectancy);
+            
+        // PNL DISTRIBUTION
+        if !self.pnl_samples.is_empty() {
+            let mut samples = self.pnl_samples.clone();
+            samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            println!("[PNL_DISTRIBUTION] min={:.6} p25={:.6} p50={:.6} p75={:.6} max={:.6}",
+                samples[0], samples[samples.len()/4], samples[samples.len()/2], samples[samples.len()*3/4], samples[samples.len()-1]);
+        }
+        
+        // EOS BUCKETS
+        for (bucket, (count, pnl)) in &self.eos_buckets {
+            println!("[EOS_BUCKETS] bucket={} trades={} expectancy={:.6}", bucket, count, pnl / (*count as f64).max(1.0));
+        }
 
         println!("[REGIME_DISTRIBUTION] {:?}", self.regime_distribution);
         println!("[REJECTION_PROFILE] drift={} confirm={} imbalance={}", self.rej_drift, self.rej_confirm, self.rej_imbalance);
@@ -711,15 +734,23 @@ impl PaperRegistry {
     pub fn record_raw_signal(&mut self, pnl: f64) {
         self.signals_raw_count += 1;
         self.signals_raw_pnl += pnl;
+        self.signals_raw_pnl_squared_sum += pnl * pnl;
     }
 
     pub fn record_random_signal(&mut self, pnl: f64) {
         self.signals_random_count += 1;
         self.signals_random_pnl += pnl;
+        self.signals_random_pnl_squared_sum += pnl * pnl;
     }
 
-    pub fn record_pnl_sample(&mut self, pnl: f64) {
+    pub fn record_accepted_sample(&mut self, pnl: f64, eos: f64) {
         self.signals_pnl_squared_sum += pnl * pnl;
+        self.pnl_samples.push(pnl);
+        
+        let bucket = if eos < 0.02 { "low" } else if eos < 0.05 { "mid" } else { "high" };
+        let entry = self.eos_buckets.entry(bucket.to_string()).or_insert((0, 0.0));
+        entry.0 += 1;
+        entry.1 += pnl;
     }
 }
 

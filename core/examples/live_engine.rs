@@ -127,8 +127,24 @@ struct ShadowTrade {
     signal: SignalType,
     age: usize,
     max_age: usize,
-    is_blocked: bool,
-    is_random_baseline: bool,
+    pub is_blocked: bool,
+    pub is_random_baseline: bool,
+    pub eos_score: f64,
+}
+
+struct ForwardAudit {
+    symbol: String,
+    entry_price: f64,
+    eos_score: f64,
+    bars_remaining: i32,
+    returns: Vec<(i32, f64)>, // (horizon, ret)
+}
+
+struct ForwardMetrics {
+    correlation_5: f64,
+    correlation_10: f64,
+    correlation_20: f64,
+    sample_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +254,14 @@ fn env_parse_usize(name: &str, default: usize) -> usize {
         .unwrap_or(default)
 }
 
+fn env_parse_f64(name: &str, default: f64) -> f64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .unwrap_or(default)
+}
+
 fn env_parse_f64_pos(name: &str, default: f64) -> f64 {
     std::env::var(name)
         .ok()
@@ -246,7 +270,6 @@ fn env_parse_f64_pos(name: &str, default: f64) -> f64 {
         .unwrap_or(default)
 }
 
-/// Deterministic minimal reco when strategy pool is silent but momentum bootstrap qualifies.
 fn synthetic_momentum_trade_reco(
     symbol: &str,
     price_now: f64,
@@ -543,6 +566,7 @@ fn main() {
     let mut shadow_evals: Vec<ShadowPending> = Vec::new();
     let mut confirmed_birth_count = 0;
     let mut shadow_counterfactuals: Vec<ShadowTrade> = Vec::new();
+    let mut forward_audits: Vec<ForwardAudit> = Vec::new();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
     let mut prev_imbalance_map: HashMap<String, f32> = HashMap::new();
     let mut prev_delta_imb_map: HashMap<String, f32> = HashMap::new();
@@ -818,8 +842,8 @@ fn main() {
                         if st.is_random_baseline {
                             paper.record_random_signal(pnl);
                         } else {
-                            // IF it's a real/raw candidate signal, record to the pnl variance pool for sigma calculation
-                            paper.record_pnl_sample(pnl);
+                            // IF it's a real/raw candidate signal, record to the accepted/filtered pool with EOS bucket
+                            paper.record_accepted_sample(pnl, st.eos_score);
                         }
                         
                         settled_indices.push(i);
@@ -829,6 +853,29 @@ fn main() {
             for &i in settled_indices.iter().rev() {
                 shadow_counterfactuals.remove(i);
             }
+
+            // --- SETTLE FORWARD AUDITS (DIAGNOSTIC) ---
+            let p_now = candle.close as f64 / PRICE_SCALE;
+            for fa in forward_audits.iter_mut() {
+                if fa.symbol == *symbol && fa.bars_remaining > 0 {
+                    fa.bars_remaining -= 1;
+                    let horizon = 20 - fa.bars_remaining;
+                    if horizon == 5 || horizon == 10 || horizon == 20 {
+                        let ret = (p_now - fa.entry_price) / fa.entry_price;
+                        fa.returns.push((horizon, ret));
+                        
+                        if horizon == 20 {
+                            let ret_5 = fa.returns.iter().find(|(h, _)| *h == 5).map(|(_, r)| *r).unwrap_or(0.0);
+                            let ret_10 = fa.returns.iter().find(|(h, _)| *h == 10).map(|(_, r)| *r).unwrap_or(0.0);
+                            let ret_20 = ret;
+                            
+                            println!("[EOS_FORWARD_TEST] sym={} eos={:.4} ret_5={:.6} ret_10={:.6} ret_20={:.6}", 
+                                fa.symbol, fa.eos_score, ret_5, ret_10, ret_20);
+                        }
+                    }
+                }
+            }
+            forward_audits.retain(|fa| fa.bars_remaining > 0);
             let sym_updates_now = *symbol_update_counts.get(symbol).unwrap_or(&0);
             let price_now = candle.close as f64 / PRICE_SCALE;
             let price_prev = if history.len() >= 2 {
@@ -869,7 +916,16 @@ fn main() {
             let up_ticks = tick_buf.iter().filter(|&&d| d > 0.0).count();
             let down_ticks = tick_buf.iter().filter(|&&d| d < 0.0).count();
             let imbalance = if !tick_buf.is_empty() {
-                (up_ticks as f32 - down_ticks as f32).abs() / tick_buf.len() as f32
+                let len = tick_buf.len() as f64;
+                let weighted_sum: f64 = tick_buf.iter()
+                    .enumerate()
+                    .map(|(i, &d)| {
+                        let w = (i + 1) as f64 / len; // recency weighting
+                        w * d
+                    })
+                    .sum();
+                let norm: f64 = tick_buf.iter().map(|d| d.abs()).sum::<f64>() + 1e-9;
+                (weighted_sum / norm).clamp(-1.0, 1.0) as f32
             } else { 0.0 };
 
             let delta_volume = volume_now - volume_prev;
@@ -1510,12 +1566,43 @@ fn main() {
                     }
                     path_size_multiplier *= regime_multiplier;
 
-                    // --- EXECUTABLE OPPORTUNITY SCORE (EOS) ---
-                    let queue_pressure = imbalance.abs() as f64;
-                    let queue_clearance = 1.0 / (events_back_to_distinct as f64 + 1.0);
-                    let event_density = (updates_60 as f64 / 60.0).clamp(0.1, 1.0); // No price action used
-                    let velocity_mult = if is_buy == (accel_imb > 0.0) { 1.2 } else { 0.8 };
-                    let eos = (queue_pressure * queue_clearance * event_density) * velocity_mult;
+                    // --- ALPHA REGIME CLASSIFIER (STRICT SNIPER MODE) ---
+                    let alpha = env_parse_f64("EOS_ALPHA", 2.0);
+                    let lambda = env_parse_f64("EOS_LAMBDA", 0.6); // Balanced crowding penalty
+                    let l_floor = env_parse_f64("EOS_L", 0.15); // Alpha floor
+                    let h_cap = env_parse_f64("EOS_H", 0.40); // Adverse selection cap
+                    let epsilon = 1e-6;
+
+                    let filled_v = (delta_volume as f64).max(0.0);
+                    
+                    // rolling volume baseline (same domain as filled_v)
+                    let vol_avg = history.iter()
+                        .rev()
+                        .take(5)
+                        .map(|c| c.volume as f64)
+                        .sum::<f64>() / 5.0;
+
+                    // 1. Corrected Imbalance (I)
+                    let i_imb = imbalance as f64;
+                    
+                    // 2. Clearance Efficiency (C)
+                    let c_eff = filled_v / (vol_avg + 1e-9);
+                    
+                    // 3. Pressure (P)
+                    let p_press = vol_avg / (vol_avg + filled_v + 1e-9);
+                    
+                    // 4. Crowding Penalty (K)
+                    let k_crowd = (p_press * (1.0 - c_eff)).clamp(0.0, 1.0);
+                    
+                    // 5. Raw Adjusted Signal (S_adj)
+                    let s_adj = (i_imb * c_eff) - (lambda * k_crowd);
+                    
+                    // 6. Squashed EOS
+                    let eos = (alpha * s_adj).tanh();
+                    
+                    // 7. Band-Pass Filter (Accept only the 'Mid-Zone')
+                    let eos_abs = eos.abs();
+                    let is_in_band = eos_abs > l_floor && eos_abs < h_cap;
                     
                     // RAW SIGNAL TRACKING: Capture everything that passes the first gate for baseline audit
                     if quality_decision == "PASS" {
@@ -1530,36 +1617,84 @@ fn main() {
                             max_age: 20,
                             is_blocked: false,
                             is_random_baseline: false,
+                            eos_score: eos,
                         });
                         // Record raw signal count/pnl is deferred to shadow settlement but we increment count here for baseline
                         // Actually, let's just record it at settlement time to paper.record_raw_signal(pnl).
+                        
+                        // --- DIAGNOSTIC FORWARD AUDIT (RESEARCH PHASE) ---
+                        forward_audits.push(ForwardAudit {
+                           symbol: symbol.clone(),
+                           entry_price: price_now,
+                           eos_score: eos,
+                           bars_remaining: 20,
+                           returns: Vec::new(),
+                        });
+                    }
+                    
+                    // --- POISSON RANDOM BASELINE GENERATOR (STOCHASTIC ARRIVAL) ---
+                    // lambda = 1/500 ticks
+                    if (total_processed as f64 * 0.1337).fract() < (1.0 / 500.0) {
+                        let rand_dir = if (total_processed as f64 * 0.42).fract() < 0.5 { SignalType::BUY } else { SignalType::SELL };
+                        shadow_counterfactuals.push(ShadowTrade {
+                            symbol: symbol.clone(),
+                            entry_price: price_now,
+                            tp_target: if rand_dir == SignalType::BUY { price_now * 1.0005 } else { price_now * 0.9995 },
+                            sl_target: if rand_dir == SignalType::BUY { price_now * 0.9995 } else { price_now * 1.0005 },
+                            signal: rand_dir,
+                            age: 0,
+                            max_age: 20,
+                            is_blocked: false,
+                            is_random_baseline: true,
+                            eos_score: 0.0,
+                        });
                     }
 
                     // --- PRE-TRADE MICROSTRUCTURE GATE (ANTICIPATORY) ---
+                    let prev_imb = *prev_imbalance_map.get(symbol).unwrap_or(&0.0) as f64;
+                    let accel_imb = imbalance as f64 - prev_imb;
+                    
                     let is_exhausting = (is_buy && accel_imb < -0.01) || (!is_buy && accel_imb > 0.01);
                     let is_mature = current_streak > 4;
-                    let is_low_opportunity = eos < 0.01; // Floor for viability
-                    
-                    if is_exhausting || is_mature || is_low_opportunity {
+                    let is_alpha_region = eos_abs > l_floor && eos_abs < h_cap;
+
+                    // First: enforce alpha regime ONLY
+                    if !is_alpha_region {
                         if quality_decision == "PASS" {
-                            let reason = if is_exhausting { "Exhaustion" } else if is_mature { "Maturity" } else { "LowOpportunity" };
-                            println!("[PRE_TRADE_BLOCK] sym={} reason={} streak={} eos={:.4} accel_imb={:.4}", 
-                                symbol, reason, current_streak, eos, accel_imb);
+                            println!("[REGIME_BLOCK] sym={} reason=NonAlphaRegion eos={:.4}", symbol, eos);
                             quality_decision = "BLOCKED";
                             paper.record_block();
                             
-                            // UPDATE SHADOW TRADE TO BLOCKED
-                            if let Some(st) = shadow_counterfactuals.iter_mut().rev().find(|s| s.symbol == *symbol && s.age == 0) {
+                            if let Some(st) = shadow_counterfactuals.iter_mut().rev()
+                                .find(|s| s.symbol == *symbol && s.age == 0) {
                                 st.is_blocked = true;
                             }
                         }
                     } else {
-                        // POSITIVE SELECTION: Scale by EOS
-                        let eos_multiplier = (eos * 10.0).clamp(0.5, 2.0);
-                        if eos_multiplier > 1.2 {
-                             println!("[EOS_BOOST] sym={} eos={:.4} mult={:.2}", symbol, eos, eos_multiplier);
+                        // THEN apply microstructure filters
+                        let is_exhausting = (is_buy && accel_imb < -0.01) || (!is_buy && accel_imb > 0.01);
+                        let is_mature = current_streak > 5; // Target early-mid streak momentum
+
+                        if is_exhausting || is_mature {
+                            if quality_decision == "PASS" {
+                                let reason = if is_exhausting { "Exhaustion" } else { "Maturity" };
+                                println!("[REGIME_BLOCK] sym={} reason={} eos={:.4}", symbol, reason, eos);
+                                quality_decision = "BLOCKED";
+                                paper.record_block();
+
+                                if let Some(st) = shadow_counterfactuals.iter_mut().rev()
+                                    .find(|s| s.symbol == *symbol && s.age == 0) {
+                                    st.is_blocked = true;
+                                }
+                            }
+                        } else {
+                            // Positive selection scaling
+                            let eos_multiplier = (eos * 10.0).clamp(0.5, 2.0);
+                            if eos_multiplier > 1.2 {
+                                println!("[EOS_BOOST] sym={} eos={:.4} mult={:.2}", symbol, eos, eos_multiplier);
+                            }
+                            path_size_multiplier *= eos_multiplier;
                         }
-                        path_size_multiplier *= eos_multiplier;
                     }
 
                     // --- 1-TICK CONFIRMATION LAYER ---
@@ -2850,22 +2985,6 @@ fn main() {
                 cand.primary_id
             );
             
-            // --- TRUE RANDOM BASELINE GENERATOR ---
-            if total_processed % 500 == 0 {
-                let p_now = cand.recommendation.entry_price;
-                let rand_dir = if total_processed % 2 == 0 { SignalType::BUY } else { SignalType::SELL };
-                shadow_counterfactuals.push(ShadowTrade {
-                    symbol: cand.symbol.clone(),
-                    entry_price: p_now,
-                    tp_target: if rand_dir == SignalType::BUY { p_now * 1.0005 } else { p_now * 0.9995 },
-                    sl_target: if rand_dir == SignalType::BUY { p_now * 0.9995 } else { p_now * 1.0005 },
-                    signal: rand_dir,
-                    age: 0,
-                    max_age: 20,
-                    is_blocked: false,
-                    is_random_baseline: true,
-                });
-            }
             pending_meta
                 .entry(cand.symbol.clone())
                 .or_default()
