@@ -41,6 +41,10 @@ pub struct TradeIntent {
     pub regime: String,
     #[serde(default)]
     pub birth_timestamp: u64,
+    pub intensity: f64,
+    pub stability: f64,
+    #[serde(default)]
+    pub tier: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -96,6 +100,8 @@ pub struct ActiveTrade {
     pub score_std_5: f64,
     pub partial_tp_done: bool,
     pub remaining_fraction: f64,
+    #[serde(default)]
+    pub tier: String,
     pub realized_partial_pnl: f64,
     pub trail_active: bool,
     pub trail_stop: f64,
@@ -115,6 +121,8 @@ pub struct ActiveTrade {
     pub regime: String,
     #[serde(default)]
     pub birth_timestamp: u64,
+    pub intensity: f64,
+    pub stability: f64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -486,12 +494,15 @@ pub fn update_paper_registry(
             from_sketch: false,
             sketch_minute_bucket: 0,
             reference_price: intent.reference_price,
-            birth_price: intent.reference_price, // Will be updated by confirmed intents
+            birth_price: intent.birth_price,
             entry_mode: intent.mode.clone(),
             timestamp: latest_candle.timestamp,
             entry_path: intent.entry_path.clone(),
             regime: intent.regime.clone(),
             birth_timestamp: intent.birth_timestamp,
+            intensity: intent.intensity,
+            stability: intent.stability,
+            tier: intent.tier.clone(),
         });
         
         registry.intents_triggered += 1;
@@ -554,24 +565,8 @@ pub fn update_paper_registry(
                 }
             }
 
-            // --- EARLY REJECTION: FIRST TICK VALIDATION ---
-            if exit_pnl.is_none() && trade.current_hold == 1 {
-                let current_pnl = if is_long {
-                    (close - trade.entry_price) / trade.entry_price.max(1e-12)
-                } else {
-                    (trade.entry_price - close) / trade.entry_price.max(1e-12)
-                };
-                
-                if current_pnl <= 0.0 {
-                    let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
-                    exit_pnl = Some(if is_long {
-                        (exit_price - trade.entry_price) / trade.entry_price.max(1e-12)
-                    } else {
-                        (trade.entry_price - exit_price) / trade.entry_price.max(1e-12)
-                    });
-                    exit_tag = ExitType::NoMomentum;
-                }
-            }
+            // --- EARLY REJECTION: REMOVED FOR STRUCTURAL ALPHA ---
+            // (1-tick momentum kill disabled to allow structural moves to breathe)
 
             if exit_pnl.is_none() && trade.current_hold >= trade.hold_limit {
                 let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
@@ -656,13 +651,21 @@ impl PaperRegistry {
             "[TRUTH_CHECK] sym={} birth={:.4} entry={:.4} exit={:.4} drift={:.2}bps",
             trade.symbol, trade.birth_price, trade.entry_price, close, edge_loss
         );
+        println!(
+            "[PNL_TIER] tier={} realized_pnl={:.6} edge_loss={:.2}bps size={:.2}",
+            trade.tier, pnl, edge_loss, trade.size
+        );
+        println!(
+            "[EDGE_DECOMP] sym={} tier={} raw_edge={:.2}bps slip={:.2}bps net_edge={:.2}bps",
+            trade.symbol, trade.tier, trade.max_pnl * 10000.0, edge_loss, pnl * 10000.0
+        );
         let birth_latency = if timestamp > trade.birth_timestamp { timestamp - trade.birth_timestamp } else { 0 };
         println!(
-            "[AUDIT_TRADE] sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={}",
+            "[AUDIT_TRADE] sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={} tier={} regime={} intensity={:.2} stability={:.4}",
             trade.symbol, trade.signal, trade.entry_price, trade.tp_target, trade.sl_target, close, 
             friction_bps, 
             trade.rec_conf, trade.max_pnl, pnl, edge_loss, (pnl / trade.max_pnl.max(1e-6)), trade.current_hold, birth_latency, exit_tag,
-            current_per, current_fbpr, trade.entry_mode
+            current_per, current_fbpr, trade.entry_mode, trade.tier, trade.regime, trade.intensity, trade.stability
         );
 
         self.closed_observations.push(TradeObservation {

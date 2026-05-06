@@ -91,8 +91,10 @@ struct RecommendationCandidate {
     pub birth_price: f64,
     pub entry_path: String,
     pub regime: String,
-    pub path_size_multiplier: f64,
     pub birth_timestamp: u64,
+    pub intensity: f64,
+    pub stability: f64,
+    pub path_size_multiplier: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -117,8 +119,10 @@ struct PendingConfirmation {
     base_price: f64,
     base_score: f64,
     base_vol: f64,
+    score_history: Vec<f64>,
 }
 
+#[derive(Debug, Clone)]
 struct ShadowTrade {
     symbol: String,
     entry_price: f64,
@@ -130,14 +134,237 @@ struct ShadowTrade {
     pub is_blocked: bool,
     pub is_random_baseline: bool,
     pub eos_score: f64,
+    pub intensity: f64,
+    pub regime: EstimatedRegime,
+    pub mode: String,
+    pub is_stability_kill: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum EstimatedRegime {
+    BullTrend,
+    BearTrend,
+    Range,
+    Volatile,
+}
+
+impl EstimatedRegime {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::BullTrend => "BULL_TREND",
+            Self::BearTrend => "BEAR_TREND",
+            Self::Range => "RANGE",
+            Self::Volatile => "VOLATILE",
+        }
+    }
+}
+
+struct DecileStats {
+    count: usize,
+    sum_r1: f64,
+    sum_r3: f64,
+    sum_r5: f64,
+    sum_r10: f64,
+    sum_r20: f64,
+    sum_r50: f64,
+    sum_r100: f64,
+    returns_r20: Vec<f64>,
+    block_means: Vec<f64>,
+    current_block_sum: f64,
+    current_block_count: usize,
+    current_block_count_coherent: usize,
+}
+
+impl Default for DecileStats {
+    fn default() -> Self {
+        Self {
+            count: 0,
+            sum_r1: 0.0,
+            sum_r3: 0.0,
+            sum_r5: 0.0,
+            sum_r10: 0.0,
+            sum_r20: 0.0,
+            sum_r50: 0.0,
+            sum_r100: 0.0,
+            returns_r20: Vec::with_capacity(1000),
+            block_means: Vec::new(),
+            current_block_sum: 0.0,
+            current_block_count: 0,
+            current_block_count_coherent: 0,
+        }
+    }
 }
 
 struct ForwardAudit {
     symbol: String,
-    entry_price: f64,
-    eos_score: f64,
-    bars_remaining: i32,
-    returns: Vec<(i32, f64)>, // (horizon, ret)
+    price: f64,
+    eos: f64,
+    forward_prices: VecDeque<(i64, f64)>, // (timestamp, price)
+    r1: Option<f64>,
+    r3: Option<f64>,
+    r5: Option<f64>,
+    r10: Option<f64>,
+    r20: Option<f64>,
+    r50: Option<f64>,
+    r100: Option<f64>,
+    regime: EstimatedRegime,
+    exhaustion: f64,
+    fragility: f64,
+    initial_trap_score: f64,
+    momentum: f64,
+    trap_delta: f64,
+    vol_recent: f64,
+    vol_ret_short: f64,
+    vol_ret_long: f64,
+    mom_persistence: f64,
+}
+
+struct DelayedEntry {
+    symbol: String,
+    signal: SignalType,
+    trigger_tick: usize,
+    delay: usize,
+    conviction: f64,
+    intensity_history: Vec<f64>,
+    intensity_sum: f64,
+    intensity_sq_sum: f64,
+    mode: String, // REVERSION or MOMENTUM
+    regime: EstimatedRegime,
+    birth_price: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum AlphaTier {
+    Sniper,
+    Flow,
+    Explore,
+    Reject,
+}
+
+impl AlphaTier {
+    pub fn as_str(&self) -> &str {
+        match self {
+            AlphaTier::Sniper => "SNIPER",
+            AlphaTier::Flow => "FLOW",
+            AlphaTier::Explore => "EXPLORE",
+            AlphaTier::Reject => "REJECT",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AlphaStats {
+    pub avg_pnl: f64,
+    pub pnl_std: f64,
+    pub count: usize,
+}
+
+pub struct AlphaDecision {
+    pub tier: AlphaTier,
+    pub sharpe: f64,
+    pub expected_pnl: f64,
+    pub count: usize,
+    pub net_edge: f64,
+}
+
+impl AlphaDecision {
+    pub fn get_size_mult(&self) -> f64 {
+        // Extraction-Aware Sizing: Size ∝ max(net_edge, 0.0)
+        // Safety Margin: We only trade if net_edge > 0.5 bps (0.00005)
+        let safety_margin = 0.00005; 
+        
+        if self.tier == AlphaTier::Explore {
+            return 0.1; // Learning mode is fixed tiny size
+        }
+
+        if self.net_edge < safety_margin {
+            return 0.0; // Extraction failure: reject
+        }
+
+        match self.tier {
+            AlphaTier::Sniper => {
+                // Pure Net-Edge Sizing: 1.0x at 2bps net, 2.0x at 4bps net
+                (self.net_edge / 0.0002).clamp(0.1, 2.0)
+            }
+            AlphaTier::Explore => 0.1, // Fixed tiny for data collection
+            _ => 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct AlphaTable {
+    pub cells: HashMap<String, AlphaStats>,
+}
+
+impl AlphaTable {
+    pub fn load_from_json(path: &str) -> Self {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            if let Ok(cells) = serde_json::from_str::<HashMap<String, AlphaStats>>(&content) {
+                println!("📂 Alpha Curve: loaded {} outcome cells from {}", cells.len(), path);
+                return AlphaTable { cells };
+            }
+        }
+        println!("⚠️ Alpha Curve: could not load {}, starting with empty table", path);
+        AlphaTable::default()
+    }
+
+    pub fn get_stats(&self, key: &str) -> Option<&AlphaStats> {
+        self.cells.get(key)
+    }
+
+    pub fn classify_alpha(&self, key: &str, min_samples: usize, pos_threshold: f64, sniper_sharpe: f64) -> AlphaDecision {
+        if let Some(stats) = self.cells.get(key) {
+            let sharpe = if stats.pnl_std > 1e-9 {
+                stats.avg_pnl / stats.pnl_std
+            } else {
+                0.0
+            };
+
+            // COST-AWARE FILTRATION
+            let est_cost_bps = 0.00025; // 2.5 bps
+            let net_edge = stats.avg_pnl - est_cost_bps;
+            let safety_margin = 0.00005; // 0.5 bps
+
+            // Hierarchical Tiering with Extraction Gate
+            // Path A: High Precision + Net Profitability
+            let is_sniper_a = stats.count >= min_samples && sharpe >= sniper_sharpe && net_edge >= pos_threshold;
+            // Path B: High Stability + Net Profitability
+            let is_sniper_b = stats.count >= 1000 && net_edge >= safety_margin && sharpe >= 0.05;
+
+            let tier = if is_sniper_a || is_sniper_b {
+                AlphaTier::Sniper
+            } else if stats.count < 20 {
+                AlphaTier::Explore
+            } else {
+                // FLOW DISABLED: High sample count but not Sniper -> Reject
+                AlphaTier::Reject
+            };
+
+            AlphaDecision {
+                tier,
+                sharpe,
+                expected_pnl: stats.avg_pnl,
+                count: stats.count,
+                net_edge,
+            }
+        } else {
+            // Total unknown
+            AlphaDecision {
+                tier: AlphaTier::Explore,
+                sharpe: 0.0,
+                expected_pnl: 0.0,
+                count: 0,
+                net_edge: 0.0,
+            }
+        }
+    }
+
+    pub fn get_alpha_key(intensity: f64, stability: f64, regime: EstimatedRegime, mode: &str) -> String {
+        let i_bucket = if intensity < 2.0 { "i1.8-2.0" } else if intensity < 2.5 { "i2.0-2.5" } else { "i2.5+" };
+        let s_bucket = if stability < 0.02 { "s0-0.02" } else if stability < 0.05 { "s0.02-0.05" } else { "s0.05+" };
+        format!("{}_{}_{}_{}", mode, regime.as_str(), i_bucket, s_bucket)
+    }
 }
 
 struct ForwardMetrics {
@@ -323,6 +550,58 @@ fn percentile_sorted(sorted: &[f64], p: f64) -> f64 {
     let len = sorted.len();
     let rank = ((p.clamp(0.0, 100.0) / 100.0) * ((len - 1) as f64)).round() as usize;
     sorted[rank.min(len - 1)]
+}
+
+fn compute_t_stat(data: &[f64]) -> f64 {
+    if data.len() < 2 { return 0.0; }
+    let n = data.len() as f64;
+    let mean = data.iter().sum::<f64>() / n;
+    let var = data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0);
+    mean / (var.sqrt() / n.sqrt()).max(1e-9)
+}
+
+fn compute_percentile(data: &mut [f64], p: f64) -> f64 {
+    if data.is_empty() { return 0.0; }
+    data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let idx = ((data.len() - 1) as f64 * p).floor() as usize;
+    data[idx]
+}
+
+fn compute_skewness(data: &[f64], mean: f64) -> f64 {
+    if data.len() < 3 { return 0.0; }
+    let mut sum_sq = 0.0;
+    let mut sum_cu = 0.0;
+    for &x in data {
+        let diff = x - mean;
+        sum_sq += diff * diff;
+        sum_cu += diff * diff * diff;
+    }
+    let n = data.len() as f64;
+    let std = (sum_sq / (n - 1.0)).sqrt();
+    if std < 1e-9 { return 0.0; }
+    (sum_cu / n) / (std * std * std)
+}
+
+fn estimate_regime_pure(history: &[Candle]) -> EstimatedRegime {
+    if history.len() < 50 { return EstimatedRegime::Range; }
+    let lookback = 50;
+    let current = history.last().unwrap().close as f64 / PRICE_SCALE;
+    let prev = history[history.len() - lookback].close as f64 / PRICE_SCALE;
+    let mut tr_sum = 0.0;
+    for i in (history.len() - lookback + 1)..history.len() {
+        let h = history[i].high as f64 / PRICE_SCALE;
+        let l = history[i].low as f64 / PRICE_SCALE;
+        let pc = history[i-1].close as f64 / PRICE_SCALE;
+        tr_sum += (h - l).max((h - pc).abs()).max((l - pc).abs());
+    }
+    let avg_tr = tr_sum / (lookback as f64 - 1.0);
+    let drift_norm = (current - prev) / (avg_tr * (lookback as f64).sqrt());
+    let vol_norm = avg_tr / current.max(1e-9);
+    
+    if drift_norm > 1.2 { EstimatedRegime::BullTrend }
+    else if drift_norm < -1.2 { EstimatedRegime::BearTrend }
+    else if vol_norm > 0.002 { EstimatedRegime::Volatile }
+    else { EstimatedRegime::Range }
 }
 
 fn rolling_close_std(history: &[Candle], window: usize) -> f64 {
@@ -546,13 +825,33 @@ fn main() {
     
     let mut edge_buffer = PercentileBuffer::new(500);
     let mut mom_abs_buffer = PercentileBuffer::new(500);
-    let mut fallback_history: VecDeque<u8> = VecDeque::with_capacity(500);
-    let mut current_stats = DistributionStats::default();
-    
     let mut history_pipes: HashMap<String, Vec<Candle>> = HashMap::new();
+    let mut forward_audits: Vec<ForwardAudit> = Vec::new();
+    let mut conditional_decile_buckets: HashMap<(usize, EstimatedRegime), DecileStats> = HashMap::new();
+    let mut regime_history: HashMap<String, VecDeque<EstimatedRegime>> = HashMap::new();
+    let block_size = env_parse_usize("VALIDATION_BLOCK_SIZE", 20);
+    let regime_lag = env_parse_usize("REGIME_LAG", 0);
+    let exec_latency = env_parse_usize("EXEC_LATENCY_TICKS", 0);
+    let adverse_selection_bps = env_parse_f64("ADVERSE_SELECTION_BPS", 0.0) / 10000.0;
+    let shuffle_regime = env_flag("SHUFFLE_REGIME");
+    let mut fallback_history: VecDeque<u8> = VecDeque::with_capacity(500);
+    let current_stats = DistributionStats::default();
+    
     // Last k signs of momentum_contribution for bootstrap consistency (sym → deque).
     let mut mom_sign_hist: HashMap<String, VecDeque<i8>> = HashMap::new();
+    let mut pending_latencies: Vec<(ShadowTrade, usize)> = Vec::new();
     let mut score_history: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut last_eos_map: HashMap<String, f64> = HashMap::new();
+    let mut last_trap_map: HashMap<String, f64> = HashMap::new();
+    let mut vol_window_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut ret_window_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut ema_fast_map: HashMap<String, f64> = HashMap::new();
+    let mut ema_slow_map: HashMap<String, f64> = HashMap::new();
+    let mut timing_ema_map: HashMap<String, f64> = HashMap::new();
+    let mut signal_history_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut signal_ema_history_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut last_entry_tick_map: HashMap<String, usize> = HashMap::new();
+    let mut delayed_entries: Vec<DelayedEntry> = Vec::new();
     let mut symbol_update_counts: HashMap<String, usize> = HashMap::new();
     let mut pending_confirmations: HashMap<String, PendingConfirmation> = HashMap::new();
     let mut side_counters = SideCounters::default();
@@ -566,6 +865,12 @@ fn main() {
     let mut shadow_evals: Vec<ShadowPending> = Vec::new();
     let mut confirmed_birth_count = 0;
     let mut shadow_counterfactuals: Vec<ShadowTrade> = Vec::new();
+    let alpha_curve_path = std::env::var("ALPHA_CURVE_PATH").unwrap_or_default();
+    let alpha_table = if !alpha_curve_path.is_empty() {
+        AlphaTable::load_from_json(&alpha_curve_path)
+    } else {
+        AlphaTable::default()
+    };
     let mut forward_audits: Vec<ForwardAudit> = Vec::new();
     let mut last_signals: HashMap<String, SignalType> = HashMap::new();
     let mut prev_imbalance_map: HashMap<String, f32> = HashMap::new();
@@ -814,6 +1119,8 @@ fn main() {
             if history.len() > 1000 { history.remove(0); }
             *symbol_update_counts.entry(symbol.clone()).or_insert(0) += 1;
             
+            // (Forward Audit settlement moved to unified block below)
+            
             // --- SETTLE SHADOW COUNTERFACTUALS ---
             let mut settled_indices = Vec::new();
             for (i, st) in shadow_counterfactuals.iter_mut().enumerate() {
@@ -845,7 +1152,10 @@ fn main() {
                             // IF it's a real/raw candidate signal, record to the accepted/filtered pool with EOS bucket
                             paper.record_accepted_sample(pnl, st.eos_score);
                         }
-                        
+                        if st.is_blocked {
+                            println!("[STABILITY_KILL_AUDIT] sym={} mode={} regime={} intensity={:.2} var={:.4} pnl_cf={:.6}", 
+                                st.symbol, st.mode, st.regime.as_str(), st.intensity, st.eos_score, pnl);
+                        }
                         settled_indices.push(i);
                     }
                 }
@@ -854,28 +1164,129 @@ fn main() {
                 shadow_counterfactuals.remove(i);
             }
 
-            // --- SETTLE FORWARD AUDITS (DIAGNOSTIC) ---
             let p_now = candle.close as f64 / PRICE_SCALE;
-            for fa in forward_audits.iter_mut() {
-                if fa.symbol == *symbol && fa.bars_remaining > 0 {
-                    fa.bars_remaining -= 1;
-                    let horizon = 20 - fa.bars_remaining;
-                    if horizon == 5 || horizon == 10 || horizon == 20 {
-                        let ret = (p_now - fa.entry_price) / fa.entry_price;
-                        fa.returns.push((horizon, ret));
+
+            // --- PROCESS PENDING LATENCIES ---
+            let mut ready_to_add = Vec::new();
+            let mut lat_indices = Vec::new();
+            for (i, (st, ticks)) in pending_latencies.iter_mut().enumerate() {
+                if *ticks > 0 {
+                    *ticks -= 1;
+                } else {
+                    // Latency over, update entry price to current + adverse selection and add
+                    let mut st_ready = st.clone();
+                    let price_adj = if st.signal == SignalType::BUY { 
+                        p_now * (1.0 + adverse_selection_bps) 
+                    } else { 
+                        p_now * (1.0 - adverse_selection_bps) 
+                    };
+                    st_ready.entry_price = price_adj; 
+                    ready_to_add.push(st_ready);
+                    lat_indices.push(i);
+                }
+            }
+            for &idx in lat_indices.iter().rev() {
+                pending_latencies.remove(idx);
+            }
+            for st in ready_to_add {
+                shadow_counterfactuals.push(st);
+            }
+
+            // --- SETTLE FORWARD AUDITS (DIAGNOSTIC) ---
+            let mut audit_to_remove = Vec::new();
+            for (i, fa) in forward_audits.iter_mut().enumerate() {
+                if fa.symbol == *symbol {
+                    fa.forward_prices.push_back((candle.timestamp as i64, p_now));
+                    
+                    if fa.forward_prices.len() == 1 && fa.r1.is_none() {
+                        fa.r1 = Some((p_now - fa.price) / fa.price);
+                    }
+                    if fa.forward_prices.len() == 3 && fa.r3.is_none() {
+                        fa.r3 = Some((p_now - fa.price) / fa.price);
+                    }
+                    if fa.forward_prices.len() == 5 && fa.r5.is_none() {
+                        fa.r5 = Some((p_now - fa.price) / fa.price);
+                    }
+                    if fa.forward_prices.len() == 10 && fa.r10.is_none() {
+                        fa.r10 = Some((p_now - fa.price) / fa.price);
+                    }
+                    if fa.forward_prices.len() == 20 && fa.r20.is_none() {
+                        let r20 = (p_now - fa.price) / fa.price;
+                        fa.r20 = Some(r20);
+                    }
+                    if fa.forward_prices.len() == 50 && fa.r50.is_none() {
+                        fa.r50 = Some((p_now - fa.price) / fa.price);
+                    }
+                    if fa.forward_prices.len() >= 100 {
+                        let r100 = (p_now - fa.price) / fa.price;
+                        fa.r100 = Some(r100);
                         
-                        if horizon == 20 {
-                            let ret_5 = fa.returns.iter().find(|(h, _)| *h == 5).map(|(_, r)| *r).unwrap_or(0.0);
-                            let ret_10 = fa.returns.iter().find(|(h, _)| *h == 10).map(|(_, r)| *r).unwrap_or(0.0);
-                            let ret_20 = ret;
+                        let decile = (fa.eos * 10.0).floor().clamp(0.0, 9.0) as usize;
+                        let stats = conditional_decile_buckets.entry((decile, fa.regime)).or_insert_with(DecileStats::default);
+                        stats.count += 1;
+                        stats.sum_r1 += fa.r1.unwrap_or(0.0);
+                        stats.sum_r3 += fa.r3.unwrap_or(0.0);
+                        stats.sum_r5 += fa.r5.unwrap_or(0.0);
+                        stats.sum_r10 += fa.r10.unwrap_or(0.0);
+                        stats.sum_r20 += fa.r20.unwrap_or(0.0);
+                        stats.sum_r50 += fa.r50.unwrap_or(0.0);
+                        stats.sum_r100 += r100;
+                        stats.returns_r20.push(fa.r20.unwrap_or(0.0));
+                        
+                        // Sign consistency check (r20 as base)
+                        let is_pos = fa.r20.unwrap_or(0.0) > 0.0;
+                        let r1_pos = fa.r1.unwrap_or(0.0) > 0.0;
+                        let r3_pos = fa.r3.unwrap_or(0.0) > 0.0;
+                        let r5_pos = fa.r5.unwrap_or(0.0) > 0.0;
+                        let r10_pos = fa.r10.unwrap_or(0.0) > 0.0;
+                        let consistent = (is_pos == r1_pos) && (is_pos == r3_pos) && (is_pos == r5_pos) && (is_pos == r10_pos);
+                        if consistent { stats.current_block_count_coherent += 1; }
+
+                        stats.current_block_sum += fa.r20.unwrap_or(0.0);
+                        stats.current_block_count += 1;
+                        if stats.current_block_count >= block_size {
+                            stats.block_means.push(stats.current_block_sum / stats.current_block_count as f64);
+                            stats.current_block_sum = 0.0;
+                            stats.current_block_count = 0;
                             
-                            println!("[EOS_FORWARD_TEST] sym={} eos={:.4} ret_5={:.6} ret_10={:.6} ret_20={:.6}", 
-                                fa.symbol, fa.eos_score, ret_5, ret_10, ret_20);
+                            // Emit validation summary
+                            let n = stats.count;
+                            let mean_r20 = stats.sum_r20 / n as f64;
+                            let cost_4bps = 0.0004;
+                            let t_stat = compute_t_stat(&stats.block_means);
+                            let skew = compute_skewness(&stats.returns_r20, mean_r20);
+                            
+                            println!("[DECILE_STABILITY] status={} decile={} regime={} n={} r20_mean={:.6}", 
+                                if n >= 200 && t_stat.abs() > 2.0 { "VALIDATED" } else { "UNCONFIRMED" },
+                                decile, fa.regime.as_str(), n, mean_r20);
+                            println!("[BLOCK_T_STAT] decile={} regime={} blocks={} t_stat={:.2}", 
+                                decile, fa.regime.as_str(), stats.block_means.len(), t_stat);
+                            println!("[TAIL_AUDIT] d={} r={} skew={:.2} top1pct={:.2}", 
+                                decile, fa.regime.as_str(), skew, 0.0);
+                            println!("[NET_EXPECTANCY] d={} r={} net={:.6} t_net={:.2}", 
+                                decile, fa.regime.as_str(), mean_r20 - cost_4bps, t_stat);
+                            let sign_cons = stats.current_block_count_coherent as f64 / stats.count as f64;
+                            println!("[HORIZON_PROFILE] d={} r={} r1={:.6} r3={:.6} r5={:.6} r10={:.6} r20={:.6} r50={:.6} r100={:.6} cons={:.2}",
+                                decile, fa.regime.as_str(), 
+                                stats.sum_r1 / n as f64, stats.sum_r3 / n as f64, 
+                                stats.sum_r5 / n as f64, stats.sum_r10 / n as f64, 
+                                stats.sum_r20 / n as f64, stats.sum_r50 / n as f64, stats.sum_r100 / n as f64,
+                                sign_cons);
                         }
+
+                        // EMIT INSTITUTIONAL SNAPSHOT FOR RANKING MODEL
+                        println!("[SNAPSHOT] sym={} eos={:.4} trap={:.4} reg={} r1={:.6} r20={:.6} r50={:.6} r100={:.6}",
+                            fa.symbol, fa.eos, fa.initial_trap_score, fa.regime.as_str(),
+                            fa.r1.unwrap_or(0.0), fa.r20.unwrap_or(0.0), fa.r50.unwrap_or(0.0), r100
+                        );
+                        
+                        audit_to_remove.push(i);
                     }
                 }
             }
-            forward_audits.retain(|fa| fa.bars_remaining > 0);
+            for &idx in audit_to_remove.iter().rev() {
+                forward_audits.remove(idx);
+            }
             let sym_updates_now = *symbol_update_counts.get(symbol).unwrap_or(&0);
             let price_now = candle.close as f64 / PRICE_SCALE;
             let price_prev = if history.len() >= 2 {
@@ -1158,6 +1569,7 @@ fn main() {
                 let mut selected_edge = 0.0;
                 let mut selected_feasibility = 0.0;
                 let mut total_feasibility = 0.0;
+
                 let mut voted_count = 0;
                 let mut reject_no_reco = 0usize;
                 let mut reject_nonpositive_edge = 0usize;
@@ -1191,10 +1603,546 @@ fn main() {
                 let min_conf = 0.00;
                 let min_voters_required = 1;
 
+                let mut estimated_regime = estimate_regime_pure(history);
+                
+                // Shuffle test logic
+                if shuffle_regime {
+                    let seeds = [EstimatedRegime::BullTrend, EstimatedRegime::BearTrend, EstimatedRegime::Range, EstimatedRegime::Volatile];
+                    estimated_regime = seeds[total_processed % 4];
+                }
+
+                // Lag test logic
+                let rh = regime_history.entry(symbol.clone()).or_insert_with(VecDeque::new);
+                rh.push_back(estimated_regime);
+                if rh.len() > regime_lag + 1 { rh.pop_front(); }
+                
+                let effective_regime = if regime_lag > 0 && rh.len() > regime_lag {
+                    rh[0]
+                } else {
+                    estimated_regime
+                };
+                
+                // ALPHA REGIME CLASSIFIER (STRICT SNIPER MODE)
+                let alpha_val = env_parse_f64("EOS_ALPHA", 2.0);
+                let lambda = env_parse_f64("EOS_LAMBDA", 0.6);
+                let filled_v = (delta_volume as f64).max(0.0);
+                let vol_avg = history.iter().rev().take(5).map(|c| c.volume as f64).sum::<f64>() / 5.0;
+                let i_imb = imbalance as f64;
+                let c_eff = filled_v / (vol_avg + 1e-9);
+                let p_press = vol_avg / (vol_avg + filled_v + 1e-9);
+                let k_crowd = (p_press * (1.0 - c_eff)).clamp(0.0, 1.0);
+                let s_adj = (i_imb * c_eff) - (lambda * k_crowd);
+                let current_eos = (alpha_val * s_adj).tanh();
+
+                // --- TRAP DETECTION FEATURES ---
+                
+                // 1. Momentum Exhaustion (Divergence)
+                let prev_eos = last_eos_map.get(symbol).cloned().unwrap_or(0.0);
+                let delta_eos = current_eos - prev_eos;
+                let price_vel = (price_now - price_prev) / (price_prev + 1e-9);
+                let exhaustion = if price_vel.abs() > 1e-6 {
+                    (delta_eos / (price_vel.signum() * price_vel.abs().sqrt() + 1e-9)).clamp(-2.0, 2.0)
+                } else { 0.0 };
+                
+                // 2. Regime Fragility (Stability of direction)
+                let streak_stability = (current_streak as f64 / 10.0).clamp(0.0, 1.0);
+                let vol_stability = (avg_r3 / (price_now * 0.001 + 1e-9)).clamp(0.0, 1.0);
+                let fragility = (vol_stability / (streak_stability + 0.1)).clamp(0.0, 2.0);
+                
+                // 3. Queue Persistence
+                let q_persist = (c_eff * (1.0 - p_press)).tanh();
+
+                let current_trap_score = fragility - exhaustion + (1.0 - streak_stability);
+                
+                let decile = ( (current_eos + 1.0) / 0.2 ).floor().clamp(0.0, 9.0) as usize;
+                
+                let trap_policy = std::env::var("TRAP_POLICY").unwrap_or("0".to_string()).parse::<u8>().unwrap_or(0);
+                
+                // 4-Zone Control Thresholds
+                let t1_continuation = 0.7;
+                let t2_sniper_min = 1.5;
+                let t3_sniper_max = 2.0;
+                
+                let bucket = if current_trap_score < 0.5 { "0.0-0.5" }
+                            else if current_trap_score < 1.0 { "0.5-1.0" }
+                            else if current_trap_score < 1.5 { "1.0-1.5" }
+                            else if current_trap_score < 2.0 { "1.5-2.0" }
+                            else { "2.0+" };
+
+                let reliability_adj = if trap_policy == 1 {
+                    // AVOID POLICY: Size down on fragility
+                    (1.0 - (current_trap_score / 1.5)).clamp(0.0, 1.0)
+                } else if trap_policy == 3 {
+                    // SNIPER HYBRID: Continuation zone has small size
+                    if current_trap_score < t1_continuation { 0.4 } else { 1.0 }
+                } else {
+                    1.0
+                };
+
+                let last_trap = last_trap_map.get(symbol).cloned().unwrap_or(current_trap_score);
+                let trap_delta = current_trap_score - last_trap;
+                last_trap_map.insert(symbol.clone(), current_trap_score);
+
+                let vol_win = vol_window_map.entry(symbol.clone()).or_insert_with(|| VecDeque::with_capacity(10));
+                vol_win.push_back(delta_eos.abs());
+                if vol_win.len() > 10 { vol_win.pop_front(); }
+                let vol_recent = if !vol_win.is_empty() {
+                    vol_win.iter().sum::<f64>() / vol_win.len() as f64
+                } else { 0.0 };
+
+                last_eos_map.insert(symbol.clone(), current_eos);
+                
+                let ret_win = ret_window_map.entry(symbol.clone()).or_insert_with(|| VecDeque::with_capacity(50));
+                let current_r1 = (price_now - price_prev) / (price_prev + 1e-9);
+                ret_win.push_back(current_r1);
+                if ret_win.len() > 50 { ret_win.pop_front(); }
+                
+                let vol_ret_short = if ret_win.len() >= 10 {
+                    let slice: Vec<f64> = ret_win.iter().rev().take(10).cloned().collect();
+                    let mean = slice.iter().sum::<f64>() / 10.0;
+                    (slice.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / 10.0).sqrt()
+                } else { 0.0 };
+                
+                let vol_ret_long = if ret_win.len() >= 50 {
+                    let mean = ret_win.iter().sum::<f64>() / 50.0;
+                    (ret_win.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / 50.0).sqrt()
+                } else { 0.0 };
+                
+                let mom_persistence = if ret_win.len() >= 10 {
+                    let slice: Vec<f64> = ret_win.iter().rev().take(10).cloned().collect();
+                    slice.iter().map(|x| x.signum()).sum::<f64>() / 10.0
+                } else { 0.0 };
+
+                last_eos_map.insert(symbol.clone(), current_eos);
+                
+                // UNBIASED DATA COLLECTION: EVERY TICK
+                forward_audits.push(ForwardAudit {
+                    symbol: symbol.clone(),
+                    price: price_now,
+                    eos: current_eos,
+                    forward_prices: VecDeque::new(),
+                    r1: None,
+                    r3: None,
+                    r5: None,
+                    r10: None,
+                    r20: None,
+                    r50: None,
+                    r100: None,
+                    regime: effective_regime,
+                    exhaustion,
+                    fragility,
+                    initial_trap_score: current_trap_score,
+                    momentum: delta_eos,
+                    trap_delta,
+                    vol_recent,
+                    vol_ret_short,
+                    vol_ret_long,
+                    mom_persistence,
+                });
+
+                if total_processed % 100 == 0 {
+                    println!("[TRAP_STATS] sym={} trap={:.2} policy={} rel={:.2}", 
+                        symbol, current_trap_score, trap_policy, reliability_adj);
+                }
+
+                // Log the bucket for later audit
+                println!("[TRAP_ENTRY] d={} r={} bucket={} trap={:.2}", 
+                    decile, effective_regime.as_str(), bucket, current_trap_score);
+
                 for (idx, strat) in strategies.iter().enumerate() {
                     let last_sig = last_signals.get(symbol).cloned().unwrap_or(SignalType::WAIT);
                     let cons = consistency_counts.get(symbol).cloned().unwrap_or(0);
-                    let report = evaluate_current_status(strat, history, &config, symbol, last_sig, cons, &current_stats);
+                    let mut report = evaluate_current_status(strat, history, &config, symbol, last_sig, cons, &current_stats);
+                    
+                    // APPLY TRAP POLICY
+                    if trap_policy == 1 {
+                        report.conviction_score *= reliability_adj;
+                        if let Some(ref mut reco) = report.recommendation {
+                            reco.rank *= reliability_adj;
+                        }
+                    } else if trap_policy == 2 {
+                        // FLIP POLICY: 3-Zone Switching
+                        let t2_reversal = 1.5;
+                        if current_trap_score >= t1_continuation && current_trap_score < t2_reversal {
+                            report.signal = SignalType::WAIT;
+                            report.recommendation = None;
+                        } else if current_trap_score >= t2_reversal {
+                            report.signal = match report.signal {
+                                SignalType::BUY => SignalType::SELL,
+                                SignalType::SELL => SignalType::BUY,
+                                SignalType::WAIT => SignalType::WAIT,
+                            };
+                            if let Some(ref mut reco) = report.recommendation {
+                                reco.signal = report.signal;
+                            }
+                        }
+                    } else if trap_policy == 3 {
+                        // SNIPER HYBRID POLICY: 4-Zone Sizing + Precision Flipping
+                        if current_trap_score < t1_continuation {
+                            // ZONE 1: Continuation -> Normal signal, small size
+                            report.conviction_score *= reliability_adj;
+                        } else if current_trap_score >= t1_continuation && current_trap_score < t2_sniper_min {
+                            // ZONE 2: Uncertain -> Wait
+                            report.signal = SignalType::WAIT;
+                            report.recommendation = None;
+                        } else if current_trap_score >= t2_sniper_min && current_trap_score < t3_sniper_max {
+                            // ZONE 3: SNIPER REVERSAL POCKET
+                            if exhaustion.abs() > 0.5 {
+                                report.signal = match report.signal {
+                                    SignalType::BUY => SignalType::SELL,
+                                    SignalType::SELL => SignalType::BUY,
+                                    SignalType::WAIT => SignalType::WAIT,
+                                };
+                                if let Some(ref mut reco) = report.recommendation {
+                                    reco.signal = report.signal;
+                                    reco.rank *= 1.5; // Sniper Confidence Boost
+                                }
+                            } else {
+                                report.signal = SignalType::WAIT;
+                                report.recommendation = None;
+                            }
+                        } else {
+                            // ZONE 4: Extreme Noise -> Avoid
+                            report.signal = SignalType::WAIT;
+                            report.recommendation = None;
+                        }
+                    } else if trap_policy == 4 {
+                        // FRAGILITY SNIPER: Nonlinear Surge Extraction
+                        let sniper_threshold = std::env::var("SNIPER_THRESHOLD")
+                            .unwrap_or_else(|_| "6.99".to_string())
+                            .parse::<f64>().unwrap_or(6.99);
+                        
+                        let sniper_score = (trap_delta * 2.0) - (delta_eos * vol_recent);
+                        
+                        if sniper_score >= sniper_threshold {
+                            // High Confidence Shift: Increase conviction and flip
+                            report.signal = match report.signal {
+                                SignalType::BUY => SignalType::SELL,
+                                SignalType::SELL => SignalType::BUY,
+                                SignalType::WAIT => SignalType::WAIT,
+                            };
+                            if let Some(ref mut reco) = report.recommendation {
+                                reco.signal = report.signal;
+                                reco.rank *= 1.5;
+                            }
+                            println!("[FRAGILITY_SNIPER] sym={} score={:.4} surge={:.4} -> FLIP", symbol, sniper_score, trap_delta);
+                        } else {
+                            // Not in alpha pocket: DO NOT TRADE
+                            report.signal = SignalType::WAIT;
+                            report.recommendation = None;
+                        }
+                    } else if trap_policy == 5 {
+                        // HYBRID DIRECTIONAL TIMING: Slow Drift + Fast Persistence Divergence
+                        let fast_alpha = 2.0 / (10.0 + 1.0);
+                        let slow_alpha = 2.0 / (50.0 + 1.0);
+                        
+                        let current_ema_fast = ema_fast_map.get(symbol).cloned().unwrap_or(price_now);
+                        let next_ema_fast = (price_now * fast_alpha) + (current_ema_fast * (1.0 - fast_alpha));
+                        ema_fast_map.insert(symbol.clone(), next_ema_fast);
+                        
+                        let current_ema_slow = ema_slow_map.get(symbol).cloned().unwrap_or(price_now);
+                        let next_ema_slow = (price_now * slow_alpha) + (current_ema_slow * (1.0 - slow_alpha));
+                        ema_slow_map.insert(symbol.clone(), next_ema_slow);
+                        
+                        let drift = (next_ema_fast - next_ema_slow) / (next_ema_slow + 1e-9);
+                        let timing_score = current_trap_score * mom_persistence;
+                        
+                        // SMOOTHING: Convert Spike -> Structure
+                        let timing_alpha = 2.0 / (5.0 + 1.0); // 5-tick EMA
+                        let prev_timing_ema = timing_ema_map.get(symbol).cloned().unwrap_or(0.0);
+                        let timing_ema = (timing_score * timing_alpha) + (prev_timing_ema * (1.0 - timing_alpha));
+                        timing_ema_map.insert(symbol.clone(), timing_ema);
+                        
+                        // POLICY: Only trade in direction of drift when timing is extreme
+                        let timing_threshold = 1.2; // Lower threshold because EMA is smoothed
+                        let entry_delay = 1;
+                        
+                        if timing_ema.abs() > timing_threshold {
+                            // REVERSION LOGIC: If Divergence (timing_ema > 0), trade against persistence
+                            let dir = if timing_ema > 0.0 {
+                                if mom_persistence > 0.0 { SignalType::SELL } else { SignalType::BUY }
+                            } else {
+                                if mom_persistence > 0.0 { SignalType::BUY } else { SignalType::SELL }
+                            };
+                            
+                            // Check if already in queue
+                            let already_queued = delayed_entries.iter().any(|e| e.symbol == *symbol);
+                            
+                            if !already_queued {
+                                // Delayed execution to allow market resolution
+                                delayed_entries.push(DelayedEntry {
+                                    symbol: symbol.clone(),
+                                    signal: dir,
+                                    trigger_tick: total_processed,
+                                    delay: 0,
+                                    conviction: timing_score.abs() * 1.5,
+                                    intensity_history: vec![timing_score.abs()],
+                                    intensity_sum: timing_score.abs(),
+                                    intensity_sq_sum: timing_score.abs() * timing_score.abs(),
+                                    mode: "REVERSION".to_string(), // Hybrid is mostly reversion
+                                    regime: estimated_regime,
+                                    birth_price: price_now,
+                                });
+                                
+                                println!("[HYBRID_SIGNAL] sym={} drift={:.6} timing={:.2} -> SCHED_ENTRY delay={}", 
+                                    symbol, drift, timing_score, entry_delay);
+                            }
+                        }
+                        
+                        // Default to WAIT until delay queue triggers
+                        report.signal = SignalType::WAIT;
+                        report.recommendation = None;
+                    } else if trap_policy == 8 {
+                        // POLICY 8: SURVIVAL SNIPER (Persistence + Intensity + Survival Filter)
+                        let timing_score = current_trap_score * mom_persistence;
+                        
+                        let signal_hist = signal_history_map.entry(symbol.clone()).or_insert_with(|| VecDeque::with_capacity(10));
+                        signal_hist.push_back(timing_score);
+                        if signal_hist.len() > 10 { signal_hist.pop_front(); }
+                        
+                        let active_vals: Vec<f64> = signal_hist.iter().filter(|&&v| v.abs() > 1.2).cloned().collect();
+                        let persistence = active_vals.len();
+                        let avg_intensity = if persistence > 0 {
+                            active_vals.iter().map(|v| v.abs()).sum::<f64>() / persistence as f64
+                        } else { 0.0 };
+                        
+                        let vol_ratio = vol_ret_short / (vol_ret_long + 1e-9);
+                        let is_hot_zone = vol_ratio < 0.8 && estimated_regime == EstimatedRegime::Range;
+                        
+                        // INITIAL TRIGGER (Phase 1)
+                        if is_hot_zone && persistence >= 8 && avg_intensity > 1.8 {
+                            let dir = if timing_score > 0.0 {
+                                if mom_persistence > 0.0 { SignalType::SELL } else { SignalType::BUY }
+                            } else {
+                                if mom_persistence > 0.0 { SignalType::BUY } else { SignalType::SELL }
+                            };
+                            
+                            let already_queued = delayed_entries.iter().any(|e| e.symbol == *symbol);
+                            let last_entry_tick = last_entry_tick_map.get(symbol).cloned().unwrap_or(0);
+                            
+                            if !already_queued && total_processed > last_entry_tick + 100 {
+                                last_entry_tick_map.insert(symbol.clone(), total_processed);
+                                let mode = if (timing_score > 0.0 && mom_persistence > 0.0) || (timing_score < 0.0 && mom_persistence < 0.0) {
+                                    "MOMENTUM"
+                                } else {
+                                    "REVERSION"
+                                };
+
+                                delayed_entries.push(DelayedEntry {
+                                    symbol: symbol.clone(),
+                                    signal: dir,
+                                    trigger_tick: total_processed,
+                                    delay: 0, 
+                                    conviction: avg_intensity, // Initial intensity
+                                    intensity_history: vec![avg_intensity],
+                                    intensity_sum: avg_intensity,
+                                    intensity_sq_sum: avg_intensity * avg_intensity,
+                                    mode: mode.to_string(),
+                                    regime: estimated_regime,
+                                    birth_price: price_now,
+                                });
+                                
+                                println!("[SURVIVAL_INIT] sym={} intensity={:.2} -> SCHED_SURVIVAL_CHECK", 
+                                    symbol, avg_intensity);
+                            }
+                        }
+                        
+                        report.signal = SignalType::WAIT;
+                        report.recommendation = None;
+                    }
+
+                    // Process Delay Queue (Unified for all policies)
+                    let current_tick = total_processed;
+                    let mut i = 0;
+                    while i < delayed_entries.len() {
+                        if delayed_entries[i].symbol != *symbol {
+                            i += 1;
+                            continue;
+                        }
+                        let entry_sym = delayed_entries[i].symbol.clone();
+                        let current_intensity = (current_trap_score * mom_persistence).abs();
+                        
+                        {
+                            let entry = &mut delayed_entries[i];
+                            entry.intensity_history.push(current_intensity);
+                            entry.intensity_sum += current_intensity;
+                            entry.intensity_sq_sum += current_intensity * current_intensity;
+                        }
+
+                        let entry = &mut delayed_entries[i];
+                        
+                        // SURVIVAL PURIFICATION (Tick-by-tick check during delay)
+                        if trap_policy == 8 {
+                            if current_intensity < 1.6 {
+                                // SIGNAL COLLAPSED during wait -> Purify (Kill it)
+                                println!("[SURVIVAL_KILL] sym={} intensity_dropped={:.2}", entry.symbol, current_intensity);
+                                delayed_entries.remove(i);
+                                continue;
+                            }
+                        }
+
+                        if current_tick >= entry.trigger_tick + entry.delay {
+                            // Delayed execution (Phase 2 entry)
+                            let entry = delayed_entries.remove(i);
+                            
+                            // ALPHA CURVE FILTER (Outcome-Driven Gate)
+                            let n = entry.intensity_history.len() as f64;
+                            let stability_var = if n < 2.0 { 0.0 } else {
+                                (entry.intensity_sq_sum / n - (entry.intensity_sum / n).powi(2)).max(0.0)
+                            };
+                            let avg_intensity = entry.intensity_sum / n;
+                            
+                            let alpha_key = AlphaTable::get_alpha_key(avg_intensity, stability_var, entry.regime, &entry.mode);
+                            let alpha_stats = alpha_table.get_stats(&alpha_key);
+                            let exp_pnl = alpha_stats.map(|s| s.avg_pnl).unwrap_or(0.0);
+                            let samples = alpha_stats.map(|s| s.count).unwrap_or(0);
+                            
+                            if trap_policy == 8 {
+                                let min_samples = env_parse_f64("ALPHA_MIN_SAMPLES", 30.0) as usize;
+                                let pos_threshold = env_parse_f64("ALPHA_POS_THRESHOLD", 0.0001); // 1 bps min
+                                let sniper_sharpe = env_parse_f64("ALPHA_SNIPER_SHARPE", 0.1);
+                                
+                                let decision = alpha_table.classify_alpha(&alpha_key, min_samples, pos_threshold, sniper_sharpe);
+                                
+                                println!("[ALPHA_DECISION] sym={} key={} tier={:?} sharpe={:.3} exp_pnl={:.2}bps samples={}", 
+                                    entry.symbol, alpha_key, decision.tier, decision.sharpe, 
+                                    decision.expected_pnl * 10000.0, samples);
+
+                                match decision.tier {
+                                    AlphaTier::Sniper => {
+                                        // SNIPER EXECUTION: Immediate, larger size, aggressive
+                                        println!("[EXECUTION] type=SNIPER sym={} size=2.0", entry.symbol);
+                                    }
+                                    AlphaTier::Flow => {
+                                        // FLOW EXECUTION: Smaller size
+                                        let sniper_active = paper.active_trades.iter().any(|t| t.symbol == entry.symbol && t.entry_mode == "SNIPER");
+                                        if sniper_active {
+                                            println!("[FLOW_OVERRIDE] sym={} reason=SniperActive", entry.symbol);
+                                            continue;
+                                        }
+                                        println!("[EXECUTION] type=FLOW sym={} size=0.5", entry.symbol);
+                                    }
+                                    AlphaTier::Explore => {
+                                        // EXPLORE EXECUTION: Tiny size for learning
+                                        println!("[EXECUTION] type=EXPLORE sym={} size=0.1", entry.symbol);
+                                    }
+                                    AlphaTier::Reject => {
+                                        // AUDIT REJECTION: Track what would have happened
+                                        shadow_counterfactuals.push(ShadowTrade {
+                                            symbol: entry.symbol.clone(),
+                                            entry_price: price_now,
+                                            tp_target: if entry.signal == SignalType::BUY { price_now * 1.0005 } else { price_now * 0.9995 },
+                                            sl_target: if entry.signal == SignalType::BUY { price_now * 0.9995 } else { price_now * 1.0005 },
+                                            signal: entry.signal,
+                                            age: 0,
+                                            max_age: 20,
+                                            is_blocked: true,
+                                            is_random_baseline: false,
+                                            eos_score: stability_var,
+                                            intensity: avg_intensity,
+                                            regime: entry.regime,
+                                            mode: entry.mode.clone(),
+                                            is_stability_kill: true,
+                                        });
+                                        continue;
+                                    }
+                                }
+                                
+                                // Map tier to multipliers for the final intent
+                                let size_mult = decision.get_size_mult();
+                                let tag = decision.tier.as_str();
+
+                                let price_now = price_now; // Capture for closure
+                                let span = match decision.tier {
+                                    AlphaTier::Sniper => 0.0012, // 12 bps for structural realization
+                                    _ => 0.0008, // 8 bps for others
+                                };
+                                let sl_target = if entry.signal == SignalType::BUY { price_now * (1.0 - span) } else { price_now * (1.0 + span) };
+                                let tp_target = if entry.signal == SignalType::BUY { price_now * (1.0 + span) } else { price_now * (1.0 - span) };
+                                
+                                paper.pending_intents.push(TradeIntent {
+                                    rec_id: 8888,
+                                    symbol: entry.symbol.clone(),
+                                    signal: entry.signal,
+                                    reference_price: price_now,
+                                    birth_price: entry.birth_price,
+                                    recommendation: TradeRecommendation {
+                                        symbol: entry.symbol.clone(),
+                                        signal: entry.signal,
+                                        rank: 1.0,
+                                        raw_edge: 0.0,
+                                        confidence: 1.0,
+                                        quality_score: 1.0,
+                                        directional_alpha: 0.0,
+                                        execution_alpha: 0.0,
+                                        structural_alpha: 0.0,
+                                        entry_price: price_now,
+                                        entry_low: price_now,
+                                        entry_high: price_now,
+                                        tp_target,
+                                        sl_target,
+                                        expected_rr: 1.0,
+                                        expected_edge_bps: 0.0,
+                                        risk_bps: 8.0,
+                                        holding_bars: match decision.tier {
+                                            AlphaTier::Sniper => match entry.regime {
+                                                EstimatedRegime::BullTrend | EstimatedRegime::BearTrend => 100,
+                                                _ => 50,
+                                            },
+                                            _ => 20,
+                                        },
+                                        vol_bps: 0.0,
+                                        vol_bucket: 0,
+                                        is_execution: true,
+                                        position_size: BASE_POSITION_SIZE * size_mult,
+                                    },
+                                    strategy_id: 8,
+                                    rec_score: 1.0,
+                                    rec_feas: 1.0,
+                                    rec_conf: 1.0,
+                                    rec_voters: 1,
+                                    momentum_3: 0.0,
+                                    vol_5: 0.0,
+                                    score_std_5: 0.0,
+                                    consensus: None,
+                                    age: 0,
+                                    max_age: 10,
+                                    intent_created_symbol_updates: 0,
+                                    confirm_delta_symbol_updates: 0,
+                                    immediate_market_fill: true,
+                                    use_recommendation_tpsl: true,
+                                    sketch_risk_span: 0.0,
+                                    mode: entry.mode.clone(),
+                                    entry_path: tag.to_string(),
+                                    regime: entry.regime.as_str().to_string(),
+                                    birth_timestamp: current_tick as u64,
+                                    intensity: avg_intensity,
+                                    stability: stability_var,
+                                    tier: tag.to_string(),
+                                });
+                                continue;
+                            }
+
+                            report.signal = entry.signal;
+                            report.intensity = avg_intensity;
+                            report.stability = stability_var;
+                            report.mode = entry.mode.clone();
+                            
+                            // Create a synthetic TradeRecommendation for the audit
+                            let mut rec = TradeRecommendation::default();
+                            rec.symbol = entry.symbol.clone();
+                            rec.signal = entry.signal;
+                            rec.confidence = entry.conviction;
+                            rec.raw_edge = entry.conviction * 0.5; // Placeholder
+                            
+                            report.recommendation = Some(rec);
+                            println!("[SURVIVAL_EXEC] sym={} mode={} intensity={:.2} -> ENTRY", entry.symbol, entry.mode, avg_intensity);
+                            break; 
+                        } else {
+                            i += 1;
+                        }
+                    }
+
                     match report.signal {
                         SignalType::BUY => side_counters.raw_bullish_events = side_counters.raw_bullish_events.saturating_add(1),
                         SignalType::SELL => side_counters.raw_bearish_events = side_counters.raw_bearish_events.saturating_add(1),
@@ -1606,8 +2554,7 @@ fn main() {
                     
                     // RAW SIGNAL TRACKING: Capture everything that passes the first gate for baseline audit
                     if quality_decision == "PASS" {
-                         // We track the raw signal as a shadow trade to get its 'unfiltered' expectancy
-                         shadow_counterfactuals.push(ShadowTrade {
+                         let trade = ShadowTrade {
                             symbol: symbol.clone(),
                             entry_price: price_now,
                             tp_target: if is_buy { price_now * 1.0005 } else { price_now * 0.9995 },
@@ -1618,25 +2565,27 @@ fn main() {
                             is_blocked: false,
                             is_random_baseline: false,
                             eos_score: eos,
-                        });
+                            intensity: 0.0,
+                            regime: estimated_regime,
+                            mode: "BASELINE".to_string(),
+                            is_stability_kill: false,
+                        };
+                        
+                        if exec_latency > 0 {
+                            pending_latencies.push((trade, exec_latency));
+                        } else {
+                            shadow_counterfactuals.push(trade);
+                        }
                         // Record raw signal count/pnl is deferred to shadow settlement but we increment count here for baseline
                         // Actually, let's just record it at settlement time to paper.record_raw_signal(pnl).
                         
-                        // --- DIAGNOSTIC FORWARD AUDIT (RESEARCH PHASE) ---
-                        forward_audits.push(ForwardAudit {
-                           symbol: symbol.clone(),
-                           entry_price: price_now,
-                           eos_score: eos,
-                           bars_remaining: 20,
-                           returns: Vec::new(),
-                        });
                     }
                     
                     // --- POISSON RANDOM BASELINE GENERATOR (STOCHASTIC ARRIVAL) ---
                     // lambda = 1/500 ticks
                     if (total_processed as f64 * 0.1337).fract() < (1.0 / 500.0) {
                         let rand_dir = if (total_processed as f64 * 0.42).fract() < 0.5 { SignalType::BUY } else { SignalType::SELL };
-                        shadow_counterfactuals.push(ShadowTrade {
+                        let trade = ShadowTrade {
                             symbol: symbol.clone(),
                             entry_price: price_now,
                             tp_target: if rand_dir == SignalType::BUY { price_now * 1.0005 } else { price_now * 0.9995 },
@@ -1647,7 +2596,17 @@ fn main() {
                             is_blocked: false,
                             is_random_baseline: true,
                             eos_score: 0.0,
-                        });
+                            intensity: 0.0,
+                            regime: estimated_regime,
+                            mode: "RANDOM".to_string(),
+                            is_stability_kill: false,
+                        };
+                        
+                        if exec_latency > 0 {
+                            pending_latencies.push((trade, exec_latency));
+                        } else {
+                            shadow_counterfactuals.push(trade);
+                        }
                     }
 
                     // --- PRE-TRADE MICROSTRUCTURE GATE (ANTICIPATORY) ---
@@ -1751,8 +2710,10 @@ fn main() {
                                 birth_price: price_now,
                                 entry_path: selected_path.to_string(),
                                 regime: regime.to_string(),
-                                path_size_multiplier,
                                 birth_timestamp: history.last().map(|c| c.timestamp).unwrap_or(0),
+                                intensity: 0.0, // Initial probe has no history yet
+                                stability: 0.0,
+                                path_size_multiplier,
                             };
                             
                             // Push probe immediately
@@ -2455,6 +3416,8 @@ fn main() {
                                             regime: regime.to_string(),
                                             path_size_multiplier: 1.0,
                                             birth_timestamp: history.last().map(|c| c.timestamp).unwrap_or(0),
+                                            intensity: best_report.as_ref().map(|r| r.intensity).unwrap_or(0.0),
+                                            stability: best_report.as_ref().map(|r| r.stability).unwrap_or(0.0),
                                         });
                                         next_rec_id += 1;
                                     }
@@ -2650,6 +3613,16 @@ fn main() {
             .iter()
             .map(|c| (c.symbol.clone(), c.score))
             .collect();
+
+        // Update stability history for pending candidates
+        for (sym, pending) in pending_confirmations.iter_mut() {
+            if let Some(&score) = current_scores.get(sym) {
+                pending.score_history.push(score);
+            } else {
+                let last = pending.score_history.last().copied().unwrap_or(pending.base_score);
+                pending.score_history.push(last);
+            }
+        }
         let voter_threshold = percentile(
             recommendations
                 .iter()
@@ -2710,6 +3683,7 @@ fn main() {
                     base_price,
                     base_score: cand.score,
                     base_vol,
+                    score_history: vec![cand.score],
                 },
             );
         }
@@ -2753,23 +3727,35 @@ fn main() {
                 .get(&sym)
                 .copied()
                 .unwrap_or(pending.base_score);
-            let score_trend = score_now - pending.base_score;
-            let vol_limit = pending.base_vol.max(1e-9) * confirm_vol_mult;
-            let vol_ok = if pending.base_vol <= 1e-9 {
-                vol_confirm <= 1e-9
-            } else {
-                vol_confirm <= vol_limit
+            let stability_var = {
+                let n = pending.score_history.len() as f64;
+                if n < 2.0 {
+                    0.0
+                } else {
+                    let mean = pending.score_history.iter().sum::<f64>() / n;
+                    pending.score_history
+                        .iter()
+                        .map(|v| {
+                            let d = *v - mean;
+                            d * d
+                        })
+                        .sum::<f64>()
+                        / n
+                }
             };
-            let confirmed_gate = true;
+            let stability_max = env_parse_f64("REC_STABILITY_MAX", 0.1); 
+            let stability_ok = stability_var <= stability_max;
+
+            let confirmed_gate = stability_ok; // Injected Path Quality Filter
             if std::env::var("EMIT_PROBE").is_ok() {
                 println!(
-                    "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} vol_lim={:.6} score_trend={:.6} score_seen={} pass={}",
+                    "[CONFIRM_TRACE] sym={} upd_waited={} mom={:.6} vol={:.6} stab_var={:.6} stab_ok={} score_seen={} pass={}",
                     sym,
                     now_updates.saturating_sub(pending.created_symbol_updates),
                     momentum_confirm,
                     vol_confirm,
-                    vol_limit,
-                    score_trend,
+                    stability_var,
+                    stability_ok as i32,
                     (current_scores.get(&sym).is_some() as i32),
                     confirmed_gate as i32
                 );
@@ -3042,6 +4028,9 @@ fn main() {
                     entry_path: cand.entry_path.clone(),
                     regime: cand.regime.clone(),
                     birth_timestamp: cand.birth_timestamp,
+                    intensity: cand.intensity,
+                    stability: cand.stability,
+                    tier: "STRATEGY".to_string(),
                 });
                 paper.intents_created = paper.intents_created.saturating_add(1);
                 match cand.signal {
@@ -3105,6 +4094,39 @@ fn main() {
     } else {
         0.0
     };
+    println!("--- FINAL DECILE STRUCTURE ---");
+    let mut sorted_keys: Vec<_> = conditional_decile_buckets.keys().collect();
+    sorted_keys.sort();
+    for key in sorted_keys {
+        let stats = &conditional_decile_buckets[key];
+        let (decile, regime) = key;
+        if stats.count < 20 { continue; }
+        
+        let mean_r20 = stats.sum_r20 / stats.count as f64;
+        let t_stat = compute_t_stat(&stats.block_means);
+        let status = if stats.count >= 200 { "VALIDATED" } else { "UNCONFIRMED" };
+        
+        let mut rets = stats.returns_r20.clone();
+        let p50 = compute_percentile(&mut rets, 0.5);
+        let p25 = compute_percentile(&mut rets, 0.25);
+        let p75 = compute_percentile(&mut rets, 0.75);
+        let p90 = compute_percentile(&mut rets, 0.90);
+        let p99 = compute_percentile(&mut rets, 0.99);
+        let skew = compute_skewness(&stats.returns_r20, mean_r20);
+        
+        let mut pos_sum = 0.0;
+        for &r in &stats.returns_r20 { if r > 0.0 { pos_sum += r; } }
+        rets.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        let top_count = (stats.count as f64 * 0.01).max(1.0).floor() as usize;
+        let mut top_sum = 0.0;
+        for i in 0..top_count.min(rets.len()) { top_sum += rets[i]; }
+        let top1pct_contrib = if pos_sum > 0.0 { top_sum / pos_sum } else { 0.0 };
+
+        println!("[DECILE_STABILITY] status={} decile={} regime={} n={} r20_mean={:.6} r50_mean={:.6} r100_mean={:.6}", 
+                 status, decile, regime.as_str(), stats.count, mean_r20, stats.sum_r50 / stats.count as f64, stats.sum_r100 / stats.count as f64);
+        
+    }
+
     eprintln!(
         "[AWR_SUMMARY] windows_total={} windows_with_candidates={} windows_triggered={} awr={:.4} trigger_rate={:.4} created={} triggered={} expired={} closed_trades={} avg_pnl={:.6} total_pnl={:.6} pnl_per_trigger={:.6}",
         awr_windows_total,
