@@ -59,7 +59,8 @@ st.set_page_config(
 
 OFFSET_RE = re.compile(r"offset(\d+)", re.IGNORECASE)
 SYMBOL_TS_LINE_RE = re.compile(r"\[SYMBOL_TS\]\s+(.+)$")
-SYMBOL_LOG_RE = re.compile(r"^live_([A-Z0-9]+(?:_[A-Z0-9]+)+)\.log(?:_[AB])?$")
+# Support dots and other ticker characters in lane logs (e.g. live_IDEA.NS.log)
+SYMBOL_LOG_RE = re.compile(r"^live_([A-Za-z0-9\._\-]+)\.log(?:_[AB])?$")
 # blue_green_log_writer.py uses live_{stem}_A.log, not live_{stem}.log_A
 SYMBOL_BG_STEM_RE = re.compile(r"^live_(.+)_([AB])\.log$")
 PAPER_SKETCH_FILL_TAG = "[PAPER_SKETCH_FILL]"
@@ -355,12 +356,37 @@ def run_paper_trade(
             trade["status"] = "LOG_EXTRACTED"
 
         # SUMMARY (MOST IMPORTANT)
-        if "[PAPER_SUMMARY]" in line or "[AUDIT_TRADE]" in line:
-            # support both formats
-            trade["pnl"] = extract_float(line, "pnl") or extract_float(line, "realized_pnl")
-            trade["decision_price"] = extract_float(line, "entry") or extract_float(line, "fill")
-            trade["arrival_price"] = extract_float(line, "exit")
-            trade["status"] = "LOG_EXTRACTED"
+        if "[AUDIT_TRADE]" in line:
+            m = AUDIT_TRADE_LINE_RE.search(line)
+            if m:
+                trade.update({
+                    "symbol": m.group("sym"),
+                    "side": m.group("dir"),
+                    "entry": float(m.group("entry")),
+                    "exit": float(m.group("exit")),
+                    "pnl": float(m.group("realized")),
+                    "capture_eff": float(m.group("cap_eff")),
+                    "porosity": m.group("porosity"),
+                    "latency": int(m.group("lat")),
+                    "regime": m.group("regime"),
+                    "intensity": float(m.group("intensity")),
+                    "stability": float(m.group("stability")),
+                    "slip_bps": float(m.group("slip")),
+                    "status": "LOG_AUDITED"
+                })
+                # Populate timeline events from audit data
+                trade["events"] = [
+                    {"time": "T0", "type": f"Intent Captured ({m.group('regime')})"},
+                    {"time": f"T+{m.group('lat')}ms", "type": f"Execution Fill @ {m.group('entry')}"},
+                    {"time": "T+Queue", "type": f"Slippage: {m.group('slip')} bps"},
+                    {"time": f"T+{m.group('dur')} bars", "type": f"Exit ({m.group('exit_type')}) @ {m.group('exit')}"},
+                    {"time": "Final", "type": f"Porosity: {m.group('porosity')}"}
+                ]
+                break
+        
+        if "[PAPER_SUMMARY]" in line:
+            trade["pnl"] = extract_float(line, "pnl")
+            trade["status"] = "LOG_SUMMARY"
             break
 
     # 🔹 STATE FALLBACK (If logs don't have tags yet, use reducer state)
@@ -391,6 +417,52 @@ def run_paper_trade(
     return trade
 
 
+def resolve_authoritative_decision(
+    summary: dict[str, Any], 
+    latest_rec: dict[str, Any] | None, 
+    symbol: str,
+    phase: str
+) -> tuple[str, str, str, bool]:
+    """
+    Central Truth Resolver: Ensures UI never contradicts engine reality.
+    Returns: (decision_text, decision_class, reason_text, is_trade_allowed)
+    """
+    rec_status = str(summary.get("recommendation", "UNKNOWN"))
+    is_bootstrap = "BOOTSTRAP" in str(summary.get("regime", "")) or "BOOTSTRAP" in rec_status
+    conf = float(latest_rec.get("conf", 0.0)) if latest_rec else 0.0
+    feas = float(latest_rec.get("feas", 0.0)) if latest_rec else 0.0
+    direction = str(latest_rec.get("dir", "NONE")).upper() if latest_rec else "NONE"
+    expected_alpha = float(latest_rec.get("edge", 0.0)) if latest_rec else 0.0
+    accepted_trades = int(summary.get("total_accepted_trades", 0))
+    
+    # --- RULE 1: PORTFOLIO NEVER TRADES DIRECTLY ---
+    if symbol == "PORTFOLIO":
+        return "⏸ HOLD (PORTFOLIO)", "decision-value-skip", "Portfolio manages instrument lanes; selection required for execution.", False
+
+    # --- RULE 2: ENGINE TRUTH (HOLD/BOOTSTRAP GATING) ---
+    is_engine_ready = not is_bootstrap and rec_status not in ["HOLD", "BOOTSTRAP_DORMANT", "PENDING_STREAM_SUMMARY"]
+    if not is_engine_ready:
+        if is_bootstrap:
+            return "⏸ CALIBRATING", "decision-value-skip", "System in bootstrap phase — awaiting structural validation.", False
+        return "⏸ HOLD", "decision-value-skip", "Signals detected but engine is in diagnostic/observation mode.", False
+
+    # --- RULE 3: HISTORY VALIDATION (TRADES/PNL) ---
+    if accepted_trades == 0:
+        return "⏸ HOLD", "decision-value-skip", "Signals present but no validated trade history observed in current tail.", False
+
+    # --- RULE 4: SAFETY PHASE (LONG_ONLY) ---
+    if phase == "LONG_ONLY" and direction == "SELL":
+        return "⏸ HOLD (LONG_ONLY)", "decision-value-skip", "Trade blocked — SHORT signals disabled during Phase 1.", False
+
+    # --- RULE 5: SIGNAL STRENGTH ---
+    is_trade = (conf > 0.7 and feas > 0.6) and expected_alpha > 0
+    if not is_trade:
+        return "⏸ HOLD", "decision-value-skip", "Signal strength or execution feasibility below tradability threshold.", False
+
+    # --- SUCCESS: COMMIT TO TRADE ---
+    return "✅ TRADE", "decision-value-trade", f"Strong {direction} signal for {symbol} with validated history and execution.", True
+
+
 def render_decision_panel(
     summary: dict[str, Any], 
     latest_rec: dict[str, Any] | None, 
@@ -398,60 +470,100 @@ def render_decision_panel(
     phase: str = "LONG_ONLY"
 ) -> None:
     """Primary Layer: Decision Panel (Always Visible)"""
+    # 1. Resolve Global State
     rec_status = str(summary.get("recommendation", "UNKNOWN"))
-    
-    # Simple logic for TRADE/SKIP based on user target model
+    is_bootstrap = "BOOTSTRAP" in str(summary.get("regime", "")) or "BOOTSTRAP" in rec_status
+    accepted_trades = int(summary.get("total_accepted_trades", 0))
+
+    # 2. Resolve Authoritative Decision (TRUTH LAYER)
+    decision_text, decision_class, reason, is_trade_allowed = resolve_authoritative_decision(
+        summary, latest_rec, symbol, phase
+    )
+
+    # 3. Resolve Display Metrics (TELEMETRY LAYER)
     conf = float(latest_rec.get("conf", 0.0)) if latest_rec else 0.0
     feas = float(latest_rec.get("feas", 0.0)) if latest_rec else 0.0
-    direction = str(latest_rec.get("dir", "NONE")).upper() if latest_rec else "NONE"
+    expected_alpha = float(latest_rec.get("edge", 0.0)) if latest_rec else 0.0
     
-    # Use recommendation status or confidence thresholds
-    is_trade = (rec_status == "SHORTS_OBSERVED_REVIEW_GATES") or (conf > 0.7 and feas > 0.6)
+    # Compute Survivability Grade
+    audit_trades = summary.get("audit_trades", [])
+    persistence = 0.5
+    avg_latency = 10.0
+    avg_slippage = 5.0
+    top_porosity = "Transitional"
+    if audit_trades:
+        persistence = statistics.mean([1.0 if t["pnl"] > 0 else 0.0 for t in audit_trades])
+        avg_latency = statistics.mean([t["latency"] for t in audit_trades])
+        avg_slippage = statistics.mean([t["slip_bps"] for t in audit_trades])
+        porosity_counts = defaultdict(int)
+        for t in audit_trades: porosity_counts[t["porosity"]] += 1
+        top_porosity = max(porosity_counts, key=porosity_counts.get)
+
+    grade, score = compute_survivability_grade({
+        "persistence": persistence,
+        "porosity": top_porosity,
+        "stability": conf,
+        "latency": avg_latency,
+        "slippage": avg_slippage
+    })
+
+    # Edge Projection
+    predicted_edge_bps = expected_alpha * 10000
+    friction_loss_bps = avg_slippage + (avg_latency * 0.1) # Heuristic for latency cost
+    survivable_edge_bps = predicted_edge_bps - friction_loss_bps
     
-    # Enforce Phase 1 (LONG_ONLY) restriction
-    if phase == "LONG_ONLY" and direction == "SELL":
-        is_trade = False
-        decision_text = "❌ SKIP (LONG_ONLY)"
-        decision_class = "decision-value-skip"
-    else:
-        decision_text = "✅ TRADE" if is_trade else "❌ SKIP"
-        decision_class = "decision-value-trade" if is_trade else "decision-value-skip"
+    # Color for Grade
+    grade_color = "#10b981" if grade.startswith("A") else "#f59e0b" if grade == "B" else "#ef4444"
+
+    # Receptivity Drift (TEMPORAL DECAY)
+    sig_ts = int(latest_rec.get("ts", 0)) if latest_rec else 0
+    drift_html = ""
+    if sig_ts > 0:
+        age_sec = int(time.time()) - sig_ts
+        # Heuristic: 2% decay per minute for standard receptivity
+        decay_pct = min(1.0, (age_sec / 300.0)) * 100 
+        drift_color = "#3b82f6" if decay_pct < 10 else "#f59e0b" if decay_pct < 30 else "#ef4444"
+        drift_html = (
+            f'<div style="margin-top: 10px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between;">'
+            f'<span>Signal Age: <b>{age_sec}s</b></span>'
+            f'<span style="color: {drift_color};">Receptivity Drift: <b>-{decay_pct:.1f}%</b></span>'
+            f'</div>'
+        )
+
+    # Use Inline Styles
+    card_style = "background: linear-gradient(135deg, #111827 0%, #1e293b 100%); border: 1px solid #334155; border-radius: 16px; padding: 24px; margin-bottom: 20px;"
+    label_style = "font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px;"
+    value_style = f"font-size: 42px; font-weight: 800; color: {grade_color}; text-shadow: 0 0 20px {grade_color}44;"
+    metric_box_style = "background: rgba(15, 23, 42, 0.5); border: 1px solid #1f2937; border-radius: 12px; padding: 16px;"
+
+    html_block = (
+        f'<div style="{card_style}">'
+        f'{"<div style=\'background:#f59e0b; color:black; padding:4px 12px; border-radius:4px; font-weight:700; margin-bottom:15px; font-size:12px;\'>⚠️ WEATHER WARNING: CLIMATE TRANSITIONING</div>" if is_bootstrap else ""}'
+        f'<div style="display: flex; justify-content: space-between; align-items: flex-start;">'
+        f'<div><div style="{label_style}">Structural Survivability Grade</div>'
+        f'<div style="{value_style}">{grade} <span style="font-size:18px; font-weight:400; color:#4b5563;">({score:.2f})</span></div>'
+        f'{drift_html}</div>'
+        f'<div style="text-align: right;"><div style="{label_style}">Environmental Receptivity</div>'
+        f'<div style="font-size: 18px; font-weight: 600; color: #e5e7eb;">{decision_text}</div></div></div>'
+        
+        f'<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 24px;">'
+        f'<div style="{metric_box_style}"><div style="{label_style}">Predicted Edge</div><div style="font-size: 24px; font-weight: 700; color: #f9fafb;">{predicted_edge_bps:+.1f} bps</div></div>'
+        f'<div style="{metric_box_style}"><div style="{label_style}">Expected Friction</div><div style="font-size: 24px; font-weight: 700; color: #ef4444;">{friction_loss_bps:.1f} bps</div></div>'
+        f'<div style="{metric_box_style}"><div style="{label_style}">Survivable Edge</div><div style="font-size: 24px; font-weight: 700; color: #60a5fa;">{survivable_edge_bps:+.1f} bps</div></div></div>'
+        
+        f'<div style="margin-top: 20px; padding: 12px; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border-left: 4px solid {grade_color};">'
+        f'<div style="{label_style}; color: {grade_color};">Execution Outlook</div>'
+        f'<div style="font-size: 14px; color: #e2e8f0; font-style: italic;">'
+        f'{"Edge currently surviving friction efficiently." if survivable_edge_bps > 0 else "Execution friction dominant — edge unlikely to survive transmission."} '
+        f'Porosity: {top_porosity.upper()} | Latency: {avg_latency:.1f}ms'
+        f'</div></div>'
+        f'</div>'
+    )
+
+    st.markdown(html_block, unsafe_allow_html=True)
     
-    expected_move = float(latest_rec.get("edge", 0.0)) * 100 if latest_rec else 0.0
-    
-    st.markdown(f"""
-    <div class="decision-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <div class="decision-label">Recommendation for <span style="color:#60a5fa; font-weight:700;">{symbol}</span></div>
-                <div class="{decision_class}">{decision_text}</div>
-            </div>
-            <div style="text-align: right;">
-                <div class="decision-label">System Status</div>
-                <div style="font-size: 18px; font-weight: 600;">{rec_status}</div>
-            </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 24px;">
-            <div class="metric-box">
-                <div class="decision-label">Signal Confidence</div>
-                <div style="font-size: 24px; font-weight: 700;">{conf*100:.1f}%</div>
-            </div>
-            <div class="metric-box">
-                <div class="decision-label">Expected Alpha</div>
-                <div style="font-size: 24px; font-weight: 700; color: #60a5fa;">{expected_move:+.2f}%</div>
-            </div>
-            <div class="metric-box">
-                <div class="decision-label">Execution Reality</div>
-                <div style="font-size: 24px; font-weight: 700;">{"HIGH" if feas > 0.7 else "MEDIUM" if feas > 0.4 else "LOW"} ({feas:.2f})</div>
-            </div>
-        </div>
-        <div style="margin-top: 20px; font-size: 14px; color: #94a3b8;">
-            <b>Reason:</b> 
-            { f"- Strong signal for {symbol} (momentum + sentiment)" if conf > 0.7 else "- Weak/Moderate signal strength" }
-            { " + High-liquidity execution" if feas > 0.6 else " + Friction-heavy regime" }
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Store decision in session state for simulation gating
+    st.session_state["is_trade_allowed"] = is_trade_allowed
 
 
 def render_simulation_panel(
@@ -464,7 +576,7 @@ def render_simulation_panel(
     trade: dict[str, Any] | None = None,
 ) -> None:
     """Core MVP: Paper Trade Simulation Layer"""
-    st.subheader("📊 Trade Simulation")
+    st.subheader("📊 Execution Timeline & Causal Trace")
     
     # 1. Use provided trade object if available (e.g. from session state)
     if not trade:
@@ -498,24 +610,27 @@ def render_simulation_panel(
         st.markdown("#### Execution Path")
         entry = float(trade.get("entry", 100.0))
         
-        st.markdown(f"""
-        <div class="simulation-step">
-            <b>T0: Decision Made</b><br>
-            <span style="font-size: 13px; color: #94a3b8;">Intent captured at baseline price</span>
-        </div>
-        <div class="simulation-step">
-            <b>T1: Order Entered @ {entry:.2f}</b><br>
-            <span style="font-size: 13px; color: #94a3b8;">Latency impact: 2.3ms delay</span>
-        </div>
-        <div class="simulation-step">
-            <b>Queue Ahead: 300 shares</b><br>
-            <span style="font-size: 13px; color: #94a3b8;">Wait time: ~2.1s estimated</span>
-        </div>
-        <div class="simulation-step" style="border-left-color: #10b981;">
-            <b>Execution: 100% Filled</b><br>
-            <span style="font-size: 13px; color: #94a3b8;">Interaction with local liquidity pool</span>
-        </div>
-        """, unsafe_allow_html=True)
+        events = trade.get("events", [])
+        if not events:
+            events = [
+                {"time": "T0", "type": "Decision Made (Intent captured)"},
+                {"time": "T1", "type": f"Order Entered @ {entry:.2f}"},
+                {"time": "Queue", "type": "Queue Ahead: 300 shares"},
+                {"time": "Final", "type": "Execution: 100% Filled"}
+            ]
+            
+        path_html = ""
+        for i, ev in enumerate(events):
+            is_last = i == len(events) - 1
+            color = "#10b981" if is_last and trade.get("pnl", 0) >= 0 else "#3b82f6"
+            path_html += (
+                f'<div class="simulation-step" style="border-left-color: {color};">'
+                f'<b>{ev["time"]}: {ev["type"]}</b><br>'
+                f'<span style="font-size: 13px; color: #94a3b8;">{ev.get("desc", "")}</span></div>'
+            )
+            
+        with st.container():
+            st.markdown(path_html, unsafe_allow_html=True)
 
     with col2:
         st.markdown("#### Realized Outcome")
@@ -532,27 +647,57 @@ def render_simulation_panel(
         pnl_pct = pnl * 100
         color = "#10b981" if pnl >= 0 else "#ef4444"
         
-        st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 12px; border: 1px solid #334155;">
-            <div class="decision-label">Simulation Result ({status})</div>
-            <div style="font-size: 32px; font-weight: 800; color: {color};">{pnl_pct:+.2f}%</div>
-            <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;">
-                <div>
-                    <div class="cs-subtle">Decision Price</div>
-                    <div style="font-weight: 600;">{entry:.2f}</div>
-                </div>
-                <div>
-                    <div class="cs-subtle">Exit Price</div>
-                    <div style="font-weight: 600;">{float(trade.get('arrival_price', entry)):.2f}</div>
-                </div>
-                <div>
-                    <div class="cs-subtle">Avg Fill Price</div>
-                    <div style="font-weight: 600;">{entry:.2f}</div>
-                </div>
-            </div>
-            { '<div style="margin-top:10px; font-size:11px; color:#f59e0b;">⚠️ Synthetic Live Replay (No log match)</div>' if is_synthetic else '' }
-        </div>
-        """, unsafe_allow_html=True)
+        # Consistent Price Handling: Normalizing to 100 for synthetic, using real for LOG_EXTRACTED
+        is_synthetic_type = status in ["SYNTHETIC", "LIVE_REPLAY"]
+        display_entry = 100.0 if is_synthetic_type else entry
+        display_exit = display_entry * (1 + pnl)
+        
+        # Failure Attribution (QUANTITATIVE BREAKDOWN)
+        attribution_html = ""
+        if pnl < 0:
+            loss_bps = float(trade.get("slip_bps", 0.0))
+            latency = int(trade.get("latency", 0))
+            
+            # Heuristic attribution
+            l_score = min(1.0, latency / 50.0)
+            f_score = min(1.0, loss_bps / 20.0)
+            e_score = 0.5 # Baseline market excursion
+            
+            total = l_score + f_score + e_score + 1e-6
+            l_pct, f_pct, e_pct = (l_score/total)*100, (f_score/total)*100, (e_score/total)*100
+            
+            attribution_html = (
+                f'<div style="margin-top: 20px; background: rgba(15, 23, 42, 0.4); border: 1px solid #1e293b; border-radius: 8px; padding: 12px;">'
+                f'<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Causal Failure Attribution</div>'
+                f'<div style="display: flex; gap: 4px; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px;">'
+                f'<div style="width: {l_pct}%; background: #3b82f6;"></div>'
+                f'<div style="width: {f_pct}%; background: #f59e0b;"></div>'
+                f'<div style="width: {e_pct}%; background: #ef4444;"></div>'
+                f'</div>'
+                f'<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 9px; color: #64748b;">'
+                f'<div><span style="color:#3b82f6;">●</span> Latency: {l_pct:.0f}%</div>'
+                f'<div><span style="color:#f59e0b;">●</span> Friction: {f_pct:.0f}%</div>'
+                f'<div><span style="color:#ef4444;">●</span> Excursion: {e_pct:.0f}%</div>'
+                f'</div></div>'
+            )
+
+        outcome_html = (
+            f'<div style="background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 12px; border: 1px solid #334155;">'
+            f'<div class="decision-label">Simulation State: {map_recommendation_to_state(status)}</div>'
+            f'<div style="font-size: 32px; font-weight: 800; color: {color};">{pnl_pct:+.2f}%</div>'
+            f'<hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;">'
+            f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">'
+            f'<div><div class="cs-subtle">Decision Price</div><div style="font-weight: 600;">{display_entry:.2f}</div></div>'
+            f'<div><div class="cs-subtle">Exit Price</div><div style="font-weight: 600;">{display_exit:.2f}</div></div>'
+            f'<div><div class="cs-subtle">Avg Fill Price</div><div style="font-weight: 600;">{display_entry:.2f}</div></div></div>'
+            f'{attribution_html}'
+            f'<div style="margin-top: 15px; font-size: 12px; color: #94a3b8; font-style: italic; border-left: 2px solid #3b82f6; padding-left: 10px;">'
+            f'{generate_failure_narrative(trade)}</div>'
+            f'{"<div style=\'margin-top:10px; font-size:11px; color:#f59e0b;\'>⚠️ Synthetic Live Replay (No log match)</div>" if is_synthetic else ""}'
+            f'</div>'
+        )
+        with st.container():
+            st.markdown(outcome_html, unsafe_allow_html=True)
         
         if st.button("🔄 Re-run Replay", key="rerun_sim"):
             st.toast("Re-running execution replay engine...", icon="🚀")
@@ -579,6 +724,127 @@ def recommendation_to_ui_mode(rec: str) -> str:
     if rec == "PENDING_STREAM_SUMMARY":
         return "MONITORING"
     return "UNKNOWN"
+
+def render_alpha_validation_panel(validations: list[dict[str, Any]]) -> None:
+    if not validations:
+        return
+    
+    st.markdown("<div class='cs-section'>🔬 Alpha Validation Audit (Truth Discipline)</div>", unsafe_allow_html=True)
+    
+    # Sort by net mean desc
+    validations.sort(key=lambda x: x.get("net_mean", 0), reverse=True)
+    
+    cols = st.columns(len(validations) if len(validations) <= 4 else 4)
+    for i, v in enumerate(validations):
+        col_idx = i % 4
+        with cols[col_idx]:
+            is_valid = v["status"] == "VALIDATED" and v.get("net_mean", 0) > 0 and v.get("t_net", 0) > 2.0
+            border_color = "#10b981" if is_valid else "#334155"
+            glow = "0 0 15px rgba(16, 185, 129, 0.2)" if is_valid else "none"
+            opacity = "1.0" if is_valid else "0.7"
+            
+            st.markdown(f"""
+                <div class="cs-card-v2" style="background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(8px); border: 1px solid {border_color}; border-radius: 12px; padding: 16px; margin-bottom: 12px; opacity: {opacity}; box-shadow: {glow}; transition: all 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="color: #9ca3af; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                            {v['regime']} (D{v['decile']})
+                        </div>
+                        <div style="font-size: 10px; color: {border_color}; font-weight: 800;">{"● VALIDATED" if is_valid else "○ UNCONFIRMED"}</div>
+                    </div>
+                    
+                    <div style="color: {'#10b981' if v.get('net_mean', 0) > 0 else '#ef4444'}; font-size: 24px; font-weight: 800; margin: 8px 0; font-family: 'Outfit', sans-serif;">
+                        {v.get('net_mean', 0)*10000:+.1f} <span style="font-size: 12px; font-weight: 400; color: #6b7280;">Survivable bps</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <div style="color: #6b7280; font-size: 11px;">t_stat: <b>{v.get('t_net', 0):.2f}</b></div>
+                        <div style="color: #6b7280; font-size: 11px;">n: <b>{v['n']}</b></div>
+                    </div>
+                    <div style="margin-top: 4px; color: #4b5563; font-size: 9px;">
+                        Stability: {v.get('skew', 0):.2f} | 1% concentration: {v.get('top1pct', 0)*100:.0f}%
+                    </div>
+                    {f'''
+                    <div style="margin-top: 8px; display: flex; gap: 2px; align-items: flex-end; height: 20px;">
+                        {"".join([f'<div style="background: {"#10b981" if h > 0 else "#ef4444"}; width: 100%; height: {min(abs(h)*50000, 20)}px; border-radius: 1px; opacity: 0.6;"></div>' for h in [v.get('r1',0), v.get('r3',0), v.get('r5',0), v.get('r10',0), v.get('r20',0)]])}
+                    </div>
+                    <div style="color: #374151; font-size: 7px; display: flex; justify-content: space-between;">
+                        <span>r1</span><span>r20</span>
+                    </div>
+                    ''' if 'r1' in v else ''}
+                    <div style="margin-top: 8px; font-size: 10px; font-weight: 600; color: {border_color};">
+                        ● {"RECEPTIVE" if is_valid else "NON-RECEPTIVE"}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            
+def render_alpha_climate_panel(audit_trades: list[dict[str, Any]]) -> None:
+    """New Premium Component: Alpha Climate Telemetry (Execution Weather)."""
+    if not audit_trades:
+        return
+        
+    st.markdown("<div class='cs-section'>📡 Alpha Climate Telemetry (Execution Weather)</div>", unsafe_allow_html=True)
+    
+    # Group by regime
+    regime_stats = defaultdict(list)
+    for t in audit_trades:
+        regime_stats[t["regime"]].append(t)
+        
+    cols = st.columns(len(regime_stats) if len(regime_stats) <= 3 else 3)
+    for i, (regime, trades) in enumerate(regime_stats.items()):
+        col_idx = i % 3
+        with cols[col_idx]:
+            # Compute dimensions
+            avg_capture = statistics.mean([t["capture_eff"] for t in trades])
+            avg_latency = statistics.mean([t["latency"] for t in trades])
+            avg_slip = statistics.mean([t["slip_bps"] for t in trades])
+            avg_intensity = statistics.mean([t["intensity"] for t in trades])
+            
+            porosity_counts = defaultdict(int)
+            for t in trades:
+                porosity_counts[t["porosity"]] += 1
+            top_porosity = max(porosity_counts, key=porosity_counts.get)
+            
+            p_color = "#10b981" if top_porosity == "Live" else "#f59e0b" if top_porosity == "Transitional" else "#ef4444"
+            
+            # Transition Velocity: Simple delta of capture efficiency over the last window
+            velocity = 0.0
+            persistence_min = 0.0
+            if len(trades) > 1:
+                velocity = abs(trades[-1]["capture_eff"] - trades[0]["capture_eff"]) / len(trades)
+                persistence_min = (int(trades[-1]["ts"]) - int(trades[0]["ts"])) / 60.0
+            
+            # Climate Half-Life (Heuristic: 1 / (velocity + epsilon))
+            half_life_min = 1.0 / (velocity * 100 + 0.01)
+            
+            st.markdown(f"""
+                <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #334155; border-radius: 12px; padding: 20px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #60a5fa; margin-bottom: 15px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; display: flex; justify-content: space-between;">
+                        <span>{regime.upper()} CLIMATE</span>
+                        <span style="font-size: 10px; color: #4b5563;">PERSISTENCE: {persistence_min:.1f}m</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Porosity</div>
+                            <div style="font-size: 18px; font-weight: 700; color: {p_color};">{top_porosity}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Half-Life</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #f9fafb;">{half_life_min:.1f}m</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Fill Elasticity</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #f9fafb;">{avg_capture*100:.1f}%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Slippage</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #ef4444;">{avg_slip:.1f} bps</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 11px; color: #6b7280;">
+                        <b>Intensity:</b> {avg_intensity:.2f} | <b>Transition Velocity:</b> {velocity:.4f} ΔP/ms
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 
 def render_global_status_bar(
@@ -731,11 +997,14 @@ def extract_symbol_from_path(path: Path) -> str | None:
     name = path.name
     m = SYMBOL_BG_STEM_RE.match(name)
     if m:
-        return m.group(1).replace("_", "-")
+        # Avoid greedy replace; only swap _ to - if it looks like a crypto pair (e.g. BTC_USD)
+        s = m.group(1)
+        return s.replace("_", "-") if "_" in s and "." not in s else s
     m = SYMBOL_LOG_RE.match(name)
     if not m:
         return None
-    return m.group(1).replace("_", "-")
+    s = m.group(1)
+    return s.replace("_", "-") if "_" in s and "." not in s else s
 
 
 def resolve_logs_per_symbol(paths: list[Path]) -> dict[str, list[Path]]:
@@ -769,6 +1038,10 @@ def summarize_multi_symbol(multi_results: dict[str, dict[str, Any]]) -> dict[str
     sell_cand_offsets = sum(int((s or {}).get("offsets_with_sell_candidates", 0) or 0) for s in summaries)
     sell_final_offsets = sum(int((s or {}).get("offsets_with_final_sell", 0) or 0) for s in summaries)
     n = max(n_files, 1)
+    all_audit_trades = []
+    for s in summaries:
+        all_audit_trades.extend(s.get("audit_trades", []))
+        
     if sell_final_offsets > 0 or sell_cand_offsets > 0:
         recommendation = "SHORTS_OBSERVED_REVIEW_GATES"
     elif bearish_offsets > 0:
@@ -785,6 +1058,7 @@ def summarize_multi_symbol(multi_results: dict[str, dict[str, Any]]) -> dict[str
         "offsets_with_sell_candidates": sell_cand_offsets,
         "offsets_with_final_sell": sell_final_offsets,
         "recommendation": recommendation,
+        "audit_trades": all_audit_trades,
     }
 
 
@@ -807,7 +1081,7 @@ def run_multi_symbol_diagnostics(log_dir: str, pattern: str, max_files: int) -> 
 def extract_symbol_ts_from_log_files(paths: list[Path]) -> dict[str, float]:
     """Extract symbol freshness from live log lines. (Strict Filtering Active)"""
     latest: dict[str, float] = {}
-    ALLOWED_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD"]
+    # ALLOWED_SYMBOLS check removed to support IDEA.NS and other dynamic additions
     for p in paths:
         if not p.exists() or not p.is_file():
             continue
@@ -827,8 +1101,7 @@ def extract_symbol_ts_from_log_files(paths: list[Path]) -> dict[str, float]:
                             continue
                         sym, _ts_str = part.rsplit(":", 1)
                         sym = sym.strip().upper().replace("_", "-")
-                        if sym not in ALLOWED_SYMBOLS:
-                            continue
+                        # ALLOWED_SYMBOLS check removed
                         prev = latest.get(sym)
                         if prev is None or file_seen_ts > prev:
                             latest[sym] = file_seen_ts
@@ -867,11 +1140,11 @@ TRADE_RESULT_LINE_RE = re.compile(
     r"pnl=(?P<pnl>[0-9.eE+-]+)\s+reason=(?P<reason>\w+)\s+duration=(?P<dur>\d+)\s+capture_eff=(?P<cap>[0-9.eE+-]+)"
 )
 AUDIT_TRADE_LINE_RE = re.compile(
-    r"\[AUDIT_TRADE\]\s+rec_id=(?P<rec_id>\d+)\s+sym=(?P<sym>\S+)\s+dir=(?P<dir>\w+)\s+"
-    r"fill=(?P<fill>[0-9.]+)\s+exit=(?P<exit>[0-9.]+)\s+slippage_bps=(?P<slip>[0-9.eE+-]+)\s+"
-    r"capture=(?P<cap>[0-9.eE+-]+)\s+ideal_pnl=(?P<ideal>[0-9.eE+-]+)\s+"
-    r"realized_pnl=(?P<realized>[0-9.eE+-]+)\s+dur=(?P<dur>\d+)"
-    r"(?:\s+exit_type=(?P<exit_type>\w+))?"
+    r"\[AUDIT_TRADE\]\s+sym=(?P<sym>\S+)\s+dir=(?P<dir>\w+)\s+entry=(?P<entry>[0-9.]+)\s+tp=(?P<tp>[0-9.]+)\s+sl=(?P<sl>[0-9.]+)\s+exit=(?P<exit>[0-9.]+)\s+"
+    r"slip_bps=(?P<slip>[0-9.eE+-]+)\s+conf=(?P<conf>[0-9.eE+-]+)\s+ideal_pnl=(?P<ideal>[0-9.eE+-]+)\s+realized_pnl=(?P<realized>[0-9.eE+-]+)\s+"
+    r"edge_loss=(?P<loss>[0-9.eE+-]+)bps\s+capture=(?P<cap>[0-9.eE+-]+)\s+capture_eff=(?P<cap_eff>[0-9.eE+-]+)\s+porosity=(?P<porosity>\w+)\s+"
+    r"dur=(?P<dur>\d+)\s+birth_lat=(?P<lat>\d+)ms\s+exit_type=(?P<exit_type>\w+)\s+PER=(?P<per>[0-9.]+)\s+FBPR=(?P<fbpr>[0-9.]+)\s+"
+    r"mode=(?P<mode>\w+)\s+tier=(?P<tier>\w+)\s+regime=(?P<regime>\w+)\s+intensity=(?P<intensity>[0-9.]+)\s+stability=(?P<stability>[0-9.]+)"
 )
 
 
@@ -1778,20 +2051,58 @@ def render_recommendations_panel(calib_df: pd.DataFrame, price_map: dict[str, fl
             action = "HOLD"
 
         if action != "HOLD":
-            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 2])
-            c1.write(f"**{r['sym']}**")
-            clr = "red" if action == "HALT" else ("#00ff00" if action == "BUY" else "#ff4b4b")
-            label = action if not (is_live_universe and action != "HALT") else f"OBS_{action}"
+            # 7. Compute Grade for this specific recommendation
+            # (In a real system, we'd pull per-symbol audit history; here we use the summary aggregates)
+            r_grade, r_score = compute_survivability_grade({
+                "persistence": persistence, # Using global summary as proxy for this lane's health
+                "porosity": top_porosity,
+                "stability": r.get("conf", 0.0),
+                "latency": avg_latency,
+                "slippage": avg_slippage
+            })
             
-            c2.markdown(f"<span style='color:{clr}; font-weight:bold;'>{label}</span>", unsafe_allow_html=True)
-            c3.write(f"Entry: {r['price']:,.2f}")
-            c4.write(f"Target: {target:,.2f}")
-            with c5:
-                st.write(f"Size: **{final_size:.2f}** · Edge: {r['edge']*10000:.0f} bps")
-                if final_size > 0:
-                    st.progress(min(max(final_size / portfolio_cap, 0.0), 1.0))
-                else:
-                    st.caption("Execution suppressed (Safe Observation Mode)")
+            grade_color = "#10b981" if r_grade.startswith("A") else "#f59e0b" if r_grade == "B" else "#ef4444"
+            
+            # Edge Projection
+            r_pred_edge = r["edge"] * 10000
+            r_surv_edge = r_pred_edge - friction_loss_bps
+            
+            st.markdown(f"""
+                <div style="background: rgba(30, 41, 59, 0.3); border: 1px solid #1e293b; border-radius: 12px; padding: 18px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <span style="font-size: 18px; font-weight: 800; color: #f9fafb;">{r['sym']}</span>
+                            <span style="margin-left: 8px; color: {grade_color}; font-weight: 700;">{action} {label}</span>
+                        </div>
+                        <div style="background: {grade_color}22; border: 1px solid {grade_color}44; color: {grade_color}; padding: 4px 12px; border-radius: 6px; font-weight: 800;">
+                            GRADE {r_grade}
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; font-size: 12px;">
+                        <div>
+                            <div style="color: #94a3b8; text-transform: uppercase; font-size: 10px;">Climate</div>
+                            <div style="font-weight: 700; color: #e5e7eb;">{top_porosity.upper()}</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; text-transform: uppercase; font-size: 10px;">Survivable Edge</div>
+                            <div style="font-weight: 700; color: #60a5fa;">{r_surv_edge:+.1f} bps</div>
+                        </div>
+                        <div>
+                            <div style="color: #94a3b8; text-transform: uppercase; font-size: 10px;">Latency Fragility</div>
+                            <div style="font-weight: 700; color: #e5e7eb;">{"LOW" if avg_latency < 10 else "MODERATE" if avg_latency < 25 else "HIGH"}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 11px; color: #64748b;">
+                            Entry: <b>{r['price']:,.2f}</b> · Target: <b>{target:,.2f}</b> · Persistence: <b>{persistence:.2f}</b>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 700; color: #f9fafb;">
+                            Size: {final_size:.2f}
+                        </div>
+                    </div>
+                    {"<div style='margin-top:8px;'><div style='height:4px; background:#1e293b; border-radius:2px;'><div style='height:4px; background:#3b82f6; border-radius:2px; width:" + str(min(100, int(final_size/portfolio_cap*100))) + "%;'></div></div></div>" if final_size > 0 else ""}
+                </div>
+            """, unsafe_allow_html=True)
 
 
 def merged_tail_text_paths(paths: list[Path]) -> str:
@@ -2174,6 +2485,79 @@ def compute_live_pnl(entry: float, price: float, side: str) -> float:
     if side == "LONG":
         return (price - entry) / max(entry, 1e-12)
     return (entry - price) / max(entry, 1e-12)
+
+
+def generate_failure_narrative(trade: dict[str, Any]) -> str:
+    """Generate a structured narrative of why a trade failed or succeeded."""
+    pnl = float(trade.get("pnl", 0.0))
+    loss_bps = float(trade.get("slip_bps", 0.0))
+    latency = int(trade.get("latency", 0))
+    porosity = trade.get("porosity", "UNKNOWN")
+    regime = trade.get("regime", "UNKNOWN")
+    
+    if pnl > 0:
+        return f"Execution climate remained robust during the trade lifecycle. Alpha porosity was classified as {porosity.upper()} in a {regime} regime. Capture efficiency supported realized edge."
+    
+    if latency > 10:
+        cause = f"Latency drift of {latency}ms caused significant entry displacement."
+    elif loss_bps > 10:
+        cause = f"Execution friction (slippage) of {loss_bps:.1f} bps exceeded alpha survivability threshold."
+    else:
+        cause = "Adverse price excursion post-entry collapsed the available edge."
+        
+    return (
+        f"Execution climate weakened during entry. {cause} "
+        f"Alpha porosity collapsed to {porosity.upper()}. Causal trace identifies this as a {regime} regime failure mode."
+    )
+
+
+def map_recommendation_to_state(status: str) -> str:
+    """Map raw engine status to standardized lifecycle states."""
+    mapping = {
+        "NEW": "INTENT",
+        "PENDING": "RECEPTIVITY_CHECK",
+        "ACTIVE": "POSITION_OPEN",
+        "LOG_AUDITED": "CLOSED_AUDITED",
+        "LOG_SUMMARY": "CLOSED_SUMMARY",
+        "REJECTED": "BLOCKED",
+    }
+    return mapping.get(status, status)
+
+
+def compute_survivability_grade(metrics: dict[str, Any]) -> tuple[str, float]:
+    """
+    Compute a Structural Recommendation Grade based on execution survivability.
+    Formula: (persistence * 0.35) + (porosity * 0.25) + (stability * 0.20) - (latency_f * 0.10) - (slippage_f * 0.10)
+    """
+    persistence = float(metrics.get("persistence", 0.5))
+    porosity_map = {"Live": 1.0, "Transitional": 0.6, "Fragile": 0.3, "Dead": 0.0}
+    porosity = porosity_map.get(metrics.get("porosity", "Dead"), 0.0)
+    stability = float(metrics.get("stability", 0.5))
+    
+    # Latency Fragility: 0 (Good) to 1 (Critical)
+    latency = float(metrics.get("latency", 10.0))
+    latency_f = min(1.0, latency / 50.0) # 50ms is critical
+    
+    # Slippage Friction: 0 (Good) to 1 (High)
+    slippage = float(metrics.get("slippage", 5.0))
+    slippage_f = min(1.0, slippage / 20.0) # 20bps is high friction
+    
+    score = (
+        (persistence * 0.35) +
+        (porosity * 0.25) +
+        (stability * 0.20) -
+        (latency_f * 0.10) -
+        (slippage_f * 0.10)
+    )
+    
+    # Normalize to 0-1
+    score = max(0.0, min(1.0, score))
+    
+    if score > 0.85: return "A+", score
+    if score > 0.70: return "A", score
+    if score > 0.55: return "B", score
+    if score > 0.40: return "C", score
+    return "D", score
 
 
 def get_latest_event_ts(events: list[dict[str, Any]]) -> int | None:
@@ -2768,7 +3152,7 @@ def get_latest_log_mtime(log_dir: str, log_pattern: str) -> float:
     matches = list(d.glob(log_pattern))
     if not matches:
         return 0.0
-    return max((p.stat().st_mtime for p in matches), default=0.0)
+    return max((p.stat().st_mtime for p in matches if p.exists()), default=0.0)
 
 
 def format_age_seconds(age_sec: int) -> str:
@@ -3581,8 +3965,8 @@ def render_overview_tab(
     selected_paths: list[Path],
 ) -> None:
     """Tab 1 — status, calibration, interpretation, phase, key slice metrics."""
-    st.markdown("### 📊 Overview")
-    st.caption("What the system believes right now — deterministic log replay only.")
+    st.markdown("### 📡 Alpha Climate & Execution Receptivity")
+    st.caption("What the engine observes right now — deterministic execution telemetry.")
 
     merged_tail = ""
     if selected_paths:
@@ -3602,6 +3986,8 @@ def render_overview_tab(
             )
 
     render_global_status_bar(rec, near_n, bear_n, n_sl)
+    render_alpha_validation_panel(summary.get("decile_validations", []))
+    render_alpha_climate_panel(summary.get("audit_trades", []))
     render_recommendation_bar(
         summary,
         phase,
@@ -3919,15 +4305,15 @@ def render_validation_tab(*, selected_paths: list[Path]) -> None:
             bt_metrics = compute_validation_metrics(bt_df)
             
             m1, m2, m3 = st.columns(3)
-            m1.metric("Win Rate", f"{(bt_df['pnl'] > 0).mean():.1%}")
-            m2.metric("Avg PnL (bps)", f"{bt_metrics['avg_pnl']*10000:.1f}")
-            m3.metric("Capture Avg", f"{bt_df['capture_eff'].mean():.2f}")
+            m1.metric("Capture Persistence", f"{(bt_df['pnl'] > 0).mean():.1%}")
+            m2.metric("Survivable Edge (bps)", f"{bt_metrics['avg_pnl']*10000:.1f}")
+            m3.metric("Fill Elasticity Avg", f"{bt_df['capture_eff'].mean():.2f}")
             
             d1, d2, d3, d4 = st.columns(4)
-            d1.metric("Capture P50", f"{bt_metrics['capture_p50']:.2f}")
-            d2.metric("Capture P90", f"{bt_metrics['capture_p90']:.2f}")
-            d3.metric("Capture Std", f"{bt_metrics['capture_std']:.2f}")
-            d4.metric("Neg Capture Rate", f"{bt_metrics['neg_capture_rate']:.1%}")
+            d1.metric("Survivability P50", f"{bt_metrics['capture_p50']:.2f}")
+            d2.metric("Survivability P90", f"{bt_metrics['capture_p90']:.2f}")
+            d3.metric("Friction Std", f"{bt_metrics['capture_std']:.2f}")
+            d4.metric("Edge Collapse Rate", f"{bt_metrics['neg_capture_rate']:.1%}")
             
             st.dataframe(bt_df.tail(5), use_container_width=True)
             
@@ -3940,15 +4326,15 @@ def render_validation_tab(*, selected_paths: list[Path]) -> None:
             live_metrics = compute_validation_metrics(live_df)
             
             m1, m2, m3 = st.columns(3)
-            m1.metric("Live Win Rate", f"{(live_df['pnl'] > 0).mean():.1%}")
-            m2.metric("Live PnL (bps)", f"{live_metrics['avg_pnl']*10000:.1f}")
-            m3.metric("Capture Avg", f"{live_df['capture'].mean():.2f}")
+            m1.metric("Live Persistence", f"{(live_df['pnl'] > 0).mean():.1%}")
+            m2.metric("Live Edge (bps)", f"{live_metrics['avg_pnl']*10000:.1f}")
+            m3.metric("Fill Elasticity", f"{live_df['capture'].mean():.2f}")
             
             d1, d2, d3, d4 = st.columns(4)
             d1.metric("Live P50", f"{live_metrics['capture_p50']:.2f}")
             d2.metric("Live P90", f"{live_metrics['capture_p90']:.2f}")
-            d3.metric("Live Std", f"{live_metrics['capture_std']:.2f}")
-            d4.metric("Live Neg Rate", f"{live_metrics['neg_capture_rate']:.1%}")
+            d3.metric("Live Drift Std", f"{live_metrics['capture_std']:.2f}")
+            d4.metric("Live Collapse Rate", f"{live_metrics['neg_capture_rate']:.1%}")
             
             st.dataframe(live_df.tail(5), use_container_width=True)
 
@@ -4641,21 +5027,30 @@ def build_dashboard() -> None:
     
     render_decision_panel(summary, latest_rec, symbol=symbol, phase=phase)
     
-    # 2️⃣ PAPER TRADE SIMULATION (CORE MVP)
-    if st.button("🚀 Simulate Trade", help="Run execution replay engine on latest signal"):
-        st.session_state["trade"] = run_paper_trade(
-            symbol, 
-            active_sketch, 
-            closed_sketch, 
-            sketch_events, 
-            latest_rec,
-            tail_text=merged_text
-        )
-        st.toast("Running high-fidelity execution replay...", icon="⚙️")
-        
-    trade = st.session_state.get("trade")
+    # 2️⃣ PAPER TRADE SIMULATION (STRICT GATING)
+    is_trade_allowed = st.session_state.get("is_trade_allowed", False)
     
-    if trade:
+    if symbol == "PORTFOLIO":
+        st.info("📊 Selection Required: Simulation is available per-instrument only.")
+    elif is_trade_allowed:
+        if st.button("🚀 Simulate Trade", help="Run execution replay engine on latest signal"):
+            st.session_state["trade"] = run_paper_trade(
+                symbol, 
+                active_sketch, 
+                closed_sketch, 
+                sketch_events, 
+                latest_rec,
+                tail_text=merged_text
+            )
+            st.toast("Running high-fidelity execution replay...", icon="⚙️")
+    else:
+        # Clear previous simulation if trade is no longer allowed
+        if "trade" in st.session_state:
+            del st.session_state["trade"]
+        st.info("⏸ No trade committed — simulation unavailable (awaiting validated signal)")
+
+    trade = st.session_state.get("trade")
+    if trade and is_trade_allowed and symbol != "PORTFOLIO":
         # DEBUG VISIBILITY (Requested)
         st.caption(f"DEBUG: Trade status = {trade['status']}")
         

@@ -1,0 +1,87 @@
+{
+  "BASELINE_RANGE_i1.8-2.0_s0-0.02": {
+    "avg_pnl": -2.6413550135501355e-05,
+    "pnl_std": 0.0011426472620343145,
+    "count": 1845
+  },
+  "BASELINE_RANGE_i1.8-2.0_s0.05+": {
+    "avg_pnl": 0.00013226923076923078,
+    "pnl_std": 0.0014854526898563092,
+    "count": 104
+  },
+  "MOMENTUM_BEAR_i1.8-2.0_s0-0.02": {
+    "avg_pnl": -5.8205128205128204e-05,
+    "pnl_std": 0.0006273125188747602,
+    "count": 78
+  },
+  "REVERSION_RANGE_i1.8-2.0_s0-0.02": {
+    "avg_pnl": -0.00021895419847328245,
+    "pnl_std": 0.0006501418645495224,
+    "count": 131
+  },
+  "BASELINE_BULL_TREND_i1.8-2.0_s0-0.02": {
+    "avg_pnl": 9.855826271186442e-05,
+    "pnl_std": 0.0017916671777657078,
+    "count": 1888
+  },
+  "MOMENTUM_BULL_i1.8-2.0_s0-0.02": {
+    "avg_pnl": -0.00010106349206349206,
+    "pnl_std": 0.0008957763955041724,
+    "count": 63
+  },
+  "BASELINE_BULL_TREND_i1.8-2.0_s0.05+": {
+    "avg_pnl": -4.493827160493836e-06,
+    "pnl_std": 0.0015135654604563425,
+    "count": 81
+  },
+  "BASELINE_BEAR_TREND_i1.8-2.0_s0-0.02": {
+    "avg_pnl": 8.03859649122807e-05,
+    "pnl_std": 0.0011459274143335132,
+    "count": 228
+  },
+  "BASELINE_BEAR_TREND_i1.8-2.0_s0.05+": {
+    "avg_pnl": 0.00018990476190476193,
+    "pnl_std": 0.0015737285949223234,
+    "count": 21
+  },
+  "BASELINE_BULL_TREND_i1.8-2.0_s0.02-0.05": {
+    "avg_pnl": -0.00012519999999999998,
+    "pnl_std": 0.001609634106110937,
+    "count": 10
+  },
+  "BASELINE_RANGE_i1.8-2.0_s0.02-0.05": {
+    "avg_pnl": 0.000283,
+    "pnl_std": 0.0015046856150040114,
+    "count": 6
+  },
+  "RANDOM_RANGE_i1.8-2.0_s0-0.02": {
+    "avg_pnl": 0.001008,
+    "pnl_std": 0.0007601609478700327,
+    "count": 4
+  },
+  "RANDOM_BULL_TREND_i1.8-2.0_s0-0.02": {
+    "avg_pnl": 7.37142857142857e-05,
+    "pnl_std": 0.00081883081571342,
+    "count": 7
+  },
+  "MOMENTUM_BULL_i2.0-2.5_s0.05+": {
+    "avg_pnl": -0.000933,
+    "pnl_std": 0.0,
+    "count": 1
+  },
+  "MOMENTUM_RANGE_i2.5+_s0.05+": {
+    "avg_pnl": -0.000973,
+    "pnl_std": 0.0,
+    "count": 1
+  },
+  "MOMENTUM_BULL_i1.8-2.0_s0.02-0.05": {
+    "avg_pnl": 0.000241,
+    "pnl_std": 0.0,
+    "count": 1
+  },
+  "MOMENTUM_RANGE_i2.0-2.5_s0.05+": {
+    "avg_pnl": -0.002224,
+    "pnl_std": 0.0,
+    "count": 1
+  }
+}

@@ -1,7 +1,7 @@
-use crate::ga::{AlphaConsensus, SignalType, TradeRecommendation};
+use crate::ga::{AlphaConsensus, SignalType, TradeRecommendation, RecommendationStatus, AlphaPorosity};
 use crate::market_adapter::Candle;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradeIntent {
@@ -158,8 +158,8 @@ pub struct PaperRegistry {
     pub path_impulse_count: usize,
     pub path_micro_count: usize,
     pub path_strategy_count: usize,
-    pub path_metrics: HashMap<String, (usize, usize, f64, f64, f64, usize, f64, usize)>, // path -> (closed, wins, total_pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)
-    pub regime_metrics: HashMap<String, (usize, usize, f64, f64, f64, usize, f64, usize)>, // regime -> (closed, wins, total_pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)
+    pub path_metrics: HashMap<String, (usize, usize, f64, f64, f64, usize, f64, u64)>, // path -> (closed, wins, total_pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)
+    pub regime_metrics: HashMap<String, (usize, usize, f64, f64, f64, usize, f64, u64)>, // regime -> (closed, wins, total_pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)
     pub probes_emitted: usize,
     pub probes_confirmed: usize,
     pub blocked_signals: usize,
@@ -168,12 +168,21 @@ pub struct PaperRegistry {
     pub signals_raw_pnl: f64,
     pub signals_random_count: usize,
     pub signals_random_pnl: f64,
-    pub signals_pnl_squared_sum: f64, // Variance of accepted trades
+    pub signals_pnl_squared_sum: f64,
+    pub equity_high: f64,
+    pub max_drawdown: f64,
+    pub current_equity: f64,
     pub signals_raw_pnl_squared_sum: f64, // Variance of filtered baseline
     pub signals_random_pnl_squared_sum: f64, // Variance of random baseline
     pub eos_buckets: HashMap<String, (usize, f64)>, // bucket_id -> (count, pnl_sum)
     pub pnl_samples: Vec<f64>, // For distribution quantiles
     pub regime_distribution: HashMap<String, usize>,
+    pub brutal_truth: bool,
+    pub overlap_count: usize,
+    pub total_signals_seen: usize,
+    pub processed_rec_ids: HashSet<u64>,
+    pub rec_statuses: HashMap<u64, (RecommendationStatus, String)>,
+    pub regime_capture_history: HashMap<String, Vec<f64>>,
 }
 
 impl Default for PaperRegistry {
@@ -223,9 +232,18 @@ impl Default for PaperRegistry {
             signals_pnl_squared_sum: 0.0,
             signals_raw_pnl_squared_sum: 0.0,
             signals_random_pnl_squared_sum: 0.0,
+            equity_high: 0.0,
+            max_drawdown: 0.0,
+            current_equity: 0.0,
             eos_buckets: HashMap::new(),
             pnl_samples: Vec::new(),
             regime_distribution: HashMap::new(),
+            brutal_truth: false,
+            overlap_count: 0,
+            total_signals_seen: 0,
+            processed_rec_ids: HashSet::new(),
+            rec_statuses: HashMap::new(),
+            regime_capture_history: HashMap::new(),
         }
     }
 }
@@ -246,6 +264,13 @@ impl PaperRegistry {
             self.shadow_profitable += 1;
         }
     }
+    pub fn record_signal_intent(&mut self) {
+        self.total_signals_seen += 1;
+        if !self.active_trades.is_empty() {
+            self.overlap_count += 1;
+        }
+    }
+
     pub fn summary(&self) {
         let total_pnl: f64 = self.pnl_history.iter().sum();
         let wins = self.pnl_history.iter().filter(|&&p| p > 0.0).count();
@@ -273,12 +298,26 @@ impl PaperRegistry {
         let duration_min = if end_time > start_time { (end_time - start_time) as f64 / 60.0 } else { 0.0 };
         let expectancy_per_min = if duration_min > 0.1 { total_pnl / duration_min } else { 0.0 };
 
+        let mut sorted_pnl = self.pnl_history.clone();
+        sorted_pnl.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median_pnl = if sorted_pnl.len() > 0 { sorted_pnl[sorted_pnl.len() / 2] } else { 0.0 };
+        let tail_5pct_pnl = if sorted_pnl.len() >= 20 { sorted_pnl[sorted_pnl.len() / 20] } else { sorted_pnl.first().cloned().unwrap_or(0.0) };
+
         println!("[PAPER_SUMMARY] closed={} pnl={:.6} win_rate={:.3} precision={:.3} recall={:.3} olr={:.3} exp_per_min={:.6} avg_win={:.6} avg_loss={:.6} expectancy={:.6}", 
             self.closed_count, total_pnl, win_rate, precision, recall, olr, expectancy_per_min, avg_win, avg_loss, expectancy);
         
+        let signals_per_day = if duration_min > 0.0 { (self.total_signals_seen as f64) / (duration_min / 1440.0) } else { 0.0 };
+        let overlap_rate = if self.total_signals_seen > 0 { self.overlap_count as f64 / self.total_signals_seen as f64 } else { 0.0 };
+        
+        println!("[CAPITAL_CONTENTION] freq={:.2} signals/day overlap_rate={:.2} total_signals={}", 
+            signals_per_day, overlap_rate, self.total_signals_seen);
+
+        println!("[RISK_PROFILE] median={:.6} worst_5pct={:.6} tail_risk={:.2}x", 
+            median_pnl, tail_5pct_pnl, if median_pnl.abs() > 1e-9 { tail_5pct_pnl / median_pnl } else { 0.0 });
+        
         println!("[PATH_DISTRIBUTION] impulse={} micro={} strategy={}", self.path_impulse_count, self.path_micro_count, self.path_strategy_count);
         
-        for (path, (count, wins, pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)) in &self.path_metrics {
+        for (path, (count, wins, pnl, _win_pnl, _loss_pnl, fbpr, mfe_sum, dur_sum)) in &self.path_metrics {
             let wr = if *count > 0 { *wins as f64 / *count as f64 } else { 0.0 };
             let fbpr_rate = if *count > 0 { *fbpr as f64 / *count as f64 } else { 0.0 };
             let exp = if *count > 0 { *pnl / *count as f64 } else { 0.0 };
@@ -289,7 +328,7 @@ impl PaperRegistry {
         }
 
         println!("--- REGIME ANALYSIS ---");
-        for (regime, (count, wins, pnl, win_pnl, loss_pnl, fbpr, mfe_sum, dur_sum)) in &self.regime_metrics {
+        for (regime, (count, wins, pnl, _win_pnl, _loss_pnl, fbpr, _mfe_sum, _dur_sum)) in &self.regime_metrics {
             let wr = if *count > 0 { *wins as f64 / *count as f64 } else { 0.0 };
             let exp = if *count > 0 { *pnl / *count as f64 } else { 0.0 };
             let fbpr_rate = if *count > 0 { *fbpr as f64 / *count as f64 } else { 0.0 };
@@ -320,6 +359,10 @@ impl PaperRegistry {
         println!("[SIGMA] accepted_std={:.6} incremental_edge={:.6} t_stat={:.4} (corrected n={})", 
             accepted_std, incremental_edge, t_stat, self.closed_count);
 
+        let sharpe = if accepted_std > 1e-9 { (accepted_expectancy * 252.0f64.sqrt()) / (accepted_std * 252.0f64.sqrt()) } else { 0.0 };
+        println!("[RISK_SUMMARY] sharpe={:.3} max_drawdown={:.6} total_pnl={:.6}", 
+            sharpe, self.max_drawdown, total_pnl);
+        
         let random_expectancy = if self.signals_random_count > 0 { self.signals_random_pnl / self.signals_random_count as f64 } else { 0.0 };
         println!("[RANDOM_BASELINE] random_exp={:.6} vs_random_uplift={:.6}", 
             random_expectancy, accepted_expectancy - random_expectancy);
@@ -357,6 +400,17 @@ impl PaperRegistry {
     pub fn get_strategy_performance(&self, _strategy_id: usize) -> f64 {
         0.0005f64
     }
+
+    pub fn submit_intent(&mut self, intent: TradeIntent) -> bool {
+        if self.processed_rec_ids.contains(&intent.rec_id) {
+            println!("[DEDUPE_BLOCK] rec_id={} already processed. Rejecting duplicate intent.", intent.rec_id);
+            return false;
+        }
+        println!("[REC_STATUS] rec_id={} status=PENDING reason=IntentCreated", intent.rec_id);
+        self.rec_statuses.insert(intent.rec_id, (RecommendationStatus::PENDING, "IntentCreated".to_string()));
+        self.pending_intents.push(intent);
+        true
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -374,6 +428,8 @@ pub struct TradeObservation {
     pub timestamp: u64,
     pub entry_path: String,
     pub regime: String,
+    pub capture_efficiency: f64,
+    pub porosity: AlphaPorosity,
 }
 
 pub fn apply_slippage(price: f64, is_buy: bool, vol_bps: f64) -> f64 {
@@ -393,6 +449,7 @@ pub fn update_paper_registry(
     _symbol_linear_updates: usize,
     _trigger_momentum_3: f64,
     _trigger_vol_5: f64,
+    brutal_truth: bool,
 ) {
     let open = latest_candle.open as f64 / 10000.0;
     let high = latest_candle.high as f64 / 10000.0;
@@ -444,9 +501,14 @@ pub fn update_paper_registry(
         if edge_bps < 1.5 * slippage_bps {
             println!("[SIGNAL_REJECTED] sym={} edge={:.1} < 1.5*friction({:.1}) -> Noise killed.", 
                      symbol, edge_bps, slippage_bps);
+            registry.rec_statuses.insert(intent.rec_id, (RecommendationStatus::REJECTED, "LowEdgeFriction".to_string()));
+            println!("[REC_STATUS] rec_id={} status=REJECTED reason=LowEdgeFriction", intent.rec_id);
             registry.pending_intents.remove(j);
             continue;
         }
+
+        println!("[REC_STATUS] rec_id={} status=ACTIVE reason=FilledAtOpen", intent.rec_id);
+        registry.rec_statuses.insert(intent.rec_id, (RecommendationStatus::ACTIVE, "FilledAtOpen".to_string()));
 
         registry.active_trades.push(ActiveTrade {
             rec_id: intent.rec_id,
@@ -504,6 +566,8 @@ pub fn update_paper_registry(
             stability: intent.stability,
             tier: intent.tier.clone(),
         });
+        
+        registry.processed_rec_ids.insert(intent.rec_id);
         
         registry.intents_triggered += 1;
         if is_long { registry.intents_triggered_buy += 1; }
@@ -565,8 +629,33 @@ pub fn update_paper_registry(
                 }
             }
 
-            // --- EARLY REJECTION: REMOVED FOR STRUCTURAL ALPHA ---
-            // (1-tick momentum kill disabled to allow structural moves to breathe)
+            // --- WEAKENED MOMENTUM (3-tick grace) ---
+            if exit_pnl.is_none() && trade.current_hold == 3 && !brutal_truth {
+                let current_pnl = if is_long { (close - trade.entry_price) / trade.entry_price } else { (trade.entry_price - close) / trade.entry_price };
+                if current_pnl <= -0.0005 { // 5 bps adverse after 3 ticks
+                    let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+                    exit_pnl = Some(if is_long { (exit_price - trade.entry_price) / trade.entry_price } else { (trade.entry_price - exit_price) / trade.entry_price });
+                    exit_tag = ExitType::NoMomentum;
+                }
+            }
+
+            // --- DRIFT STOP & PNL TRACKING ---
+            let current_pnl = if is_long { (close - trade.entry_price) / trade.entry_price } else { (trade.entry_price - close) / trade.entry_price };
+            if current_pnl > trade.max_pnl {
+                trade.max_pnl = current_pnl;
+                trade.bars_since_pullback = 0;
+            } else {
+                trade.bars_since_pullback = trade.bars_since_pullback.saturating_add(1);
+            }
+
+            if exit_pnl.is_none() && trade.current_hold > 15 && !brutal_truth {
+                // Exit if drift stalls (15 ticks no new high + 20% pullback from MFE)
+                if trade.bars_since_pullback >= 15 && current_pnl < trade.max_pnl * 0.8 {
+                    let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+                    exit_pnl = Some(if is_long { (exit_price - trade.entry_price) / trade.entry_price } else { (trade.entry_price - exit_price) / trade.entry_price });
+                    exit_tag = ExitType::TrailingStop;
+                }
+            }
 
             if exit_pnl.is_none() && trade.current_hold >= trade.hold_limit {
                 let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
@@ -610,6 +699,10 @@ impl PaperRegistry {
 
     fn record_trade_settlement(&mut self, trade: ActiveTrade, pnl: f64, exit_tag: ExitType, timestamp: u64, close: f64) {
         self.closed_count += 1;
+        self.current_equity += pnl;
+        if self.current_equity > self.equity_high { self.equity_high = self.current_equity; }
+        let dd = self.equity_high - self.current_equity;
+        if dd > self.max_drawdown { self.max_drawdown = dd; }
         self.pnl_history.push(pnl);
         
         if trade.max_pnl > 0.0 {
@@ -660,13 +753,33 @@ impl PaperRegistry {
             trade.symbol, trade.tier, trade.max_pnl * 10000.0, edge_loss, pnl * 10000.0
         );
         let birth_latency = if timestamp > trade.birth_timestamp { timestamp - trade.birth_timestamp } else { 0 };
+        let predicted_move = (trade.tp_target - trade.entry_price).abs() / trade.entry_price.max(1e-12);
+        let capture_eff = if predicted_move > 1e-9 { pnl / predicted_move } else { 0.0 };
+
+        let porosity = if capture_eff < 0.0 {
+            AlphaPorosity::Dead
+        } else if capture_eff < 0.25 {
+            AlphaPorosity::Fragile
+        } else if capture_eff < 0.6 {
+            AlphaPorosity::Transitional
+        } else {
+            AlphaPorosity::Live
+        };
+
         println!(
-            "[AUDIT_TRADE] sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={} tier={} regime={} intensity={:.2} stability={:.4}",
+            "[AUDIT_TRADE] sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} capture_eff={:.3} porosity={:?} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={} tier={} regime={} intensity={:.2} stability={:.4}",
             trade.symbol, trade.signal, trade.entry_price, trade.tp_target, trade.sl_target, close, 
             friction_bps, 
-            trade.rec_conf, trade.max_pnl, pnl, edge_loss, (pnl / trade.max_pnl.max(1e-6)), trade.current_hold, birth_latency, exit_tag,
+            trade.rec_conf, trade.max_pnl, pnl, edge_loss, (pnl / trade.max_pnl.max(1e-6)), capture_eff, porosity, trade.current_hold, birth_latency, exit_tag,
             current_per, current_fbpr, trade.entry_mode, trade.tier, trade.regime, trade.intensity, trade.stability
         );
+
+        println!("[REGIME_CLASSIFY] rec_id={} regime={} capture={:.3} porosity={:?}", trade.rec_id, trade.regime, capture_eff, porosity);
+        
+        self.regime_capture_history.entry(trade.regime.clone()).or_default().push(capture_eff);
+
+        println!("[REC_STATUS] rec_id={} status=CLOSED reason={:?}", trade.rec_id, exit_tag);
+        self.rec_statuses.insert(trade.rec_id, (RecommendationStatus::CLOSED, format!("{:?}", exit_tag)));
 
         self.closed_observations.push(TradeObservation {
             rec_id: trade.rec_id,
@@ -682,6 +795,8 @@ impl PaperRegistry {
             timestamp: timestamp,
             entry_path: trade.entry_path.clone(),
             regime: trade.regime.clone(),
+            capture_efficiency: capture_eff,
+            porosity,
         });
 
         if trade.entry_path == "impulse" {
@@ -692,7 +807,7 @@ impl PaperRegistry {
             self.path_strategy_count += 1;
         }
         
-        let p_stats = self.path_metrics.entry(trade.entry_path.clone()).or_insert((0, 0, 0.0, 0.0, 0.0, 0, 0.0, 0));
+        let p_stats = self.path_metrics.entry(trade.entry_path.clone()).or_insert((0usize, 0usize, 0.0f64, 0.0f64, 0.0f64, 0usize, 0.0f64, 0u64));
         p_stats.0 += 1; // closed
         if pnl > 0.0 {
             p_stats.1 += 1; // wins
@@ -705,15 +820,15 @@ impl PaperRegistry {
             p_stats.5 += 1; // fbpr
         }
         p_stats.6 += trade.max_pnl;
-        p_stats.7 += trade.current_hold;
+        p_stats.7 += trade.current_hold as u64;
 
-        let r_stats = self.regime_metrics.entry(trade.regime.clone()).or_insert((0, 0, 0.0, 0.0, 0.0, 0, 0.0, 0));
+        let r_stats = self.regime_metrics.entry(trade.regime.clone()).or_insert((0usize, 0usize, 0.0f64, 0.0f64, 0.0f64, 0usize, 0.0f64, 0u64));
         r_stats.0 += 1;
         if pnl > 0.0 { r_stats.1 += 1; r_stats.3 += pnl; } else { r_stats.4 += pnl; }
         r_stats.2 += pnl;
         if is_fbpr { r_stats.5 += 1; }
         r_stats.6 += trade.max_pnl;
-        r_stats.7 += trade.current_hold;
+        r_stats.7 += trade.current_hold as u64;
 
         *self.regime_distribution.entry(trade.regime.clone()).or_insert(0) += 1;
     }

@@ -176,7 +176,7 @@ pub async fn latest_signals_handler(
     State(service): State<EvaluationService>,
 ) -> Result<Json<crate::dto::SignalsSnapshotDto>, ApiError> {
     println!("Request received: signals/latest");
-    let snapshot = service.get_latest_signals_for_api()?;
+    let snapshot = service.get_latest_signals()?;
     Ok(Json(snapshot))
 }
 

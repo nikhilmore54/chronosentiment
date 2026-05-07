@@ -1,0 +1,20 @@
+{
+  "BTC-USD": {
+    "type": "fragile_explosive",
+    "collapse_risk_base": 0.25,
+    "policy": "trade_aggressively_only_in_expansive",
+    "description": "High probability of sudden collapse from expansive states. Requires immediate exposure reduction under compression."
+  },
+  "ETH-USD": {
+    "type": "collapse_trap",
+    "mean_collapse_duration": 5.0,
+    "policy": "exit_early_during_compression",
+    "description": "Highly sticky collapsed state. Once execution dies, it stays dead for a long time. Exit immediately upon entering compression."
+  },
+  "SOL-USD": {
+    "type": "elastic_resilient",
+    "collapse_risk_base": 0.0,
+    "policy": "allow_continued_participation",
+    "description": "High elasticity. Compression is usually survivable and rarely leads to sudden execution death. Can maintain participation through moderate noise."
+  }
+}

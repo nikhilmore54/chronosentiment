@@ -22,6 +22,8 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::OnceLock;
 
+pub use crate::pipeline::{RecommendationStatus, AlphaPorosity};
+
 /// Default `GA_FITNESS_EDGE_STD_LAMBDA` when unset (bounded-grid lock). Set env to `0` to disable.
 const DEFAULT_GA_FITNESS_EDGE_STD_LAMBDA: f64 = 0.05;
 /// Soft cap on pooled p75 decisiveness bonus (symmetric); avoids pathological tails dominating fitness.
@@ -557,6 +559,9 @@ pub struct DecisionReport {
     pub directional_alpha: f64,
     pub execution_alpha: f64,
     pub structural_alpha: f64,
+    pub intensity: f64,
+    pub stability: f64,
+    pub mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -12557,6 +12562,9 @@ pub fn evaluate_current_status(
         directional_alpha: outcome.as_ref().map(|o| o.directional_alpha).unwrap_or(0.0),
         execution_alpha: outcome.as_ref().map(|o| o.execution_alpha).unwrap_or(0.0),
         structural_alpha: outcome.as_ref().map(|o| o.structural_alpha).unwrap_or(0.0),
+        intensity: 0.0,
+        stability: 0.0,
+        mode: "STRATEGY".to_string(),
     }
 }
 

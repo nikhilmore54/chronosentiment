@@ -1,7 +1,7 @@
 use crate::{dto::{EvaluateStrategyResponse, CompareStrategiesResponse, ComparisonSummary, InspectStrategyResponse, RunGaResponse, EventWrapper, TradeInspectorResponse, StrategyEvaluationDto},
     errors::ApiError,
 };
-use chronosentiment_core::{self, GaConfig, Strategy, ga::StrategyEvaluation, SimEvent, SimulationResult, Candle, convert_series_to_events};
+use chronosentiment_core::{self, GaConfig, Strategy, ga::StrategyEvaluation, SimEvent, SimulationResult, Candle, MarketEvent, convert_series_to_events, RecommendationStatus, AlphaPorosity};
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::sync::{Arc, Mutex};
@@ -182,18 +182,17 @@ impl EvaluationService {
         scenario_names: Vec<String>,
         seed: u64,
     ) -> Result<EvaluateStrategyResponse, ApiError> {
-        let ga_config = GaConfig {
-            population_size: 1, // Only one strategy to evaluate
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_EVAL".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
+        let mut ga_config = GaConfig::default();
+        ga_config.population_size = 1;
+        ga_config.generations = 1;
+        ga_config.mutation_rate = 0.0;
+        ga_config.seed = seed;
+        ga_config.order_id_prefix = "API_EVAL".to_string();
+        ga_config.order_price = ORDER_PRICE;
+        ga_config.order_quantity_for_strategy = ORDER_QUANTITY;
+        ga_config.order_timestamp = ORDER_TIMESTAMP;
+        ga_config.lambda = 0.5;
+        ga_config.initial_queue_threshold = 200;
 
         let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
 
@@ -244,10 +243,22 @@ impl EvaluationService {
             selected_scenarios.insert(scenario_name.clone(), market_events.clone());
         }
 
+        let selected_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = scenario_names.iter().map(|name| {
+            let events = scenarios_map.get(name).unwrap();
+            chronosentiment_core::ga::ScenarioPair {
+                name,
+                signal_symbol: "BTC",
+                execution_symbol: "BTC",
+                signal: events.as_slice(),
+                execution: events.as_slice(),
+            }
+        }).collect();
+
         let aggregated_evaluation = match chronosentiment_core::evaluate_and_aggregate(
             &strategy_config,
             &ga_config,
-            &selected_scenarios,
+            &selected_scenarios_vec,
+            0, 0.0, 0, 1.0, 0
         ) {
             Some(mut eval) => {
                 eval.strategy_id = strategy_id.clone();
@@ -274,18 +285,17 @@ impl EvaluationService {
                 "At least two strategies are required for comparison".to_string(),
             ));
         }
-        let ga_config = GaConfig {
-            population_size: strategies.len(),
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_COMPARE".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
+        let mut ga_config = GaConfig::default();
+        ga_config.population_size = strategies.len();
+        ga_config.generations = 1;
+        ga_config.mutation_rate = 0.0;
+        ga_config.seed = seed;
+        ga_config.order_id_prefix = "API_COMPARE".to_string();
+        ga_config.order_price = ORDER_PRICE;
+        ga_config.order_quantity_for_strategy = ORDER_QUANTITY;
+        ga_config.order_timestamp = ORDER_TIMESTAMP;
+        ga_config.lambda = 0.5;
+        ga_config.initial_queue_threshold = 200;
 
         let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
 
@@ -312,11 +322,23 @@ impl EvaluationService {
                 selected_scenarios.insert(scenario_name.clone(), market_events.clone());
             }
 
+            let selected_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = scenario_names.iter().map(|name| {
+                let events = scenarios_map.get(name).unwrap();
+                chronosentiment_core::ga::ScenarioPair {
+                    name,
+                    signal_symbol: "BTC",
+                    execution_symbol: "BTC",
+                    signal: events.as_slice(),
+                    execution: events.as_slice(),
+                }
+            }).collect();
+
             // Aggregate across scenarios via the canonical helper.
             let mut aggregated_report = chronosentiment_core::evaluate_and_aggregate(
                 &strategy_config,
                 &ga_config,
-                &selected_scenarios,
+                &selected_scenarios_vec,
+                0, 0.0, 0, 1.0, 0
             ).ok_or_else(|| ApiError::InternalError("No scenario reports generated.".to_string()))?;
             aggregated_report.strategy_id = strategy_id.clone();
             rankings.push(aggregated_report);
@@ -350,18 +372,17 @@ impl EvaluationService {
     ) -> Result<InspectStrategyResponse, ApiError> {
         let strategy_id = Self::deterministic_strategy_id(&strategy_config, &vec![scenario_name.clone()], seed);
 
-        let ga_config = GaConfig {
-            population_size: 1,
-            generations: 1,
-            mutation_rate: 0.0,
-            seed,
-            order_id_prefix: "API_INSPECT".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
+        let mut ga_config = GaConfig::default();
+        ga_config.population_size = 1;
+        ga_config.generations = 1;
+        ga_config.mutation_rate = 0.0;
+        ga_config.seed = seed;
+        ga_config.order_id_prefix = "API_INSPECT".to_string();
+        ga_config.order_price = ORDER_PRICE;
+        ga_config.order_quantity_for_strategy = ORDER_QUANTITY;
+        ga_config.order_timestamp = ORDER_TIMESTAMP;
+        ga_config.lambda = 0.5;
+        ga_config.initial_queue_threshold = 200;
 
         let scenarios_map = chronosentiment_core::synthetic::generate_deterministic_scenarios("BTC", seed, ORDER_PRICE);
         let market_events = scenarios_map.get(&scenario_name).ok_or_else(|| {
@@ -387,12 +408,20 @@ impl EvaluationService {
             *last_sim = Some(simulation_result.clone());
         }
 
-        let mut one_scenario: HashMap<String, Vec<chronosentiment_core::MarketEvent>> = HashMap::new();
-        one_scenario.insert(scenario_name.clone(), market_events.clone());
+        let mut one_scenario_map: HashMap<String, Vec<MarketEvent>> = HashMap::new();
+        one_scenario_map.insert(scenario_name.clone(), market_events.clone());
+        let one_scenario_vec = [chronosentiment_core::ga::ScenarioPair {
+            name: &scenario_name,
+            signal_symbol: "BTC",
+            execution_symbol: "BTC",
+            signal: market_events.as_slice(),
+            execution: market_events.as_slice(),
+        }];
         let strategy_report = chronosentiment_core::evaluate_and_aggregate(
             &strategy_config,
             &ga_config,
-            &one_scenario,
+            &one_scenario_vec,
+            0, 0.0, 0, 1.0, 0
         ).ok_or_else(|| ApiError::InternalError("Strategy produced no evaluable trades".to_string()))?;
 
         Ok(InspectStrategyResponse {
@@ -422,18 +451,17 @@ impl EvaluationService {
         &self,
     ) -> Result<RunGaResponse, ApiError> {
         let seed = 42;
-        let ga_config = GaConfig {
-            population_size: 50,
-            generations: 20,
-            mutation_rate: 0.1,
-            seed,
-            order_id_prefix: "API_GA_RUN".to_string(),
-            order_price: ORDER_PRICE,
-            order_quantity_for_strategy: ORDER_QUANTITY,
-            order_timestamp: ORDER_TIMESTAMP,
-            lambda: 0.5,
-            initial_queue_threshold: 200,
-        };
+        let mut ga_config = GaConfig::default();
+        ga_config.population_size = 50;
+        ga_config.generations = 20;
+        ga_config.mutation_rate = 0.1;
+        ga_config.seed = seed;
+        ga_config.order_id_prefix = "API_GA_RUN".to_string();
+        ga_config.order_price = ORDER_PRICE;
+        ga_config.order_quantity_for_strategy = ORDER_QUANTITY;
+        ga_config.order_timestamp = ORDER_TIMESTAMP;
+        ga_config.lambda = 0.5;
+        ga_config.initial_queue_threshold = 200;
 
         // Enforce single source: Only use canonical synthetic scenarios
         println!("API_INFO: Using canonical synthetic scenarios for GA (seed={})", seed);
@@ -467,17 +495,39 @@ impl EvaluationService {
             holdout_scenarios.len()
         );
 
-        let ga_result = chronosentiment_core::run_ga_evolution(ga_config.clone(), &train_scenarios);
-        let execution_scenarios = if holdout_scenarios.is_empty() { &train_scenarios } else { &holdout_scenarios };
+        let train_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = train_names.iter().map(|name| {
+            let events = scenarios_map.get(name).unwrap();
+            chronosentiment_core::ga::ScenarioPair {
+                name,
+                signal_symbol: "BTC",
+                execution_symbol: "BTC",
+                signal: events.as_slice(),
+                execution: events.as_slice(),
+            }
+        }).collect();
+
+        let (ga_result, _) = chronosentiment_core::run_ga_evolution(ga_config.clone(), &train_scenarios_vec, &chronosentiment_core::ga::GlobalEvoState::default());
+        let execution_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = execution_scenarios.iter().map(|(name, events)| {
+            chronosentiment_core::ga::ScenarioPair {
+                name,
+                signal_symbol: "BTC",
+                execution_symbol: "BTC",
+                signal: events.as_slice(),
+                execution: events.as_slice(),
+            }
+        }).collect();
+
         let global_exec_eval = chronosentiment_core::evaluate_and_aggregate(
             &ga_result.global_best.strategy,
             &ga_config,
-            execution_scenarios,
+            &execution_scenarios_vec,
+            0, 0.0, 0, 1.0, 0
         ).ok_or_else(|| ApiError::InternalError("Failed to evaluate global best execution fitness".to_string()))?;
         let final_exec_eval = chronosentiment_core::evaluate_and_aggregate(
             &ga_result.final_generation_best.strategy,
             &ga_config,
-            execution_scenarios,
+            &execution_scenarios_vec,
+            0, 0.0, 0, 1.0, 0
         ).ok_or_else(|| ApiError::InternalError("Failed to evaluate final generation execution fitness".to_string()))?;
 
         let global_best_dto = Self::to_dual_fitness_dto(
@@ -495,7 +545,8 @@ impl EvaluationService {
             let exec_eval = chronosentiment_core::evaluate_and_aggregate(
                 &eval.strategy,
                 &ga_config,
-                execution_scenarios,
+                &execution_scenarios_vec,
+                0, 0.0, 0, 1.0, 0
             ).ok_or_else(|| ApiError::InternalError("Failed to evaluate generation history execution fitness".to_string()))?;
             generation_history.push(Self::to_dual_fitness_dto(
                 eval.strategy_id.clone(),
@@ -508,7 +559,8 @@ impl EvaluationService {
             let exec_eval = chronosentiment_core::evaluate_and_aggregate(
                 &eval.strategy,
                 &ga_config,
-                execution_scenarios,
+                &execution_scenarios_vec,
+                0, 0.0, 0, 1.0, 0
             ).ok_or_else(|| ApiError::InternalError("Failed to evaluate per-regime execution fitness".to_string()))?;
             best_per_regime.insert(
                 regime_key.clone(),
@@ -629,9 +681,20 @@ impl EvaluationService {
 
         Ok(TradeInspectorResponse {
             order_id: order_id.clone(),
-            decision: inspection.decision,
+            decision: crate::dto::TradeInspectorDecision {
+                order_id: inspection.decision.order_id,
+                side: inspection.decision.side,
+                price: chronosentiment_core::to_real(inspection.decision.price),
+                quantity: inspection.decision.quantity,
+                timestamp: inspection.decision.timestamp,
+            },
             execution: execution_steps,
-            outcome: inspection.outcome,
+            outcome: crate::dto::TradeInspectorOutcome {
+                filled_qty: inspection.outcome.filled_quantity,
+                remaining_qty: inspection.outcome.remaining_quantity,
+                avg_price: chronosentiment_core::to_real(inspection.outcome.average_price),
+                status: if inspection.outcome.remaining_quantity == 0 { "FILLED".to_string() } else { "PARTIAL".to_string() },
+            },
             causal_chain: if include_chain {
                 Some(inspection.execution.causal_chain.iter().map(|e| self.wrap_event(e)).collect())
             } else {
@@ -664,7 +727,7 @@ impl EvaluationService {
                         quantity_filled: 0,
                         quantity_remaining: *quantity,
                         queue_ahead: 0,
-                        price: *price,
+                        price: chronosentiment_core::to_real(*price),
                         side: *side,
                     });
                 }
@@ -686,7 +749,7 @@ impl EvaluationService {
                             chronosentiment_core::Side::Sell => -1,
                         };
                         position += multiplier * (*filled_qty as i64);
-                        pnl += multiplier as f64 * (*filled_qty as f64) * (*price as f64);
+                        pnl += multiplier as f64 * (*filled_qty as f64) * chronosentiment_core::to_real(*price);
                     }
                 }
                 SimEvent::QueueProgression { order_id, queue_ahead, .. } => {
@@ -711,6 +774,35 @@ impl EvaluationService {
             portfolio: crate::dto::PortfolioState { pnl, position },
             last_sequence_id: seq_id,
         })
+    }
+    pub fn get_trade_suggestions(&self) -> Result<crate::dto::TradeSuggestionsResponse, ApiError> {
+        Ok(crate::dto::TradeSuggestionsResponse {
+            asset: "BTC".to_string(),
+            timestamp: 0,
+            suggestions: Vec::new(),
+            count: 0,
+            debug: chronosentiment_core::strategy_ranking::SuggestionDebug::default(),
+        })
+    }
+
+    pub fn get_replay_suggestions(&self, mode: String, limit: usize, sample_rate: usize, include_full: bool) -> Result<crate::dto::ReplaySuggestionsResponse, ApiError> {
+        Ok(crate::dto::ReplaySuggestionsResponse {
+            asset: "BTC".to_string(),
+            metrics: chronosentiment_core::replay_evaluator::ReplayMetrics::default(),
+            timeline: Vec::new(),
+            pnl: None,
+        })
+    }
+
+    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::MarketEvent>> {
+        let source = chronosentiment_core::FolderCandleSource {
+            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+        };
+        let mut scenarios = HashMap::new();
+        for (asset, candles) in source.load_all() {
+            scenarios.insert(asset, chronosentiment_core::convert_series_to_events(&candles, 1));
+        }
+        scenarios
     }
 }
 

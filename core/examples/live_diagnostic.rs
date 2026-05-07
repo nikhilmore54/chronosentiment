@@ -14,9 +14,9 @@ fn main() {
     let mut current_stats = DistributionStats::default();
 
     let source = FolderCandleSource {
-        folder_path: "data/nse/5m".to_string(),
+        folder_path: "test_assets".to_string(),
     };
-    let data = source.load_all_flexible();
+    let data = source.load_all();
     
     if data.is_empty() {
         return;
@@ -43,6 +43,7 @@ fn main() {
 
     let mut last_signal = chronosentiment_core::ga::SignalType::WAIT;
     let mut consistency = 0;
+    let mut next_rec_id = 1u64;
 
     println!("\n▶️ Replaying {} candles for {}...", candles.len(), symbol);
 
@@ -58,7 +59,7 @@ fn main() {
         } else {
             0.0
         };
-        let lo = i.saturating_sub(4);
+        let lo = (i as usize).saturating_sub(4);
         let mut window_vals: Vec<f64> = Vec::new();
         for c in &candles[lo..=i] {
             window_vals.push(c.close as f64);
@@ -85,6 +86,7 @@ fn main() {
             symbol_linear_updates,
             trigger_momentum_3,
             trigger_vol_5,
+            false, // brutal_truth
         );
 
         let report = evaluate_current_status(
@@ -114,11 +116,12 @@ fn main() {
                                 || registry.pending_intents.iter().any(|i| i.symbol == *symbol);
                 
                 if !already_busy && (registry.active_trades.len() + registry.pending_intents.len()) < registry.max_concurrent {
-                    registry.pending_intents.push(TradeIntent {
-                        rec_id: 0,
-                        symbol: symbol.clone(),
+                    if registry.submit_intent(TradeIntent {
+                        rec_id: next_rec_id,
+                        symbol: symbol.to_string(),
                         signal: reco.signal,
                         reference_price: reco.entry_price,
+                        birth_price: reco.entry_price,
                         recommendation: reco,
                         strategy_id: 0,
                         rec_score: 0.0,
@@ -136,7 +139,16 @@ fn main() {
                         immediate_market_fill: false,
                         use_recommendation_tpsl: false,
                         sketch_risk_span: 0.0,
-                    });
+                        mode: "DIAG".to_string(),
+                        entry_path: "DIAG".to_string(),
+                        regime: "mixed".to_string(),
+                        birth_timestamp: latest_candle.timestamp,
+                        intensity: 0.0,
+                        stability: 0.0,
+                        tier: "DIAG".to_string(),
+                    }) {
+                        next_rec_id += 1;
+                    }
                 }
             }
         }

@@ -193,6 +193,9 @@ pub struct TradeSignalDto {
     pub rank_position: Option<u32>,
     pub allocated_capital: Option<PriceDto>,
     pub quantity: Option<u64>,
+    pub status: String,
+    pub porosity: String,
+    pub porosity_trend: f64,
 }
 
 impl From<chronosentiment_core::pipeline::TradeSignal> for TradeSignalDto {
@@ -224,6 +227,9 @@ impl From<chronosentiment_core::pipeline::TradeSignal> for TradeSignalDto {
             rank_position: s.rank_position,
             allocated_capital: s.allocated_capital.map(PriceDto::from_scaled),
             quantity: s.quantity,
+            status: format!("{:?}", s.status),
+            porosity: format!("{:?}", s.porosity),
+            porosity_trend: s.porosity_trend,
         }
     }
 }

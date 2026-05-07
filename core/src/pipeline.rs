@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use crate::ga::{self, GaConfig};
 use crate::{MarketEvent, SimEvent};
 use crate::market_adapter::{Candle, convert_series_to_events};
+pub use crate::exit::ExitReason;
 use serde::{Serialize, Deserialize};
 use std::path::Path;
 use std::env;
@@ -50,6 +51,23 @@ pub enum SignalAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RecommendationStatus {
+    NEW,      // Emitted by engine
+    PENDING,  // Waiting for fill
+    ACTIVE,   // Position open
+    CLOSED,   // Completed
+    REJECTED, // Filtered out
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AlphaPorosity {
+    Dead,         // capture < 0
+    Fragile,      // 0 <= capture < 0.25
+    Transitional, // 0.25 <= capture < 0.6
+    Live,         // capture >= 0.6
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EntryType {
     MARKET,
     PULLBACK,
@@ -76,6 +94,17 @@ pub struct TradeSignal {
     pub expected_holding_time: String,
     pub strategy_id: String,
     pub reason: String,
+    pub status: RecommendationStatus,
+    pub porosity: AlphaPorosity,
+    pub porosity_trend: f64, // Rate of change in porosity
+    pub is_open: bool,
+    pub current_pnl: f64,
+    pub peak_pnl: f64,
+    pub exit_reason: Option<ExitReason>,
+    pub rank_score: f64,
+    pub rank_position: Option<u32>,
+    pub allocated_capital: Option<f64>,
+    pub quantity: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -574,6 +603,17 @@ fn build_trade_signal(
         expected_holding_time,
         strategy_id: selected_strategy_id.to_string(),
         reason,
+        status: RecommendationStatus::NEW,
+        porosity: AlphaPorosity::Live, // Placeholder, usually updated by registry
+        porosity_trend: 0.0,
+        is_open: trade_allowed,
+        current_pnl: 0.0,
+        peak_pnl: 0.0,
+        exit_reason: None,
+        rank_score: 0.0,
+        rank_position: None,
+        allocated_capital: None,
+        quantity: None,
     }
 }
 

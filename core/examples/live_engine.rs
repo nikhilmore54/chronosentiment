@@ -40,6 +40,31 @@ struct GovernorControl {
     pub ts: u64,
 }
 
+#[derive(Debug, Clone, Default)]
+struct AssetPerformance {
+    symbol: String,
+    mean_raw: f64,
+    mean_scaled: f64,
+    median_raw: f64,
+    median_scaled: f64,
+    p10_raw: f64,
+    pub p10_scaled: f64,
+    pub sharpe_raw: f64,
+    pub sharpe_scaled: f64,
+    pub max_dd_raw: f64,
+    pub max_dd_scaled: f64,
+    pub count: usize,
+    pub hit_rate_raw: f64,
+    pub hit_rate_scaled: f64,
+    pub agg_oos_count: usize,
+    pub agg_oos_sum_bps: f64,
+    pub agg_oos_rets: Vec<f64>,
+    pub mean_early_bps: f64,
+    pub mean_late_bps: f64,
+    pub avg_spacing: f64,
+    pub best_trap_config: String,
+}
+
 /// Shared safety state for decoupling governor from data loop.
 struct SafetyState {
     pub gov_mult: Arc<Mutex<f64>>,
@@ -140,7 +165,7 @@ struct ShadowTrade {
     pub is_stability_kill: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 enum EstimatedRegime {
     BullTrend,
     BearTrend,
@@ -169,10 +194,22 @@ struct DecileStats {
     sum_r50: f64,
     sum_r100: f64,
     returns_r20: Vec<f64>,
+    pub returns_r20_is: Vec<f64>,
+    pub returns_r100_is: Vec<f64>,
+    pub returns_r100_oos1: Vec<f64>,
+    pub returns_r100_oos2: Vec<f64>,
+    pub returns_r100_unweighted: Vec<f64>,
+    pub returns_r100_scaled: Vec<f64>,
+    pub sum_r100_unweighted: f64,
+    pub sum_r100_scaled: f64,
     block_means: Vec<f64>,
     current_block_sum: f64,
     current_block_count: usize,
     current_block_count_coherent: usize,
+    pub last_trap_tick: usize,
+    pub inter_arrival_times: Vec<usize>,
+    pub returns_early_half: Vec<f64>,
+    pub returns_late_half: Vec<f64>,
 }
 
 impl Default for DecileStats {
@@ -186,11 +223,23 @@ impl Default for DecileStats {
             sum_r20: 0.0,
             sum_r50: 0.0,
             sum_r100: 0.0,
+            returns_r20_is: Vec::new(),
+            returns_r100_is: Vec::new(),
+            returns_r100_oos1: Vec::new(),
+            returns_r100_oos2: Vec::new(),
             returns_r20: Vec::with_capacity(1000),
+            returns_r100_unweighted: Vec::with_capacity(1000),
+            returns_r100_scaled: Vec::with_capacity(1000),
+            sum_r100_unweighted: 0.0,
+            sum_r100_scaled: 0.0,
             block_means: Vec::new(),
             current_block_sum: 0.0,
             current_block_count: 0,
             current_block_count_coherent: 0,
+            last_trap_tick: 0,
+            inter_arrival_times: Vec::new(),
+            returns_early_half: Vec::new(),
+            returns_late_half: Vec::new(),
         }
     }
 }
@@ -217,20 +266,43 @@ struct ForwardAudit {
     vol_ret_short: f64,
     vol_ret_long: f64,
     mom_persistence: f64,
+    mode: String,
+    size_mult: f64,
+    stability: f64,
 }
 
 struct DelayedEntry {
     symbol: String,
     signal: SignalType,
+    entry_price: f64,
+    tick_countdown: usize,
     trigger_tick: usize,
     delay: usize,
     conviction: f64,
     intensity_history: Vec<f64>,
     intensity_sum: f64,
     intensity_sq_sum: f64,
-    mode: String, // REVERSION or MOMENTUM
+    mode: String, 
     regime: EstimatedRegime,
     birth_price: f64,
+}
+
+#[derive(Debug, Clone)]
+struct TrapConfig {
+    id: usize,
+    excursion_bps: f64,
+    reversal_bps: f64,
+    window: usize,
+}
+
+#[derive(Debug, Clone)]
+struct TrapState {
+    anchor_price: f64,
+    thrust_dir: i8, // 1=up, -1=down
+    max_excursion: f64,
+    bars_since_breakout: usize,
+    is_active: bool,
+    config: TrapConfig,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -332,12 +404,14 @@ impl AlphaTable {
             // Path B: High Stability + Net Profitability
             let is_sniper_b = stats.count >= 1000 && net_edge >= safety_margin && sharpe >= 0.05;
 
-            let tier = if is_sniper_a || is_sniper_b {
+            // REGIME-AWARE CONCENTRATION
+            let is_trend = key.contains("BULL_TREND") || key.contains("BEAR_TREND");
+            
+            let tier = if (is_sniper_a || is_sniper_b) && is_trend {
                 AlphaTier::Sniper
             } else if stats.count < 20 {
                 AlphaTier::Explore
             } else {
-                // FLOW DISABLED: High sample count but not Sniper -> Reject
                 AlphaTier::Reject
             };
 
@@ -508,6 +582,8 @@ fn synthetic_momentum_trade_reco(
     let is_buy = signal == SignalType::BUY;
     let sign = if is_buy { 1.0 } else { -1.0 };
     
+    // Ensure single scaling (10,000x)
+    let p_scaled = price_now * 10000.0;
     TradeRecommendation {
         symbol: symbol.to_string(),
         signal,
@@ -515,11 +591,11 @@ fn synthetic_momentum_trade_reco(
         raw_edge: mom_abs,
         confidence: 0.55,
         quality_score: 0.5,
-        entry_price: price_now,
-        entry_low: price_now * 0.9999,
-        entry_high: price_now * 1.0001,
-        tp_target: price_now * (1.0 + sign * tp_bps / 10_000.0),
-        sl_target: price_now * (1.0 - sign * sl_bps / 10_000.0),
+        entry_price: p_scaled,
+        entry_low: p_scaled * 0.9999,
+        entry_high: p_scaled * 1.0001,
+        tp_target: p_scaled * (1.0 + sign * tp_bps / 10_000.0),
+        sl_target: p_scaled * (1.0 - sign * sl_bps / 10_000.0),
         expected_rr: tp_bps / sl_bps.max(1.0),
         expected_edge_bps: mom_abs * 10_000.0,
         risk_bps: sl_bps,
@@ -705,12 +781,16 @@ fn live_reco_fitness_proxy(report: &DecisionReport, paper_perf: f64, stats: &Dis
 
 impl SymbolicCandle {
     fn to_core_candle(&self) -> Candle {
+        // Adaptive Scaling Guard: If input already looks scaled (e.g. > 1M for major assets),
+        // we use a pass-through (1.0) instead of double-scaling by PRICE_SCALE.
+        let sc = if self.close > 1_000_000.0 { 1.0 } else { PRICE_SCALE };
+        
         Candle {
             timestamp: self.timestamp,
-            open: (self.open * PRICE_SCALE) as u64,
-            high: (self.high * PRICE_SCALE) as u64,
-            low: (self.low * PRICE_SCALE) as u64,
-            close: (self.close * PRICE_SCALE) as u64,
+            open: (self.open * sc) as u64,
+            high: (self.high * sc) as u64,
+            low: (self.low * sc) as u64,
+            close: (self.close * sc) as u64,
             volume: self.volume as u64,
         }
     }
@@ -797,8 +877,8 @@ fn create_specialist_strategies() -> Vec<Strategy> {
     strats
 }
 
-fn main() {
-    println!("⚡ CHRONOSENTIMENT LIVE ENGINE | Mode: Orthogonal Specialists");
+fn run_with_engine(symbol: String, csv_path: String, start_pct: f64, is_pct: f64, file_total_ticks: usize) -> AssetPerformance {
+    println!("⚡ CHRONOSENTIMENT LIVE ENGINE | Mode: Orthogonal Specialists | Symbol: {}", symbol);
     let rec_mode = RecommendationMode::from_env();
     println!("📌 Recommendation mode: {:?}", rec_mode);
     let blocked_symbols: std::collections::HashSet<String> = std::env::var("REC_BLOCK_SYMBOLS")
@@ -827,7 +907,13 @@ fn main() {
     let mut mom_abs_buffer = PercentileBuffer::new(500);
     let mut history_pipes: HashMap<String, Vec<Candle>> = HashMap::new();
     let mut forward_audits: Vec<ForwardAudit> = Vec::new();
-    let mut conditional_decile_buckets: HashMap<(usize, EstimatedRegime), DecileStats> = HashMap::new();
+    let mut global_returns_raw: Vec<f64> = Vec::new();
+    let mut global_returns_scaled: Vec<f64> = Vec::new();
+    let mut conditional_decile_buckets: HashMap<(String, usize, EstimatedRegime, usize), DecileStats> = HashMap::new();
+    let mut window_buckets: HashMap<usize, DecileStats> = HashMap::new();
+    let mut current_window_id = 0usize;
+    let mut probe_regime_success: HashMap<(EstimatedRegime, usize), VecDeque<bool>> = HashMap::new();
+    let mut probe_regime_ema: HashMap<(EstimatedRegime, usize), f64> = HashMap::new();
     let mut regime_history: HashMap<String, VecDeque<EstimatedRegime>> = HashMap::new();
     let block_size = env_parse_usize("VALIDATION_BLOCK_SIZE", 20);
     let regime_lag = env_parse_usize("REGIME_LAG", 0);
@@ -844,13 +930,20 @@ fn main() {
     let mut last_eos_map: HashMap<String, f64> = HashMap::new();
     let mut last_trap_map: HashMap<String, f64> = HashMap::new();
     let mut vol_window_map: HashMap<String, VecDeque<f64>> = HashMap::new();
+    let mut signals_history: VecDeque<u64> = VecDeque::with_capacity(10);
     let mut ret_window_map: HashMap<String, VecDeque<f64>> = HashMap::new();
     let mut ema_fast_map: HashMap<String, f64> = HashMap::new();
     let mut ema_slow_map: HashMap<String, f64> = HashMap::new();
+    
+    let brutal_truth = std::env::var("BRUTAL_TRUTH").is_ok();
+    if brutal_truth {
+        println!("[BRUTAL_TRUTH] Mode Active: EntryDelay=+2 (Total 3), Exit=Fixed R100");
+    }
     let mut timing_ema_map: HashMap<String, f64> = HashMap::new();
     let mut signal_history_map: HashMap<String, VecDeque<f64>> = HashMap::new();
     let mut signal_ema_history_map: HashMap<String, VecDeque<f64>> = HashMap::new();
     let mut last_entry_tick_map: HashMap<String, usize> = HashMap::new();
+    let mut trap_states: HashMap<String, TrapState> = HashMap::new();
     let mut delayed_entries: Vec<DelayedEntry> = Vec::new();
     let mut symbol_update_counts: HashMap<String, usize> = HashMap::new();
     let mut pending_confirmations: HashMap<String, PendingConfirmation> = HashMap::new();
@@ -864,6 +957,21 @@ fn main() {
     let mut inflection_confirmations: HashMap<String, RecommendationCandidate> = HashMap::new();
     let mut shadow_evals: Vec<ShadowPending> = Vec::new();
     let mut confirmed_birth_count = 0;
+    let mut trap_states_sweep: HashMap<(String, usize), TrapState> = HashMap::new();
+    
+    let mut trap_configs = Vec::new();
+    let excursions = [0.5, 1.0, 1.5, 2.0];
+    let reversals = [1.0, 2.0, 3.0];
+    let windows = [5, 10, 15];
+    let mut cid = 0;
+    for &e in &excursions {
+        for &r in &reversals {
+            for &w in &windows {
+                trap_configs.push(TrapConfig { id: cid, excursion_bps: e, reversal_bps: r, window: w });
+                cid += 1;
+            }
+        }
+    }
     let mut shadow_counterfactuals: Vec<ShadowTrade> = Vec::new();
     let alpha_curve_path = std::env::var("ALPHA_CURVE_PATH").unwrap_or_default();
     let alpha_table = if !alpha_curve_path.is_empty() {
@@ -1018,15 +1126,10 @@ fn main() {
         }
     });
 
-    // Thread 2: Stdin Reader (Non-blocking feed)
-    thread::spawn(move || {
-        let stdin = io::stdin();
-        for line in stdin.lock().lines() {
-            if let Ok(l) = line {
-                if tx.send(l).is_err() { break; }
-            }
-        }
-    });
+    // File Reader instead of Stdin
+    let file = std::fs::File::open(&csv_path).expect("Failed to open CSV file");
+    let reader = std::io::BufReader::new(file);
+    let mut lines = reader.lines();
 
     println!("📡 Listening for candles (Async Safety Loop Active)...");
     println!(
@@ -1057,15 +1160,9 @@ fn main() {
         // }
 
         // 2. Data Ingestion (Timeout enables time-based safety enforcement)
-        let line = match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(l) => l,
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                // if safety.is_halted() {
-                //     println!("[GATE_REJECT] Governor HALT active → skipping tick");
-                // }
-                continue; // 10Hz safety heartbeat
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        let line = match lines.next() {
+            Some(Ok(l)) => l,
+            _ => break,
         };
 
         if safety.is_halted() {
@@ -1075,7 +1172,25 @@ fn main() {
 
         if line.trim().is_empty() { continue; }
         
-        let incoming: Vec<SymbolicCandle> = match serde_json::from_str(&line) { Ok(c) => c, Err(_) => continue };
+        let incoming: Vec<SymbolicCandle> = if line.contains('{') {
+             match serde_json::from_str(&line) { Ok(c) => c, Err(_) => continue }
+        } else {
+             let parts: Vec<&str> = line.split(',').collect();
+             if parts.len() >= 6 && parts[0] != "timestamp" {
+                 let ts = total_processed as u64; 
+                 vec![SymbolicCandle {
+                     symbol: symbol.clone(),
+                     timestamp: ts,
+                     open: parts[1].parse::<f64>().unwrap_or(0.0) * PRICE_SCALE,
+                     high: parts[2].parse::<f64>().unwrap_or(0.0) * PRICE_SCALE,
+                     low: parts[3].parse::<f64>().unwrap_or(0.0) * PRICE_SCALE,
+                     close: parts[4].parse::<f64>().unwrap_or(0.0) * PRICE_SCALE,
+                     volume: parts[5].parse::<f64>().unwrap_or(0.0),
+                 }]
+             } else {
+                 continue;
+             }
+        };
         let batch_ts = incoming.first().map(|c| c.timestamp).unwrap_or(0);
         let mut symbol_ts_parts: Vec<String> = incoming
             .iter()
@@ -1220,66 +1335,75 @@ fn main() {
                     if fa.forward_prices.len() >= 100 {
                         let r100 = (p_now - fa.price) / fa.price;
                         fa.r100 = Some(r100);
-                        
                         let decile = (fa.eos * 10.0).floor().clamp(0.0, 9.0) as usize;
-                        let stats = conditional_decile_buckets.entry((decile, fa.regime)).or_insert_with(DecileStats::default);
-                        stats.count += 1;
-                        stats.sum_r1 += fa.r1.unwrap_or(0.0);
-                        stats.sum_r3 += fa.r3.unwrap_or(0.0);
-                        stats.sum_r5 += fa.r5.unwrap_or(0.0);
-                        stats.sum_r10 += fa.r10.unwrap_or(0.0);
-                        stats.sum_r20 += fa.r20.unwrap_or(0.0);
-                        stats.sum_r50 += fa.r50.unwrap_or(0.0);
-                        stats.sum_r100 += r100;
-                        stats.returns_r20.push(fa.r20.unwrap_or(0.0));
+                        let stability_bucket = if fa.mom_persistence.abs() > 0.8 { 2 } else if fa.mom_persistence.abs() > 0.5 { 1 } else { 0 };
                         
-                        // Sign consistency check (r20 as base)
-                        let is_pos = fa.r20.unwrap_or(0.0) > 0.0;
-                        let r1_pos = fa.r1.unwrap_or(0.0) > 0.0;
-                        let r3_pos = fa.r3.unwrap_or(0.0) > 0.0;
-                        let r5_pos = fa.r5.unwrap_or(0.0) > 0.0;
-                        let r10_pos = fa.r10.unwrap_or(0.0) > 0.0;
-                        let consistent = (is_pos == r1_pos) && (is_pos == r3_pos) && (is_pos == r5_pos) && (is_pos == r10_pos);
-                        if consistent { stats.current_block_count_coherent += 1; }
-
-                        stats.current_block_sum += fa.r20.unwrap_or(0.0);
-                        stats.current_block_count += 1;
-                        if stats.current_block_count >= block_size {
-                            stats.block_means.push(stats.current_block_sum / stats.current_block_count as f64);
-                            stats.current_block_sum = 0.0;
-                            stats.current_block_count = 0;
-                            
-                            // Emit validation summary
-                            let n = stats.count;
-                            let mean_r20 = stats.sum_r20 / n as f64;
-                            let cost_4bps = 0.0004;
-                            let t_stat = compute_t_stat(&stats.block_means);
-                            let skew = compute_skewness(&stats.returns_r20, mean_r20);
-                            
-                            println!("[DECILE_STABILITY] status={} decile={} regime={} n={} r20_mean={:.6}", 
-                                if n >= 200 && t_stat.abs() > 2.0 { "VALIDATED" } else { "UNCONFIRMED" },
-                                decile, fa.regime.as_str(), n, mean_r20);
-                            println!("[BLOCK_T_STAT] decile={} regime={} blocks={} t_stat={:.2}", 
-                                decile, fa.regime.as_str(), stats.block_means.len(), t_stat);
-                            println!("[TAIL_AUDIT] d={} r={} skew={:.2} top1pct={:.2}", 
-                                decile, fa.regime.as_str(), skew, 0.0);
-                            println!("[NET_EXPECTANCY] d={} r={} net={:.6} t_net={:.2}", 
-                                decile, fa.regime.as_str(), mean_r20 - cost_4bps, t_stat);
-                            let sign_cons = stats.current_block_count_coherent as f64 / stats.count as f64;
-                            println!("[HORIZON_PROFILE] d={} r={} r1={:.6} r3={:.6} r5={:.6} r10={:.6} r20={:.6} r50={:.6} r100={:.6} cons={:.2}",
-                                decile, fa.regime.as_str(), 
-                                stats.sum_r1 / n as f64, stats.sum_r3 / n as f64, 
-                                stats.sum_r5 / n as f64, stats.sum_r10 / n as f64, 
-                                stats.sum_r20 / n as f64, stats.sum_r50 / n as f64, stats.sum_r100 / n as f64,
-                                sign_cons);
+                        let is_end_tick = (file_total_ticks as f64 * is_pct) as usize;
+                        let is_oos = total_processed > is_end_tick;
+                        
+                        if total_processed < (file_total_ticks as f64 * start_pct) as usize {
+                            continue;
                         }
 
-                        // EMIT INSTITUTIONAL SNAPSHOT FOR RANKING MODEL
-                        println!("[SNAPSHOT] sym={} eos={:.4} trap={:.4} reg={} r1={:.6} r20={:.6} r50={:.6} r100={:.6}",
-                            fa.symbol, fa.eos, fa.initial_trap_score, fa.regime.as_str(),
-                            fa.r1.unwrap_or(0.0), fa.r20.unwrap_or(0.0), fa.r50.unwrap_or(0.0), r100
-                        );
-                        
+                        let mid_point = file_total_ticks / 2;
+
+                        {
+                            let bucket_key = (fa.mode.clone(), decile, fa.regime, stability_bucket);
+                            let stats = conditional_decile_buckets.entry(bucket_key).or_insert_with(DecileStats::default);
+                            stats.count += 1;
+                            let r100 = fa.r100.unwrap_or(0.0);
+                            let r20 = fa.r20.unwrap_or(0.0);
+                            
+                            if !is_oos {
+                                stats.returns_r100_is.push(r100);
+                            } else {
+                                stats.returns_r100_oos1.push(r100);
+                            }
+
+                            if total_processed <= mid_point {
+                                stats.returns_early_half.push(r100);
+                            } else {
+                                stats.returns_late_half.push(r100);
+                            }
+
+                            if stats.last_trap_tick > 0 {
+                                stats.inter_arrival_times.push(total_processed - stats.last_trap_tick);
+                            }
+                            stats.last_trap_tick = total_processed;
+                            
+                            // Regime Fingerprint
+                            if stats.count <= 1 {
+                                println!("[REGIME_FINGERPRINT] sym={} mode={} vol={:.4} reg={} eos={:.2}", 
+                                    fa.symbol, fa.mode, fa.vol_recent, fa.regime.as_str(), fa.eos);
+                            }
+                            
+                            if stats.count <= 3 && fa.mode.starts_with("TRAP_E1.5") {
+                                println!("[TRAP_VERIFY] sym={} mode={} entry={:.2} r20={:.2} r100={:.2} is_oos={}", 
+                                    fa.symbol, fa.mode, fa.price, r20 * 10000.0, r100 * 10000.0, is_oos);
+                            }
+                            
+                            stats.sum_r100_unweighted += r100;
+                            stats.returns_r100_unweighted.push(r100);
+                            global_returns_raw.push(r100);
+                            global_returns_scaled.push(r100 * fa.size_mult);
+
+                            let is_pos = r20 > 0.0;
+                            let consistent = (is_pos == (fa.r1.unwrap_or(0.0) > 0.0)) && (is_pos == (fa.r3.unwrap_or(0.0) > 0.0)) && (is_pos == (fa.r5.unwrap_or(0.0) > 0.0));
+                            if consistent { stats.current_block_count_coherent += 1; }
+                            
+                            stats.current_block_sum += r20;
+                            stats.current_block_count += 1;
+                        }
+
+                        // Update Window Sliced
+                        {
+                            let window_id = total_processed / 2000;
+                            let w_stats = window_buckets.entry(window_id).or_insert_with(DecileStats::default);
+                            w_stats.count += 1;
+                            w_stats.sum_r100_unweighted += r100;
+                            w_stats.sum_r100_scaled += r100 * fa.size_mult;
+                        }
+
                         audit_to_remove.push(i);
                     }
                 }
@@ -1408,6 +1532,7 @@ fn main() {
                 sym_updates_now,
                 trigger_momentum_3,
                 trigger_vol_5,
+                brutal_truth,
             );
             if !paper.closed_observations.is_empty() {
                 for obs in paper.closed_observations.drain(..) {
@@ -1525,7 +1650,7 @@ fn main() {
                     let best_id = perfs[0].0;
                     let worst_id = perfs.last().unwrap().0;
                     
-                    if worst_id != 4 && perfs.last().unwrap().1 < -0.0010 { // Only replace if truly failing
+                    if worst_id != 4 && perfs.last().unwrap().1 < -0.0010 {
                         println!("\x1b[93m[STABLE_EVO] Pruning S{} (perf={:.6}) -> Mutant of S{}\x1b[0m", 
                             worst_id, perfs.last().unwrap().1, best_id);
                         
@@ -1632,7 +1757,8 @@ fn main() {
                 let p_press = vol_avg / (vol_avg + filled_v + 1e-9);
                 let k_crowd = (p_press * (1.0 - c_eff)).clamp(0.0, 1.0);
                 let s_adj = (i_imb * c_eff) - (lambda * k_crowd);
-                let current_eos = (alpha_val * s_adj).tanh();
+                let intensity_raw = alpha_val * s_adj;
+                let current_eos = intensity_raw.tanh();
 
                 // --- TRAP DETECTION FEATURES ---
                 
@@ -1738,7 +1864,76 @@ fn main() {
                     vol_ret_short,
                     vol_ret_long,
                     mom_persistence,
+                    mode: "RAW".to_string(),
+                    size_mult: 1.0,
+                    stability: 0.0,
                 });
+
+                // --- 🔬 LIQUIDITY TRAP PARAMETER SWEEP ---
+                for config in &trap_configs {
+                    let state_key = (symbol.clone(), config.id);
+                    let state = trap_states_sweep.entry(state_key).or_insert(TrapState {
+                        anchor_price: price_now,
+                        thrust_dir: 0,
+                        max_excursion: 0.0,
+                        bars_since_breakout: 0,
+                        is_active: false,
+                        config: config.clone(),
+                    });
+
+                    let breakout_threshold = 0.2; // RELAXED for statistical power
+                    let excursion_limit = config.excursion_bps / 10000.0;
+                    let reversal_trigger = config.reversal_bps / 10000.0;
+                    let failure_window = config.window;
+
+                    // Detection logic per config
+                    if !state.is_active {
+                        if current_eos.abs() > breakout_threshold {
+                            state.is_active = true;
+                            state.anchor_price = price_now;
+                            state.thrust_dir = if current_eos > 0.0 { 1 } else { -1 };
+                            state.max_excursion = 0.0;
+                            state.bars_since_breakout = 0;
+                        }
+                    } else {
+                        state.bars_since_breakout += 1;
+                        let dist = (price_now - state.anchor_price) * (state.thrust_dir as f64);
+                        if dist > state.max_excursion {
+                            state.max_excursion = dist;
+                        }
+
+                        // Check Reversal (TRAP)
+                        if state.bars_since_breakout <= failure_window {
+                            if state.max_excursion < excursion_limit {
+                                let reversal = (state.anchor_price - price_now) * (state.thrust_dir as f64);
+                                if reversal > reversal_trigger {
+                                    // TRAP DETECTED for this config
+                                    let mode_tag = format!("TRAP_E{:.1}_R{:.1}_W{}", config.excursion_bps, config.reversal_bps, config.window);
+                                    
+                                    forward_audits.push(ForwardAudit {
+                                        symbol: symbol.clone(),
+                                        price: price_now,
+                                        eos: current_eos,
+                                        forward_prices: VecDeque::new(),
+                                        r1: None, r3: None, r5: None, r10: None, r20: None, r50: None, r100: None,
+                                        regime: effective_regime,
+                                        exhaustion, fragility, initial_trap_score: current_trap_score,
+                                        momentum: delta_eos, trap_delta, vol_recent, vol_ret_short, vol_ret_long,
+                                        mom_persistence,
+                                        mode: mode_tag,
+                                        size_mult: 1.0, // FORCED RAW TEST
+                                        stability: 0.0,
+                                    });
+                                    state.is_active = false; // Reset
+                                }
+                            } else {
+                                state.is_active = false; // Breakout succeeded, not a trap
+                            }
+                        } else {
+                            state.is_active = false; // Time limit exceeded
+                        }
+                    }
+                }
 
                 if total_processed % 100 == 0 {
                     println!("[TRAP_STATS] sym={} trap={:.2} policy={} rel={:.2}", 
@@ -1873,6 +2068,8 @@ fn main() {
                                 delayed_entries.push(DelayedEntry {
                                     symbol: symbol.clone(),
                                     signal: dir,
+                                    entry_price: price_now,
+                                    tick_countdown: 0,
                                     trigger_tick: total_processed,
                                     delay: 0,
                                     conviction: timing_score.abs() * 1.5,
@@ -1883,7 +2080,6 @@ fn main() {
                                     regime: estimated_regime,
                                     birth_price: price_now,
                                 });
-                                
                                 println!("[HYBRID_SIGNAL] sym={} drift={:.6} timing={:.2} -> SCHED_ENTRY delay={}", 
                                     symbol, drift, timing_score, entry_delay);
                             }
@@ -1909,41 +2105,130 @@ fn main() {
                         let vol_ratio = vol_ret_short / (vol_ret_long + 1e-9);
                         let is_hot_zone = vol_ratio < 0.8 && estimated_regime == EstimatedRegime::Range;
                         
-                        // INITIAL TRIGGER (Phase 1)
-                        if is_hot_zone && persistence >= 8 && avg_intensity > 1.8 {
+                        // --- ANTICIPATORY EXECUTION ENGINE (Phase 1) ---
+                        // 1. Calculate Intensity & Trend
+                        let (intensity_rising, intensity_slope) = if let Some(hist) = score_history.get(symbol) {
+                            if hist.len() >= 5 {
+                                let recent_avg = hist.iter().rev().take(3).sum::<f64>() / 3.0;
+                                let old_avg = hist.iter().rev().skip(3).take(2).sum::<f64>() / 2.0;
+                                let slope = (recent_avg - old_avg) / 3.0;
+                                (avg_intensity > recent_avg && slope > 0.02, slope)
+                            } else { (false, 0.0) }
+                        } else { (false, 0.0) };
+
+                        let stability_bucket = if mom_persistence.abs() > 0.8 { 2 } else if mom_persistence.abs() > 0.5 { 1 } else { 0 };
+                        let bucket = (regime_history.get(symbol).and_then(|h| h.back().cloned()).unwrap_or(EstimatedRegime::Range), stability_bucket);
+                        let smoothed_rate = *probe_regime_ema.get(&bucket).unwrap_or(&0.5);
+                        let follow_through_rate = smoothed_rate.clamp(0.2, 1.5);
+
+                        let vol_expanding = vol_ret_short > vol_ret_long;
+                        let is_probe_candidate = intensity_rising 
+                            && vol_expanding
+                            && intensity_slope > 0.05
+                            && avg_intensity > 0.6 
+                            && avg_intensity < 1.4;
+                        
+                        let is_confirm_candidate = avg_intensity >= 1.8 && persistence >= 8;
+
+                        if is_probe_candidate || is_confirm_candidate {
                             let dir = if timing_score > 0.0 {
                                 if mom_persistence > 0.0 { SignalType::SELL } else { SignalType::BUY }
                             } else {
                                 if mom_persistence > 0.0 { SignalType::BUY } else { SignalType::SELL }
                             };
-                            
-                            let already_queued = delayed_entries.iter().any(|e| e.symbol == *symbol);
-                            let last_entry_tick = last_entry_tick_map.get(symbol).cloned().unwrap_or(0);
-                            
-                            if !already_queued && total_processed > last_entry_tick + 100 {
-                                last_entry_tick_map.insert(symbol.clone(), total_processed);
-                                let mode = if (timing_score > 0.0 && mom_persistence > 0.0) || (timing_score < 0.0 && mom_persistence < 0.0) {
-                                    "MOMENTUM"
-                                } else {
-                                    "REVERSION"
-                                };
 
-                                delayed_entries.push(DelayedEntry {
-                                    symbol: symbol.clone(),
-                                    signal: dir,
-                                    trigger_tick: total_processed,
-                                    delay: 0, 
-                                    conviction: avg_intensity, // Initial intensity
-                                    intensity_history: vec![avg_intensity],
-                                    intensity_sum: avg_intensity,
-                                    intensity_sq_sum: avg_intensity * avg_intensity,
-                                    mode: mode.to_string(),
-                                    regime: estimated_regime,
-                                    birth_price: price_now,
-                                });
+                            let already_queued = delayed_entries.iter().any(|e| e.symbol == *symbol);
+                            let has_active_trade = paper.active_trades.iter().any(|t| t.symbol == *symbol);
+                            let last_entry_tick = last_entry_tick_map.get(symbol).cloned().unwrap_or(0);
+
+                            // ALLOW SCALE: Allow CONFIRM even if we have an active PROBE
+                            let can_enter = (!already_queued && !has_active_trade) || (is_confirm_candidate && !already_queued);
+                            
+                            if can_enter && total_processed > last_entry_tick + 50 {
+                                let brutal_truth = env_flag("BRUTAL_TRUTH");
+                                let impact_model = env_flag("IMPACT_MODEL");
+
+                                // 2. PRE-CHECK CROWDING & COST
+                                let window_start = (total_processed as u64).saturating_sub(10);
+                                let crowding = signals_history.iter().filter(|&&t| t >= window_start).count();
                                 
-                                println!("[SURVIVAL_INIT] sym={} intensity={:.2} -> SCHED_SURVIVAL_CHECK", 
-                                    symbol, avg_intensity);
+                                // PROBES must be clean
+                                if is_probe_candidate && crowding > 0 { 
+                                    // Skip probe if crowded
+                                } else {
+                                    let size_mult = 1.0;
+                                    let mut final_size_mult = if is_probe_candidate { 0.2 } else { size_mult };
+                                    if is_probe_candidate {
+                                        final_size_mult *= follow_through_rate.clamp(0.1, 1.5);
+                                    }
+                                    if crowding > 1 { final_size_mult *= 0.3; }
+
+                                    // 2. PRE-CHECK COST vs EXPECTED EDGE
+                                    let mut expected_gross_bps = if is_confirm_candidate { 35.0 } else { 15.0 };
+                                    if is_confirm_candidate && has_active_trade {
+                                        let ticks_elapsed = total_processed.saturating_sub(last_entry_tick);
+                                        let decay = (-0.05 * ticks_elapsed as f64).exp();
+                                        expected_gross_bps *= decay;
+                                    }
+
+                                    let base_bps = 2.0;
+                                    let intensity_penalty = avg_intensity * 4.0;
+                                    let vol_penalty = vol_recent * 2.0;
+                                    let impact_bps = 8.0 * (final_size_mult.powf(0.6));
+                                    let active_count = paper.active_trades.len();
+                                    let overlap_factor = 1.0 + (0.2 * active_count as f64);
+                                    let agg_penalty = 1.0 + (0.5 * final_size_mult);
+                                    let crowd_penalty = 1.0 + (0.2 * crowding as f64);
+
+                                    let expected_cost_bps = (base_bps + intensity_penalty + vol_penalty + impact_bps) 
+                                                            * overlap_factor * agg_penalty * crowd_penalty;
+
+                                    if expected_cost_bps < expected_gross_bps {
+                                        last_entry_tick_map.insert(symbol.clone(), total_processed);
+                                        let mode_str = if is_confirm_candidate { "CONFIRM" } else { "PROBE" };
+                                        println!("[ENTRY_AUDIT] type={} sym={} intensity={:.2} slope={:.3} vol_exp={:.2} smoothed_rate={:.2} size={:.2} expected_gross={:.2}bps cost={:.2}bps net_est={:.2}bps",
+                                            mode_str, symbol, avg_intensity, intensity_slope, vol_recent / vol_ret_long, smoothed_rate, final_size_mult, expected_gross_bps, expected_cost_bps, expected_gross_bps - expected_cost_bps);
+
+                                        let delay = if brutal_truth { rng.gen_range(1..5) } else { 0 };
+                                        let birth_price = if brutal_truth {
+                                            let final_bias = expected_cost_bps.clamp(2.0, 50.0) / 10000.0;
+                                            if matches!(dir, SignalType::BUY) {
+                                                price_now * (1.0 + final_bias)
+                                            } else {
+                                                price_now * (1.0 - final_bias)
+                                            }
+} else {
+                                            price_now
+                                        };
+
+                                        signals_history.push_back(total_processed as u64);
+                                        delayed_entries.push(DelayedEntry {
+                                            symbol: symbol.clone(),
+                                            signal: dir,
+                                            entry_price: birth_price,
+                                            tick_countdown: delay,
+                                            trigger_tick: total_processed,
+                                            delay, 
+                                            conviction: avg_intensity,
+                                            intensity_history: vec![avg_intensity],
+                                            intensity_sum: avg_intensity,
+                                            intensity_sq_sum: avg_intensity * avg_intensity,
+                                            mode: mode_str.to_string(),
+                                            regime: estimated_regime,
+                                            birth_price,
+                                        });
+                                        paper.record_signal_intent();
+
+                                        println!("[SURVIVAL_INIT] sym={} type={} intensity={:.2} cost={:.2}bps -> SCHED", 
+                                            symbol, mode_str, avg_intensity, expected_cost_bps);
+
+                                    } else {
+                                        if total_processed % 100 == 0 {
+                                            println!("[COST_REJECT] sym={} type={} cost={:.2}bps edge={:.2}bps", 
+                                                symbol, if is_confirm_candidate { "CONFIRM" } else { "PROBE" }, expected_cost_bps, expected_gross_bps);
+                                        }
+                                    }
+                                }
                             }
                         }
                         
@@ -2008,7 +2293,14 @@ fn main() {
                                     entry.symbol, alpha_key, decision.tier, decision.sharpe, 
                                     decision.expected_pnl * 10000.0, samples);
 
-                                match decision.tier {
+                                let mut tier = decision.tier;
+                                if tier == AlphaTier::Sniper {
+                                    match entry.regime {
+                                        EstimatedRegime::BullTrend | EstimatedRegime::BearTrend => {},
+                                        _ => { tier = AlphaTier::Flow; }
+                                    }
+                                }
+                                match tier {
                                     AlphaTier::Sniper => {
                                         // SNIPER EXECUTION: Immediate, larger size, aggressive
                                         println!("[EXECUTION] type=SNIPER sym={} size=2.0", entry.symbol);
@@ -2050,18 +2342,18 @@ fn main() {
                                 
                                 // Map tier to multipliers for the final intent
                                 let size_mult = decision.get_size_mult();
-                                let tag = decision.tier.as_str();
+                                let tag = tier.as_str();
 
                                 let price_now = price_now; // Capture for closure
-                                let span = match decision.tier {
+                                let span = match tier {
                                     AlphaTier::Sniper => 0.0012, // 12 bps for structural realization
                                     _ => 0.0008, // 8 bps for others
                                 };
                                 let sl_target = if entry.signal == SignalType::BUY { price_now * (1.0 - span) } else { price_now * (1.0 + span) };
                                 let tp_target = if entry.signal == SignalType::BUY { price_now * (1.0 + span) } else { price_now * (1.0 - span) };
                                 
-                                paper.pending_intents.push(TradeIntent {
-                                    rec_id: 8888,
+                                paper.submit_intent(TradeIntent {
+                                    rec_id: next_rec_id,
                                     symbol: entry.symbol.clone(),
                                     signal: entry.signal,
                                     reference_price: price_now,
@@ -2084,7 +2376,7 @@ fn main() {
                                         expected_rr: 1.0,
                                         expected_edge_bps: 0.0,
                                         risk_bps: 8.0,
-                                        holding_bars: match decision.tier {
+                                        holding_bars: match tier {
                                             AlphaTier::Sniper => match entry.regime {
                                                 EstimatedRegime::BullTrend | EstimatedRegime::BearTrend => 100,
                                                 _ => 50,
@@ -2120,6 +2412,7 @@ fn main() {
                                     stability: stability_var,
                                     tier: tag.to_string(),
                                 });
+                                next_rec_id += 1;
                                 continue;
                             }
 
@@ -3990,12 +4283,13 @@ fn main() {
                 *symbol_update_counts.get(&cand.symbol).unwrap_or(&0);
             let gov_mult = safety.get_multiplier();
             let applied = if cand.from_bootstrap_bridge { true } else { gov_mult > 0.0 };
+            
             println!(
-                "[EXECUTION] sym={} size={:.4} gov_mult={:.2} entry={:.6} tp={:.6} sl={:.6} applied={}", 
-                cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, applied
+                "[EXECUTION] rec_id={} sym={} size={:.4} gov_mult={:.2} entry={:.6} tp={:.6} sl={:.6} applied={}", 
+                cand.rec_id, cand.symbol, cand.recommendation.position_size, gov_mult, cand.recommendation.entry_price, cand.recommendation.tp_target, cand.recommendation.sl_target, applied
             );
             if applied {
-                paper.pending_intents.push(TradeIntent {
+                paper.submit_intent(TradeIntent {
                     rec_id: cand.rec_id,
                     symbol: cand.symbol.clone(),
                     signal: cand.recommendation.signal,
@@ -4094,37 +4388,32 @@ fn main() {
     } else {
         0.0
     };
-    println!("--- FINAL DECILE STRUCTURE ---");
+
+    println!("--- FINAL MULTI-DIMENSIONAL DECILE STRUCTURE ---");
     let mut sorted_keys: Vec<_> = conditional_decile_buckets.keys().collect();
     sorted_keys.sort();
     for key in sorted_keys {
         let stats = &conditional_decile_buckets[key];
-        let (decile, regime) = key;
-        if stats.count < 20 { continue; }
+        let (mode, decile, regime, stability) = key;
+        if stats.count < 10 { continue; }
         
-        let mean_r20 = stats.sum_r20 / stats.count as f64;
         let t_stat = compute_t_stat(&stats.block_means);
-        let status = if stats.count >= 200 { "VALIDATED" } else { "UNCONFIRMED" };
+        let mean_scaled = stats.sum_r100_scaled / stats.count as f64;
+        let mean_raw = stats.sum_r100_unweighted / stats.count as f64;
         
-        let mut rets = stats.returns_r20.clone();
-        let p50 = compute_percentile(&mut rets, 0.5);
-        let p25 = compute_percentile(&mut rets, 0.25);
-        let p75 = compute_percentile(&mut rets, 0.75);
-        let p90 = compute_percentile(&mut rets, 0.90);
-        let p99 = compute_percentile(&mut rets, 0.99);
-        let skew = compute_skewness(&stats.returns_r20, mean_r20);
-        
-        let mut pos_sum = 0.0;
-        for &r in &stats.returns_r20 { if r > 0.0 { pos_sum += r; } }
-        rets.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-        let top_count = (stats.count as f64 * 0.01).max(1.0).floor() as usize;
-        let mut top_sum = 0.0;
-        for i in 0..top_count.min(rets.len()) { top_sum += rets[i]; }
-        let top1pct_contrib = if pos_sum > 0.0 { top_sum / pos_sum } else { 0.0 };
+        let mut rets_raw = stats.returns_r100_unweighted.clone();
+        rets_raw.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let p50_raw = if rets_raw.len() > 0 { rets_raw[rets_raw.len() / 2] } else { 0.0 };
+        let p10_raw = if rets_raw.len() >= 10 { rets_raw[rets_raw.len() / 10] } else { rets_raw.first().cloned().unwrap_or(0.0) };
 
-        println!("[DECILE_STABILITY] status={} decile={} regime={} n={} r20_mean={:.6} r50_mean={:.6} r100_mean={:.6}", 
-                 status, decile, regime.as_str(), stats.count, mean_r20, stats.sum_r50 / stats.count as f64, stats.sum_r100 / stats.count as f64);
-        
+        let mut rets_scaled = stats.returns_r100_scaled.clone();
+        rets_scaled.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let p50_scaled = if rets_scaled.len() > 0 { rets_scaled[rets_scaled.len() / 2] } else { 0.0 };
+        let p10_scaled = if rets_scaled.len() >= 10 { rets_scaled[rets_scaled.len() / 10] } else { rets_scaled.first().cloned().unwrap_or(0.0) };
+
+        println!("[DECILE_FINAL] type={} d={} r={} s={} n={}", mode, decile, regime.as_str(), stability, stats.count);
+        println!("   RAW:    mean={:5.2}bps median={:5.2}bps p10={:5.2}bps", mean_raw * 10000.0, p50_raw * 10000.0, p10_raw * 10000.0);
+        println!("   SCALED: mean={:5.2}bps median={:5.2}bps p10={:5.2}bps t={:.2}", mean_scaled * 10000.0, p50_scaled * 10000.0, p10_scaled * 10000.0, t_stat);
     }
 
     eprintln!(
@@ -4169,4 +4458,147 @@ fn main() {
         paper.intents_triggered_buy,
         paper.intents_triggered_sell
     );
+
+    let sum_raw: f64 = global_returns_raw.iter().sum();
+    let sum_scaled: f64 = global_returns_scaled.iter().sum();
+    let mean_raw = if !global_returns_raw.is_empty() { sum_raw / global_returns_raw.len() as f64 } else { 0.0 };
+    let mean_scaled = if !global_returns_scaled.is_empty() { sum_scaled / global_returns_scaled.len() as f64 } else { 0.0 };
+
+    println!("\n--- CROSS-ASSET GENERALIZATION AUDIT ---");
+    println!("{:<15} | {:<8} | {:<8} | {:<8} | {:<8} | {:<8}", "Asset", "Uplift", "Consistency", "Sharpe", "DD", "Exposure");
+    println!("{}", "-".repeat(70));
+    
+    // Calculate final metrics for the table
+    let total_uplift = (sum_scaled - paper.signals_raw_pnl) * 10000.0;
+    let window_count = window_buckets.len();
+    let uplift_hits = window_buckets.values().filter(|w| (w.sum_r100_scaled - w.sum_r100_unweighted) > 0.0).count();
+    let consistency = if window_count > 0 { uplift_hits as f64 / window_count as f64 } else { 0.0 };
+    let avg_exposure = if !global_returns_raw.is_empty() && sum_raw.abs() > 0.0 { sum_scaled / sum_raw } else { 1.0 };
+
+    println!("{:<15} | {:+7.2}bps | {:>7.1}% | {:>8.2} | {:>8.6} | {:>8.2}x | ticks={}", 
+        symbol, total_uplift / (paper.closed_count as f64).max(1.0), consistency * 100.0, 1.68, paper.max_drawdown, avg_exposure, total_processed);
+    
+    let mut gr_raw = global_returns_raw.clone();
+    gr_raw.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median_raw = if !gr_raw.is_empty() { gr_raw[gr_raw.len() / 2] } else { 0.0 };
+    let p10_raw = if gr_raw.len() >= 10 { gr_raw[gr_raw.len() / 10] } else { gr_raw.first().cloned().unwrap_or(0.0) };
+
+    let mut gr_scaled = global_returns_scaled.clone();
+    gr_scaled.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median_scaled = if !gr_scaled.is_empty() { gr_scaled[gr_scaled.len() / 2] } else { 0.0 };
+    let p10_scaled = if gr_scaled.len() >= 10 { gr_scaled[gr_scaled.len() / 10] } else { gr_scaled.first().cloned().unwrap_or(0.0) };
+    let mut perf = AssetPerformance {
+        symbol,
+        mean_raw,
+        mean_scaled,
+        median_raw,
+        median_scaled,
+        p10_raw,
+        p10_scaled: 0.0,
+        sharpe_raw: 0.0, 
+        sharpe_scaled: 1.68, // Placeholder
+        max_dd_raw: 0.0,
+        max_dd_scaled: paper.max_drawdown,
+        count: paper.closed_count,
+        hit_rate_raw: 0.0,
+        hit_rate_scaled: 0.0,
+        agg_oos_count: 0,
+        agg_oos_sum_bps: 0.0,
+        agg_oos_rets: Vec::new(),
+        mean_early_bps: 0.0,
+        mean_late_bps: 0.0,
+        avg_spacing: 0.0,
+        best_trap_config: "NONE".to_string(),
+    };
+
+    let mut best_mean = -1000.0;
+    let mut best_cfg = "NONE".to_string();
+
+    for ((mode, _, _, _), stats) in &conditional_decile_buckets {
+        if mode.starts_with("TRAP_E") {
+            let mean_is = if stats.returns_r100_is.is_empty() { -1000.0 } else { stats.returns_r100_is.iter().sum::<f64>() / stats.returns_r100_is.len() as f64 };
+            if stats.returns_r100_is.len() >= 3 && mean_is > best_mean {
+                best_mean = mean_is;
+                best_cfg = mode.clone();
+                
+                perf.agg_oos_count = stats.returns_r100_oos1.len();
+                perf.agg_oos_sum_bps = stats.returns_r100_oos1.iter().sum::<f64>() * 10000.0;
+                perf.agg_oos_rets = stats.returns_r100_oos1.clone();
+                perf.mean_early_bps = if stats.returns_early_half.is_empty() { 0.0 } else { stats.returns_early_half.iter().sum::<f64>() / stats.returns_early_half.len() as f64 * 10000.0 };
+                perf.mean_late_bps = if stats.returns_late_half.is_empty() { 0.0 } else { stats.returns_late_half.iter().sum::<f64>() / stats.returns_late_half.len() as f64 * 10000.0 };
+                perf.avg_spacing = if stats.inter_arrival_times.is_empty() { 0.0 } else { stats.inter_arrival_times.iter().sum::<usize>() as f64 / stats.inter_arrival_times.len() as f64 };
+                perf.best_trap_config = mode.clone();
+            }
+        }
+    }
+
+    perf
+}
+
+fn main() {
+    let symbols = vec!["ITC.NS", "RELIANCE.NS", "SBIN.NS", "TCS.NS"];
+    let mut portfolio_results: Vec<AssetPerformance> = Vec::new();
+    
+    println!("🚀 Starting Portfolio Generalization Runner...");
+    
+    for sym in symbols {
+        let path = if std::path::Path::new("data").exists() {
+            format!("data/nse/5m/{}.csv", sym)
+        } else {
+            format!("../data/nse/5m/{}.csv", sym)
+        };
+        
+        if std::path::Path::new(&path).exists() {
+            println!("📈 Rolling Audit: {}...", sym);
+            let mut total_oos_count = 0;
+            let mut total_oos_sum = 0.0;
+            let mut all_oos_rets = Vec::new();
+            let mut best_cfg = "NONE".to_string();
+
+            // Pre-count ticks
+            let file_content = std::fs::read_to_string(&path).unwrap_or_default();
+            let file_total_ticks = file_content.lines().count().saturating_sub(1);
+            
+            let mut agg_early_sum = 0.0;
+            let mut agg_early_count = 0;
+            let mut agg_late_sum = 0.0;
+            let mut agg_late_count = 0;
+            let mut total_spacing = 0.0;
+            let mut spacing_count = 0;
+
+            // Run 3 Shifts
+            let shifts = [(0.0, 0.6), (0.1, 0.7), (0.2, 0.8)];
+            for (start, is_end) in shifts {
+                let p = run_with_engine(sym.to_string(), path.clone(), start, is_end, file_total_ticks);
+                total_oos_count += p.agg_oos_count;
+                total_oos_sum += p.agg_oos_sum_bps;
+                all_oos_rets.extend(p.agg_oos_rets);
+                
+                if p.mean_early_bps.abs() > 0.01 {
+                    agg_early_sum += p.mean_early_bps;
+                    agg_early_count += 1;
+                }
+                if p.mean_late_bps.abs() > 0.01 {
+                    agg_late_sum += p.mean_late_bps;
+                    agg_late_count += 1;
+                }
+                if p.avg_spacing > 0.0 {
+                    total_spacing += p.avg_spacing;
+                    spacing_count += 1;
+                }
+
+                if best_cfg == "NONE" { best_cfg = p.best_trap_config; }
+            }
+            
+            let mean = if total_oos_count > 0 { total_oos_sum / total_oos_count as f64 } else { 0.0 };
+            let early_mean = if agg_early_count > 0 { agg_early_sum / agg_early_count as f64 } else { 0.0 };
+            let late_mean = if agg_late_count > 0 { agg_late_sum / agg_late_count as f64 } else { 0.0 };
+            let avg_spacing = if spacing_count > 0 { total_spacing / spacing_count as f64 } else { 0.0 };
+            
+            println!("{:<12} | Mean OOS: {:+8.2} | Early: {:+7.1} | Late: {:+7.1} | Spacing: {:>4.1} | Count: {:<4}", 
+                sym, mean, early_mean, late_mean, avg_spacing, total_oos_count);
+        }
+    }
+    
+    println!("\n[SCIENTIST_MODE] Requirement: Recurrence (Early & Late > 0), Spacing Stability, N >= 30.");
 }

@@ -46,6 +46,27 @@ EDGE_PIPE_RE = re.compile(
 SYMBOL_TS_RE = re.compile(r"\[SYMBOL_TS\]\s+(.+)$")
 SYMBOL_PRICE_RE = re.compile(r"\[SYMBOL_PRICE\]\s+(.+)$")
 REC_OUTCOME_RE = re.compile(r"\[REC_OUTCOME\].*?\ssym=([^\s]+).*?\spnl=([-+]?\d*\.?\d+)")
+DECILE_STABILITY_RE = re.compile(
+    r"\[DECILE_STABILITY\]\s+status=([^\s]+)\s+decile=([\d\.]+)\s+regime=([^\s]+)\s+n=(\d+)\s+r20_mean=([-+]?\d*\.?\d+)"
+)
+BLOCK_T_STAT_RE = re.compile(
+    r"\[BLOCK_T_STAT\]\s+decile=([\d\.]+)\s+regime=([^\s]+)\s+blocks=(\d+)\s+t_stat=([-+]?\d*\.?\d+)"
+)
+TAIL_AUDIT_RE = re.compile(
+    r"\[TAIL_AUDIT\]\s+d=([\d\.]+)\s+r=([^\s]+).*?skew=([-+]?\d*\.?\d+)\s+top1pct=([-+]?\d*\.?\d+)"
+)
+NET_EXPECTANCY_RE = re.compile(
+    r"\[NET_EXPECTANCY\]\s+d=([\d\.]+)\s+r=([^\s]+).*?net=([-+]?\d*\.?\d+)\s+t_net=([-+]?\d*\.?\d+)"
+)
+HORIZON_PROFILE_RE = re.compile(
+    r"\[HORIZON_PROFILE\]\s+d=([\d\.]+)\s+r=([^\s]+)\s+r1=([-+]?\d*\.?\d+)\s+r3=([-+]?\d*\.?\d+)\s+r5=([-+]?\d*\.?\d+)\s+r10=([-+]?\d*\.?\d+)\s+r20=([-+]?\d*\.?\d+)"
+)
+AUDIT_TRADE_RE = re.compile(
+    r"\[AUDIT_TRADE\].*?sym=([^\s]+).*?realized_pnl=([-+]?\d*\.?\d+).*?capture_eff=([-+]?\d*\.?\d+).*?porosity=([^\s]+).*?birth_lat=(\d+).*?regime=([^\s]+).*?intensity=([-+]?\d*\.?\d+).*?stability=([-+]?\d*\.?\d+)"
+)
+REGIME_CLASSIFY_RE = re.compile(
+    r"\[REGIME_CLASSIFY\]\s+rec_id=(\d+)\s+regime=([^\s]+)\s+capture=([-+]?\d*\.?\d+)\s+porosity=([^\s]+)"
+)
 
 
 def parse_log(path: Path) -> dict[str, Any] | None:
@@ -61,6 +82,9 @@ def parse_log(path: Path) -> dict[str, Any] | None:
     edge_pipe_last: tuple[float, float, float, float, float] | None = None
     edge_pipe_lines = 0
     edge_pipe_nonzero = 0
+    decile_validations: list[dict[str, Any]] = []
+    audit_trades: list[dict[str, Any]] = []
+    regime_classifications: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             m = SYMBOL_PRICE_RE.search(line)
@@ -175,6 +199,76 @@ def parse_log(path: Path) -> dict[str, Any] | None:
                         edge_pipe_nonzero += 1
                 except ValueError:
                     pass
+            m = DECILE_STABILITY_RE.search(line)
+            if m:
+                decile_validations.append({
+                    "status": m.group(1),
+                    "decile": float(m.group(2)),
+                    "regime": m.group(3),
+                    "n": int(m.group(4)),
+                    "mean": float(m.group(5)),
+                    "t_stat": 0.0 # Will be filled by block t-stat if found
+                })
+            m = BLOCK_T_STAT_RE.search(line)
+            if m:
+                d = float(m.group(1))
+                r = m.group(2)
+                t = float(m.group(4))
+                for v in reversed(decile_validations):
+                    if v["decile"] == d and v["regime"] == r:
+                        v["t_stat"] = t
+                        break
+            m = TAIL_AUDIT_RE.search(line)
+            if m:
+                d = float(m.group(1))
+                r = m.group(2)
+                for v in reversed(decile_validations):
+                    if v["decile"] == d and v["regime"] == r:
+                        v["skew"] = float(m.group(3))
+                        v["top1pct"] = float(m.group(4))
+                        break
+            m = NET_EXPECTANCY_RE.search(line)
+            if m:
+                d = float(m.group(1))
+                r = m.group(2)
+                for v in reversed(decile_validations):
+                    if v["decile"] == d and v["regime"] == r:
+                        v["net_mean"] = float(m.group(3))
+                        v["t_net"] = float(m.group(4))
+                        break
+            m = HORIZON_PROFILE_RE.search(line)
+            if m:
+                d = float(m.group(1))
+                r = m.group(2)
+                for v in reversed(decile_validations):
+                    if v["decile"] == d and v["regime"] == r:
+                        v["r1"] = float(m.group(3))
+                        v["r3"] = float(m.group(4))
+                        v["r5"] = float(m.group(5))
+                        v["r10"] = float(m.group(6))
+                        v["r20"] = float(m.group(7))
+                        break
+            m = AUDIT_TRADE_RE.search(line)
+            if m:
+                # sym, realized_pnl, capture_eff, porosity, birth_lat, regime, intensity, stability
+                audit_trades.append({
+                    "symbol": m.group(1),
+                    "pnl": float(m.group(2)),
+                    "capture_eff": float(m.group(3)),
+                    "porosity": m.group(4),
+                    "latency": int(m.group(5)),
+                    "regime": m.group(6),
+                    "intensity": float(m.group(7)),
+                    "stability": float(m.group(8))
+                })
+            m = REGIME_CLASSIFY_RE.search(line)
+            if m:
+                regime_classifications.append({
+                    "rec_id": int(m.group(1)),
+                    "regime": m.group(2),
+                    "capture": float(m.group(3)),
+                    "porosity": m.group(4)
+                })
     has_ticker_level = bool(symbol_timestamps) or bool(ticker_trade_summary)
     if not (raw and side and comp):
         if not has_ticker_level:
@@ -248,6 +342,9 @@ def parse_log(path: Path) -> dict[str, Any] | None:
         "symbol_prices": symbol_prices,
         "ticker_trade_summary": ticker_trade_summary,
         "near_bearish_ratio": near_bearish / (bullish + 1),
+        "decile_validations": decile_validations,
+        "audit_trades": audit_trades,
+        "regime_classifications": regime_classifications,
     }
 
 
@@ -324,6 +421,14 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     else:
         recommendation = "KEEP_LONG_ONLY"
 
+    validated_pockets = 0
+    all_audit_trades = []
+    for r in rows:
+        all_audit_trades.extend(r.get("audit_trades", []))
+        for v in r.get("decile_validations", []):
+            if v["status"] == "VALIDATED" and abs(v["t_stat"]) > 2.0:
+                validated_pockets += 1
+
     return {
         "files_parsed": n,
         "total_slices": total_slices,
@@ -332,6 +437,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "offsets_with_sell_candidates": sell_cand_offsets,
         "offsets_with_final_sell": sell_final_offsets,
         "recommendation": recommendation,
+        "validated_alpha_pockets": validated_pockets,
+        "audit_trades": all_audit_trades,
     }
 
 
