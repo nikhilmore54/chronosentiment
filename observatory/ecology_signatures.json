@@ -1,0 +1,47 @@
+{
+    "A: Crypto 1m (training)": {
+        "n_samples": 1012,
+        "vol_persistence": 0.8870967550468049,
+        "bias_persistence": 0.94317988026595,
+        "smoothness_stability": 0.17346925138784983,
+        "mean_compression": 1.1585266798418974,
+        "mean_conv": 1.0500000000000003,
+        "mean_resilience": 0.5893624505928854
+    },
+    "B: Crypto 5m (same regime)": {
+        "n_samples": 284,
+        "vol_persistence": 0.6723165864046605,
+        "bias_persistence": 0.7665703499307587,
+        "smoothness_stability": 0.15239880409955325,
+        "mean_compression": 1.9822922535211267,
+        "mean_conv": 1.0500000000000003,
+        "mean_resilience": 0.6379795774647887
+    },
+    "C: Crypto 5m (OOS regime)": {
+        "n_samples": 854,
+        "vol_persistence": 0.8931602941481289,
+        "bias_persistence": 0.8088607635083971,
+        "smoothness_stability": 0.1908503186344649,
+        "mean_compression": 2.0728631147540986,
+        "mean_conv": 1.0500000000000003,
+        "mean_resilience": 0.6934861826697892
+    },
+    "D: Equities 5m": {
+        "n_samples": 169,
+        "vol_persistence": 0.794351622521487,
+        "bias_persistence": 0.781821221201899,
+        "smoothness_stability": 0.16177071672508675,
+        "mean_compression": 2.188325443786982,
+        "mean_conv": 1.0500000000000003,
+        "mean_resilience": 0.6531680473372782
+    },
+    "E: Commodities 5m": {
+        "n_samples": 984,
+        "vol_persistence": 0.7996944584899379,
+        "bias_persistence": 0.6089274357112276,
+        "smoothness_stability": 0.19792619288542715,
+        "mean_compression": 1.7458245934959349,
+        "mean_conv": 1.0500000000000003,
+        "mean_resilience": 0.5948002032520325
+    }
+}
