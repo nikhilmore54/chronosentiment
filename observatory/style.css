@@ -608,6 +608,209 @@ body::before {
     white-space: nowrap;
 }
 
+/* ===== SECTION QUESTIONS ===== */
+.section-question {
+    font-size: 1.15rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: var(--space-xl);
+    padding: var(--space-md) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    letter-spacing: 0.01em;
+}
+
+/* ===== TRADE REPLAY ===== */
+.replay-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.replay-btn {
+    padding: 8px 20px;
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-sm);
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--accent-blue);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.replay-btn:hover {
+    background: rgba(59, 130, 246, 0.18);
+    transform: translateY(-1px);
+}
+
+.replay-counter {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-width: 120px;
+    text-align: center;
+}
+
+.replay-filters {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.replay-filter {
+    padding: 5px 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.replay-filter.active {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-blue);
+    border-color: var(--border-active);
+}
+
+.replay-card {
+    padding: var(--space-xl);
+}
+
+.replay-header {
+    margin-bottom: var(--space-lg);
+}
+
+.replay-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: var(--space-xs);
+}
+
+.replay-header .replay-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Timeline */
+.replay-timeline {
+    position: relative;
+    padding: var(--space-lg) 0;
+    margin-bottom: var(--space-lg);
+}
+
+.timeline-track {
+    position: relative;
+    height: 4px;
+    background: rgba(148, 163, 184, 0.15);
+    border-radius: 2px;
+    margin: var(--space-xl) 0;
+}
+
+.timeline-fill {
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.timeline-events {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.timeline-event {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid var(--accent-blue);
+    animation: slideIn 0.4s ease;
+}
+
+.timeline-event:nth-child(1) { animation-delay: 0.05s; }
+.timeline-event:nth-child(2) { animation-delay: 0.1s; }
+.timeline-event:nth-child(3) { animation-delay: 0.15s; }
+.timeline-event:nth-child(4) { animation-delay: 0.2s; }
+.timeline-event:nth-child(5) { animation-delay: 0.25s; }
+.timeline-event:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.timeline-event.genesis { border-left-color: var(--accent-amber); }
+.timeline-event.topology { border-left-color: var(--accent-purple); }
+.timeline-event.entry { border-left-color: var(--accent-cyan); }
+.timeline-event.outcome-win { border-left-color: var(--accent-green); }
+.timeline-event.outcome-loss { border-left-color: var(--accent-red); }
+.timeline-event.warning { border-left-color: var(--accent-rose); }
+
+.event-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+.event-body { flex: 1; }
+.event-title { font-weight: 600; font-size: 0.82rem; margin-bottom: 2px; }
+.event-detail { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* Metrics grid inside replay */
+.replay-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+}
+
+.replay-metric {
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+}
+
+.replay-metric-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.replay-metric-value {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Interpretation panel */
+.replay-interpretation {
+    padding: var(--space-lg);
+    background: rgba(139, 92, 246, 0.05);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.replay-interpretation h4 {
+    font-size: 0.75rem;
+    color: var(--accent-purple);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-sm);
+}
+
+.replay-interpretation p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
 /* ===== FOOTER ===== */
 .footer {
     text-align: center;

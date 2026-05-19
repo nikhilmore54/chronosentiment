@@ -27,6 +27,7 @@ function initTabs() {
                     if (id === 'smoothness') renderSmoothness(DATA);
                     if (id === 'genesis') renderGenesis(DATA);
                     if (id === 'atlas') renderAtlas(DATA);
+                    if (id === 'replay') renderReplay(DATA);
                 }, 50);
             }
         });
@@ -343,4 +344,111 @@ function renderAtlas(data) {
     });
     html += '</tbody></table>';
     table.innerHTML = html;
+}
+
+// === RENDER: TRADE REPLAY ===
+let replayIndex = 0;
+let replayFilter = 'all';
+let replayTrades = [];
+
+function renderReplay(data) {
+    replayTrades = data.trades.filter(t => t.eff !== undefined);
+    document.querySelectorAll('.replay-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.replay-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            replayFilter = btn.dataset.filter;
+            replayIndex = 0;
+            updateReplayView();
+        });
+    });
+    document.getElementById('replay-prev').addEventListener('click', () => { replayIndex = Math.max(0, replayIndex - 1); updateReplayView(); });
+    document.getElementById('replay-next').addEventListener('click', () => { const f = getFilteredTrades(); replayIndex = Math.min(f.length - 1, replayIndex + 1); updateReplayView(); });
+    updateReplayView();
+}
+
+function getFilteredTrades() {
+    if (replayFilter === 'all') return replayTrades;
+    return replayTrades.filter(t => t.exit_type === replayFilter);
+}
+
+function updateReplayView() {
+    const filtered = getFilteredTrades();
+    if (!filtered.length) return;
+    const t = filtered[replayIndex];
+    document.getElementById('replay-counter').textContent = `Trade ${replayIndex + 1} / ${filtered.length}`;
+
+    const exitColor = EXIT_COLORS[t.exit_type] || '#6b7280';
+    document.getElementById('replay-header').innerHTML = `
+        <h2 style="color:${exitColor}">#${t.rec_id} · ${t.sym} · ${t.dir}</h2>
+        <div class="replay-sub">Exit: <span class="exit-badge ${t.exit_type}">${t.exit_type}</span> · Duration: ${t.duration} bars · PnL: <span style="color:${pnlColor(t.pnl_bps)}">${t.pnl_bps > 0 ? '+' : ''}${t.pnl_bps.toFixed(1)} bps</span></div>`;
+
+    const events = buildLifecycleEvents(t);
+    document.getElementById('replay-timeline').innerHTML = `<div class="timeline-events">${events.map(e =>
+        `<div class="timeline-event ${e.cls}"><div class="event-icon">${e.icon}</div><div class="event-body"><div class="event-title">${e.title}</div><div class="event-detail">${e.detail}</div></div></div>`
+    ).join('')}</div>`;
+
+    const m = (label, val, color) => `<div class="replay-metric"><div class="replay-metric-label">${label}</div><div class="replay-metric-value" style="color:${color || 'inherit'}">${val}</div></div>`;
+    document.getElementById('replay-metrics').innerHTML = [
+        m('Efficiency', (t.eff||0).toFixed(3), t.eff > 0.4 ? '#ef4444' : '#10b981'),
+        m('Resilience', (t.res||0).toFixed(3)),
+        m('Compression', (t.comp||1).toFixed(3), (t.comp||1) < 0.8 ? '#10b981' : ''),
+        m('Pre-Bias', (t.bias||0).toFixed(3), Math.abs(t.bias||0) > 0.35 ? '#ef4444' : '#10b981'),
+        m('Elasticity Age', (t.age||0) + ' bars', (t.age||0) > 10 ? '#ef4444' : '#10b981'),
+        m('Fertility', (t.fert||1).toFixed(3)),
+    ].join('');
+
+    document.getElementById('replay-interpretation').innerHTML = `<h4>🧠 Ecological Interpretation</h4><p>${buildInterpretation(t)}</p>`;
+}
+
+function buildLifecycleEvents(t) {
+    const events = [];
+    const compLabel = (t.comp||1) < 0.8 ? 'compressed (favorable)' : (t.comp||1) > 1.3 ? 'expanding (late)' : 'stable';
+    events.push({ icon: '📦', cls: 'genesis', title: 'Pre-Entry Environment: ' + compLabel, detail: `Compression ratio: ${(t.comp||1).toFixed(3)} · Pre-range: ${((t.range||0)*100).toFixed(2)}% · Bias: ${(t.bias||0).toFixed(3)}` });
+
+    const biasAbs = Math.abs(t.bias || 0);
+    if (biasAbs < 0.15) events.push({ icon: '🎯', cls: 'genesis', title: 'Directional Ambiguity Preserved', detail: `Pre-bias magnitude: ${biasAbs.toFixed(3)} — asymmetry NOT yet consumed` });
+    else if (biasAbs > 0.35) events.push({ icon: '⚠️', cls: 'warning', title: 'Direction Already Established', detail: `Pre-bias magnitude: ${biasAbs.toFixed(3)} — asymmetry partially consumed before entry` });
+    else events.push({ icon: '📐', cls: 'topology', title: 'Mild Directional Trend Forming', detail: `Pre-bias magnitude: ${biasAbs.toFixed(3)} — transitional zone` });
+
+    const eff = t.eff || 0;
+    const topLabel = eff > 0.5 ? 'Terminal Smoothness (TRAP)' : eff > 0.38 ? 'Transitional' : eff > 0.25 ? 'Elastic (Fertile Zone)' : 'Chaotic';
+    events.push({ icon: '🗺️', cls: 'topology', title: 'Topology: ' + topLabel, detail: `Efficiency: ${eff.toFixed(3)} · Density: ${(t.den||0).toFixed(3)} · Resilience: ${(t.res||0).toFixed(3)}` });
+
+    const age = t.age || 0;
+    const decay = 1.0 / (1.0 + Math.exp((age - 10) / 2.5));
+    if (age <= 8) events.push({ icon: '🌱', cls: 'entry', title: `Fresh Elasticity (${age} bars since reload)`, detail: `Freshness decay: ${decay.toFixed(3)} — reload energy still active` });
+    else if (age <= 13) events.push({ icon: '⏳', cls: 'topology', title: `Transitional Age (${age} bars since reload)`, detail: `Freshness decay: ${decay.toFixed(3)} — approaching exhaustion boundary` });
+    else events.push({ icon: '💀', cls: 'warning', title: `Stale Elasticity (${age} bars since reload)`, detail: `Freshness decay: ${decay.toFixed(3)} — reload energy likely exhausted` });
+
+    events.push({ icon: '▶️', cls: 'entry', title: `Entry at ${t.entry_price.toFixed(2)}`, detail: `${t.dir} · TP: ${t.tp.toFixed(2)} · SL: ${t.sl.toFixed(2)} · Fertility: ${(t.fert||1).toFixed(3)}` });
+
+    const outcomeClass = t.pnl_bps > 0 ? 'outcome-win' : 'outcome-loss';
+    events.push({ icon: t.pnl_bps > 0 ? '✅' : '❌', cls: outcomeClass, title: `${t.exit_type} at ${t.exit_price.toFixed(2)} after ${t.duration} bars`, detail: `PnL: ${t.pnl_bps > 0 ? '+' : ''}${t.pnl_bps.toFixed(1)} bps` });
+    return events;
+}
+
+function buildInterpretation(t) {
+    const parts = [];
+    const eff = t.eff || 0, age = t.age || 0, comp = t.comp || 1, bias = Math.abs(t.bias || 0);
+    if (t.exit_type === 'TakeProfit') {
+        parts.push('This trade captured convex asymmetry successfully.');
+        if (comp < 0.9) parts.push('The pre-entry environment was compressed — the entry caught a volatility expansion at its origin.');
+        if (bias < 0.2) parts.push('No prior directional trend existed, so the full asymmetry was available for capture.');
+        if (age < 12) parts.push('Entry timing was fresh relative to the liquidity reload — elastic continuation energy was still active.');
+    } else if (t.exit_type === 'TrailingStop') {
+        parts.push('The trailing stop captured partial continuation before the propagation reversed.');
+        if (eff > 0.4) parts.push('The topology was borderline smooth — some continuation was real but ultimately limited.');
+        if (age > 12) parts.push('Entry may have been slightly late in the elasticity lifecycle, limiting upside capture.');
+    } else if (t.exit_type === 'Mortality') {
+        parts.push('The trade expired without reaching either profit target or stop loss.');
+        if (age > 13) parts.push(`Stale elasticity: entered ${age} bars after reload. The continuation energy was likely already consumed.`);
+        if (bias > 0.35) parts.push('A moderate-to-strong directional trend already existed pre-entry — the executable asymmetry had partially dissipated.');
+        if (comp > 1.2) parts.push('The pre-entry environment was already expanding — the system entered mid-expansion rather than catching the compression release.');
+        if (eff > 0.4) parts.push('The Smoothness Trap may apply: high directional efficiency signaled terminal exhaustion, not durable continuation.');
+    } else if (t.exit_type === 'StopLoss') {
+        parts.push('Catastrophic reversal — the propagation was a structural fakeout.');
+        if (eff > 0.5) parts.push('Extreme smoothness before entry strongly suggests this was a terminal propagation that reversed violently.');
+    }
+    return parts.join(' ') || 'Insufficient genesis data for detailed interpretation.';
 }

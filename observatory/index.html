@@ -47,6 +47,7 @@
         <button class="tab" data-tab="smoothness" id="tab-smoothness">Smoothness Trap</button>
         <button class="tab" data-tab="genesis" id="tab-genesis">Edge Genesis</button>
         <button class="tab" data-tab="atlas" id="tab-atlas">Toxicity Atlas</button>
+        <button class="tab" data-tab="replay" id="tab-replay">Trade Replay</button>
     </nav>
 
     <!-- Tab Content -->
@@ -54,6 +55,7 @@
 
         <!-- Tab 1: Execution Ecology Overview -->
         <section class="tab-content active" id="panel-ecology">
+            <div class="section-question">What kinds of propagation survive execution?</div>
             <div class="grid-4">
                 <div class="card metric-card" id="mc-trades">
                     <div class="metric-label">Total Trades</div>
@@ -143,6 +145,7 @@
 
         <!-- Tab 2: Smoothness Trap -->
         <section class="tab-content" id="panel-smoothness">
+            <div class="section-question">Why do the cleanest breakouts fail?</div>
             <div class="card discovery-card">
                 <div class="discovery-badge">KEY DISCOVERY</div>
                 <h2 class="discovery-title">The Smoothness Trap</h2>
@@ -173,6 +176,7 @@
 
         <!-- Tab 3: Edge Genesis -->
         <section class="tab-content" id="panel-genesis">
+            <div class="section-question">Where is asymmetry born before propagation?</div>
             <div class="card discovery-card genesis-discovery">
                 <div class="discovery-badge">FRONTIER</div>
                 <h2 class="discovery-title">Edge Genesis Observatory</h2>
@@ -225,6 +229,7 @@
 
         <!-- Tab 4: Toxicity Atlas -->
         <section class="tab-content" id="panel-atlas">
+            <div class="section-question">When does elasticity become stale?</div>
             <div class="card discovery-card toxicity-discovery">
                 <div class="discovery-badge">DIAGNOSTIC</div>
                 <h2 class="discovery-title">Expectancy Toxicity Atlas</h2>
@@ -251,6 +256,32 @@
             <div class="card">
                 <h3 class="card-title">Toxicity Clusters</h3>
                 <div class="table-container" id="toxicity-table"></div>
+            </div>
+        </section>
+
+        <!-- Tab 5: Trade Replay -->
+        <section class="tab-content" id="panel-replay">
+            <div class="section-question">How does a trade's lifecycle unfold from genesis to exit?</div>
+            <div class="card">
+                <div class="replay-controls">
+                    <button class="replay-btn" id="replay-prev">◀ Prev</button>
+                    <span class="replay-counter" id="replay-counter">Trade 1 / —</span>
+                    <button class="replay-btn" id="replay-next">Next ▶</button>
+                    <div class="replay-filters">
+                        <button class="replay-filter active" data-filter="all">All</button>
+                        <button class="replay-filter" data-filter="TakeProfit">Winners</button>
+                        <button class="replay-filter" data-filter="Mortality">Mortality</button>
+                        <button class="replay-filter" data-filter="StopLoss">StopLoss</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card replay-card">
+                <div class="replay-header" id="replay-header"></div>
+                <div class="replay-timeline" id="replay-timeline"></div>
+                <div class="grid-2">
+                    <div class="replay-metrics" id="replay-metrics"></div>
+                    <div class="replay-interpretation" id="replay-interpretation"></div>
+                </div>
             </div>
         </section>
 
