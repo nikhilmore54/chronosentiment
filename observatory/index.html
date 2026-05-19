@@ -48,6 +48,7 @@
         <button class="tab" data-tab="genesis" id="tab-genesis">Edge Genesis</button>
         <button class="tab" data-tab="atlas" id="tab-atlas">Toxicity Atlas</button>
         <button class="tab" data-tab="replay" id="tab-replay">Trade Replay</button>
+        <button class="tab tab-highlight" data-tab="comparative" id="tab-comparative">Comparative Ecology</button>
     </nav>
 
     <!-- Tab Content -->
@@ -282,6 +283,68 @@
                     <div class="replay-metrics" id="replay-metrics"></div>
                     <div class="replay-interpretation" id="replay-interpretation"></div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Tab 6: Comparative Ecology -->
+        <section class="tab-content" id="panel-comparative">
+            <div class="section-question">Which propagation laws survive scale, regime, and ecology changes?</div>
+
+            <!-- Hero finding -->
+            <div class="card comparative-hero">
+                <div class="comparative-hero-grid">
+                    <div class="hero-ecology" data-type="liquidity">
+                        <div class="ecology-icon">💧</div>
+                        <div class="ecology-name">Liquidity-Flow Ecology</div>
+                        <div class="ecology-assets">Crypto · Equities</div>
+                        <div class="ecology-traits">
+                            <span class="trait positive">Bias toxic</span>
+                            <span class="trait positive">Age decays</span>
+                            <span class="trait scale">Trap at 1m</span>
+                        </div>
+                        <div class="ecology-desc">Asymmetry is consumed by participation. Once direction is established, the executable edge dissipates.</div>
+                    </div>
+                    <div class="hero-vs">vs</div>
+                    <div class="hero-ecology" data-type="event">
+                        <div class="ecology-icon">⚡</div>
+                        <div class="ecology-name">Event-Driven Ecology</div>
+                        <div class="ecology-assets">Commodities</div>
+                        <div class="ecology-traits">
+                            <span class="trait inverted">Bias amplifies</span>
+                            <span class="trait inverted">Age persists</span>
+                            <span class="trait inverted">No trap</span>
+                        </div>
+                        <div class="ecology-desc">Asymmetry is amplified by narrative persistence. Established direction signals information, not exhaustion.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Law survival matrix -->
+            <div class="card">
+                <h3 class="card-title">Law Survival Matrix</h3>
+                <p class="card-subtitle">5 replay conditions × 3 ecological laws — architecture FROZEN throughout</p>
+                <div class="table-container" id="survival-matrix"></div>
+            </div>
+
+            <!-- Scale vs regime disentanglement -->
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Smoothness Trap: Resolution Dependency</h3>
+                    <p class="card-subtitle">Same regime, same assets — does 1m→5m kill the trap?</p>
+                    <div class="chart-container" id="trap-resolution-chart"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Pre-Bias Law: Cross-Ecology Survival</h3>
+                    <p class="card-subtitle">Low bias PnL vs high bias PnL across all conditions</p>
+                    <div class="chart-container" id="bias-crossecology-chart"></div>
+                </div>
+            </div>
+
+            <!-- Ecology profiles -->
+            <div class="card">
+                <h3 class="card-title">Propagation Ecology Profiles</h3>
+                <p class="card-subtitle">Win rate, expectancy, and exit composition across all tested ecologies</p>
+                <div class="table-container" id="ecology-profiles"></div>
             </div>
         </section>
 

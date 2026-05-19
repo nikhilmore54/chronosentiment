@@ -28,6 +28,7 @@ function initTabs() {
                     if (id === 'genesis') renderGenesis(DATA);
                     if (id === 'atlas') renderAtlas(DATA);
                     if (id === 'replay') renderReplay(DATA);
+                    if (id === 'comparative') renderComparative();
                 }, 50);
             }
         });
@@ -451,4 +452,307 @@ function buildInterpretation(t) {
         if (eff > 0.5) parts.push('Extreme smoothness before entry strongly suggests this was a terminal propagation that reversed violently.');
     }
     return parts.join(' ') || 'Insufficient genesis data for detailed interpretation.';
+}
+
+// === RENDER: COMPARATIVE ECOLOGY ===
+async function renderComparative() {
+    // Load all datasets
+    const files = {
+        'A': 'data.json',
+        'B': 'training_5m_data.json',
+        'C': 'oos_data.json',
+        'D': 'xasset_equities.json',
+        'E': 'xasset_commodities.json',
+    };
+    const labels = {
+        'A': 'Crypto 1m · Training',
+        'B': 'Crypto 5m · Same Regime',
+        'C': 'Crypto 5m · OOS Regime',
+        'D': 'Equities 5m · SPY/QQQ/NVDA',
+        'E': 'Commodities 5m · Gold/Oil/Silver',
+    };
+    const ecologyClass = { A: 'liquidity', B: 'liquidity', C: 'liquidity', D: 'liquidity', E: 'event' };
+    const condColors = { A: 'var(--accent-cyan)', B: 'var(--accent-purple)', C: 'var(--accent-blue)', D: 'var(--accent-green)', E: 'var(--accent-amber)' };
+
+    const datasets = {};
+    for (const [key, file] of Object.entries(files)) {
+        try {
+            const r = await fetch(file);
+            datasets[key] = await r.json();
+        } catch(e) { datasets[key] = null; }
+    }
+
+    const avg = (arr, k) => arr.length ? arr.reduce((s,t) => s + (t[k]||0), 0) / arr.length : null;
+    const wr  = arr => arr.length ? arr.filter(t => t.pnl_bps > 0).length / arr.length * 100 : null;
+
+    function testBias(trades) {
+        const low  = trades.filter(t => 'bias' in t && Math.abs(t.bias) < 0.20);
+        const high = trades.filter(t => 'bias' in t && Math.abs(t.bias) > 0.35);
+        if (low.length < 3 || high.length < 3) return null;
+        const lp = avg(low, 'pnl_bps'), hp = avg(high, 'pnl_bps');
+        return { holds: lp > hp, lowPnl: lp, highPnl: hp, lowWR: wr(low), highWR: wr(high), nLow: low.length, nHigh: high.length };
+    }
+
+    function testAge(trades) {
+        const fresh = trades.filter(t => 'age' in t && t.age <= 10);
+        const stale = trades.filter(t => 'age' in t && t.age >  15);
+        if (fresh.length < 3 || stale.length < 3) return null;
+        const fp = avg(fresh, 'pnl_bps'), sp = avg(stale, 'pnl_bps');
+        return { holds: fp > sp, freshPnl: fp, stalePnl: sp, nFresh: fresh.length, nStale: stale.length };
+    }
+
+    function testTrap(trades) {
+        const byExit = {};
+        trades.forEach(t => { (byExit[t.exit_type] = byExit[t.exit_type]||[]).push(t); });
+        const effs = ['TakeProfit','TrailingStop','Mortality','StopLoss'].map(e => byExit[e] ? avg(byExit[e], 'eff') : null).filter(v => v !== null);
+        if (effs.length < 3) return null;
+        return { holds: effs.every((v,i) => i===0 || v >= effs[i-1]), effs };
+    }
+
+    // === SURVIVAL MATRIX ===
+    // Reframed: shows ACTIVATION CONDITIONS, not just pass/fail
+    const cell = (result, key) => {
+        if (result === null) return `<span class="survival-cell-na">—</span>`;
+        if (result.holds === true)  return `<span class="survival-cell-pass">✅ Active</span>`;
+        if (result.holds === false) return `<span class="survival-cell-fail">⊘ Inverted</span>`;
+        return `<span class="survival-cell-weak">⚠</span>`;
+    };
+
+    const activationNotes = {
+        'Smoothness Trap':     'Active at 1m microstructure granularity in liquidity-flow markets only. Collapses under temporal aggregation.',
+        'Pre-Bias Toxicity':   'Active in liquidity-flow markets (crypto OOS + equities). Inverts in event-driven markets and some 5m crypto sub-regimes.',
+        'Elasticity Age Decay':'Active in liquidity-flow markets. Inverts in event-driven (commodity) ecology where narrative momentum persists.',
+    };
+
+    let matrixHTML = `<table class="data-table">
+        <thead><tr>
+            <th>Replay Condition</th><th>Ecology Class</th><th>N</th>
+            <th>Smoothness Trap</th><th>Pre-Bias Toxicity</th><th>Age Decay</th>
+            <th>Expectancy</th>
+        </tr></thead><tbody>`;
+
+    const trapResults = {}, biasResults = {}, ageResults = {};
+
+    for (const [key, data] of Object.entries(datasets)) {
+        if (!data || !data.trades || !data.trades.length) continue;
+        const trades = data.trades;
+        const s = data.summary;
+        const bias = testBias(trades), age = testAge(trades), trap = testTrap(trades);
+        trapResults[key] = trap; biasResults[key] = bias; ageResults[key] = age;
+
+        const ecoCls = ecologyClass[key] === 'liquidity'
+            ? '<span style="color:var(--accent-cyan);font-size:0.72rem">💧 Liquidity-flow</span>'
+            : '<span style="color:var(--accent-amber);font-size:0.72rem">⚡ Event-driven</span>';
+
+        matrixHTML += `<tr>
+            <td><span style="color:${condColors[key]};font-weight:600">${key}</span> <span style="color:var(--text-muted);font-size:0.75rem">${labels[key]}</span></td>
+            <td>${ecoCls}</td>
+            <td>${s.total_trades}</td>
+            <td>${cell(trap)}</td>
+            <td>${cell(bias)}</td>
+            <td>${cell(age)}</td>
+            <td class="${s.expectancy_bps > 0 ? 'pnl-positive':'pnl-negative'}">${s.expectancy_bps > 0 ? '+':''}${s.expectancy_bps} bps</td>
+        </tr>`;
+    }
+    matrixHTML += '</tbody></table>';
+
+    // Activation condition notes
+    matrixHTML += '<div style="margin-top:var(--space-lg);display:grid;gap:var(--space-sm)">';
+    for (const [law, note] of Object.entries(activationNotes)) {
+        matrixHTML += `<div style="padding:var(--space-sm) var(--space-md);background:rgba(255,255,255,0.02);border-radius:var(--radius-sm);border-left:3px solid var(--border-active)">
+            <span style="font-size:0.7rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em">${law}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);margin-left:var(--space-sm)">${note}</span>
+        </div>`;
+    }
+    matrixHTML += '</div>';
+    document.getElementById('survival-matrix').innerHTML = matrixHTML;
+
+    // === SMOOTHNESS TRAP RESOLUTION CHART (A vs B: same regime, 1m vs 5m) ===
+    {
+        const conditions = ['A','B','C','D','E'].filter(k => datasets[k]?.trades?.length);
+        const chartData = conditions.map(k => {
+            const trades = datasets[k].trades;
+            const byExit = {};
+            trades.forEach(t => { (byExit[t.exit_type] = byExit[t.exit_type]||[]).push(t); });
+            return {
+                key: k, label: labels[k],
+                tp:   byExit['TakeProfit']   ? avg(byExit['TakeProfit'],   'eff') : null,
+                sl:   byExit['StopLoss']     ? avg(byExit['StopLoss'],     'eff') : null,
+                mort: byExit['Mortality']    ? avg(byExit['Mortality'],    'eff') : null,
+                color: condColors[k],
+            };
+        });
+
+        const container = document.getElementById('trap-resolution-chart');
+        const canvas = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const w = container.clientWidth, h = container.clientHeight;
+        canvas.width = w * dpr; canvas.height = h * dpr;
+        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const pad = { top: 20, right: 20, bottom: 60, left: 50 };
+        const pw = w - pad.left - pad.right;
+        const ph = h - pad.top - pad.bottom;
+        const groups = ['TakeProfit', 'Mortality', 'StopLoss'];
+        const nConds = chartData.length;
+        const groupW = pw / groups.length;
+        const barW = Math.min(18, groupW / (nConds + 1));
+
+        ctx.strokeStyle = 'rgba(148,163,184,0.08)'; ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + (ph / 4) * i;
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+pw, y); ctx.stroke();
+        }
+
+        const yMax = 0.75, yMin = 0.1;
+        const toY = v => v === null ? null : pad.top + ph - ((v - yMin)/(yMax - yMin)) * ph;
+
+        groups.forEach((exit, gi) => {
+            const gx = pad.left + gi * groupW + groupW * 0.15;
+
+            // Group label
+            ctx.fillStyle = '#64748b'; ctx.font = '9px Inter'; ctx.textAlign = 'center';
+            ctx.fillText(exit, gx + (nConds * barW)/2, h - 8);
+
+            chartData.forEach((cd, ci) => {
+                const effs = { TakeProfit: cd.tp, Mortality: cd.mort, StopLoss: cd.sl };
+                const val = effs[exit];
+                if (val === null) return;
+                const x = gx + ci * barW;
+                const y = toY(val);
+                const barH = pad.top + ph - y;
+
+                ctx.fillStyle = cd.color + 'aa';
+                ctx.fillRect(x, y, barW - 2, barH);
+                ctx.fillStyle = cd.color;
+                ctx.fillRect(x, y, barW - 2, 2);
+
+                // Key label
+                ctx.fillStyle = cd.color; ctx.font = 'bold 8px Inter'; ctx.textAlign = 'center';
+                ctx.fillText(cd.key, x + (barW-2)/2, pad.top + ph + 14);
+            });
+        });
+
+        // Y axis
+        ctx.fillStyle = '#64748b'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = yMin + (yMax - yMin) / 4 * i;
+            ctx.fillText(v.toFixed(2), pad.left - 6, pad.top + ph - (ph/4)*i + 3);
+        }
+        ctx.save(); ctx.translate(12, pad.top + ph/2);
+        ctx.rotate(-Math.PI/2); ctx.fillStyle = '#64748b'; ctx.font = '10px Inter';
+        ctx.textAlign = 'center'; ctx.fillText('Avg Efficiency', 0, 0); ctx.restore();
+    }
+
+    // === PRE-BIAS CROSS-ECOLOGY CHART ===
+    {
+        const container = document.getElementById('bias-crossecology-chart');
+        const canvas = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const w = container.clientWidth, h = container.clientHeight;
+        canvas.width = w * dpr; canvas.height = h * dpr;
+        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const pad = { top: 20, right: 20, bottom: 60, left: 60 };
+        const pw = w - pad.left - pad.right;
+        const ph = h - pad.top - pad.bottom;
+
+        const items = Object.entries(biasResults)
+            .filter(([k, r]) => r !== null)
+            .map(([k, r]) => ({ key: k, lowPnl: r.lowPnl, highPnl: r.highPnl, color: condColors[k] }));
+
+        const allVals = items.flatMap(i => [i.lowPnl, i.highPnl]);
+        const yMin = Math.min(...allVals) * 1.2, yMax = Math.max(...allVals) * 1.2;
+        const yRange = yMax - yMin || 1;
+
+        // Zero line
+        const zy = pad.top + ph - ((0 - yMin)/yRange)*ph;
+        ctx.strokeStyle = 'rgba(148,163,184,0.2)'; ctx.setLineDash([4,4]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.left, zy); ctx.lineTo(pad.left+pw, zy); ctx.stroke();
+        ctx.setLineDash([]);
+
+        const slotW = pw / items.length;
+        const barW = Math.min(24, slotW * 0.3);
+
+        items.forEach((item, i) => {
+            const cx = pad.left + i * slotW + slotW / 2;
+
+            // Low bias bar
+            const ly = pad.top + ph - ((item.lowPnl - yMin)/yRange)*ph;
+            const lh = Math.abs(pad.top + ph - ((0-yMin)/yRange)*ph - ly);
+            ctx.fillStyle = '#10b981aa';
+            if (item.lowPnl >= 0) ctx.fillRect(cx - barW - 2, ly, barW, lh);
+            else ctx.fillRect(cx - barW - 2, zy, barW, Math.abs(ly - zy));
+
+            // High bias bar
+            const hy = pad.top + ph - ((item.highPnl - yMin)/yRange)*ph;
+            ctx.fillStyle = '#ef4444aa';
+            if (item.highPnl >= 0) ctx.fillRect(cx + 2, hy, barW, Math.abs(zy - hy));
+            else ctx.fillRect(cx + 2, zy, barW, Math.abs(hy - zy));
+
+            // Condition label
+            ctx.fillStyle = item.color; ctx.font = 'bold 9px Inter'; ctx.textAlign = 'center';
+            ctx.fillText(item.key, cx, h - 28);
+            ctx.fillStyle = '#64748b'; ctx.font = '8px Inter';
+            ctx.fillText(labels[item.key].split('·')[0].trim(), cx, h - 16);
+
+            // Δ arrow if direction is clear
+            const delta = item.lowPnl - item.highPnl;
+            const sym = delta > 0 ? '↑ Low wins' : '↓ High wins';
+            const symColor = delta > 0 ? '#10b981' : '#ef4444';
+            ctx.fillStyle = symColor; ctx.font = 'bold 7px Inter';
+            ctx.fillText(sym, cx, pad.top + 12);
+        });
+
+        // Y axis
+        ctx.fillStyle = '#64748b'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = yMin + yRange/4*i;
+            ctx.fillText(v.toFixed(1), pad.left-4, pad.top + ph - (ph/4)*i + 3);
+        }
+        ctx.save(); ctx.translate(12, pad.top + ph/2); ctx.rotate(-Math.PI/2);
+        ctx.fillStyle = '#64748b'; ctx.font = '10px Inter'; ctx.textAlign = 'center';
+        ctx.fillText('Avg PnL (bps)', 0, 0); ctx.restore();
+
+        // Legend
+        const legend = document.createElement('div');
+        legend.className = 'scatter-legend';
+        legend.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Low bias (&lt;0.2)</div><div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>High bias (&gt;0.35)</div>`;
+        container.appendChild(legend);
+    }
+
+    // === ECOLOGY PROFILES TABLE ===
+    const profileOrder = ['A','B','C','D','E'];
+    let profHTML = `<table class="data-table"><thead><tr>
+        <th>Condition</th><th>N</th><th>Win Rate</th><th>Expectancy</th>
+        <th>Mortality %</th><th>TP %</th><th>ERR</th><th>Ecology</th>
+    </tr></thead><tbody>`;
+    for (const key of profileOrder) {
+        const data = datasets[key];
+        if (!data?.trades?.length) continue;
+        const s = data.summary;
+        const ecoLabel = ecologyClass[key] === 'liquidity' ? '💧 Liquidity' : '⚡ Event';
+        const mort = ((s.exit_distribution?.Mortality||0)/s.total_trades*100).toFixed(0);
+        const tp   = ((s.exit_distribution?.TakeProfit||0)/s.total_trades*100).toFixed(0);
+        profHTML += `<tr>
+            <td><span style="color:${condColors[key]};font-weight:700">${key}</span>
+                <span style="color:var(--text-muted);font-size:0.72rem;margin-left:6px">${labels[key]}</span></td>
+            <td>${s.total_trades}</td>
+            <td style="color:${s.win_rate>40?'var(--accent-green)':'var(--text-secondary)'}">${s.win_rate}%</td>
+            <td class="${s.expectancy_bps>=0?'pnl-positive':'pnl-negative'}">${s.expectancy_bps>=0?'+':''}${s.expectancy_bps} bps</td>
+            <td>${mort}%</td><td>${tp}%</td>
+            <td style="color:${s.elastic_recovery_ratio>1?'var(--accent-green)':'var(--text-secondary)'}">${s.elastic_recovery_ratio}</td>
+            <td>${ecoLabel}</td>
+        </tr>`;
+    }
+    profHTML += '</tbody></table>';
+    document.getElementById('ecology-profiles').innerHTML = profHTML;
 }
