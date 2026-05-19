@@ -188,5 +188,23 @@
                 "2": 1.367298729553454
             }
         }
+    },
+    "trajectory_geometry": {
+        "real": {
+            "mean_angle": 116.51502799680068,
+            "std_angle": 52.869438186966356,
+            "sharp_turns_pct": 70.18779342723005,
+            "mean_velocity": 0.5325730554122098,
+            "mean_acceleration": 0.37683119082094035,
+            "recurrence_density_pct": 7.714742421268123
+        },
+        "ar1": {
+            "mean_angle": 90.42046099099973,
+            "std_angle": 53.306962713539164,
+            "sharp_turns_pct": 51.525821596244135,
+            "mean_velocity": 0.5156302464284718,
+            "mean_acceleration": 0.3007395270845953,
+            "recurrence_density_pct": 7.137328584649037
+        }
     }
 }
