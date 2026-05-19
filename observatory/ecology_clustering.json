@@ -206,5 +206,10 @@
             "mean_acceleration": 0.3007395270845953,
             "recurrence_density_pct": 7.137328584649037
         }
+    },
+    "transition_forecasting": {
+        "oos_global_accuracy": 0.3680297397769517,
+        "oos_escape_accuracy": 0.2786885245901639,
+        "k_neighbors": 15
     }
 }
