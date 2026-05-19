@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoSentiment — Propagation Ecology Observatory</title>
+    <meta name="description" content="Topology-aware propagation observatory for execution ecology research. Visualizing the Smoothness Trap, Edge Genesis, and elastic participation dynamics across crypto ecologies.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">◉</div>
+                <div>
+                    <h1>ChronoSentiment</h1>
+                    <p class="subtitle">Propagation Ecology Observatory</p>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="status-pill live">
+                <span class="pulse"></span>
+                Research Mode
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Trades</span>
+                <span class="stat-value" id="header-trades">—</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">Expectancy</span>
+                <span class="stat-value" id="header-exp">—</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-label">ERR</span>
+                <span class="stat-value" id="header-err">—</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+        <button class="tab active" data-tab="ecology" id="tab-ecology">Execution Ecology</button>
+        <button class="tab" data-tab="smoothness" id="tab-smoothness">Smoothness Trap</button>
+        <button class="tab" data-tab="genesis" id="tab-genesis">Edge Genesis</button>
+        <button class="tab" data-tab="atlas" id="tab-atlas">Toxicity Atlas</button>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="content">
+
+        <!-- Tab 1: Execution Ecology Overview -->
+        <section class="tab-content active" id="panel-ecology">
+            <div class="grid-4">
+                <div class="card metric-card" id="mc-trades">
+                    <div class="metric-label">Total Trades</div>
+                    <div class="metric-value" id="metric-trades">—</div>
+                    <div class="metric-sub" id="metric-winloss">— W / — L</div>
+                </div>
+                <div class="card metric-card" id="mc-winrate">
+                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-value" id="metric-winrate">—</div>
+                    <div class="metric-sub">Target: >35%</div>
+                </div>
+                <div class="card metric-card" id="mc-exp">
+                    <div class="metric-label">Expectancy</div>
+                    <div class="metric-value" id="metric-exp">—</div>
+                    <div class="metric-sub" id="metric-payoff">Avg W/L: —</div>
+                </div>
+                <div class="card metric-card" id="mc-err">
+                    <div class="metric-label">Elastic Recovery</div>
+                    <div class="metric-value" id="metric-err">—</div>
+                    <div class="metric-sub">Trail+TP / SL+Mort</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Exit Ecology Distribution</h3>
+                    <div class="chart-container" id="exit-ecology-chart"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Asset Performance</h3>
+                    <div class="chart-container" id="asset-chart"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Trade PnL Distribution</h3>
+                <div class="chart-container wide" id="pnl-distribution-chart"></div>
+            </div>
+
+            <!-- Architecture Stack -->
+            <div class="card">
+                <h3 class="card-title">Ecological Architecture Stack</h3>
+                <div class="arch-stack">
+                    <div class="arch-layer" data-layer="genesis">
+                        <div class="arch-icon">🧬</div>
+                        <div class="arch-info">
+                            <div class="arch-name">Edge Genesis</div>
+                            <div class="arch-desc">Pre-topology asymmetry sensing — compression release detection</div>
+                        </div>
+                        <div class="arch-status frontier">FRONTIER</div>
+                    </div>
+                    <div class="arch-layer" data-layer="freshness">
+                        <div class="arch-icon">⏳</div>
+                        <div class="arch-info">
+                            <div class="arch-name">Freshness Decay</div>
+                            <div class="arch-desc">Logistic temporal suppression of stale elasticity (center: 10 bars)</div>
+                        </div>
+                        <div class="arch-status active">ACTIVE</div>
+                    </div>
+                    <div class="arch-layer" data-layer="fertility">
+                        <div class="arch-icon">🌱</div>
+                        <div class="arch-info">
+                            <div class="arch-name">Fertility Governor</div>
+                            <div class="arch-desc">Bounded [0.85, 1.15] elastic re-expansion for survivable topologies</div>
+                        </div>
+                        <div class="arch-status active">ACTIVE</div>
+                    </div>
+                    <div class="arch-layer" data-layer="persistence">
+                        <div class="arch-icon">🛡️</div>
+                        <div class="arch-info">
+                            <div class="arch-name">Persistence Governor</div>
+                            <div class="arch-desc">Catastrophe suppression via excursion retrace + acceleration decay</div>
+                        </div>
+                        <div class="arch-status active">ACTIVE</div>
+                    </div>
+                    <div class="arch-layer" data-layer="topology">
+                        <div class="arch-icon">🗺️</div>
+                        <div class="arch-info">
+                            <div class="arch-name">Persistence Atlas</div>
+                            <div class="arch-desc">Directional Efficiency · Continuation Density · Resilience Score</div>
+                        </div>
+                        <div class="arch-status active">ACTIVE</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 2: Smoothness Trap -->
+        <section class="tab-content" id="panel-smoothness">
+            <div class="card discovery-card">
+                <div class="discovery-badge">KEY DISCOVERY</div>
+                <h2 class="discovery-title">The Smoothness Trap</h2>
+                <p class="discovery-text">
+                    High Directional Efficiency (smooth, linear propagation) correlates with <strong>terminal exhaustion</strong>, 
+                    not survivability. The market's most dangerous continuations are the ones that look safest.
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Directional Efficiency vs PnL</h3>
+                    <p class="card-subtitle">Each dot is a trade. Color = exit type.</p>
+                    <div class="chart-container" id="smoothness-scatter"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Efficiency by Exit Type</h3>
+                    <p class="card-subtitle">Monotonic inversion: smoother = more toxic</p>
+                    <div class="chart-container" id="efficiency-bars"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Topology Inversion Table</h3>
+                <div class="table-container" id="inversion-table"></div>
+            </div>
+        </section>
+
+        <!-- Tab 3: Edge Genesis -->
+        <section class="tab-content" id="panel-genesis">
+            <div class="card discovery-card genesis-discovery">
+                <div class="discovery-badge">FRONTIER</div>
+                <h2 class="discovery-title">Edge Genesis Observatory</h2>
+                <p class="discovery-text">
+                    Edge originates in <strong>compression release</strong>, not continuation. 
+                    Winners enter from quiet, compressed pre-entry environments where volatility suddenly expands.
+                    The system currently enters ~5 bars after peak asymmetry.
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Compression Release vs PnL</h3>
+                    <p class="card-subtitle">Compression Ratio: exec_vol / pre_vol</p>
+                    <div class="chart-container" id="compression-scatter"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Pre-Entry Bias vs PnL</h3>
+                    <p class="card-subtitle">Strong prior trend = consumed asymmetry</p>
+                    <div class="chart-container" id="bias-scatter"></div>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="card genesis-stat">
+                    <div class="genesis-icon">📦</div>
+                    <div class="genesis-label">TP Compression</div>
+                    <div class="genesis-value" id="gen-tp-comp">—</div>
+                    <div class="genesis-sub">Pre-entry was quiet</div>
+                </div>
+                <div class="card genesis-stat">
+                    <div class="genesis-icon">📐</div>
+                    <div class="genesis-label">TP Bias</div>
+                    <div class="genesis-value" id="gen-tp-bias">—</div>
+                    <div class="genesis-sub">No prior direction</div>
+                </div>
+                <div class="card genesis-stat">
+                    <div class="genesis-icon">⏱️</div>
+                    <div class="genesis-label">TP Age</div>
+                    <div class="genesis-value" id="gen-tp-age">—</div>
+                    <div class="genesis-sub">Entered freshest</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Genesis Conditions by Exit Type</h3>
+                <div class="table-container" id="genesis-table"></div>
+            </div>
+        </section>
+
+        <!-- Tab 4: Toxicity Atlas -->
+        <section class="tab-content" id="panel-atlas">
+            <div class="card discovery-card toxicity-discovery">
+                <div class="discovery-badge">DIAGNOSTIC</div>
+                <h2 class="discovery-title">Expectancy Toxicity Atlas</h2>
+                <p class="discovery-text">
+                    Remaining negative expectancy is <strong>temporally localized</strong>. 
+                    100% of false-elasticity mortalities occur at >10 bars since reload. 
+                    Zero fresh-elasticity failures observed.
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Elasticity Age vs PnL</h3>
+                    <p class="card-subtitle">Stale entries (>10 bars) cluster as toxic</p>
+                    <div class="chart-container" id="age-scatter"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Freshness Decay Curve</h3>
+                    <p class="card-subtitle">Logistic decay: 1/(1+exp((age-10)/2.5))</p>
+                    <div class="chart-container" id="decay-curve"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Toxicity Clusters</h3>
+                <div class="table-container" id="toxicity-table"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>ChronoSentiment Observatory · Propagation Ecology Research · BTC · ETH · SOL</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
