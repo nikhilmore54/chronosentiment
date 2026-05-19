@@ -3,6 +3,21 @@ use crate::market_adapter::Candle;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PropagationPhase {
+    Initiation,
+    Expansion,
+    Compression,
+    Decay,
+    ReAcceleration,
+}
+
+impl Default for PropagationPhase {
+    fn default() -> Self {
+        PropagationPhase::Initiation
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradeIntent {
     pub rec_id: u64,
@@ -63,6 +78,7 @@ pub enum ExitType {
     Halt,
     Manual,
     NoMomentum,
+    Mortality,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +139,34 @@ pub struct ActiveTrade {
     pub birth_timestamp: u64,
     pub intensity: f64,
     pub stability: f64,
+    #[serde(default)]
+    pub accumulated_absolute_move: f64,
+    #[serde(default)]
+    pub last_processed_price: f64,
+    #[serde(default)]
+    pub accumulated_adverse_move: f64,
+    #[serde(default)]
+    pub reversals_count: usize,
+    #[serde(default)]
+    pub last_direction_change: f64,
+    #[serde(default)]
+    pub propagation_phase: PropagationPhase,
+    #[serde(default)]
+    pub phase_history: Vec<PropagationPhase>,
+    #[serde(default)]
+    pub persistence_half_life: f64,
+    #[serde(default)]
+    pub initial_acc_factor: f64,
+    #[serde(default)]
+    pub hostility_expansion: f64,
+    #[serde(default)]
+    pub excursion_retrace: f64,
+    #[serde(default)]
+    pub acc_factor: f64,
+    #[serde(default)]
+    pub noise_to_signal: f64,
+    #[serde(default)]
+    pub volatility_elasticity: f64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -430,6 +474,24 @@ pub struct TradeObservation {
     pub regime: String,
     pub capture_efficiency: f64,
     pub porosity: AlphaPorosity,
+    #[serde(default)]
+    pub propagation_phase: PropagationPhase,
+    #[serde(default)]
+    pub phase_history: Vec<PropagationPhase>,
+    #[serde(default)]
+    pub persistence_half_life: f64,
+    #[serde(default)]
+    pub final_retrace_compression: f64,
+    #[serde(default)]
+    pub final_acceleration_decay: f64,
+    #[serde(default)]
+    pub final_hostility: f64,
+    #[serde(default)]
+    pub propagation_age: usize,
+    #[serde(default)]
+    pub is_mortality_exit: bool,
+    #[serde(default)]
+    pub position_size: f64,
 }
 
 pub fn apply_slippage(price: f64, is_buy: bool, vol_bps: f64) -> f64 {
@@ -448,7 +510,7 @@ pub fn update_paper_registry(
     symbol: &str,
     _symbol_linear_updates: usize,
     _trigger_momentum_3: f64,
-    _trigger_vol_5: f64,
+    trigger_vol_5: f64,
     brutal_truth: bool,
 ) {
     let open = latest_candle.open as f64 / 10000.0;
@@ -510,16 +572,40 @@ pub fn update_paper_registry(
         println!("[REC_STATUS] rec_id={} status=ACTIVE reason=FilledAtOpen", intent.rec_id);
         registry.rec_statuses.insert(intent.rec_id, (RecommendationStatus::ACTIVE, "FilledAtOpen".to_string()));
 
+        // --- 4. RE-EXPANSION ENGINE (Adaptive offensive participation scaling) ---
+        let mut size_multiplier = 1.0;
+        let mut hostility_expansion = 1.0;
+        let mut temporal_expansion = 1.0;
+        let mut is_durable_topology = false;
+
+        let is_trend_regime = intent.regime == "BullTrend" || intent.regime == "BearTrend" || intent.regime == "DirectionalTrend";
+        let has_extreme_conviction = intent.rec_conf >= 0.65;
+        let low_hostility_start = intent.vol_5 > 0.0 && (intent.momentum_3.abs() / intent.vol_5) > 1.5;
+
+        if is_trend_regime && has_extreme_conviction && low_hostility_start {
+            is_durable_topology = true;
+            size_multiplier = 2.0;
+            hostility_expansion = 1.25;
+            temporal_expansion = 1.30;
+            println!(
+                "🌊 [RE-EXPANSION] sym={} rec_id={} -> DURABLE TOPOLOGY DETECTED! Scaling size x{:.2}, hostility x{:.2}, duration x{:.2}",
+                symbol, intent.rec_id, size_multiplier, hostility_expansion, temporal_expansion
+            );
+        }
+
+        let final_size = intent.recommendation.position_size * size_multiplier;
+        let final_hold_limit = (intent.recommendation.holding_bars as f64 * temporal_expansion).round() as usize;
+
         registry.active_trades.push(ActiveTrade {
             rec_id: intent.rec_id,
             symbol: intent.symbol.clone(),
             entry_price,
             tp_target,
             sl_target,
-            hold_limit: intent.recommendation.holding_bars,
+            hold_limit: final_hold_limit,
             current_hold: 0,
             signal: intent.signal,
-            size: intent.recommendation.position_size,
+            size: final_size,
             vol_bps: intent.recommendation.vol_bps,
             rank: intent.recommendation.rank,
             expected_edge_bps: intent.recommendation.expected_edge_bps,
@@ -565,6 +651,20 @@ pub fn update_paper_registry(
             intensity: intent.intensity,
             stability: intent.stability,
             tier: intent.tier.clone(),
+            accumulated_absolute_move: 0.0,
+            last_processed_price: entry_price,
+            accumulated_adverse_move: 0.0,
+            reversals_count: 0,
+            last_direction_change: 0.0,
+            propagation_phase: PropagationPhase::Initiation,
+            phase_history: vec![PropagationPhase::Initiation],
+            persistence_half_life: final_hold_limit as f64 / 2.0,
+            initial_acc_factor: 1.0,
+            hostility_expansion,
+            excursion_retrace: 0.0,
+            acc_factor: 1.0,
+            noise_to_signal: 0.0,
+            volatility_elasticity: 1.0,
         });
         
         registry.processed_rec_ids.insert(intent.rec_id);
@@ -607,32 +707,175 @@ pub fn update_paper_registry(
             println!("[PAPER_EXCURSION] sym={} rec_id={} entry={:.4} high={:.4} low={:.4} best_bps={:.2} worst_bps={:.2} max_pnl_bps={:.2}",
                 symbol, trade.rec_id, trade.entry_price, high, low, bar_best * 10000.0, bar_worst * 10000.0, trade.max_pnl * 10000.0);
 
+            // 🔥 CYBERNETIC TAKEPROFIT & PROPAGATION INTELLIGENCE
+            let price_step = (close - trade.last_processed_price).abs();
+            trade.accumulated_absolute_move += price_step;
+            
+            // Calculate step changes & adverse moves
+            let diff = close - trade.last_processed_price;
+            if is_long && diff < 0.0 {
+                trade.accumulated_adverse_move += diff.abs();
+            } else if !is_long && diff > 0.0 {
+                trade.accumulated_adverse_move += diff.abs();
+            }
+
+            // Track reversals
+            if trade.last_direction_change * diff < 0.0 {
+                trade.reversals_count += 1;
+            }
+            if diff.abs() > 1e-9 {
+                trade.last_direction_change = diff;
+            }
+
+            // --- REAL-TIME PHYSICAL DECAY & TOPOLOGY CLASSIFICATION ---
+            let current_pnl = if is_long {
+                (close - trade.entry_price) / trade.entry_price.max(1e-12)
+            } else {
+                (trade.entry_price - close) / trade.entry_price.max(1e-12)
+            };
+
+            let normalized_reversals = trade.reversals_count as f64;
+            let coherence = 20.0 / (normalized_reversals + 1.0);
+            
+            let drift_toxicity = if trade.accumulated_absolute_move > 1e-9 {
+                (trade.accumulated_adverse_move / trade.accumulated_absolute_move).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            trade.noise_to_signal = drift_toxicity;
+
+            let current_retrace = if trade.max_pnl > 1e-9 {
+                ((trade.max_pnl - current_pnl) / trade.max_pnl).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            trade.excursion_retrace = current_retrace;
+
+            let signed_move = if is_long { close - trade.last_processed_price } else { trade.last_processed_price - close };
+            let norm_move = signed_move / trade.entry_price.max(1e-12);
+            let expected_bar_vol = trade.vol_bps / 10000.0;
+            let current_acc = if expected_bar_vol > 1e-9 {
+                (norm_move / expected_bar_vol + 1.0).clamp(0.1, 3.0)
+            } else {
+                1.0
+            };
+            trade.acc_factor = current_acc;
+
+            let current_vol_elasticity = if trade.vol_5 > 1e-9 {
+                (trigger_vol_5 / trade.vol_5).clamp(0.1, 10.0)
+            } else {
+                1.0
+            };
+            trade.volatility_elasticity = current_vol_elasticity;
+
+            let next_phase = if trade.current_hold <= 3 {
+                PropagationPhase::Initiation
+            } else {
+                if current_retrace >= 0.35 || drift_toxicity >= 0.50 {
+                    PropagationPhase::Compression
+                } else if current_acc < 0.65 || trade.decay_count > 3 {
+                    PropagationPhase::Decay
+                } else if current_pnl > 0.0 && current_acc >= 1.15 && trade.propagation_phase == PropagationPhase::Compression {
+                    PropagationPhase::ReAcceleration
+                } else {
+                    PropagationPhase::Expansion
+                }
+            };
+            
+            if next_phase != trade.propagation_phase {
+                trade.propagation_phase = next_phase;
+                trade.phase_history.push(next_phase);
+            }
+
+            let decay_rate: f64 = match trade.propagation_phase {
+                PropagationPhase::Initiation => 0.0,
+                PropagationPhase::Expansion => 0.02,
+                PropagationPhase::Compression => 0.12,
+                PropagationPhase::Decay => 0.25,
+                PropagationPhase::ReAcceleration => 0.05,
+            };
+            trade.persistence_half_life = (trade.persistence_half_life * (-decay_rate).exp()).max(1.0);
+
+            trade.last_processed_price = close;
+
+            // --- 2. ADAPTIVE HARVEST SURFACES (TP Geometry Morphing) ---
+            let base_distance_tp = (trade.tp_target - trade.entry_price).abs();
+            let base_distance_sl = (trade.sl_target - trade.entry_price).abs();
+            let mut dynamic_tp_target = trade.tp_target;
+
+            if coherence >= 3.0 && drift_toxicity < 0.35 && current_pnl > 0.0 {
+                // Accelerating propagation -> widen TP dynamically by up to 40% to let profits run
+                let widen_factor = 1.0 + 0.40 * (current_pnl * 1000.0).min(1.0);
+                dynamic_tp_target = if is_long {
+                    trade.entry_price + base_distance_tp * widen_factor
+                } else {
+                    (trade.entry_price - base_distance_tp * widen_factor).max(1e-12)
+                };
+            } else if drift_toxicity >= 0.55 || coherence < 1.8 {
+                // Deteriorating propagation -> contract TP dynamically closer to harvest profits early
+                let contract_factor = 0.65; // Tighten target by 35%
+                dynamic_tp_target = if is_long {
+                    trade.entry_price + base_distance_tp * contract_factor
+                } else {
+                    (trade.entry_price - base_distance_tp * contract_factor).max(1e-12)
+                };
+            }
+
+            // --- 3. PROPAGATION FAILURE DETECTION (Proactive Mortality) ---
+            // Stagnation (Stall) check: open > 30% of life, but price hasn't moved beyond 15% of SL/TP distance
+            let stall_threshold = (base_distance_sl * 0.15).max(1e-6);
+            let price_dev = (close - trade.entry_price).abs();
+            let is_stalled = trade.current_hold > (trade.hold_limit * 3 / 10) && price_dev < stall_threshold;
+
+            let c_decay = if coherence < 1.2 { 0.3 } else { 0.0 };
+            let d_toxicity = if trade.current_hold > 10 && drift_toxicity >= 0.75 { 0.3 } else { 0.0 };
+            let p_stall = if is_stalled { 0.2 } else { 0.0 };
+            let hostile_rev = if current_pnl < -0.0015 { 0.3 } else { 0.0 }; // reverse move > 15 bps
+
+            let failure_score = c_decay + d_toxicity + p_stall + hostile_rev;
+
+            let mut triggered = false;
             if is_long {
-                if high >= trade.tp_target {
-                    let slip_tp = apply_slippage(trade.tp_target, false, trade.vol_bps);
+                if high >= dynamic_tp_target {
+                    let slip_tp = apply_slippage(dynamic_tp_target, false, trade.vol_bps);
                     exit_pnl = Some((slip_tp - trade.entry_price) / trade.entry_price.max(1e-12));
                     exit_tag = ExitType::TakeProfit;
+                    triggered = true;
                 } else if low <= trade.sl_target {
                     let slip_sl = apply_slippage(trade.sl_target, false, trade.vol_bps);
                     exit_pnl = Some((slip_sl - trade.entry_price) / trade.entry_price.max(1e-12));
                     exit_tag = ExitType::StopLoss;
+                    triggered = true;
                 }
             } else {
-                if low <= trade.tp_target {
-                    let slip_tp = apply_slippage(trade.tp_target, true, trade.vol_bps);
+                if low <= dynamic_tp_target {
+                    let slip_tp = apply_slippage(dynamic_tp_target, true, trade.vol_bps);
                     exit_pnl = Some((trade.entry_price - slip_tp) / trade.entry_price.max(1e-12));
                     exit_tag = ExitType::TakeProfit;
+                    triggered = true;
                 } else if high >= trade.sl_target {
                     let slip_sl = apply_slippage(trade.sl_target, true, trade.vol_bps);
                     exit_pnl = Some((trade.entry_price - slip_sl) / trade.entry_price.max(1e-12));
                     exit_tag = ExitType::StopLoss;
+                    triggered = true;
                 }
             }
 
-            // --- WEAKENED MOMENTUM (3-tick grace) ---
+            let mut failure_threshold = 0.60;
+            if trade.hostility_expansion > 1e-9 {
+                failure_threshold *= trade.hostility_expansion;
+            }
+
+            if !triggered && failure_score >= failure_threshold && !brutal_truth {
+                let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+                exit_pnl = Some(if is_long { (exit_price - trade.entry_price) / trade.entry_price } else { (trade.entry_price - exit_price) / trade.entry_price });
+                exit_tag = ExitType::Mortality;
+            }
+
+            // --- WEAKENED MOMENTUM (3-tick grace with Volatility Scaling) ---
             if exit_pnl.is_none() && trade.current_hold == 3 && !brutal_truth {
-                let current_pnl = if is_long { (close - trade.entry_price) / trade.entry_price } else { (trade.entry_price - close) / trade.entry_price };
-                if current_pnl <= -0.0005 { // 5 bps adverse after 3 ticks
+                let adverse_threshold = -1.2 * (trade.vol_bps / 10000.0).max(0.0005);
+                if current_pnl <= adverse_threshold {
                     let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
                     exit_pnl = Some(if is_long { (exit_price - trade.entry_price) / trade.entry_price } else { (trade.entry_price - exit_price) / trade.entry_price });
                     exit_tag = ExitType::NoMomentum;
@@ -640,7 +883,6 @@ pub fn update_paper_registry(
             }
 
             // --- DRIFT STOP & PNL TRACKING ---
-            let current_pnl = if is_long { (close - trade.entry_price) / trade.entry_price } else { (trade.entry_price - close) / trade.entry_price };
             if current_pnl > trade.max_pnl {
                 trade.max_pnl = current_pnl;
                 trade.bars_since_pullback = 0;
@@ -654,6 +896,19 @@ pub fn update_paper_registry(
                     let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
                     exit_pnl = Some(if is_long { (exit_price - trade.entry_price) / trade.entry_price } else { (trade.entry_price - exit_price) / trade.entry_price });
                     exit_tag = ExitType::TrailingStop;
+                }
+            }
+
+            // --- DYNAMIC MORTALITY EXIT (Phase 2D) ---
+            if exit_pnl.is_none() && trade.current_hold >= 3 && !brutal_truth {
+                if trigger_vol_5 < trade.vol_5 * 0.50 { // Volatility collapsed by 50%, edge is dead
+                    let exit_price = apply_slippage(close, !is_long, trade.vol_bps);
+                    exit_pnl = Some(if is_long {
+                        (exit_price - trade.entry_price) / trade.entry_price.max(1e-12)
+                    } else {
+                        (trade.entry_price - exit_price) / trade.entry_price.max(1e-12)
+                    });
+                    exit_tag = ExitType::Mortality;
                 }
             }
 
@@ -767,8 +1022,8 @@ impl PaperRegistry {
         };
 
         println!(
-            "[AUDIT_TRADE] sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} capture_eff={:.3} porosity={:?} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={} tier={} regime={} intensity={:.2} stability={:.4}",
-            trade.symbol, trade.signal, trade.entry_price, trade.tp_target, trade.sl_target, close, 
+            "[AUDIT_TRADE] rec_id={} sym={} dir={:?} entry={:.4} tp={:.4} sl={:.4} exit={:.4} slip_bps={:.2} conf={:.2} ideal_pnl={:.6} realized_pnl={:.6} edge_loss={:.2}bps capture={:.3} capture_eff={:.3} porosity={:?} dur={} birth_lat={}ms exit_type={:?} PER={:.3} FBPR={:.3} mode={} tier={} regime={} intensity={:.2} stability={:.4}",
+            trade.rec_id, trade.symbol, trade.signal, trade.entry_price, trade.tp_target, trade.sl_target, close, 
             friction_bps, 
             trade.rec_conf, trade.max_pnl, pnl, edge_loss, (pnl / trade.max_pnl.max(1e-6)), capture_eff, porosity, trade.current_hold, birth_latency, exit_tag,
             current_per, current_fbpr, trade.entry_mode, trade.tier, trade.regime, trade.intensity, trade.stability
@@ -797,7 +1052,39 @@ impl PaperRegistry {
             regime: trade.regime.clone(),
             capture_efficiency: capture_eff,
             porosity,
+            propagation_phase: trade.propagation_phase,
+            phase_history: trade.phase_history.clone(),
+            persistence_half_life: trade.persistence_half_life,
+            final_retrace_compression: trade.excursion_retrace,
+            final_acceleration_decay: trade.acc_factor,
+            final_hostility: trade.noise_to_signal,
+            propagation_age: trade.current_hold,
+            is_mortality_exit: exit_tag == ExitType::Mortality,
+            position_size: trade.size,
         });
+
+        // Archival of Persistence Atlas for trade-level analysis
+        let _ = std::fs::create_dir_all("archive");
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("archive/persistence_atlas.csv") {
+            let phase_str = format!("{:?}", trade.propagation_phase);
+            let history_str = trade.phase_history.iter().map(|p| format!("{:?}", p)).collect::<Vec<String>>().join("->");
+            let _ = std::io::Write::write_fmt(&mut file, format_args!(
+                "{},{},{},{},{:.6},{:.6},{:.6},{:.6},{:.6},{},{:.6},{:?},{}\n",
+                timestamp,
+                trade.symbol,
+                trade.regime,
+                phase_str,
+                pnl,
+                trade.excursion_retrace,
+                trade.acc_factor,
+                trade.noise_to_signal,
+                trade.persistence_half_life,
+                trade.current_hold,
+                trade.size,
+                exit_tag,
+                history_str
+            ));
+        }
 
         if trade.entry_path == "impulse" {
             self.path_impulse_count += 1;

@@ -6137,6 +6137,20 @@ pub fn ga_simulate_round_trip_at_cursor(
     generation: usize,
     stats: &DistributionStats,
 ) -> Option<GaRoundTripOutcome> {
+    let feed_interval_seconds = if execution_events.len() >= 2 {
+        let last_ts = execution_events[execution_events.len() - 1].exchange_ts;
+        let prev_ts = execution_events[execution_events.len() - 2].exchange_ts;
+        if last_ts > prev_ts {
+            last_ts - prev_ts
+        } else {
+            300
+        }
+    } else {
+        300
+    };
+    let feed_interval_minutes = (feed_interval_seconds as f64 / 60.0).max(1.0);
+    let interval_scale_factor = 5.0 / feed_interval_minutes;
+
     let round_trip_probe = std::env::var("ROUND_TRIP_PROBE").is_ok();
     if ga_debug_enabled() && strategy_index == 0 && trade_idx < 3 && generation % 5 == 0 {
         println!(
@@ -6844,41 +6858,43 @@ pub fn ga_simulate_round_trip_at_cursor(
     }
 
     // Recalibration Loop Feedback (Allocation & Risk Validation)
-    println!(
-        "[CALIB_FEED] sym={} edge_idx={:.2} outcome={} pnl={:.6} fav={:.3} size={:.2} alloc={:.2} up={:.6} down={:.6}",
-        scenario_name,
-        edge_index,
-        fair_outcome,
-        realized_pnl,
-        favorability_score,
-        final_recommended_size,
-        allocation_score,
-        expected_upside,
-        expected_downside
-    );
+    if std::env::var("GA_VERBOSE").is_ok() || std::env::var("EDGE_DEBUG").is_ok() {
+        println!(
+            "[CALIB_FEED] sym={} edge_idx={:.2} outcome={} pnl={:.6} fav={:.3} size={:.2} alloc={:.2} up={:.6} down={:.6}",
+            scenario_name,
+            edge_index,
+            fair_outcome,
+            realized_pnl,
+            favorability_score,
+            final_recommended_size,
+            allocation_score,
+            expected_upside,
+            expected_downside
+        );
 
-    println!(
-        "[EDGE_CAUSAL] id={} calib_v={} outcome={} edge={:.6} pred_edge={:.6} pnl={:.6} eff={:.4} p_cap={:.4} size={:.2}",
-        strategy_to_id(strategy),
-        CALIB_VERSION,
-        fair_outcome,
-        final_raw_edge,
-        predicted_edge,
-        realized_pnl,
-        efficiency,
-        p_capture_est,
-        final_recommended_size
-    );
+        println!(
+            "[EDGE_CAUSAL] id={} calib_v={} outcome={} edge={:.6} pred_edge={:.6} pnl={:.6} eff={:.4} p_cap={:.4} size={:.2}",
+            strategy_to_id(strategy),
+            CALIB_VERSION,
+            fair_outcome,
+            final_raw_edge,
+            predicted_edge,
+            realized_pnl,
+            efficiency,
+            p_capture_est,
+            final_recommended_size
+        );
 
-    println!(
-        "[EDGE_DEBUG_REAL] id={} raw_edge={:.6} exp_move={:.6} p_dir={:.4} p_cap={:.4} rank={:.3}",
-        strategy_to_id(strategy),
-        final_raw_edge,
-        expected_move,
-        p_direction,
-        p_capture,
-        rank
-    );
+        println!(
+            "[EDGE_DEBUG_REAL] id={} raw_edge={:.6} exp_move={:.6} p_dir={:.4} p_cap={:.4} rank={:.3}",
+            strategy_to_id(strategy),
+            final_raw_edge,
+            expected_move,
+            p_direction,
+            p_capture,
+            rank
+        );
+    }
 
     let exit_reason_str = match exit_reason {
         crate::GaExitReason::TakeProfit => "target_hit",
@@ -6890,21 +6906,23 @@ pub fn ga_simulate_round_trip_at_cursor(
     // ✅ PHASE 10.8: DENOMINATOR STABILITY (Clamp MFE to prevent outlier explosion)
     let mfe_adj = ideal_execution.mfe.abs().max(1e-6); 
     let raw_capture = if mfe_adj > 1e-9 { realized_pnl / mfe_adj } else { 0.0 };
-    if raw_capture > 1.1 {
+    if raw_capture > 1.1 && (std::env::var("GA_VERBOSE").is_ok() || std::env::var("EDGE_DEBUG").is_ok()) {
         println!("[MFE_INCONSISTENCY] sym={} realized={:.6} mfe={:.6} raw_cap={:.3}", scenario_name, realized_pnl, mfe_adj, raw_capture);
     }
     let capture_eff = raw_capture.clamp(-1.0, 1.0);
 
-    println!(
-        "[TRADE_RESULT] sym={} entry={:.2} exit={:.2} pnl={:.6} reason={} duration={} capture_eff={:.3}",
-        scenario_name,
-        buy_price_f,
-        exit_price as f64,
-        realized_pnl,
-        exit_reason_str,
-        final_holding_period,
-        capture_eff
-    );
+    if std::env::var("GA_VERBOSE").is_ok() || std::env::var("EDGE_DEBUG").is_ok() {
+        println!(
+            "[TRADE_RESULT] sym={} entry={:.2} exit={:.2} pnl={:.6} reason={} duration={} capture_eff={:.3}",
+            scenario_name,
+            buy_price_f,
+            exit_price as f64,
+            realized_pnl,
+            exit_reason_str,
+            final_holding_period,
+            capture_eff
+        );
+    }
 
     log_exec_dist("accept", "Accepted", Some(final_raw_edge), Some(rank));
     Some(GaRoundTripOutcome {
@@ -11928,6 +11946,14 @@ pub fn evaluate_current_status(
 ) -> DecisionReport {
     static ROUND_TRIP_ATTEMPTS: AtomicUsize = AtomicUsize::new(0);
     static ROUND_TRIP_FAILS: AtomicUsize = AtomicUsize::new(0);
+    let feed_interval_seconds = if history.len() >= 2 {
+        history[history.len() - 1].timestamp - history[history.len() - 2].timestamp
+    } else {
+        300
+    };
+    let feed_interval_minutes = (feed_interval_seconds as f64 / 60.0).max(1.0);
+    let interval_scale_factor = 5.0 / feed_interval_minutes;
+
     let eval_probe = std::env::var("EVAL_PROBE").is_ok();
     let probe_symbol = std::env::var("EVAL_PROBE_SYMBOL").unwrap_or_else(|_| "BSE.NS".to_string());
     let probe_this_symbol = eval_probe && symbol == probe_symbol;
@@ -12317,19 +12343,18 @@ pub fn evaluate_current_status(
             ideal, realized, feasibility, conviction.regime);
 
         // 5.2 HARD REALITY GATES (V3.6.11)
-        // A. Regime Guard
+        // A. The Hostility Razor (Execution Filter)
         let is_bearish = conviction.is_bearish;
         let final_sig = if is_bearish { SignalType::SELL } else { SignalType::BUY };
-        if conviction.regime == MarketRegime::HighVolatilityNoise && std::env::var("GA_BOOTSTRAP").is_err() {
+        
+        // REJECT deceptive Low Hostility environments unless conviction is absolute.
+        if conviction.regime == MarketRegime::MeanReversion && conviction.conviction_score < 0.90 && std::env::var("GA_BOOTSTRAP").is_err() {
              if std::env::var("EDGE_DEBUG").is_ok() {
                  println!(
-                     "[EARLY_EXIT] sym={} reason=high_vol_noise_guard n_vol={:.4}",
+                     "[EARLY_EXIT] sym={} reason=low_hostility_chop_guard conv={:.4}",
                      symbol,
-                     conviction.norm_vol
+                     conviction.conviction_score
                  );
-             }
-             if std::env::var("EDGE_DEBUG").is_ok() {
-                 println!("[REJECT_NOISE] sym={} n_vol={:.4}", symbol, conviction.norm_vol);
              }
              return DecisionReport {
                 signal: SignalType::WAIT,
@@ -12364,8 +12389,13 @@ pub fn evaluate_current_status(
             let mae_raw = config.rank_stats.get_expected_mae(adjusted_rank, rt.vol_bucket);
             let hold = config.rank_stats.get_expected_time(adjusted_rank, rt.vol_bucket);
 
-            let mfe = mfe_raw * 0.65;
-            let mae = mae_raw * 1.35;
+            let (mfe_mult, mae_mult) = if conviction.regime == MarketRegime::HighVolatilityNoise {
+                (0.85, 1.15)
+            } else {
+                (0.50, 1.50)
+            };
+            let mfe = mfe_raw * mfe_mult;
+            let mae = mae_raw * mae_mult;
             let expected_rr = if mae > 0.0 { mfe / mae } else { 2.0 }; 
             
             if expected_rr >= 1.25 {
@@ -12385,11 +12415,26 @@ pub fn evaluate_current_status(
                     expected_rr,
                     expected_edge_bps: mfe * 10000.0,
                     risk_bps: mae * 10000.0,
-                    holding_bars: hold as usize,
+                    holding_bars: {
+                        let estimator = crate::EdgeHalfLifeEstimator { base_half_life_minutes: hold as f64 * feed_interval_minutes };
+                        let half_life = estimator.estimate_half_life(
+                            2.0, // baseline coherence
+                            1.0, // baseline persistence
+                            0.3, // baseline drift toxicity
+                            conviction.regime,
+                            effective_feasibility,
+                        );
+                        (half_life / feed_interval_minutes).round() as usize
+                    },
                     vol_bps,
                     vol_bucket: rt.vol_bucket,
                     is_execution: rt.is_execution,
-                    position_size: (adjusted_rank * adjusted_rank).clamp(0.01, 1.0),
+                    position_size: {
+                        let mut base_size = (adjusted_rank * adjusted_rank).clamp(0.01, 1.0);
+                        if symbol.starts_with("SOL") { base_size = (base_size * 1.5).clamp(0.01, 1.0); }
+                        else if symbol.starts_with("BTC") { base_size = (base_size * 0.25).clamp(0.01, 0.5); }
+                        base_size
+                    },
                     directional_alpha: rt.directional_alpha,
                     execution_alpha: rt.execution_alpha,
                     structural_alpha: rt.structural_alpha,
@@ -12444,7 +12489,17 @@ pub fn evaluate_current_status(
                 expected_rr: mfe / mae,
                 expected_edge_bps: mfe * 10000.0,
                 risk_bps: mae * 10000.0,
-                holding_bars: 20,
+                holding_bars: {
+                    let estimator = crate::EdgeHalfLifeEstimator { base_half_life_minutes: 20.0 * feed_interval_minutes };
+                    let half_life = estimator.estimate_half_life(
+                        2.0, // baseline coherence
+                        1.0, // baseline persistence
+                        0.3, // baseline drift toxicity
+                        conviction.regime,
+                        0.5, // average execution feasibility
+                    );
+                    (half_life / feed_interval_minutes).round() as usize
+                },
                 vol_bps: 10.0,
                 vol_bucket: 1,
                 is_execution: false,
@@ -12684,7 +12739,16 @@ pub fn evaluate_consensus_status(
     consistency_count: usize,
 ) -> DecisionReport {
     use crate::SignalType;
-    if history.len() < (config.lambda as usize) + 50 {
+    let feed_interval_seconds = if history.len() >= 2 {
+        history[history.len() - 1].timestamp - history[history.len() - 2].timestamp
+    } else {
+        300
+    };
+    let feed_interval_minutes = (feed_interval_seconds as f64 / 60.0).max(1.0);
+    let interval_scale_factor = 5.0 / feed_interval_minutes;
+    let lookback_bars = (20.0 * interval_scale_factor).round() as usize;
+
+    if history.len() < lookback_bars + 10 {
         return DecisionReport {
             trade_id: 0,
             symbol: symbol.to_string(),
@@ -12777,9 +12841,9 @@ pub fn evaluate_consensus_status(
     }
 
     // 🚀 PHASE D.1.24: INSTITUTIONAL REGIME DETECTION (Window-Level)
-    let (mean_px, std_dev, _) = calculate_lookback_stats(history, last_idx, 20);
+    let (mean_px, std_dev, _) = calculate_lookback_stats(history, last_idx, lookback_bars);
     let ref_price = history[last_idx].close as f64;
-    let lookback_price = history[last_idx.saturating_sub(20)].close as f64;
+    let lookback_price = history[last_idx.saturating_sub(lookback_bars)].close as f64;
     let price_delta = (ref_price - lookback_price).abs() / ref_price.max(1.0);
     let norm_momentum = (price_delta / 0.001).clamp(0.0, 1.0);
     let norm_vol = std_dev / mean_px.max(1.0);
@@ -12825,9 +12889,13 @@ pub fn evaluate_consensus_status(
     let mut dynamic_threshold =
         calculate_dynamic_threshold(norm_vol, eligible_voters[0].fitness as f64).min(0.85);
     let mut universal_multiplier = 1.0;
+    // 🔥 Hostility Razor: Embrace High Hostility, Reject Deceptive Chop
     if current_regime == MarketRegime::HighVolatilityNoise {
-        dynamic_threshold = (dynamic_threshold * 1.5).min(0.95);
-        universal_multiplier = 0.7;
+        dynamic_threshold = (dynamic_threshold * 0.8).max(0.40); // Make it easier to trade
+        universal_multiplier = 1.5; // Boost weight
+    } else if current_regime == MarketRegime::MeanReversion {
+        dynamic_threshold = (dynamic_threshold * 1.5).min(0.95); // Penalize deceptive chop
+        universal_multiplier = 0.5; // Suppress weight
     }
 
     for (i, voter) in eligible_voters.iter().enumerate() {
@@ -12902,7 +12970,7 @@ pub fn evaluate_consensus_status(
 
     // 🚀 PHASE 10.10: Final Feasibility Decision
     let (feasible, exec_threshold) = is_execution_feasible(final_conviction, exec_score);
-    let final_signal = if !feasible {
+    let mut final_signal = if !feasible {
         // ⚠️ Soft fallback instead of kill
         if final_conviction > 0.5 {
             gated_signal // allow strong signals through
@@ -12912,6 +12980,51 @@ pub fn evaluate_consensus_status(
     } else {
         gated_signal
     };
+
+    let mut final_feasible = feasible;
+
+    // 🔥 UPSTREAM ASYMMETRY FILTERS (Gen 7 Edge Asymmetry Upgrade)
+    if final_signal == SignalType::BUY || final_signal == SignalType::SELL {
+        let is_buy = final_signal == SignalType::BUY;
+        
+        let mut reversals = 0;
+        let mut prev_diff = 0.0;
+        let mut sum_absolute_moves = 0.0;
+        let mut sum_adverse_moves = 0.0;
+        let start_i = last_idx.saturating_sub(lookback_bars);
+        
+        for idx in start_i..=last_idx {
+            if idx == 0 { continue; }
+            let diff = history[idx].close as f64 - history[idx - 1].close as f64;
+            sum_absolute_moves += diff.abs();
+            
+            if is_buy && diff < 0.0 {
+                sum_adverse_moves += diff.abs();
+            } else if !is_buy && diff > 0.0 {
+                sum_adverse_moves += diff.abs();
+            }
+            
+            if prev_diff * diff < 0.0 {
+                reversals += 1;
+            }
+            if diff.abs() > 1e-9 {
+                prev_diff = diff;
+            }
+        }
+        
+        let normalized_reversals = reversals as f64 / interval_scale_factor;
+        let path_coherence = 20.0 / (normalized_reversals + 1.0);
+        let drift_toxicity = if sum_absolute_moves > 1e-9 {
+            sum_adverse_moves / sum_absolute_moves
+        } else {
+            0.0
+        };
+        
+        if path_coherence < 1.8 || drift_toxicity >= 0.70 {
+            final_signal = SignalType::WAIT;
+            final_feasible = false;
+        }
+    }
 
     let strength_label = if final_conviction > 0.75 {
         "STRONG".to_string()
@@ -12949,7 +13062,7 @@ pub fn evaluate_consensus_status(
             },
             eligible_voters.len()
         ),
-        execution_feasible: feasible,
+        execution_feasible: final_feasible,
         execution_score: exec_score,
         execution_threshold: exec_threshold,
         threshold: dynamic_threshold,

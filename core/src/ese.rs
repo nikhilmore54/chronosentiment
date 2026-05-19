@@ -72,37 +72,129 @@ impl ExecutionEngine {
 
         let end_idx = (entry_idx + max_hold).min(execution_events.len());
 
+        let mut dynamic_tp = tp_target;
+        let base_distance_tp = (tp_target as f64 - entry_price as f64).abs();
+        let base_distance_sl = (sl_target as f64 - entry_price as f64).abs();
+
         let mut limit_hit = false;
+        let mut reversals_count = 0;
+        let mut last_diff = 0.0;
+        let mut sum_absolute_moves = 0.0;
+        let mut sum_adverse_moves = 0.0;
+
         for i in entry_idx..end_idx {
             let current_price = execution_events[i].price;
             max_px = max_px.max(current_price);
             min_px = min_px.min(current_price);
 
+            if i > entry_idx {
+                let diff = current_price as f64 - execution_events[i - 1].price as f64;
+                sum_absolute_moves += diff.abs();
+                
+                let is_buy = side == crate::Side::Buy;
+                if is_buy && diff < 0.0 {
+                    sum_adverse_moves += diff.abs();
+                } else if !is_buy && diff > 0.0 {
+                    sum_adverse_moves += diff.abs();
+                }
+                
+                if last_diff * diff < 0.0 {
+                    reversals_count += 1;
+                }
+                if diff.abs() > 1e-9 {
+                    last_diff = diff;
+                }
+            }
+
             if !limit_hit {
-                if side == crate::Side::Buy {
-                    if current_price >= tp_target {
+                let bars_held = i - entry_idx;
+                let is_buy = side == crate::Side::Buy;
+
+                // --- 1. CONTINUOUS PROPAGATION TRACKING ---
+                let normalized_reversals = reversals_count as f64;
+                let coherence = 20.0 / (normalized_reversals + 1.0);
+                
+                let drift_toxicity = if sum_absolute_moves > 1e-9 {
+                    sum_adverse_moves / sum_absolute_moves
+                } else {
+                    0.0
+                };
+
+                let current_return = if is_buy {
+                    (current_price as f64 - entry_price as f64) / entry_price.max(1) as f64
+                } else {
+                    (entry_price as f64 - current_price as f64) / entry_price.max(1) as f64
+                };
+
+                // --- 2. ADAPTIVE HARVEST SURFACES (TP Geometry Morphing) ---
+                if coherence >= 3.0 && drift_toxicity < 0.35 && current_return > 0.0 {
+                    // Accelerating propagation -> widen TP dynamically by up to 40% to let profits run
+                    let widen_factor = 1.0 + 0.40 * (current_return * 1000.0).min(1.0);
+                    dynamic_tp = if is_buy {
+                        (entry_price as f64 + base_distance_tp * widen_factor).round() as u64
+                    } else {
+                        (entry_price as f64 - base_distance_tp * widen_factor).round().max(1.0) as u64
+                    };
+                } else if drift_toxicity >= 0.55 || coherence < 1.8 {
+                    // Deteriorating propagation -> contract TP dynamically closer to harvest profits early
+                    let contract_factor = 0.65; // Tighten target by 35%
+                    dynamic_tp = if is_buy {
+                        (entry_price as f64 + base_distance_tp * contract_factor).round() as u64
+                    } else {
+                        (entry_price as f64 - base_distance_tp * contract_factor).round().max(1.0) as u64
+                    };
+                }
+
+                // --- 3. PROPAGATION FAILURE DETECTION (Proactive Mortality) ---
+                // Stagnation (Stall) check: open > 30% of life, but price hasn't moved beyond 15% of SL/TP distance
+                let stall_threshold = (base_distance_sl * 0.15).max(1.0);
+                let price_dev = (current_price as f64 - entry_price as f64).abs();
+                let is_stalled = bars_held > (max_hold * 3 / 10) && price_dev < stall_threshold;
+
+                let c_decay = if coherence < 1.2 { 0.3 } else { 0.0 };
+                let d_toxicity = if bars_held > 10 && drift_toxicity >= 0.75 { 0.3 } else { 0.0 };
+                let p_stall = if is_stalled { 0.2 } else { 0.0 };
+                let hostile_rev = if current_return < -0.0015 { 0.3 } else { 0.0 }; // reverse move > 15 bps
+
+                let failure_score = c_decay + d_toxicity + p_stall + hostile_rev;
+
+                let mut triggered = false;
+                if is_buy {
+                    if current_price >= dynamic_tp {
                         exit_reason = crate::GaExitReason::TakeProfit;
-                        exit_price = tp_target;
+                        exit_price = dynamic_tp;
                         exit_idx = i;
                         limit_hit = true;
+                        triggered = true;
                     } else if current_price <= sl_target {
                         exit_reason = crate::GaExitReason::StopLoss;
                         exit_price = sl_target;
                         exit_idx = i;
                         limit_hit = true;
+                        triggered = true;
                     }
                 } else {
-                    if current_price <= tp_target {
+                    if current_price <= dynamic_tp {
                         exit_reason = crate::GaExitReason::TakeProfit;
-                        exit_price = tp_target;
+                        exit_price = dynamic_tp;
                         exit_idx = i;
                         limit_hit = true;
+                        triggered = true;
                     } else if current_price >= sl_target {
                         exit_reason = crate::GaExitReason::StopLoss;
                         exit_price = sl_target;
                         exit_idx = i;
                         limit_hit = true;
+                        triggered = true;
                     }
+                }
+
+                if !triggered && failure_score >= 0.60 {
+                    // Propagation has failed! Trigger clean Mortality exit to cut the bleed
+                    exit_reason = crate::GaExitReason::TimeStop;
+                    exit_price = current_price;
+                    exit_idx = i;
+                    limit_hit = true;
                 }
             }
         }

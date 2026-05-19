@@ -11,9 +11,16 @@ def analyze_divergence():
 
     cols = [
         "timestamp", "symbol", "regime", "vol_bucket", "half_life", 
-        "legacy_exp", "gross_move", "noise_floor", "micro_exp", "divergence"
+        "legacy_exp", "gross_move", "noise_floor", "micro_exp", "divergence",
+        "updates", "source", "authentic", "gen"
     ]
-    df = pd.read_csv(ARCHIVE_PATH, names=cols, header=None)
+    
+    try:
+        df = pd.read_csv(ARCHIVE_PATH, names=cols, header=None)
+    except ValueError:
+        # Fallback for legacy rows if any remain during transition
+        df = pd.read_csv(ARCHIVE_PATH, header=None)
+        df.columns = cols[:df.shape[1]]
     
     # Filter out warmup/initialization rows without valid regimes
     # (e.g. earlier legacy rows that lacked the full coordinate system)
