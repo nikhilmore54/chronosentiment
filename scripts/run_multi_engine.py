@@ -64,7 +64,7 @@ def main() -> int:
                 f"--interval {args.interval} "
                 f"--n-candles {args.n_candles} "
                 f"--cadence-seconds {args.cadence_seconds} "
-                f"| ./target/release/examples/live_engine 2>&1 "
+                f"| ./target/release/examples/live_observatory 2>&1 "
                 f"| python3 scripts/blue_green_log_writer.py \"{base_log}\" "
                 f"--max-bytes {args.blue_green_max_bytes}"
             )

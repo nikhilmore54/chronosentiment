@@ -1,133 +1,271 @@
+#!/usr/bin/env python3
 """
-Phase B1: Ecology Signature Extraction
-Extracts observable micro-features from raw telemetry streams to build the Ecology Signature Atlas.
-Allows us to map LIQUIDITY_FLOW vs EVENT_DRIVEN physics before trades occur.
+Ecology Signature Atlas — Phase 1: extract propagation fingerprints from replay archives.
+
+Produces first-class observability artifacts (no new causal mechanics):
+  metadata/ecology_signatures.jsonl   — one row per synchronized barrier (ts)
+  metadata/ecology_atlas_summary.json — cohort-level aggregates + transition sketch
+
+Usage:
+  python3 scripts/ecology_signature_atlas.py --batch-id 900 --run-label replay_equiv
+  python3 scripts/ecology_signature_atlas.py --archive-dir state_archive/batches/batch_003
 """
-import re
-import math
+
+from __future__ import annotations
+
+import argparse
 import json
-import numpy as np
+import math
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from statistics import mean, pstdev
 
-CONDITIONS = {
-    "A: Crypto 1m (training)":   "archive/replay_1m_gen11.log",
-    "B: Crypto 5m (same regime)": "archive/replay_training_5m.log",
-    "C: Crypto 5m (OOS regime)": "archive/replay_5m_oos1.log",
-    "D: Equities 5m":            "archive/replay_xasset_equities.log",
-    "E: Commodities 5m":         "archive/replay_xasset_commodities.log",
-}
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 
-# Regex to parse rich telemetry strings
-# Pattern: [TELEMETRY] ... margin=3.02 conv=1.05 eq=0.7551 | legacy_exp=... | atlas_eff=0.2954 atlas_den=0.4737 atlas_res=0.5518 shadow_fert=0.9900 atlas_age=11 | genesis_comp=2.3686 genesis_range=0.011065 genesis_bias=-0.4111
-tel_pattern = re.compile(
-    r"margin=(?P<margin>[\d\.\-]+)\s+conv=(?P<conv>[\d\.\-]+)\s+eq=(?P<eq>[\d\.\-]+).*?"
-    r"atlas_eff=(?P<eff>[\d\.\-]+)\s+atlas_den=(?P<den>[\d\.\-]+)\s+atlas_res=(?P<res>[\d\.\-]+).*?atlas_age=(?P<age>\d+).*?"
-    r"genesis_comp=(?P<comp>[\d\.\-]+)\s+genesis_range=(?P<range>[\d\.\-]+)\s+genesis_bias=(?P<bias>[\d\.\-]+)"
-)
+from run_nse_cohort import resolve_archive_dir
+from verify_cohort_baseline import iter_archive_records, load_manifest
 
-def compute_autocorrelation(x, lag=1):
-    if len(x) < lag + 5:
-        return 0.0
-    mean = np.mean(x)
-    var = np.var(x)
-    if var < 1e-9:
-        return 0.0
-    xp = x - mean
-    return np.sum(xp[:-lag] * xp[lag:]) / ((len(xp) - lag) * var)
 
-def analyze_signatures(log_path):
-    telemetries = []
-    
-    try:
-        with open(log_path) as f:
-            for line in f:
-                if "[TELEMETRY]" in line:
-                    m = tel_pattern.search(line)
-                    if m:
-                        d = m.groupdict()
-                        telemetries.append({k: float(v) for k, v in d.items()})
-    except FileNotFoundError:
-        # Check standard location if not found in archive
-        alt_path = log_path.replace("archive/", "")
-        try:
-            with open(alt_path) as f:
-                for line in f:
-                    if "[TELEMETRY]" in line:
-                        m = tel_pattern.search(line)
-                        if m:
-                            d = m.groupdict()
-                            telemetries.append({k: float(v) for k, v in d.items()})
-        except FileNotFoundError:
-            return None
+def _safe_mean(vals: list[float]) -> float | None:
+    return round(mean(vals), 6) if vals else None
 
-    if len(telemetries) < 20:
+
+def _safe_stdev(vals: list[float]) -> float | None:
+    return round(pstdev(vals), 6) if len(vals) > 1 else 0.0 if vals else None
+
+
+def _pct(vals: list[float], p: float) -> float | None:
+    if not vals:
         return None
+    s = sorted(vals)
+    i = min(len(s) - 1, max(0, int(p * (len(s) - 1))))
+    return round(s[i], 6)
 
-    # Extraction of core feature streams
-    biases = np.array([t["bias"] for t in telemetries])
-    effs   = np.array([t["eff"] for t in telemetries])
-    comps  = np.array([t["comp"] for t in telemetries])
-    ranges = np.array([t["range"] for t in telemetries])
-    convs  = np.array([t["conv"] for t in telemetries])
-    reses  = np.array([t["res"] for t in telemetries])
-    
-    # ── Calculate Signatures ───────────────────────────────────────────────
-    
-    # 1. Volatility Persistence (Auto-correlation of pre-range volatility bounds)
-    vol_persistence = compute_autocorrelation(ranges, lag=1)
-    
-    # 2. Directional Bias Persistence (Auto-correlation of pre-bias directionality)
-    # High persistence = Event-driven persistent propagation (momentum)
-    # Low/Negative persistence = mean-reverting/fragmented liquidity flow
-    bias_persistence = compute_autocorrelation(biases, lag=1)
-    
-    # 3. Smoothness Stability (Standard deviation of local excursion efficiency)
-    # Low variance = smooth, stable propagation field
-    # High variance = turbulent/noisy field
-    smoothness_stability = np.std(effs)
-    
-    # 4. Asymmetry Release Intensity (Average compression-release ratio)
-    mean_compression = np.mean(comps)
-    
-    # 5. Consensus Agreement Entropy
-    # How distributed or concentrated are consensus votes?
-    mean_conv = np.mean(convs)
-    
-    # 6. Resilience Decay Half-Life Proxy
-    # Average elasticity resilience remaining during propagation
-    mean_resilience = np.mean(reses)
-    
+
+def window_signature(ts: int, records: list[dict]) -> dict:
+    """Aggregate ecology fingerprint for one synchronized barrier."""
+    n = len(records)
+    corridors = [r for r in records if r.get("corridor")]
+    corridor_rate = len(corridors) / n if n else 0.0
+
+    velocities = [float(r["velocity"]) for r in records]
+    accelerations = [float(r["acceleration"]) for r in records]
+    turn_angles = [float(r["turn_angle"]) for r in records]
+    entropies = [float(r["entropy"]) for r in records]
+    hazards = [float(r["hazard_rate"]) for r in records]
+    survivals = [float(r["survival_probability"]) for r in records]
+    dwells = [float(r.get("dwell_duration", 0)) for r in records]
+    queue_p = [float(r.get("queue_pressure", 0)) for r in records]
+    spread_e = [float(r.get("spread_elasticity", 0)) for r in records]
+    pc1s = [float(r["pc1"]) for r in records]
+    pc2s = [float(r["pc2"]) for r in records]
+    dists = [float(r.get("dist_to_centroid", 0)) for r in records]
+
+    prec_entropy = [float(r.get("precursor_entropy_expansion", 0)) for r in records]
+    prec_density = [float(r.get("precursor_density_thinning", 0)) for r in records]
+    prec_curv = [float(r.get("precursor_curvature_destabilization", 0)) for r in records]
+    prec_decay = [float(r.get("precursor_decay_velocity", 0)) for r in records]
+
+    states = Counter(r.get("state", "") for r in records)
+    instabilities = Counter(r.get("instability_type", "STABLE") for r in records)
+
+    # Cross-asset coherence proxies at this barrier
+    pc1_spread = (max(pc1s) - min(pc1s)) if pc1s else 0.0
+    pc2_spread = (max(pc2s) - min(pc2s)) if pc2s else 0.0
+    if len(pc1s) > 1:
+        m1, m2 = mean(pc1s), mean(pc2s)
+        cov = sum((a - m1) * (b - m2) for a, b in zip(pc1s, pc2s)) / len(pc1s)
+        v1 = sum((a - m1) ** 2 for a in pc1s) / len(pc1s)
+        v2 = sum((b - m2) ** 2 for b in pc2s) / len(pc2s)
+        propagation_corr = cov / math.sqrt(v1 * v2) if v1 > 1e-12 and v2 > 1e-12 else 0.0
+    else:
+        propagation_corr = 0.0
+
+    # Compression / pre-release proxies
+    low_velocity_frac = sum(1 for v in velocities if v < 0.05) / n if n else 0.0
+    entropy_collapse = _safe_mean(entropies) or 0.0
+    density_thin_mean = _safe_mean(prec_density) or 0.0
+
+    # Ecological entropy: state + instability distribution
+    state_entropy = 0.0
+    for c in states.values():
+        p = c / n
+        if p > 0:
+            state_entropy -= p * math.log(p)
+    inst_entropy = 0.0
+    for c in instabilities.values():
+        p = c / n
+        if p > 0:
+            inst_entropy -= p * math.log(p)
+
+    dominant_state = states.most_common(1)[0][0] if states else "UNKNOWN"
+    dominant_instability = instabilities.most_common(1)[0][0] if instabilities else "STABLE"
+
     return {
-        "n_samples": len(telemetries),
-        "vol_persistence": float(vol_persistence),
-        "bias_persistence": float(bias_persistence),
-        "smoothness_stability": float(smoothness_stability),
-        "mean_compression": float(mean_compression),
-        "mean_conv": float(mean_conv),
-        "mean_resilience": float(mean_resilience),
+        "ts": ts,
+        "symbol_count": n,
+        "corridor_rate": round(corridor_rate, 4),
+        "dominant_state": dominant_state,
+        "dominant_instability": dominant_instability,
+        "state_entropy": round(state_entropy, 4),
+        "instability_entropy": round(inst_entropy, 4),
+        "volatility_texture": {
+            "velocity_mean": _safe_mean(velocities),
+            "velocity_stdev": _safe_stdev(velocities),
+            "acceleration_mean": _safe_mean(accelerations),
+            "turn_angle_mean": _safe_mean(turn_angles),
+            "turn_angle_p90": _pct(turn_angles, 0.9),
+            "entropy_mean": _safe_mean(entropies),
+            "entropy_stdev": _safe_stdev(entropies),
+        },
+        "propagation_texture": {
+            "corridor_rate": round(corridor_rate, 4),
+            "dist_to_centroid_mean": _safe_mean(dists),
+            "continuation_density": round(sum(1 for v in velocities if v > 0.05) / n, 4) if n else 0.0,
+            "directional_smoothness": round(1.0 - min(1.0, (_safe_mean(turn_angles) or 0) / 180.0), 4),
+            "topology_elasticity": _safe_stdev(dists),
+        },
+        "temporal_structure": {
+            "dwell_mean": _safe_mean(dwells),
+            "hazard_mean": _safe_mean(hazards),
+            "survival_mean": _safe_mean(survivals),
+            "survival_min": round(min(survivals), 4) if survivals else None,
+            "decay_velocity_mean": _safe_mean(prec_decay),
+        },
+        "participation_structure": {
+            "queue_pressure_mean": _safe_mean(queue_p),
+            "spread_elasticity_mean": _safe_mean(spread_e),
+            "spread_elasticity_p90": _pct(spread_e, 0.9),
+        },
+        "cross_asset_ecology": {
+            "pc1_spread": round(pc1_spread, 4),
+            "pc2_spread": round(pc2_spread, 4),
+            "pc1_pc2_correlation": round(propagation_corr, 4),
+        },
+        "compression_metrics": {
+            "low_velocity_fraction": round(low_velocity_frac, 4),
+            "entropy_collapse_proxy": round(entropy_collapse, 4),
+            "density_thinning_mean": round(density_thin_mean, 4),
+            "curvature_destabilization_mean": _safe_mean(prec_curv),
+            "precursor_entropy_expansion_mean": _safe_mean(prec_entropy),
+        },
+        "feature_vector": [
+            corridor_rate,
+            _safe_mean(velocities) or 0.0,
+            _safe_stdev(velocities) or 0.0,
+            _safe_mean(turn_angles) or 0.0,
+            _safe_mean(entropies) or 0.0,
+            _safe_mean(hazards) or 0.0,
+            _safe_mean(survivals) or 0.0,
+            pc1_spread,
+            pc2_spread,
+            propagation_corr,
+            low_velocity_frac,
+            density_thin_mean,
+            state_entropy,
+            inst_entropy,
+        ],
     }
 
-print("=" * 80)
-print("  PHASE B1: ECOLOGY SIGNATURE ATLAS")
-print("  Extracting latent market physics signatures from raw telemetry streams")
-print("=" * 80)
 
-atlas = {}
-for label, path in CONDITIONS.items():
-    res = analyze_signatures(path)
-    if res is None:
-        print(f"  {label:<30} ❌ No telemetry data found")
-        continue
-    
-    atlas[label] = res
-    print(f"\n  {label}")
-    print(f"    Samples: {res['n_samples']:<6} Vol Persistence: {res['vol_persistence']:+.4f} (lag 1)")
-    print(f"    Bias Persistence: {res['bias_persistence']:+.4f} (trend continuation proxy)")
-    print(f"    Smoothness Var:   {res['smoothness_stability']:.4f} (microstructure stability)")
-    print(f"    Compression Ratio: {res['mean_compression']:.4f} (genesis energy)")
-    print(f"    Avg Consensus:     {res['mean_conv']:.4f} (agreement depth)")
-    print(f"    Avg Resilience:    {res['mean_resilience']:.4f} (elastic capacity)")
+def build_transition_sketch(windows: list[dict]) -> dict:
+    """Dominant-state transitions between consecutive barriers."""
+    transitions: Counter[tuple[str, str]] = Counter()
+    for i in range(1, len(windows)):
+        a = windows[i - 1]["dominant_state"]
+        b = windows[i]["dominant_state"]
+        transitions[(a, b)] += 1
+    return {
+        "transition_counts": {f"{a}->{b}": c for (a, b), c in transitions.items()},
+        "total_steps": max(0, len(windows) - 1),
+    }
 
-# Output results to the observatory so it is visually dynamic
-with open("observatory/ecology_signatures.json", "w") as f:
-    json.dump(atlas, f, indent=4)
-print(f"\n✅ Ecology Signature Atlas exported to observatory/ecology_signatures.json")
+
+def extract_atlas(archive_dir: Path, cohort: set[str] | None) -> tuple[list[dict], dict]:
+    by_ts: dict[int, list[dict]] = defaultdict(list)
+    for item in iter_archive_records(archive_dir, cohort):
+        if not item["ok"]:
+            continue
+        by_ts[int(item["record"]["ts"])].append(item["record"])
+
+    windows = [window_signature(ts, recs) for ts, recs in sorted(by_ts.items())]
+
+    summary = {
+        "archive_dir": str(archive_dir),
+        "barrier_count": len(windows),
+        "ts_first": windows[0]["ts"] if windows else None,
+        "ts_last": windows[-1]["ts"] if windows else None,
+        "corridor_rate_mean": _safe_mean([w["corridor_rate"] for w in windows]),
+        "corridor_rate_stdev": _safe_stdev([w["corridor_rate"] for w in windows]),
+        "state_entropy_mean": _safe_mean([w["state_entropy"] for w in windows]),
+        "dominant_state_counts": dict(
+            Counter(w["dominant_state"] for w in windows)
+        ),
+        "transitions": build_transition_sketch(windows),
+        "extracted_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    return windows, summary
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Ecology signature atlas — Phase 1 extraction")
+    parser.add_argument("--batch-id", type=int, default=0)
+    parser.add_argument("--run-label", default="")
+    parser.add_argument("--archive-dir", default="", help="Override archive path")
+    args = parser.parse_args()
+
+    if args.archive_dir:
+        archive_dir = Path(args.archive_dir)
+    elif args.batch_id:
+        archive_dir = resolve_archive_dir(args.batch_id, False, args.run_label)
+    else:
+        print("❌ Provide --archive-dir or --batch-id", file=sys.stderr)
+        return 1
+
+    if not (archive_dir / "raw").exists():
+        print(f"❌ No raw archive at {archive_dir}", file=sys.stderr)
+        return 1
+
+    manifest = load_manifest(archive_dir, args.run_label or None)
+    windows, summary = extract_atlas(archive_dir, cohort=None)
+    if not windows:
+        print("❌ No synchronized barriers found in archive", file=sys.stderr)
+        return 1
+
+    meta = archive_dir / "metadata"
+    meta.mkdir(parents=True, exist_ok=True)
+    sig_path = meta / "ecology_signatures.jsonl"
+    sum_path = meta / "ecology_atlas_summary.json"
+
+    with open(sig_path, "w") as f:
+        for w in windows:
+            f.write(json.dumps(w, sort_keys=True) + "\n")
+
+    if manifest:
+        summary["ingestion_manifest"] = {
+            "timeline_fingerprint": manifest.get("timeline_fingerprint"),
+            "processed_ticks": manifest.get("processed_ticks"),
+            "corridor_rate": manifest.get("corridor_rate"),
+        }
+
+    with open(sum_path, "w") as f:
+        json.dump(summary, f, indent=2)
+
+    print("=" * 60)
+    print("ECOLOGY SIGNATURE ATLAS — Phase 1")
+    print("=" * 60)
+    print(f"  Archive        : {archive_dir}")
+    print(f"  Barriers       : {len(windows)}")
+    print(f"  ts range       : {summary['ts_first']} → {summary['ts_last']}")
+    print(f"  corridor μ±σ   : {summary['corridor_rate_mean']} / {summary['corridor_rate_stdev']}")
+    print(f"  Signatures     : {sig_path}")
+    print(f"  Summary        : {sum_path}")
+    print("=" * 60)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
