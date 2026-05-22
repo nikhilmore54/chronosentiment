@@ -254,6 +254,17 @@ def main():
         symbols_returned = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
         symbols_missing = symbols_attempted - symbols_returned
         
+        import statistics
+        lags = [(target_ts - ts) for ts in symbol_latest_ts.values()]
+        freshness = {
+            "fresh_within_0s": sum(1 for lag in lags if lag <= 0),
+            "fresh_within_30s": sum(1 for lag in lags if lag <= 30),
+            "fresh_within_60s": sum(1 for lag in lags if lag <= 60),
+            "fresh_within_300s": sum(1 for lag in lags if lag <= 300),
+            "max_symbol_lag_sec": max(lags) if lags else 0,
+            "median_symbol_lag_sec": int(statistics.median(lags)) if lags else 0
+        }
+        
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         ledger_path = metadata_dir / "live_session_steps.jsonl"
@@ -268,6 +279,7 @@ def main():
             "symbols_attempted": symbols_attempted,
             "symbols_returned": symbols_returned,
             "symbols_missing": symbols_missing,
+            "freshness": freshness,
             "fetch_stats": fetch_stats,
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
