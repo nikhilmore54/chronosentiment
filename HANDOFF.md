@@ -2,15 +2,17 @@
 
 ## Project identity
 
-**ChronoSentiment** = deterministic propagation-ecology instrumentation platform (not a trading bot).
+**ChronoSentiment** = deterministic chronology observability and execution-governance platform (not a trading bot).
 
 | Layer | Role |
 |-------|------|
 | **Rust (`core`, `cs-ingest`)** | Causal/replay authority — observatory, PCA, persist, dedupe |
 | **Python (`scripts/`)** | Orchestration — freeze, live sessions, certification harnesses |
-| **Ecology scripts** | Observability on archives (signatures, atlas) — semantics unchanged during ingest migration |
+| **Provider clustering scripts** | Observability on archives (signatures, atlas) — semantics unchanged during ingest migration |
 
 **Invariants:** Same frozen input → same archive output. No randomness in strategy/replay. Price-time / barrier chronology must not be weakened.
+
+**One-sentence identity:** *"ChronoSentiment is a deterministic chronology observability and execution-governance system for AI-driven financial infrastructure — it measures whether your data is trustworthy before your model acts on it."*
 
 ---
 
@@ -67,7 +69,7 @@ cargo build -p chronosentiment_core --example live_observatory --release
 
 ---
 
-## Other-IDE cleanup — current architecture
+## Current architecture
 
 ### `scripts/run_nse_cohort.py` (~169 lines)
 
@@ -95,9 +97,9 @@ Flags: `--temporal-observatory`, `--max-barrier-wait-sec`, `--cycles`, `--batch-
 
 - `scripts/observatory_daemon.py` — warm Rust observatory subprocess
 
-### Ecology pipeline
+### Provider clustering pipeline
 
-- `scripts/ecology_signature_atlas.py` confirmed on disk
+- `scripts/ecology_signature_atlas.py` confirmed on disk (filename unchanged during migration — rename is a future cleanup task)
 - Some `ecology_*.py` may have been moved to `archival_cold_storage/` during cleanup (verify locally)
 
 ---
@@ -117,10 +119,37 @@ Flags: `--temporal-observatory`, `--max-barrier-wait-sec`, `--cycles`, `--batch-
 
 | Batch | Notes |
 |-------|-------|
-| **003** | NSE 500; ingest parity **certified** 18,618/18,618 |
+| **003** | NSE 500; ingest parity **certified** 18,618/18,618; **stress cohort** — persistent sync <60%, dispersion >2.0 at market open |
 | **900** | LSE 10; live `lse_replay`; use `post-soak-cert` on live window, not `cert_full [0:50)` |
 | **901** | **DISCARD** — invalid duplicate timestamps |
 | **902** | Crypto 24/7; Yahoo participation fragmentation; Binance anchors in temporal observatory |
+| **910** | NSE Banking 13; **control cohort** — 100% atomic sync across all observed sessions; dispersion ~0.0 |
+
+---
+
+## Empirical governor baseline (May 2026)
+
+**batch_003** (NSE broad market, 500 symbols) — stress cohort:
+- Sync ratio: ~54.2% at market open (persistent across all sessions)
+- Dispersion: >2.0 (halt threshold breached every open session)
+- Provider lag: ~58s
+- Affected symbols: ~228/500
+- Governor state: HALTED at open; may recover to THROTTLED midday
+
+**batch_910** (NSE banking, 13 symbols) — control cohort:
+- Sync ratio: 100% atomic across all observed sessions
+- Dispersion: ~0.0
+- Provider lag: <1s
+- Governor state: NOMINAL
+
+**Interpretation:** The batch_003 / batch_910 split is a structural, repeatable infrastructure observation — not a replay corruption signal. Use 910 as control, 003 as stress cohort for chronology constraints. NSE open/close/post-close extend reconciliation for illiquid cohorts only.
+
+**Governor thresholds:**
+| State | Sync ratio | Dispersion | Multiplier |
+|-------|-----------|------------|------------|
+| HALTED | <70% | >2.0 (either) | 0.00 |
+| THROTTLED | 70–85% | 1.5–2.0 | 0.40 |
+| NOMINAL | >85% | <1.5 | 1.00 |
 
 ---
 
@@ -198,12 +227,14 @@ python3 scripts/run_live_session.py --batch-id 902 --run-label crypto_24h \
 | Cross-runtime parity harness | **Broken** (missing `--python-ingest`) |
 | Post-soak live equiv | **Broken** for new live runner (no steps JSONL) |
 | Live participation diagnostics | **Removed** in kernel runner |
-| Ecology semantics | Not modified during migration |
+| Provider clustering semantics | Not modified during migration |
 | `ga.rs` | Large file (~14k lines) — separate GA workstream, not part of ingest migration |
 
 ---
 
 ## Recommended next steps (priority order)
+
+**Post-QFTH submission (do not open before submission):**
 
 1. **Restore cert hooks:** legacy parity entrypoint OR golden archive; `live_session_steps.jsonl` in `run_live_session.py`
 2. **Re-run smoke:** `run_nse_cohort --fresh --max-intervals 5` on batch 900
@@ -213,7 +244,7 @@ python3 scripts/run_live_session.py --batch-id 902 --run-label crypto_24h \
 
 ---
 
-## Audit verdict (other-IDE cleanup)
+## Audit verdict
 
 **Mostly helpful:** single Rust ingest path, incremental substrate, temporal observatory, `cs-ingest repair`.
 
@@ -221,6 +252,16 @@ python3 scripts/run_live_session.py --batch-id 902 --run-label crypto_24h \
 
 ---
 
-## Empirical Governor Baseline
+## Frontend authority
 
-> **Empirical governor baseline (May 2026):** `batch_003` ≈ persistent fragmentation (sync <60%, dispersion >2.0); `batch_910` ≈ 100% atomic sync across all observed sessions; NSE open/close/post-close extend reconciliation for illiquid cohorts only. Use 910 as control, 003 as stress cohort for chronology constraints — not as replay corruption signal.
+The frontend is governed by `docs/frontend_cleanup_strategy.md`. Three UI surfaces exist with different authority levels:
+
+| Path | Authority | Status |
+|------|-----------|--------|
+| `services/ui/` | **Canonical** | React app — the operational frontend |
+| `observatory/` | **Transitional** | Standalone HTML demos — suppression screen, observatory index |
+| `my-chrono-sentiment-ui/` | **Non-canonical** | Agency template / QFTH demo artifacts only — not the product UI |
+
+The `observatory/suppression.html` screen is the primary institutional demo artifact. It demonstrates the three-state governor (HALTED/THROTTLED/NOMINAL) with the batch_003/batch_910 cohort contrast and replay-safe timestamp. The `my-chrono-sentiment-ui/deck.html` is the 10-slide institutional deck for QFTH.
+
+Frontend cleanup phases (from `docs/frontend_cleanup_strategy.md`): Simplification → Surface Separation → Replay Excellence → Observatory Polish. Phase 1 is the active boundary — no new charts, focus on hierarchy, navigation, metric dedupe, color semantics, terminology consistency.
