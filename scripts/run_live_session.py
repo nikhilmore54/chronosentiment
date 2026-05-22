@@ -214,7 +214,7 @@ def main():
         print("   ❄️  [Phase B] Incrementally updating substrate (1d fetch)...")
         t_start_b = time.time()
         try:
-            manifest_path, symbol_latest_ts = incremental_update_cohort(
+            manifest_path, symbol_latest_ts, fetch_stats = incremental_update_cohort(
                 cohort_file=cohort_file,
                 batch_id=args.batch_id,
                 interval="5m",
@@ -268,6 +268,7 @@ def main():
             "symbols_attempted": symbols_attempted,
             "symbols_returned": symbols_returned,
             "symbols_missing": symbols_missing,
+            "fetch_stats": fetch_stats,
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
         }

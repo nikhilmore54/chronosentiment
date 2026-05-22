@@ -19,8 +19,58 @@ from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
+import requests
+from collections import Counter
+import threading
 
 CANDLE_ROOT = Path("state_archive/candles")
+
+class ProviderTelemetrySession(requests.Session):
+    def __init__(self):
+        super().__init__()
+        self.lock = threading.Lock()
+        self.attempted = 0
+        self.success = 0
+        self.rate_limited = 0
+        self.http_errors = 0
+        self.status_histogram = Counter()
+
+    def request(self, method, url, **kwargs):
+        with self.lock:
+            self.attempted += 1
+            
+        resp = super().request(method, url, **kwargs)
+        
+        with self.lock:
+            code = resp.status_code
+            self.status_histogram[code] += 1
+            if code == 200:
+                self.success += 1
+            elif code == 429:
+                self.rate_limited += 1
+                self.http_errors += 1
+            elif code >= 400:
+                self.http_errors += 1
+                
+        return resp
+
+    def flush_metrics(self):
+        with self.lock:
+            m = {
+                "attempted": self.attempted,
+                "success": self.success,
+                "rate_limited": self.rate_limited,
+                "http_errors": self.http_errors,
+                "status_histogram": dict(self.status_histogram)
+            }
+            self.attempted = 0
+            self.success = 0
+            self.rate_limited = 0
+            self.http_errors = 0
+            self.status_histogram.clear()
+            return m
+
+_GLOBAL_TELEMETRY_SESSION = ProviderTelemetrySession()
 
 
 def frozen_batch_dir(batch_id: int, root: Path = CANDLE_ROOT) -> Path:
@@ -116,6 +166,7 @@ def download_ticker_with_stderr(
                     auto_adjust=True,
                     progress=False,
                     threads=False,
+                    session=_GLOBAL_TELEMETRY_SESSION
                 )
             stderr_all.write(buf.getvalue())
             if df is not None and not df.empty:
@@ -264,10 +315,13 @@ def incremental_update_cohort(
     frozen_count = 0
     total_bars = 0
     symbol_latest_ts = {}
+    
+    # Flush baseline metrics before we start this update batch
+    _GLOBAL_TELEMETRY_SESSION.flush_metrics()
 
-    def _update_one(sym: str) -> tuple[str, int, list[int]]:
+    def _update_one(sym: str) -> tuple[str, int, list[int], int]:
         # Fetch just 1d to capture the latest bars with minimal bandwidth
-        df_new = download_ticker(sym, interval, period="1d")
+        df_new, stderr = download_ticker_with_stderr(sym, interval, period="1d")
         
         path = symbol_path(batch_dir, sym)
         if path.exists():
@@ -283,20 +337,22 @@ def incremental_update_cohort(
             df = df_new
 
         if df.empty:
-            return sym, 0, []
+            return sym, 0, [], 1 if df_new.empty else 0
             
         recs = df_to_records(df)
         write_symbol_candles(path, recs)
         ts_list = [r["ts"] for r in recs]
-        return sym, len(recs), ts_list
+        return sym, len(recs), ts_list, 1 if df_new.empty else 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
         futures = {ex.submit(_update_one, s): s for s in symbols}
         done = 0
+        empty_responses = 0
         for fut in concurrent.futures.as_completed(futures):
             done += 1
             try:
-                sym, n_bars, ts_list = fut.result()
+                sym, n_bars, ts_list, is_empty = fut.result()
+                empty_responses += is_empty
                 if n_bars > 0:
                     frozen_count += 1
                     total_bars += n_bars
@@ -308,6 +364,11 @@ def incremental_update_cohort(
                 print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...", flush=True)
 
     sorted_ts = sorted(all_ts)
+    
+    # Extract telemetry explicitly and return it to the caller
+    fetch_stats = _GLOBAL_TELEMETRY_SESSION.flush_metrics()
+    fetch_stats["empty_responses"] = empty_responses
+    
     manifest = {
         "batch_id": batch_id,
         "cohort_file": str(cohort_file),
@@ -328,4 +389,4 @@ def incremental_update_cohort(
         json.dump(manifest, f, indent=2)
     print(f"✅ Incremental substrate updated: {manifest_path}")
     print(f"   Timeline fingerprint: {manifest['timeline_fingerprint']}")
-    return manifest_path, symbol_latest_ts
+    return manifest_path, symbol_latest_ts, fetch_stats
