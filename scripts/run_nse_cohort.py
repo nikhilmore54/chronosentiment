@@ -41,8 +41,8 @@ def run_frozen_via_cs_ingest(
     fresh: bool,
     resume: bool,
     rebuild_dedupe: bool,
-) -> None:
-    """Canonical frozen replay path — validated replay-step in Rust."""
+) -> str:
+    """Canonical frozen replay path — validated replay-step in Rust. Returns stdout string."""
     binary = cs_ingest_binary()
     if not binary.exists():
         print(f"❌ cs-ingest not built: {binary}", file=sys.stderr)
@@ -85,9 +85,12 @@ def run_frozen_via_cs_ingest(
             cmd,
             cwd=Path(__file__).resolve().parents[1],
             check=True,
+            capture_output=True,
             text=True,
         )
+        print(proc.stdout)
     except subprocess.CalledProcessError as e:
+        print(e.stdout)
         print(f"❌ cs-ingest failed with exit code {e.returncode}", file=sys.stderr)
         sys.exit(e.returncode)
 
@@ -98,6 +101,8 @@ def run_frozen_via_cs_ingest(
     print(f"  Execution Time      : {duration:.2f} seconds")
     print(f"  Substrate Location  : {archive_dir}/raw/")
     print("=" * 60)
+    
+    return proc.stdout
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingest an alphabetical cohort batch of symbols via Rust cs-ingest.")

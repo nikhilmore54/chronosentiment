@@ -3,34 +3,31 @@
 @tailwind utilities;
 
 /* ─── ChronoSentiment Design System ─────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg:    #080b12;
-  --card:  #111827;
-  --card2: #0f1623;
-  --b:     rgba(148,163,184,.08);
-  --bred:  rgba(239,68,68,.25);
-  --bamb:  rgba(245,158,11,.25);
-  --bgrn:  rgba(16,185,129,.2);
-  --t1:    #f1f5f9;
-  --t2:    #94a3b8;
-  --tm:    #475569;
-  --red:   #ef4444;
-  --rdim:  rgba(239,68,68,.08);
-  --amb:   #f59e0b;
-  --adim:  rgba(245,158,11,.08);
-  --grn:   #10b981;
-  --gdim:  rgba(16,185,129,.08);
-  --blu:   #3b82f6;
-  --bdim:  rgba(59,130,246,.08);
-  --pur:   #8b5cf6;
-  --sans:  'Inter', sans-serif;
-  --mono:  'JetBrains Mono', monospace;
-  --r4:    4px;
-  --r8:    8px;
-  --r10:   10px;
-  --r12:   12px;
+  --bg:    #ECEFF3;
+  --card:  #F7F8FA;
+  --card2: #F0F2F6;
+  --b:     #D4DAE2;
+  --t1:    #1E2430;
+  --t2:    #5B6574;
+  --tm:    #828C9D;
+  --red:   #B05A5A;
+  --rdim:  rgba(176,90,90,.1);
+  --amb:   #C27A5A;
+  --adim:  rgba(194,122,90,.1);
+  --grn:   #4F6BFF;
+  --gdim:  rgba(79,107,255,.1);
+  --blu:   #4F6BFF;
+  --bdim:  rgba(79,107,255,.1);
+  --pur:   #6366F1;
+  --sans:  'IBM Plex Sans', -apple-system, sans-serif;
+  --mono:  'IBM Plex Mono', monospace;
+  --r4:    0px;
+  --r8:    0px;
+  --r10:   0px;
+  --r12:   0px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,12 +43,7 @@ body {
 }
 
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 40% at 50% -10%, rgba(59,130,246,.04) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 #root { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
@@ -82,77 +74,75 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: 16px 32px;
   border-bottom: 1px solid var(--b);
-  background: rgba(8,11,18,.97);
-  backdrop-filter: blur(8px);
+  background: var(--bg);
 }
 
 .cs-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .cs-logo-mark {
-  width: 28px;
-  height: 28px;
-  border: 1.5px solid rgba(59,130,246,.4);
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--b);
+  background: var(--card);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: var(--blu);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t1);
   flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .cs-logo-text h1 {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: -.01em;
+  letter-spacing: -.02em;
   color: var(--t1);
 }
 
 .cs-logo-text p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--tm);
-  font-family: var(--mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  margin-top: 1px;
+  font-family: var(--sans);
+  margin-top: 2px;
 }
 
 .cs-clock {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--t2);
   background: var(--card);
   border: 1px solid var(--b);
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: var(--r4);
 }
 
 /* ─── Tab Navigation ─────────────────────────────────────────────────────── */
 .cs-tabs {
   display: flex;
-  gap: 2px;
+  gap: 24px;
   padding: 0 32px;
   border-bottom: 1px solid var(--b);
-  background: rgba(8,11,18,.95);
+  background: var(--bg);
 }
 
 .cs-tab {
-  font-family: var(--mono);
-  font-size: 11px;
+  font-family: var(--sans);
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--tm);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 12px 16px;
+  padding: 16px 0;
   cursor: pointer;
   transition: color .15s, border-color .15s;
   white-space: nowrap;
@@ -161,35 +151,32 @@ body::before {
 .cs-tab:hover { color: var(--t2); }
 
 .cs-tab.active {
-  color: var(--blu);
-  border-bottom-color: var(--blu);
+  color: var(--t1);
+  border-bottom-color: var(--t1);
 }
 
 /* ─── Main content area ──────────────────────────────────────────────────── */
 .cs-main {
   flex: 1;
-  padding: 28px 32px 48px;
-  max-width: 1200px;
+  padding: 40px 32px 60px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
 
 /* ─── Section heading ────────────────────────────────────────────────────── */
 .cs-section-title {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -.01em;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.02em;
   color: var(--t1);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .cs-section-sub {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--tm);
-  font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 /* ─── Cards ──────────────────────────────────────────────────────────────── */
@@ -198,16 +185,14 @@ body::before {
   border: 1px solid var(--b);
   border-radius: var(--r10);
   padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .cs-card-title {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--tm);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-family: var(--mono);
-  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t1);
+  margin-bottom: 16px;
 }
 
 .cs-card2 {
@@ -241,12 +226,9 @@ body::before {
 .cs-metric.info { border-color: rgba(59,130,246,.25); background: var(--bdim); }
 
 .cs-metric-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--tm);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-family: var(--mono);
+  color: var(--t2);
 }
 
 .cs-metric-value {
@@ -273,49 +255,47 @@ body::before {
 .cs-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .cs-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .cs-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--tm);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t2);
 }
 
 .cs-input {
-  background: var(--card2);
+  background: var(--card);
   border: 1px solid var(--b);
   border-radius: var(--r8);
   color: var(--t1);
-  font-family: var(--mono);
-  font-size: 13px;
-  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 10px 14px;
   outline: none;
-  transition: border-color .15s;
+  transition: border-color .15s, box-shadow .15s;
   width: 100%;
 }
 
-.cs-input:focus { border-color: rgba(59,130,246,.5); }
+.cs-input:focus { 
+  border-color: var(--blu); 
+  box-shadow: 0 0 0 2px var(--bdim);
+}
 .cs-input::placeholder { color: var(--tm); }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 .cs-btn {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  padding: 8px 20px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
   border-radius: var(--r8);
   border: 1px solid var(--b);
   background: var(--card);
@@ -329,14 +309,14 @@ body::before {
 .cs-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .cs-btn-primary {
-  background: rgba(59,130,246,.15);
-  border-color: rgba(59,130,246,.4);
-  color: var(--blu);
+  background: var(--t1);
+  border-color: var(--t1);
+  color: var(--card);
 }
 .cs-btn-primary:hover:not(:disabled) {
-  background: rgba(59,130,246,.25);
-  border-color: var(--blu);
-  color: var(--t1);
+  background: #374151;
+  border-color: #374151;
+  color: var(--card);
 }
 
 .cs-btn-success {
@@ -375,14 +355,11 @@ body::before {
 }
 
 .cs-table th {
-  padding: 10px 14px;
+  padding: 12px 16px;
   text-align: left;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--tm);
-  text-transform: uppercase;
-  letter-spacing: .08em;
   white-space: nowrap;
 }
 
@@ -521,78 +498,81 @@ body::before {
 
 .cs-trace-block {
   border-left: 2px solid var(--b);
-  padding: 8px 12px;
-  border-radius: 0 var(--r8) var(--r8) 0;
-  background: var(--card2);
+  padding: 12px 16px;
+  background: transparent;
   cursor: pointer;
   transition: border-color .15s, background .15s;
+  margin-left: 6px;
 }
 
-.cs-trace-block:hover { background: rgba(148,163,184,.06); }
-.cs-trace-block.active { border-left-color: var(--blu); background: var(--bdim); }
-.cs-trace-block.divergent { border-left-color: var(--amb); background: var(--adim); }
+.cs-trace-block:hover { background: var(--card2); }
+.cs-trace-block.active { border-left-color: var(--blu); background: var(--card2); }
+.cs-trace-block.divergent { border-left-color: var(--amb); background: var(--card2); }
 
 .cs-trace-block.intent    { border-left-color: var(--grn); }
 .cs-trace-block.queue     { border-left-color: var(--amb); }
 .cs-trace-block.execution { border-left-color: var(--blu); }
 .cs-trace-block.other     { border-left-color: var(--tm); }
-.cs-trace-block.dimmed    { opacity: .35; pointer-events: none; }
+.cs-trace-block.dimmed    { opacity: .4; pointer-events: none; }
 
 .cs-trace-group {
-  font-size: 9px;
-  font-family: var(--mono);
+  font-size: 11px;
+  font-family: var(--sans);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--tm);
-  margin-bottom: 3px;
+  color: var(--t1);
+  margin-bottom: 4px;
 }
 
 .cs-trace-narrative {
-  font-size: 12px;
+  font-size: 13px;
+  font-family: var(--sans);
   color: var(--t2);
   line-height: 1.5;
 }
 
 .cs-trace-key-marker {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--mono);
-  color: var(--amb);
-  margin-top: 3px;
+  color: var(--t2);
+  margin-top: 6px;
 }
 
 /* ─── Causal chain ───────────────────────────────────────────────────────── */
 .cs-causal-chain {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 12px;
+  gap: 0px;
+  margin-top: 16px;
+  border-top: 1px solid var(--b);
+  padding-top: 16px;
 }
 
 .cs-causal-step {
   border-left: 2px solid var(--blu);
-  padding: 6px 12px;
-  background: var(--bdim);
-  border-radius: 0 var(--r8) var(--r8) 0;
+  padding: 8px 12px;
+  background: var(--card2);
+  margin-left: 6px;
 }
 
 .cs-causal-step-group {
-  font-size: 10px;
-  font-family: var(--mono);
+  font-size: 11px;
+  font-family: var(--sans);
   font-weight: 600;
   color: var(--blu);
   margin-bottom: 2px;
 }
 
 .cs-causal-step-text {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--t2);
 }
 
 .cs-causal-arrow {
-  font-size: 11px;
-  color: var(--tm);
-  padding-left: 14px;
+  font-size: 16px;
+  color: var(--b);
+  padding-left: 11px;
+  margin: -4px 0;
+  z-index: -1;
 }
 
 /* ─── Range slider ───────────────────────────────────────────────────────── */

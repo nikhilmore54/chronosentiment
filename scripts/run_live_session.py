@@ -196,11 +196,13 @@ def main():
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] CYCLE {cycle}/{args.cycles} — Target TS: {target_ts}")
         
         # Phase 1: Temporal Propagation (Wait for bar close & provider visibility)
+        obs_metrics = {}
         try:
             if args.temporal_observatory:
-                active_temporal_observatory(target_ts, args.bar_sec, symbols, float(args.max_barrier_wait_sec))
+                obs_metrics = active_temporal_observatory(target_ts, args.bar_sec, symbols, float(args.max_barrier_wait_sec))
             else:
-                wait_for_barrier_target(target_ts, args.bar_sec, float(args.provider_lag_sec))
+                waited = wait_for_barrier_target(target_ts, args.bar_sec, float(args.provider_lag_sec))
+                obs_metrics = {"exchange_to_observer_latency_ms": int(waited * 1000)}
         except TimeoutError as e:
             print(f"❌ {e}")
             continue
@@ -216,7 +218,7 @@ def main():
 
         # Phase 3: Canonical Replay (with dedupe to resume where we left off)
         print("   🚀 [Phase C] Executing canonical kernel (cs-ingest)...")
-        run_frozen_via_cs_ingest(
+        ingest_stdout = run_frozen_via_cs_ingest(
             batch_id=args.batch_id,
             cohort_file=cohort_file,
             archive_dir=archive_dir,
@@ -226,6 +228,32 @@ def main():
             resume=True,
             rebuild_dedupe=False,
         )
+
+        # Phase 4: Chronology Ledger Append
+        import re
+        persisted = sum(int(x) for x in re.findall(r"persisted\s+(\d+)", ingest_stdout))
+        dedupe_skip = sum(int(x) for x in re.findall(r"dedupe_skip\s+(\d+)", ingest_stdout))
+        
+        metadata_dir = archive_dir / "metadata"
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        ledger_path = metadata_dir / "live_session_steps.jsonl"
+        
+        ledger_entry = {
+            "cycle": cycle,
+            "barrier_ts": target_ts,
+            "timeline_fingerprint": "pending_sha256",  # To be filled by replay engine
+            "governor_state": "NOMINAL",               # Pending restoration of live governor
+            "sync_ratio": 1.0,                         # Pending full cohort measurement 
+            "dispersion": 1.0,                         # Pending full cohort measurement
+            "provider_lag_ms": obs_metrics.get("provider_lag_ms", 0),
+            "persisted": persisted,
+            "dedupe_skip": dedupe_skip
+        }
+        
+        with open(ledger_path, "a") as f:
+            f.write(json.dumps(ledger_entry) + "\n")
+        
+        print(f"   📜 [Ledger] Appended canonical barrier step to {ledger_path.name}")
 
         last_target_ts = target_ts
         print(f"✅ Cycle {cycle} complete.")

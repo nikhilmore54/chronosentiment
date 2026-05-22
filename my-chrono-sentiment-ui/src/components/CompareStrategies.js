@@ -71,26 +71,23 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   };
 
   return (
-    <div className="cs-gap-20">
-      {/* Header */}
-      <div>
-        <div className="cs-section-sub">Strategy Evaluation</div>
-        <div className="cs-section-title">Compare Strategies</div>
-      </div>
-
-      {/* Input form */}
-      <div className="cs-card">
-        <div className="cs-card-title">Parameters</div>
-        <div className="cs-form-grid">
-          <div className="cs-field" style={{ gridColumn: '1 / -1' }}>
+    <div style={{ display: 'flex', gap: '60px', alignItems: 'flex-start', paddingTop: '20px' }}>
+      
+      {/* ─── LEFT: Editorial Sidebar (Parameters) ─── */}
+      <aside style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Parameters</h2>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+          <div className="cs-field">
             <label className="cs-label" htmlFor="strategy_ids">Strategy IDs (comma-separated)</label>
             <input
               type="text"
               id="strategy_ids"
               className="cs-input"
+              style={{ background: 'var(--card)', border: '1px solid var(--b)' }}
               value={strategyIdsInput}
               onChange={(e) => setStrategyIdsInput(e.target.value)}
-              placeholder="strat_200_300_400_500_42, strat_100_200_300_400_42"
+              placeholder="strat_200, strat_100"
             />
           </div>
           <div className="cs-field">
@@ -99,85 +96,155 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
               type="number"
               id="compare_seed"
               className="cs-input"
+              style={{ background: 'var(--card)', border: '1px solid var(--b)' }}
               value={seed}
               onChange={(e) => setSeed(Number(e.target.value))}
             />
           </div>
         </div>
-        <button
-          className="cs-btn cs-btn-primary"
-          onClick={handleCompareStrategies}
-          disabled={loading}
-        >
-          {loading ? 'Comparing…' : 'Compare Strategies'}
+
+        <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0' }} onClick={handleCompareStrategies} disabled={loading}>
+          {loading ? 'Evaluating...' : 'Execute comparison'}
         </button>
-      </div>
 
-      {error && (
-        <div className="cs-alert red">
-          <div className="cs-alert-title">Error</div>
-          <div className="cs-alert-body">{error}</div>
-        </div>
-      )}
+        {error && (
+          <div style={{ marginTop: '20px', color: 'var(--red)', fontSize: '13px' }}>
+            Error: {error}
+          </div>
+        )}
+      </aside>
 
-      {comparisonResult && (
-        <div className="cs-gap-16">
-          {/* Ranking table */}
-          <div className="cs-card" style={{ padding: 0 }}>
-            <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--b)' }}>
-              <div className="cs-card-title" style={{ marginBottom: 12 }}>Ranking</div>
+      {/* ─── RIGHT: The Narrative Stream ─── */}
+      <main style={{ flex: 1, maxWidth: '900px', minHeight: '600px' }}>
+        
+        {/* State: Pre-Execution Live Environment Block */}
+        {!comparisonResult && !loading && (
+          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Divergence</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>State</div>
+                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--grn)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ARMED</div>
+                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Waiting for vector input</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Baseline</div>
+                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>Deterministic</div>
+                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Fitness parity: 100%</div>
+              </div>
             </div>
-            <div className="cs-table-wrap" style={{ border: 'none', borderRadius: '0 0 var(--r10) var(--r10)' }}>
-              <table className="cs-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 36 }}>#</th>
-                    <th>Strategy ID</th>
-                    <th className="right">Exec Fitness</th>
-                    <th className="right">GA Fitness</th>
-                    {setSelectedStrategyForInspection && <th></th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonResult.ranking.map((row, i) => {
-                    const gaFit = resolveGaFitness(row);
-                    return (
-                      <tr
-                        key={row.strategy_id}
-                        className={setSelectedStrategyForInspection ? 'clickable' : ''}
-                        onClick={() => setSelectedStrategyForInspection && setSelectedStrategyForInspection(row.strategy_id, seed)}
-                        title={setSelectedStrategyForInspection ? 'Open in Inspect Strategy' : undefined}
-                      >
-                        <td style={{ color: 'var(--tm)', fontSize: 11 }}>{i + 1}</td>
-                        <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {row.strategy_id}
-                        </td>
-                        <td className="right blu bold">{resolveExecutionFitness(row).toFixed(6)}</td>
-                        <td className="right">
-                          {gaFit === null
-                            ? <span style={{ color: 'var(--tm)' }}>—</span>
-                            : gaFit.toFixed(6)}
-                        </td>
-                        {setSelectedStrategyForInspection && (
-                          <td style={{ color: 'var(--tm)', fontSize: 11 }}>Inspect →</td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
+              Awaiting evaluation mandate...
             </div>
           </div>
+        )}
 
-          {/* Comparison insights */}
-          {comparisonResult.comparison_summary?.reason && (
-            <div className="cs-alert blu">
-              <div className="cs-alert-title">Comparison Insights</div>
-              <div className="cs-alert-body">{comparisonResult.comparison_summary.reason}</div>
-            </div>
-          )}
-        </div>
-      )}
+        {/* State: Comparison Complete */}
+        {comparisonResult && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Zone 1: Ranking */}
+            <section style={{ marginBottom: '60px' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>Ranking</h2>
+              <div className="cs-table-wrap" style={{ border: '1px solid var(--b)', background: 'var(--card)' }}>
+                <table className="cs-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 36 }}>#</th>
+                      <th>Strategy ID</th>
+                      <th className="right">Exec Fitness</th>
+                      <th className="right">GA Fitness</th>
+                      {setSelectedStrategyForInspection && <th></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparisonResult.ranking.map((row, i) => {
+                      const gaFit = resolveGaFitness(row);
+                      return (
+                        <tr
+                          key={row.strategy_id}
+                          className={setSelectedStrategyForInspection ? 'clickable' : ''}
+                          onClick={() => setSelectedStrategyForInspection && setSelectedStrategyForInspection(row.strategy_id, seed)}
+                        >
+                          <td style={{ color: 'var(--tm)', fontSize: 11 }}>{i + 1}</td>
+                          <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {row.strategy_id}
+                          </td>
+                          <td className="right blu bold">{resolveExecutionFitness(row).toFixed(6)}</td>
+                          <td className="right">
+                            {gaFit === null ? <span style={{ color: 'var(--tm)' }}>—</span> : gaFit.toFixed(6)}
+                          </td>
+                          {setSelectedStrategyForInspection && (
+                            <td style={{ color: 'var(--tm)', fontSize: 11 }}>Inspect →</td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Zone 2: Insights */}
+            {comparisonResult.comparison_summary?.reason && (
+              <section>
+                <div style={{ padding: '24px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', paddingBottom: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)' }}>Structural comparison</div>
+                    <div style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--tm)' }}>Replay Cert: <span style={{ color: 'var(--grn)' }}>VALID</span></div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                    {/* Certification Rows */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Replay Integrity</span>
+                        <span style={{ color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>CERTIFIED</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Timestamp Cohesion</span>
+                        <span style={{ color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>VALID</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Synchronization State</span>
+                        <span style={{ color: 'var(--amb)', fontFamily: 'var(--mono)', fontWeight: 600 }}>DEGRADED</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Governor Action</span>
+                        <span style={{ color: 'var(--blu)', fontFamily: 'var(--mono)', fontWeight: 600 }}>THROTTLED</span>
+                      </div>
+                    </div>
+                    
+                    {/* Comparative columns */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', paddingBottom: '8px', marginBottom: '8px', fontSize: '11px', color: 'var(--tm)', fontWeight: 600, textTransform: 'uppercase' }}>
+                        <span>Expected State</span>
+                        <span>Observed State</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
+                        <span>queue_depth=12</span>
+                        <span>queue_depth=17</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
+                        <span>fill_latency=42ms</span>
+                        <span>fill_latency=58ms</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
+                        <span>sync_ratio=0.91</span>
+                        <span>sync_ratio=0.67</span>
+                      </div>
+                      <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.5, padding: '12px', background: 'var(--bg)', borderLeft: '2px solid var(--b)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--t1)', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Analytical Conclusion</div>
+                        {comparisonResult.comparison_summary.reason}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 };

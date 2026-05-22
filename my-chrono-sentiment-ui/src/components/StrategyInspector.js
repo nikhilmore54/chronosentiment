@@ -273,70 +273,17 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
   if (confidenceLevel === CONFIDENCE_LEVELS.LOW) confidenceReason = 'No clear dominance or significant trade-offs found.';
 
   return (
-    <div className="cs-gap-20">
-      {/* Header */}
-      <div>
-        <div className="cs-section-sub">Execution Analysis</div>
-        <div className="cs-section-title">
-          {isDualMode
-            ? `Comparing: ${strategyId || 'N/A'} vs ${strategyId2 || 'N/A'}`
-            : 'Strategy Inspector'}
-        </div>
-      </div>
-
-      {/* Input form */}
-      <div className="cs-card">
-        <div className="cs-card-title">Strategy Inputs</div>
-        <div className="cs-form-grid">
-          <div className="cs-field">
-            <label className="cs-label" htmlFor="strategy_id">Strategy ID 1</label>
-            <input type="text" id="strategy_id" className="cs-input" value={strategyId} onChange={e => setStrategyId(e.target.value)} onBlur={() => handleInspectStrategy(1)} />
-          </div>
-          <div className="cs-field">
-            <label className="cs-label" htmlFor="strategy_id_2">Strategy ID 2 (optional)</label>
-            <input type="text" id="strategy_id_2" className="cs-input" value={strategyId2} onChange={e => setStrategyId2(e.target.value)} onBlur={() => handleInspectStrategy(2)} />
-          </div>
-          <div className="cs-field">
-            <label className="cs-label" htmlFor="seed_inspect">Seed 1</label>
-            <input type="number" id="seed_inspect" className="cs-input" value={seed} onChange={e => setSeed(Number(e.target.value))} onBlur={() => handleInspectStrategy(1)} />
-          </div>
-          <div className="cs-field">
-            <label className="cs-label" htmlFor="seed_inspect_2">Seed 2 (optional)</label>
-            <input type="number" id="seed_inspect_2" className="cs-input" value={seed2} onChange={e => setSeed2(Number(e.target.value))} onBlur={() => handleInspectStrategy(2)} />
-          </div>
-        </div>
-        <div className="cs-row-gap-12">
-          <button
-            className="cs-btn cs-btn-primary"
-            onClick={() => { handleInspectStrategy(1); if (strategyId2) handleInspectStrategy(2); }}
-            disabled={loading || loading2}
-          >
-            {(loading || loading2) ? 'Inspecting…' : isDualMode ? 'Compare Executions' : 'Inspect Strategy'}
-          </button>
-          <label className="cs-checkbox-label">
-            <input type="checkbox" className="cs-checkbox" checked={showRawEvents} onChange={e => setShowRawEvents(e.target.checked)} />
-            Show raw events
-          </label>
-        </div>
-      </div>
-
-      {error  && <div className="cs-alert red"><div className="cs-alert-title">Error (Strategy 1)</div><div className="cs-alert-body">{error}</div></div>}
-      {error2 && <div className="cs-alert red"><div className="cs-alert-title">Error (Strategy 2)</div><div className="cs-alert-body">{error2}</div></div>}
-
-      {inspectionResult && (
-        <div className="cs-gap-16">
-          {/* Execution model */}
-          <div className="cs-card">
-            <div className="cs-card-title">Execution Model</div>
-            <p style={{ fontSize: 12, color: 'var(--t2)', fontFamily: 'var(--mono)' }}>
-              Decision → Queue → Market Interaction → Execution
-            </p>
-          </div>
-
-          {/* Timeline banner + slider */}
-          <div className="cs-card">
-            <div className="cs-card-title">Replay Position</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+    <div style={{ display: 'flex', gap: '60px', alignItems: 'flex-start', paddingTop: '20px' }}>
+      
+      {/* ─── LEFT: Editorial Sidebar (Timeline Anchor & Inputs) ─── */}
+      <aside style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Causal reconstruction</h2>
+        
+        {/* Timeline anchor */}
+        {inspectionResult && (
+          <div style={{ marginBottom: '40px', paddingBottom: '30px', borderBottom: '1px solid var(--b)' }}>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--t2)', marginBottom: '16px' }}>Replay position</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <input
                 type="range"
                 className="cs-range"
@@ -345,32 +292,93 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
                 value={selectedMaxSeqId !== null ? selectedMaxSeqId : maxAvailableSeqId}
                 onChange={e => setSelectedMaxSeqId(Number(e.target.value))}
               />
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--blu)', whiteSpace: 'nowrap' }}>
-                Seq {currentMaxSeqId} / {maxAvailableSeqId}
-              </span>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
-              Showing events Seq {minSeqId} → {currentMaxSeqId}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>Seq {minSeqId}</span>
+              <span style={{ fontSize: '14px', color: 'var(--t1)', fontWeight: 500, fontFamily: 'var(--mono)' }}>Seq {currentMaxSeqId}</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+          <div className="cs-field">
+            <label className="cs-label" htmlFor="strategy_id">Strategy ID</label>
+            <input type="text" id="strategy_id" className="cs-input" style={{ background: 'var(--card)', border: '1px solid var(--b)' }} value={strategyId} onChange={e => setStrategyId(e.target.value)} onBlur={() => handleInspectStrategy(1)} />
+          </div>
+          <div className="cs-field">
+            <label className="cs-label" htmlFor="seed_inspect">Seed</label>
+            <input type="number" id="seed_inspect" className="cs-input" style={{ background: 'var(--card)', border: '1px solid var(--b)' }} value={seed} onChange={e => setSeed(Number(e.target.value))} onBlur={() => handleInspectStrategy(1)} />
+          </div>
+        </div>
+
+        <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0', marginBottom: '20px' }} onClick={() => { handleInspectStrategy(1); if (strategyId2) handleInspectStrategy(2); }} disabled={loading || loading2}>
+          {(loading || loading2) ? 'Inspecting...' : 'Reconstruct trace'}
+        </button>
+
+        {error && <div style={{ color: 'var(--red)', fontSize: '13px' }}>Error: {error}</div>}
+      </aside>
+
+      {/* ─── RIGHT: The Forensics Stream ─── */}
+      <main style={{ flex: 1, maxWidth: '900px', minHeight: '600px' }}>
+        
+        {/* State: Pre-Execution Live Environment Block */}
+        {!inspectionResult && !loading && (
+          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Replay</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Vector</div>
+                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--grn)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ONLINE</div>
+                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Tracking initialized</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Latch</div>
+                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>Locked</div>
+                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Awaiting trace ID</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
+              Awaiting strategy vector...
+            </div>
+          </div>
+        )}
+
+      {inspectionResult && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Execution Model Context Strip */}
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>Vector</h2>
+            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--b)', paddingBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Decision</span>
+                <span style={{ color: 'var(--tm)' }}>→</span>
+                <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Queue</span>
+                <span style={{ color: 'var(--tm)' }}>→</span>
+                <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Market interaction</span>
+                <span style={{ color: 'var(--tm)' }}>→</span>
+                <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Execution</span>
+              </div>
+            </div>
           </div>
 
-          {/* Strategy columns */}
-          <div className={isDualMode ? 'cs-dual-grid' : ''}>
-            <StrategyColumn
-              strategyNum={1}
-              strategyId={strategyId}
-              seed={seed}
-              inspectionResult={inspectionResult}
-              narratedExecutionTrace={narratedExecutionTrace1}
-              rawEventRefs={rawEventRefs}
-              activeChain={activeChain}
-              eventMap={eventMap}
-              showRawEvents={showRawEvents}
-              getGroupColorClass={getGroupColorClass}
-              divergenceStatements={divergenceStatements}
-              setSelectedSeqId={setSelectedSeqId}
-              selectedSeqId={selectedSeqId}
-            />
+          <div className={isDualMode ? 'cs-dual-grid' : ''} style={{ gap: '40px' }}>
+            {inspectionResult && (
+              <StrategyColumn
+                strategyNum={1}
+                strategyId={strategyId}
+                seed={seed}
+                inspectionResult={inspectionResult}
+                narratedExecutionTrace={narratedExecutionTrace1}
+                rawEventRefs={rawEventRefs}
+                activeChain={activeChain}
+                eventMap={eventMap}
+                showRawEvents={showRawEvents}
+                getGroupColorClass={getGroupColorClass}
+                divergenceStatements={divergenceStatements}
+                setSelectedSeqId={setSelectedSeqId}
+                selectedSeqId={selectedSeqId}
+              />
+            )}
             {isDualMode && inspectionResult2 && (
               <StrategyColumn
                 strategyNum={2}
@@ -389,23 +397,9 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
               />
             )}
           </div>
-
-          <ComparisonPanels
-            isDualMode={isDualMode}
-            allNarrativeBlocks1={allNarrativeBlocks1}
-            allNarrativeBlocks2={allNarrativeBlocks2}
-            strategyId={strategyId}
-            strategyId2={strategyId2}
-            executionSummary1={executionSummary1}
-            executionSummary2={executionSummary2}
-            finalVerdict={finalVerdict}
-            confidenceLevel={confidenceLevel}
-            confidenceColorClass={confidenceColorClass}
-            confidenceReason={confidenceReason}
-            divergenceStatements={divergenceStatements}
-          />
         </div>
       )}
+      </main>
     </div>
   );
 };
