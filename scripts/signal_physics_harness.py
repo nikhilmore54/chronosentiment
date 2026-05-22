@@ -53,13 +53,17 @@ def run_harness(ledger_path: Path, strategy_id: str):
     # Prefill windows with the first two prices to ensure sufficient state for i=2
     window_baseline = []
     window_fragmented = []
+    window_repaired = []
     if len(df) >= 2:
         for idx in range(0, 2):
             px = float(df['Close'].iloc[idx])
             window_baseline.append(px)
             window_fragmented.append(px)
+            window_repaired.append(px)
             
-    if strategy_id == "rolling_window_momentum_v2_long":
+    if strategy_id == "rolling_window_momentum_v3_adaptive":
+        WINDOW_SIZE = 50
+    elif strategy_id == "rolling_window_momentum_v2_long":
         WINDOW_SIZE = 50
     elif strategy_id == "rolling_window_momentum_v1":
         WINDOW_SIZE = 3
@@ -86,32 +90,49 @@ def run_harness(ledger_path: Path, strategy_id: str):
         base_accepted = deterministic_acceptance(ts, "AAPL", base_accept_ratio)
         curr_accepted = deterministic_acceptance(ts, "AAPL", curr_accept_ratio)
         
-        base_price = real_price if base_accepted else (window_baseline[-1] if window_baseline else real_price)
-        curr_price = real_price if curr_accepted else (window_fragmented[-1] if window_fragmented else real_price)
-        
-        # Accumulate fixed windows (blind to admissibility blockades)
-        window_baseline.append(base_price)
-        window_fragmented.append(curr_price)
+        # Accumulate Canonical (Baseline) Window
+        if base_accepted:
+            window_baseline.append(real_price)
+        else:
+            # Baseline assumes perfect environment, but if base_accepted is false by some config, we use LVCF to keep it advancing
+            window_baseline.append(window_baseline[-1] if window_baseline else real_price)
         if len(window_baseline) > WINDOW_SIZE: window_baseline.pop(0)
+            
+        # Accumulate Fragmented Window (Event-Driven: No append on block)
+        if curr_accepted:
+            window_fragmented.append(real_price)
         if len(window_fragmented) > WINDOW_SIZE: window_fragmented.pop(0)
+        
+        # Accumulate Repaired Window (LVCF)
+        if curr_accepted:
+            window_repaired.append(real_price)
+        else:
+            window_repaired.append(window_repaired[-1] if window_repaired else real_price)
+        if len(window_repaired) > WINDOW_SIZE: window_repaired.pop(0)
         
         if len(window_baseline) < WINDOW_SIZE:
             continue
             
         # Intent Generation
         def generate_intent(window):
+            if len(window) < 2: return "HOLD"
             if strategy_id == "rolling_window_momentum_v1":
                 delta = window[-1] - window[0]
-                if delta > 5.0: return "ENTER_LONG"
-                if delta < -5.0: return "ENTER_SHORT"
+                if delta > 0.0: return "ENTER_LONG"
+                if delta < 0.0: return "ENTER_SHORT"
                 return "HOLD"
-            elif strategy_id == "rolling_window_momentum_v2_long":
+            elif strategy_id in ["rolling_window_momentum_v2_long", "rolling_window_momentum_v3_adaptive"]:
                 delta = window[-1] - window[0]
-                if delta > 10.0: return "ENTER_LONG"
-                if delta < -10.0: return "ENTER_SHORT"
+                if delta > 0.0: return "ENTER_LONG"
+                if delta < 0.0: return "ENTER_SHORT"
+                return "HOLD"
+            elif "mean_reversion" in strategy_id:
+                delta = window[-1] - window[-2]
+                if delta > 0: return "ENTER_SHORT"
+                if delta < 0: return "ENTER_LONG"
                 return "HOLD"
             else:
-                # Fallback to 2-tick stateless
+                # Fallback to 2-tick momentum
                 delta = window[-1] - window[-2]
                 if delta > 0: return "ENTER_LONG"
                 if delta < 0: return "ENTER_SHORT"
@@ -119,36 +140,48 @@ def run_harness(ledger_path: Path, strategy_id: str):
                 
         intent_live = generate_intent(window_baseline)
         intent_fragmented = generate_intent(window_fragmented)
+        intent_repaired = generate_intent(window_repaired)
         
-        is_divergent = (intent_live != intent_fragmented)
+        # In adaptive strategy, execution relies on repaired intent. Otherwise, relies on fragmented intent.
+        active_intent = intent_repaired if "adaptive" in strategy_id else intent_fragmented
+        
+        is_divergent = (intent_live != active_intent)
         if is_divergent:
             divergence_count += 1
             
         allowed = current_adm.get("admissibility", {}).get("new_entries_allowed", False)
         reason = current_adm.get("admissibility", {}).get("admissibility_reason", "UNKNOWN_DEGRADATION")
         
-        if intent_fragmented == "HOLD":
+        if active_intent == "HOLD":
             action = "HELD"
         elif allowed:
-            action = f"EXEC_{intent_fragmented.split('_')[1]}"
+            action = f"EXEC_{active_intent.split('_')[1]}"
         else:
             action = "BLOCKED"
             
-        # Memory Coherence Index (MCI)
-        overlap_count = sum(1 for a, b in zip(window_baseline, window_fragmented) if a == b)
+        # Memory Coherence Index (MCI) against active window
+        active_window = window_repaired if "adaptive" in strategy_id else window_fragmented
+        
+        # Pad active_window to baseline length for zip if needed (fragmented might be shorter)
+        cmp_window = list(active_window)
+        while len(cmp_window) < WINDOW_SIZE: cmp_window.insert(0, cmp_window[0] if cmp_window else 0)
+        
+        overlap_count = sum(1 for a, b in zip(window_baseline, cmp_window) if a == b)
         state_overlap_ratio = round(overlap_count / WINDOW_SIZE, 2)
-        window_distance = round(sum(abs(a - b) for a, b in zip(window_baseline, window_fragmented)), 2)
+        window_distance = round(sum(abs(a - b) for a, b in zip(window_baseline, cmp_window)), 2)
         
         record = {
             "barrier_ts": ts,
-            "intent": intent_fragmented,
+            "intent": active_intent,
             "action": action,
             "admissibility_reason": reason,
             "state_divergence_trace": {
                 "window_state_live": [round(x, 2) for x in window_baseline],
                 "window_state_fragmented": [round(x, 2) for x in window_fragmented],
+                "window_state_repaired": [round(x, 2) for x in window_repaired],
                 "intent_live": intent_live,
                 "intent_fragmented": intent_fragmented,
+                "intent_repaired": intent_repaired,
                 "divergence_reason": "chronological discontinuity" if is_divergent else None,
                 "memory_coherence_index": {
                     "window_distance": window_distance,

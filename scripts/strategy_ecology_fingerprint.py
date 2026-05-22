@@ -15,6 +15,11 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     mci_overlaps = []
     mci_distances = []
     
+    # Repair ecology tracking
+    false_hallucinations = 0
+    successful_repairs = 0
+    fragmented_divergences = 0
+    
     # State tracking for Memory Recovery Half-Life
     is_recovering = False
     recovery_ticks = 0
@@ -26,8 +31,25 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
                 row = json.loads(line)
                 execution_tape.append(row)
                 trace = row.get("state_divergence_trace", {})
+                
+                intent_live = trace.get("intent_live")
+                intent_frag = trace.get("intent_fragmented")
+                intent_rep = trace.get("intent_repaired")
+                
                 if trace.get("divergence_reason"):
                     diverged_count += 1
+                    
+                if intent_live and intent_frag and intent_rep:
+                    frag_wrong = (intent_frag != intent_live)
+                    rep_wrong = (intent_rep != intent_live)
+                    
+                    if frag_wrong: fragmented_divergences += 1
+                    
+                    if frag_wrong and not rep_wrong:
+                        successful_repairs += 1
+                    elif not frag_wrong and rep_wrong:
+                        false_hallucinations += 1
+                        
                 if "memory_coherence_index" in trace:
                     mci = trace["memory_coherence_index"]
                     mci_overlaps.append(mci["state_overlap_ratio"])
@@ -106,6 +128,11 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
             "avg_state_overlap": round(sum(mci_overlaps)/len(mci_overlaps), 2) if mci_overlaps else 1.0,
             "recovery_half_life_ticks": round(sum(completed_recoveries)/len(completed_recoveries), 1) if completed_recoveries else (-1.0 if is_recovering else 0.0)
         },
+        "repair_ecology": {
+            "false_hallucinations": false_hallucinations,
+            "successful_repairs": successful_repairs,
+            "raw_fragmented_divergences": fragmented_divergences
+        } if "adaptive" in strategy_id else {},
         "regime_exposure": regime_exposure,
         "lag_profile": {
             "median_lag": median_lag
@@ -154,8 +181,10 @@ def run_mapper():
     strategies = [
         "momentum_2tick_v1", 
         "mean_reversion_2tick_v1", 
+        "mean_reversion_2tick_v2_adaptive",
         "rolling_window_momentum_v1",
-        "rolling_window_momentum_v2_long"
+        "rolling_window_momentum_v2_long",
+        "rolling_window_momentum_v3_adaptive"
     ]
     
     for strategy_id in strategies:

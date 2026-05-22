@@ -18,6 +18,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -31,7 +32,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "a812bbc00c44f1b1"
+      "ecology_fingerprint_hash": "f9a6bd719459e487"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -50,6 +51,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -63,7 +65,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "647d14f9f0de928d"
+      "ecology_fingerprint_hash": "86361d19cbd80355"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -82,6 +84,7 @@
         "avg_state_overlap": 0.78,
         "recovery_half_life_ticks": 3.5
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.5,
         "TRANSITIONAL_RECOVERY": 0.2,
@@ -98,7 +101,7 @@
         "replay_stable": true
       },
       "replay_hash": "db71c1a325882daf",
-      "ecology_fingerprint_hash": "da187d7867b20fed"
+      "ecology_fingerprint_hash": "e983a2092f8fe28a"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -117,6 +120,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -130,7 +134,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "ec3772cfd111e4c3"
+      "ecology_fingerprint_hash": "1d7ccd07efe4faba"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -149,6 +153,7 @@
         "avg_state_overlap": 0.01,
         "recovery_half_life_ticks": -1.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
       },
@@ -162,7 +167,7 @@
         "replay_stable": true
       },
       "replay_hash": "27f05fcc33944660",
-      "ecology_fingerprint_hash": "ba6c6ae1d114b305"
+      "ecology_fingerprint_hash": "9c07fe7ab06b81e3"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -181,6 +186,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -194,7 +200,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "fc9ed4afb5ecd211"
+      "ecology_fingerprint_hash": "96de437aff465b02"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -213,6 +219,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -226,7 +233,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "fc49b0f860880d6d"
+      "ecology_fingerprint_hash": "4208b2ce8441bd3b"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -245,6 +252,7 @@
         "avg_state_overlap": 0.78,
         "recovery_half_life_ticks": 3.5
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.5,
         "TRANSITIONAL_RECOVERY": 0.2,
@@ -261,7 +269,7 @@
         "replay_stable": true
       },
       "replay_hash": "db71c1a325882daf",
-      "ecology_fingerprint_hash": "a459104534a2c24d"
+      "ecology_fingerprint_hash": "a54225751279cf3b"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -280,6 +288,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -293,7 +302,7 @@
         "replay_stable": true
       },
       "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "c187cc4750219c9e"
+      "ecology_fingerprint_hash": "995c3e4cdd67c3af"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -312,6 +321,7 @@
         "avg_state_overlap": 0.01,
         "recovery_half_life_ticks": -1.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
       },
@@ -325,7 +335,195 @@
         "replay_stable": true
       },
       "replay_hash": "27f05fcc33944660",
-      "ecology_fingerprint_hash": "99d8c5c74a007ca1"
+      "ecology_fingerprint_hash": "7806f91f40e7334f"
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 388,
+        "executed": 385,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "570110cf7c52abea",
+      "ecology_fingerprint_hash": "42a1483dbbfe37dd"
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 388,
+        "executed": 385,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "570110cf7c52abea",
+      "ecology_fingerprint_hash": "f0a4cef3ed60b587"
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 98,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 388,
+        "executed": 217,
+        "blocked": 86,
+        "execution_rate": 0.72
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.05,
+        "avg_state_overlap": 0.78,
+        "recovery_half_life_ticks": 2.2
+      },
+      "repair_ecology": {
+        "false_hallucinations": 51,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 47
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.5,
+        "TRANSITIONAL_RECOVERY": 0.2,
+        "SYNCHRONIZED": 0.2,
+        "DEGRADED_OBSERVABILITY": 0.1
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.2,
+        "fragmentation_tolerance": 0.72,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "fc74845841796b5e",
+      "ecology_fingerprint_hash": "2d27eb90ed758268"
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 388,
+        "executed": 385,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "570110cf7c52abea",
+      "ecology_fingerprint_hash": "d695e42da673f4d7"
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 383,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 388,
+        "executed": 0,
+        "blocked": 2,
+        "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 1.96,
+        "avg_state_overlap": 0.01,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 202,
+        "successful_repairs": 3,
+        "raw_fragmented_divergences": 184
+      },
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "c4c8afb845318848",
+      "ecology_fingerprint_hash": "fa854bd9c42405c2"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -344,6 +542,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -357,7 +556,7 @@
         "replay_stable": true
       },
       "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "eba6dc7ebee7882b"
+      "ecology_fingerprint_hash": "50a6b1035851f910"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -376,6 +575,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -389,7 +589,7 @@
         "replay_stable": true
       },
       "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "e5140f37c87bf965"
+      "ecology_fingerprint_hash": "07768acd2aa70a70"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -408,6 +608,7 @@
         "avg_state_overlap": 0.78,
         "recovery_half_life_ticks": 3.5
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.5,
         "TRANSITIONAL_RECOVERY": 0.2,
@@ -424,7 +625,7 @@
         "replay_stable": true
       },
       "replay_hash": "48c42792cf4f4603",
-      "ecology_fingerprint_hash": "890092d5811cfa50"
+      "ecology_fingerprint_hash": "25ee57d377d228c6"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -443,6 +644,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -456,7 +658,7 @@
         "replay_stable": true
       },
       "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "005da5231197c67d"
+      "ecology_fingerprint_hash": "38ae546c10063949"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -475,6 +677,7 @@
         "avg_state_overlap": 0.01,
         "recovery_half_life_ticks": -1.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
       },
@@ -488,7 +691,7 @@
         "replay_stable": true
       },
       "replay_hash": "39be9a78de3bcf50",
-      "ecology_fingerprint_hash": "91068b48a485d357"
+      "ecology_fingerprint_hash": "e69b744e8f44f38e"
     },
     {
       "strategy_id": "rolling_window_momentum_v2_long",
@@ -507,6 +710,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -520,7 +724,7 @@
         "replay_stable": true
       },
       "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "142a0ae802f8e805"
+      "ecology_fingerprint_hash": "24c0f43058d9f1c9"
     },
     {
       "strategy_id": "rolling_window_momentum_v2_long",
@@ -539,6 +743,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -552,7 +757,7 @@
         "replay_stable": true
       },
       "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "80511083a1602cde"
+      "ecology_fingerprint_hash": "314ce78e2fb7367a"
     },
     {
       "strategy_id": "rolling_window_momentum_v2_long",
@@ -571,6 +776,7 @@
         "avg_state_overlap": 0.79,
         "recovery_half_life_ticks": -1.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.5,
         "TRANSITIONAL_RECOVERY": 0.2,
@@ -587,7 +793,7 @@
         "replay_stable": true
       },
       "replay_hash": "380706352177da01",
-      "ecology_fingerprint_hash": "5c3fb665b3bb532f"
+      "ecology_fingerprint_hash": "b4be010f3b62c32f"
     },
     {
       "strategy_id": "rolling_window_momentum_v2_long",
@@ -606,6 +812,7 @@
         "avg_state_overlap": 1.0,
         "recovery_half_life_ticks": 0.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -619,7 +826,7 @@
         "replay_stable": true
       },
       "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "e432bdbd5327d439"
+      "ecology_fingerprint_hash": "64a0f01ce18c1b09"
     },
     {
       "strategy_id": "rolling_window_momentum_v2_long",
@@ -638,6 +845,7 @@
         "avg_state_overlap": 0.01,
         "recovery_half_life_ticks": -1.0
       },
+      "repair_ecology": {},
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
       },
@@ -651,7 +859,195 @@
         "replay_stable": true
       },
       "replay_hash": "e01723595ca5c45a",
-      "ecology_fingerprint_hash": "25e2ef6e26fc8037"
+      "ecology_fingerprint_hash": "f21f5baff066d2a1"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 341,
+        "executed": 0,
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "6e0adb534de0db9a",
+      "ecology_fingerprint_hash": "3d9a5f55f31e971c"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 341,
+        "executed": 0,
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "6e0adb534de0db9a",
+      "ecology_fingerprint_hash": "01f6610440da8405"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 341,
+        "executed": 0,
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 1.3,
+        "avg_state_overlap": 0.79,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.5,
+        "TRANSITIONAL_RECOVERY": 0.2,
+        "SYNCHRONIZED": 0.2,
+        "DEGRADED_OBSERVABILITY": 0.1
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.2,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "a61e8a645ec65aaa",
+      "ecology_fingerprint_hash": "faade51ce2f7de57"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 341,
+        "executed": 0,
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "6e0adb534de0db9a",
+      "ecology_fingerprint_hash": "40f1aa890b26b249"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 341,
+        "executed": 0,
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 53.12,
+        "avg_state_overlap": 0.01,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {
+        "false_hallucinations": 0,
+        "successful_repairs": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "95715ec3b69aebfb",
+      "ecology_fingerprint_hash": "8338c242673ce598"
     }
   ]
 }
