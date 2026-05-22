@@ -1,6 +1,6 @@
 # ChronoSentiment — Provider Chronology Observatory
 
-This document logs empirical findings regarding provider synchronization, latency, and topological fragmentation. 
+This document logs empirical findings regarding provider synchronization, latency, and temporal fragmentation. 
 It serves as the operational foundation for defining execution constraints and chronology boundaries.
 
 ## Terminology & Execution Constraints

@@ -218,3 +218,9 @@ python3 scripts/run_live_session.py --batch-id 902 --run-label crypto_24h \
 **Mostly helpful:** single Rust ingest path, incremental substrate, temporal observatory, `cs-ingest repair`.
 
 **Fix before declaring cert-ready:** parity harness + live steps metadata (+ optional live diagnostics).
+
+---
+
+## Empirical Governor Baseline
+
+> **Empirical governor baseline (May 2026):** `batch_003` ≈ persistent fragmentation (sync <60%, dispersion >2.0); `batch_910` ≈ 100% atomic sync across all observed sessions; NSE open/close/post-close extend reconciliation for illiquid cohorts only. Use 910 as control, 003 as stress cohort for chronology constraints — not as replay corruption signal.
