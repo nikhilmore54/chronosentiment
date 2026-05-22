@@ -1,0 +1,136 @@
+{
+  "version": "v1.0",
+  "experiments": [
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "7578611f1675582e",
+      "ecology_fingerprint_hash": "c40368b938df36c6"
+    },
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "7578611f1675582e",
+      "ecology_fingerprint_hash": "7d35944e8dfd9a46"
+    },
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": true,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 0,
+        "blocked": 1,
+        "execution_rate": 0.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.8,
+        "TRANSITIONAL_RECOVERY": 0.2
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "e20633ee53a48846",
+      "ecology_fingerprint_hash": "11e27d52c7d343de"
+    },
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "7578611f1675582e",
+      "ecology_fingerprint_hash": "d8484e13063c310d"
+    },
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": true,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 0,
+        "blocked": 1,
+        "execution_rate": 0.0
+      },
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "550a0cc11c93ab26",
+      "ecology_fingerprint_hash": "ec544bdbc620b904"
+    }
+  ]
+}
