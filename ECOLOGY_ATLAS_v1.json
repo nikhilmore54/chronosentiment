@@ -8,8 +8,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.2,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -31,8 +31,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "f9a6bd719459e487"
+      "replay_hash": "f5340fefbe5d0ac9",
+      "ecology_fingerprint_hash": "5def6a5f5f9c5a3c"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -41,8 +41,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.6,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -64,25 +64,25 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "86361d19cbd80355"
+      "replay_hash": "f5340fefbe5d0ac9",
+      "ecology_fingerprint_hash": "7e68e6d3517590ea"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_wavefront",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 98,
+      "cognitive_divergences": 622,
       "topology_severity_index": 0.4,
       "execution_stats": {
-        "generated": 388,
-        "executed": 217,
-        "blocked": 86,
-        "execution_rate": 0.72
+        "generated": 4318,
+        "executed": 2952,
+        "blocked": 1258,
+        "execution_rate": 0.7
       },
       "memory_coherence": {
-        "avg_window_distance": 0.08,
-        "avg_state_overlap": 0.78,
-        "recovery_half_life_ticks": 3.5
+        "avg_window_distance": 14.24,
+        "avg_state_overlap": 0.74,
+        "recovery_half_life_ticks": 2.0
       },
       "repair_ecology": {},
       "regime_exposure": {
@@ -96,12 +96,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0.72,
+        "fragmentation_tolerance": 0.7,
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "db71c1a325882daf",
-      "ecology_fingerprint_hash": "e983a2092f8fe28a"
+      "replay_hash": "ccad32e37f0b62b6",
+      "ecology_fingerprint_hash": "b51831b4b8aa6fee"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -110,8 +110,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.7,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -133,24 +133,24 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "1d7ccd07efe4faba"
+      "replay_hash": "f5340fefbe5d0ac9",
+      "ecology_fingerprint_hash": "5f24a9d56b4383ae"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_collapse_300",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 383,
+      "cognitive_divergences": 2234,
       "topology_severity_index": 1.0,
       "execution_stats": {
-        "generated": 388,
+        "generated": 4318,
         "executed": 0,
-        "blocked": 2,
+        "blocked": 4318,
         "execution_rate": 0.0
       },
       "memory_coherence": {
-        "avg_window_distance": 2.95,
-        "avg_state_overlap": 0.01,
+        "avg_window_distance": 1003.64,
+        "avg_state_overlap": 0.0,
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {},
@@ -166,8 +166,8 @@
         "collapse_resilience": 1.0,
         "replay_stable": true
       },
-      "replay_hash": "27f05fcc33944660",
-      "ecology_fingerprint_hash": "9c07fe7ab06b81e3"
+      "replay_hash": "838d42c6abe36da2",
+      "ecology_fingerprint_hash": "22639469778eedcf"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -176,8 +176,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.2,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -199,8 +199,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "96de437aff465b02"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "8eedf64fb233f8b6"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -209,8 +209,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.6,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -232,25 +232,25 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "4208b2ce8441bd3b"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "4e3594c31d84ae6f"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_wavefront",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 98,
+      "cognitive_divergences": 622,
       "topology_severity_index": 0.4,
       "execution_stats": {
-        "generated": 388,
-        "executed": 217,
-        "blocked": 86,
-        "execution_rate": 0.72
+        "generated": 4318,
+        "executed": 2952,
+        "blocked": 1258,
+        "execution_rate": 0.7
       },
       "memory_coherence": {
-        "avg_window_distance": 0.08,
-        "avg_state_overlap": 0.78,
-        "recovery_half_life_ticks": 3.5
+        "avg_window_distance": 14.24,
+        "avg_state_overlap": 0.74,
+        "recovery_half_life_ticks": 2.0
       },
       "repair_ecology": {},
       "regime_exposure": {
@@ -264,12 +264,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0.72,
+        "fragmentation_tolerance": 0.7,
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "db71c1a325882daf",
-      "ecology_fingerprint_hash": "a54225751279cf3b"
+      "replay_hash": "ce0dc5c662831c51",
+      "ecology_fingerprint_hash": "637701f455733b5a"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -278,8 +278,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.7,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -301,24 +301,24 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "72e0d5bd0ab337c0",
-      "ecology_fingerprint_hash": "995c3e4cdd67c3af"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "7e9e3b4aa6a627b3"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_collapse_300",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 383,
+      "cognitive_divergences": 2234,
       "topology_severity_index": 1.0,
       "execution_stats": {
-        "generated": 388,
+        "generated": 4318,
         "executed": 0,
-        "blocked": 2,
+        "blocked": 4318,
         "execution_rate": 0.0
       },
       "memory_coherence": {
-        "avg_window_distance": 2.95,
-        "avg_state_overlap": 0.01,
+        "avg_window_distance": 1003.64,
+        "avg_state_overlap": 0.0,
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {},
@@ -334,8 +334,8 @@
         "collapse_resilience": 1.0,
         "replay_stable": true
       },
-      "replay_hash": "27f05fcc33944660",
-      "ecology_fingerprint_hash": "7806f91f40e7334f"
+      "replay_hash": "0664926146d68357",
+      "ecology_fingerprint_hash": "78cd91b678ef64fa"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -344,8 +344,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.2,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -371,8 +371,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "e11c427a73a48155"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "c03e37f49118949a"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -381,8 +381,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.6,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -408,30 +408,30 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "8fa504ecefa8cbde"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "6474a7c004b5fb86"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
       "topology_id": "topo_wavefront",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 98,
+      "cognitive_divergences": 1019,
       "topology_severity_index": 0.4,
       "execution_stats": {
-        "generated": 388,
-        "executed": 217,
-        "blocked": 86,
-        "execution_rate": 0.72
+        "generated": 4318,
+        "executed": 2455,
+        "blocked": 920,
+        "execution_rate": 0.73
       },
       "memory_coherence": {
-        "avg_window_distance": 0.05,
-        "avg_state_overlap": 0.78,
-        "recovery_half_life_ticks": 2.2
+        "avg_window_distance": 10.43,
+        "avg_state_overlap": 0.8,
+        "recovery_half_life_ticks": 2.0
       },
       "repair_ecology": {
-        "repair_induced_divergences": 51,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 47
+        "repair_induced_divergences": 414,
+        "canonical_intent_matches": 17,
+        "raw_fragmented_divergences": 622
       },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.5,
@@ -444,12 +444,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0.72,
+        "fragmentation_tolerance": 0.73,
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "fc74845841796b5e",
-      "ecology_fingerprint_hash": "b2a453df0f63d9c4"
+      "replay_hash": "ca26afb3c93905b6",
+      "ecology_fingerprint_hash": "c10c14bf5f521b6d"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -458,8 +458,8 @@
       "cognitive_divergences": 0,
       "topology_severity_index": 0.7,
       "execution_stats": {
-        "generated": 388,
-        "executed": 385,
+        "generated": 4318,
+        "executed": 4203,
         "blocked": 0,
         "execution_rate": 1.0
       },
@@ -485,30 +485,554 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "67c9fa9811cec644"
+      "replay_hash": "f6a6f39e485d7945",
+      "ecology_fingerprint_hash": "194c372332ab2e2c"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
       "topology_id": "topo_collapse_300",
       "intent_sequence_stable": false,
-      "cognitive_divergences": 383,
+      "cognitive_divergences": 4202,
       "topology_severity_index": 1.0,
       "execution_stats": {
-        "generated": 388,
+        "generated": 4318,
         "executed": 0,
-        "blocked": 2,
+        "blocked": 1,
         "execution_rate": 0.0
       },
       "memory_coherence": {
-        "avg_window_distance": 1.96,
-        "avg_state_overlap": 0.01,
+        "avg_window_distance": 1054.9,
+        "avg_state_overlap": 0.0,
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {
-        "repair_induced_divergences": 202,
+        "repair_induced_divergences": 2083,
+        "canonical_intent_matches": 115,
+        "raw_fragmented_divergences": 2234
+      },
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "1e776bb99337793a",
+      "ecology_fingerprint_hash": "eefd05986feb3e3f"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 4318,
+        "executed": 4286,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "9df6f77ca8c8c886",
+      "ecology_fingerprint_hash": "7e9df6c61e1eafc1"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 4318,
+        "executed": 4286,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "9df6f77ca8c8c886",
+      "ecology_fingerprint_hash": "036493bb07794667"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 628,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 4318,
+        "executed": 3004,
+        "blocked": 1291,
+        "execution_rate": 0.7
+      },
+      "memory_coherence": {
+        "avg_window_distance": 26.61,
+        "avg_state_overlap": 0.68,
+        "recovery_half_life_ticks": 3.5
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.5,
+        "TRANSITIONAL_RECOVERY": 0.2,
+        "SYNCHRONIZED": 0.2,
+        "DEGRADED_OBSERVABILITY": 0.1
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.2,
+        "fragmentation_tolerance": 0.7,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "218def33f9615673",
+      "ecology_fingerprint_hash": "ff9b241aaa7090b0"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 4318,
+        "executed": 4286,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "9df6f77ca8c8c886",
+      "ecology_fingerprint_hash": "fb647e436a9c80b1"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 2195,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 4318,
+        "executed": 0,
+        "blocked": 4318,
+        "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 1476.32,
+        "avg_state_overlap": 0.0,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "bf2a088a422a1298",
+      "ecology_fingerprint_hash": "cb52f1832361c40b"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "abec08ed72ad7a03"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "062c28131a6f7499"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 691,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 2989,
+        "blocked": 1280,
+        "execution_rate": 0.7
+      },
+      "memory_coherence": {
+        "avg_window_distance": 2516.97,
+        "avg_state_overlap": 0.08,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.5,
+        "TRANSITIONAL_RECOVERY": 0.2,
+        "SYNCHRONIZED": 0.2,
+        "DEGRADED_OBSERVABILITY": 0.1
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.2,
+        "fragmentation_tolerance": 0.7,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "5a7d1a48578fbcba",
+      "ecology_fingerprint_hash": "44dc1cedc5497f27"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "af19777dfa26e383"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 2079,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 0,
+        "blocked": 4271,
+        "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 23652.55,
+        "avg_state_overlap": 0.0,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {},
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "c27151bf01f75b11",
+      "ecology_fingerprint_hash": "0e8c3ca22c427c6f"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "6d652a0ff668cfe9"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "11dcbd90c8aa26f9"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 75,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 2989,
+        "blocked": 1281,
+        "execution_rate": 0.7
+      },
+      "memory_coherence": {
+        "avg_window_distance": 261.67,
+        "avg_state_overlap": 0.8,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {
+        "repair_induced_divergences": 22,
+        "canonical_intent_matches": 638,
+        "raw_fragmented_divergences": 691
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.5,
+        "TRANSITIONAL_RECOVERY": 0.2,
+        "SYNCHRONIZED": 0.2,
+        "DEGRADED_OBSERVABILITY": 0.1
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.2,
+        "fragmentation_tolerance": 0.7,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "61e18c1339965519",
+      "ecology_fingerprint_hash": "dc38d133c18564b5"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 4268,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0,
+        "recovery_half_life_ticks": 0.0
+      },
+      "repair_ecology": {
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
+        "raw_fragmented_divergences": 0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b4e664593dca3eae",
+      "ecology_fingerprint_hash": "e43be0f23adc3289"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 4227,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 4271,
+        "executed": 0,
+        "blocked": 50,
+        "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 26404.32,
+        "avg_state_overlap": 0.0,
+        "recovery_half_life_ticks": -1.0
+      },
+      "repair_ecology": {
+        "repair_induced_divergences": 2151,
         "canonical_intent_matches": 3,
-        "raw_fragmented_divergences": 184
+        "raw_fragmented_divergences": 2079
       },
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
@@ -522,532 +1046,8 @@
         "collapse_resilience": 1.0,
         "replay_stable": true
       },
-      "replay_hash": "c4c8afb845318848",
-      "ecology_fingerprint_hash": "a0c088680eb7f3f6"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v1",
-      "topology_id": "topo_uniform_60",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.2,
-      "execution_stats": {
-        "generated": 388,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "50a6b1035851f910"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v1",
-      "topology_id": "topo_bimodal_180",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.6,
-      "execution_stats": {
-        "generated": 388,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 90
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "07768acd2aa70a70"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v1",
-      "topology_id": "topo_wavefront",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.4,
-      "execution_stats": {
-        "generated": 388,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.08,
-        "avg_state_overlap": 0.78,
-        "recovery_half_life_ticks": 3.5
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 0.5,
-        "TRANSITIONAL_RECOVERY": 0.2,
-        "SYNCHRONIZED": 0.2,
-        "DEGRADED_OBSERVABILITY": 0.1
-      },
-      "lag_profile": {
-        "median_lag": 0
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "48c42792cf4f4603",
-      "ecology_fingerprint_hash": "25ee57d377d228c6"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v1",
-      "topology_id": "topo_anticipatory",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.7,
-      "execution_stats": {
-        "generated": 388,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": -60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "293cff51c514b6b3",
-      "ecology_fingerprint_hash": "38ae546c10063949"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v1",
-      "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 1.0,
-      "execution_stats": {
-        "generated": 388,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 2.95,
-        "avg_state_overlap": 0.01,
-        "recovery_half_life_ticks": -1.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "DEGRADED_OBSERVABILITY": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 300
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "39be9a78de3bcf50",
-      "ecology_fingerprint_hash": "e69b744e8f44f38e"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v2_long",
-      "topology_id": "topo_uniform_60",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.2,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "24c0f43058d9f1c9"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v2_long",
-      "topology_id": "topo_bimodal_180",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.6,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 90
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "314ce78e2fb7367a"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v2_long",
-      "topology_id": "topo_wavefront",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.4,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 1.3,
-        "avg_state_overlap": 0.79,
-        "recovery_half_life_ticks": -1.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 0.5,
-        "TRANSITIONAL_RECOVERY": 0.2,
-        "SYNCHRONIZED": 0.2,
-        "DEGRADED_OBSERVABILITY": 0.1
-      },
-      "lag_profile": {
-        "median_lag": 0
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "380706352177da01",
-      "ecology_fingerprint_hash": "b4be010f3b62c32f"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v2_long",
-      "topology_id": "topo_anticipatory",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.7,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": -60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "60e0e43866f307f1",
-      "ecology_fingerprint_hash": "64a0f01ce18c1b09"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v2_long",
-      "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 1.0,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 53.12,
-        "avg_state_overlap": 0.01,
-        "recovery_half_life_ticks": -1.0
-      },
-      "repair_ecology": {},
-      "regime_exposure": {
-        "DEGRADED_OBSERVABILITY": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 300
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "e01723595ca5c45a",
-      "ecology_fingerprint_hash": "f21f5baff066d2a1"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v3_adaptive",
-      "topology_id": "topo_uniform_60",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.2,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {
-        "repair_induced_divergences": 0,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 0
-      },
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "db53c0d69daa7c24"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v3_adaptive",
-      "topology_id": "topo_bimodal_180",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.6,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {
-        "repair_induced_divergences": 0,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 0
-      },
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 90
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "210db63a581ea4f1"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v3_adaptive",
-      "topology_id": "topo_wavefront",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.4,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 1.3,
-        "avg_state_overlap": 0.79,
-        "recovery_half_life_ticks": -1.0
-      },
-      "repair_ecology": {
-        "repair_induced_divergences": 0,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 0
-      },
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 0.5,
-        "TRANSITIONAL_RECOVERY": 0.2,
-        "SYNCHRONIZED": 0.2,
-        "DEGRADED_OBSERVABILITY": 0.1
-      },
-      "lag_profile": {
-        "median_lag": 0
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.2,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "a61e8a645ec65aaa",
-      "ecology_fingerprint_hash": "9e1f88019df380e6"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v3_adaptive",
-      "topology_id": "topo_anticipatory",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 0.7,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 0.0,
-        "avg_state_overlap": 1.0,
-        "recovery_half_life_ticks": 0.0
-      },
-      "repair_ecology": {
-        "repair_induced_divergences": 0,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 0
-      },
-      "regime_exposure": {
-        "FRAGMENTED_BUT_USABLE": 1.0
-      },
-      "lag_profile": {
-        "median_lag": -60
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "882ac036c1f86db2"
-    },
-    {
-      "strategy_id": "rolling_window_momentum_v3_adaptive",
-      "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
-      "topology_severity_index": 1.0,
-      "execution_stats": {
-        "generated": 341,
-        "executed": 0,
-        "blocked": 0,
-        "execution_rate": 0
-      },
-      "memory_coherence": {
-        "avg_window_distance": 53.12,
-        "avg_state_overlap": 0.01,
-        "recovery_half_life_ticks": -1.0
-      },
-      "repair_ecology": {
-        "repair_induced_divergences": 0,
-        "canonical_intent_matches": 0,
-        "raw_fragmented_divergences": 0
-      },
-      "regime_exposure": {
-        "DEGRADED_OBSERVABILITY": 1.0
-      },
-      "lag_profile": {
-        "median_lag": 300
-      },
-      "ecology_properties": {
-        "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0,
-        "collapse_resilience": 0.0,
-        "replay_stable": true
-      },
-      "replay_hash": "95715ec3b69aebfb",
-      "ecology_fingerprint_hash": "0b71cc9a18e4d291"
+      "replay_hash": "8ce7b9abf6f146e5",
+      "ecology_fingerprint_hash": "eba453a247df120f"
     }
   ]
 }

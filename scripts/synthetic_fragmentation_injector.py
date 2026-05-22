@@ -49,6 +49,13 @@ def inject_topology(ledger_path: Path, mode: str):
             attempted = row.get("symbols_attempted", 100)
             if attempted == 0: attempted = 100
             
+            # Ensure "freshness" and "observability" exist
+            if "freshness" not in row: row["freshness"] = {}
+            if "observability" not in row: row["observability"] = {}
+            
+            # Simulated cycle if not present
+            cycle = row.get("cycle", int(row["barrier_ts"] / 60) % 100)
+            
             # Base metrics
             strict = 1.0
             accept = 1.0
@@ -67,7 +74,7 @@ def inject_topology(ledger_path: Path, mode: str):
                 median_lag = 90
             elif mode == "rolling_wave":
                 # Simulated cascade over time - using cycle as wave progression
-                wave_prog = ((row["cycle"] % 10) + 1) / 10.0
+                wave_prog = ((cycle % 10) + 1) / 10.0
                 strict = wave_prog
                 accept = min(1.0, wave_prog + 0.3)
                 lag_stddev = 45.0
@@ -105,6 +112,11 @@ def inject_topology(ledger_path: Path, mode: str):
             f_out.write(json.dumps(row) + "\n")
             
 if __name__ == "__main__":
-    base = Path("state_archive/batches/batch_10000/runs/live/metadata/live_session_steps.jsonl")
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch", type=int, default=10000)
+    args = parser.parse_args()
+    
+    base = Path(f"state_archive/batches/batch_{args.batch}/runs/live/metadata/live_session_steps.jsonl")
     for mode in ["uniform_delay", "bimodal", "rolling_wave", "anticipatory", "collapse"]:
         inject_topology(base, mode)

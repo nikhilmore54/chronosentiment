@@ -27,24 +27,24 @@ def deterministic_acceptance(ts, symbol, acceptance_ratio):
     normalized = (hash_int % 1000) / 1000.0
     return normalized <= acceptance_ratio
 
-def run_harness(ledger_path: Path, strategy_id: str):
+def run_harness(ledger_path: Path, strategy_id: str, batch_id: int = 10000, symbol: str = "AAPL"):
     from candle_substrate import load_frozen_cohort
     
-    batch_id = 10000
-    batch_dir = Path("state_archive/batches/batch_10000/runs/live")
+    batch_dir = Path(f"state_archive/batches/batch_{batch_id}/runs/live")
     
-    data, _ = load_frozen_cohort(batch_id, ["AAPL"])
-    if "AAPL" not in data or data["AAPL"].empty:
-        print("❌ No frozen telemetry found for AAPL in batch 10000.")
+    data, _ = load_frozen_cohort(batch_id, [symbol])
+    if symbol not in data or data[symbol].empty:
+        print(f"❌ No frozen telemetry found for {symbol} in batch {batch_id}.")
         return
         
-    df = data["AAPL"].sort_index()
+    df = data[symbol].sort_index()
     
     admissibility_map = load_admissibility(ledger_path)
     baseline_map = load_admissibility(batch_dir / "metadata" / "live_session_steps.jsonl")
     
     print("🔬 STATE DIVERGENCE TRACER v1")
-    print("Symbol  : AAPL")
+    print(f"Substrate: {batch_id}")
+    print(f"Symbol  : {symbol}")
     print(f"Strategy: {strategy_id}")
     print("=" * 85)
     
@@ -87,8 +87,8 @@ def run_harness(ledger_path: Path, strategy_id: str):
         curr_accept_ratio = current_adm.get("observability", {}).get("acceptance_ratio", 1.0)
         
         # Deterministic tick acceptance
-        base_accepted = deterministic_acceptance(ts, "AAPL", base_accept_ratio)
-        curr_accepted = deterministic_acceptance(ts, "AAPL", curr_accept_ratio)
+        base_accepted = deterministic_acceptance(ts, symbol, base_accept_ratio)
+        curr_accepted = deterministic_acceptance(ts, symbol, curr_accept_ratio)
         
         # Accumulate Canonical (Baseline) Window
         if base_accepted:
@@ -220,5 +220,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ledger", type=str, default="state_archive/batches/batch_10000/runs/live/metadata/live_session_steps.jsonl")
     parser.add_argument("--strategy", type=str, default="rolling_window_momentum_v1")
+    parser.add_argument("--substrate", type=int, default=10000)
+    parser.add_argument("--symbol", type=str, default="AAPL")
     args = parser.parse_args()
-    run_harness(Path(args.ledger), args.strategy)
+    run_harness(Path(args.ledger), args.strategy, args.substrate, args.symbol)

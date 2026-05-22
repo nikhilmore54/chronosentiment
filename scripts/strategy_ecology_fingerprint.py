@@ -155,7 +155,7 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     
     return fingerprint
 
-def run_mapper():
+def run_mapper(batch_id: int = 10000):
     print("🔬 ECOLOGY MAPPING ENGINE v1")
     
     topologies = {
@@ -166,7 +166,7 @@ def run_mapper():
         "topo_collapse_300": "synthetic_collapse_steps"
     }
     
-    base_dir = Path("state_archive/batches/batch_10000/runs/live/metadata")
+    metadata_dir = Path(f"state_archive/batches/batch_{batch_id}/runs/live/metadata")
     
     registry_file = Path("ECOLOGY_ATLAS_v1.json")
     if registry_file.exists():
@@ -189,12 +189,13 @@ def run_mapper():
     
     for strategy_id in strategies:
         for topo_id, file_stem in topologies.items():
-            physics_path = base_dir / f"physics_ledger_{strategy_id}_{file_stem}.jsonl"
-            synthetic_path = base_dir / f"{file_stem}.jsonl"
+            physics_path = metadata_dir / f"physics_ledger_{strategy_id}_{file_stem}.jsonl"
+            synthetic_path = metadata_dir / f"{file_stem}.jsonl"
             
             if not physics_path.exists():
                 print(f"⚡ Running physics harness for {topo_id} | {strategy_id}...")
-                subprocess.run(["python3", "scripts/signal_physics_harness.py", "--ledger", str(synthetic_path), "--strategy", strategy_id], check=True)
+                symbol_arg = "BTCUSDT" if batch_id == 10001 else "AAPL"
+                subprocess.run(["python3", "scripts/signal_physics_harness.py", "--ledger", str(synthetic_path), "--strategy", strategy_id, "--substrate", str(batch_id), "--symbol", symbol_arg], check=True)
                 
             fp = compute_fingerprint(physics_path, synthetic_path, topo_id, strategy_id)
             if fp:
@@ -213,4 +214,8 @@ def run_mapper():
     print(f"\n💾 Saved {len(registry['experiments'])} fingerprints to ECOLOGY_ATLAS_v1.json")
 
 if __name__ == "__main__":
-    run_mapper()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch", type=int, default=10000)
+    args = parser.parse_args()
+    run_mapper(args.batch)
