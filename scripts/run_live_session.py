@@ -169,6 +169,7 @@ def main():
     parser.add_argument("--bar-sec", type=int, default=DEFAULT_BAR_SEC)
     parser.add_argument("--provider-lag-sec", type=int, default=DEFAULT_PROVIDER_LAG_SEC)
     parser.add_argument("--max-barrier-wait-sec", type=int, default=420)
+    parser.add_argument("--acceptable-lag-sec", type=int, default=60, help="Allowable provider timestamp freshness lag to certify participation")
     parser.add_argument("--max-workers", type=int, default=5, help="Concurrency limit for yfinance fetching")
     parser.add_argument("--temporal-observatory", action="store_true")
     args = parser.parse_args()
@@ -252,6 +253,7 @@ def main():
         
         symbols_attempted = len(symbol_latest_ts)
         symbols_returned = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
+        symbols_accepted = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts - args.acceptable_lag_sec)
         symbols_missing = symbols_attempted - symbols_returned
         
         import statistics
@@ -278,6 +280,7 @@ def main():
             "phase_c_ingest_ms": phase_c_ingest_ms,
             "symbols_attempted": symbols_attempted,
             "symbols_returned": symbols_returned,
+            "symbols_accepted": symbols_accepted,
             "symbols_missing": symbols_missing,
             "freshness": freshness,
             "fetch_stats": fetch_stats,
