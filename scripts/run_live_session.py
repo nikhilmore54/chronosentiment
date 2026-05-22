@@ -240,6 +240,9 @@ def main():
         persisted = sum(int(x) for x in re.findall(r"persisted ticks\s*:\s*(\d+)", ingest_stdout))
         dedupe_skip = sum(int(x) for x in re.findall(r"dedupe skipped\s*:\s*(\d+)", ingest_stdout))
         
+        fingerprint_matches = re.findall(r"timeline fingerprint\s*:\s*([a-f0-9]+)", ingest_stdout)
+        timeline_fingerprint = fingerprint_matches[-1] if fingerprint_matches else "unknown"
+        
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         ledger_path = metadata_dir / "live_session_steps.jsonl"
@@ -247,7 +250,7 @@ def main():
         ledger_entry = {
             "cycle": cycle,
             "barrier_ts": target_ts,
-            "timeline_fingerprint": "pending_sha256",  # To be filled by replay engine
+            "timeline_fingerprint": timeline_fingerprint,
             "governor_state": "NOMINAL",               # Pending restoration of live governor
             "sync_ratio": 1.0,                         # Pending full cohort measurement 
             "dispersion": 1.0,                         # Pending full cohort measurement
