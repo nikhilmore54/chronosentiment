@@ -59,8 +59,13 @@ def run_harness(ledger_path: Path, strategy_id: str):
             window_baseline.append(px)
             window_fragmented.append(px)
             
-    WINDOW_SIZE = 3
-    
+    if strategy_id == "rolling_window_momentum_v2_long":
+        WINDOW_SIZE = 50
+    elif strategy_id == "rolling_window_momentum_v1":
+        WINDOW_SIZE = 3
+    else:
+        WINDOW_SIZE = 2
+        
     divergence_count = 0
     
     for i in range(2, len(df)):
@@ -99,6 +104,11 @@ def run_harness(ledger_path: Path, strategy_id: str):
                 delta = window[-1] - window[0]
                 if delta > 5.0: return "ENTER_LONG"
                 if delta < -5.0: return "ENTER_SHORT"
+                return "HOLD"
+            elif strategy_id == "rolling_window_momentum_v2_long":
+                delta = window[-1] - window[0]
+                if delta > 10.0: return "ENTER_LONG"
+                if delta < -10.0: return "ENTER_SHORT"
                 return "HOLD"
             else:
                 # Fallback to 2-tick stateless

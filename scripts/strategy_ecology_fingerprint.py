@@ -14,6 +14,12 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     diverged_count = 0
     mci_overlaps = []
     mci_distances = []
+    
+    # State tracking for Memory Recovery Half-Life
+    is_recovering = False
+    recovery_ticks = 0
+    completed_recoveries = []
+    
     with open(physics_ledger_path, 'r') as f:
         for line in f:
             if line.strip():
@@ -26,6 +32,20 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
                     mci = trace["memory_coherence_index"]
                     mci_overlaps.append(mci["state_overlap_ratio"])
                     mci_distances.append(mci["window_distance"])
+                    
+                    # Memory Recovery Half-Life Logic
+                    is_fragmented = mci["state_overlap_ratio"] < 1.0
+                    overlap_perfect = mci["state_overlap_ratio"] == 1.0
+                    
+                    if is_fragmented and not is_recovering:
+                        is_recovering = True
+                        recovery_ticks = 0
+                    elif is_recovering:
+                        if overlap_perfect:
+                            completed_recoveries.append(recovery_ticks)
+                            is_recovering = False
+                        else:
+                            recovery_ticks += 1
                     
     regimes = []
     lags = []
@@ -83,7 +103,8 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
         },
         "memory_coherence": {
             "avg_window_distance": round(sum(mci_distances)/len(mci_distances), 2) if mci_distances else 0.0,
-            "avg_state_overlap": round(sum(mci_overlaps)/len(mci_overlaps), 2) if mci_overlaps else 1.0
+            "avg_state_overlap": round(sum(mci_overlaps)/len(mci_overlaps), 2) if mci_overlaps else 1.0,
+            "recovery_half_life_ticks": round(sum(completed_recoveries)/len(completed_recoveries), 1) if completed_recoveries else (-1.0 if is_recovering else 0.0)
         },
         "regime_exposure": regime_exposure,
         "lag_profile": {
@@ -130,7 +151,12 @@ def run_mapper():
     registry["version"] = "v1.1"
     registry["experiments"] = registry.get("experiments", [])
     
-    strategies = ["momentum_2tick_v1", "mean_reversion_2tick_v1", "rolling_window_momentum_v1"]
+    strategies = [
+        "momentum_2tick_v1", 
+        "mean_reversion_2tick_v1", 
+        "rolling_window_momentum_v1",
+        "rolling_window_momentum_v2_long"
+    ]
     
     for strategy_id in strategies:
         for topo_id, file_stem in topologies.items():
