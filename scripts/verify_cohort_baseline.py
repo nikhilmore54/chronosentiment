@@ -443,7 +443,7 @@ def main():
         sys.exit(1)
 
     cohort = cohort_symbol_names(load_cohort_symbols(cohort_file))
-    weights_path = ROOT / "observatory" / "ecology_clustering_pca_weights.json"
+    weights_path = ROOT / "observatory" / "provider_clustering_pca_weights.json"
 
     manifest = load_manifest(archive_dir, args.run_label or None)
     pca_lines = check_pca_stability(weights_path)

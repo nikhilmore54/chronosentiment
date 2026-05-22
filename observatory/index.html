@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChronoSentiment — Propagation Ecology Observatory</title>
-    <meta name="description" content="Topology-aware propagation observatory for execution ecology research. Visualizing the Smoothness Trap, Edge Genesis, and elastic participation dynamics across crypto ecologies.">
+    <title>ChronoSentiment — Provider Chronology Observatory</title>
+    <meta name="description" content="Infrastructure observatory for execution chronology constraints. Visualizing provider synchronization and elastic participation dynamics.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -17,25 +17,25 @@
                 <div class="logo-icon">◉</div>
                 <div>
                     <h1>ChronoSentiment</h1>
-                    <p class="subtitle">Propagation Ecology Observatory</p>
+                    <p class="subtitle">Provider Chronology Observatory</p>
                 </div>
             </div>
         </div>
         <div class="header-right">
             <div class="status-pill live">
                 <span class="pulse"></span>
-                Research Mode
+                Soak Mode
             </div>
             <div class="stat-chip">
-                <span class="stat-label">Trades</span>
+                <span class="stat-label">Events</span>
                 <span class="stat-value" id="header-trades">—</span>
             </div>
             <div class="stat-chip">
-                <span class="stat-label">Expectancy</span>
+                <span class="stat-label">Integrity</span>
                 <span class="stat-value" id="header-exp">—</span>
             </div>
             <div class="stat-chip">
-                <span class="stat-label">ERR</span>
+                <span class="stat-label">Sync Ratio</span>
                 <span class="stat-value" id="header-err">—</span>
             </div>
         </div>
@@ -43,38 +43,38 @@
 
     <!-- Navigation Tabs -->
     <nav class="tab-nav">
-        <button class="tab active" data-tab="ecology" id="tab-ecology">Execution Ecology</button>
-        <button class="tab" data-tab="smoothness" id="tab-smoothness">Smoothness Trap</button>
-        <button class="tab" data-tab="genesis" id="tab-genesis">Edge Genesis</button>
-        <button class="tab" data-tab="atlas" id="tab-atlas">Toxicity Atlas</button>
+        <button class="tab active" data-tab="ecology" id="tab-ecology">Provider Synchronization</button>
+        <button class="tab" data-tab="smoothness" id="tab-smoothness">Temporal Fragmentation</button>
+        <button class="tab" data-tab="genesis" id="tab-genesis">Chronology Constraints</button>
+        <button class="tab" data-tab="atlas" id="tab-atlas">Reconciliation Duration</button>
         <button class="tab" data-tab="replay" id="tab-replay">Trade Replay</button>
-        <button class="tab tab-highlight" data-tab="comparative" id="tab-comparative">Comparative Ecology</button>
+        <button class="tab tab-highlight" data-tab="comparative" id="tab-comparative">Cohort Comparison</button>
     </nav>
 
     <!-- Tab Content -->
     <main class="content">
 
-        <!-- Tab 1: Execution Ecology Overview -->
+        <!-- Tab 1: Provider Synchronization Overview -->
         <section class="tab-content active" id="panel-ecology">
-            <div class="section-question">What kinds of propagation survive execution?</div>
+            <div class="section-question">What is the baseline synchronization integrity?</div>
             <div class="grid-4">
                 <div class="card metric-card" id="mc-trades">
-                    <div class="metric-label">Total Trades</div>
+                    <div class="metric-label">Total Events</div>
                     <div class="metric-value" id="metric-trades">—</div>
                     <div class="metric-sub" id="metric-winloss">— W / — L</div>
                 </div>
                 <div class="card metric-card" id="mc-winrate">
-                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-label">Sync Rate</div>
                     <div class="metric-value" id="metric-winrate">—</div>
-                    <div class="metric-sub">Target: >35%</div>
+                    <div class="metric-sub">Target: >99%</div>
                 </div>
                 <div class="card metric-card" id="mc-exp">
-                    <div class="metric-label">Expectancy</div>
+                    <div class="metric-label">Integrity</div>
                     <div class="metric-value" id="metric-exp">—</div>
                     <div class="metric-sub" id="metric-payoff">Avg W/L: —</div>
                 </div>
                 <div class="card metric-card" id="mc-err">
-                    <div class="metric-label">Elastic Recovery</div>
+                    <div class="metric-label">Sync Ratio</div>
                     <div class="metric-value" id="metric-err">—</div>
                     <div class="metric-sub">Trail+TP / SL+Mort</div>
                 </div>
@@ -82,61 +82,61 @@
 
             <div class="grid-2">
                 <div class="card">
-                    <h3 class="card-title">Exit Ecology Distribution</h3>
+                    <h3 class="card-title">Exit Constraint Distribution</h3>
                     <div class="chart-container" id="exit-ecology-chart"></div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">Asset Performance</h3>
+                    <h3 class="card-title">Asset Synchronization</h3>
                     <div class="chart-container" id="asset-chart"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3 class="card-title">Trade PnL Distribution</h3>
+                <h3 class="card-title">Synchronization PnL Profile</h3>
                 <div class="chart-container wide" id="pnl-distribution-chart"></div>
             </div>
 
             <!-- Architecture Stack -->
             <div class="card">
-                <h3 class="card-title">Ecological Architecture Stack</h3>
+                <h3 class="card-title">Chronological Architecture Stack</h3>
                 <div class="arch-stack">
                     <div class="arch-layer" data-layer="genesis">
                         <div class="arch-icon">🧬</div>
                         <div class="arch-info">
-                            <div class="arch-name">Edge Genesis</div>
-                            <div class="arch-desc">Pre-topology asymmetry sensing — compression release detection</div>
+                            <div class="arch-name">Substrate Determinism</div>
+                            <div class="arch-desc">Absolute replay equivalence from frozen chronology artifacts</div>
                         </div>
                         <div class="arch-status frontier">FRONTIER</div>
                     </div>
                     <div class="arch-layer" data-layer="freshness">
                         <div class="arch-icon">⏳</div>
                         <div class="arch-info">
-                            <div class="arch-name">Freshness Decay</div>
-                            <div class="arch-desc">Logistic temporal suppression of stale elasticity (center: 10 bars)</div>
+                            <div class="arch-name">Latency Synchronization</div>
+                            <div class="arch-desc">Measurement of provider lag and timeline invalidation</div>
                         </div>
                         <div class="arch-status active">ACTIVE</div>
                     </div>
                     <div class="arch-layer" data-layer="fertility">
                         <div class="arch-icon">🌱</div>
                         <div class="arch-info">
-                            <div class="arch-name">Fertility Governor</div>
-                            <div class="arch-desc">Bounded [0.85, 1.15] elastic re-expansion for survivable topologies</div>
+                            <div class="arch-name">Governor Hardening</div>
+                            <div class="arch-desc">Strict fail-closed operational constraint enforcement</div>
                         </div>
                         <div class="arch-status active">ACTIVE</div>
                     </div>
                     <div class="arch-layer" data-layer="persistence">
                         <div class="arch-icon">🛡️</div>
                         <div class="arch-info">
-                            <div class="arch-name">Persistence Governor</div>
-                            <div class="arch-desc">Catastrophe suppression via excursion retrace + acceleration decay</div>
+                            <div class="arch-name">Reconciliation Profiling</div>
+                            <div class="arch-desc">Duration and integrity measurement for delayed provider data</div>
                         </div>
                         <div class="arch-status active">ACTIVE</div>
                     </div>
                     <div class="arch-layer" data-layer="topology">
                         <div class="arch-icon">🗺️</div>
                         <div class="arch-info">
-                            <div class="arch-name">Persistence Atlas</div>
-                            <div class="arch-desc">Directional Efficiency · Continuation Density · Resilience Score</div>
+                            <div class="arch-name">Telemetry Archive</div>
+                            <div class="arch-desc">Append-only synchronization metadata record</div>
                         </div>
                         <div class="arch-status active">ACTIVE</div>
                     </div>
@@ -144,59 +144,58 @@
             </div>
         </section>
 
-        <!-- Tab 2: Smoothness Trap -->
+        <!-- Tab 2: Temporal Fragmentation -->
         <section class="tab-content" id="panel-smoothness">
-            <div class="section-question">Why do the cleanest breakouts fail?</div>
+            <div class="section-question">When does timeline coherence break?</div>
             <div class="card discovery-card">
-                <div class="discovery-badge">KEY DISCOVERY</div>
-                <h2 class="discovery-title">The Smoothness Trap</h2>
+                <div class="discovery-badge">INFRASTRUCTURE</div>
+                <h2 class="discovery-title">Temporal Fragmentation</h2>
                 <p class="discovery-text">
-                    High Directional Efficiency (smooth, linear propagation) correlates with <strong>terminal exhaustion</strong>, 
-                    not survivability. The market's most dangerous continuations are the ones that look safest.
+                    High synchronization dispersion indicates <strong>temporal fragmentation</strong> across the provider's cohort. 
+                    The exchange data timeline becomes unreliable during these spikes.
                 </p>
             </div>
 
             <div class="grid-2">
                 <div class="card">
-                    <h3 class="card-title">Directional Efficiency vs PnL</h3>
-                    <p class="card-subtitle">Each dot is a trade. Color = exit type.</p>
+                    <h3 class="card-title">Dispersion vs Execution Success</h3>
+                    <p class="card-subtitle">Each dot is an event. Color = execution state.</p>
                     <div class="chart-container" id="smoothness-scatter"></div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">Efficiency by Exit Type</h3>
-                    <p class="card-subtitle">Monotonic inversion: smoother = more toxic</p>
+                    <h3 class="card-title">Fragmentation by Exit Type</h3>
+                    <p class="card-subtitle">Higher dispersion = higher execution failure</p>
                     <div class="chart-container" id="efficiency-bars"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3 class="card-title">Topology Inversion Table</h3>
+                <h3 class="card-title">Fragmentation Inversion Table</h3>
                 <div class="table-container" id="inversion-table"></div>
             </div>
         </section>
 
-        <!-- Tab 3: Edge Genesis -->
+        <!-- Tab 3: Chronology Constraints -->
         <section class="tab-content" id="panel-genesis">
-            <div class="section-question">Where is asymmetry born before propagation?</div>
+            <div class="section-question">What boundaries trigger a governor halt?</div>
             <div class="card discovery-card genesis-discovery">
-                <div class="discovery-badge">FRONTIER</div>
-                <h2 class="discovery-title">Edge Genesis Observatory</h2>
+                <div class="discovery-badge">OPERATIONAL</div>
+                <h2 class="discovery-title">Chronology Constraints</h2>
                 <p class="discovery-text">
-                    Edge originates in <strong>compression release</strong>, not continuation. 
-                    Winners enter from quiet, compressed pre-entry environments where volatility suddenly expands.
-                    The system currently enters ~5 bars after peak asymmetry.
+                    Governor permissions depend on strict synchronization bounds. 
+                    If the timeline integrity falls below thresholds, the system halts to preserve capital rather than interpolate missing data.
                 </p>
             </div>
 
             <div class="grid-2">
                 <div class="card">
-                    <h3 class="card-title">Compression Release vs PnL</h3>
-                    <p class="card-subtitle">Compression Ratio: exec_vol / pre_vol</p>
+                    <h3 class="card-title">Constraint Trigger vs Outcome</h3>
+                    <p class="card-subtitle">Sync Ratio / Baseline</p>
                     <div class="chart-container" id="compression-scatter"></div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">Pre-Entry Bias vs PnL</h3>
-                    <p class="card-subtitle">Strong prior trend = consumed asymmetry</p>
+                    <h3 class="card-title">Pre-Halt Bias vs Outcome</h3>
+                    <p class="card-subtitle">Directional drift during fragmentation</p>
                     <div class="chart-container" id="bias-scatter"></div>
                 </div>
             </div>
@@ -204,65 +203,64 @@
             <div class="grid-3">
                 <div class="card genesis-stat">
                     <div class="genesis-icon">📦</div>
-                    <div class="genesis-label">TP Compression</div>
+                    <div class="genesis-label">Sync Ratio</div>
                     <div class="genesis-value" id="gen-tp-comp">—</div>
-                    <div class="genesis-sub">Pre-entry was quiet</div>
+                    <div class="genesis-sub">Observed vs expected</div>
                 </div>
                 <div class="card genesis-stat">
                     <div class="genesis-icon">📐</div>
-                    <div class="genesis-label">TP Bias</div>
+                    <div class="genesis-label">Dispersion</div>
                     <div class="genesis-value" id="gen-tp-bias">—</div>
-                    <div class="genesis-sub">No prior direction</div>
+                    <div class="genesis-sub">Temporal divergence</div>
                 </div>
                 <div class="card genesis-stat">
                     <div class="genesis-icon">⏱️</div>
-                    <div class="genesis-label">TP Age</div>
+                    <div class="genesis-label">Lag</div>
                     <div class="genesis-value" id="gen-tp-age">—</div>
-                    <div class="genesis-sub">Entered freshest</div>
+                    <div class="genesis-sub">Latency delta</div>
                 </div>
             </div>
 
             <div class="card">
-                <h3 class="card-title">Genesis Conditions by Exit Type</h3>
+                <h3 class="card-title">Constraint Conditions by Exit Type</h3>
                 <div class="table-container" id="genesis-table"></div>
             </div>
         </section>
 
-        <!-- Tab 4: Toxicity Atlas -->
+        <!-- Tab 4: Reconciliation Duration -->
         <section class="tab-content" id="panel-atlas">
-            <div class="section-question">When does elasticity become stale?</div>
+            <div class="section-question">How long does provider timeline reconciliation take?</div>
             <div class="card discovery-card toxicity-discovery">
-                <div class="discovery-badge">DIAGNOSTIC</div>
-                <h2 class="discovery-title">Expectancy Toxicity Atlas</h2>
+                <div class="discovery-badge">INFRASTRUCTURE</div>
+                <h2 class="discovery-title">Reconciliation Duration Profile</h2>
                 <p class="discovery-text">
-                    Remaining negative expectancy is <strong>temporally localized</strong>. 
-                    100% of false-elasticity mortalities occur at >10 bars since reload. 
-                    Zero fresh-elasticity failures observed.
+                    Delayed reconciliation causes timeline uncertainty. 
+                    After institutional compression periods, provider updates can lag significantly.
                 </p>
             </div>
 
             <div class="grid-2">
                 <div class="card">
-                    <h3 class="card-title">Elasticity Age vs PnL</h3>
-                    <p class="card-subtitle">Stale entries (>10 bars) cluster as toxic</p>
+                    <h3 class="card-title">Reconciliation Age vs Outcome</h3>
+                    <p class="card-subtitle">Delayed settlements (>10 bars) increase uncertainty</p>
                     <div class="chart-container" id="age-scatter"></div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">Freshness Decay Curve</h3>
-                    <p class="card-subtitle">Logistic decay: 1/(1+exp((age-10)/2.5))</p>
+                    <h3 class="card-title">Reconciliation Decay Profile</h3>
+                    <p class="card-subtitle">Measurement of temporal synchronization lag</p>
                     <div class="chart-container" id="decay-curve"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3 class="card-title">Toxicity Clusters</h3>
+                <h3 class="card-title">Synchronization Clusters</h3>
                 <div class="table-container" id="toxicity-table"></div>
             </div>
         </section>
 
         <!-- Tab 5: Trade Replay -->
         <section class="tab-content" id="panel-replay">
-            <div class="section-question">How does a trade's lifecycle unfold from genesis to exit?</div>
+            <div class="section-question">How does execution unfold chronologically?</div>
             <div class="card">
                 <div class="replay-controls">
                     <button class="replay-btn" id="replay-prev">◀ Prev</button>
@@ -286,64 +284,64 @@
             </div>
         </section>
 
-        <!-- Tab 6: Comparative Ecology -->
+        <!-- Tab 6: Cohort Comparison -->
         <section class="tab-content" id="panel-comparative">
-            <div class="section-question">Which propagation laws survive scale, regime, and ecology changes?</div>
+            <div class="section-question">How does synchronization vary across provider cohorts?</div>
 
             <!-- Hero finding -->
             <div class="card comparative-hero">
                 <div class="comparative-hero-grid">
                     <div class="hero-ecology" data-type="liquidity">
                         <div class="ecology-icon">💧</div>
-                        <div class="ecology-name">Liquidity-Flow Ecology</div>
-                        <div class="ecology-assets">Crypto · Equities</div>
+                        <div class="ecology-name">High-Liquidity Cohort</div>
+                        <div class="ecology-assets">Broad Index</div>
                         <div class="ecology-traits">
-                            <span class="trait positive">Bias toxic</span>
-                            <span class="trait positive">Age decays</span>
-                            <span class="trait scale">Trap at 1m</span>
+                            <span class="trait positive">High sync</span>
+                            <span class="trait positive">Low dispersion</span>
+                            <span class="trait scale">Atomic updates</span>
                         </div>
-                        <div class="ecology-desc">Asymmetry is consumed by participation. Once direction is established, the executable edge dissipates.</div>
+                        <div class="ecology-desc">Atomic synchronization maintains timeline integrity seamlessly.</div>
                     </div>
                     <div class="hero-vs">vs</div>
                     <div class="hero-ecology" data-type="event">
                         <div class="ecology-icon">⚡</div>
-                        <div class="ecology-name">Event-Driven Ecology</div>
-                        <div class="ecology-assets">Commodities</div>
+                        <div class="ecology-name">Fragmented Cohort</div>
+                        <div class="ecology-assets">Smallcaps</div>
                         <div class="ecology-traits">
-                            <span class="trait inverted">Bias amplifies</span>
-                            <span class="trait inverted">Age persists</span>
-                            <span class="trait inverted">No trap</span>
+                            <span class="trait inverted">High dispersion</span>
+                            <span class="trait inverted">Long lag</span>
+                            <span class="trait inverted">Uneven sync</span>
                         </div>
-                        <div class="ecology-desc">Asymmetry is amplified by narrative persistence. Established direction signals information, not exhaustion.</div>
+                        <div class="ecology-desc">Asynchronous updates create fragmented realities requiring strict constraint enforcement.</div>
                     </div>
                 </div>
             </div>
 
             <!-- Law survival matrix -->
             <div class="card">
-                <h3 class="card-title">Law Survival Matrix</h3>
-                <p class="card-subtitle">5 replay conditions × 3 ecological laws — architecture FROZEN throughout</p>
+                <h3 class="card-title">Synchronization Stability Matrix</h3>
+                <p class="card-subtitle">5 replay conditions × 3 synchronization laws</p>
                 <div class="table-container" id="survival-matrix"></div>
             </div>
 
             <!-- Scale vs regime disentanglement -->
             <div class="grid-2">
                 <div class="card">
-                    <h3 class="card-title">Smoothness Trap: Resolution Dependency</h3>
-                    <p class="card-subtitle">Same regime, same assets — does 1m→5m kill the trap?</p>
+                    <h3 class="card-title">Temporal Fragmentation: Resolution Dependency</h3>
+                    <p class="card-subtitle">Does timeline scale alter fragmentation visibility?</p>
                     <div class="chart-container" id="trap-resolution-chart"></div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">Pre-Bias Law: Cross-Ecology Survival</h3>
-                    <p class="card-subtitle">Low bias PnL vs high bias PnL across all conditions</p>
+                    <h3 class="card-title">Constraint Law: Cross-Cohort Execution</h3>
+                    <p class="card-subtitle">Execution outcomes under constraint conditions</p>
                     <div class="chart-container" id="bias-crossecology-chart"></div>
                 </div>
             </div>
 
             <!-- Ecology profiles -->
             <div class="card">
-                <h3 class="card-title">Propagation Ecology Profiles</h3>
-                <p class="card-subtitle">Win rate, expectancy, and exit composition across all tested ecologies</p>
+                <h3 class="card-title">Provider Cohort Profiles</h3>
+                <p class="card-subtitle">Win rate, expectancy, and exit composition across all tested cohorts</p>
                 <div class="table-container" id="ecology-profiles"></div>
             </div>
         </section>
@@ -352,7 +350,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>ChronoSentiment Observatory · Propagation Ecology Research · BTC · ETH · SOL</p>
+        <p>ChronoSentiment Observatory · Provider Chronology Research</p>
     </footer>
 
     <script src="app.js"></script>

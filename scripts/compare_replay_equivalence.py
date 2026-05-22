@@ -328,7 +328,7 @@ def main() -> int:
     if issues:
         print("\nFAIL: replay equivalence — see divergences above")
         return 1
-    print("\nPASS: causal topology signatures converge on aligned ts window")
+    print("\nPASS: causal chronological signatures converge on aligned ts window")
     return 0
 
 

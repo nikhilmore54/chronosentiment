@@ -1,73 +1,34 @@
-# ChronoSentiment — Propagation Ecology Observatory
+# ChronoSentiment — Provider Chronology Observatory
 
-> **ChronoSentiment is a deterministic execution-aware propagation observatory designed to study how market asymmetry emerges, persists, collapses, and decays across scale, regime, and asset ecology.**
+> **ChronoSentiment is a deterministic chronology interpreter with constrained operational governance.**
 
-Instead of projecting a false narrative of global predictive "alpha," ChronoSentiment treats markets as dynamic interaction systems. The platform provides a rigorous scientific framework to falsify propagation models and map the conditional boundaries of market behavior.
-
----
-
-## 🌍 The Core Philosophy: Conditional Market Physics
-
-ChronoSentiment has moved beyond the search for static, globally invariant trading laws. Our out-of-sample (OOS) validation and cross-asset experiments have revealed a fundamental truth: **market behavior is conditionally activated rather than universally uniform.**
-
-We categorize market behavior into three distinct observational layers:
-
-1. **Ecology Laws:** Market dynamics are determined by the underlying participant structure.
-2. **Scale Laws (Granularity):** Microstructure patterns are scale-sensitive and compress as observations aggregate.
-3. **Regime Laws:** Volatility states conditionally alter how asymmetry decays over time.
+The platform provides a rigorous framework to observe market provider synchronization, validate chronology, and enforce fail-closed execution constraints. It does not attempt to predict market behavior, extract alpha, or define market cognition.
 
 ---
 
-## 🧬 Two Discovered Ecology Classes
+## 🌍 The Core Philosophy: Deterministic Chronology
 
-Through cross-asset replay validation (Crypto, Equities, and Commodities), we have mathematically isolated two distinct classes of propagation physics:
+ChronoSentiment has moved beyond the search for static, globally invariant trading laws or abstract market interpretation. The core operating principle is: **execution integrity requires absolute timeline determinism.**
 
-```
-                  ┌─────────────────────────────────────────┐
-                  │      COMPARATIVE PROPAGATION PHYSICS     │
-                  └────────────────────┬────────────────────┘
-                                       │
-            ┌──────────────────────────┴──────────────────────────┐
-            ▼                                                     ▼
-┌───────────────────────┐                             ┌───────────────────────┐
-│ LIQUIDITY-FLOW ECOLOGY│                             │  EVENT-DRIVEN ECOLOGY │
-├───────────────────────┤                             ├───────────────────────┤
-│ Assets: Crypto, Equity│                             │ Assets: Commodities   │
-│                       │                             │                       │
-│ 💧 Pre-Bias: Toxic    │                             │ ⚡ Pre-Bias: Beneficial│
-│ 💧 Age Decay: Real    │                             │ ⚡ Age Decay: Inverted│
-│ 💧 Smoothness: 1m Only│                             │ ⚡ Smoothness: None   │
-├───────────────────────┤                             ├───────────────────────┤
-│ Asymmetry is consumed │                             │ Asymmetry is amplified│
-│ by participation flow.│                             │ by persistent macro   │
-│ Consensus exhausts.   │                             │ narratives (OPEC/etc).│
-└───────────────────────┘                             └───────────────────────┘
-```
+We categorize the system into three distinct operational layers:
 
-### 1. Liquidity-Flow Ecology (Crypto & Equities)
-*   **Mechanic:** Asymmetry is consumed by participation. Once a directional bias is established, the executable edge rapidly exhausts.
-*   **Pre-Bias Toxicity (✅ Active):** Low-bias entries outperform high-bias entries.
-*   **Elasticity Age Decay (✅ Active):** Fresh propagation (≤10 bars) dramatically outperforms stale entries (>15 bars).
-*   **Smoothness Trap (✅ Resolution-Conditional):** Monotonic efficiency ordering exists *only* at 1m granularity.
-
-### 2. Event-Driven Ecology (Commodities)
-*   **Mechanic:** Asymmetry is amplified by narrative persistence. Established direction signals the entry of real-world macro constraints (supply shocks, geopolitics, OPEC decisions) rather than flow exhaustion.
-*   **Laws Inverted (⊘ Inverted):** High prior bias *amplifies* subsequent propagation; stale, persistent trends perform *better* than short-lived breakouts.
+1. **Rust Kernel:** Deterministic chronology interpretation.
+2. **Governor:** Operational constraint enforcement based on synchronization limits.
+3. **Observatory:** Infrastructure measurement and delayed reconciliation profiling.
 
 ---
 
-## 🔬 The 6-Tab Observatory Architecture
+## 🔬 Provider Chronology Observatory
 
-The system's findings are explored via a high-performance **observability dashboard** that visualizes the translation of execution intent into realized outcomes:
+The system's findings are explored via a high-performance **observability dashboard** that visualizes timeline infrastructure reality:
 
-| Tab | Diagnostic Domain | Key Scientific Metric |
-| :--- | :--- | :--- |
-| **Execution Ecology** | Realized outcomes & friction | Slippage capture, Elastic Recovery Ratio (ERR) |
-| **Smoothness Trap** | Granularity & local topology | Local Excursion Efficiency ordering |
-| **Edge Genesis** | Asymmetry birth mechanics | Compressive pre-range vs. directional release |
-| **Toxicity Atlas** | Temporal decay profiles | Age-based decay curves & structural mortality |
-| **Trade Replay** | Step-by-step causal auditor | Microsecond order queue traversal & late-bias |
-| **Comparative Ecology** | Cross-asset & scale physics | Activation domains, 1m vs 5m resolution collapse |
+| Diagnostic Domain | Key Metric |
+| :--- | :--- |
+| **Provider Synchronization** | Percentage of cohort successfully fetched at target timestamp |
+| **Temporal Fragmentation** | Synchronization dispersion and cross-symbol non-uniformity |
+| **Chronology Constraints** | Live governor permission (Nominal, Throttled, Halted) |
+| **Reconciliation Duration** | Age-based completion delays for end-of-day closure ticks |
+| **Trade Replay** | Step-by-step causal auditor ensuring exact replay equivalence |
 
 ---
 
@@ -75,46 +36,44 @@ The system's findings are explored via a high-performance **observability dashbo
 
 ChronoSentiment separates the physical forces of execution through a frozen back-end engine:
 
-*   **The Execution Simulation Engine (ESE):** Implements exact integer-scaled tick-by-tick order reconstruction (`PRICE_SCALE = 10000`). Decouples timing latency (`latency_ticks`) and slippage from raw signal strength.
-*   **The Fertility Governor:** Dynamically constraints elastic re-expansion limits (`[0.85, 1.15]`) to prevent overfitting.
-*   **Logistic Freshness Decay:** Automatically suppresses decaying directional signals through a strict logistic decay curve.
+*   **The Execution Simulation Engine (ESE):** Implements exact integer-scaled tick-by-tick order reconstruction. Decouples timing latency and execution friction.
+*   **The Governor:** Dynamically constrains execution based on strict synchronization limits. If provider fragmentation exceeds safe thresholds, the governor halts execution.
+*   **Fail-Closed Invariants:** The system assumes data is fragmented unless mathematically proven otherwise. No missing data is interpolated.
 
 ---
 
-## 📊 Summary of Out-of-Sample (OOS) Experiments
+## 📊 Summary of Out-of-Sample (OOS) Baseline Checks
 
 *Frozen Architecture, 30-Day Windows*
 
-| Condition | Class | Resolution | Pre-Bias Toxicity | Elasticity Age Decay | Smoothness Trap |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **A: Crypto Training** | Liquidity-Flow | 1m | **✅ Active** | **✅ Active** | **✅ Active** |
-| **B: Crypto Same-Regime** | Liquidity-Flow | 5m | **⊘ Inverted** | — | **⊘ Inverted** |
-| **C: Crypto OOS** | Liquidity-Flow | 5m | **✅ Active** | **✅ Active** | **⊘ Inverted** |
-| **D: Equities** | Liquidity-Flow | 5m | **✅ Active** | **✅ Active** | **⊘ Inverted** |
-| **E: Commodities** | Event-Driven | 5m | **⊘ Inverted** | **⊘ Inverted** | **⊘ Inverted** |
+| Component | Validation Step | Required Outcome |
+| :--- | :--- | :--- |
+| **Kernel Replay** | `scripts/certify_replay_chain.py` | 100% Deterministic Match |
+| **Cohort Baseline** | `scripts/verify_cohort_baseline.py` | Validated Dedupe & Signature Intact |
+| **System Check** | `scripts/validate_system.sh` | Zero Archival Corruptions |
 
 ---
 
 ## 🚀 Scientific Roadmap
 
-Our current development cycle targets **Track B: Edge Genesis Science**:
+Our current development cycle targets **Track B: Soak Era Observation**:
 
-1.  **Latent-State Classification:** Replacing static filters with real-time volatility clustering and entropy classification.
-2.  **State-Dependent Gating:** Automatically switching between *Liquidity-Flow* mode (mean-reverting, bias-avoiding) and *Event-Driven* mode (momentum-seeking) based on the asset's active ecology state.
-3.  **Consensus Porosity:** Exploring pre-topology compression phases to predict early-stage asymmetry birth.
+1.  **Continuous Live Soak:** Letting the system run unedited for 2-6 weeks to observe natural boundary breaks.
+2.  **Constraint Hardening:** Enforcing strict fail-closed bounds when temporal fragmentation occurs.
+3.  **Observability Maturation:** Measuring provider delays directly rather than hypothesizing about market structures.
 
 ---
 
-## 📂 Quick Start for Systematic Researchers
+## 📂 Quick Start for Operational Proving
 
-Run offline replays to export state telemetry directly to the Observatory:
+Run the live operational soak directly. Do not use legacy research scripts.
 
 ```bash
-# 1. Execute highly-rigorous out-of-sample replay
-python3 scripts/replay_from_file.py --file archive/xasset_equities_30d_5m.jsonl --gen equities
+# 1. Establish Clean Baseline
+./scripts/validate_system.sh
 
-# 2. Export deterministic telemetry to UI JSON DTO
-python3 scripts/export_observatory_data.py archive/replay_xasset_equities.log observatory/xasset_equities.json
+# 2. Run Live Provider Observation
+python3 scripts/run_live_session.py --batch-id 003 --cycles 4 --live-only
 
 # 3. Serve the Observatory
 cd observatory

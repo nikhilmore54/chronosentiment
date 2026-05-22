@@ -41,7 +41,7 @@ enum Command {
         archive: PathBuf,
         #[arg(long, default_value = CANDLE_ROOT)]
         candle_root: PathBuf,
-        #[arg(long, default_value = "observatory/ecology_clustering_pca_weights.json")]
+        #[arg(long, default_value = "observatory/provider_clustering_pca_weights.json")]
         pca_weights: PathBuf,
         #[arg(
             long,

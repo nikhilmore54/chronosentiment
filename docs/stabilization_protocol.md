@@ -44,10 +44,10 @@ Requirements (all must be demonstrated, not assumed):
 
 ## What Is Not Allowed During Stabilization
 
-- New ontology or topology semantics
+- New terminology or interpretation semantics
 - New telemetry fields
 - ML or adaptive intelligence integration
-- New ecology dimensions
+- New provider synchronization dimensions
 - Dynamic or self-modifying governors
 - New propagation theory
 - New abstraction layers
@@ -82,8 +82,8 @@ The only question being asked: **does the simplified kernel remain truthful unde
 Only after the Core v0.1 milestone is proven:
 
 - **Telemetry compression:** separate the 5 diagnostics-only fields (`previous_state`, `next_state`, `corridor_id`, `transition_confidence`, `local_density`) into a lower-frequency debug record
-- **Semantic audit:** every abstraction (instability subtypes, topology variants, ecology transitions) must answer "what execution decision changes because this exists?"
+- **Semantic audit:** every abstraction (instability subtypes, chronological variants, synchronization transitions) must answer "what execution decision changes because this exists?"
 - **Replay-era scaffolding audit:** compatibility bridges, transitional archive logic, migration-era helpers
-- **Ecology operational leverage:** connect ecology phase labels to at least one governor decision, then replay with/without to falsify whether it improves outcomes
+- **Observatory operational leverage:** connect synchronization phase labels to at least one governor decision, then replay with/without to falsify whether it improves outcomes
 
 None of these start until the stabilization loop runs cleanly for 2+ weeks.

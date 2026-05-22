@@ -5,7 +5,7 @@ Phase 4 — Timestamp-Locked Chronology Recovery Engine (Python shim)
 Delegates all logic to the Rust `cs-ingest repair` subcommand.
 This script is a thin CLI wrapper — no recovery logic lives here.
 
-Invariant: T_chronology ⊥ S_ecology
+Invariant: Chronology ⊥ Synchronization
 
 Usage:
     # Queue a single repair request

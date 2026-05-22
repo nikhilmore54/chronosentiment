@@ -83,7 +83,7 @@ The Rust binary (`cs-ingest`) runs inside steps 2 and 4 via subprocess.
   --batch-id 3 \
   --cohort cohorts/batch_003.txt \
   --archive state_archive/batches/batch_003/runs/replay_equiv \
-  --pca-weights observatory/ecology_clustering_pca_weights.json \
+  --pca-weights observatory/provider_clustering_pca_weights.json \
   --observatory ./target/release/examples/live_observatory
 
 # Chronology gap repair

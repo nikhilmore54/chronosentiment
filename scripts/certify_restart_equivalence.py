@@ -3,7 +3,7 @@
 Restart Equivalence Certification Harness
 =========================================
 Proves that processing N bars in one continuous process produces the EXACT
-same topology outputs and telemetry archive as restarting the engine every
+same chronological outputs and telemetry archive as restarting the engine every
 single bar from the frozen substrate.
 
 If this harness passes, there is absolutely zero hidden temporal carry-over state.

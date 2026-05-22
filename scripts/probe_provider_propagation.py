@@ -8,7 +8,7 @@ the exact wall-clock time each provider first publishes a new 5m bar.
 Produces:
   - live console output showing first-observed timestamps per provider
   - state_archive/provider_propagation/{date}/report.json
-    with per-bar propagation thermodynamics:
+    with per-bar provider synchronization:
       τ_yfinance, τ_stooq, Δτ (convergence lag), consensus_agreement
 
 Usage:

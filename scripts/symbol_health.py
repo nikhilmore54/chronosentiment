@@ -2,7 +2,7 @@
 """
 Symbol Health Layer — universe integrity management for upstream acquisition.
 
-Treats delisted / missing symbols as observable ecology events, not hard failures.
+Treats delisted / missing symbols as expected infrastructure events, not hard failures.
 """
 
 from __future__ import annotations

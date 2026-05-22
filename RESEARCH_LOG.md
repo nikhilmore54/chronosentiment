@@ -3,7 +3,7 @@
 This document logs empirical findings regarding provider synchronization, latency, and topological fragmentation. 
 It serves as the operational foundation for defining execution constraints and chronology boundaries.
 
-## Ontology & Execution Constraints
+## Terminology & Execution Constraints
 Before logging traces, we define the strict operational states:
 - **`provider_latency`**: Exchange-to-observer publication delay.
 - **`synchronization_ratio`**: The percentage of a cohort successfully fetched at target timestamp.
@@ -88,6 +88,18 @@ Before logging traces, we define the strict operational states:
 | Batch 003 exhibited persistent high synchronization dispersion (>2.0) and low initial sync (<60%). | Cohort synchronization remains uneven across symbols, confirming temporal fragmentation. | **Operationally Consistent** |
 
 ### Automated Observation — 2026-05-22 10:44:28 IST (Batch 910)
+
+| Observation | Hypothesis | Outcome |
+| :--- | :--- | :--- |
+| Batch 910 maintained 100% atomic sync across all 13 cycles. | Provider cache invalidation is near-atomic for high-liquidity cohorts. | **Confirmed** |
+
+### Automated Observation — 2026-05-22 13:00:01 IST (Batch 003)
+
+| Observation | Hypothesis | Outcome |
+| :--- | :--- | :--- |
+| Batch 003 exhibited persistent high synchronization dispersion (>2.0) and low initial sync (<60%). | Cohort synchronization remains uneven across symbols, confirming temporal fragmentation. | **Operationally Consistent** |
+
+### Automated Observation — 2026-05-22 13:00:01 IST (Batch 910)
 
 | Observation | Hypothesis | Outcome |
 | :--- | :--- | :--- |
