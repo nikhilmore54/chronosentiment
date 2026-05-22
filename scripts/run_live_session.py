@@ -289,12 +289,25 @@ def main():
         
         if is_synchronized:
             regime = "SYNCHRONIZED"
+            new_entries_allowed = True
         elif is_degraded and not is_recovering:
             regime = "DEGRADED_OBSERVABILITY"
+            new_entries_allowed = False
         elif is_recovering:
             regime = "TRANSITIONAL_RECOVERY"
+            new_entries_allowed = False
         else:
             regime = "FRAGMENTED_BUT_USABLE"
+            new_entries_allowed = True
+            
+        admissibility = {
+            "execution_admissible": new_entries_allowed,
+            "admissibility_reason": regime,
+            "new_entries_allowed": new_entries_allowed,
+            "exits_allowed": True,  # Risk exits are universally preserved regardless of observability degradation
+            "observability_schema_version": "v1.0",
+            "classification_policy_version": "v1.0"
+        }
         
         observability = {
             "strict_ratio": round(strict_ratio, 4),
@@ -322,6 +335,7 @@ def main():
             "symbols_missing": symbols_missing,
             "freshness": freshness,
             "observability": observability,
+            "admissibility": admissibility,
             "fetch_stats": fetch_stats,
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
