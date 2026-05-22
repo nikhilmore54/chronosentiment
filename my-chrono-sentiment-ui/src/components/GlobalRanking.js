@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 function safeDisplay(value, digits = 2) {
-  if (value === undefined || value === null) {
-    return "N/A";
-  }
+  if (value === undefined || value === null) return 'N/A';
   return typeof value === 'number' ? value.toFixed(digits) : value;
 }
 
@@ -22,6 +20,15 @@ function resolveGaFitness(row) {
   return undefined;
 }
 
+function classificationColor(cls) {
+  if (!cls) return 'gray';
+  const c = cls.toLowerCase();
+  if (c === 'stable')   return 'grn';
+  if (c === 'volatile') return 'amb';
+  if (c === 'fragile')  return 'red';
+  return 'gray';
+}
+
 const GlobalRanking = () => {
   const [ranking, setRanking] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,14 +39,8 @@ const GlobalRanking = () => {
     setError(null);
     try {
       const response = await fetch('http://localhost:8000/ga/global-ranking');
-      if (!response.ok) {
-        throw new Error('Failed to fetch global ranking');
-      }
+      if (!response.ok) throw new Error('Failed to fetch global ranking');
       const data = await response.json();
-      console.log("Global Ranking API response:", data);
-      if (data && data.length > 0) {
-          console.log("ROW 0:", data[0]);
-      }
       setRanking(data);
     } catch (err) {
       setError(err.message);
@@ -48,77 +49,84 @@ const GlobalRanking = () => {
     }
   };
 
-  useEffect(() => {
-    fetchRanking();
-  }, []);
+  useEffect(() => { fetchRanking(); }, []);
+
+  const sorted = [...ranking].sort(
+    (a, b) => (resolveExecutionFitness(b) ?? 0) - (resolveExecutionFitness(a) ?? 0)
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Global Strategy Ranking</h2>
+    <div className="cs-gap-20">
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <div className="cs-section-sub">Strategy Evaluation</div>
+          <div className="cs-section-title">Global Strategy Ranking</div>
+        </div>
         <button
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          className="cs-btn cs-btn-success"
           onClick={fetchRanking}
           disabled={loading}
         >
-          {loading ? 'Refreshing...' : 'Refresh Ranking'}
+          {loading ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
-      {error && <p className="text-red-500 mb-4">Error: {error}</p>}
+      {error && (
+        <div className="cs-alert red">
+          <div className="cs-alert-title">Fetch Error</div>
+          <div className="cs-alert-body">{error}</div>
+        </div>
+      )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="py-2 px-4 border-b text-left">Strategy</th>
-              <th className="py-2 px-4 border-b text-right">Avg</th>
-              <th className="py-2 px-4 border-b text-right">Std</th>
-              <th className="py-2 px-4 border-b text-right">Execution Fitness</th>
-              <th className="py-2 px-4 border-b text-right">GA Fitness</th>
-              <th className="py-2 px-4 border-b text-left">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranking.length > 0 ? (
-              ranking.sort((a, b) => (resolveExecutionFitness(b) ?? 0) - (resolveExecutionFitness(a) ?? 0)).map((row, index) => (
-                <tr key={row.strategy_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="py-2 px-4 border-b text-sm font-mono truncate max-w-xs" title={row.strategy_id}>
-                    {row.strategy_id}
-                  </td>
-                  <td className="py-2 px-4 border-b text-right font-mono">
-                    {safeDisplay(row.avg, 6)}
-                  </td>
-                  <td className="py-2 px-4 border-b text-right font-mono">
-                    {safeDisplay(row.std, 6)}
-                  </td>
-                  <td className="py-2 px-4 border-b text-right font-mono font-bold text-blue-600">
-                    {safeDisplay(resolveExecutionFitness(row), 6)}
-                  </td>
-                  <td className="py-2 px-4 border-b text-right font-mono">
-                    {resolveGaFitness(row) === undefined ? "— (Search not performed)" : safeDisplay(resolveGaFitness(row), 6)}
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      row.classification === 'Stable' ? 'bg-green-100 text-green-800' :
-                      row.classification === 'Volatile' ? 'bg-yellow-100 text-yellow-800' :
-                      row.classification === 'Fragile' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {row.classification}
-                    </span>
+      <div className="cs-card" style={{ padding: 0 }}>
+        <div className="cs-table-wrap" style={{ border: 'none', borderRadius: 'var(--r10)' }}>
+          <table className="cs-table">
+            <thead>
+              <tr>
+                <th style={{ width: 36 }}>#</th>
+                <th>Strategy</th>
+                <th className="right">Avg PnL</th>
+                <th className="right">Std Dev</th>
+                <th className="right">Exec Fitness</th>
+                <th className="right">GA Fitness</th>
+                <th>Classification</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length > 0 ? (
+                sorted.map((row, index) => {
+                  const execFit = resolveExecutionFitness(row);
+                  const gaFit   = resolveGaFitness(row);
+                  const cls     = classificationColor(row.classification);
+                  return (
+                    <tr key={row.strategy_id}>
+                      <td style={{ color: 'var(--tm)', fontSize: 11 }}>{index + 1}</td>
+                      <td className="bold" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.strategy_id}>
+                        {row.strategy_id}
+                      </td>
+                      <td className="right">{safeDisplay(row.avg, 6)}</td>
+                      <td className="right">{safeDisplay(row.std, 6)}</td>
+                      <td className={`right blu bold`}>{safeDisplay(execFit, 6)}</td>
+                      <td className="right">
+                        {gaFit === undefined ? <span style={{ color: 'var(--tm)' }}>—</span> : safeDisplay(gaFit, 6)}
+                      </td>
+                      <td>
+                        <span className={`cs-badge ${cls}`}>{row.classification ?? '—'}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: 'var(--tm)' }}>
+                    {loading ? 'Loading ranking data…' : 'No ranking data available. Run multi-asset evaluation first.'}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="py-4 text-center text-gray-500">
-                  {loading ? 'Loading ranking data...' : 'No ranking data available. Run multi-asset evaluation.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

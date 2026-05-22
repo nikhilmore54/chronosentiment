@@ -18,7 +18,7 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   };
 
   const resolveGaFitness = (row) => {
-    if (!row) return 0;
+    if (!row) return null;
     if (typeof row.ga_fitness === 'number') return row.ga_fitness;
     return null;
   };
@@ -31,7 +31,7 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
     const strategy_ids = strategyIdsInput.split(',').map(id => id.trim()).filter(id => id !== '');
 
     if (strategy_ids.length < 2) {
-      setError('Please enter at least two strategy IDs separated by commas.');
+      setError('Enter at least two strategy IDs separated by commas.');
       setLoading(false);
       return;
     }
@@ -50,25 +50,14 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
     try {
       const response = await fetch('http://localhost:8000/compare_strategies', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          strategies: strategiesPayload,
-          scenarios: [],
-          seed: Number(seed),
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategies: strategiesPayload, scenarios: [], seed: Number(seed) }),
       });
 
       if (!response.ok) {
         const text = await response.text();
         let msg = 'Failed to compare strategies';
-        try {
-          const errorData = JSON.parse(text);
-          msg = errorData.message || errorData.error || msg;
-        } catch {
-          if (text) msg = text;
-        }
+        try { const d = JSON.parse(text); msg = d.message || d.error || msg; } catch { if (text) msg = text; }
         throw new Error(msg);
       }
 
@@ -82,83 +71,109 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-semibold mb-4">Compare Strategies</h2>
-
-      <div className="mb-6">
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="strategy_ids">
-          Strategy IDs (comma-separated):
-        </label>
-        <input
-          type="text"
-          id="strategy_ids"
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          value={strategyIdsInput}
-          onChange={(e) => setStrategyIdsInput(e.target.value)}
-          placeholder="e.g., strat_200_300_400_500_42 (same format as GA / inspect)"
-        />
+    <div className="cs-gap-20">
+      {/* Header */}
+      <div>
+        <div className="cs-section-sub">Strategy Evaluation</div>
+        <div className="cs-section-title">Compare Strategies</div>
       </div>
 
-      <div className="mb-6">
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="compare_seed">
-          Seed (must match inspect / evaluation):
-        </label>
-        <input
-          type="number"
-          id="compare_seed"
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          value={seed}
-          onChange={(e) => setSeed(Number(e.target.value))}
-        />
+      {/* Input form */}
+      <div className="cs-card">
+        <div className="cs-card-title">Parameters</div>
+        <div className="cs-form-grid">
+          <div className="cs-field" style={{ gridColumn: '1 / -1' }}>
+            <label className="cs-label" htmlFor="strategy_ids">Strategy IDs (comma-separated)</label>
+            <input
+              type="text"
+              id="strategy_ids"
+              className="cs-input"
+              value={strategyIdsInput}
+              onChange={(e) => setStrategyIdsInput(e.target.value)}
+              placeholder="strat_200_300_400_500_42, strat_100_200_300_400_42"
+            />
+          </div>
+          <div className="cs-field">
+            <label className="cs-label" htmlFor="compare_seed">Seed</label>
+            <input
+              type="number"
+              id="compare_seed"
+              className="cs-input"
+              value={seed}
+              onChange={(e) => setSeed(Number(e.target.value))}
+            />
+          </div>
+        </div>
+        <button
+          className="cs-btn cs-btn-primary"
+          onClick={handleCompareStrategies}
+          disabled={loading}
+        >
+          {loading ? 'Comparing…' : 'Compare Strategies'}
+        </button>
       </div>
 
-      <button
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-        onClick={handleCompareStrategies}
-        disabled={loading}
-      >
-        {loading ? 'Comparing...' : 'Compare Strategies'}
-      </button>
-
-      {error && <p className="text-red-500 mt-4">Error: {error}</p>}
+      {error && (
+        <div className="cs-alert red">
+          <div className="cs-alert-title">Error</div>
+          <div className="cs-alert-body">{error}</div>
+        </div>
+      )}
 
       {comparisonResult && (
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold mb-3">Comparison Result</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-300">
-              <thead>
-                <tr>
-                  <th className="py-2 px-4 border-b text-left">Strategy ID</th>
-                  <th className="py-2 px-4 border-b text-left">Execution Fitness</th>
-                  <th className="py-2 px-4 border-b text-left">GA Fitness</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonResult.ranking.map((row) => (
-                  <tr
-                    key={row.strategy_id}
-                    className={setSelectedStrategyForInspection ? 'hover:bg-gray-50 cursor-pointer' : ''}
-                    onClick={() => {
-                      if (setSelectedStrategyForInspection) {
-                        setSelectedStrategyForInspection(row.strategy_id, seed);
-                      }
-                    }}
-                    title={setSelectedStrategyForInspection ? 'Open in Inspect Strategy' : undefined}
-                  >
-                    <td className="py-2 px-4 border-b">{row.strategy_id}</td>
-                    <td className="py-2 px-4 border-b">{resolveExecutionFitness(row).toFixed(6)}</td>
-                    <td className="py-2 px-4 border-b">{resolveGaFitness(row) === null ? "— (Search not performed)" : resolveGaFitness(row).toFixed(6)}</td>
+        <div className="cs-gap-16">
+          {/* Ranking table */}
+          <div className="cs-card" style={{ padding: 0 }}>
+            <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--b)' }}>
+              <div className="cs-card-title" style={{ marginBottom: 12 }}>Ranking</div>
+            </div>
+            <div className="cs-table-wrap" style={{ border: 'none', borderRadius: '0 0 var(--r10) var(--r10)' }}>
+              <table className="cs-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 36 }}>#</th>
+                    <th>Strategy ID</th>
+                    <th className="right">Exec Fitness</th>
+                    <th className="right">GA Fitness</th>
+                    {setSelectedStrategyForInspection && <th></th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {comparisonResult.ranking.map((row, i) => {
+                    const gaFit = resolveGaFitness(row);
+                    return (
+                      <tr
+                        key={row.strategy_id}
+                        className={setSelectedStrategyForInspection ? 'clickable' : ''}
+                        onClick={() => setSelectedStrategyForInspection && setSelectedStrategyForInspection(row.strategy_id, seed)}
+                        title={setSelectedStrategyForInspection ? 'Open in Inspect Strategy' : undefined}
+                      >
+                        <td style={{ color: 'var(--tm)', fontSize: 11 }}>{i + 1}</td>
+                        <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {row.strategy_id}
+                        </td>
+                        <td className="right blu bold">{resolveExecutionFitness(row).toFixed(6)}</td>
+                        <td className="right">
+                          {gaFit === null
+                            ? <span style={{ color: 'var(--tm)' }}>—</span>
+                            : gaFit.toFixed(6)}
+                        </td>
+                        {setSelectedStrategyForInspection && (
+                          <td style={{ color: 'var(--tm)', fontSize: 11 }}>Inspect →</td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {comparisonResult.comparison_summary && comparisonResult.comparison_summary.reason && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-800">
-              <h3 className="text-xl font-semibold mb-2">Comparison Insights</h3>
-              <p>{comparisonResult.comparison_summary.reason}</p>
+          {/* Comparison insights */}
+          {comparisonResult.comparison_summary?.reason && (
+            <div className="cs-alert blu">
+              <div className="cs-alert-title">Comparison Insights</div>
+              <div className="cs-alert-body">{comparisonResult.comparison_summary.reason}</div>
             </div>
           )}
         </div>

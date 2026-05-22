@@ -1,24 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RunGA from './components/RunGA';
 import StrategyInspector from './components/StrategyInspector';
 import CompareStrategies from './components/CompareStrategies';
 import GlobalRanking from './components/GlobalRanking';
 
-function App() {
+const TABS = [
+  { id: 'run-ga',            label: 'Run GA' },
+  { id: 'inspect-strategy',  label: 'Inspect Strategy' },
+  { id: 'compare-strategies',label: 'Compare Strategies' },
+  { id: 'global-ranking',    label: 'Global Ranking' },
+];
+
+function useClock() {
+  const [ts, setTs] = useState('');
+  useEffect(() => {
+    const fmt = () => {
+      const p = {};
+      new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata', hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }).formatToParts(new Date()).forEach(x => { p[x.type] = x.value; });
+      setTs(`${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second} IST`);
+    };
+    fmt();
+    const id = setInterval(fmt, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return ts;
+}
+
+export default function App() {
   const [activeTab, setActiveTab] = useState('run-ga');
   const [selectedStrategyId, setSelectedStrategyId] = useState(null);
   const [selectedSeed, setSelectedSeed] = useState(null);
-  const [selectedStrategyId2, setSelectedStrategyId2] = useState(null); // ADDED: For dual strategy mode
-  const [selectedSeed2, setSelectedSeed2] = useState(null); // ADDED: For dual strategy mode
+  const [selectedStrategyId2, setSelectedStrategyId2] = useState(null);
+  const [selectedSeed2, setSelectedSeed2] = useState(null);
+  const clock = useClock();
 
-  const setSelectedStrategyForInspection = (strategyId, seed, isSecondStrategy = false) => {
+  const handleSetSelectedStrategyForInspection = (strategyId, seed, isSecondStrategy = false) => {
     if (isSecondStrategy) {
       setSelectedStrategyId2(strategyId);
       setSelectedSeed2(seed);
     } else {
       setSelectedStrategyId(strategyId);
       setSelectedSeed(seed);
-      setSelectedStrategyId2(null); // Clear second strategy if a new first strategy is selected
+      setSelectedStrategyId2(null);
       setSelectedSeed2(null);
     }
     setActiveTab('inspect-strategy');
@@ -27,65 +54,68 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'run-ga':
-        return <RunGA setSelectedStrategyForInspection={setSelectedStrategyForInspection} />;
+        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} />;
       case 'inspect-strategy':
         return (
           <StrategyInspector
             strategyId={selectedStrategyId}
             seed={selectedSeed}
-            strategyId2={selectedStrategyId2} // ADDED: Pass second strategy ID
-            seed2={selectedSeed2} // ADDED: Pass second strategy seed
+            strategyId2={selectedStrategyId2}
+            seed2={selectedSeed2}
             onReset={() => {
               setSelectedStrategyId(null);
               setSelectedSeed(null);
-              setSelectedStrategyId2(null); // ADDED: Reset second strategy as well
+              setSelectedStrategyId2(null);
               setSelectedSeed2(null);
             }}
           />
         );
       case 'compare-strategies':
-        return <CompareStrategies setSelectedStrategyForInspection={setSelectedStrategyForInspection} />; // MODIFIED: Pass handler to CompareStrategies
+        return <CompareStrategies setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} />;
       case 'global-ranking':
         return <GlobalRanking />;
       default:
-        return <RunGA setSelectedStrategyForInspection={setSelectedStrategyForInspection} />;
+        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 font-mono">
-      <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">ChronoSentiment UI</h1>
-      <div className="flex justify-center mb-6">
-        <button
-          className={`px-4 py-2 mx-2 rounded-md ${activeTab === 'run-ga' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setActiveTab('run-ga')}
-        >
-          Run GA
-        </button>
-        <button
-          className={`px-4 py-2 mx-2 rounded-md ${activeTab === 'inspect-strategy' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setActiveTab('inspect-strategy')}
-        >
-          Inspect Strategy
-        </button>
-        <button
-          className={`px-4 py-2 mx-2 rounded-md ${activeTab === 'compare-strategies' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setActiveTab('compare-strategies')}
-        >
-          Compare Strategies
-        </button>
-        <button
-          className={`px-4 py-2 mx-2 rounded-md ${activeTab === 'global-ranking' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-          onClick={() => setActiveTab('global-ranking')}
-        >
-          Global Ranking
-        </button>
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md max-w-4xl mx-auto">
+    <div className="cs-app">
+      {/* Header */}
+      <header className="cs-header">
+        <div className="cs-logo">
+          <div className="cs-logo-mark">C</div>
+          <div className="cs-logo-text">
+            <h1>ChronoSentiment</h1>
+            <p>Execution Intelligence Platform</p>
+          </div>
+        </div>
+        <div className="cs-clock">{clock}</div>
+      </header>
+
+      {/* Tab bar */}
+      <nav className="cs-tabs">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`cs-tab${activeTab === tab.id ? ' active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Content */}
+      <main className="cs-main">
         {renderContent()}
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="cs-footer">
+        <span>ChronoSentiment · NSE Execution Intelligence</span>
+        <span>{clock}</span>
+      </footer>
     </div>
   );
 }
-
-export default App;

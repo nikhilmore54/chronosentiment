@@ -17,47 +17,66 @@ const StrategyColumn = ({
   selectedSeqId,
 }) => {
   const isBlockDivergent = (id) => {
-    if (strategyNum === 1) {
-      return divergenceStatements.some(s => (s.block1 && s.block1.id === id));
-    } else {
-      return divergenceStatements.some(s => (s.block2 && s.block2.id === id));
-    }
+    if (strategyNum === 1) return divergenceStatements.some(s => s.block1 && s.block1.id === id);
+    return divergenceStatements.some(s => s.block2 && s.block2.id === id);
   };
 
   const getBlockDivergenceMessage = (blockId) => {
-    if (strategyNum === 1) {
-      return divergenceStatements.find(s => s.block1 && s.block1.id === blockId)?.message;
-    } else {
-      return divergenceStatements.find(s => s.block2 && s.block2.id === blockId)?.message;
-    }
+    if (strategyNum === 1) return divergenceStatements.find(s => s.block1 && s.block1.id === blockId)?.message;
+    return divergenceStatements.find(s => s.block2 && s.block2.id === blockId)?.message;
   };
 
   return (
-    <div>
-      <h3 className="text-xl font-bold text-gray-800 mb-4">Strategy {strategyNum} ({strategyId || 'N/A'})</h3>
-      <div className="border p-4 rounded-lg shadow-sm mb-6">
-        <h3 className="text-xl font-semibold mb-2">Decision Context</h3>
-        <p><span className="font-medium">Strategy ID:</span> {inspectionResult?.strategy_id}</p>
-        <p><span className="font-medium">Seed:</span> {seed}</p>
-        <div className="mt-2">
-          <p className="font-medium">Metrics:</p>
-          <pre className="bg-gray-50 p-2 rounded-md text-sm text-gray-800">{JSON.stringify(inspectionResult?.metrics, null, 2)}</pre>
+    <div className="cs-gap-16">
+      {/* Column header */}
+      <div>
+        <div className="cs-section-sub">Strategy {strategyNum}</div>
+        <div className="cs-section-title" style={{ fontSize: 13 }}>
+          {strategyId || 'N/A'}
         </div>
       </div>
 
-      <div className="border p-4 rounded-lg shadow-sm mb-6">
-        <h3 className="text-xl font-semibold mb-2">Execution Narrative</h3>
-
-        {setSelectedSeqId && (
-          <button
-            className="text-sm text-gray-500 hover:text-gray-700 mb-2 underline"
-            onClick={() => setSelectedSeqId(null)}
-          >
-            Clear Causal Chain Selection
-          </button>
+      {/* Decision context */}
+      <div className="cs-card">
+        <div className="cs-card-title">Decision Context</div>
+        <div className="cs-gap-4">
+          <div className="cs-row">
+            <span className="cs-row-key">Strategy ID</span>
+            <span className="cs-row-val" style={{ fontSize: 11, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {inspectionResult?.strategy_id ?? '—'}
+            </span>
+          </div>
+          <div className="cs-row">
+            <span className="cs-row-key">Seed</span>
+            <span className="cs-row-val">{seed}</span>
+          </div>
+        </div>
+        {inspectionResult?.metrics && (
+          <div style={{ marginTop: 12 }}>
+            <div className="cs-label" style={{ marginBottom: 6 }}>Metrics</div>
+            <pre className="cs-pre" style={{ maxHeight: 160 }}>
+              {JSON.stringify(inspectionResult.metrics, null, 2)}
+            </pre>
+          </div>
         )}
+      </div>
 
-        <div className="bg-gray-50 p-4 rounded-md max-h-60 overflow-y-auto space-y-4">
+      {/* Execution narrative */}
+      <div className="cs-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div className="cs-card-title" style={{ marginBottom: 0 }}>Execution Narrative</div>
+          {setSelectedSeqId && selectedSeqId && (
+            <button
+              className="cs-btn"
+              style={{ padding: '4px 10px', fontSize: 10 }}
+              onClick={() => setSelectedSeqId(null)}
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+
+        <div className="cs-trace-list">
           {narratedExecutionTrace?.length > 0 ? (
             narratedExecutionTrace.map((block, blockIndex) => (
               <NarrativeBlock
@@ -73,54 +92,54 @@ const StrategyColumn = ({
               />
             ))
           ) : (
-            <p>No execution narrative available for Strategy {strategyNum}.</p>
+            <p style={{ fontSize: 12, color: 'var(--tm)', padding: '12px 0' }}>
+              No execution narrative available for Strategy {strategyNum}.
+            </p>
           )}
         </div>
 
+        {/* Causal chain panel */}
         {selectedSeqId && inspectionResult && (
-          <div className="mt-6 border p-4 rounded-lg shadow-sm bg-gray-50">
-            <h3 className="text-xl font-semibold mb-3">Causal Chain for Seq {selectedSeqId}</h3>
-            {setSelectedSeqId && (
-              <button
-                className="text-sm text-gray-500 hover:text-gray-700 mb-2 underline"
-                onClick={() => setSelectedSeqId(null)}
-              >
-                Clear Causal Chain Selection
-              </button>
-            )}
-            <div className="space-y-2 mt-2">
+          <div style={{ marginTop: 16 }}>
+            <div className="cs-card-title">Causal Chain — Seq {selectedSeqId}</div>
+            <div className="cs-causal-chain">
               {Array.from(activeChain)
                 .sort((a, b) => b - a)
                 .map((seqIdInChain, idx) => {
                   const block = eventMap[seqIdInChain];
                   if (!block) return null;
-
                   return (
-                    <div key={block.id} className={`border-l-2 pl-3 ${getGroupColorClass(block.group)} pt-1 pb-1`}>
-                      <p className={`font-semibold text-blue-700 mb-1`}>{block.group} (Seq: {block.id})</p>
-                      <p className="text-sm text-gray-800">{block.narrative}</p>
+                    <React.Fragment key={block.id}>
+                      <div className="cs-causal-step">
+                        <div className="cs-causal-step-group">{block.group} · Seq {block.id}</div>
+                        <div className="cs-causal-step-text">{block.narrative}</div>
+                      </div>
                       {idx < activeChain.size - 1 && (
-                        <div className="text-gray-400 text-sm ml-2 mt-1">↑</div>
+                        <div className="cs-causal-arrow">↑</div>
                       )}
-                    </div>
+                    </React.Fragment>
                   );
                 })}
             </div>
           </div>
         )}
 
+        {/* Raw events */}
         {showRawEvents && inspectionResult?.execution_trace?.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-700 text-white rounded-md">
-            <h4 className="text-lg font-semibold mb-2">Raw Execution Trace JSON (Strategy {strategyNum})</h4>
-            <div className="text-sm overflow-x-auto space-y-2">
+          <div style={{ marginTop: 16 }}>
+            <div className="cs-card-title">Raw Execution Trace — Strategy {strategyNum}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
               {inspectionResult.execution_trace.map((event, index) => (
                 <pre
                   key={event.sequence_id || index}
                   ref={el => { if (el) rawEventRefs.current[event.sequence_id] = el; }}
-                  className={`
-                    p-2 rounded-md transition-colors duration-200
-                    ${activeChain.has(event.sequence_id) ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-100'}
-                  `}
+                  className="cs-pre"
+                  style={{
+                    background: activeChain.has(event.sequence_id) ? 'var(--bdim)' : 'var(--card2)',
+                    borderColor: activeChain.has(event.sequence_id) ? 'rgba(59,130,246,.4)' : 'var(--b)',
+                    maxHeight: 'none',
+                    padding: '8px 12px',
+                  }}
                 >
                   {JSON.stringify(event, null, 2)}
                 </pre>

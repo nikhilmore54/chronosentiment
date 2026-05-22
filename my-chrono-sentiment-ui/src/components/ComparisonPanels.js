@@ -14,102 +14,131 @@ const ComparisonPanels = ({
   confidenceReason,
   divergenceStatements,
 }) => {
+  const hasData = isDualMode && (allNarrativeBlocks1?.length > 0 || allNarrativeBlocks2?.length > 0);
+  if (!hasData) return null;
+
+  // confidenceColorClass is already a cs- modifier: 'grn' | 'amb' | 'red'
+  const verdictMod = confidenceColorClass || 'red';
+
+  // Build insights list imperatively to avoid nested conditionals in JSX
+  const insights = [];
+  if (executionSummary1.totalSteps < executionSummary2.totalSteps)
+    insights.push('Strategy 1 executed faster (fewer steps).');
+  else if (executionSummary2.totalSteps < executionSummary1.totalSteps)
+    insights.push('Strategy 2 executed faster (fewer steps).');
+  else if (executionSummary1.totalSteps > 0)
+    insights.push('Both strategies executed in the same number of steps.');
+
+  if (executionSummary1.hasQueueProgression && !executionSummary2.hasQueueProgression)
+    insights.push('Strategy 1 experienced queue delay; Strategy 2 did not.');
+  else if (!executionSummary1.hasQueueProgression && executionSummary2.hasQueueProgression)
+    insights.push('Strategy 2 experienced queue delay; Strategy 1 did not.');
+  else if (executionSummary1.hasQueueProgression && executionSummary2.hasQueueProgression)
+    insights.push('Both strategies experienced queue delays.');
+  else
+    insights.push('Neither strategy experienced significant queue delays.');
+
+  if (executionSummary1.partialFills > executionSummary2.partialFills)
+    insights.push('Strategy 1 had more fragmented execution (more partial fills).');
+  else if (executionSummary2.partialFills > executionSummary1.partialFills)
+    insights.push('Strategy 2 had more fragmented execution (more partial fills).');
+  else if (executionSummary1.partialFills === 0)
+    insights.push('Neither strategy experienced partial fills.');
+  else
+    insights.push('Both strategies experienced the same number of partial fills.');
+
   return (
-    <>
-      {isDualMode && (allNarrativeBlocks1?.length > 0 || allNarrativeBlocks2?.length > 0) && (
-        <div className="mt-6 border p-4 rounded-lg shadow-sm bg-gray-50">
-          <h3 className="text-xl font-semibold mb-2">Execution Summary Comparison</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-bold">Strategy 1 ({strategyId || 'N/A'}):</p>
-              <ul className="list-disc list-inside ml-4">
-                <li>Steps: {executionSummary1.totalSteps}</li>
-                <li>Partial Fills: {executionSummary1.partialFills}</li>
-                <li>Queue Progression: {executionSummary1.hasQueueProgression ? 'Yes' : 'No'}</li>
-                <li>Full Fills: {executionSummary1.totalFills}</li>
-              </ul>
+    <div className="cs-gap-16">
+
+      {/* ── Execution Summary Comparison ─────────────────────────────────── */}
+      <div className="cs-card">
+        <div className="cs-card-title">Execution Summary Comparison</div>
+        <div className="cs-dual-grid">
+          <div>
+            <div className="cs-section-sub">Strategy 1 — {strategyId || 'N/A'}</div>
+            <div className="cs-row">
+              <span className="cs-row-key">Steps</span>
+              <span className="cs-row-val">{executionSummary1.totalSteps}</span>
             </div>
-            <div>
-              <p className="font-bold">Strategy 2 ({strategyId2 || 'N/A'}):</p>
-              <ul className="list-disc list-inside ml-4">
-                <li>Steps: {executionSummary2.totalSteps}</li>
-                <li>Partial Fills: {executionSummary2.partialFills}</li>
-                <li>Queue Progression: {executionSummary2.hasQueueProgression ? 'Yes' : 'No'}</li>
-                <li>Full Fills: {executionSummary2.totalFills}</li>
-              </ul>
+            <div className="cs-row">
+              <span className="cs-row-key">Partial Fills</span>
+              <span className="cs-row-val">{executionSummary1.partialFills}</span>
+            </div>
+            <div className="cs-row">
+              <span className="cs-row-key">Queue Progression</span>
+              <span className={`cs-row-val ${executionSummary1.hasQueueProgression ? 'amb' : 'grn'}`}>
+                {executionSummary1.hasQueueProgression ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div className="cs-row">
+              <span className="cs-row-key">Full Fills</span>
+              <span className="cs-row-val">{executionSummary1.totalFills}</span>
+            </div>
+          </div>
+          <div>
+            <div className="cs-section-sub">Strategy 2 — {strategyId2 || 'N/A'}</div>
+            <div className="cs-row">
+              <span className="cs-row-key">Steps</span>
+              <span className="cs-row-val">{executionSummary2.totalSteps}</span>
+            </div>
+            <div className="cs-row">
+              <span className="cs-row-key">Partial Fills</span>
+              <span className="cs-row-val">{executionSummary2.partialFills}</span>
+            </div>
+            <div className="cs-row">
+              <span className="cs-row-key">Queue Progression</span>
+              <span className={`cs-row-val ${executionSummary2.hasQueueProgression ? 'amb' : 'grn'}`}>
+                {executionSummary2.hasQueueProgression ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div className="cs-row">
+              <span className="cs-row-key">Full Fills</span>
+              <span className="cs-row-val">{executionSummary2.totalFills}</span>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {isDualMode && (allNarrativeBlocks1?.length > 0 || allNarrativeBlocks2?.length > 0) && (
-        <div className="mt-6 border p-4 rounded-lg shadow-sm bg-gray-50">
-          <h3 className="text-xl font-semibold mb-2">Execution Insights</h3>
-          <ul className="list-disc list-inside text-sm text-gray-800">
-            {/* Dynamically generated insights */}
-            {executionSummary1.totalSteps < executionSummary2.totalSteps && (
-              <li>Strategy 1 executed faster (fewer steps).</li>
-            )}
-            {executionSummary2.totalSteps < executionSummary1.totalSteps && (
-              <li>Strategy 2 executed faster (fewer steps).</li>
-            )}
-            {executionSummary1.totalSteps > 0 && executionSummary1.totalSteps === executionSummary2.totalSteps && (
-              <li>Both strategies executed in the same number of steps.</li>
-            )}
-
-            {executionSummary1.hasQueueProgression && !executionSummary2.hasQueueProgression && (
-              <li>Strategy 1 experienced queue delay while Strategy 2 did not.</li>
-            )}
-            {!executionSummary1.hasQueueProgression && executionSummary2.hasQueueProgression && (
-              <li>Strategy 2 experienced queue delay while Strategy 1 did not.</li>
-            )}
-            {executionSummary1.hasQueueProgression && executionSummary2.hasQueueProgression && (
-              <li>Both strategies experienced queue delays.</li>
-            )}
-            {!executionSummary1.hasQueueProgression && !executionSummary2.hasQueueProgression && (
-              <li>Neither strategy experienced significant queue delays.</li>
-            )}
-
-            {executionSummary1.partialFills > executionSummary2.partialFills && (
-              <li>Strategy 1 experienced more fragmented execution (more partial fills).</li>
-            )}
-            {executionSummary2.partialFills > executionSummary1.partialFills && (
-              <li>Strategy 2 experienced more fragmented execution (more partial fills).</li>
-            )}
-            {executionSummary1.partialFills === 0 && executionSummary2.partialFills === 0 && (
-              <li>Neither strategy experienced partial fills.</li>
-            )}
-            {executionSummary1.partialFills > 0 && executionSummary1.partialFills === executionSummary2.partialFills && (
-              <li>Both strategies experienced the same number of partial fills.</li>
-            )}
-          </ul>
+      {/* ── Execution Insights ────────────────────────────────────────────── */}
+      <div className="cs-card">
+        <div className="cs-card-title">Execution Insights</div>
+        <div className="cs-gap-4">
+          {insights.map((insight, i) => (
+            <div key={i} className="cs-row">
+              <span className="cs-row-key">{insight}</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      {isDualMode && (allNarrativeBlocks1?.length > 0 || allNarrativeBlocks2?.length > 0) && (
-        <div className={`mt-6 border p-4 rounded-lg shadow-sm ${confidenceColorClass === 'text-green-700' ? 'bg-green-50' : confidenceColorClass === 'text-yellow-700' ? 'bg-yellow-50' : 'bg-red-50'}`}>
-          <h3 className="text-xl font-semibold mb-2">Final Execution Verdict</h3>
-          <p className={`text-sm font-medium ${confidenceColorClass}`}>{finalVerdict}</p>
-          <p className={`text-sm font-bold mt-2 ${confidenceColorClass}`}>Confidence Level: {confidenceLevel}</p>
-          <p className="text-xs text-gray-600 mt-1">
-            Reason: {confidenceReason}
-          </p>
+      {/* ── Final Execution Verdict ───────────────────────────────────────── */}
+      <div className={`cs-alert ${verdictMod}`}>
+        <div className="cs-alert-title">{finalVerdict}</div>
+        <div className={`cs-row-val ${verdictMod}`} style={{ fontSize: '11px', marginBottom: '4px' }}>
+          Confidence: {confidenceLevel}
         </div>
-      )}
+        <div className="cs-alert-body">{confidenceReason}</div>
+      </div>
 
-      {isDualMode && (allNarrativeBlocks1?.length > 0 || allNarrativeBlocks2?.length > 0) && (
-        <div className="mt-6 border p-4 rounded-lg shadow-sm bg-red-50">
-          <h3 className="text-xl font-semibold mb-2 text-red-800">Execution Divergence Analysis Summary</h3>
-          <ul className="list-disc list-inside text-sm text-red-700">
-            {divergenceStatements.length > 0 ? (
-              divergenceStatements.map((d, index) => <li key={index}>{d.message}</li>)
-            ) : (
-              <li>No significant execution divergences detected in visible events.</li>
-            )}
-          </ul>
+      {/* ── Execution Divergence Analysis ─────────────────────────────────── */}
+      <div className="cs-card">
+        <div className="cs-card-title">Execution Divergence Analysis</div>
+        <div className="cs-gap-8">
+          {divergenceStatements.length > 0 ? (
+            divergenceStatements.map((d, i) => (
+              <div key={i} className="cs-alert red" style={{ marginBottom: 0 }}>
+                <div className="cs-alert-body">{d.message}</div>
+              </div>
+            ))
+          ) : (
+            <div className="cs-alert grn" style={{ marginBottom: 0 }}>
+              <div className="cs-alert-body">No significant execution divergences detected in visible events.</div>
+            </div>
+          )}
         </div>
-      )}
-    </>
+      </div>
+
+    </div>
   );
 };
 

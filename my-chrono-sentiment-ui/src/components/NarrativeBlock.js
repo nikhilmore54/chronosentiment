@@ -10,40 +10,46 @@ const NarrativeBlock = ({
   blockDivergenceMessage,
   setSelectedSeqId,
 }) => {
-  const isBlockDivergentHere = isBlockDivergent(block.id);
+  const isActive = activeChain.has(block.id);
+  const isDivergent = isBlockDivergent(block.id);
+  const isDimmed = activeChain.size > 0 && !isActive;
+  // getGroupColorClass returns a cs- modifier: 'intent' | 'queue' | 'execution' | 'other'
+  const groupMod = getGroupColorClass(block.group);
+
+  const blockClass = [
+    'cs-trace-block',
+    groupMod,
+    isActive    ? 'active'    : '',
+    isDivergent ? 'divergent' : '',
+    isDimmed    ? 'dimmed'    : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <React.Fragment>
-      <div
-        className={`
-          border-l-2 pl-3 pt-1 pb-1 cursor-pointer
-          ${activeChain.has(block.id)
-            ? `${getGroupColorClass(block.group)} border-l-4 border-blue-600 shadow-md`
-            : `${getGroupColorClass(block.group)} ${activeChain.size > 0 ? 'opacity-50 border-gray-300' : 'border-gray-300'}`}
-          ${isBlockDivergentHere ? 'bg-red-100 border-red-500' : ''}
-          hover:bg-gray-200
-          transition-all duration-200
-        `}
-        onClick={() => setSelectedSeqId(block.id)}
-      >
-        {block.isKeyEvent && (
-          <span className="text-purple-600 font-bold mr-2">{block.keyEventMarker}</span>
-        )}
-        <p className={`font-semibold mb-1 ${activeChain.has(block.id) ? 'text-blue-800' : getGroupColorClass(block.group).split(' ')[1]}`}>
-          {block.group} (Seq: {block.id})
-        </p>
-        <p className="text-sm text-gray-800">{block.narrative}</p>
+      <div className={blockClass} onClick={() => setSelectedSeqId(block.id)}>
+        <div className="cs-trace-group">
+          {block.group}
+          {block.isKeyEvent && (
+            <span style={{ color: 'var(--pur)', marginLeft: '6px' }}>{block.keyEventMarker}</span>
+          )}
+          <span style={{ color: 'var(--tm)', marginLeft: '6px', fontWeight: 400 }}>
+            seq:{block.id}
+          </span>
+        </div>
+        <div className="cs-trace-narrative">{block.narrative}</div>
         {block.parentId !== undefined && block.parentId !== null && (
-          <p className={`text-xs text-gray-500 mt-1 ${activeChain.has(block.id) ? 'font-medium' : ''}`}>
-            Derived from Seq {block.parentId}
-          </p>
+          <div className="cs-trace-key-marker">
+            ↳ derived from seq:{block.parentId}
+          </div>
         )}
-        {isBlockDivergentHere && blockDivergenceMessage && (
-          <p className="text-xs text-red-700 mt-1">⚠ {blockDivergenceMessage}</p>
+        {isDivergent && blockDivergenceMessage && (
+          <div className="cs-trace-key-marker" style={{ color: 'var(--red)' }}>
+            ⚑ {blockDivergenceMessage}
+          </div>
         )}
       </div>
       {blockIndex < narratedExecutionTraceLength - 1 && (
-        <div className="text-gray-400 text-sm ml-2">↓</div>
+        <div className="cs-causal-arrow">↓</div>
       )}
     </React.Fragment>
   );
