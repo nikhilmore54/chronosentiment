@@ -196,6 +196,7 @@ def main():
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] CYCLE {cycle}/{args.cycles} — Target TS: {target_ts}")
         
         # Phase 1: Temporal Propagation (Wait for bar close & provider visibility)
+        t_start_a = time.time()
         obs_metrics = {}
         try:
             if args.temporal_observatory:
@@ -203,20 +204,23 @@ def main():
             else:
                 waited = wait_for_barrier_target(target_ts, args.bar_sec, float(args.provider_lag_sec))
                 obs_metrics = {"exchange_to_observer_latency_ms": int(waited * 1000)}
+            phase_a_wait_ms = int((time.time() - t_start_a) * 1000)
         except TimeoutError as e:
             print(f"❌ {e}")
             continue
 
         # Phase 2: Incremental Substrate Update (1d history to minimize bandwidth, preserves long-term history for PCA)
         print("   ❄️  [Phase B] Incrementally updating substrate (1d fetch)...")
+        t_start_b = time.time()
         try:
             manifest_path, symbol_latest_ts = incremental_update_cohort(
                 cohort_file=cohort_file,
                 batch_id=args.batch_id,
                 interval="5m",
-                max_workers=15
+                max_workers=5
             )
-            print("   ✅ [Phase B] Substrate update completed.")
+            phase_b_fetch_ms = int((time.time() - t_start_b) * 1000)
+            print(f"   ✅ [Phase B] Substrate update completed in {phase_b_fetch_ms}ms.")
         except BaseException as e:
             import traceback, sys
             traceback.print_exc()
@@ -224,6 +228,7 @@ def main():
 
         # Phase 3: Canonical Replay (with dedupe to resume where we left off)
         print("   🚀 [Phase C] Executing canonical kernel (cs-ingest)...")
+        t_start_c = time.time()
         ingest_stdout = run_frozen_via_cs_ingest(
             batch_id=args.batch_id,
             cohort_file=cohort_file,
@@ -234,6 +239,7 @@ def main():
             resume=True,
             rebuild_dedupe=False,
         )
+        phase_c_ingest_ms = int((time.time() - t_start_c) * 1000)
 
         # Phase 4: Chronology Ledger Append
         import re
@@ -243,10 +249,9 @@ def main():
         fingerprint_matches = re.findall(r"timeline fingerprint\s*:\s*([a-f0-9]+)", ingest_stdout)
         timeline_fingerprint = fingerprint_matches[-1] if fingerprint_matches else "unknown"
         
-        expected_symbols = len(symbol_latest_ts)
-        participating_symbols = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
-        barrier_completeness = (participating_symbols == expected_symbols) and (expected_symbols > 0)
-        provider_arrival_timing_ms = obs_metrics.get("exchange_to_observer_latency_ms", None)
+        symbols_attempted = len(symbol_latest_ts)
+        symbols_returned = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
+        symbols_missing = symbols_attempted - symbols_returned
         
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -256,13 +261,12 @@ def main():
             "cycle": cycle,
             "barrier_ts": target_ts,
             "timeline_fingerprint": timeline_fingerprint,
-            "expected_symbols": expected_symbols,
-            "participating_symbols": participating_symbols,
-            "barrier_completeness": barrier_completeness,
-            "provider_arrival_timing_ms": provider_arrival_timing_ms,
-            "sync_ratio": None,
-            "dispersion": None,
-            "governor_state": None,
+            "phase_a_wait_ms": phase_a_wait_ms,
+            "phase_b_fetch_ms": phase_b_fetch_ms,
+            "phase_c_ingest_ms": phase_c_ingest_ms,
+            "symbols_attempted": symbols_attempted,
+            "symbols_returned": symbols_returned,
+            "symbols_missing": symbols_missing,
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
         }
