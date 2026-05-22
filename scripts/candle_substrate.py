@@ -166,7 +166,6 @@ def download_ticker_with_stderr(
                     auto_adjust=True,
                     progress=False,
                     threads=False,
-                    session=_GLOBAL_TELEMETRY_SESSION
                 )
             stderr_all.write(buf.getvalue())
             if df is not None and not df.empty:
@@ -336,6 +335,12 @@ def incremental_update_cohort(
         else:
             df = df_new
 
+        err_text = stderr.lower()
+        if "rate limit" in err_text or "429" in err_text:
+            _GLOBAL_TELEMETRY_SESSION.rate_limited += 1
+        elif "failed download" in err_text or "http" in err_text:
+            _GLOBAL_TELEMETRY_SESSION.http_errors += 1
+            
         if df.empty:
             return sym, 0, [], 1 if df_new.empty else 0
             
