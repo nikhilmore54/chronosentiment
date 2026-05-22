@@ -126,7 +126,7 @@ def download_ticker_with_stderr(
                 df = df.dropna()
                 df = df[~df.index.duplicated(keep="first")]
                 return df.sort_index(), stderr_all.getvalue()
-        except Exception as e:
+        except BaseException as e:
             stderr_all.write(f"{buf.getvalue()}\n{type(e).__name__}: {e}\n")
             time.sleep(1.0)
     return pd.DataFrame(), stderr_all.getvalue()
@@ -289,18 +289,16 @@ def incremental_update_cohort(
         ts_list = [r["ts"] for r in recs]
         return sym, len(recs), ts_list
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(_update_one, s): s for s in symbols}
-        done = 0
-        for fut in concurrent.futures.as_completed(futures):
-            done += 1
-            sym, n_bars, ts_list = fut.result()
-            if n_bars > 0:
-                frozen_count += 1
-                total_bars += n_bars
-                all_ts.update(ts_list)
-            if done % 50 == 0 or done == len(symbols):
-                print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...")
+    done = 0
+    for sym in symbols:
+        done += 1
+        sym, n_bars, ts_list = _update_one(sym)
+        if n_bars > 0:
+            frozen_count += 1
+            total_bars += n_bars
+            all_ts.update(ts_list)
+        if done % 50 == 0 or done == len(symbols):
+            print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...", flush=True)
 
     sorted_ts = sorted(all_ts)
     manifest = {

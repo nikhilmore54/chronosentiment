@@ -209,12 +209,18 @@ def main():
 
         # Phase 2: Incremental Substrate Update (1d history to minimize bandwidth, preserves long-term history for PCA)
         print("   ❄️  [Phase B] Incrementally updating substrate (1d fetch)...")
-        incremental_update_cohort(
-            cohort_file=cohort_file,
-            batch_id=args.batch_id,
-            interval="5m",
-            max_workers=15
-        )
+        try:
+            incremental_update_cohort(
+                cohort_file=cohort_file,
+                batch_id=args.batch_id,
+                interval="5m",
+                max_workers=15
+            )
+            print("   ✅ [Phase B] Substrate update completed.")
+        except BaseException as e:
+            import traceback, sys
+            traceback.print_exc()
+            sys.exit(1)
 
         # Phase 3: Canonical Replay (with dedupe to resume where we left off)
         print("   🚀 [Phase C] Executing canonical kernel (cs-ingest)...")
@@ -231,8 +237,8 @@ def main():
 
         # Phase 4: Chronology Ledger Append
         import re
-        persisted = sum(int(x) for x in re.findall(r"persisted\s+(\d+)", ingest_stdout))
-        dedupe_skip = sum(int(x) for x in re.findall(r"dedupe_skip\s+(\d+)", ingest_stdout))
+        persisted = sum(int(x) for x in re.findall(r"persisted ticks\s*:\s*(\d+)", ingest_stdout))
+        dedupe_skip = sum(int(x) for x in re.findall(r"dedupe skipped\s*:\s*(\d+)", ingest_stdout))
         
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
