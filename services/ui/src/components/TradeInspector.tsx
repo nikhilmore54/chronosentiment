@@ -73,20 +73,20 @@ const TradeInspector: React.FC<TradeInspectorProps> = ({ apiBaseUrl = 'http://lo
   const latencyInfo = getLatencyInfo();
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '10px', marginTop: '20px' }}>
-      <h2>Trade Inspector</h2>
-      <div style={{ marginBottom: '10px' }}>
+    <div style={{ border: '1px solid #222', padding: '20px', marginTop: '20px', borderRadius: '8px', backgroundColor: '#111' }}>
+      <h2 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 500, color: '#ededed' }}>Trade Inspector</h2>
+      <div style={{ marginBottom: '15px' }}>
         <input 
           type="text" 
           placeholder="Enter Order ID..." 
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
-          style={{ width: '200px', padding: '5px' }}
+          style={{ width: '200px', padding: '8px 12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#ededed' }}
         />
         <button 
           onClick={fetchInspection} 
           disabled={loading || !orderId}
-          style={{ padding: '5px 10px', marginLeft: '10px', cursor: 'pointer' }}
+          style={{ padding: '8px 16px', marginLeft: '10px', cursor: 'pointer', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '4px' }}
         >
           Inspect
         </button>
@@ -97,48 +97,48 @@ const TradeInspector: React.FC<TradeInspectorProps> = ({ apiBaseUrl = 'http://lo
 
       {inspection && (
         <>
-          <div style={{ marginBottom: '20px', padding: '15px', background: '#f0f2f5', borderRadius: '4px', textAlign: 'center' }}>
-            <h3>Latency Visualization</h3>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
-              <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px', background: 'white' }}>
-                <strong>Intent</strong><br/>
+          <div style={{ marginBottom: '20px', padding: '20px', background: '#0a0a0a', borderRadius: '6px', textAlign: 'center', border: '1px solid #222' }}>
+            <h3 style={{ color: '#ededed', fontSize: '16px', fontWeight: 500, marginTop: 0 }}>Latency Visualization</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
+              <div style={{ padding: '15px', border: '1px solid #333', borderRadius: '6px', background: '#111', color: '#ededed' }}>
+                <strong style={{ color: '#a1a1aa', display: 'block', marginBottom: '5px' }}>Intent</strong>
                 Time: {latencyInfo?.intentTs}
               </div>
-              <span style={{ fontSize: '20px' }}>→</span>
-              <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px', background: 'white' }}>
-                <strong>Queue Entry</strong><br/>
+              <span style={{ fontSize: '20px', color: '#71717a' }}>→</span>
+              <div style={{ padding: '15px', border: '1px solid #333', borderRadius: '6px', background: '#111', color: '#ededed' }}>
+                <strong style={{ color: '#a1a1aa', display: 'block', marginBottom: '5px' }}>Queue Entry</strong>
                 Time: {latencyInfo?.queueTs}
               </div>
-              <span style={{ fontSize: '20px' }}>→</span>
-              <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px', background: 'white' }}>
-                <strong>Final Execution</strong><br/>
+              <span style={{ fontSize: '20px', color: '#71717a' }}>→</span>
+              <div style={{ padding: '15px', border: '1px solid #333', borderRadius: '6px', background: '#111', color: '#ededed' }}>
+                <strong style={{ color: '#a1a1aa', display: 'block', marginBottom: '5px' }}>Final Execution</strong>
                 Time: {latencyInfo?.lastFillTs ?? 'N/A'}
               </div>
             </div>
-            <div style={{ marginTop: '15px', fontWeight: 'bold', color: '#1890ff' }}>
+            <div style={{ marginTop: '20px', fontWeight: 500, color: '#3b82f6' }}>
               Total Latency: {latencyInfo?.latency} units
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {/* Decision Section */}
-            <div style={{ border: '1px solid #ddd', padding: '10px' }}>
-              <h3>Decision</h3>
-              <pre style={{ fontSize: '12px', background: '#f4f4f4', padding: '5px' }}>
+            <div style={{ border: '1px solid #222', padding: '15px', borderRadius: '6px', background: '#0a0a0a' }}>
+              <h3 style={{ color: '#ededed', fontSize: '14px', marginTop: 0 }}>Decision</h3>
+              <pre style={{ fontSize: '12px', background: '#000', padding: '10px', border: '1px solid #333', borderRadius: '4px', color: '#60a5fa', overflowX: 'auto' }}>
                 {JSON.stringify(inspection.decision, null, 2)}
               </pre>
             </div>
 
             {/* Execution Section */}
-            <div style={{ border: '1px solid #ddd', padding: '10px' }}>
-              <h3>Execution</h3>
-              <div style={{ maxHeight: '200px', overflowY: 'scroll', fontSize: '12px', background: '#f4f4f4', padding: '5px' }}>
-                <strong>Initial Queue Ahead:</strong> {inspection.execution.queue_ahead_initial}<br/>
-                <strong>Latency Applied:</strong> {inspection.execution.latency_applied}<br/>
-                <strong>Fills:</strong>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
+            <div style={{ border: '1px solid #222', padding: '15px', borderRadius: '6px', background: '#0a0a0a' }}>
+              <h3 style={{ color: '#ededed', fontSize: '14px', marginTop: 0 }}>Execution</h3>
+              <div style={{ maxHeight: '200px', overflowY: 'scroll', fontSize: '12px', background: '#000', padding: '10px', border: '1px solid #333', borderRadius: '4px', color: '#ededed' }}>
+                <strong style={{ color: '#a1a1aa' }}>Initial Queue Ahead:</strong> {inspection.execution.queue_ahead_initial}<br/>
+                <strong style={{ color: '#a1a1aa' }}>Latency Applied:</strong> {inspection.execution.latency_applied}<br/>
+                <strong style={{ color: '#a1a1aa' }}>Fills:</strong>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '5px 0 0 0' }}>
                   {inspection.execution.fills.map((fill, idx) => (
-                    <li key={idx} style={{ marginBottom: '5px', borderBottom: '1px dotted #ccc' }}>
+                    <li key={idx} style={{ marginBottom: '5px', paddingBottom: '5px', borderBottom: '1px dotted #333', color: '#10b981' }}>
                       Time {fill.timestamp}: {fill.qty} @ {fill.price}
                     </li>
                   ))}
@@ -147,9 +147,9 @@ const TradeInspector: React.FC<TradeInspectorProps> = ({ apiBaseUrl = 'http://lo
             </div>
 
             {/* Outcome Section */}
-            <div style={{ border: '1px solid #ddd', padding: '10px' }}>
-              <h3>Outcome</h3>
-              <pre style={{ fontSize: '12px', background: '#f4f4f4', padding: '5px' }}>
+            <div style={{ border: '1px solid #222', padding: '15px', borderRadius: '6px', background: '#0a0a0a' }}>
+              <h3 style={{ color: '#ededed', fontSize: '14px', marginTop: 0 }}>Outcome</h3>
+              <pre style={{ fontSize: '12px', background: '#000', padding: '10px', border: '1px solid #333', borderRadius: '4px', color: '#f59e0b', overflowX: 'auto' }}>
                 {JSON.stringify(inspection.outcome, null, 2)}
               </pre>
             </div>

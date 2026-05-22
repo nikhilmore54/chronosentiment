@@ -41,19 +41,19 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ apiBaseUrl = 'http://loca
   if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '10px', marginTop: '20px' }}>
-      <h2>Event Explorer</h2>
-      <div style={{ marginBottom: '10px' }}>
+    <div style={{ border: '1px solid #222', padding: '20px', marginTop: '20px', borderRadius: '8px', backgroundColor: '#111' }}>
+      <h2 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 500, color: '#ededed' }}>Event Explorer</h2>
+      <div style={{ marginBottom: '15px' }}>
         <input 
           type="text" 
           placeholder="Filter by event type..." 
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          style={{ width: '100%', padding: '5px' }}
+          style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#ededed' }}
         />
       </div>
-      <div style={{ maxHeight: '400px', overflowY: 'scroll', background: '#1e1e1e', color: '#dcdcdc', padding: '10px', fontFamily: 'monospace' }}>
-        <pre>{JSON.stringify(filteredEvents, null, 2)}</pre>
+      <div style={{ maxHeight: '400px', overflowY: 'scroll', background: '#000', color: '#60a5fa', padding: '15px', border: '1px solid #222', borderRadius: '4px', fontFamily: 'monospace', fontSize: '13px' }}>
+        <pre style={{ margin: 0 }}>{JSON.stringify(filteredEvents, null, 2)}</pre>
       </div>
     </div>
   );

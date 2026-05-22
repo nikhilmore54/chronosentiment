@@ -44,19 +44,19 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
   }, [initialEvents, apiBaseUrl]);
 
   const getEventColor = (type: string) => {
-    if (type.includes('OrderIntent')) return '#f0f0f0'; // Gray
-    if (type.includes('Queue') || type.includes('QueueProgression')) return '#fffbe6'; // Yellow
-    if (type.includes('PartialFill')) return '#f6ffed'; // Green
-    if (type.includes('Reject')) return '#fff1f0'; // Red
+    if (type.includes('OrderIntent')) return 'rgba(255, 255, 255, 0.05)'; // Subtle gray
+    if (type.includes('Queue') || type.includes('QueueProgression')) return 'rgba(245, 158, 11, 0.1)'; // Amber
+    if (type.includes('PartialFill')) return 'rgba(16, 185, 129, 0.1)'; // Green
+    if (type.includes('Reject')) return 'rgba(239, 68, 68, 0.1)'; // Red
     return 'transparent';
   };
 
   const getEventBorderColor = (type: string) => {
-    if (type.includes('OrderIntent')) return '#d9d9d9'; 
-    if (type.includes('Queue') || type.includes('QueueProgression')) return '#ffe58f'; 
-    if (type.includes('PartialFill')) return '#b7eb8f'; 
-    if (type.includes('Reject')) return '#ffa39e'; 
-    return '#eee';
+    if (type.includes('OrderIntent')) return '#333'; 
+    if (type.includes('Queue') || type.includes('QueueProgression')) return '#f59e0b'; 
+    if (type.includes('PartialFill')) return '#10b981'; 
+    if (type.includes('Reject')) return '#ef4444'; 
+    return '#222';
   };
 
   const handleEventClick = (clickedEvent: SimEvent) => {
@@ -101,27 +101,28 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
   if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Timeline Viewer</h2>
+  return (
+    <div style={{ border: '1px solid #222', padding: '20px', marginBottom: '20px', borderRadius: '8px', backgroundColor: '#111' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 500, margin: 0 }}>Timeline Viewer</h2>
         <div>
           <input 
             type="number" 
             placeholder="Go to sequence_id..." 
             value={navSeqId}
             onChange={(e) => setNavSeqId(e.target.value)}
-            style={{ padding: '5px' }}
+            style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #333', backgroundColor: '#000', color: '#ededed' }}
           />
-          <button onClick={handleNavigate} style={{ padding: '5px 10px', marginLeft: '5px' }}>Go</button>
+          <button onClick={handleNavigate} style={{ padding: '8px 16px', marginLeft: '10px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Go</button>
         </div>
       </div>
-      <div style={{ maxHeight: '400px', overflowY: 'scroll', background: '#f9f9f9', position: 'relative' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ position: 'sticky', top: 0, background: '#eee', zIndex: 1 }}>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              <th style={{ padding: '8px' }}>Seq ID</th>
-              <th style={{ padding: '8px' }}>Timestamp</th>
-              <th style={{ padding: '8px' }}>Event Type</th>
+      <div style={{ maxHeight: '400px', overflowY: 'scroll', background: '#0a0a0a', position: 'relative', borderRadius: '4px', border: '1px solid #222' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#ededed', fontSize: '14px' }}>
+          <thead style={{ position: 'sticky', top: 0, background: '#171717', zIndex: 1 }}>
+            <tr style={{ textAlign: 'left', borderBottom: '1px solid #333' }}>
+              <th style={{ padding: '12px', fontWeight: 500, color: '#a1a1aa' }}>Seq ID</th>
+              <th style={{ padding: '12px', fontWeight: 500, color: '#a1a1aa' }}>Timestamp</th>
+              <th style={{ padding: '12px', fontWeight: 500, color: '#a1a1aa' }}>Event Type</th>
             </tr>
           </thead>
           <tbody>
@@ -130,10 +131,11 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
                 key={event.sequence_id} 
                 ref={el => { if (el) eventRefs.current.set(event.sequence_id, el); }}
                 style={{ 
-                  borderBottom: `1px solid ${getEventBorderColor(event.type)}`,
+                  borderBottom: `1px solid #222`,
+                  borderLeft: `3px solid ${getEventBorderColor(event.type)}`,
                   cursor: 'pointer',
                   backgroundColor: highlightedChain.has(event.sequence_id) 
-                    ? '#bae7ff' 
+                    ? 'rgba(37, 99, 235, 0.2)' 
                     : getEventColor(event.type),
                   transition: 'background-color 0.2s'
                 }}
@@ -144,7 +146,7 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
                 <td style={{ padding: '8px' }}>
                   {event.type}
                   {highlightedChain.has(event.sequence_id) && event.parent_sequence_id !== null && 
-                    <span style={{ fontSize: '10px', color: '#888', marginLeft: '10px' }}>
+                    <span style={{ fontSize: '11px', color: '#71717a', marginLeft: '10px' }}>
                       (Parent: {event.parent_sequence_id})
                     </span>
                   }
@@ -154,7 +156,7 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+      <div style={{ marginTop: '15px', fontSize: '12px', color: '#71717a' }}>
         Tip: Click an event to highlight its causal chain.
       </div>
     </div>
