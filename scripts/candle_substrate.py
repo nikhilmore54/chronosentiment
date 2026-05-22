@@ -290,17 +290,22 @@ def incremental_update_cohort(
         ts_list = [r["ts"] for r in recs]
         return sym, len(recs), ts_list
 
-    done = 0
-    for sym in symbols:
-        done += 1
-        sym, n_bars, ts_list = _update_one(sym)
-        if n_bars > 0:
-            frozen_count += 1
-            total_bars += n_bars
-            all_ts.update(ts_list)
-            symbol_latest_ts[sym] = max(ts_list) if ts_list else 0
-        if done % 50 == 0 or done == len(symbols):
-            print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...", flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(_update_one, s): s for s in symbols}
+        done = 0
+        for fut in concurrent.futures.as_completed(futures):
+            done += 1
+            try:
+                sym, n_bars, ts_list = fut.result()
+                if n_bars > 0:
+                    frozen_count += 1
+                    total_bars += n_bars
+                    all_ts.update(ts_list)
+                    symbol_latest_ts[sym] = max(ts_list) if ts_list else 0
+            except Exception as e:
+                print(f"   ❌ [Update Error] {futures[fut]}: {e}")
+            if done % 50 == 0 or done == len(symbols):
+                print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...", flush=True)
 
     sorted_ts = sorted(all_ts)
     manifest = {
