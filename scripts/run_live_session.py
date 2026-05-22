@@ -186,6 +186,8 @@ def main():
     print(f"  Cycles             : {args.cycles}")
     print("=" * 60)
 
+    # Initialize Observability State
+    history_ratios = []
     last_target_ts = None
 
     for cycle in range(1, args.cycles + 1):
@@ -264,7 +266,38 @@ def main():
             "fresh_within_60s": sum(1 for lag in lags if lag <= 60),
             "fresh_within_300s": sum(1 for lag in lags if lag <= 300),
             "max_symbol_lag_sec": max(lags) if lags else 0,
-            "median_symbol_lag_sec": int(statistics.median(lags)) if lags else 0
+            "median_symbol_lag_sec": int(statistics.median(lags)) if lags else 0,
+            "p90_lag_sec": int(statistics.quantiles(lags, n=10)[8]) if len(lags) >= 10 else (max(lags) if lags else 0),
+            "lag_stddev": round(statistics.stdev(lags), 2) if len(lags) > 1 else 0.0
+        }
+        
+        strict_ratio = symbols_returned / symbols_attempted if symbols_attempted > 0 else 0.0
+        acceptance_ratio = symbols_accepted / symbols_attempted if symbols_attempted > 0 else 0.0
+        
+        history_ratios.append({"strict": strict_ratio, "accept": acceptance_ratio})
+        if len(history_ratios) > 5:
+            history_ratios.pop(0)
+            
+        rolling_accept_mean = statistics.mean([h["accept"] for h in history_ratios])
+        accept_dispersion = statistics.stdev([h["accept"] for h in history_ratios]) if len(history_ratios) > 1 else 0.0
+        recovery_slope = history_ratios[-1]["accept"] - history_ratios[-2]["accept"] if len(history_ratios) > 1 else 0.0
+        
+        if strict_ratio > 0.9:
+            regime = "SYNCHRONIZED"
+        elif acceptance_ratio > 0.9 and strict_ratio < 0.2:
+            regime = "FRAGMENTED_BUT_USABLE"
+        elif acceptance_ratio < 0.5:
+            regime = "DEGRADED_OBSERVABILITY"
+        else:
+            regime = "TRANSITIONAL"
+        
+        observability = {
+            "strict_ratio": round(strict_ratio, 4),
+            "acceptance_ratio": round(acceptance_ratio, 4),
+            "rolling_accept_mean": round(rolling_accept_mean, 4),
+            "accept_dispersion": round(accept_dispersion, 4),
+            "recovery_slope": round(recovery_slope, 4),
+            "regime_state": regime
         }
         
         metadata_dir = archive_dir / "metadata"
@@ -283,6 +316,7 @@ def main():
             "symbols_accepted": symbols_accepted,
             "symbols_missing": symbols_missing,
             "freshness": freshness,
+            "observability": observability,
             "fetch_stats": fetch_stats,
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
