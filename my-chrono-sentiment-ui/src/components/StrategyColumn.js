@@ -27,42 +27,25 @@ const StrategyColumn = ({
   };
 
   return (
-    <div className="cs-gap-16">
-      {/* Column header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      {/* Column header & Context */}
       <div>
-        <div className="cs-section-sub">Strategy {strategyNum}</div>
-        <div className="cs-section-title" style={{ fontSize: 13 }}>
+        <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--t2)', marginBottom: '8px' }}>Strategy {strategyNum} context</div>
+        <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>
           {strategyId || 'N/A'}
         </div>
-      </div>
-
-      {/* Decision context */}
-      <div className="cs-card">
-        <div className="cs-card-title">Decision Context</div>
-        <div className="cs-gap-4">
-          <div className="cs-row">
-            <span className="cs-row-key">Strategy ID</span>
-            <span className="cs-row-val" style={{ fontSize: 11, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {inspectionResult?.strategy_id ?? '—'}
-            </span>
-          </div>
-          <div className="cs-row">
-            <span className="cs-row-key">Seed</span>
-            <span className="cs-row-val">{seed}</span>
-          </div>
+        
+        <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid var(--b)', paddingBottom: '16px', fontSize: '13px', color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+          <div><span style={{ color: 'var(--tm)', fontSize: '11px', display: 'block', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Strategy ID</span>{inspectionResult?.strategy_id ?? '—'}</div>
+          <div><span style={{ color: 'var(--tm)', fontSize: '11px', display: 'block', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Seed</span>{seed}</div>
+          {inspectionResult?.metrics?.total_trades !== undefined && (
+            <div><span style={{ color: 'var(--tm)', fontSize: '11px', display: 'block', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Total trades</span>{inspectionResult.metrics.total_trades}</div>
+          )}
         </div>
-        {inspectionResult?.metrics && (
-          <div style={{ marginTop: 12 }}>
-            <div className="cs-label" style={{ marginBottom: 6 }}>Metrics</div>
-            <pre className="cs-pre" style={{ maxHeight: 160 }}>
-              {JSON.stringify(inspectionResult.metrics, null, 2)}
-            </pre>
-          </div>
-        )}
       </div>
 
-      {/* Execution narrative */}
-      <div className="cs-card">
+      {/* Execution narrative stream */}
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div className="cs-card-title" style={{ marginBottom: 0 }}>Execution Narrative</div>
           {setSelectedSeqId && selectedSeqId && (

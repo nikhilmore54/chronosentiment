@@ -56,31 +56,32 @@ const GlobalRanking = () => {
   );
 
   return (
-    <div className="cs-gap-20">
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <div className="cs-section-sub">Strategy Evaluation</div>
-          <div className="cs-section-title">Global Strategy Ranking</div>
+    <div style={{ display: 'flex', gap: '60px', alignItems: 'flex-start', paddingTop: '20px' }}>
+      
+      {/* ─── LEFT: Editorial Sidebar (Controls) ─── */}
+      <aside style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Global ranking</h2>
+        
+        <div style={{ marginBottom: '32px', fontSize: '13px', color: 'var(--t2)', lineHeight: 1.5 }}>
+          The multi-asset execution table continuously aggregates and standardizes PnL, execution fitness, and survivability variance across all generated strategies.
         </div>
-        <button
-          className="cs-btn cs-btn-success"
-          onClick={fetchRanking}
-          disabled={loading}
-        >
-          {loading ? 'Refreshing…' : 'Refresh'}
+
+        <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0' }} onClick={fetchRanking} disabled={loading}>
+          {loading ? 'Refreshing sequence...' : 'Fetch execution ranking'}
         </button>
-      </div>
 
-      {error && (
-        <div className="cs-alert red">
-          <div className="cs-alert-title">Fetch Error</div>
-          <div className="cs-alert-body">{error}</div>
-        </div>
-      )}
+        {error && (
+          <div style={{ marginTop: '20px', color: 'var(--red)', fontSize: '13px' }}>
+            Fetch Error: {error}
+          </div>
+        )}
+      </aside>
 
-      <div className="cs-card" style={{ padding: 0 }}>
-        <div className="cs-table-wrap" style={{ border: 'none', borderRadius: 'var(--r10)' }}>
+      {/* ─── RIGHT: The Structural Space ─── */}
+      <main style={{ flex: 1, maxWidth: '900px', minHeight: '600px' }}>
+        
+        {/* Table UI */}
+        <div className="cs-table-wrap" style={{ border: '1px solid var(--b)', borderRadius: 'var(--r8)', background: 'var(--card)' }}>
           <table className="cs-table">
             <thead>
               <tr>
@@ -119,15 +120,15 @@ const GlobalRanking = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: 'var(--tm)' }}>
-                    {loading ? 'Loading ranking data…' : 'No ranking data available. Run multi-asset evaluation first.'}
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '64px 0', color: 'var(--tm)', fontSize: '13px' }}>
+                    {loading ? 'Synchronizing global state...' : 'No ranking data materialized. Run multi-asset evaluation first.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
