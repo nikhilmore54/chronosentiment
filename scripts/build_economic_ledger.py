@@ -80,7 +80,7 @@ def build_economic_ledger(physics_ledger_path: Path, df: pd.DataFrame, topology_
     total_fragmented = round(sum(r["fragmented_pnl_ticks"] for r in economic_tape), 2)
     print(f"   Canonical PnL : {total_canonical:8.2f} ticks")
     print(f"   Fragmented PnL: {total_fragmented:8.2f} ticks")
-    print(f"   Ecology Damage: {round(total_canonical - total_fragmented, 2):8.2f} ticks\n")
+    print(f"   Economic Divergence: {round(total_canonical - total_fragmented, 2):8.2f} ticks\n")
 
 
 def run_all():
