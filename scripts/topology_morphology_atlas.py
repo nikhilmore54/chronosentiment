@@ -9,10 +9,20 @@ def compute_autocorrelation(series, lag=1):
     
     mean = sum(series) / n
     var = sum((x - mean) ** 2 for x in series)
-    if var == 0: return 1.0 if mean > 0 else 0.0
+    if var < 1e-9: return "SATURATED" if mean > 0.01 else 0.0
     
     cov = sum((series[i] - mean) * (series[i+lag] - mean) for i in range(n - lag))
     return round(cov / var, 3)
+
+def compute_transition_entropy(series):
+    if len(series) < 2: return 0.0
+    from collections import Counter
+    # Measure Shannon entropy of occupancy first-order differences
+    transitions = [round(series[i] - series[i-1], 3) for i in range(1, len(series))]
+    counts = Counter(transitions)
+    total = sum(counts.values())
+    entropy = -sum((c/total) * math.log2(c/total) for c in counts.values() if c > 0)
+    return round(entropy, 3)
 
 def map_topology_morphology():
     print("🔬 TOPOLOGY MORPHOLOGY ATLAS")
@@ -34,8 +44,8 @@ def map_topology_morphology():
         "bimodal"
     ]
     
-    print(f"{'TOPOLOGY':<18} | {'PEAK OCC.':<12} | {'MEAN OCC.':<12} | {'AUTOCORR (L=1)':<15} | {'AUTOCORR (L=10)':<16} | {'OBSERVED CLASS':<15}")
-    print("-" * 125)
+    print(f"{'TOPOLOGY':<18} | {'PEAK OCC.':<10} | {'MEAN OCC.':<10} | {'AUTOCORR(1)':<12} | {'AUTOCORR(10)':<12} | {'TRANS. ENTROPY':<15} | {'OBSERVED CLASS':<15}")
+    print("-" * 120)
     
     for mode in target_modes:
         topo_file = f"synthetic_{mode}_steps"
@@ -67,6 +77,7 @@ def map_topology_morphology():
         
         ac_1 = compute_autocorrelation(occupancy_series, lag=1)
         ac_10 = compute_autocorrelation(occupancy_series, lag=10)
+        t_entropy = compute_transition_entropy(occupancy_series)
         
         # Horizon-bounded observation class
         if peak_occupancy == 0.0:
@@ -76,9 +87,11 @@ def map_topology_morphology():
         else:
             obs_class = "Cτ"
             
-        print(f"{mode:<18} | {peak_occupancy:<12} | {mean_occupancy:<12} | {ac_1:<15} | {ac_10:<16} | {obs_class:<15}")
+        ac1_str = str(ac_1)
+        ac10_str = str(ac_10)
+        print(f"{mode:<18} | {peak_occupancy:<10} | {mean_occupancy:<10} | {ac1_str:<12} | {ac10_str:<12} | {t_entropy:<15} | {obs_class:<15}")
         
-    print("=" * 125)
+    print("=" * 120)
 
 if __name__ == "__main__":
     map_topology_morphology()
