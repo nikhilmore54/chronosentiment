@@ -163,18 +163,33 @@ def active_temporal_observatory(target_ts: int, bar_sec: int, symbols: list[str]
 
 def main():
     parser = argparse.ArgumentParser(description="Live session using canonical freeze+resume core engine.")
-    parser.add_argument("--batch-id", type=int, default=3)
+    parser.add_argument("--batch-id", type=int, required=True, help="Batch ID to run live (e.g., 901)")
     parser.add_argument("--run-label", default="live")
-    parser.add_argument("--cycles", type=int, default=3)
-    parser.add_argument("--bar-sec", type=int, default=DEFAULT_BAR_SEC)
-    parser.add_argument("--provider-lag-sec", type=int, default=DEFAULT_PROVIDER_LAG_SEC)
-    parser.add_argument("--max-barrier-wait-sec", type=int, default=420)
-    parser.add_argument("--temporal-observatory", action="store_true")
+    parser.add_argument("--cycles", type=int, default=60, help="Number of barriers to process")
+    parser.add_argument("--bar-sec", type=int, default=DEFAULT_BAR_SEC, help="Length of each barrier step in seconds")
+    parser.add_argument("--provider-lag-sec", type=float, default=float(DEFAULT_PROVIDER_LAG_SEC), help="Max wait for upstream providers")
+    parser.add_argument("--max-barrier-wait-sec", type=float, default=420, help="Max wait for temporal sync")
+    parser.add_argument("--temporal-observatory", action="store_true", help="Use active propagation timing")
+    parser.add_argument("--max-workers", type=int, default=5, help="Concurrency for fetch phase")
+    parser.add_argument("--symbol-limit", type=int, default=None, help="Truncate cohort to N symbols for testing")
     args = parser.parse_args()
 
     cohort_file = Path(f"cohorts/batch_{args.batch_id:03d}.txt")
     archive_dir = resolve_archive_dir(args.batch_id, False, args.run_label)
-    symbols = [s for s in cohort_file.read_text().splitlines() if s.strip() and s.strip() not in FORCE_SKIP_SYMBOLS]
+    
+    try:
+        raw_symbols = [line.strip() for line in cohort_file.read_text().splitlines() if line.strip() and line.strip() not in FORCE_SKIP_SYMBOLS]
+        if args.symbol_limit:
+            symbols = raw_symbols[:args.symbol_limit]
+            print(f"🔬 Truncating cohort to {args.symbol_limit} symbols for scaling experiment.")
+            tmp_cohort = cohort_file.with_name(f"{cohort_file.stem}_tmp_limit{args.symbol_limit}.txt")
+            tmp_cohort.write_text("\n".join(symbols) + "\n")
+            cohort_file = tmp_cohort
+        else:
+            symbols = raw_symbols
+    except Exception as e:
+        print(f"❌ Failed to read {cohort_file}: {e}")
+        return
 
     print("=" * 60)
     print("CHRONOSENTIMENT — LIVE SESSION (KERNEL ENGINE)")
@@ -217,7 +232,7 @@ def main():
                 cohort_file=cohort_file,
                 batch_id=args.batch_id,
                 interval="5m",
-                max_workers=5
+                max_workers=args.max_workers
             )
             phase_b_fetch_ms = int((time.time() - t_start_b) * 1000)
             print(f"   ✅ [Phase B] Substrate update completed in {phase_b_fetch_ms}ms.")
