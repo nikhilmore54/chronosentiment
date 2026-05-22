@@ -243,11 +243,10 @@ def main():
         fingerprint_matches = re.findall(r"timeline fingerprint\s*:\s*([a-f0-9]+)", ingest_stdout)
         timeline_fingerprint = fingerprint_matches[-1] if fingerprint_matches else "unknown"
         
-        sync_count = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
-        sync_ratio = round(sync_count / len(symbol_latest_ts), 3) if symbol_latest_ts else 0.0
-        
-        ts_values = [ts for ts in symbol_latest_ts.values() if ts > 0]
-        dispersion = float(max(ts_values) - min(ts_values)) if ts_values else 0.0
+        expected_symbols = len(symbol_latest_ts)
+        participating_symbols = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
+        barrier_completeness = (participating_symbols == expected_symbols) and (expected_symbols > 0)
+        provider_arrival_timing_ms = obs_metrics.get("exchange_to_observer_latency_ms", None)
         
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -257,10 +256,13 @@ def main():
             "cycle": cycle,
             "barrier_ts": target_ts,
             "timeline_fingerprint": timeline_fingerprint,
+            "expected_symbols": expected_symbols,
+            "participating_symbols": participating_symbols,
+            "barrier_completeness": barrier_completeness,
+            "provider_arrival_timing_ms": provider_arrival_timing_ms,
+            "sync_ratio": None,
+            "dispersion": None,
             "governor_state": None,
-            "sync_ratio": sync_ratio,
-            "dispersion": dispersion,
-            "provider_lag_ms": obs_metrics.get("provider_lag_ms", None),
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
         }
