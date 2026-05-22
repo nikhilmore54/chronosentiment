@@ -17,12 +17,11 @@ def load_admissibility(ledger_path: Path):
                     pass
     return adm
 
-def run_harness():
+def run_harness(ledger_path: Path):
     from candle_substrate import load_frozen_cohort
     
     batch_id = 9904
     batch_dir = Path("state_archive/batches/batch_9904/runs/live")
-    ledger_path = batch_dir / "metadata" / "live_session_steps.jsonl"
     
     # Load historical candles via the substrate loader
     data, _ = load_frozen_cohort(batch_id, ["AAPL"])
@@ -93,11 +92,15 @@ def run_harness():
     print("=" * 85)
     
     # Write artifact
-    out_file = batch_dir / "metadata" / "signal_physics_ledger.jsonl"
+    out_file = ledger_path.parent / f"physics_ledger_{ledger_path.stem}.jsonl"
     with open(out_file, 'w') as f:
         for r in execution_tape:
             f.write(json.dumps(r) + "\n")
     print(f"💾 Wrote universal execution tape to {out_file.name}")
 
 if __name__ == "__main__":
-    run_harness()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ledger", type=str, default="state_archive/batches/batch_9904/runs/live/metadata/live_session_steps.jsonl")
+    args = parser.parse_args()
+    run_harness(Path(args.ledger))
