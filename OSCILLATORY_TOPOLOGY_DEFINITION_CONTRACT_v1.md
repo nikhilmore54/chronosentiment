@@ -15,6 +15,9 @@ The following observational terminology is MANDATORY:
 - Oscillatory continuity deformation
 - Frequency-sensitive convergence behavior
 - Observed topology-specific convergence deformation
+- Convergence regimes (instead of "universes")
+- Topology response classes (instead of "universes")
+- Deformation occupancy (instead of "flushing" or "contamination persistence")
 
 ## 3. Mandatory Parametric Definitions
 Any topology that introduces oscillation or varying degrees of fragmentation over time must be explicitly defined using the following bounded parametric schema:
@@ -25,5 +28,8 @@ Any topology that introduces oscillation or varying degrees of fragmentation ove
 4. **Transition Function ($F_{trans}$):** The geometric shape of the shift between synchronized and fragmented states (e.g., smooth continuous gradient vs. abrupt step-function).
 5. **Topology Entropy ($H_{topo}$):** The degree of stochastic variance permitted within the oscillation. Must be explicitly bounded to differentiate between deterministic mechanical oscillation and stochastic noise.
 
-## 4. Substrate Isolation
+4. **Substrate Isolation**
 This contract explicitly codifies that continuity deformation depends heavily on the temporal structure of the topology, not merely on the magnitude of the fragmentation. Therefore, parameter sweeps must manipulate structural geometry independently of gross severity.
+
+## 5. Prohibition of Explanatory Leakage
+Any discussion of *why* specific convergence regimes emerge (e.g., "the window flushed before the next peak hit", "memory depth relative to wave interaction") is STRICTLY PROHIBITED. Observations must remain descriptive. E.g., "higher oscillation periods correlated with restored convergence under fixed amplitude."
