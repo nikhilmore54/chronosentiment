@@ -6,12 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
         DATA = data;
         initTabs();
         renderEcology(data);
+        renderSmoothness(data);
         // Defer hidden tabs — they render when activated
     }).catch(e => console.error('Failed to load data:', e));
 });
 
 // === TAB NAVIGATION ===
-const rendered = { ecology: true };
+const rendered = { observatory: true };
 function initTabs() {
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -24,11 +25,10 @@ function initTabs() {
             if (!rendered[id] && DATA) {
                 rendered[id] = true;
                 setTimeout(() => {
-                    if (id === 'smoothness') renderSmoothness(DATA);
-                    if (id === 'genesis') renderGenesis(DATA);
-                    if (id === 'atlas') renderAtlas(DATA);
+                    if (id === 'observatory') renderSmoothness(DATA); // Ecology is rendered on load
                     if (id === 'replay') renderReplay(DATA);
-                    if (id === 'comparative') renderComparative();
+                    if (id === 'inspector') renderGenesis(DATA);
+                    if (id === 'research') { renderAtlas(DATA); renderComparative(); }
                 }, 50);
             }
         });

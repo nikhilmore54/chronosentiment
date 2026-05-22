@@ -75,39 +75,73 @@ function App() {
     fetchSystemState(0);
   };
 
+  const [activeTab, setActiveTab] = useState<'observatory' | 'replay' | 'inspector' | 'research'>('observatory');
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>ChronoSentiment Visualization UI</h1>
-      {error && <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
+    <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', backgroundColor: '#0a0a0a', color: '#e5e5e5', minHeight: '100vh' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #333', paddingBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>ChronoSentiment</h1>
+          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '14px' }}>Provider Chronology Observatory</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            style={{ padding: '10px 20px', backgroundColor: activeTab === 'observatory' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            onClick={() => setActiveTab('observatory')}>Observatory</button>
+          <button 
+            style={{ padding: '10px 20px', backgroundColor: activeTab === 'replay' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            onClick={() => setActiveTab('replay')}>Replay Timeline</button>
+          <button 
+            style={{ padding: '10px 20px', backgroundColor: activeTab === 'inspector' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            onClick={() => setActiveTab('inspector')}>Trade Inspector</button>
+          <button 
+            style={{ padding: '10px 20px', backgroundColor: activeTab === 'research' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            onClick={() => setActiveTab('research')}>Research Console</button>
+        </div>
+      </header>
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        <div style={{ flex: 1 }}>
-          <h2>Replay Stepper</h2>
-          <ReplayStepper
-            currentSequenceId={currentSequenceId}
-            totalEvents={simulationEvents.length}
-            onNext={handleNextEvent}
-            onPrevious={handlePreviousEvent}
-            onReset={handleReset}
-          />
-          {systemState && <StateViewerPanel systemState={systemState} />}
-        </div>
+      {error && <div style={{ color: '#ef4444', backgroundColor: '#ef444420', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
 
-        <div style={{ flex: 1 }}>
-          <ErrorBoundary>
-            <TradeInspector apiBaseUrl={API_BASE_URL} />
-          </ErrorBoundary>
-        </div>
-      </div>
+      <main style={{ backgroundColor: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #222' }}>
+        {activeTab === 'observatory' && (
+          <div>
+            <h2>Provider Synchronization & Chronology Integrity</h2>
+            {systemState ? <StateViewerPanel systemState={systemState} /> : <p>Loading state...</p>}
+          </div>
+        )}
 
-      <div style={{ display: 'flex', gap: '20px' }}>
-        <div style={{ flex: 1 }}>
-          <TimelineViewer events={timelineEvents} apiBaseUrl={API_BASE_URL} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <EventExplorer apiBaseUrl={API_BASE_URL} />
-        </div>
-      </div>
+        {activeTab === 'replay' && (
+          <div>
+            <h2>Causal Reconstruction Engine</h2>
+            <div style={{ marginBottom: '20px', padding: '20px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+              <ReplayStepper
+                currentSequenceId={currentSequenceId}
+                totalEvents={simulationEvents.length}
+                onNext={handleNextEvent}
+                onPrevious={handlePreviousEvent}
+                onReset={handleReset}
+              />
+            </div>
+            <TimelineViewer events={timelineEvents} apiBaseUrl={API_BASE_URL} />
+          </div>
+        )}
+
+        {activeTab === 'inspector' && (
+          <div>
+            <h2>Single-Trade Forensic Analysis</h2>
+            <ErrorBoundary>
+              <TradeInspector apiBaseUrl={API_BASE_URL} />
+            </ErrorBoundary>
+          </div>
+        )}
+
+        {activeTab === 'research' && (
+          <div>
+            <h2>Long-Horizon Analytics</h2>
+            <EventExplorer apiBaseUrl={API_BASE_URL} />
+          </div>
+        )}
+      </main>
     </div>
   );
 }

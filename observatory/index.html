@@ -43,19 +43,17 @@
 
     <!-- Navigation Tabs -->
     <nav class="tab-nav">
-        <button class="tab active" data-tab="ecology" id="tab-ecology">Provider Synchronization</button>
-        <button class="tab" data-tab="smoothness" id="tab-smoothness">Temporal Fragmentation</button>
-        <button class="tab" data-tab="genesis" id="tab-genesis">Chronology Constraints</button>
-        <button class="tab" data-tab="atlas" id="tab-atlas">Reconciliation Duration</button>
-        <button class="tab" data-tab="replay" id="tab-replay">Trade Replay</button>
-        <button class="tab tab-highlight" data-tab="comparative" id="tab-comparative">Cohort Comparison</button>
+        <button class="tab active" data-tab="observatory" id="tab-observatory">Observatory</button>
+        <button class="tab" data-tab="replay" id="tab-replay">Replay Timeline</button>
+        <button class="tab" data-tab="inspector" id="tab-inspector">Trade Inspector</button>
+        <button class="tab" data-tab="research" id="tab-research">Research Console</button>
     </nav>
 
     <!-- Tab Content -->
     <main class="content">
 
-        <!-- Tab 1: Provider Synchronization Overview -->
-        <section class="tab-content active" id="panel-ecology">
+        <!-- Surface 1: Observatory -->
+        <section class="tab-content active" id="panel-observatory">
             <div class="section-question">What is the baseline synchronization integrity?</div>
             <div class="grid-4">
                 <div class="card metric-card" id="mc-trades">
@@ -96,6 +94,36 @@
                 <div class="chart-container wide" id="pnl-distribution-chart"></div>
             </div>
 
+            <div class="divider" style="margin: 30px 0; border-top: 1px solid var(--border);"></div>
+            <div class="section-question">When does timeline coherence break?</div>
+            <div class="card discovery-card">
+                <div class="discovery-badge">INFRASTRUCTURE</div>
+                <h2 class="discovery-title">Temporal Fragmentation</h2>
+                <p class="discovery-text">
+                    High synchronization dispersion indicates <strong>temporal fragmentation</strong> across the provider's cohort. 
+                    The exchange data timeline becomes unreliable during these spikes.
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Dispersion vs Execution Success</h3>
+                    <p class="card-subtitle">Each dot is an event. Color = execution state.</p>
+                    <div class="chart-container" id="smoothness-scatter"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Fragmentation by Exit Type</h3>
+                    <p class="card-subtitle">Higher dispersion = higher execution failure</p>
+                    <div class="chart-container" id="efficiency-bars"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Fragmentation Inversion Table</h3>
+                <div class="table-container" id="inversion-table"></div>
+            </div>
+            
+            <div class="divider" style="margin: 30px 0; border-top: 1px solid var(--border);"></div>
             <!-- Architecture Stack -->
             <div class="card">
                 <h3 class="card-title">Chronological Architecture Stack</h3>
@@ -144,39 +172,34 @@
             </div>
         </section>
 
-        <!-- Tab 2: Temporal Fragmentation -->
-        <section class="tab-content" id="panel-smoothness">
-            <div class="section-question">When does timeline coherence break?</div>
-            <div class="card discovery-card">
-                <div class="discovery-badge">INFRASTRUCTURE</div>
-                <h2 class="discovery-title">Temporal Fragmentation</h2>
-                <p class="discovery-text">
-                    High synchronization dispersion indicates <strong>temporal fragmentation</strong> across the provider's cohort. 
-                    The exchange data timeline becomes unreliable during these spikes.
-                </p>
-            </div>
-
-            <div class="grid-2">
-                <div class="card">
-                    <h3 class="card-title">Dispersion vs Execution Success</h3>
-                    <p class="card-subtitle">Each dot is an event. Color = execution state.</p>
-                    <div class="chart-container" id="smoothness-scatter"></div>
-                </div>
-                <div class="card">
-                    <h3 class="card-title">Fragmentation by Exit Type</h3>
-                    <p class="card-subtitle">Higher dispersion = higher execution failure</p>
-                    <div class="chart-container" id="efficiency-bars"></div>
-                </div>
-            </div>
-
+        <!-- Surface 2: Replay Timeline -->
+        <section class="tab-content" id="panel-replay">
+            <div class="section-question">How does execution unfold chronologically?</div>
             <div class="card">
-                <h3 class="card-title">Fragmentation Inversion Table</h3>
-                <div class="table-container" id="inversion-table"></div>
+                <div class="replay-controls">
+                    <button class="replay-btn" id="replay-prev">◀ Prev</button>
+                    <span class="replay-counter" id="replay-counter">Trade 1 / —</span>
+                    <button class="replay-btn" id="replay-next">Next ▶</button>
+                    <div class="replay-filters">
+                        <button class="replay-filter active" data-filter="all">All</button>
+                        <button class="replay-filter" data-filter="TakeProfit">Winners</button>
+                        <button class="replay-filter" data-filter="Mortality">Mortality</button>
+                        <button class="replay-filter" data-filter="StopLoss">StopLoss</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card replay-card">
+                <div class="replay-header" id="replay-header"></div>
+                <div class="replay-timeline" id="replay-timeline"></div>
+                <div class="grid-2">
+                    <div class="replay-metrics" id="replay-metrics"></div>
+                    <div class="replay-interpretation" id="replay-interpretation"></div>
+                </div>
             </div>
         </section>
 
-        <!-- Tab 3: Chronology Constraints -->
-        <section class="tab-content" id="panel-genesis">
+        <!-- Surface 3: Trade Inspector -->
+        <section class="tab-content" id="panel-inspector">
             <div class="section-question">What boundaries trigger a governor halt?</div>
             <div class="card discovery-card genesis-discovery">
                 <div class="discovery-badge">OPERATIONAL</div>
@@ -227,65 +250,8 @@
             </div>
         </section>
 
-        <!-- Tab 4: Reconciliation Duration -->
-        <section class="tab-content" id="panel-atlas">
-            <div class="section-question">How long does provider timeline reconciliation take?</div>
-            <div class="card discovery-card toxicity-discovery">
-                <div class="discovery-badge">INFRASTRUCTURE</div>
-                <h2 class="discovery-title">Reconciliation Duration Profile</h2>
-                <p class="discovery-text">
-                    Delayed reconciliation causes timeline uncertainty. 
-                    After institutional compression periods, provider updates can lag significantly.
-                </p>
-            </div>
-
-            <div class="grid-2">
-                <div class="card">
-                    <h3 class="card-title">Reconciliation Age vs Outcome</h3>
-                    <p class="card-subtitle">Delayed settlements (>10 bars) increase uncertainty</p>
-                    <div class="chart-container" id="age-scatter"></div>
-                </div>
-                <div class="card">
-                    <h3 class="card-title">Reconciliation Decay Profile</h3>
-                    <p class="card-subtitle">Measurement of temporal synchronization lag</p>
-                    <div class="chart-container" id="decay-curve"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 class="card-title">Synchronization Clusters</h3>
-                <div class="table-container" id="toxicity-table"></div>
-            </div>
-        </section>
-
-        <!-- Tab 5: Trade Replay -->
-        <section class="tab-content" id="panel-replay">
-            <div class="section-question">How does execution unfold chronologically?</div>
-            <div class="card">
-                <div class="replay-controls">
-                    <button class="replay-btn" id="replay-prev">◀ Prev</button>
-                    <span class="replay-counter" id="replay-counter">Trade 1 / —</span>
-                    <button class="replay-btn" id="replay-next">Next ▶</button>
-                    <div class="replay-filters">
-                        <button class="replay-filter active" data-filter="all">All</button>
-                        <button class="replay-filter" data-filter="TakeProfit">Winners</button>
-                        <button class="replay-filter" data-filter="Mortality">Mortality</button>
-                        <button class="replay-filter" data-filter="StopLoss">StopLoss</button>
-                    </div>
-                </div>
-            </div>
-            <div class="card replay-card">
-                <div class="replay-header" id="replay-header"></div>
-                <div class="replay-timeline" id="replay-timeline"></div>
-                <div class="grid-2">
-                    <div class="replay-metrics" id="replay-metrics"></div>
-                    <div class="replay-interpretation" id="replay-interpretation"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Tab 6: Cohort Comparison -->
-        <section class="tab-content" id="panel-comparative">
+        <!-- Surface 4: Research Console -->
+        <section class="tab-content" id="panel-research">
             <div class="section-question">How does synchronization vary across provider cohorts?</div>
 
             <!-- Hero finding -->
@@ -343,6 +309,35 @@
                 <h3 class="card-title">Provider Cohort Profiles</h3>
                 <p class="card-subtitle">Win rate, expectancy, and exit composition across all tested cohorts</p>
                 <div class="table-container" id="ecology-profiles"></div>
+            </div>
+
+            <div class="divider" style="margin: 30px 0; border-top: 1px solid var(--border);"></div>
+            <div class="section-question">How long does provider timeline reconciliation take?</div>
+            <div class="card discovery-card toxicity-discovery">
+                <div class="discovery-badge">INFRASTRUCTURE</div>
+                <h2 class="discovery-title">Reconciliation Duration Profile</h2>
+                <p class="discovery-text">
+                    Delayed reconciliation causes timeline uncertainty. 
+                    After institutional compression periods, provider updates can lag significantly.
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title">Reconciliation Age vs Outcome</h3>
+                    <p class="card-subtitle">Delayed settlements (>10 bars) increase uncertainty</p>
+                    <div class="chart-container" id="age-scatter"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Reconciliation Decay Profile</h3>
+                    <p class="card-subtitle">Measurement of temporal synchronization lag</p>
+                    <div class="chart-container" id="decay-curve"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title">Synchronization Clusters</h3>
+                <div class="table-container" id="toxicity-table"></div>
             </div>
         </section>
 
