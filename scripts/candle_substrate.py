@@ -263,6 +263,7 @@ def incremental_update_cohort(
     all_ts: set[int] = set()
     frozen_count = 0
     total_bars = 0
+    symbol_latest_ts = {}
 
     def _update_one(sym: str) -> tuple[str, int, list[int]]:
         # Fetch just 1d to capture the latest bars with minimal bandwidth
@@ -297,6 +298,7 @@ def incremental_update_cohort(
             frozen_count += 1
             total_bars += n_bars
             all_ts.update(ts_list)
+            symbol_latest_ts[sym] = max(ts_list) if ts_list else 0
         if done % 50 == 0 or done == len(symbols):
             print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...", flush=True)
 
@@ -321,4 +323,4 @@ def incremental_update_cohort(
         json.dump(manifest, f, indent=2)
     print(f"✅ Incremental substrate updated: {manifest_path}")
     print(f"   Timeline fingerprint: {manifest['timeline_fingerprint']}")
-    return manifest_path
+    return manifest_path, symbol_latest_ts

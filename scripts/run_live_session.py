@@ -210,7 +210,7 @@ def main():
         # Phase 2: Incremental Substrate Update (1d history to minimize bandwidth, preserves long-term history for PCA)
         print("   ❄️  [Phase B] Incrementally updating substrate (1d fetch)...")
         try:
-            incremental_update_cohort(
+            manifest_path, symbol_latest_ts = incremental_update_cohort(
                 cohort_file=cohort_file,
                 batch_id=args.batch_id,
                 interval="5m",
@@ -243,6 +243,12 @@ def main():
         fingerprint_matches = re.findall(r"timeline fingerprint\s*:\s*([a-f0-9]+)", ingest_stdout)
         timeline_fingerprint = fingerprint_matches[-1] if fingerprint_matches else "unknown"
         
+        sync_count = sum(1 for ts in symbol_latest_ts.values() if ts >= target_ts)
+        sync_ratio = round(sync_count / len(symbol_latest_ts), 3) if symbol_latest_ts else 0.0
+        
+        ts_values = [ts for ts in symbol_latest_ts.values() if ts > 0]
+        dispersion = float(max(ts_values) - min(ts_values)) if ts_values else 0.0
+        
         metadata_dir = archive_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         ledger_path = metadata_dir / "live_session_steps.jsonl"
@@ -252,8 +258,8 @@ def main():
             "barrier_ts": target_ts,
             "timeline_fingerprint": timeline_fingerprint,
             "governor_state": None,
-            "sync_ratio": None,
-            "dispersion": None,
+            "sync_ratio": sync_ratio,
+            "dispersion": dispersion,
             "provider_lag_ms": obs_metrics.get("provider_lag_ms", None),
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
