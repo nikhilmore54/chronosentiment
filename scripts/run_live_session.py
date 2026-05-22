@@ -251,10 +251,10 @@ def main():
             "cycle": cycle,
             "barrier_ts": target_ts,
             "timeline_fingerprint": timeline_fingerprint,
-            "governor_state": "NOMINAL",               # Pending restoration of live governor
-            "sync_ratio": 1.0,                         # Pending full cohort measurement 
-            "dispersion": 1.0,                         # Pending full cohort measurement
-            "provider_lag_ms": obs_metrics.get("provider_lag_ms", 0),
+            "governor_state": None,
+            "sync_ratio": None,
+            "dispersion": None,
+            "provider_lag_ms": obs_metrics.get("provider_lag_ms", None),
             "persisted": persisted,
             "dedupe_skip": dedupe_skip
         }
