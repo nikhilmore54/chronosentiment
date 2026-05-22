@@ -17,7 +17,7 @@ def load_admissibility(ledger_path: Path):
                     pass
     return adm
 
-def run_harness(ledger_path: Path):
+def run_harness(ledger_path: Path, strategy_id: str):
     from candle_substrate import load_frozen_cohort
     
     batch_id = 9904
@@ -35,7 +35,7 @@ def run_harness(ledger_path: Path):
     
     print("🔬 SIGNAL PHYSICS HARNESS v1")
     print("Symbol  : AAPL")
-    print("Strategy: Deterministic Momentum (2-tick)")
+    print(f"Strategy: {strategy_id}")
     print("=" * 85)
     
     execution_tape = []
@@ -48,10 +48,20 @@ def run_harness(ledger_path: Path):
         prev_price = df['Close'].iloc[i-2]
         
         # 1. Deterministic Intent Generation
-        if current_price > prev_price:
-            intent = "ENTER_LONG"
-        elif current_price < prev_price:
-            intent = "ENTER_SHORT"
+        if strategy_id == "momentum_2tick_v1":
+            if current_price > prev_price:
+                intent = "ENTER_LONG"
+            elif current_price < prev_price:
+                intent = "ENTER_SHORT"
+            else:
+                intent = "HOLD"
+        elif strategy_id == "mean_reversion_2tick_v1":
+            if current_price > prev_price:
+                intent = "ENTER_SHORT"
+            elif current_price < prev_price:
+                intent = "ENTER_LONG"
+            else:
+                intent = "HOLD"
         else:
             intent = "HOLD"
             
@@ -92,7 +102,7 @@ def run_harness(ledger_path: Path):
     print("=" * 85)
     
     # Write artifact
-    out_file = ledger_path.parent / f"physics_ledger_{ledger_path.stem}.jsonl"
+    out_file = ledger_path.parent / f"physics_ledger_{strategy_id}_{ledger_path.stem}.jsonl"
     with open(out_file, 'w') as f:
         for r in execution_tape:
             f.write(json.dumps(r) + "\n")
@@ -102,5 +112,6 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--ledger", type=str, default="state_archive/batches/batch_9904/runs/live/metadata/live_session_steps.jsonl")
+    parser.add_argument("--strategy", type=str, default="momentum_2tick_v1")
     args = parser.parse_args()
-    run_harness(Path(args.ledger))
+    run_harness(Path(args.ledger), args.strategy)

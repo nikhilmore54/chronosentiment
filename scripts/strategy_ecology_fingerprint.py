@@ -5,9 +5,9 @@ from pathlib import Path
 import sys
 import subprocess
 
-def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, topology_id: str):
+def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, topology_id: str, strategy_id: str):
     if not physics_ledger_path.exists() or not synthetic_ledger_path.exists():
-        print(f"❌ Missing ledger for {topology_id}")
+        print(f"❌ Missing ledger for {topology_id} - {strategy_id}")
         return None
         
     execution_tape = []
@@ -59,7 +59,7 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     
     # Basic fingerprint structure
     fingerprint = {
-        "strategy_id": "momentum_2tick_v1",
+        "strategy_id": strategy_id,
         "topology_id": topology_id,
         "intent_sequence_stable": True,
         "topology_severity_index": tsi_map.get(topology_id, 0.0),
@@ -104,7 +104,7 @@ def run_mapper():
     
     base_dir = Path("state_archive/batches/batch_9904/runs/live/metadata")
     
-    registry_file = Path("ECOLOGY_REGISTRY_v1.json")
+    registry_file = Path("ECOLOGY_ATLAS_v1.json")
     if registry_file.exists():
         with open(registry_file, 'r') as f:
             registry = json.load(f)
@@ -114,29 +114,32 @@ def run_mapper():
     registry["version"] = "v1.0"
     registry["experiments"] = registry.get("experiments", [])
     
-    for topo_id, file_stem in topologies.items():
-        physics_path = base_dir / f"physics_ledger_{file_stem}.jsonl"
-        synthetic_path = base_dir / f"{file_stem}.jsonl"
-        
-        if not physics_path.exists():
-            print(f"⚡ Running physics harness for {topo_id}...")
-            subprocess.run(["python3", "scripts/signal_physics_harness.py", "--ledger", str(synthetic_path)], check=True)
+    strategies = ["momentum_2tick_v1", "mean_reversion_2tick_v1"]
+    
+    for strategy_id in strategies:
+        for topo_id, file_stem in topologies.items():
+            physics_path = base_dir / f"physics_ledger_{strategy_id}_{file_stem}.jsonl"
+            synthetic_path = base_dir / f"{file_stem}.jsonl"
             
-        fp = compute_fingerprint(physics_path, synthetic_path, topo_id)
-        if fp:
-            # Upsert into registry
-            existing_idx = next((i for i, exp in enumerate(registry["experiments"]) if exp["topology_id"] == topo_id and exp["strategy_id"] == fp["strategy_id"]), None)
-            if existing_idx is not None:
-                registry["experiments"][existing_idx] = fp
-            else:
-                registry["experiments"].append(fp)
+            if not physics_path.exists():
+                print(f"⚡ Running physics harness for {topo_id} | {strategy_id}...")
+                subprocess.run(["python3", "scripts/signal_physics_harness.py", "--ledger", str(synthetic_path), "--strategy", strategy_id], check=True)
                 
-            print(f"\n[{topo_id}] -> Ecology Hash: {fp['ecology_fingerprint_hash']}")
-            print(json.dumps(fp, indent=2))
+            fp = compute_fingerprint(physics_path, synthetic_path, topo_id, strategy_id)
+            if fp:
+                # Upsert into registry
+                existing_idx = next((i for i, exp in enumerate(registry["experiments"]) if exp["topology_id"] == topo_id and exp["strategy_id"] == fp["strategy_id"]), None)
+                if existing_idx is not None:
+                    registry["experiments"][existing_idx] = fp
+                else:
+                    registry["experiments"].append(fp)
+                    
+                print(f"\n[{strategy_id} | {topo_id}] -> Ecology Hash: {fp['ecology_fingerprint_hash']}")
+                print(json.dumps(fp, indent=2))
             
     with open(registry_file, 'w') as f:
         json.dump(registry, f, indent=2)
-    print(f"\n💾 Saved {len(topologies)} fingerprints to ECOLOGY_REGISTRY_v1.json")
+    print(f"\n💾 Saved {len(registry['experiments'])} fingerprints to ECOLOGY_ATLAS_v1.json")
 
 if __name__ == "__main__":
     run_mapper()
