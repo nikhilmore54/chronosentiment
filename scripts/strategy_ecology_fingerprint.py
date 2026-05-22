@@ -16,8 +16,8 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     mci_distances = []
     
     # Repair ecology tracking
-    false_hallucinations = 0
-    successful_repairs = 0
+    repair_induced_divergences = 0
+    canonical_intent_matches = 0
     fragmented_divergences = 0
     
     # State tracking for Memory Recovery Half-Life
@@ -46,9 +46,9 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
                     if frag_wrong: fragmented_divergences += 1
                     
                     if frag_wrong and not rep_wrong:
-                        successful_repairs += 1
+                        canonical_intent_matches += 1
                     elif not frag_wrong and rep_wrong:
-                        false_hallucinations += 1
+                        repair_induced_divergences += 1
                         
                 if "memory_coherence_index" in trace:
                     mci = trace["memory_coherence_index"]
@@ -129,8 +129,8 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
             "recovery_half_life_ticks": round(sum(completed_recoveries)/len(completed_recoveries), 1) if completed_recoveries else (-1.0 if is_recovering else 0.0)
         },
         "repair_ecology": {
-            "false_hallucinations": false_hallucinations,
-            "successful_repairs": successful_repairs,
+            "repair_induced_divergences": repair_induced_divergences,
+            "canonical_intent_matches": canonical_intent_matches,
             "raw_fragmented_divergences": fragmented_divergences
         } if "adaptive" in strategy_id else {},
         "regime_exposure": regime_exposure,

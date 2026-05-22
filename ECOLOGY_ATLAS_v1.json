@@ -355,8 +355,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -372,7 +372,7 @@
         "replay_stable": true
       },
       "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "42a1483dbbfe37dd"
+      "ecology_fingerprint_hash": "e11c427a73a48155"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -392,8 +392,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -409,7 +409,7 @@
         "replay_stable": true
       },
       "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "f0a4cef3ed60b587"
+      "ecology_fingerprint_hash": "8fa504ecefa8cbde"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -429,8 +429,8 @@
         "recovery_half_life_ticks": 2.2
       },
       "repair_ecology": {
-        "false_hallucinations": 51,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 51,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 47
       },
       "regime_exposure": {
@@ -449,7 +449,7 @@
         "replay_stable": true
       },
       "replay_hash": "fc74845841796b5e",
-      "ecology_fingerprint_hash": "2d27eb90ed758268"
+      "ecology_fingerprint_hash": "b2a453df0f63d9c4"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -469,8 +469,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -486,7 +486,7 @@
         "replay_stable": true
       },
       "replay_hash": "570110cf7c52abea",
-      "ecology_fingerprint_hash": "d695e42da673f4d7"
+      "ecology_fingerprint_hash": "67c9fa9811cec644"
     },
     {
       "strategy_id": "mean_reversion_2tick_v2_adaptive",
@@ -506,8 +506,8 @@
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {
-        "false_hallucinations": 202,
-        "successful_repairs": 3,
+        "repair_induced_divergences": 202,
+        "canonical_intent_matches": 3,
         "raw_fragmented_divergences": 184
       },
       "regime_exposure": {
@@ -523,7 +523,7 @@
         "replay_stable": true
       },
       "replay_hash": "c4c8afb845318848",
-      "ecology_fingerprint_hash": "fa854bd9c42405c2"
+      "ecology_fingerprint_hash": "a0c088680eb7f3f6"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -879,8 +879,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -896,7 +896,7 @@
         "replay_stable": true
       },
       "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "3d9a5f55f31e971c"
+      "ecology_fingerprint_hash": "db53c0d69daa7c24"
     },
     {
       "strategy_id": "rolling_window_momentum_v3_adaptive",
@@ -916,8 +916,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -933,7 +933,7 @@
         "replay_stable": true
       },
       "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "01f6610440da8405"
+      "ecology_fingerprint_hash": "210db63a581ea4f1"
     },
     {
       "strategy_id": "rolling_window_momentum_v3_adaptive",
@@ -953,8 +953,8 @@
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -973,7 +973,7 @@
         "replay_stable": true
       },
       "replay_hash": "a61e8a645ec65aaa",
-      "ecology_fingerprint_hash": "faade51ce2f7de57"
+      "ecology_fingerprint_hash": "9e1f88019df380e6"
     },
     {
       "strategy_id": "rolling_window_momentum_v3_adaptive",
@@ -993,8 +993,8 @@
         "recovery_half_life_ticks": 0.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -1010,7 +1010,7 @@
         "replay_stable": true
       },
       "replay_hash": "6e0adb534de0db9a",
-      "ecology_fingerprint_hash": "40f1aa890b26b249"
+      "ecology_fingerprint_hash": "882ac036c1f86db2"
     },
     {
       "strategy_id": "rolling_window_momentum_v3_adaptive",
@@ -1030,8 +1030,8 @@
         "recovery_half_life_ticks": -1.0
       },
       "repair_ecology": {
-        "false_hallucinations": 0,
-        "successful_repairs": 0,
+        "repair_induced_divergences": 0,
+        "canonical_intent_matches": 0,
         "raw_fragmented_divergences": 0
       },
       "regime_exposure": {
@@ -1047,7 +1047,7 @@
         "replay_stable": true
       },
       "replay_hash": "95715ec3b69aebfb",
-      "ecology_fingerprint_hash": "8338c242673ce598"
+      "ecology_fingerprint_hash": "0b71cc9a18e4d291"
     }
   ]
 }
