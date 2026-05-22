@@ -1,0 +1,846 @@
+{
+  "surface_id": "batch_10000_surface_v1",
+  "substrate_id": "batch_10000",
+  "strategies": [
+    {
+      "strategy_id": "momentum_2tick_v1",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "f9a6bd719459e487",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "6136c75bd86be03d"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "86361d19cbd80355",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "ff477b65fe8798a0"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 0.78,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 3.5
+          },
+          "state_plane": {
+            "MCI_overlap": 0.78,
+            "cognitive_divergences": 98,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 5.86,
+            "economic_divergence": -2.49,
+            "execution_non_realization_rate": 0.2216
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "e983a2092f8fe28a",
+            "economic_ledger_hash": "db71c1a325882daf",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "db71c1a325882daf",
+          "surface_hash": "28418a72da7ec1c9"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "1d7ccd07efe4faba",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "124cb2f55b916ba2"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 0.99,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 383,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 3.37,
+            "execution_non_realization_rate": 0.0052
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "9c07fe7ab06b81e3",
+            "economic_ledger_hash": "27f05fcc33944660",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "27f05fcc33944660",
+          "surface_hash": "0b34dc000352c6ed"
+        }
+      ]
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v1",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "96de437aff465b02",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "e44cdebc815b47be"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "4208b2ce8441bd3b",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "f2cdb6f6b8550bbd"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 0.78,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 3.5
+          },
+          "state_plane": {
+            "MCI_overlap": 0.78,
+            "cognitive_divergences": 98,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 5.86,
+            "economic_divergence": -2.49,
+            "execution_non_realization_rate": 0.2216
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "a54225751279cf3b",
+            "economic_ledger_hash": "db71c1a325882daf",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "db71c1a325882daf",
+          "surface_hash": "49d15680ddd71e60"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "995c3e4cdd67c3af",
+            "economic_ledger_hash": "72e0d5bd0ab337c0",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "72e0d5bd0ab337c0",
+          "surface_hash": "0d64506ba9cfe154"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 0.99,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 383,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 3.37,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 3.37,
+            "execution_non_realization_rate": 0.0052
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "7806f91f40e7334f",
+            "economic_ledger_hash": "27f05fcc33944660",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "27f05fcc33944660",
+          "surface_hash": "cd0d7a64b2e42076"
+        }
+      ]
+    },
+    {
+      "strategy_id": "mean_reversion_2tick_v2_adaptive",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": -3.37,
+            "fragmented_pnl": -3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "e11c427a73a48155",
+            "economic_ledger_hash": "570110cf7c52abea",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "570110cf7c52abea",
+          "surface_hash": "bb3738b8ad3bdf9c"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": -3.37,
+            "fragmented_pnl": -3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "8fa504ecefa8cbde",
+            "economic_ledger_hash": "570110cf7c52abea",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "570110cf7c52abea",
+          "surface_hash": "901f119675e18212"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 0.78,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 2.2
+          },
+          "state_plane": {
+            "MCI_overlap": 0.78,
+            "cognitive_divergences": 98,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": -3.37,
+            "fragmented_pnl": -5.86,
+            "economic_divergence": 2.49,
+            "execution_non_realization_rate": 0.2216
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "b2a453df0f63d9c4",
+            "economic_ledger_hash": "fc74845841796b5e",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "fc74845841796b5e",
+          "surface_hash": "46a0ba3080e953a7"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": -3.37,
+            "fragmented_pnl": -3.37,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "67c9fa9811cec644",
+            "economic_ledger_hash": "570110cf7c52abea",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "570110cf7c52abea",
+          "surface_hash": "9441279077366283"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 0.99,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 383,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": -3.37,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": -3.37,
+            "execution_non_realization_rate": 0.0052
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "a0c088680eb7f3f6",
+            "economic_ledger_hash": "c4c8afb845318848",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "c4c8afb845318848",
+          "surface_hash": "73378c9a39e9ab1d"
+        }
+      ]
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "50a6b1035851f910",
+            "economic_ledger_hash": "293cff51c514b6b3",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "293cff51c514b6b3",
+          "surface_hash": "ecea42e762138a09"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "07768acd2aa70a70",
+            "economic_ledger_hash": "293cff51c514b6b3",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "293cff51c514b6b3",
+          "surface_hash": "8a1deb14f817a3eb"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 3.5
+          },
+          "state_plane": {
+            "MCI_overlap": 0.78,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "25ee57d377d228c6",
+            "economic_ledger_hash": "48c42792cf4f4603",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "48c42792cf4f4603",
+          "surface_hash": "fd446ac02584139c"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "38ae546c10063949",
+            "economic_ledger_hash": "293cff51c514b6b3",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "293cff51c514b6b3",
+          "surface_hash": "563c400999fc5297"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "e69b744e8f44f38e",
+            "economic_ledger_hash": "39be9a78de3bcf50",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "39be9a78de3bcf50",
+          "surface_hash": "29fddeac4221f974"
+        }
+      ]
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v2_long",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "24c0f43058d9f1c9",
+            "economic_ledger_hash": "60e0e43866f307f1",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "60e0e43866f307f1",
+          "surface_hash": "8914613f2e2bd0a2"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "314ce78e2fb7367a",
+            "economic_ledger_hash": "60e0e43866f307f1",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "60e0e43866f307f1",
+          "surface_hash": "3e4bdf8c01d63288"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.79,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "b4be010f3b62c32f",
+            "economic_ledger_hash": "380706352177da01",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "380706352177da01",
+          "surface_hash": "f91b06c544373f62"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "64a0f01ce18c1b09",
+            "economic_ledger_hash": "60e0e43866f307f1",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "60e0e43866f307f1",
+          "surface_hash": "b724ae786a2a3d2e"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "f21f5baff066d2a1",
+            "economic_ledger_hash": "e01723595ca5c45a",
+            "state_reconstruction_integrity": "canonical"
+          },
+          "replay_hash": "e01723595ca5c45a",
+          "surface_hash": "9587317e04e5ace1"
+        }
+      ]
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v3_adaptive",
+      "topologies": [
+        {
+          "topology_id": "topo_uniform_60",
+          "topology_plane": {
+            "TSI": 0.2,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "db53c0d69daa7c24",
+            "economic_ledger_hash": "6e0adb534de0db9a",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "6e0adb534de0db9a",
+          "surface_hash": "fe63357af909287d"
+        },
+        {
+          "topology_id": "topo_bimodal_180",
+          "topology_plane": {
+            "TSI": 0.6,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "210db63a581ea4f1",
+            "economic_ledger_hash": "6e0adb534de0db9a",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "6e0adb534de0db9a",
+          "surface_hash": "4a6e2ac7356461ce"
+        },
+        {
+          "topology_id": "topo_wavefront",
+          "topology_plane": {
+            "TSI": 0.4,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.79,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "9e1f88019df380e6",
+            "economic_ledger_hash": "a61e8a645ec65aaa",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "a61e8a645ec65aaa",
+          "surface_hash": "344b96bfc3b6d1a2"
+        },
+        {
+          "topology_id": "topo_anticipatory",
+          "topology_plane": {
+            "TSI": 0.7,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": 0.0
+          },
+          "state_plane": {
+            "MCI_overlap": 1.0,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "882ac036c1f86db2",
+            "economic_ledger_hash": "6e0adb534de0db9a",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "6e0adb534de0db9a",
+          "surface_hash": "0b3a7a67088c524f"
+        },
+        {
+          "topology_id": "topo_collapse_300",
+          "topology_plane": {
+            "TSI": 1.0,
+            "acceptance_ratio": 1.0,
+            "lag_stddev": "proxy_mapped",
+            "recovery_half_life": -1.0
+          },
+          "state_plane": {
+            "MCI_overlap": 0.01,
+            "cognitive_divergences": 0,
+            "replay_stable": true
+          },
+          "economic_plane": {
+            "canonical_pnl": 0.0,
+            "fragmented_pnl": 0.0,
+            "economic_divergence": 0.0,
+            "execution_non_realization_rate": 0.0
+          },
+          "chronology_plane": {
+            "ecology_fingerprint_hash": "0b71cc9a18e4d291",
+            "economic_ledger_hash": "95715ec3b69aebfb",
+            "state_reconstruction_integrity": "quarantined"
+          },
+          "replay_hash": "95715ec3b69aebfb",
+          "surface_hash": "ffbff7464f07cccc"
+        }
+      ]
+    }
+  ]
+}
