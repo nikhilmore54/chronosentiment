@@ -1,108 +1,88 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import json
 import os
+import altair as alt
 
-st.set_page_config(page_title="ChronoSentiment Observatory", layout="wide")
+st.set_page_config(page_title="Temporal Observability Dashboard", layout="wide")
+st.title("🔭 ChronoSentiment: Temporal Observability")
+st.markdown("*(Visualizing canonical execution admissibility and market synchronization topology)*")
 
-ARCHIVE_PATH = "archive/physics_divergence.csv"
+DEFAULT_LOG = "state_archive/batches/batch_9904/runs/live/metadata/live_session_steps.jsonl"
+log_path = st.text_input("Ledger Path", DEFAULT_LOG)
 
-st.title("🔭 ChronoSentiment: Execution Physics Observatory")
-st.markdown("### Phase 2B.6: Statistical Hardening & Controlled Ablation")
-st.markdown("*(The architecture no longer assumes its own validity. It competes for existence against null baselines.)*")
-
-if not os.path.exists(ARCHIVE_PATH):
-    st.warning(f"Archive not found at {ARCHIVE_PATH}. Waiting for data accumulation...")
+if not os.path.exists(log_path):
+    st.warning(f"Ledger not found at {log_path}. Waiting for data accumulation...")
     st.stop()
 
-# --- DATA INGESTION ---
-cols = ["timestamp", "symbol", "regime", "vol_bucket", "half_life", 
-        "legacy_exp", "gross_move", "noise_floor", "micro_exp", "divergence"]
-try:
-    df = pd.read_csv(ARCHIVE_PATH, names=cols, header=None)
-except Exception as e:
-    st.error(f"Error reading archive: {e}")
+data = []
+with open(log_path, 'r') as f:
+    for line in f:
+        if line.strip():
+            try:
+                row = json.loads(line)
+                flat_row = {
+                    "cycle": row.get("cycle"),
+                    "barrier_ts": row.get("barrier_ts"),
+                    "timeline_fingerprint": row.get("timeline_fingerprint"),
+                    "symbols_attempted": row.get("symbols_attempted", 0),
+                    "symbols_returned": row.get("symbols_returned", 0),
+                    "symbols_accepted": row.get("symbols_accepted", 0),
+                    "median_symbol_lag_sec": row.get("freshness", {}).get("median_symbol_lag_sec", 0),
+                    "p90_lag_sec": row.get("freshness", {}).get("p90_lag_sec", 0),
+                    "lag_stddev": row.get("freshness", {}).get("lag_stddev", 0.0),
+                    "strict_ratio": row.get("observability", {}).get("strict_ratio", 0.0),
+                    "acceptance_ratio": row.get("observability", {}).get("acceptance_ratio", 0.0),
+                    "regime_state": row.get("observability", {}).get("regime_state", "UNKNOWN"),
+                    "execution_admissible": row.get("admissibility", {}).get("execution_admissible", False),
+                    "new_entries_allowed": row.get("admissibility", {}).get("new_entries_allowed", False),
+                    "exits_allowed": row.get("admissibility", {}).get("exits_allowed", True),
+                    "policy_version": row.get("admissibility", {}).get("classification_policy_version", "v1.0"),
+                }
+                data.append(flat_row)
+            except Exception as e:
+                pass
+
+if not data:
+    st.warning("No data found in ledger.")
     st.stop()
 
-df = df[df["regime"].isin(["MeanReversion", "HighVolatilityNoise", "DirectionalTrend", "Breakout", "Unknown"])]
-df = df.sort_values(by=["symbol", "timestamp"]).copy()
+df = pd.DataFrame(data)
+df['datetime'] = pd.to_datetime(df['barrier_ts'], unit='s')
 
-# Date conversions
-df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
+st.header("1. Execution Admissibility Governor")
+latest = df.iloc[-1]
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Current Regime", latest['regime_state'])
+m2.metric("New Entries Allowed", str(latest['new_entries_allowed']))
+m3.metric("Exits Allowed", str(latest['exits_allowed']))
+m4.metric("Policy Version", str(latest['policy_version']))
 
-# --- EPOCH GATE CONDITIONS (DIVERSITY) ---
-st.header("1. Epoch Gate Conditions (Diversity Accumulation)")
+st.header("2. Regime Timeline (Market Observability Tape)")
+# Use Altair to plot a Gantt-like timeline or simple points
+c = alt.Chart(df).mark_circle(size=100).encode(
+    x=alt.X('datetime:T', title='Barrier Time'),
+    y=alt.Y('regime_state:N', title='Regime'),
+    color=alt.Color('regime_state:N', legend=None),
+    tooltip=['cycle', 'datetime', 'regime_state', 'execution_admissible', 'timeline_fingerprint']
+).properties(height=200)
+st.altair_chart(c, use_container_width=True)
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Evaluated Ticks (Target: 1000+)", f"{len(df)}")
-unique_regimes = df['regime'].nunique()
-col2.metric("Regimes Captured", f"{unique_regimes}")
-unique_assets = df['symbol'].nunique()
-col3.metric("Assets Monitored", f"{unique_assets}")
+st.dataframe(df[['cycle', 'datetime', 'regime_state', 'execution_admissible', 'new_entries_allowed', 'timeline_fingerprint']], use_container_width=True)
 
-# Determine if we can proceed to Phase 2B.7
-if len(df) < 1000:
-    st.info("⏳ **Status:** Accumulating reality. Epoch 2B.7 is locked until minimum 1,000 ticks.")
-else:
-    st.success("✅ **Status:** Archive size meets Phase 2B.7 threshold. Awaiting regime/shock diversity checks.")
+st.header("3. Acceptance vs Strict Ratio")
+st.markdown("Visually distinguishes synchronization vs fragmented but usable states.")
+st.line_chart(df.set_index('datetime')[['strict_ratio', 'acceptance_ratio']])
 
-# --- THE NULL HYPOTHESIS (MODEL B) ---
-st.header("2. The Null Hypothesis vs. Provisional Abstractions")
+st.header("4. Lag Distribution & Variance")
+st.markdown("Monitoring the propagation wave width and synchronization variance.")
+col1, col2 = st.columns(2)
+with col1:
+    st.line_chart(df.set_index('datetime')[['median_symbol_lag_sec', 'p90_lag_sec']])
+with col2:
+    st.line_chart(df.set_index('datetime')[['lag_stddev']])
 
-if len(df) < 50:
-    st.warning("Insufficient data for ablation calculations.")
-    st.stop()
-
-# Calculate Derivatives
-df['hostility_accel'] = df.groupby('symbol')['divergence'].diff(periods=2).fillna(0)
-df['noise_ratio'] = np.where(df['gross_move'] > 0, df['noise_floor'] / df['gross_move'], 0)
-
-COLLAPSE_THRESHOLD = 0.06
-df['is_collapsed'] = df['divergence'] >= COLLAPSE_THRESHOLD
-df['future_collapse'] = df.groupby('symbol')['is_collapsed'].shift(-1) | \
-                        df.groupby('symbol')['is_collapsed'].shift(-2) | \
-                        df.groupby('symbol')['is_collapsed'].shift(-3)
-
-valid_df = df.dropna(subset=['future_collapse']).copy()
-valid_df['future_collapse'] = valid_df['future_collapse'].astype(bool)
-
-baseline_exposure = valid_df['divergence'].sum()
-
-# Model B (Null)
-size_B = np.where(valid_df['divergence'] > 0.05, 0.0, 1.0)
-exposure_B = (valid_df['divergence'] * size_B).sum()
-survival_gain_B = 1.0 - (exposure_B / baseline_exposure) if baseline_exposure > 0 else 0
-
-# Model C (Derivatives)
-size_C = np.where((valid_df['divergence'] > 0.05) | (valid_df['hostility_accel'] > 0.02), 0.0, 1.0)
-exposure_C = (valid_df['divergence'] * size_C).sum()
-survival_gain_C = 1.0 - (exposure_C / baseline_exposure) if baseline_exposure > 0 else 0
-
-mcol1, mcol2, mcol3 = st.columns(3)
-mcol1.metric("Baseline Exposure", f"{baseline_exposure:.4f}")
-mcol2.metric("Model B (Null) Survival Gain", f"{survival_gain_B:+.1%}")
-mcol3.metric("Model C (Deriv) Survival Gain", f"{survival_gain_C:+.1%}", delta=f"{survival_gain_C - survival_gain_B:+.1%} Incremental Lift")
-
-# False positive vs True positive
-fp_B = len(valid_df[(size_B == 0.0) & (valid_df['future_collapse'] == False)])
-fp_C = len(valid_df[(size_C == 0.0) & (valid_df['future_collapse'] == False)])
-
-tp_B = len(valid_df[(size_B == 0.0) & (valid_df['future_collapse'] == True)])
-tp_C = len(valid_df[(size_C == 0.0) & (valid_df['future_collapse'] == True)])
-
-st.markdown(f"**Predictive Precision:** Model C dodged **{tp_C}** true collapses (vs Model B's {tp_B}) while suffering **{fp_C}** false suppressions (vs Model B's {fp_B}).")
-
-# --- VISUALIZING THE REALITY STREAM ---
-st.header("3. Divergence Physics Stream")
-
-sym_filter = st.selectbox("Select Asset to Visualize", df['symbol'].unique())
-asset_df = df[df['symbol'] == sym_filter].copy()
-
-if not asset_df.empty:
-    st.line_chart(asset_df.set_index('datetime')[['divergence', 'micro_exp', 'noise_floor']])
-    
-    st.markdown("### Hostility Acceleration (Model C's Core Metric)")
-    st.line_chart(asset_df.set_index('datetime')['hostility_accel'])
-
-st.markdown("---")
-st.caption("ChronoSentiment Phase 2B.6 | Standing by for Epoch 2B.7 triggers.")
+st.header("5. Fingerprint Transition Overlay")
+st.markdown("Validates chronology stability under observability turbulence.")
+fingerprints = df[['datetime', 'timeline_fingerprint', 'regime_state']].drop_duplicates(subset=['timeline_fingerprint'])
+st.dataframe(fingerprints, use_container_width=True)
