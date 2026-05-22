@@ -11,11 +11,16 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
         return None
         
     execution_tape = []
+    diverged_count = 0
     with open(physics_ledger_path, 'r') as f:
         for line in f:
             if line.strip():
-                execution_tape.append(json.loads(line))
-                
+                row = json.loads(line)
+                execution_tape.append(row)
+                trace = row.get("state_divergence_trace", {})
+                if trace.get("divergence_reason"):
+                    diverged_count += 1
+                    
     regimes = []
     lags = []
     with open(synthetic_ledger_path, 'r') as f:
@@ -61,7 +66,8 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
     fingerprint = {
         "strategy_id": strategy_id,
         "topology_id": topology_id,
-        "intent_sequence_stable": True,
+        "intent_sequence_stable": (diverged_count == 0),
+        "cognitive_divergences": diverged_count,
         "topology_severity_index": tsi_map.get(topology_id, 0.0),
         "execution_stats": {
             "generated": generated,
@@ -111,10 +117,10 @@ def run_mapper():
     else:
         registry = {}
         
-    registry["version"] = "v1.0"
+    registry["version"] = "v1.1"
     registry["experiments"] = registry.get("experiments", [])
     
-    strategies = ["momentum_2tick_v1", "mean_reversion_2tick_v1"]
+    strategies = ["momentum_2tick_v1", "mean_reversion_2tick_v1", "rolling_window_momentum_v1"]
     
     for strategy_id in strategies:
         for topo_id, file_stem in topologies.items():

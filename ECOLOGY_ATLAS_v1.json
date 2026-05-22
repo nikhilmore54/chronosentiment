@@ -1,10 +1,11 @@
 {
-  "version": "v1.0",
+  "version": "v1.1",
   "experiments": [
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_uniform_60",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.2,
       "execution_stats": {
         "generated": 1,
@@ -25,12 +26,13 @@
         "replay_stable": true
       },
       "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "c40368b938df36c6"
+      "ecology_fingerprint_hash": "812c2df33cf04046"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_bimodal_180",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.6,
       "execution_stats": {
         "generated": 1,
@@ -51,12 +53,13 @@
         "replay_stable": true
       },
       "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "7d35944e8dfd9a46"
+      "ecology_fingerprint_hash": "216b1a1ed8c6fefc"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_wavefront",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.4,
       "execution_stats": {
         "generated": 1,
@@ -78,12 +81,13 @@
         "replay_stable": true
       },
       "replay_hash": "e20633ee53a48846",
-      "ecology_fingerprint_hash": "11e27d52c7d343de"
+      "ecology_fingerprint_hash": "6c80d4174aaa17a8"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_anticipatory",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.7,
       "execution_stats": {
         "generated": 1,
@@ -104,12 +108,13 @@
         "replay_stable": true
       },
       "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "d8484e13063c310d"
+      "ecology_fingerprint_hash": "e91e44b5e745befa"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_collapse_300",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 1.0,
       "execution_stats": {
         "generated": 1,
@@ -130,12 +135,13 @@
         "replay_stable": true
       },
       "replay_hash": "550a0cc11c93ab26",
-      "ecology_fingerprint_hash": "ec544bdbc620b904"
+      "ecology_fingerprint_hash": "f73a9ef0f6c053f0"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_uniform_60",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.2,
       "execution_stats": {
         "generated": 1,
@@ -156,12 +162,13 @@
         "replay_stable": true
       },
       "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "37d2c91380b30e26"
+      "ecology_fingerprint_hash": "edab6b630d9a2aab"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_bimodal_180",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.6,
       "execution_stats": {
         "generated": 1,
@@ -182,12 +189,13 @@
         "replay_stable": true
       },
       "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "8924cbbd356a923a"
+      "ecology_fingerprint_hash": "1d76591ff25dddfc"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_wavefront",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.4,
       "execution_stats": {
         "generated": 1,
@@ -209,12 +217,13 @@
         "replay_stable": true
       },
       "replay_hash": "c505b751abe4d887",
-      "ecology_fingerprint_hash": "edab1275b257d44c"
+      "ecology_fingerprint_hash": "d45804e57ffe0b17"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_anticipatory",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 0.7,
       "execution_stats": {
         "generated": 1,
@@ -235,12 +244,13 @@
         "replay_stable": true
       },
       "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "d2afeec72e712509"
+      "ecology_fingerprint_hash": "0080c7ddd695f64a"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_collapse_300",
       "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
       "topology_severity_index": 1.0,
       "execution_stats": {
         "generated": 1,
@@ -261,7 +271,143 @@
         "replay_stable": true
       },
       "replay_hash": "3adc4b9106492748",
-      "ecology_fingerprint_hash": "be0d0267ed38bfc4"
+      "ecology_fingerprint_hash": "739f61cec5c8965f"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_uniform_60",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.2,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b5ea873df7e6aabb",
+      "ecology_fingerprint_hash": "fcfdc761b1d09277"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_bimodal_180",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.6,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 90
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b5ea873df7e6aabb",
+      "ecology_fingerprint_hash": "1ff4aa3158ef19b9"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_wavefront",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.4,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 0,
+        "blocked": 1,
+        "execution_rate": 0.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 0.8,
+        "TRANSITIONAL_RECOVERY": 0.2
+      },
+      "lag_profile": {
+        "median_lag": 0
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "7df94ab74b87f3be",
+      "ecology_fingerprint_hash": "304d21eac4c81930"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_anticipatory",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 0.7,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 1,
+        "blocked": 0,
+        "execution_rate": 1.0
+      },
+      "regime_exposure": {
+        "FRAGMENTED_BUT_USABLE": 1.0
+      },
+      "lag_profile": {
+        "median_lag": -60
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 1.0,
+        "collapse_resilience": 0.0,
+        "replay_stable": true
+      },
+      "replay_hash": "b5ea873df7e6aabb",
+      "ecology_fingerprint_hash": "8f51326b65519df1"
+    },
+    {
+      "strategy_id": "rolling_window_momentum_v1",
+      "topology_id": "topo_collapse_300",
+      "intent_sequence_stable": true,
+      "cognitive_divergences": 0,
+      "topology_severity_index": 1.0,
+      "execution_stats": {
+        "generated": 1,
+        "executed": 0,
+        "blocked": 1,
+        "execution_rate": 0.0
+      },
+      "regime_exposure": {
+        "DEGRADED_OBSERVABILITY": 1.0
+      },
+      "lag_profile": {
+        "median_lag": 300
+      },
+      "ecology_properties": {
+        "sync_sensitivity": 0.0,
+        "fragmentation_tolerance": 0.0,
+        "collapse_resilience": 1.0,
+        "replay_stable": true
+      },
+      "replay_hash": "0ce828e04bf0cdd3",
+      "ecology_fingerprint_hash": "289b89c054e94053"
     }
   ]
 }
