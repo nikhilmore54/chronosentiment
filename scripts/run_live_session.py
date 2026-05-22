@@ -282,14 +282,19 @@ def main():
         accept_dispersion = statistics.stdev([h["accept"] for h in history_ratios]) if len(history_ratios) > 1 else 0.0
         recovery_slope = history_ratios[-1]["accept"] - history_ratios[-2]["accept"] if len(history_ratios) > 1 else 0.0
         
-        if strict_ratio > 0.9:
+        # Formal Mathematical Regime Classification
+        is_synchronized = (strict_ratio >= 0.9)
+        is_degraded = (acceptance_ratio < 0.5)
+        is_recovering = (recovery_slope > 0.1)
+        
+        if is_synchronized:
             regime = "SYNCHRONIZED"
-        elif acceptance_ratio > 0.9 and strict_ratio < 0.2:
-            regime = "FRAGMENTED_BUT_USABLE"
-        elif acceptance_ratio < 0.5:
+        elif is_degraded and not is_recovering:
             regime = "DEGRADED_OBSERVABILITY"
+        elif is_recovering:
+            regime = "TRANSITIONAL_RECOVERY"
         else:
-            regime = "TRANSITIONAL"
+            regime = "FRAGMENTED_BUT_USABLE"
         
         observability = {
             "strict_ratio": round(strict_ratio, 4),
