@@ -1,1 +1,9 @@
-{"gov_mult": 1.0, "ts": 1778114165}
+{
+  "multiplier": 0.0,
+  "gate_open": false,
+  "reason": "HALT (instability_rate=0.860 > 0.4)",
+  "instability_rate": 0.86,
+  "corridor_rate": 0.0,
+  "window_size": 50,
+  "ts": 1779418559
+}

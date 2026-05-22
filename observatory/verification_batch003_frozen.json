@@ -1,0 +1,46 @@
+{
+  "archive_dir": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/state_archive/batches/batch_003",
+  "batch_id": 3,
+  "stats": {
+    "records": 135733,
+    "dup_timestamps": 0,
+    "malformed": 0,
+    "corridor_count": 106738,
+    "state_counts": {
+      "NARRATIVE_PERSISTENCE": 27738,
+      "NOISE_TRANSITIONAL": 17406,
+      "LIQUIDITY_EXHAUSTION": 90589
+    },
+    "survival_violations": 0,
+    "hazard_violations": 0,
+    "dwell_violations": 0
+  },
+  "manifest": {
+    "batch_id": 3,
+    "run_label": "run_1779182027",
+    "cohort_file": "cohorts/batch_003.txt",
+    "archive_dir": "state_archive/batches/batch_003",
+    "interval": "5m",
+    "period": "5d",
+    "symbols_cohort": 500,
+    "symbols_downloaded": 500,
+    "timeline_intervals": 366,
+    "timeline_fingerprint": "7dac2292bf15e994",
+    "timeline_first_ts": 1778643900,
+    "timeline_last_ts": 1779181800,
+    "processed_ticks": 136145,
+    "corridors_classified": 107068,
+    "corridor_rate": 0.786426,
+    "duration_sec": 73.483,
+    "states_per_sec": 1852.74,
+    "pca_weights_hash": "4827b3dd086ce421",
+    "stable_sample_every": 8,
+    "dedupe_keys": 136145,
+    "dedupe_skipped": 0,
+    "from_frozen": true,
+    "frozen_substrate_hash": "e4ccc5b72b9b90c5",
+    "frozen_timeline_fingerprint": "7dac2292bf15e994",
+    "completed_at_utc": "2026-05-19T09:15:02.920255+00:00"
+  },
+  "compare_runs": null
+}

@@ -1,0 +1,43 @@
+{
+  "archive_dir": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/state_archive/batches/batch_003",
+  "batch_id": 3,
+  "stats": {
+    "records": 142581,
+    "dup_timestamps": 0,
+    "malformed": 0,
+    "corridor_count": 111957,
+    "state_counts": {
+      "NARRATIVE_PERSISTENCE": 29270,
+      "NOISE_TRANSITIONAL": 18135,
+      "LIQUIDITY_EXHAUSTION": 95176
+    },
+    "survival_violations": 0,
+    "hazard_violations": 0,
+    "dwell_violations": 0
+  },
+  "manifest": {
+    "batch_id": 3,
+    "run_label": "run_1779179210",
+    "cohort_file": "cohorts/batch_003.txt",
+    "archive_dir": "state_archive/batches/batch_003",
+    "interval": "5m",
+    "period": "5d",
+    "symbols_cohort": 500,
+    "symbols_downloaded": 500,
+    "timeline_intervals": 357,
+    "timeline_fingerprint": "84fc3221a32d5397",
+    "timeline_first_ts": 1778643900,
+    "timeline_last_ts": 1779179100,
+    "processed_ticks": 143301,
+    "corridors_classified": 112508,
+    "corridor_rate": 0.785117,
+    "duration_sec": 85.348,
+    "states_per_sec": 1679.02,
+    "pca_weights_hash": "4827b3dd086ce421",
+    "stable_sample_every": 8,
+    "dedupe_keys": 143301,
+    "dedupe_skipped": 0,
+    "completed_at_utc": "2026-05-19T08:29:00.860184+00:00"
+  },
+  "compare_runs": null
+}

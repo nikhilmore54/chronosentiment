@@ -10,6 +10,8 @@ use std::io::{self, BufRead, Write};
 use std::fs::OpenOptions;
 
 const PRICE_SCALE: f64 = 10000.0;
+/// Rolling coherence window cap per symbol (long-lived daemon sessions).
+const MAX_HISTORY_BARS: usize = 512;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct SymbolicCandle {
@@ -75,6 +77,8 @@ fn main() {
 
     println!("📡 Listening for continuous environmental telemetry via stdin...");
     println!("   Awaiting synchronized JSON batches...\n");
+    println!("[OBSERVATORY_READY] long_lived=true max_history={}", MAX_HISTORY_BARS);
+    io::stdout().flush().unwrap();
 
     for line_result in reader.lines() {
         let raw = match line_result {
@@ -107,10 +111,14 @@ fn main() {
             let core_c = sym_cand.to_core_candle();
             let sym = &sym_cand.symbol;
 
-            history_pipes
+            let pipe = history_pipes
                 .entry(sym.clone())
-                .or_insert_with(Vec::new)
-                .push(core_c.clone());
+                .or_insert_with(Vec::new);
+            pipe.push(core_c.clone());
+            if pipe.len() > MAX_HISTORY_BARS {
+                let drop_n = pipe.len() - MAX_HISTORY_BARS;
+                pipe.drain(0..drop_n);
+            }
             let count = symbol_update_counts.entry(sym.clone()).or_insert(0);
             *count += 1;
 
@@ -180,11 +188,9 @@ fn main() {
             last_signals.insert(sym.clone(), report.signal);
             consistency_counts.insert(sym.clone(), report.consistency);
 
-            // Log major telemetry events
-            if report.signal != SignalType::WAIT && report.execution_feasible && report.threshold > 0.0 {
-                let margin = (report.execution_score / report.execution_threshold).max(0.0);
-                if margin > 1.2 && report.conviction_score > 0.2 {
-                    let ts = Local::now().format("%H:%M:%S").to_string();
+            // Log major telemetry events (continuous phase-space scanning)
+            let margin = if report.execution_threshold > 0.0 { (report.execution_score / report.execution_threshold).max(0.0) } else { 1.0 };
+            let ts = latest_candle.timestamp;
                     
                     // Priority 2: Execution-Window-Constrained Survivable Movement Modeling
                     let n_bars = config.max_hold_bars as usize;
@@ -311,259 +317,34 @@ fn main() {
                         0.0
                     };
                     
-                    // --- SHADOW FERTILITY GOVERNOR ---
-                    // 1. Elasticity Zone Bonus (Target: 0.30 - 0.40)
-                    let elasticity_bonus: f64 = if directional_efficiency >= 0.30 && directional_efficiency <= 0.40 {
-                        1.20 // +20% optimal elastic grinding
-                    } else if directional_efficiency < 0.30 {
-                        1.10 // +10% chaotic convexity
-                    } else {
-                        0.80 // -20% penalty for terminal linear persistence (smoothness trap)
-                    };
-                    
-                    // 2. Resilience Bonus (Target: > 0.85)
-                    let resilience_bonus: f64 = if resilience_score > 0.85 {
-                        1.15 // +15% for strong recovery capability
-                    } else {
-                        0.90 // -10% for weak bounce
-                    };
-                    
-                    // 3. Shadow Multiplier (Logged, but NOT executed)
-                    let shadow_fertility_multiplier = (elasticity_bonus * resilience_bonus).clamp(0.5, 1.5);
-                    
                     println!(
-                        "[TELEMETRY] {} sym={} sig={:?} margin={:.2} conv={:.2} eq={:.4} | legacy_exp={:.6} micro_exp={:.6} gross={:.6} noise={:.6} | atlas_eff={:.4} atlas_den={:.4} atlas_res={:.4} shadow_fert={:.4} atlas_age={} | genesis_comp={:.4} genesis_range={:.6} genesis_bias={:.4}",
-                        ts, sym, report.signal, margin, report.conviction_score, report.execution_score, legacy_exp_move_pct, micro_exp_move_pct, gross_move / latest_candle.close as f64, micro_noise / latest_candle.close as f64, directional_efficiency, continuation_density, resilience_score, shadow_fertility_multiplier, elasticity_age, compression_ratio, pre_range, pre_bias
+                        "[TELEMETRY] ts={} sym={} margin={:.2} conv={:.2} eq={:.4} eff={:.4} den={:.4} res={:.4} comp={:.4} range={:.6} bias={:.4}",
+                        ts, sym, margin, report.conviction_score, report.execution_score, directional_efficiency, continuation_density, resilience_score, compression_ratio, pre_range, pre_bias
                     );
+                    io::stdout().flush().unwrap();
 
                     // Fire observatory intent for longitudinal tracking with Consensus Purification Gates
-                    let prev_micro_exp = *prev_micro_exp_moves.get(&sym).unwrap_or(&0.0);
-                    let has_propagation_acceleration = prev_micro_exp == 0.0 || micro_exp_move_pct >= prev_micro_exp * 0.90;
-                    prev_micro_exp_moves.insert(sym.clone(), micro_exp_move_pct);
-
-                    // 1. Reversal Compression & Adverse Excursion Penalty
-                    let excursion_retrace = if gross_move > 1e-9 {
-                        if report.signal == SignalType::BUY {
-                            (max_high - latest_candle.close as f64) / gross_move
-                        } else {
-                            (latest_candle.close as f64 - min_low) / gross_move
-                        }
-                    } else {
-                        0.0
-                    };
-
-                    // 2. Acceleration Persistence Factor
-                    let acc_factor = if prev_micro_exp > 0.0 {
-                        (micro_exp_move_pct / prev_micro_exp).clamp(0.5, 1.5)
-                    } else {
-                        1.0
-                    };
-
-                    // 3. Persistence Governor (G_persistence)
-                    // Punish severe retracement (> 40% of swing) or severe deceleration
-                    let retrace_penalty = (1.5 - excursion_retrace * 2.0).clamp(0.4, 1.1);
-                    let persistence_governor = (retrace_penalty * acc_factor).clamp(0.4, 1.25);
-
-                    // 4. Asset Microstructure Hostility Profile (Tighter baseline amplitude)
-                    let asset_baseline_hostility = match sym.as_str() {
-                        "BTC-USD" => 0.08, // Slower, deeper liquidity, tighter tolerance
-                        "ETH-USD" => 0.10, // Intermediate
-                        "SOL-USD" => 0.13, // Explosive, more chaotic, wider tolerance
-                        _ => 0.10,
-                    };
-
-                    // 5. Throttled Regime & Conviction Multipliers
-                    let regime_elasticity = match report.regime {
-                        MarketRegime::BullTrend | MarketRegime::BearTrend => 1.15, // Trend-supported, tolerate 15% more noise
-                        MarketRegime::HighVolatilityNoise => 0.75,                // High noise, contract envelope by 25%
-                        MarketRegime::MeanReversion => 0.85,                      // Mean-reverting, reduce tolerance by 15%
-                    };
-
-                    let conviction_elasticity = 0.85 + 0.3 * report.conviction_score; // Throttled amplitude
-
-                    // 6. Dynamic Survivable Hostility Envelope with Persistence Governor + Freshness Decay
-                    // Soft logistic decay: full fertility when fresh (<10 bars), rapid exhaustion after
-                    // Centered at 10 bars, steepness 2.5 — models the phase-transition observed in Toxicity Atlas
-                    let freshness_decay = 1.0 / (1.0 + ((elasticity_age as f64 - 10.0) / 2.5_f64).exp());
-                    let freshness_decay = freshness_decay.clamp(0.25, 1.0);
-                    let live_fertility_multiplier = (shadow_fertility_multiplier * freshness_decay).clamp(0.85, 1.15);
-                    let max_allowed_hostility = (asset_baseline_hostility * regime_elasticity * conviction_elasticity * persistence_governor * live_fertility_multiplier).clamp(0.04, 0.22);
-
-                    let noise_to_signal = micro_noise / gross_move.max(1e-6);
-                    let is_orderly_propagation = noise_to_signal <= max_allowed_hostility;
-                    let has_consensus_stability = report.consistency >= 2;
-
-                    if has_consensus_stability && has_propagation_acceleration && is_orderly_propagation {
-                        if paper.active_trades.len() + paper.pending_intents.len() < paper.max_concurrent {
-                            let price = latest_candle.close as f64;
-                            let intent = TradeIntent {
-                                rec_id: next_rec_id,
-                                symbol: sym.clone(),
-                                signal: report.signal,
-                                reference_price: price,
-                                birth_price: price,
-                                recommendation: TradeRecommendation {
-                                    symbol: sym.clone(),
-                                    signal: report.signal,
-                                    rank: margin,
-                                    raw_edge: report.expected_return,
-                                    confidence: report.conviction_score,
-                                    quality_score: report.execution_score,
-                                    entry_price: price,
-                                    entry_low: price * 0.999,
-                                    entry_high: price * 1.001,
-                                    tp_target: {
-                                        let norm_vol = if price > 0.0 { vol_5 / price } else { 0.0020 };
-                                        let prop_quality = (micro_exp_move_pct / norm_vol.max(1e-6)).powf(1.35).clamp(0.5, 2.75);
-                                        let conviction_factor = 0.8 + 0.4 * report.conviction_score;
-                                        let regime_factor = match report.regime {
-                                            MarketRegime::BullTrend | MarketRegime::BearTrend => 1.25,
-                                            MarketRegime::HighVolatilityNoise => 0.65,
-                                            MarketRegime::MeanReversion => 0.85,
-                                        };
-                                        let tp_dist_pct = (norm_vol * 1.5 * prop_quality * conviction_factor * regime_factor).clamp(0.0025, 0.0120);
-                                        price
-                                            * if report.signal == SignalType::BUY {
-                                                1.0 + tp_dist_pct
-                                            } else {
-                                                1.0 - tp_dist_pct
-                                            }
-                                    },
-                                    sl_target: {
-                                        let norm_vol = if price > 0.0 { vol_5 / price } else { 0.0020 };
-                                        let regime_factor = match report.regime {
-                                            MarketRegime::BullTrend | MarketRegime::BearTrend => 1.1,
-                                            MarketRegime::HighVolatilityNoise => 0.8,
-                                            MarketRegime::MeanReversion => 0.9,
-                                        };
-                                        let sl_dist_pct = (norm_vol * 2.2 * regime_factor).clamp(0.0050, 0.0100);
-                                        price
-                                            * if report.signal == SignalType::BUY {
-                                                1.0 - sl_dist_pct
-                                            } else {
-                                                1.0 + sl_dist_pct
-                                            }
-                                    },
-                                    expected_rr: {
-                                        let norm_vol = if price > 0.0 { vol_5 / price } else { 0.0020 };
-                                        let prop_quality = (micro_exp_move_pct / norm_vol.max(1e-6)).powf(1.35).clamp(0.5, 2.75);
-                                        let conviction_factor = 0.8 + 0.4 * report.conviction_score;
-                                        let regime_factor_tp = match report.regime {
-                                            MarketRegime::BullTrend | MarketRegime::BearTrend => 1.25,
-                                            MarketRegime::HighVolatilityNoise => 0.65,
-                                            MarketRegime::MeanReversion => 0.85,
-                                        };
-                                        let tp_dist_pct = (norm_vol * 1.5 * prop_quality * conviction_factor * regime_factor_tp).clamp(0.0025, 0.0120);
-                                        
-                                        let regime_factor_sl = match report.regime {
-                                            MarketRegime::BullTrend | MarketRegime::BearTrend => 1.1,
-                                            MarketRegime::HighVolatilityNoise => 0.8,
-                                            MarketRegime::MeanReversion => 0.9,
-                                        };
-                                        let sl_dist_pct = (norm_vol * 2.2 * regime_factor_sl).clamp(0.0050, 0.0100);
-                                        tp_dist_pct / sl_dist_pct.max(1e-6)
-                                    },
-                                    expected_edge_bps: report.expected_return * 10000.0,
-                                    risk_bps: {
-                                        let norm_vol = if price > 0.0 { vol_5 / price } else { 0.0020 };
-                                        let regime_factor = match report.regime {
-                                            MarketRegime::BullTrend | MarketRegime::BearTrend => 1.1,
-                                            MarketRegime::HighVolatilityNoise => 0.8,
-                                            MarketRegime::MeanReversion => 0.9,
-                                        };
-                                        let sl_dist_pct = (norm_vol * 2.2 * regime_factor).clamp(0.0050, 0.0100);
-                                        sl_dist_pct * 10000.0
-                                    },
-                                    holding_bars: config.max_hold_bars,
-                                    vol_bps: vol_5,
-                                    vol_bucket: 1,
-                                    is_execution: true,
-                                    position_size: 0.1,
-                                    directional_alpha: 0.0,
-                                    execution_alpha: 0.0,
-                                    structural_alpha: 0.0,
-                                },
-                                strategy_id: 0,
-                                rec_score: report.execution_score,
-                                rec_feas: 1.0,
-                                rec_conf: report.conviction_score,
-                                rec_voters: 1,
-                                momentum_3: trigger_momentum_3,
-                                vol_5,
-                                score_std_5: 0.0,
-                                consensus: None,
-                                age: 0,
-                                max_age: 15,
-                                intent_created_symbol_updates: updates,
-                                confirm_delta_symbol_updates: 0,
-                                immediate_market_fill: false,
-                                use_recommendation_tpsl: false,
-                                sketch_risk_span: 0.0,
-                                mode: "OBSERVATORY".to_string(),
-                                entry_path: "CONSENSUS".to_string(),
-                                regime: "LIVE".to_string(),
-                                birth_timestamp: latest_candle.timestamp,
-                                intensity: report.execution_score,
-                                stability: report.threshold,
-                                tier: "OBSERVATORY".to_string(),
-                            };
-
-                            if paper.submit_intent(intent) {
-                                next_rec_id += 1;
-                            }
+                    if report.signal != SignalType::WAIT && report.execution_feasible && report.threshold > 0.0 {
+                        let margin = (report.execution_score / report.execution_threshold).max(0.0);
+                        if margin > 1.2 && report.conviction_score > 0.2 {
+                            let prev_micro_exp = *prev_micro_exp_moves.get(&sym).unwrap_or(&0.0);
+                            prev_micro_exp_moves.insert(sym.clone(), micro_exp_move_pct);
                         }
                     }
-                }
-            }
-
-            // Continuous Physics Archival (Requires 100-bar warmup for structural coherence)
-            if updates > 100 {
-                let n_bars = config.max_hold_bars as usize;
-                let exec_window_slice = &hist[hist.len().saturating_sub(n_bars)..];
-                if exec_window_slice.len() > 1 {
-                    let mut micro_noise_sum = 0.0;
-                    let mut min_low = f64::MAX;
-                    let mut max_high = f64::MIN;
-                    for i in 1..exec_window_slice.len() {
-                        let diff = (exec_window_slice[i].close as f64 - exec_window_slice[i-1].close as f64).abs();
-                        micro_noise_sum += diff;
-                    }
-                    for c in exec_window_slice {
-                        min_low = min_low.min(c.low as f64);
-                        max_high = max_high.max(c.high as f64);
-                    }
-                    let micro_noise = micro_noise_sum / (exec_window_slice.len() - 1) as f64;
-                    let gross_move = max_high - min_low;
-                    let spread_slippage = (latest_candle.close as f64) * 0.0002;
-                    let survivable_move = (gross_move - micro_noise - spread_slippage).max(0.0);
-                    
-                    let micro_exp_move_pct = survivable_move / (latest_candle.close as f64);
-                    let legacy_exp_move_pct = report.expected_return.max(0.000001); // Prevent div-by-zero
-                    let gross_move_pct = gross_move / latest_candle.close as f64;
-                    let noise_floor_pct = micro_noise / latest_candle.close as f64;
-                    let divergence = legacy_exp_move_pct / micro_exp_move_pct.max(0.000001);
-
-                    // Write to CSV archive
-                    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("archive/physics_divergence.csv") {
-                        let ts = latest_candle.timestamp; // Use Market Timestamp for alignment and backfilling
-                        let regime_str = format!("{:?}", report.regime);
-                        let vol_bucket = (vol_5 * 1000.0) as u32; 
-                        let half_life_estimate = config.max_hold_bars / 2; 
-                        
-                        let _ = writeln!(
-                            file, 
-                            "{},{},{},{},{},{:.6},{:.6},{:.6},{:.6},{:.2},{},{},{},{}", 
-                            ts, sym, regime_str, vol_bucket, half_life_estimate, legacy_exp_move_pct, gross_move_pct, noise_floor_pct, micro_exp_move_pct, divergence, updates, source_type, is_authentic, generation
-                        );
-                    }
-                }
-            }
         }
 
         total_processed += 1;
+        let telemetry_count = symbols_updated.len();
+        println!(
+            "[BATCH_COMPLETE] batches={} symbols={} telemetry={}",
+            total_processed,
+            batch.len(),
+            telemetry_count
+        );
+        io::stdout().flush().unwrap();
         if total_processed % 10 == 0 {
             let ts = Local::now().format("%H:%M:%S").to_string();
-            println!("[HEARTBEAT] {} | Processed {} synchronized JSON batches. Archiving physics divergence.", ts, total_processed);
+            println!("[HEARTBEAT] {} | Processed {} synchronized JSON batches.", ts, total_processed);
         }
     }
 

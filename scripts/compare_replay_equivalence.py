@@ -261,26 +261,11 @@ def main() -> int:
     cohort_len = len(cohort) if cohort else 1
     
     for s in live_steps:
-        # Load from step or calculate on-the-fly for legacy safety
-        bar_conf = s.get("barrier_confidence")
-        if bar_conf is None:
-            part = s.get("participating_symbols", s.get("symbols", 0))
-            exp = s.get("expected_symbols") or cohort_len
-            bar_conf = part / exp if exp > 0 else 0.0
-            
-        frag_ratio = s.get("fragmentation_ratio")
-        if frag_ratio is None:
-            sync = s.get("sync_breakdown") or {}
-            part = s.get("participating_symbols", s.get("symbols", 0))
-            success = s.get("fetch_success", part) or part or cohort_len
-            frag_ratio = sync.get("symbols_at_target_not_live_ts", 0) / success if success > 0 else 0.0
-            
-        prov_cons = s.get("provider_consensus")
-        if prov_cons is None:
-            sync = s.get("sync_breakdown") or {}
-            part = s.get("participating_symbols", s.get("symbols", 0))
-            success = s.get("fetch_success", part) or part or cohort_len
-            prov_cons = sync.get("symbols_at_live_ts", part) / success if success > 0 else 1.0
+        # Strict extraction: The live engine is the sole authority for these fields.
+        # We no longer silently reconstruct them from raw fetch stats if missing.
+        bar_conf = s.get("barrier_confidence", 0.0)
+        frag_ratio = s.get("fragmentation_ratio", 0.0)
+        prov_cons = s.get("provider_consensus", 1.0)
             
         chronology_confidences.append(bar_conf)
         feed_fragmentations.append(frag_ratio)

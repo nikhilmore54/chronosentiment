@@ -1,0 +1,20 @@
+{
+  "archive_dir": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/state_archive",
+  "batch_id": 1,
+  "stats": {
+    "records": 134332,
+    "dup_timestamps": 0,
+    "malformed": 0,
+    "corridor_count": 105275,
+    "state_counts": {
+      "NARRATIVE_PERSISTENCE": 29852,
+      "NOISE_TRANSITIONAL": 16973,
+      "LIQUIDITY_EXHAUSTION": 87507
+    },
+    "survival_violations": 0,
+    "hazard_violations": 0,
+    "dwell_violations": 0
+  },
+  "manifest": null,
+  "compare_runs": null
+}

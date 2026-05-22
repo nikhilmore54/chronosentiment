@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "core",
+    "cs-ingest",
     "services/api",
 ]
 resolver = "2"

@@ -11,15 +11,15 @@ LOG_DIR="analysis/live_multi"
 
 echo "ChronoSentiment Live"
 
-command -v streamlit >/dev/null 2>&1 || {
-  echo "streamlit not found in PATH" >&2
-  exit 1
-}
-
 if [ -d ".venv" ]; then
   # shellcheck source=/dev/null
   source .venv/bin/activate
 fi
+
+command -v streamlit >/dev/null 2>&1 || {
+  echo "streamlit not found in PATH" >&2
+  exit 1
+}
 
 PY="python3"
 if [ -x ".venv/bin/python" ]; then
@@ -47,9 +47,14 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 PIPE_PID=""
+DAEMON_PID=""
 PG_KILL=false
 cleanup() {
   echo "Shutting down pipelines..."
+  if [[ -n "${DAEMON_PID:-}" ]] && kill -0 "${DAEMON_PID}" 2>/dev/null; then
+    kill "${DAEMON_PID}" 2>/dev/null || true
+    wait "${DAEMON_PID}" 2>/dev/null || true
+  fi
   if [[ -n "${PIPE_PID:-}" ]] && kill -0 "${PIPE_PID}" 2>/dev/null; then
     if [[ "${PG_KILL}" == "true" ]]; then
       kill -TERM -"${PIPE_PID}" 2>/dev/null || true
@@ -73,6 +78,10 @@ else
   "${PY}" scripts/run_multi_engine.py > logs/pipeline.out 2>&1 &
 fi
 PIPE_PID=$!
+
+echo "Starting Telemetry Archiver Daemon..."
+"${PY}" scripts/telemetry_archive_daemon.py > logs/archiver.out 2>&1 &
+DAEMON_PID=$!
 
 sleep 2
 

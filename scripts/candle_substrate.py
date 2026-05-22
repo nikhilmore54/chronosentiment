@@ -241,3 +241,86 @@ def freeze_cohort(
     print(f"   Timeline fingerprint: {manifest['timeline_fingerprint']}")
     print(f"   Bars: {total_bars:,} | Intervals: {len(sorted_ts)} | Hash: {manifest['substrate_hash']}")
     return manifest_path
+
+
+def incremental_update_cohort(
+    cohort_file: Path,
+    batch_id: int,
+    interval: str = "5m",
+    max_workers: int = 15,
+    root: Path = CANDLE_ROOT,
+) -> Path:
+    import concurrent.futures
+
+    symbols = [line.strip() for line in cohort_file.read_text().splitlines() if line.strip()]
+    batch_dir = frozen_batch_dir(batch_id, root)
+    sym_dir = batch_dir / "symbols"
+    if not sym_dir.exists():
+        raise FileNotFoundError("Cannot incrementally update: Substrate does not exist.")
+
+    print(f"📥 Incrementally updating {len(symbols)} symbols → {batch_dir}")
+
+    all_ts: set[int] = set()
+    frozen_count = 0
+    total_bars = 0
+
+    def _update_one(sym: str) -> tuple[str, int, list[int]]:
+        # Fetch just 1d to capture the latest bars with minimal bandwidth
+        df_new = download_ticker(sym, interval, period="1d")
+        
+        path = symbol_path(batch_dir, sym)
+        if path.exists():
+            df_old = read_symbol_candles(path)
+            if not df_old.empty and not df_new.empty:
+                df = pd.concat([df_old, df_new])
+                df = df[~df.index.duplicated(keep="last")].sort_index()
+            elif not df_old.empty:
+                df = df_old
+            else:
+                df = df_new
+        else:
+            df = df_new
+
+        if df.empty:
+            return sym, 0, []
+            
+        recs = df_to_records(df)
+        write_symbol_candles(path, recs)
+        ts_list = [r["ts"] for r in recs]
+        return sym, len(recs), ts_list
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = {ex.submit(_update_one, s): s for s in symbols}
+        done = 0
+        for fut in concurrent.futures.as_completed(futures):
+            done += 1
+            sym, n_bars, ts_list = fut.result()
+            if n_bars > 0:
+                frozen_count += 1
+                total_bars += n_bars
+                all_ts.update(ts_list)
+            if done % 50 == 0 or done == len(symbols):
+                print(f"   Updated {done}/{len(symbols)} (with data: {frozen_count})...")
+
+    sorted_ts = sorted(all_ts)
+    manifest = {
+        "batch_id": batch_id,
+        "cohort_file": str(cohort_file),
+        "interval": interval,
+        "period": "incremental",
+        "symbols_cohort": len(symbols),
+        "symbols_frozen": frozen_count,
+        "total_bars": total_bars,
+        "timeline_intervals": len(sorted_ts),
+        "timeline_fingerprint": build_timeline_fingerprint(sorted_ts),
+        "timeline_first_ts": sorted_ts[0] if sorted_ts else None,
+        "timeline_last_ts": sorted_ts[-1] if sorted_ts else None,
+        "substrate_hash": compute_substrate_hash(batch_dir, symbols),
+        "frozen_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    manifest_path = batch_dir / "manifest.json"
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+    print(f"✅ Incremental substrate updated: {manifest_path}")
+    print(f"   Timeline fingerprint: {manifest['timeline_fingerprint']}")
+    return manifest_path

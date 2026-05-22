@@ -5,24 +5,19 @@ Replay certification chain — frozen full replay, optional live equivalence, cr
 Certification protocol (chronosentiment-core):
   - Always --fresh on certification archives (never reuse stale gzip/dedupe).
   - cs-ingest is canonical for --from-frozen production ingest.
-  - compare_ingest_parity uses --python-ingest vs cs-ingest for migration gate.
 
 Typical flows:
 
   # A) Full frozen replay (canonical cs-ingest)
-  python3 scripts/certify_replay_chain.py full-replay --batch-id 3 \\
+  python3 scripts/certify_replay_chain.py full-replay --batch-id 3 \
     --run-label cert_full --max-intervals 50 --fresh
 
   # B) Live vs replay equivalence (after live soak + freeze + replay_equiv on LIVE window)
-  python3 scripts/certify_replay_chain.py equiv-vs-live --batch-id 900 \\
+  python3 scripts/certify_replay_chain.py equiv-vs-live --batch-id 900 \
     --live-label lse_replay --replay-label replay_equiv
 
-  # C) Cross-runtime parity gate (legacy Python vs cs-ingest)
-  python3 scripts/certify_replay_chain.py ingest-parity --batch-id 3 \\
-    --max-intervals 50
-
-  # D) Post-soak: freeze → replay live window → equivalence (end-to-end loop)
-  python3 scripts/certify_replay_chain.py post-soak-cert --batch-id 900 \\
+  # C) Post-soak: freeze → replay live window → equivalence (end-to-end loop)
+  python3 scripts/certify_replay_chain.py post-soak-cert --batch-id 900 \
     --live-label lse_replay --replay-label replay_equiv --freeze
 """
 
@@ -66,8 +61,6 @@ def cmd_full_replay(args: argparse.Namespace) -> int:
         cmd.append("--fresh")
     if args.max_intervals is not None:
         cmd.extend(["--max-intervals", str(args.max_intervals)])
-    if args.python_ingest:
-        cmd.append("--python-ingest")
     return run(cmd, f"CERTIFY — FULL FROZEN REPLAY (batch {args.batch_id:03d})")
 
 
@@ -91,19 +84,7 @@ def cmd_equiv_vs_live(args: argparse.Namespace) -> int:
     return run(cmd, f"CERTIFY — LIVE vs REPLAY EQUIVALENCE (batch {args.batch_id:03d})")
 
 
-def cmd_ingest_parity(args: argparse.Namespace) -> int:
-    cmd = [
-        sys.executable,
-        str(ROOT / "scripts" / "compare_ingest_parity.py"),
-        "--batch-id",
-        str(args.batch_id),
-        "--start-interval",
-        str(args.start_interval),
-        "--max-intervals",
-        str(args.max_intervals),
-        "--run",
-    ]
-    return run(cmd, f"CERTIFY — INGEST PARITY (legacy Python vs cs-ingest)")
+
 
 
 def live_ts_interval_window(batch_id: int, live_ts: set[int]) -> tuple[list[int], int, int]:
@@ -184,7 +165,6 @@ def cmd_post_soak_cert(args: argparse.Namespace) -> int:
         start_interval=start_interval,
         max_intervals=max_intervals,
         fresh=True,
-        python_ingest=False,
     )
     steps.append(("replay-live-window", cmd_full_replay(replay_args)))
 
@@ -213,8 +193,6 @@ def _summarize(steps: list[tuple[str, int]]) -> int:
 
 def cmd_all(args: argparse.Namespace) -> int:
     steps: list[tuple[str, int]] = []
-    if not args.skip_parity:
-        steps.append(("ingest-parity", cmd_ingest_parity(args)))
     steps.append(("full-replay", cmd_full_replay(args)))
     live_dir = (
         ROOT
@@ -265,7 +243,6 @@ def build_parser() -> argparse.ArgumentParser:
     fr.add_argument("--max-intervals", type=int, default=None)
     fr.add_argument("--fresh", action="store_true", default=True)
     fr.add_argument("--no-fresh", action="store_false", dest="fresh")
-    fr.add_argument("--python-ingest", action="store_true")
 
     ev = sub.add_parser("equiv-vs-live", parents=[common], help="compare_replay_equivalence")
     ev.add_argument("--live-label", default="live")
@@ -273,9 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--ts-min", type=int, default=0)
     ev.add_argument("--ts-max", type=int, default=0)
 
-    ip = sub.add_parser("ingest-parity", parents=[common], help="Legacy Python vs cs-ingest parity")
-    ip.add_argument("--start-interval", type=int, default=0)
-    ip.add_argument("--max-intervals", type=int, default=50)
+
 
     al = sub.add_parser("all", parents=[common], help="Parity + full replay + live equiv if present")
     al.add_argument("--run-label", default="cert_full")
@@ -285,9 +260,7 @@ def build_parser() -> argparse.ArgumentParser:
     al.add_argument("--max-intervals", type=int, default=50)
     al.add_argument("--fresh", action="store_true", default=True)
     al.add_argument("--no-fresh", action="store_false", dest="fresh")
-    al.add_argument("--skip-parity", action="store_true")
     al.add_argument("--skip-equiv", action="store_true", help="Skip live vs replay (e.g. cert_full is not live-window replay)")
-    al.add_argument("--python-ingest", action="store_true")
     al.add_argument("--ts-min", type=int, default=0)
     al.add_argument("--ts-max", type=int, default=0)
 
@@ -317,7 +290,6 @@ def main() -> int:
     handlers = {
         "full-replay": cmd_full_replay,
         "equiv-vs-live": cmd_equiv_vs_live,
-        "ingest-parity": cmd_ingest_parity,
         "all": cmd_all,
         "post-soak-cert": cmd_post_soak_cert,
     }

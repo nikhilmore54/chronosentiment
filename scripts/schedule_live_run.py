@@ -103,9 +103,8 @@ def main():
         "python3", "scripts/run_live_session.py",
         "--batch-id", "903",
         "--cycles", "6",
-        "--live-only",
-        "--quorum-ratio", "0.25",
-        "--provider-lag-sec", "8"
+        "--provider-lag-sec", "8",
+        "--temporal-observatory"
     ]
     live_ok = run_command(live_cmd)
     
@@ -137,14 +136,6 @@ def main():
     ]
     cert_ok = run_command(cert_cmd)
     
-    # ── Phase 5: TRL Summary Extraction ──
-    trl_cmd = [
-        "python3", "scripts/extract_trl_summary.py",
-        "--batch-id", "903",
-        "--run-label", "live"
-    ]
-    trl_ok = run_command(trl_cmd)
-
     # ── Persist machine-queryable exit codes ──
     # Allows post-hoc audit to distinguish phase failures without parsing stdout.
     # exit_code 0 = success, 1 = failure (mirrors Unix convention).
@@ -158,9 +149,8 @@ def main():
             "freeze":        {"exit_code": 0 if freeze_ok else 1, "success": freeze_ok},
             "replay":        {"exit_code": 0 if replay_ok else 1, "success": replay_ok},
             "certification": {"exit_code": 0 if cert_ok   else 1, "success": cert_ok},
-            "trl_summary":   {"exit_code": 0 if trl_ok    else 1, "success": trl_ok},
         },
-        "all_succeeded": all([live_ok, freeze_ok, replay_ok, cert_ok, trl_ok]),
+        "all_succeeded": all([live_ok, freeze_ok, replay_ok, cert_ok]),
     }
     with open(metadata_dir / "pipeline_results.json", "w") as f:
         json.dump(pipeline_results, f, indent=4)
@@ -173,7 +163,6 @@ def main():
     print(f"  2. Substrate Freeze      : {'SUCCESS ✅' if freeze_ok else 'FAILED ❌'}")
     print(f"  3. Deterministic Replay  : {'SUCCESS ✅' if replay_ok else 'FAILED ❌'}")
     print(f"  4. Replay Certification  : {'SUCCESS ✅' if cert_ok   else 'FAILED ❌'}")
-    print(f"  5. TRL Summary Extraction: {'SUCCESS ✅' if trl_ok    else 'FAILED ❌'}")
     print("=" * 80)
     print("  Verification complete. Logs stored and certified in state_archive.")
     print("=" * 80)
