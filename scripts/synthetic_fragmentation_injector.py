@@ -41,7 +41,7 @@ def inject_topology(ledger_path: Path, mode: str):
     history_accept = []
     
     with open(ledger_path, 'r') as f_in, open(out_path, 'w') as f_out:
-        for line in f_in:
+        for row_index, line in enumerate(f_in):
             if not line.strip(): continue
             row = json.loads(line)
             if not row.get("admissibility"): continue
@@ -88,6 +88,29 @@ def inject_topology(ledger_path: Path, mode: str):
                 accept = 0.0
                 lag_stddev = 10.0
                 median_lag = 300
+            elif mode.startswith("osc_"):
+                import math
+                import random
+                parts = mode.split("_")
+                period = int(parts[1][1:])
+                amplitude = int(parts[2][1:]) / 100.0
+                noise = 0.0
+                if len(parts) > 3 and parts[3].startswith("N"):
+                    noise = int(parts[3][1:]) / 100.0
+                
+                # A cosine wave from 1.0 down to (1.0 - amplitude)
+                wave = (math.cos(2 * math.pi * (row_index / period)) + 1) / 2 # 0.0 to 1.0
+                
+                # Inject bounded stochastic noise
+                if noise > 0.0:
+                    wave_noise = random.uniform(-noise, noise)
+                    wave = max(0.0, min(1.0, wave + wave_noise))
+                    
+                wave_prog = (1.0 - amplitude) + (amplitude * wave)
+                strict = wave_prog
+                accept = min(1.0, wave_prog + 0.3)
+                lag_stddev = 45.0
+                median_lag = int(90 * amplitude)
             else:
                 pass # Baseline
                 
