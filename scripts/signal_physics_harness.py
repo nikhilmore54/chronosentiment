@@ -30,12 +30,12 @@ def deterministic_acceptance(ts, symbol, acceptance_ratio):
 def run_harness(ledger_path: Path, strategy_id: str):
     from candle_substrate import load_frozen_cohort
     
-    batch_id = 9904
-    batch_dir = Path("state_archive/batches/batch_9904/runs/live")
+    batch_id = 10000
+    batch_dir = Path("state_archive/batches/batch_10000/runs/live")
     
     data, _ = load_frozen_cohort(batch_id, ["AAPL"])
     if "AAPL" not in data or data["AAPL"].empty:
-        print("❌ No frozen telemetry found for AAPL in batch 9904.")
+        print("❌ No frozen telemetry found for AAPL in batch 10000.")
         return
         
     df = data["AAPL"].sort_index()
@@ -175,7 +175,7 @@ def run_harness(ledger_path: Path, strategy_id: str):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ledger", type=str, default="state_archive/batches/batch_9904/runs/live/metadata/live_session_steps.jsonl")
+    parser.add_argument("--ledger", type=str, default="state_archive/batches/batch_10000/runs/live/metadata/live_session_steps.jsonl")
     parser.add_argument("--strategy", type=str, default="rolling_window_momentum_v1")
     args = parser.parse_args()
     run_harness(Path(args.ledger), args.strategy)

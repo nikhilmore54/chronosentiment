@@ -118,7 +118,7 @@ def run_mapper():
         "topo_collapse_300": "synthetic_collapse_steps"
     }
     
-    base_dir = Path("state_archive/batches/batch_9904/runs/live/metadata")
+    base_dir = Path("state_archive/batches/batch_10000/runs/live/metadata")
     
     registry_file = Path("ECOLOGY_ATLAS_v1.json")
     if registry_file.exists():

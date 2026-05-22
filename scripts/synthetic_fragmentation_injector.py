@@ -105,6 +105,6 @@ def inject_topology(ledger_path: Path, mode: str):
             f_out.write(json.dumps(row) + "\n")
             
 if __name__ == "__main__":
-    base = Path("state_archive/batches/batch_9904/runs/live/metadata/live_session_steps.jsonl")
+    base = Path("state_archive/batches/batch_10000/runs/live/metadata/live_session_steps.jsonl")
     for mode in ["uniform_delay", "bimodal", "rolling_wave", "anticipatory", "collapse"]:
         inject_topology(base, mode)
