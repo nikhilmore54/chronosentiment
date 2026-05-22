@@ -13,6 +13,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -25,8 +29,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "812c2df33cf04046"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "91f47c07de6cf481"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -40,6 +44,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -52,8 +60,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "216b1a1ed8c6fefc"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "16c7701881ff57f8"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -66,6 +74,10 @@
         "executed": 0,
         "blocked": 1,
         "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
       },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.8,
@@ -80,8 +92,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "e20633ee53a48846",
-      "ecology_fingerprint_hash": "6c80d4174aaa17a8"
+      "replay_hash": "2f794588603a364b",
+      "ecology_fingerprint_hash": "3a8c43ba760b8ccb"
     },
     {
       "strategy_id": "momentum_2tick_v1",
@@ -95,6 +107,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -107,20 +123,24 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "7578611f1675582e",
-      "ecology_fingerprint_hash": "e91e44b5e745befa"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "7736ee252f4453ef"
     },
     {
       "strategy_id": "momentum_2tick_v1",
       "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 1,
       "topology_severity_index": 1.0,
       "execution_stats": {
         "generated": 1,
         "executed": 0,
-        "blocked": 1,
-        "execution_rate": 0.0
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 9.76,
+        "avg_state_overlap": 0.67
       },
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
@@ -130,12 +150,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0.0,
-        "collapse_resilience": 1.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "550a0cc11c93ab26",
-      "ecology_fingerprint_hash": "f73a9ef0f6c053f0"
+      "replay_hash": "12dae67f4e9f93f3",
+      "ecology_fingerprint_hash": "144394cb09312ca6"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -149,6 +169,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -161,8 +185,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "edab6b630d9a2aab"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "fe2d4e7aa11c2348"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -176,6 +200,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -188,8 +216,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "1d76591ff25dddfc"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "4155de2d1f05dd27"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -202,6 +230,10 @@
         "executed": 0,
         "blocked": 1,
         "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
       },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.8,
@@ -216,8 +248,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "c505b751abe4d887",
-      "ecology_fingerprint_hash": "d45804e57ffe0b17"
+      "replay_hash": "2f794588603a364b",
+      "ecology_fingerprint_hash": "09a8a3fe132023eb"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
@@ -231,6 +263,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -243,20 +279,24 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "bddfdb7b56ec838a",
-      "ecology_fingerprint_hash": "0080c7ddd695f64a"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "05192e9f036e1de8"
     },
     {
       "strategy_id": "mean_reversion_2tick_v1",
       "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 1,
       "topology_severity_index": 1.0,
       "execution_stats": {
         "generated": 1,
         "executed": 0,
-        "blocked": 1,
-        "execution_rate": 0.0
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 9.76,
+        "avg_state_overlap": 0.67
       },
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
@@ -266,12 +306,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0.0,
-        "collapse_resilience": 1.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "3adc4b9106492748",
-      "ecology_fingerprint_hash": "739f61cec5c8965f"
+      "replay_hash": "12dae67f4e9f93f3",
+      "ecology_fingerprint_hash": "0e66883b173227c5"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -285,6 +325,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -297,8 +341,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "b5ea873df7e6aabb",
-      "ecology_fingerprint_hash": "fcfdc761b1d09277"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "2f87a33291313314"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -312,6 +356,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -324,8 +372,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "b5ea873df7e6aabb",
-      "ecology_fingerprint_hash": "1ff4aa3158ef19b9"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "68c3a8ec5ab5faf2"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -338,6 +386,10 @@
         "executed": 0,
         "blocked": 1,
         "execution_rate": 0.0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
       },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 0.8,
@@ -352,8 +404,8 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "7df94ab74b87f3be",
-      "ecology_fingerprint_hash": "304d21eac4c81930"
+      "replay_hash": "2f794588603a364b",
+      "ecology_fingerprint_hash": "2d379371a5a77250"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
@@ -367,6 +419,10 @@
         "blocked": 0,
         "execution_rate": 1.0
       },
+      "memory_coherence": {
+        "avg_window_distance": 0.0,
+        "avg_state_overlap": 1.0
+      },
       "regime_exposure": {
         "FRAGMENTED_BUT_USABLE": 1.0
       },
@@ -379,20 +435,24 @@
         "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "b5ea873df7e6aabb",
-      "ecology_fingerprint_hash": "8f51326b65519df1"
+      "replay_hash": "03d288cb826a5f4f",
+      "ecology_fingerprint_hash": "f1d2dc7789b90fd7"
     },
     {
       "strategy_id": "rolling_window_momentum_v1",
       "topology_id": "topo_collapse_300",
-      "intent_sequence_stable": true,
-      "cognitive_divergences": 0,
+      "intent_sequence_stable": false,
+      "cognitive_divergences": 1,
       "topology_severity_index": 1.0,
       "execution_stats": {
         "generated": 1,
         "executed": 0,
-        "blocked": 1,
-        "execution_rate": 0.0
+        "blocked": 0,
+        "execution_rate": 0
+      },
+      "memory_coherence": {
+        "avg_window_distance": 9.76,
+        "avg_state_overlap": 0.67
       },
       "regime_exposure": {
         "DEGRADED_OBSERVABILITY": 1.0
@@ -402,12 +462,12 @@
       },
       "ecology_properties": {
         "sync_sensitivity": 0.0,
-        "fragmentation_tolerance": 0.0,
-        "collapse_resilience": 1.0,
+        "fragmentation_tolerance": 0,
+        "collapse_resilience": 0.0,
         "replay_stable": true
       },
-      "replay_hash": "0ce828e04bf0cdd3",
-      "ecology_fingerprint_hash": "289b89c054e94053"
+      "replay_hash": "12dae67f4e9f93f3",
+      "ecology_fingerprint_hash": "c6c4249d5c630a22"
     }
   ]
 }

@@ -12,6 +12,8 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
         
     execution_tape = []
     diverged_count = 0
+    mci_overlaps = []
+    mci_distances = []
     with open(physics_ledger_path, 'r') as f:
         for line in f:
             if line.strip():
@@ -20,6 +22,10 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
                 trace = row.get("state_divergence_trace", {})
                 if trace.get("divergence_reason"):
                     diverged_count += 1
+                if "memory_coherence_index" in trace:
+                    mci = trace["memory_coherence_index"]
+                    mci_overlaps.append(mci["state_overlap_ratio"])
+                    mci_distances.append(mci["window_distance"])
                     
     regimes = []
     lags = []
@@ -74,6 +80,10 @@ def compute_fingerprint(physics_ledger_path: Path, synthetic_ledger_path: Path, 
             "executed": executed,
             "blocked": blocked,
             "execution_rate": execution_rate
+        },
+        "memory_coherence": {
+            "avg_window_distance": round(sum(mci_distances)/len(mci_distances), 2) if mci_distances else 0.0,
+            "avg_state_overlap": round(sum(mci_overlaps)/len(mci_overlaps), 2) if mci_overlaps else 1.0
         },
         "regime_exposure": regime_exposure,
         "lag_profile": {

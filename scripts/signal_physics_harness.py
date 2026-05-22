@@ -97,8 +97,8 @@ def run_harness(ledger_path: Path, strategy_id: str):
         def generate_intent(window):
             if strategy_id == "rolling_window_momentum_v1":
                 delta = window[-1] - window[0]
-                if delta > 0.0: return "ENTER_LONG"
-                if delta < 0.0: return "ENTER_SHORT"
+                if delta > 5.0: return "ENTER_LONG"
+                if delta < -5.0: return "ENTER_SHORT"
                 return "HOLD"
             else:
                 # Fallback to 2-tick stateless
@@ -124,6 +124,11 @@ def run_harness(ledger_path: Path, strategy_id: str):
         else:
             action = "BLOCKED"
             
+        # Memory Coherence Index (MCI)
+        overlap_count = sum(1 for a, b in zip(window_baseline, window_fragmented) if a == b)
+        state_overlap_ratio = round(overlap_count / WINDOW_SIZE, 2)
+        window_distance = round(sum(abs(a - b) for a, b in zip(window_baseline, window_fragmented)), 2)
+        
         record = {
             "barrier_ts": ts,
             "intent": intent_fragmented,
@@ -134,7 +139,11 @@ def run_harness(ledger_path: Path, strategy_id: str):
                 "window_state_fragmented": [round(x, 2) for x in window_fragmented],
                 "intent_live": intent_live,
                 "intent_fragmented": intent_fragmented,
-                "divergence_reason": "chronological discontinuity" if is_divergent else None
+                "divergence_reason": "chronological discontinuity" if is_divergent else None,
+                "memory_coherence_index": {
+                    "window_distance": window_distance,
+                    "state_overlap_ratio": state_overlap_ratio
+                }
             }
         }
         execution_tape.append(record)
