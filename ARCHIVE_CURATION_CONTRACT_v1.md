@@ -72,3 +72,12 @@ To prevent the premature formalization of proto-theories and causal explanatory 
 4. **Avoid Universal Explanations**: Do NOT use terms like "proves," "is," "cannot," "always," "fundamentally," or "institutional padding."
 5. **Prefer Observational Action Verbs**: Use terms like "observed," "corresponded," "did not reproduce," "tested conditions," and "emitted non-collapsing geometry."
 The observatory is a continuity microscope, not a causal engine. It reveals deformation structures; it does not theorize the physics of markets.
+
+## Rule 11: Claim Confidence States
+To prevent temporary observational patterns from hardening into assumed natural categories, all claims must be assigned one of the following explicit confidence states:
+- **Observed**: A single replay-local occurrence.
+- **Recurring**: Repeated under similar ecologies or structural conditions.
+- **Cross-Ecology Recurring**: Survived structural transfer into a radically different ecology (e.g., Crypto to Equities).
+- **Boundary Stable**: Survived explicit falsification pressure (null conditions) and negative evidence testing.
+- **Reserved**: Insufficient recurrence; held in isolation pending future observation.
+Under no circumstances should the archive use terms like "validated," "proven," "true," or "law."
