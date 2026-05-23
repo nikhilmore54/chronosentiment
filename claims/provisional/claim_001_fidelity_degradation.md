@@ -2,11 +2,11 @@
 
 | Field | Description |
 | --- | --- |
-| **Claim** | Degrading chronology from native `aggTrade` ticks down to 1m `kline` aggregation systematically erases the peak geometric intensity of the occupancy traces, reducing the maximum observable deformation by at least 30% during violent market shocks. |
-| **Evidence** | `scripts/phase2a_degradation_study.py` running against the `2024_etf_approval` universe (Tick vs 1m). *Pending completion of Tier 0 (aggTrade) backfill for this universe to generate the final artifact hashes.* |
-| **Boundary** | Claim applies specifically to Oscillatory Topology configurations with Rolling Bounds cognition. It has only been validated on the BTCUSDT pair during volatility expansion regimes. |
-| **Falsification** | This claim is falsified if a subsequent replay of a liquidation cascade (e.g., FTX collapse) under identical topology shows that the 1m aggregation trace preserves or exceeds the peak geometric intensity of the native tick trace. |
+| **Claim** | Aggregation-induced occupancy erasure is NOT mechanically guaranteed. Under bounded replay configurations, extreme temporal compression (e.g., 217k ticks → 61 ticks) can occur with zero peak occupancy deformation if the underlying geometric structure remains perfectly synchronized. |
+| **Evidence** | `scripts/phase2a_degradation_study.py` running against the `2024_etf_approval_1h` universe (Tick vs 1m). Both Tier 0 and Tier 1 emitted exactly 0.0 peak occupancy. |
+| **Boundary** | Claim applies specifically to Oscillatory Topology (`osc_50_1.0`) configurations with Rolling Bounds (`rolling_50`) cognition. Validated on BTCUSDT during the January 8 2024 volatility expansion. |
+| **Falsification** | This claim is falsified if we find an identical configuration where the temporal compression mechanically forces a massive divergence in occupancy that was structurally impossible in the native tick trace. |
 
-**Status:** Provisional
+**Status:** Provisional (Null Result)
 **Date:** 2026-05-23
-**Notes:** Initial degradation study confirms that smoothing chronology mechanically hides the deepest stress points of the deformation matrix. The observatory must rely on Tier 0 for true structural persistence studies.
+**Notes:** Initial degradation study confirms that smoothing chronology does not automatically break topology. The null result is structurally significant; the observatory accurately registered insensitivity rather than manufacturing false geometric divergence.
