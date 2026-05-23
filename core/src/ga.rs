@@ -1281,7 +1281,7 @@ pub fn calculate_alignment_centroid(evals: Vec<&StrategyEvaluation>) -> Strategy
     if evals.is_empty() {
         return random_strategy(
             &GaConfig::default(),
-            &mut rand::rngs::StdRng::from_entropy(),
+            &mut StdRng::seed_from_u64(0xDEAD_BEEF_CAFE_1234),
         );
     }
 
@@ -7102,7 +7102,13 @@ pub fn evaluate_strategy(
     expansion_bias: f64,
     strategy_index: usize,
 ) -> Option<StrategyEvaluation> {
-    let mut rng = rand::thread_rng();
+    // Deterministic RNG: seed derived from config.seed + generation + strategy_index
+    // so every (run, generation, strategy) triple produces identical results.
+    let mut rng = StdRng::seed_from_u64(
+        config.seed
+            ^ (generation as u64).wrapping_mul(1_000_003)
+            ^ (strategy_index as u64).wrapping_mul(7_919),
+    );
     let mut executed_trades: Vec<GaRoundTripOutcome> = Vec::new();
     let mut pnl_history_learn: Vec<GaRoundTripOutcome> = Vec::new();
     let mut injected_trades: Vec<GaRoundTripOutcome> = Vec::new();

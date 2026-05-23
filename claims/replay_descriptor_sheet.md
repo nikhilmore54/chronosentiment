@@ -36,6 +36,9 @@ This sheet stabilizes replay bookkeeping without attempting to compress or model
 | `2026_amd_sync_vacuum_shift_pos_10m_5m` | Bounded (Equity) | Extraction Retest | +10m Perturbation | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Correspondence (Robust) |
 | `2026_nvda_sync_vacuum_shift_pos_20m_5m` | Bounded (Equity) | Extraction Retest | +20m Perturbation | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Collapse (41 -> 34) | Correspondence (Robust) |
 | `2026_amd_sync_vacuum_shift_pos_20m_5m` | Bounded (Equity) | Extraction Retest | +20m Perturbation | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 33) | Correspondence (Robust) |
+| `2026_aapl_downward_drop_shift_neg_10m_5m` | Bounded (Equity) | Extraction Retest | -10m Perturbation | 5m Presentation | Composite | N/A | Downward Concentration | Preservation (42 -> 37) | Preservation (Robust) |
+| `2026_aapl_downward_drop_shift_pos_10m_5m` | Bounded (Equity) | Extraction Retest | +10m Perturbation | 5m Presentation | Composite | N/A | Downward Concentration | Preservation (42 -> 38) | Preservation (Robust) |
+| `2026_aapl_downward_drop_shift_pos_20m_5m` | Bounded (Equity) | Extraction Retest | +20m Perturbation | 5m Presentation | Composite | N/A | Downward Concentration | Preservation (42 -> 40) | Preservation (Robust) |
 | `2026_nvda_sync_drop_weak_5m` | Bounded (Equity) | Downward | Weak (-0.55%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 37) | Divergence |
 | `2026_amd_sync_drop_weak_5m` | Bounded (Equity) | Downward | Weak (-0.90%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Divergence |
 | `2026_nvda_sync_drop_moderate_5m` | Bounded (Equity) | Downward | Moderate (-1.60%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 34) | Divergence |
