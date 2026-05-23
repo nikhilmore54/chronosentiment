@@ -1,8 +1,9 @@
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, BufRead, BufReader};
 use std::path::PathBuf;
 use clap::Parser;
 use sha2::{Sha256, Digest};
+use serde::Deserialize;
 
 use chronosentiment_core::topology::TopologyField;
 use chronosentiment_core::cognition::CognitionGeometry;
@@ -16,11 +17,19 @@ struct Args {
     #[arg(short, long)]
     substrate: String,
 
+    #[arg(long)]
+    substrate_file: Option<String>,
+
     #[arg(short, long)]
     topology: String,
 
     #[arg(short, long)]
     cognition: String,
+}
+
+#[derive(Deserialize)]
+struct ChronologyEvent {
+    close: f64,
 }
 
 fn parse_topology(ident: &str) -> TopologyField {
@@ -56,14 +65,24 @@ fn main() {
     // 1. Load the raw price substrate (mocked here for pure simulation, usually pulled from CSV/DB)
     // To maintain strict generic bounds, we'll simulate a 4320-tick random walk or read from existing substrate.
     // For pure architectural trace generation over synthetic topologies, we'll use a continuous mock series.
-    let mut prices = Vec::with_capacity(4320);
-    let mut current_price = 40000.0;
-    for i in 0..4320 {
-        // Deterministic pseudo-random walk
-        let hash_int = (i as u64).wrapping_mul(99887766554433).wrapping_add(12345);
-        let step = ((hash_int % 100) as f64 / 100.0) * 10.0 - 5.0;
-        current_price += step;
-        prices.push(current_price.max(1.0));
+    let mut prices = Vec::new();
+    
+    if let Some(file_path) = &args.substrate_file {
+        let file = File::open(file_path).expect("Failed to open substrate file");
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let event: ChronologyEvent = serde_json::from_str(&line).expect("Failed to parse jsonl event");
+            prices.push(event.close.max(1.0));
+        }
+    } else {
+        let mut current_price = 40000.0;
+        for i in 0..4320 {
+            let hash_int = (i as u64).wrapping_mul(99887766554433).wrapping_add(12345);
+            let step = ((hash_int % 100) as f64 / 100.0) * 10.0 - 5.0;
+            current_price += step;
+            prices.push(current_price.max(1.0));
+        }
     }
 
     // Hash the substrate to bind the trace to the specific physical data
