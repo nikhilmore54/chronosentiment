@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chrono:schema:replay_response:v1",
+  "title": "ReplayResponse",
+  "description": "The canonical replay reconstruction authority contract. Emitted by the Replay Engine in response to a replay request. Establishes deterministic reconstruction authority (Constitutional Law One). The UI replay slider must request a certified state snapshot at a given sequence_id from this schema — it must never filter or reconstruct events locally.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "strategy_id",
+    "requested_sequence_id",
+    "certification_state",
+    "reconstructed_at_ns",
+    "event_window",
+    "portfolio_state",
+    "replay_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this replay session. All AuthoritativeEvents emitted during this session carry this session_id."
+    },
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,128}$",
+      "description": "The strategy instance being replayed."
+    },
+    "requested_sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The sequence_id cursor position requested by the observer. The Replay Engine reconstructs state as of this event. This is the backend-authoritative replay cursor — the UI slider maps to this field."
+    },
+    "certification_state": {
+      "type": "string",
+      "enum": [
+        "CERTIFIED",
+        "DEGRADED",
+        "PARTIAL",
+        "INVALID"
+      ],
+      "description": "Replay Engine certification of this reconstruction. CERTIFIED = deterministic replay confirmed. DEGRADED = minor data gaps, replay valid with caveats. PARTIAL = incomplete event window, replay approximate. INVALID = replay cannot be certified. UI must render this field directly — it must never compute certification client-side."
+    },
+    "certification_reason": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Optional. Human-readable explanation of certification_state when not CERTIFIED. Backend-emitted — UI renders verbatim."
+    },
+    "reconstructed_at_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Nanosecond timestamp at which the Replay Engine performed this reconstruction. Establishes reconstruction provenance."
+    },
+    "event_window": {
+      "type": "object",
+      "required": ["first_sequence_id", "last_sequence_id", "event_count", "events"],
+      "additionalProperties": false,
+      "properties": {
+        "first_sequence_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "sequence_id of the first event in this replay window."
+        },
+        "last_sequence_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "sequence_id of the last event in this replay window."
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of events in this window. UI must not count events independently."
+        },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "chrono:schema:event:v1" },
+          "description": "Ordered array of AuthoritativeEvents in this replay window. Ordered by sequence_id ascending. UI renders in this order — no client-side sorting or filtering."
+        }
+      }
+    },
+    "portfolio_state": {
+      "type": "object",
+      "required": ["positions", "cash_balance", "total_equity", "unrealized_pnl", "realized_pnl"],
+      "additionalProperties": false,
+      "description": "Certified portfolio state as reconstructed at requested_sequence_id. All values are backend-computed.",
+      "properties": {
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["symbol", "quantity", "avg_entry_price", "current_price", "unrealized_pnl"],
+            "additionalProperties": false,
+            "properties": {
+              "symbol": { "type": "string" },
+              "quantity": { "type": "number" },
+              "avg_entry_price": { "type": "number", "minimum": 0 },
+              "current_price": { "type": "number", "minimum": 0 },
+              "unrealized_pnl": { "type": "number" }
+            }
+          }
+        },
+        "cash_balance": { "type": "number" },
+        "total_equity": { "type": "number" },
+        "unrealized_pnl": { "type": "number" },
+        "realized_pnl": { "type": "number" }
+      }
+    },
+    "causal_chain": {
+      "type": "array",
+      "description": "Optional. Backend-certified causal ancestry chain for the event at requested_sequence_id. Each entry is a sequence_id of an ancestor event. UI must not derive causal relationships independently — this field is the sole source of causal truth.",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "replay_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of (session_id + strategy_id + requested_sequence_id + certification_state + event_window.event_count). Enables Law One audit for replay surfaces."
+    }
+  }
+}

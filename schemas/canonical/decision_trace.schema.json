@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chrono:schema:decision_trace:v1",
+  "title": "DecisionTrace",
+  "description": "The canonical explainability authority contract. Emitted by the Strategy Evaluation Engine (SEE) for every STRATEGY_EVALUATED event. Provides the certified rationale for every trading decision. The UI must render this schema's fields as the sole source of decision explanation — it must never reconstruct, narrate, or synthesize decision rationale from raw events. This schema directly replaces the groupAndNarrateEvents() and compareNarrativeBlocks() client-side functions in the prototype UI.",
+  "type": "object",
+  "required": [
+    "trace_id",
+    "emitted_at_ns",
+    "anchor_sequence_id",
+    "strategy_id",
+    "decision",
+    "signal_inputs",
+    "narrative_blocks",
+    "causal_ancestry",
+    "trace_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "trace_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this decision trace."
+    },
+    "emitted_at_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Nanosecond timestamp at which the SEE emitted this trace."
+    },
+    "anchor_sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The sequence_id of the STRATEGY_EVALUATED AuthoritativeEvent this trace explains. One-to-one relationship — every STRATEGY_EVALUATED event has exactly one DecisionTrace."
+    },
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,128}$",
+      "description": "The strategy instance that produced this decision."
+    },
+    "decision": {
+      "type": "object",
+      "required": ["action", "symbol", "confidence", "verdict"],
+      "additionalProperties": false,
+      "description": "The certified decision output. All fields are backend-computed. The UI verdict and confidence displays in StrategyInspector.js (lines 246-273) must be replaced by these fields.",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["BUY", "SELL", "HOLD", "CLOSE", "NO_ACTION"],
+          "description": "The certified trading action. Backend-computed — UI must not infer action from signal values."
+        },
+        "symbol": {
+          "type": "string",
+          "description": "The instrument symbol this decision concerns."
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional. Order quantity. Present for BUY, SELL, CLOSE actions."
+        },
+        "price_target": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional. Target execution price. Present when the strategy specifies a limit."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Backend-certified confidence score (0.0–1.0). Replaces client-side confidence computation in StrategyInspector.js:246-273."
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["STRONG_BUY", "BUY", "WEAK_BUY", "NEUTRAL", "WEAK_SELL", "SELL", "STRONG_SELL"],
+          "description": "Backend-certified verdict classification. Replaces client-side verdict derivation in StrategyInspector.js:246-273."
+        }
+      }
+    },
+    "signal_inputs": {
+      "type": "array",
+      "description": "Ordered array of signal inputs evaluated to produce this decision. Backend-certified — UI must not recompute signal contributions.",
+      "items": {
+        "type": "object",
+        "required": ["signal_id", "signal_name", "raw_value", "normalized_value", "weight", "contribution"],
+        "additionalProperties": false,
+        "properties": {
+          "signal_id": { "type": "string" },
+          "signal_name": { "type": "string", "maxLength": 128 },
+          "raw_value": { "type": "number" },
+          "normalized_value": {
+            "type": "number",
+            "minimum": -1.0,
+            "maximum": 1.0,
+            "description": "Signal value normalized to [-1, 1] by the backend."
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Backend-assigned signal weight for this strategy configuration."
+          },
+          "contribution": {
+            "type": "number",
+            "minimum": -1.0,
+            "maximum": 1.0,
+            "description": "Backend-computed weighted contribution of this signal to the final decision score."
+          },
+          "source_sequence_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional. The sequence_id of the SIGNAL_RECEIVED event that produced this value. Establishes causal lineage."
+          }
+        }
+      }
+    },
+    "narrative_blocks": {
+      "type": "array",
+      "description": "Ordered array of backend-emitted narrative blocks. This is the authoritative replacement for groupAndNarrateEvents() in StrategyInspector.js. The UI renders these blocks in order — it must not group, reorder, or synthesize narrative independently.",
+      "items": {
+        "type": "object",
+        "required": ["block_id", "group", "sequence_id", "narrative", "block_type"],
+        "additionalProperties": false,
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for this narrative block."
+          },
+          "group": {
+            "type": "string",
+            "enum": ["INTENT", "QUEUE", "EXECUTION", "SETTLEMENT", "GOVERNANCE"],
+            "description": "Backend-assigned narrative group. Replaces client-side grouping logic in groupAndNarrateEvents()."
+          },
+          "sequence_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The AuthoritativeEvent sequence_id this block narrates."
+          },
+          "narrative": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "Backend-emitted narrative text. UI renders verbatim — never paraphrases or reformats."
+          },
+          "block_type": {
+            "type": "string",
+            "enum": ["PRIMARY", "DERIVED", "CAUSAL_LINK", "DIVERGENCE_MARKER"],
+            "description": "Block type classification. DIVERGENCE_MARKER replaces client-side divergence detection in compareNarrativeBlocks()."
+          },
+          "parent_block_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional. Present for DERIVED and CAUSAL_LINK blocks. Backend-certified parent relationship — UI must not derive ancestry."
+          },
+          "divergence_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Optional. Present for DIVERGENCE_MARKER blocks. Backend-computed divergence score — replaces compareNarrativeBlocks() client-side computation."
+          }
+        }
+      }
+    },
+    "causal_ancestry": {
+      "type": "array",
+      "description": "Ordered array of sequence_ids representing the certified causal ancestry chain for this decision. Backend-certified — UI causal chain highlighting must use this field, never derive ancestry from event patterns.",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "ga_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Present when this decision was produced by a GA-optimized strategy. Provides certified GA lineage.",
+      "properties": {
+        "generation_number": { "type": "integer", "minimum": 0 },
+        "chromosome_id": { "type": "string" },
+        "fitness_score": { "type": "number" },
+        "parent_chromosome_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 2
+        },
+        "mutation_applied": { "type": "boolean" }
+      }
+    },
+    "trace_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of (trace_id + anchor_sequence_id + strategy_id + decision.action + decision.verdict). Enables Law One audit for all explainability surfaces."
+    }
+  }
+}

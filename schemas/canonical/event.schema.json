@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chrono:schema:event:v1",
+  "title": "AuthoritativeEvent",
+  "description": "The canonical chronology truth unit. Every state change in ChronoSentiment is represented as an AuthoritativeEvent. This schema is the sole source of chronology truth (Constitutional Law Two). No UI element may derive, infer, or synthesize event data outside this schema.",
+  "type": "object",
+  "required": [
+    "sequence_id",
+    "timestamp_ns",
+    "event_type",
+    "source_layer",
+    "payload",
+    "kernel_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing integer assigned by the Kernel Sequencer. Together with timestamp_ns, establishes total order. This is the replay cursor anchor."
+    },
+    "timestamp_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Nanosecond-precision wall clock timestamp at event emission. Combined with sequence_id, provides total chronological ordering."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "SIGNAL_RECEIVED",
+        "ORDER_QUEUED",
+        "ORDER_DISPATCHED",
+        "ORDER_FILLED",
+        "ORDER_REJECTED",
+        "ORDER_CANCELLED",
+        "POSITION_OPENED",
+        "POSITION_CLOSED",
+        "POSITION_MODIFIED",
+        "PORTFOLIO_REBALANCED",
+        "LATENCY_RECORDED",
+        "GOVERNOR_THROTTLE_APPLIED",
+        "GOVERNOR_THROTTLE_RELEASED",
+        "REPLAY_CHECKPOINT",
+        "STRATEGY_EVALUATED",
+        "GA_GENERATION_COMPLETE"
+      ],
+      "description": "Canonical event type classifier. Exhaustive enumeration — no client-side event types are valid."
+    },
+    "source_layer": {
+      "type": "string",
+      "enum": [
+        "KERNEL",
+        "SEQUENCER",
+        "LATENCY_LAYER",
+        "ESE",
+        "PORTFOLIO_ENGINE",
+        "GOVERNOR",
+        "GA_OPTIMIZER"
+      ],
+      "description": "The authority layer that emitted this event. Establishes provenance for replay certification."
+    },
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,128}$",
+      "description": "Optional. The strategy instance this event is associated with. Required for STRATEGY_EVALUATED and ORDER_* events."
+    },
+    "parent_sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional. The sequence_id of the causal ancestor event. Backend-certified causal lineage — the UI must not derive ancestry relationships independently."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-type-specific payload. Schema varies by event_type. All payload fields are backend-certified; UI renders without transformation."
+    },
+    "kernel_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of (sequence_id + timestamp_ns + event_type + source_layer + payload). Enables Law One audit: any UI element rendering event data must be traceable to a kernel_signature-certified event."
+    },
+    "replay_session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Optional. Present when this event was emitted during a replay session. Links event to its ReplayResponse context."
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chrono:schema:governor_telemetry:v1",
+  "title": "GovernorTelemetry",
+  "description": "The canonical governance visibility contract. Emitted by the Governor on a time-series cadence, providing a historical record of governance decisions, throttle events, and cohort transitions. Distinct from ObservatoryState (which is a point-in-time snapshot): GovernorTelemetry is a time-series stream of governance events. The UI must subscribe to this stream and render it without interpretation.",
+  "type": "object",
+  "required": [
+    "telemetry_id",
+    "emitted_at_ns",
+    "anchor_sequence_id",
+    "event_class",
+    "governor_id",
+    "payload",
+    "telemetry_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "telemetry_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this telemetry record."
+    },
+    "emitted_at_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Nanosecond timestamp at which the Governor emitted this telemetry record."
+    },
+    "anchor_sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The AuthoritativeEvent sequence_id that triggered or is associated with this telemetry record. Anchors governance decisions to the chronology."
+    },
+    "event_class": {
+      "type": "string",
+      "enum": [
+        "THROTTLE_APPLIED",
+        "THROTTLE_RELEASED",
+        "COHORT_TRANSITION",
+        "STRATEGY_ADMITTED",
+        "STRATEGY_EVICTED",
+        "STRATEGY_CERTIFIED",
+        "STRATEGY_DEGRADED",
+        "STRATEGY_RETIRED",
+        "GA_GENERATION_EVALUATED",
+        "GOVERNANCE_VIOLATION_DETECTED",
+        "REPLAY_AUTHORIZED",
+        "REPLAY_DENIED",
+        "SYSTEM_PHASE_TRANSITION"
+      ],
+      "description": "Canonical governance event classifier. Exhaustive enumeration — no client-side governance event types are valid."
+    },
+    "governor_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,64}$",
+      "description": "Identifier of the Governor instance that emitted this record."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["INFO", "WARNING", "CRITICAL"],
+      "description": "Optional. Governance severity classification. Backend-certified — UI must not reclassify severity."
+    },
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,128}$",
+      "description": "Optional. The strategy instance this telemetry record concerns. Required for STRATEGY_* event classes."
+    },
+    "cohort_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_\\-]{1,64}$",
+      "description": "Optional. The cohort this telemetry record concerns. Required for COHORT_TRANSITION and STRATEGY_ADMITTED/EVICTED events."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-class-specific telemetry payload. All fields are backend-certified. UI renders without transformation.",
+      "properties": {
+        "previous_state": {
+          "type": "string",
+          "description": "State before the governance transition. Present for transition event classes."
+        },
+        "next_state": {
+          "type": "string",
+          "description": "State after the governance transition. Present for transition event classes."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Human-readable governance decision rationale. Backend-emitted — UI renders verbatim."
+        },
+        "metric_snapshot": {
+          "type": "object",
+          "description": "Optional. Point-in-time metric values at the moment of the governance decision.",
+          "properties": {
+            "queue_depth": { "type": "integer", "minimum": 0 },
+            "fill_latency_ns": { "type": "integer", "minimum": 0 },
+            "sync_ratio": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "events_per_second": { "type": "number", "minimum": 0.0 }
+          }
+        },
+        "ga_generation": {
+          "type": "object",
+          "description": "Optional. Present for GA_GENERATION_EVALUATED events.",
+          "properties": {
+            "generation_number": { "type": "integer", "minimum": 0 },
+            "population_size": { "type": "integer", "minimum": 1 },
+            "best_fitness": { "type": "number" },
+            "mean_fitness": { "type": "number" },
+            "strategies_certified": { "type": "integer", "minimum": 0 },
+            "strategies_evicted": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "telemetry_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of (telemetry_id + anchor_sequence_id + event_class + governor_id). Enables Law One audit for all governance visibility surfaces."
+    }
+  }
+}

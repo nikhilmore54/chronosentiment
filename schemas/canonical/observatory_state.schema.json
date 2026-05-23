@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chrono:schema:observatory_state:v1",
+  "title": "ObservatoryState",
+  "description": "The canonical certified operational reality contract. Emitted by the Governor on a push cadence to all connected observers. This is the sole source of truth for the operational awareness strip in the UI. All hardcoded telemetry labels, queue depths, fill latencies, and sync ratios in the prototype UI are violations of this schema's authority.",
+  "type": "object",
+  "required": [
+    "snapshot_id",
+    "snapshot_at_ns",
+    "snapshot_sequence_id",
+    "system_phase",
+    "governor_state",
+    "kernel_state",
+    "active_strategies",
+    "observatory_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this observatory snapshot."
+    },
+    "snapshot_at_ns": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Nanosecond timestamp at which this snapshot was taken by the Governor."
+    },
+    "snapshot_sequence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The sequence_id of the most recent AuthoritativeEvent processed when this snapshot was taken. Anchors the snapshot to the chronology."
+    },
+    "system_phase": {
+      "type": "string",
+      "enum": [
+        "INITIALIZING",
+        "LIVE",
+        "REPLAYING",
+        "THROTTLED",
+        "DEGRADED",
+        "HALTED",
+        "MAINTENANCE"
+      ],
+      "description": "Certified system phase. The UI operational awareness strip must render this field directly. No client-side phase inference is valid."
+    },
+    "governor_state": {
+      "type": "object",
+      "required": ["throttle_state", "cohort_id", "active_cohort_size", "governor_version"],
+      "additionalProperties": false,
+      "description": "Governor telemetry. All fields are backend-certified. The UI awareness strip maps directly to these fields.",
+      "properties": {
+        "throttle_state": {
+          "type": "string",
+          "enum": ["OPEN", "THROTTLED", "CLOSED"],
+          "description": "Current governor throttle state. Maps to the THROTTLED status label in the prototype UI — that label must be replaced by this field."
+        },
+        "cohort_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]{1,64}$",
+          "description": "Active cohort identifier. The UI cohort display maps to this field."
+        },
+        "active_cohort_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of strategies in the active cohort."
+        },
+        "governor_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the Governor component."
+        }
+      }
+    },
+    "kernel_state": {
+      "type": "object",
+      "required": ["queue_depth", "fill_latency_ns", "sync_ratio", "events_per_second", "kernel_version"],
+      "additionalProperties": false,
+      "description": "Kernel operational metrics. These are the authoritative values for the hardcoded mock data in CompareStrategies.js (queue_depth=12, fill_latency=42ms, sync_ratio=0.91). Those hardcoded values are Law One violations; this schema is their replacement.",
+      "properties": {
+        "queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current event queue depth. Replaces hardcoded queue_depth=12 in CompareStrategies.js."
+        },
+        "fill_latency_ns": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current order fill latency in nanoseconds. Replaces hardcoded fill_latency=42ms in CompareStrategies.js."
+        },
+        "sync_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Current kernel sync ratio (0.0–1.0). Replaces hardcoded sync_ratio=0.91 in CompareStrategies.js."
+        },
+        "events_per_second": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Current event throughput rate."
+        },
+        "kernel_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the Kernel component."
+        }
+      }
+    },
+    "active_strategies": {
+      "type": "array",
+      "description": "Array of currently active strategy summaries. UI strategy list must be populated from this field — no client-side strategy enumeration.",
+      "items": {
+        "type": "object",
+        "required": ["strategy_id", "status", "current_sequence_id"],
+        "additionalProperties": false,
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_\\-]{1,128}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "PAUSED", "EVALUATING", "CERTIFIED", "DEGRADED", "RETIRED"],
+            "description": "Backend-certified strategy status. Replaces hardcoded CERTIFIED/DEGRADED/THROTTLED strings in CompareStrategies.js."
+          },
+          "current_sequence_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Most recent sequence_id processed by this strategy."
+          }
+        }
+      }
+    },
+    "observatory_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of (snapshot_id + snapshot_sequence_id + system_phase + governor_state.throttle_state + kernel_state.sync_ratio). Enables Law One audit for all observatory surface elements."
+    }
+  }
+}

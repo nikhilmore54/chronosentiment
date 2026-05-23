@@ -1,4 +1,4 @@
-# Claim 015: Correspondence Transition Boundary (Controlled Similarity Pairing)
+# Claim 015: Observed Correspondence Shift (Controlled Similarity Pairing)
 
 **Status:** Provisional (Phase 2E-I Evidence)
 **Date:** 2026-05-23
@@ -11,7 +11,7 @@
 - **Chronology Density:** 5m Presentation
 
 ## Core Assertion
-Across a magnitude ladder of synchronized semiconductor upward rallies (weak, moderate, strong), the archive recorded a direct transition from divergence to correspondence. For the NVDA universe, persistence geometry transitioned from preservation to fracture between the weak and moderate magnitudes. The AMD universe fractured consistently across all magnitudes. 
+Across a magnitude ladder of synchronized semiconductor upward rallies (weak, moderate, strong), the archive recorded an observed correspondence shift. For the NVDA universe, persistence geometry shifted from preservation to fracture between the weak and moderate magnitudes. The AMD universe fractured consistently across all magnitudes. 
 
 ## Evidence Base
 1. **Semiconductor Synchronized Rally Ladder:**
@@ -20,4 +20,4 @@ Across a magnitude ladder of synchronized semiconductor upward rallies (weak, mo
    - **Strong Rally (+3.16% NVDA vs +2.22% AMD):** NVDA Persistence 25 (Fracture) vs AMD Persistence 23 (Fracture). **(Correspondence)**
    
 ## Scientific Conclusion
-Deformation correspondence does not apply uniformly across a replay family; it is bounded by magnitude transition thresholds. By tracking the exact macroscopic point where NVDA's persistence transitioned from preservation to fracture, the observatory successfully mapped the boundary where structural divergence becomes structural correspondence.
+Deformation correspondence does not apply uniformly across a replay family; it is bounded by observed replay-local correspondence changes. By tracking the exact macroscopic point where NVDA's persistence shifted from preservation to fracture within this sparse ladder, the observatory successfully mapped the location where structural divergence became structural correspondence without implying calibrated boundary knowledge.
