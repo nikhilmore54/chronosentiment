@@ -15,8 +15,23 @@ The dimensional matrix of `Universe × Fidelity × Topology × Cognition` must r
 **No new scenario may enter the permanent archive without explicit, written justification.**
 
 Before executing the historical importer for a new universe, the following questions must be answered and logged:
-1. **What new geometric structure does this expose?** (e.g., *partial outage*, *cascade recovery*, *holiday drift*).
-2. **What existing assumption or claim does it pressure?** (e.g., *tests if Claim 001 survives ultra-dense compression*).
-3. **Why is it phenomenologically distinct from existing universes?**
+1. **What pressure class?** (e.g., Violent Rupture, Macro Shock, Continuity Persistence, Ontology Divergence, Explicit Discontinuity)
+2. **What recurrence axis?** (e.g., Recurrence of reset collapse, impulse compression, or authority disagreement)
+3. **What existing assumption does it pressure?** (e.g., Tests if reset cognition fails during sparse weekend liquidity)
+4. **What makes it phenomenologically distinct?** (e.g., This is a naturally occurring outage, unlike a generic cascade)
 
-If a candidate universe does not introduce a structurally distinct continuity behavior, deformation regime, or fidelity failure mode, **do not ingest it.**
+If you cannot answer those four questions explicitly, **do not ingest it.**
+
+## Rule 4: Lexicon Consistency
+To prevent taxonomy drift, recurrence tagging must remain shallow, pressure-oriented, and non-interpretive. 
+Permitted Tags:
+- `rupture` (not "crash", "panic", "massacre")
+- `cascade`
+- `macro_shock`
+- `discontinuity`
+- `drift`
+- `ontology_divergence`
+Do not invent new tags without formal amendment to this contract.
+
+## Rule 5: Negative Recurrence Evidence
+The boundaries of non-recurrence are as important as recurrence. If an ingested universe was hypothesized to produce a specific deformation (e.g., `event_reset` collapse) and **did not**, this null result must be logged explicitly in the replication ledger. Negative recurrence evidence is a first-class citizen of the atlas.
