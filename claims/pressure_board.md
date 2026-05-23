@@ -17,3 +17,4 @@ This board tracks the stabilization or weakening of key findings as new phenomen
 | upward continuity fracture | Observed (extreme upward squeeze contradicted asymmetry assumption, emitting collapse geometry similar to downward liquidation) |
 | downward continuity preservation | Observed (buffered institutional drop contradicted concentration assumption, emitting preservation geometry) |
 | structural similarity divergence | Observed (near-isomorphic synchronized replays emitted divergent outputs, proving sensitivity to latent propagation topologies) |
+| structural similarity correspondence | Observed (near-isomorphic synchronized rallies emitted corresponding fracture geometry, resisting pure-latent theory inflation) |

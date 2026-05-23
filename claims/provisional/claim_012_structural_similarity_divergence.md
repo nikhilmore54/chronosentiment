@@ -11,13 +11,13 @@
 - **Chronology Density:** 5m Presentation
 
 ## Core Assertion
-Under identical replay conditions, two near-isomorphic bounded-session composite continuities emitted significantly divergent persistence geometry despite sharing the same macroeconomic catalyst, direction, and magnitude order. This explicitly forces the archive to admit the existence of unmapped latent continuity dimensions (e.g., liquidity topology, algorithmic smoothing) that operate independently of macroscopic price vectors.
+Under near-isomorphic bounded-session semiconductor replays, the frozen cognition emitted materially divergent persistence geometry, despite strong macroscopic replay similarity. This forces the archive to admit descriptor insufficiency: the currently tracked macroscopic replay descriptors are insufficient to compress the deformation difference.
 
 ## Evidence Base
 1. **Semiconductor Synchronized Drop (`2026_nvda_sync_drop_5m` vs `2026_amd_sync_drop_5m`):**
    - **NVDA (-3.58%) `event_reset` Persistence:** 40 (Preservation)
    - **AMD (-2.88%) `event_reset` Persistence:** 31 (Fracture)
-   - **Interpretation:** Despite a stronger downward magnitude, NVDA structurally buffered the continuity geometry (40), while the weaker magnitude AMD drop heavily fractured the frozen cognition (31). 
+   - **Interpretation:** Despite similar session ontology, sector, catalyst, timeframe, direction, and approximate magnitude, the geometry materially diverged. 
 
 ## Scientific Conclusion
-Deformation correspondence cannot be predicted by macroscopic session attributes alone. By observing near-isomorphic replay surfaces with divergent deformation outputs, the observatory proves that the frozen `event_reset` cognition is sensitive to a latent propagation topology that exists beneath direction, magnitude, and authority semantics.
+Deformation correspondence cannot be predicted by macroscopic session attributes alone. By observing near-isomorphic replay surfaces with divergent deformation outputs, the observatory proves that the frozen `event_reset` cognition is sensitive to latent propagation topologies that are not captured by direction, magnitude, or authority semantics. The archive currently accumulates this unresolved divergence rather than inventing hidden mechanisms.
