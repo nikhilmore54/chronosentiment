@@ -11,13 +11,13 @@
 - **Chronology Density:** 5m Presentation
 
 ## Core Assertion
-Under the tested bounded-session composite replay, an extreme-magnitude upward directional continuity concentration (8.17%) emitted persistence-collapse geometry, falsifying the provisional assumption that upward accumulation structurally avoids deformation separation. 
+Under the tested bounded-session composite replay, an extreme-magnitude upward directional continuity concentration (8.17%) emitted persistence-collapse correspondence. This contradicts the provisional assumption that upward concentrated continuity structurally avoids deformation separation.
 
 ## Evidence Base
 1. **MSTR Upward Squeeze (`2026_mstr_upward_squeeze_5m`):**
    - **`rolling_50` (Baseline A) Persistence:** 41
    - **`event_reset` (Baseline B) Persistence:** 23
-   - **Interpretation:** The geometry emitted severe persistence separation (41 → 23), heavily fracturing in the upward direction. This contradicts the non-collapsing behavior observed in the 5.02% TSLA upward rally (41 → 34).
+   - **Interpretation:** The geometry emitted severe persistence separation (41 → 23) corresponding with prior downward liquidation replay families. This did not reproduce the non-collapsing geometry observed in the TSLA upward rally (41 → 34).
 
 ## Scientific Conclusion
-Upward directional continuity is not inherently immune to persistence-collapse deformation. While certain lower-magnitude upward concentrations (TSLA 5.02%) resist fracture, extreme upward concentrations (MSTR 8.17%) can emit persistence-collapse geometry identical to downward liquidation cascades. The observatory confirms that deformation correspondence maps to specific regions of continuity concentration, regardless of absolute directional polarity.
+Certain concentrated continuity replays across multiple ecologies have emitted persistence-collapse correspondence, while other concentrated continuity replays have not. The archive demonstrates that upward directional continuity is not inherently immune to emitting collapse correspondence. The observatory does not yet know the precise combination of magnitude, fragmentation, or sparsity required to trigger this separation.
