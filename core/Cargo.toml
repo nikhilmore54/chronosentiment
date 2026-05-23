@@ -21,6 +21,7 @@ yahoo_finance_api = "2.0"
 reqwest = { version = "0.11", features = ["json"] }
 async-trait = "0.1"
 chrono = "0.4"
+sha2 = "0.11.0"
 
 [features]
 debug_decision = []

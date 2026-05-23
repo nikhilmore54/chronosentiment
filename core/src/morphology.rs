@@ -14,6 +14,17 @@ pub struct OccupancyTrace {
     pub strictness_ratio: f64,
 }
 
+/// The canonical artifact containing the full deterministic deformation record.
+/// This acts as the unchangeable physical substrate for all downstream observability.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraceArtifactV1 {
+    pub topology_identifier: String,
+    pub cognition_identifier: String,
+    pub substrate_hash: String,
+    pub total_ticks: usize,
+    pub traces: Vec<OccupancyTrace>,
+}
+
 /// Generates a replay-equivalent occupancy trace for a specific Topology and Cognition pair.
 pub fn generate_occupancy_traces(
     prices: &[f64],

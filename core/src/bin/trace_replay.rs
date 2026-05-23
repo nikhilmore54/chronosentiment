@@ -1,0 +1,102 @@
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+use clap::Parser;
+use sha2::{Sha256, Digest};
+
+use chronosentiment_core::topology::TopologyField;
+use chronosentiment_core::cognition::CognitionGeometry;
+use chronosentiment_core::morphology::{generate_occupancy_traces, TraceArtifactV1};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Canonical Observability Artifact Generator")]
+struct Args {
+    #[arg(short, long)]
+    substrate: String,
+
+    #[arg(short, long)]
+    topology: String,
+
+    #[arg(short, long)]
+    cognition: String,
+
+    #[arg(short, long)]
+    output: PathBuf,
+}
+
+fn parse_topology(ident: &str) -> TopologyField {
+    match ident {
+        "baseline" => TopologyField::Baseline,
+        "plateau_low" => TopologyField::PlateauLow { occupancy: 0.2 },
+        "impulse_shock" => TopologyField::ImpulseShock { at_tick: 2000, magnitude: 1.0 },
+        "drift_field" => TopologyField::DriftField { min_acceptance: 0.1 },
+        "fragmented_regime" => TopologyField::FragmentedRegime { switch_period: 10 },
+        osc if osc.starts_with("osc_") => {
+            let parts: Vec<&str> = osc.split('_').collect();
+            let period = parts.get(1).map_or(50, |p| p[1..].parse().unwrap_or(50));
+            let amplitude = parts.get(2).map_or(1.0, |a| a[1..].parse::<f64>().unwrap_or(100.0) / 100.0);
+            TopologyField::Oscillatory { period, amplitude, noise: 0.0 }
+        }
+        _ => panic!("Unknown topology identifier: {}", ident),
+    }
+}
+
+fn parse_cognition(ident: &str) -> CognitionGeometry {
+    match ident {
+        "rolling_50" => CognitionGeometry::RollingBounded { window: 50 },
+        "rolling_100" => CognitionGeometry::RollingBounded { window: 100 },
+        "event_reset" => CognitionGeometry::EventReset { drop_threshold_pct: 0.005 },
+        "accumulator" => CognitionGeometry::Accumulator,
+        _ => panic!("Unknown cognition identifier: {}", ident),
+    }
+}
+
+fn main() {
+    let args = Args::parse();
+
+    // 1. Load the raw price substrate (mocked here for pure simulation, usually pulled from CSV/DB)
+    // To maintain strict generic bounds, we'll simulate a 4320-tick random walk or read from existing substrate.
+    // For pure architectural trace generation over synthetic topologies, we'll use a continuous mock series.
+    let mut prices = Vec::with_capacity(4320);
+    let mut current_price = 40000.0;
+    for i in 0..4320 {
+        // Deterministic pseudo-random walk
+        let hash_int = (i as u64).wrapping_mul(99887766554433).wrapping_add(12345);
+        let step = ((hash_int % 100) as f64 / 100.0) * 10.0 - 5.0;
+        current_price += step;
+        prices.push(current_price.max(1.0));
+    }
+
+    // Hash the substrate to bind the trace to the specific physical data
+    let mut hasher = Sha256::new();
+    for p in &prices {
+        hasher.update(p.to_bits().to_le_bytes());
+    }
+    let substrate_hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+
+    // 2. Parse Canonical Definitions
+    let topology = parse_topology(&args.topology);
+    let cognition = parse_cognition(&args.cognition);
+
+    // 3. Generate Trace Artifact
+    let traces = generate_occupancy_traces(&prices, topology, cognition);
+
+    let artifact = TraceArtifactV1 {
+        topology_identifier: args.topology.clone(),
+        cognition_identifier: args.cognition.clone(),
+        substrate_hash,
+        total_ticks: traces.len(),
+        traces,
+    };
+
+    // 4. Output deterministic artifact
+    let out_json = serde_json::to_string_pretty(&artifact).unwrap();
+    let mut file = File::create(&args.output).unwrap();
+    file.write_all(out_json.as_bytes()).unwrap();
+
+    println!("✅ Generated Canonical Observability Artifact");
+    println!("   Topology : {}", args.topology);
+    println!("   Cognition: {}", args.cognition);
+    println!("   Ticks    : {}", artifact.total_ticks);
+    println!("   Output   : {:?}", args.output);
+}
