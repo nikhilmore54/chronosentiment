@@ -56,3 +56,10 @@ The observatory must recognize that different instruments and temporal environme
 - **Presentation Continuity**: Artificially unbroken but physically sparse (e.g., Yahoo Composite).
 - **Interrupted Continuity**: Absolute zero-tick gaps (e.g., Binance Outages).
 - **Persistence Continuity**: Slow, low-velocity drift without structural breaks (e.g., Quiet Sundays).
+
+## Rule 9: Session Ontology Classification
+As the observatory expands across ecologies, the temporal boundaries of the market must be explicitly classified to prevent conflating physical rupture with structured discontinuities:
+- **Continuous Session**: 24/7/365 structural unbroken liquidity (e.g., Crypto). Discontinuities represent physical infrastructure failure or extreme sparsity.
+- **Bounded Session**: Defined trading hours with structured overnight/weekend gaps (e.g., Equities). Discontinuities are regulatory/structural artifacts.
+- **Auction-Driven Session**: Synthetic liquidity accumulation windows (e.g., Market Open/Close crosses). Discontinuities represent intentional order book freezing and matching.
+- **Halted Session**: Regulatory or circuit-breaker induced interruptions. Discontinuities represent authority-imposed external pressure.
