@@ -27,7 +27,7 @@ def deterministic_acceptance(ts, symbol, acceptance_ratio):
     normalized = (hash_int % 1000) / 1000.0
     return normalized <= acceptance_ratio
 
-def run_harness(ledger_path: Path, strategy_id: str, batch_id: int = 10000, symbol: str = "AAPL"):
+def run_harness(ledger_path: Path, strategy_id: str, batch_id: int = 10000, symbol: str = "AAPL", window_size: int = None):
     from candle_substrate import load_frozen_cohort
     
     batch_dir = Path(f"state_archive/batches/batch_{batch_id}/runs/live")
@@ -61,7 +61,10 @@ def run_harness(ledger_path: Path, strategy_id: str, batch_id: int = 10000, symb
             window_fragmented.append(px)
             window_repaired.append(px)
             
-    if strategy_id == "rolling_window_momentum_v3_adaptive":
+    # Allow explicit override of window size for persistence research
+    if window_size is not None:
+        WINDOW_SIZE = window_size
+    elif strategy_id == "rolling_window_momentum_v3_adaptive":
         WINDOW_SIZE = 50
     elif strategy_id == "rolling_window_momentum_v2_long":
         WINDOW_SIZE = 50
@@ -222,5 +225,6 @@ if __name__ == "__main__":
     parser.add_argument("--strategy", type=str, default="rolling_window_momentum_v1")
     parser.add_argument("--substrate", type=int, default=10000)
     parser.add_argument("--symbol", type=str, default="AAPL")
+    parser.add_argument("--window-size", type=int, default=None)
     args = parser.parse_args()
-    run_harness(Path(args.ledger), args.strategy, args.substrate, args.symbol)
+    run_harness(Path(args.ledger), args.strategy, args.substrate, args.symbol, args.window_size)
