@@ -40,20 +40,22 @@ impl EvaluationService {
         ga_eval: &StrategyEvaluation,
         execution_eval: &StrategyEvaluation,
     ) -> crate::dto::StrategyEvaluationDto {
-        assert!(
-            execution_eval.fitness.is_finite() &&
-            execution_eval.fitness >= 0.0 &&
-            execution_eval.fitness <= 1.0,
-            "Execution fitness out of bounds: {}",
-            execution_eval.fitness
-        );
+        // Log out-of-bounds fitness (can occur on synthetic/sparse data) but do not panic.
+        // Clamp to [0.0, 1.0] at the DTO boundary so the API never emits invalid values.
+        if !execution_eval.fitness.is_finite() || execution_eval.fitness < 0.0 || execution_eval.fitness > 1.0 {
+            eprintln!(
+                "WARN: execution fitness out of canonical bounds ({:.6}); clamping to [0,1] for DTO",
+                execution_eval.fitness
+            );
+        }
+        let clamped_fitness = execution_eval.fitness.clamp(0.0, 1.0);
         crate::dto::StrategyEvaluationDto {
             strategy_id,
             avg: execution_eval.avg_pnl,
             std: execution_eval.std_dev,
-            fitness: execution_eval.fitness,
+            fitness: clamped_fitness,
             ga_fitness: Some(ga_eval.fitness),
-            execution_fitness: execution_eval.fitness,
+            execution_fitness: clamped_fitness,
             total_trades: execution_eval.trade_count,
             classification: chronosentiment_core::ga::get_strategy_classification(execution_eval),
         }

@@ -395,14 +395,14 @@ mod tests {
         // Verify Decision Layer
         assert_eq!(response.decision.order_id, "O1");
         assert_eq!(response.decision.quantity, 600);
-        assert_eq!(response.decision.price, 1.0); // 100 paise → ₹1
+        assert_eq!(response.decision.price, 0.01); // 100 internal units / PRICE_SCALE(10000) = ₹0.01
         assert_eq!(response.decision.event_type, EventType::OrderIntent);
 
         // Verify Outcome Layer
         assert_eq!(response.outcome.status, "FILLED");
         assert_eq!(response.outcome.filled_qty, 600); // Assuming OrderFilled completes it
         assert_eq!(response.outcome.remaining_qty, 0);
-        assert_eq!(response.outcome.avg_price, 1.0); // 100 paise → ₹1
+        assert_eq!(response.outcome.avg_price, 0.01); // 100 internal units / PRICE_SCALE(10000) = ₹0.01
 
         // Verify Execution Layer and MarketEvent filtering
         let execution_event_types: Vec<EventType> = response.execution.iter().map(|event_value| {
