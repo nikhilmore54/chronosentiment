@@ -15,10 +15,7 @@ COGNITION_B="event_reset"
 
 # Define target universes (assumes data is already bootstrapped via bootstrap_historical_archives.sh)
 UNIVERSES=(
-    "2024_etf_approval_1h"
-    "2023_liquidation_cascade_1h"
-    "2023_binance_outage_1h"
-    "2023_christmas_drift_1h"
+    "2026_crossfeed_state_disagreement"
 )
 
 # NOTE: For a real matrix run, you need the tick and 1m JSONL files fetched for all target universes.
@@ -30,8 +27,8 @@ for UNIVERSE in "${UNIVERSES[@]}"; do
     echo "================================================="
     
     # Paths
-    TICK_FILE="chronology/historical/${UNIVERSE}_tick/btcusdt_*.jsonl"
-    KLINE_FILE="chronology/historical/${UNIVERSE}_1m/btcusdt_*.jsonl"
+    TICK_FILE="chronology/historical/${UNIVERSE}_tick/btc*.jsonl"
+    KLINE_FILE="chronology/historical/${UNIVERSE}_1m/btc*.jsonl"
     
     # We expand the glob if it exists
     TICK_PATH=$(ls $TICK_FILE 2>/dev/null | head -n 1) || true

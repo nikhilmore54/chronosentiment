@@ -38,6 +38,27 @@ cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tic
 echo "Fetching 2023_christmas_drift (1m)..."
 cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1703419200000 --end-time 1703422800000 --name 2023_christmas_drift_1h_1m
 
+# 2026 Intraday Impulse Shock (May 23 2026, 07:30 UTC to 08:00 UTC)
+# Justification: archive_justifications/2026_intraday_impulse_shock.md
+echo "Fetching 2026_intraday_impulse_shock (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1779521400000 --end-time 1779523200000 --name 2026_intraday_impulse_shock_0730_0800_utc_tick
+echo "Fetching 2026_intraday_impulse_shock (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1779521400000 --end-time 1779523200000 --name 2026_intraday_impulse_shock_0730_0800_utc_1m
+
+# 2026 Multi-Stage Cascade Transition (May 22 2026, 20:00 UTC to May 23 2026, 04:00 UTC)
+# Justification: archive_justifications/2026_multi_stage_cascade_transition.md
+echo "Fetching 2026_multi_stage_cascade_transition (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1779480000000 --end-time 1779508800000 --name 2026_multi_stage_cascade_transition_tick
+echo "Fetching 2026_multi_stage_cascade_transition (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1779480000000 --end-time 1779508800000 --name 2026_multi_stage_cascade_transition_1m
+
+# 2026 Cross-Feed State Disagreement (May 23 2026, 04:20 UTC to 07:06 UTC)
+# Justification: archive_justifications/2026_crossfeed_state_disagreement.md
+echo "Fetching 2026_crossfeed_state_disagreement (Binance Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1779510000000 --end-time 1779520000000 --name 2026_crossfeed_state_disagreement_binance_tick
+echo "Fetching 2026_crossfeed_state_disagreement (Yahoo 1m)..."
+cargo run --release --bin yahoo_importer -- --symbol BTC-USD --interval 1m --name 2026_crossfeed_state_disagreement_yahoo_1m
+
 echo "Done."
 
 # --- FUTURE CURATED TARGETS (PHASE 2B SCENARIO EXPANSION) ---
