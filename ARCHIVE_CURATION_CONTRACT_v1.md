@@ -35,3 +35,10 @@ Do not invent new tags without formal amendment to this contract.
 
 ## Rule 5: Negative Recurrence Evidence
 The boundaries of non-recurrence are as important as recurrence. If an ingested universe was hypothesized to produce a specific deformation (e.g., `event_reset` collapse) and **did not**, this null result must be logged explicitly in the replication ledger. Negative recurrence evidence is a first-class citizen of the atlas.
+
+## Rule 6: Ontology Classification
+For all cross-feed universes, the feed type must be explicitly classified to preserve epistemic boundaries:
+- **Execution Chronology:** (e.g., Binance Tick) Executable state-space.
+- **Presentation Chronology:** (e.g., Binance.co.in 1m) Reconstructed observation-space.
+- **Composite Chronology:** (e.g., Yahoo/TV) Authority-synthesized continuity.
+Do NOT merge these conceptually. The authority defining the chronology is a property of the ontology itself.

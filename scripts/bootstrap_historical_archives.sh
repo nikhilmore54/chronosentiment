@@ -84,6 +84,31 @@ cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tic
 echo "Fetching 2024_quiet_sunday_4h (1m)..."
 cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1708214400000 --end-time 1708228800000 --name 2024_quiet_sunday_4h_1m
 
+# ---------------------------------------------------------
+# PHASE 2C: WAVE 2 ACQUISITION (Adjusted for Authority Constraints)
+# ---------------------------------------------------------
+
+# 2024 Asia Open Impulse 2h (Mar 5 00:00 to 02:00)
+# Justification: archive_justifications/2024_asia_open_impulse_2h.md
+echo "Fetching 2024_asia_open_impulse_2h (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1709596800000 --end-time 1709604000000 --name 2024_asia_open_impulse_2h_tick
+echo "Fetching 2024_asia_open_impulse_2h (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1709596800000 --end-time 1709604000000 --name 2024_asia_open_impulse_2h_1m
+
+# 2026 Recent Crossfeed Divergence (May 20 14:00 to 15:00 UTC)
+# Justification: archive_justifications/2026_recent_crossfeed_1h.md
+echo "Fetching 2026_recent_crossfeed_1h (Binance Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1779285600000 --end-time 1779289200000 --name 2026_recent_crossfeed_1h_binance_tick
+echo "Fetching 2026_recent_crossfeed_1h (Yahoo 1m)..."
+python3 ../scripts/yahoo_fetcher.py --symbol BTC-USD --name 2026_recent_crossfeed_1h_yahoo_1m
+
+# 2026 Recent Discontinuity Crossfeed (May 21 03:00 to 04:00 UTC)
+# Justification: archive_justifications/2026_recent_discontinuity_1h.md
+echo "Fetching 2026_recent_discontinuity_1h (Binance Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1779332400000 --end-time 1779336000000 --name 2026_recent_discontinuity_1h_binance_tick
+echo "Fetching 2026_recent_discontinuity_1h (Yahoo 1m)..."
+python3 ../scripts/yahoo_fetcher.py --symbol BTC-USD --name 2026_recent_discontinuity_1h_yahoo_1m
+
 echo "Done."
 
 # --- PHASE 2C: CURATED CHRONOLOGY PRESSURE ACQUISITION ---
