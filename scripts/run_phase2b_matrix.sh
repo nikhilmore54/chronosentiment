@@ -11,8 +11,9 @@ COGNITION="rolling_50"
 # Define target universes (assumes data is already bootstrapped via bootstrap_historical_archives.sh)
 UNIVERSES=(
     "2024_etf_approval_1h"
-    "2026_weekend_liquidity_gap_1h"
-    "2026_fomc_march_1h"
+    "2023_liquidation_cascade_1h"
+    "2023_binance_outage_1h"
+    "2023_christmas_drift_1h"
 )
 
 # NOTE: For a real matrix run, you need the tick and 1m JSONL files fetched for all target universes.
