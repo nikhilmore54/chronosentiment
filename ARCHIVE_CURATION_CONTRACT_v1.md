@@ -81,3 +81,18 @@ To prevent temporary observational patterns from hardening into assumed natural 
 - **Boundary Stable**: Survived explicit falsification pressure (null conditions) and negative evidence testing.
 - **Reserved**: Insufficient recurrence; held in isolation pending future observation.
 Under no circumstances should the archive use terms like "validated," "proven," "true," or "law."
+
+## Rule 12: Replay Metadata Snapshots
+To ensure replay equivalence traceability and scientific discipline, all newly ingested replay manifests must explicitly encode the following ecology context:
+- **Session Type**: (Continuous, Bounded, Auction, Halted)
+- **Replay Class**: (Degradation, Ontology Substitution, Ecology Substitution, etc.)
+- **Authority Type**: (Execution, Presentation, Composite)
+- **Chronology Density**: (Hypersaturated, Sparse, Interrupted, etc.)
+
+## Rule 13: Replay Families (Navigation Scaffolding)
+To organize the archive without creating premature ontology, all ingested universes must be clustered into one of the following navigational families based on phenomenological correspondence:
+- **Rupture Family**: Macro shocks, cascades, and vertical velocity windows (e.g., CPI shocks, Flash Crashes).
+- **Persistence Family**: Slow, low-velocity drift and continuous preservation (e.g., Quiet Sundays, Bounded Overnight Gaps).
+- **Synthetic Family**: Artificial liquidity agglomeration (e.g., Opening Auctions, Synthetic Continuity).
+- **Fragmentation Family**: Structural continuity breaks (e.g., Authority outages, cross-feed divergence).
+These are strictly for archive navigation, not finalized causal truth.
