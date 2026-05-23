@@ -27,6 +27,9 @@ Replay equivalence and state coherence are the highest priorities. If an adaptiv
 ### 7. Interpretation is Non-Authoritative
 Phase portraits, entropy graphs, and topology maps are projections. They are useful for understanding the deformation geometry, but they do not discover new physical ontology. Never embed visualization geometry back into the core mechanics.
 
+### 8. Discontinuity is Truth
+**Missing chronology is itself chronology.** Disconnects, packet losses, and outages are physical facts of the market timeline. The architecture must never silently interpolate, smooth, or rewrite continuity gaps. Discontinuity must be explicitly recorded and exposed to the downstream trace artifacts.
+
 ## Drift Enforcement Gates
 Before any new logic is merged into the Rust core or Python analytical layer, it must pass the four enforcement gates:
 - Gate 1: Does it alter chronology? (If yes, requires extreme scrutiny)
