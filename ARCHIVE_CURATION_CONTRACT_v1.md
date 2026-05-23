@@ -38,7 +38,21 @@ The boundaries of non-recurrence are as important as recurrence. If an ingested 
 
 ## Rule 6: Ontology Classification
 For all cross-feed universes, the feed type must be explicitly classified to preserve epistemic boundaries:
-- **Execution Chronology:** (e.g., Binance Tick) Executable state-space.
-- **Presentation Chronology:** (e.g., Binance.co.in 1m) Reconstructed observation-space.
-- **Composite Chronology:** (e.g., Yahoo/TV) Authority-synthesized continuity.
-Do NOT merge these conceptually. The authority defining the chronology is a property of the ontology itself.
+- **Execution Chronology**: Pure transaction-level reality (e.g., Binance Tick data). Contains all physical continuity.
+- **Presentation Chronology**: Grouped or bounded execution reality (e.g., Binance 1m data). Contains sequential continuity but compresses physical continuity.
+- **Composite Chronology**: Aggregated, smoothed, or reconstructed reality (e.g., Yahoo Finance 1m data). Preserves general path but synthetically bridges physical discontinuities.
+
+## Rule 7: Replay Classification
+To prevent conflating different forms of structural pressure, all experimental replays must explicitly classify their isolation variable:
+- **Chronology Degradation Replay**: Same ontology, different fidelity (e.g., Binance BTCUSDT Tick vs Binance BTCUSDT 1m). Isolates the effect of continuity compression.
+- **Ontology Substitution Replay**: Different ontology, aligned chronology (e.g., Binance BTCUSDT Tick vs Binance BTCUSD Tick). Isolates the effect of the quote instrument's liquidity density.
+- **Authority Divergence Replay**: Same ontology, different authority (e.g., Binance BTCUSD 1m vs Yahoo BTC-USD 1m). Isolates reconstruction and smoothing artifacts.
+- **Ecology Substitution Replay**: Different continuity ecology (e.g., Spot vs Futures, or Crypto vs Equities). Isolates structural market mechanics.
+
+## Rule 8: Continuity Ecology Taxonomy
+The observatory must recognize that different instruments and temporal environments exhibit distinct baseline continuity states. The archive formally recognizes the following ecology descriptors:
+- **Hypersaturated Continuity**: Extreme tick density and unbroken liquidity (e.g., BTCUSDT).
+- **Sparse Fiat Continuity**: Structurally lower density due to fiat on-ramps or instrument isolation (e.g., BTCUSD).
+- **Presentation Continuity**: Artificially unbroken but physically sparse (e.g., Yahoo Composite).
+- **Interrupted Continuity**: Absolute zero-tick gaps (e.g., Binance Outages).
+- **Persistence Continuity**: Slow, low-velocity drift without structural breaks (e.g., Quiet Sundays).
