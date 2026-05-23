@@ -29,7 +29,8 @@ struct Args {
 
 #[derive(Deserialize)]
 struct ChronologyEvent {
-    price: f64,
+    price: Option<f64>,
+    close: Option<f64>,
 }
 
 fn parse_topology(ident: &str) -> TopologyField {
@@ -41,8 +42,8 @@ fn parse_topology(ident: &str) -> TopologyField {
         "fragmented_regime" => TopologyField::FragmentedRegime { switch_period: 10 },
         osc if osc.starts_with("osc_") => {
             let parts: Vec<&str> = osc.split('_').collect();
-            let period = parts.get(1).map_or(50, |p| p[1..].parse().unwrap_or(50));
-            let amplitude = parts.get(2).map_or(1.0, |a| a[1..].parse::<f64>().unwrap_or(100.0) / 100.0);
+            let period = parts.get(1).map_or(50, |p| p.parse().unwrap_or(50));
+            let amplitude = parts.get(2).map_or(1.0, |a| a.parse::<f64>().unwrap_or(1.0));
             TopologyField::Oscillatory { period, amplitude, noise: 0.0 }
         }
         _ => panic!("Unknown topology identifier: {}", ident),
@@ -73,7 +74,8 @@ fn main() {
         for line in reader.lines() {
             let line = line.unwrap();
             let event: ChronologyEvent = serde_json::from_str(&line).expect("Failed to parse jsonl event");
-            prices.push(event.price.max(1.0));
+            let p = event.price.unwrap_or_else(|| event.close.expect("Missing both price and close"));
+            prices.push(p.max(1.0));
         }
     } else {
         let mut current_price = 40000.0;
@@ -133,8 +135,21 @@ fn main() {
     std::fs::create_dir_all(&base_dir).unwrap();
 
     let trace_path = base_dir.join("trace_v1.json");
-    let mut file = File::create(&trace_path).unwrap();
-    file.write_all(out_json.as_bytes()).unwrap();
+    if artifact.total_ticks < 500000 {
+        let mut file = File::create(&trace_path).unwrap();
+        file.write_all(out_json.as_bytes()).unwrap();
+    }
+    
+    // Always compute and output a summary for fast parsing without disk explosion
+    let sum_occupancy: f64 = artifact.traces.iter().map(|t| t.occupancy).sum();
+    let mean_occupancy = if artifact.total_ticks > 0 { sum_occupancy / artifact.total_ticks as f64 } else { 0.0 };
+    let max_occupancy = artifact.traces.iter().map(|t| t.occupancy).fold(0.0, f64::max);
+    let persistence = artifact.traces.iter().filter(|t| t.occupancy > mean_occupancy).count();
+    
+    let summary = format!("{{\"max\": {}, \"persistence\": {}}}", max_occupancy, persistence);
+    let summary_path = base_dir.join("trace_summary.json");
+    let mut sum_file = File::create(&summary_path).unwrap();
+    sum_file.write_all(summary.as_bytes()).unwrap();
 
     let meta_path = base_dir.join("metadata.json");
     let meta_json = serde_json::to_string_pretty(&manifest).unwrap();
