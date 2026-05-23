@@ -7,6 +7,8 @@ use sha2::{Sha256, Digest};
 use chronosentiment_core::topology::TopologyField;
 use chronosentiment_core::cognition::CognitionGeometry;
 use chronosentiment_core::morphology::{generate_occupancy_traces, TraceArtifactV1};
+use chronosentiment_core::observatory::{ObservatoryManifestV1, ChronologyBounds};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Canonical Observability Artifact Generator")]
@@ -19,9 +21,6 @@ struct Args {
 
     #[arg(short, long)]
     cognition: String,
-
-    #[arg(short, long)]
-    output: PathBuf,
 }
 
 fn parse_topology(ident: &str) -> TopologyField {
@@ -84,19 +83,52 @@ fn main() {
     let artifact = TraceArtifactV1 {
         topology_identifier: args.topology.clone(),
         cognition_identifier: args.cognition.clone(),
-        substrate_hash,
+        substrate_hash: substrate_hash.clone(),
         total_ticks: traces.len(),
         traces,
     };
 
-    // 4. Output deterministic artifact
     let out_json = serde_json::to_string_pretty(&artifact).unwrap();
-    let mut file = File::create(&args.output).unwrap();
+    let artifact_hash = Sha256::digest(out_json.as_bytes()).iter().map(|b| format!("{:02x}", b)).collect::<String>();
+
+    let manifest = ObservatoryManifestV1 {
+        replay_version: "v1".to_string(),
+        topology_version: "v1".to_string(),
+        cognition_version: "v1".to_string(),
+        commit_hash: "canonical".to_string(), // In production, inject via build script
+        artifact_hash,
+        generation_timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        chronology_bounds: ChronologyBounds {
+            start_tick: 0,
+            end_tick: artifact.total_ticks as u64 - 1,
+            total_ticks: artifact.total_ticks,
+        },
+    };
+
+    // 4. Output deterministic artifacts into Canonical Observatory Directory Structure
+    let base_dir = PathBuf::from("artifacts")
+        .join(&args.substrate)
+        .join(&args.topology)
+        .join(&args.cognition);
+    
+    std::fs::create_dir_all(&base_dir).unwrap();
+
+    let trace_path = base_dir.join("trace_v1.json");
+    let mut file = File::create(&trace_path).unwrap();
     file.write_all(out_json.as_bytes()).unwrap();
+
+    let meta_path = base_dir.join("metadata.json");
+    let meta_json = serde_json::to_string_pretty(&manifest).unwrap();
+    let mut meta_file = File::create(&meta_path).unwrap();
+    meta_file.write_all(meta_json.as_bytes()).unwrap();
+
+    let hash_path = base_dir.join("replay_hash.txt");
+    let mut hash_file = File::create(&hash_path).unwrap();
+    hash_file.write_all(substrate_hash.as_bytes()).unwrap();
 
     println!("✅ Generated Canonical Observability Artifact");
     println!("   Topology : {}", args.topology);
     println!("   Cognition: {}", args.cognition);
     println!("   Ticks    : {}", artifact.total_ticks);
-    println!("   Output   : {:?}", args.output);
+    println!("   Directory: {:?}", base_dir);
 }
