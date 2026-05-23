@@ -12,3 +12,4 @@ This board tracks the stabilization or weakening of key findings as new phenomen
 | overnight temporal absence | structurally inverted (acts as persistence bridge, strengthening event_reset) |
 | auction transition collapse | falsified (synthetic continuity injection perfectly suppresses rupture velocity) |
 | asset-class rupture transfer | bounded (tested SPY macro event did not reproduce the persistence collapse geometry of prior crypto ruptures) |
+| continuity threshold fracture | Cross-Ecology Recurring (highly concentrated equity cascades Pierce synthetic continuity and emit crypto-identical rupture geometry) |
