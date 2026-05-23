@@ -1,0 +1,16 @@
+# Replay Surface Descriptor Sheet
+
+This sheet stabilizes replay bookkeeping without attempting to compress or model the underlying mechanisms. It strictly logs macroscopic replay attributes alongside their geometric outputs and contradiction statuses.
+
+| Universe | Session Ontology | Direction | Concentration | Continuity Density | Authority Type | Synchronization Degree | Replay Family | Persistence Output | Contradiction Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `2026_btc_usdt_macro_shock_1m` | Continuous (Crypto) | Downward | Strong (-3.42%) | 1m Presentation | Deep | N/A | Macro Rupture | Collapse (41 -> 27) | Unpressured |
+| `2026_spy_macro_shock_1m` | Bounded (Equity) | Downward | Strong (-1.82%) | 1m Presentation | Composite | N/A | Macro Rupture | Preservation (42 -> 42) | Pressured |
+| `2026_nvda_open_cascade_5m` | Bounded (Equity) | Downward | Extreme (-4.05%) | 5m Presentation | Composite | N/A | Downward Concentration | Collapse (42 -> 26) | Pressured |
+| `2026_tsla_upward_rally_5m` | Bounded (Equity) | Upward | Extreme (+5.02%) | 5m Presentation | Composite | N/A | Upward Concentration | Preservation (41 -> 34) | Falsified |
+| `2026_mstr_upward_squeeze_5m` | Bounded (Equity) | Upward | Extreme (+8.17%) | 5m Presentation | Composite | N/A | Upward Concentration | Collapse (41 -> 23) | Pressured |
+| `2026_aapl_downward_drop_5m` | Bounded (Equity) | Downward | Moderate (-2.08%) | 5m Presentation | Composite | N/A | Downward Concentration | Preservation (42 -> 38) | Pressured |
+| `2026_nvda_sync_drop_5m` | Bounded (Equity) | Downward | Strong (-3.58%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 40) | Divergence |
+| `2026_amd_sync_drop_5m` | Bounded (Equity) | Downward | Strong (-2.88%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Divergence |
+| `2026_nvda_sync_rally_5m` | Bounded (Equity) | Upward | Strong (+3.16%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Collapse (41 -> 25) | Correspondence |
+| `2026_amd_sync_rally_5m` | Bounded (Equity) | Upward | Strong (+2.22%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 23) | Correspondence |

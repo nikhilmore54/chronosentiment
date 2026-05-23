@@ -96,3 +96,6 @@ To organize the archive without creating premature ontology, all ingested univer
 - **Synthetic Family**: Artificial liquidity agglomeration (e.g., Opening Auctions, Synthetic Continuity).
 - **Fragmentation Family**: Structural continuity breaks (e.g., Authority outages, cross-feed divergence).
 These are strictly for archive navigation, not finalized causal truth.
+
+### 4. Empirical Scaling Limits (Rule 14)
+**Rule 14 (Abstraction Freeze Constraint):** The archive must prioritize quiet empirical accumulation over theoretical expansion. The introduction of any new framework nouns, second-order abstractions, or topological metaphors (e.g., "latent dimensions", "phase transitions", "deformation fields") is strictly prohibited. All future documentation must use only previously approved, replay-local, observational vocabulary.
