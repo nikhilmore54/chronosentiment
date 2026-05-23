@@ -51,8 +51,10 @@ impl EvaluationService {
             strategy_id,
             avg: execution_eval.avg_pnl,
             std: execution_eval.std_dev,
+            fitness: execution_eval.fitness,
             ga_fitness: Some(ga_eval.fitness),
             execution_fitness: execution_eval.fitness,
+            total_trades: execution_eval.trade_count,
             classification: chronosentiment_core::ga::get_strategy_classification(execution_eval),
         }
     }
@@ -173,6 +175,8 @@ impl EvaluationService {
             },
             parent_sequence_id: event.parent_sequence_id(),
             payload,
+            source_layer: crate::dto::SourceLayer::Sequencer,
+            kernel_signature: String::new(),
         }
     }
 
@@ -507,7 +511,7 @@ impl EvaluationService {
         }).collect();
 
         let (ga_result, _) = chronosentiment_core::run_ga_evolution(ga_config.clone(), &train_scenarios_vec, &chronosentiment_core::ga::GlobalEvoState::default());
-        let execution_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = execution_scenarios.iter().map(|(name, events)| {
+        let execution_scenarios_vec: Vec<chronosentiment_core::ga::ScenarioPair<'_>> = holdout_scenarios.iter().map(|(name, events)| {
             chronosentiment_core::ga::ScenarioPair {
                 name,
                 signal_symbol: "BTC",
@@ -794,7 +798,7 @@ impl EvaluationService {
         })
     }
 
-    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::MarketEvent>> {
+    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::SimEvent>> {
         let source = chronosentiment_core::FolderCandleSource {
             folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
         };

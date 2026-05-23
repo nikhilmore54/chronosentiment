@@ -2,7 +2,41 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub use chronosentiment_core::{Strategy, pipeline::UnifiedGaResponse, pipeline::UnifiedStrategyEvaluation as StrategyEvaluationDto};
+pub use chronosentiment_core::Strategy;
+
+/// API-layer evaluation DTO. Defined locally so we can add `Serialize`, `PartialEq`,
+/// and extra fields (`ga_fitness`, `execution_fitness`, `total_trades`) that the
+/// core `pipeline::StrategyEvaluationDto` does not expose.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct StrategyEvaluationDto {
+    pub strategy_id: String,
+    pub avg: f64,
+    pub std: f64,
+    pub fitness: f64,
+    pub classification: String,
+    /// GA-phase fitness (signal quality). `None` when only execution was evaluated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ga_fitness: Option<f64>,
+    /// Execution-phase fitness (microstructure quality).
+    pub execution_fitness: f64,
+    /// Total number of trades evaluated.
+    pub total_trades: usize,
+}
+
+impl From<chronosentiment_core::ga::StrategyEvaluation> for StrategyEvaluationDto {
+    fn from(e: chronosentiment_core::ga::StrategyEvaluation) -> Self {
+        Self {
+            strategy_id: e.strategy_id.clone(),
+            avg: e.avg_pnl,
+            std: e.std_dev,
+            fitness: e.fitness,
+            classification: chronosentiment_core::ga::get_strategy_classification(&e),
+            ga_fitness: Some(e.fitness),
+            execution_fitness: e.fitness,
+            total_trades: e.trade_count,
+        }
+    }
+}
 
 // ─── Canonical Schema Types ────────────────────────────────────────────────
 // These types conform to the JSON schemas in schemas/canonical/.
@@ -240,17 +274,21 @@ pub struct RunGaResponse {
     pub final_gen_best: StrategyEvaluationDto,
 }
 
-impl From<UnifiedGaResponse> for RunGaResponse {
-    fn from(res: UnifiedGaResponse) -> Self {
+impl From<chronosentiment_core::ga::GaResult> for RunGaResponse {
+    fn from(res: chronosentiment_core::ga::GaResult) -> Self {
+        let global_best: StrategyEvaluationDto = res.global_best.clone().into();
+        let final_gen_best: StrategyEvaluationDto = res.final_generation_best.clone().into();
+        let history: Vec<StrategyEvaluationDto> = res.generation_history.into_iter().map(Into::into).collect();
+        let best_per_regime: HashMap<String, StrategyEvaluationDto> = res.best_per_regime.into_iter().map(|(k, v)| (k, v.into())).collect();
         Self {
-            results: vec![res.global_best.clone(), res.final_generation_best.clone()],
-            generation_history: res.generation_history,
-            best_per_regime: res.best_per_regime,
-            global_best: res.global_best.clone(),
+            results: vec![global_best.clone(), final_gen_best.clone()],
+            generation_history: history,
+            best_per_regime,
+            global_best: global_best.clone(),
             global_best_generation: res.global_best_generation,
             generation_found: res.global_best_generation,
-            final_generation_best: res.final_generation_best.clone(),
-            final_gen_best: res.final_generation_best,
+            final_generation_best: final_gen_best.clone(),
+            final_gen_best,
         }
     }
 }

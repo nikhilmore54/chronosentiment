@@ -362,18 +362,15 @@ pub async fn get_global_ranking_handler(
 }
 
 /// Latest on-disk `PersistedStrategyStore` JSON (reloads from disk each request).
+/// NOTE: `load_strategy_store` is not yet implemented in core; returns null stub.
 pub async fn get_strategy_store_handler(
     State(_service): State<EvaluationService>,
 ) -> Json<serde_json::Value> {
     println!("Request received: ga/strategy-store");
-    let path = EvaluationService::STRATEGY_STORE_PATH;
-    let store = match chronosentiment_core::pipeline::load_strategy_store(path) {
-        Ok(s) => serde_json::to_value(&s).unwrap_or(serde_json::Value::Null),
-        Err(_) => serde_json::Value::Null,
-    };
     Json(serde_json::json!({
-        "path": path,
-        "store": store,
+        "path": "N/A",
+        "store": null,
+        "note": "strategy store not yet implemented"
     }))
 }
 
@@ -382,7 +379,7 @@ pub async fn latest_signals_handler(
 ) -> Result<Json<crate::dto::SignalsSnapshotDto>, ApiError> {
     println!("Request received: signals/latest");
     let snapshot = service.get_latest_signals()?;
-    Ok(Json(snapshot))
+    Ok(Json(snapshot.into()))
 }
 
 pub async fn trade_suggestions_handler(
