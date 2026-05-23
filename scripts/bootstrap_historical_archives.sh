@@ -61,18 +61,24 @@ cargo run --release --bin yahoo_importer -- --symbol BTC-USD --interval 1m --nam
 
 echo "Done."
 
-# --- FUTURE CURATED TARGETS (PHASE 2B SCENARIO EXPANSION) ---
-# Do NOT bulk-scrape. Adhere strictly to the "Wind Tunnel" philosophy:
-# Small, curated, phenomenologically distinct universes.
+# --- PHASE 2C: CURATED CHRONOLOGY PRESSURE ACQUISITION ---
+# The observatory must stay in Phase 2C to build deep recurrence.
+# Do NOT bulk-scrape. Do NOT move to Phase 3 (execution survivability).
+# Ingest ONE carefully justified universe at a time from these priority classes:
 #
-# Target 1: Multi-Hour Liquidation Cascade (e.g., 24h FTX Collapse window)
-# Reason: Tests persistence carryover and reset fragmentation propagation.
+# Priority 1: Violent Rupture Universes (e.g., FTX collapse, Flash Crashes)
+# Reason: Tests multi-stage collapse and persistent rupture propagation.
 #
-# Target 2: Intermittent Discontinuity / Partial Outage
-# Reason: Tests degradation under bursty continuity corruption, not total absence.
+# Priority 2: Macro Shock Universes (e.g., CPI Release, FOMC Announcements)
+# Reason: Tests ultra-localized rupture and deterministic discontinuity.
 #
-# Target 3: Regime Transition Window
-# Reason: Tests chronology sensitivity onset from drift -> expansion -> compression.
+# Priority 3: Continuity Persistence Universes (e.g., Asia-open impulse, weekend deserts)
+# Reason: Tests sparse continuity and persistence carryover.
 #
-# Target 4: Fidelity Ladder Curvature (5m, 15m, OHLCV)
-# Reason: Tests degradation curvature, not just binary tick vs 1m.
+# Priority 4: Ontology Divergence Universes (e.g., Cross-Feed Disagreement)
+# Reason: Tests execution reality (Binance native) vs presentation ontology (Yahoo/TV).
+#
+# Priority 5: Explicit Discontinuity Universes (e.g., Exchange Outages)
+# Reason: Missing chronology is itself chronology. Tests replay integrity.
+#
+# Rule: No new scenario enters the permanent archive without explicit justification.
