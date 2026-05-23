@@ -63,3 +63,12 @@ As the observatory expands across ecologies, the temporal boundaries of the mark
 - **Bounded Session**: Defined trading hours with structured overnight/weekend gaps (e.g., Equities). Discontinuities are regulatory/structural artifacts.
 - **Auction-Driven Session**: Synthetic liquidity accumulation windows (e.g., Market Open/Close crosses). Discontinuities represent intentional order book freezing and matching.
 - **Halted Session**: Regulatory or circuit-breaker induced interruptions. Discontinuities represent authority-imposed external pressure.
+
+## Rule 10: Interpretation Constraint (The Drift Governor)
+To prevent the premature formalization of proto-theories and causal explanatory language, all claims and interpretations must adhere to the following constraints:
+1. **Reference the Replay Class**: Interpretations must explicitly state the tested replay class (e.g., "Under the tested bounded-session replay...").
+2. **Reference the Ecology**: Interpretations must bound their claims to the specific tested ecology (e.g., "in the SPY 1m ecology...").
+3. **Reference the Geometry**: Outcomes must be described in terms of geometric deformation, not semantic "truth" (e.g., "the geometry did not reproduce the persistence collapse...").
+4. **Avoid Universal Explanations**: Do NOT use terms like "proves," "is," "cannot," "always," "fundamentally," or "institutional padding."
+5. **Prefer Observational Action Verbs**: Use terms like "observed," "corresponded," "did not reproduce," "tested conditions," and "emitted non-collapsing geometry."
+The observatory is a continuity microscope, not a causal engine. It reveals deformation structures; it does not theorize the physics of markets.

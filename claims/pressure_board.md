@@ -11,4 +11,4 @@ This board tracks the stabilization or weakening of key findings as new phenomen
 | discontinuity persistence collapse | stable conditional boundary (null hypothesis holds perfectly across 2021-2026 eras) |
 | overnight temporal absence | structurally inverted (acts as persistence bridge, strengthening event_reset) |
 | auction transition collapse | falsified (synthetic continuity injection perfectly suppresses rupture velocity) |
-| asset-class rupture transfer | bounded (equities physically dampen vertical velocity, preventing crypto-tuned macro shocks from triggering collapse) |
+| asset-class rupture transfer | bounded (tested SPY macro event did not reproduce the persistence collapse geometry of prior crypto ruptures) |
