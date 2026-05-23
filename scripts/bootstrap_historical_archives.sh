@@ -39,3 +39,19 @@ echo "Fetching 2023_christmas_drift (1m)..."
 cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1703419200000 --end-time 1703422800000 --name 2023_christmas_drift_1h_1m
 
 echo "Done."
+
+# --- FUTURE CURATED TARGETS (PHASE 2B SCENARIO EXPANSION) ---
+# Do NOT bulk-scrape. Adhere strictly to the "Wind Tunnel" philosophy:
+# Small, curated, phenomenologically distinct universes.
+#
+# Target 1: Multi-Hour Liquidation Cascade (e.g., 24h FTX Collapse window)
+# Reason: Tests persistence carryover and reset fragmentation propagation.
+#
+# Target 2: Intermittent Discontinuity / Partial Outage
+# Reason: Tests degradation under bursty continuity corruption, not total absence.
+#
+# Target 3: Regime Transition Window
+# Reason: Tests chronology sensitivity onset from drift -> expansion -> compression.
+#
+# Target 4: Fidelity Ladder Curvature (5m, 15m, OHLCV)
+# Reason: Tests degradation curvature, not just binary tick vs 1m.
