@@ -4,9 +4,14 @@ set -e
 echo "Starting Phase 2B Cross-Universe Replication Matrix..."
 cd core
 
-# Define frozen machinery
-TOPOLOGY="osc_50_1.0"
-COGNITION="rolling_50"
+# Define frozen machinery configurations
+# Replication Baseline A
+TOPOLOGY_A="osc_50_1.0"
+COGNITION_A="rolling_50"
+
+# Replication Baseline B
+TOPOLOGY_B="osc_50_1.0"
+COGNITION_B="event_reset"
 
 # Define target universes (assumes data is already bootstrapped via bootstrap_historical_archives.sh)
 UNIVERSES=(
@@ -37,26 +42,37 @@ for UNIVERSE in "${UNIVERSES[@]}"; do
         continue
     fi
 
-    # Output Structure: artifacts/phase2b/<universe>/<fidelity>/<topology>/<cognition>/
-    TIER0_OUT="artifacts/phase2b/${UNIVERSE}/tier0_tick"
-    TIER1_OUT="artifacts/phase2b/${UNIVERSE}/tier1_1m"
+    # --- Baseline A Execution ---
+    echo "--- Baseline A: $TOPOLOGY_A + $COGNITION_A ---"
+    TIER0_OUT_A="artifacts/phase2b/${UNIVERSE}/tier0_tick/${COGNITION_A}"
+    TIER1_OUT_A="artifacts/phase2b/${UNIVERSE}/tier1_1m/${COGNITION_A}"
 
-    echo "Replaying Tier 0 (Native Tick)..."
-    cargo run --release --bin trace_replay -- --substrate tier0_tick --substrate-file "$TICK_PATH" --topology "$TOPOLOGY" --cognition "$COGNITION"
-
-    echo "Replaying Tier 1 (1m Kline)..."
-    cargo run --release --bin trace_replay -- --substrate tier1_1m --substrate-file "$KLINE_PATH" --topology "$TOPOLOGY" --cognition "$COGNITION"
+    cargo run --release --bin trace_replay -- --substrate tier0_tick --substrate-file "$TICK_PATH" --topology "$TOPOLOGY_A" --cognition "$COGNITION_A"
+    cargo run --release --bin trace_replay -- --substrate tier1_1m --substrate-file "$KLINE_PATH" --topology "$TOPOLOGY_A" --cognition "$COGNITION_A"
     
-    # We move the outputs to the formal phase2b structure
-    # Note: trace_replay automatically puts it in artifacts/<substrate>/<topology>/<cognition>
-    mkdir -p "$TIER0_OUT" "$TIER1_OUT"
-    cp -r "artifacts/tier0_tick/$TOPOLOGY/$COGNITION" "$TIER0_OUT/"
-    cp -r "artifacts/tier1_1m/$TOPOLOGY/$COGNITION" "$TIER1_OUT/"
+    mkdir -p "$TIER0_OUT_A" "$TIER1_OUT_A"
+    cp -r "artifacts/tier0_tick/$TOPOLOGY_A/$COGNITION_A"/* "$TIER0_OUT_A/"
+    cp -r "artifacts/tier1_1m/$TOPOLOGY_A/$COGNITION_A"/* "$TIER1_OUT_A/"
 
-    echo "Running Bounded Comparison..."
     python3 ../scripts/phase2a_degradation_study.py \
-        --tier0 "$TIER0_OUT/$COGNITION/trace_v1.json" \
-        --tier1 "$TIER1_OUT/$COGNITION/trace_v1.json"
+        --tier0 "$TIER0_OUT_A/trace_v1.json" \
+        --tier1 "$TIER1_OUT_A/trace_v1.json"
+
+    # --- Baseline B Execution ---
+    echo "--- Baseline B: $TOPOLOGY_B + $COGNITION_B ---"
+    TIER0_OUT_B="artifacts/phase2b/${UNIVERSE}/tier0_tick/${COGNITION_B}"
+    TIER1_OUT_B="artifacts/phase2b/${UNIVERSE}/tier1_1m/${COGNITION_B}"
+
+    cargo run --release --bin trace_replay -- --substrate tier0_tick --substrate-file "$TICK_PATH" --topology "$TOPOLOGY_B" --cognition "$COGNITION_B"
+    cargo run --release --bin trace_replay -- --substrate tier1_1m --substrate-file "$KLINE_PATH" --topology "$TOPOLOGY_B" --cognition "$COGNITION_B"
+    
+    mkdir -p "$TIER0_OUT_B" "$TIER1_OUT_B"
+    cp -r "artifacts/tier0_tick/$TOPOLOGY_B/$COGNITION_B"/* "$TIER0_OUT_B/"
+    cp -r "artifacts/tier1_1m/$TOPOLOGY_B/$COGNITION_B"/* "$TIER1_OUT_B/"
+
+    python3 ../scripts/phase2a_degradation_study.py \
+        --tier0 "$TIER0_OUT_B/trace_v1.json" \
+        --tier1 "$TIER1_OUT_B/trace_v1.json"
         
     echo ""
 done
