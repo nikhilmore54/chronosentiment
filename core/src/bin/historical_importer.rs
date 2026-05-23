@@ -78,10 +78,18 @@ fn main() {
             break;
         }
 
-        let url = format!(
-            "https://api.binance.com/api/v3/klines?symbol={}&interval={}&startTime={}&endTime={}&limit=1000",
-            args.symbol.to_uppercase(), args.interval, current_start, args.end_time
-        );
+        let is_tick = args.interval == "tick";
+        let url = if is_tick {
+            format!(
+                "https://api.binance.com/api/v3/aggTrades?symbol={}&startTime={}&endTime={}&limit=1000",
+                args.symbol.to_uppercase(), current_start, args.end_time
+            )
+        } else {
+            format!(
+                "https://api.binance.com/api/v3/klines?symbol={}&interval={}&startTime={}&endTime={}&limit=1000",
+                args.symbol.to_uppercase(), args.interval, current_start, args.end_time
+            )
+        };
 
         let res = match client.get(&url).send() {
             Ok(r) => r,
@@ -109,22 +117,31 @@ fn main() {
             continue;
         }
 
-        let klines: Vec<Value> = res.json().unwrap_or_else(|_| vec![]);
-        if klines.is_empty() {
+        let data: Vec<Value> = res.json().unwrap_or_else(|_| vec![]);
+        if data.is_empty() {
             break; // No more data
         }
 
-        for k in &klines {
-            let ts = k[0].as_u64().unwrap();
-            let close: f64 = k[4].as_str().unwrap().parse().unwrap();
-            let vol: f64 = k[5].as_str().unwrap().parse().unwrap();
+        for k in &data {
+            let (ts, close, vol, is_buyer_maker) = if is_tick {
+                let ts = k.get("T").unwrap().as_u64().unwrap();
+                let close: f64 = k.get("p").unwrap().as_str().unwrap().parse().unwrap();
+                let vol: f64 = k.get("q").unwrap().as_str().unwrap().parse().unwrap();
+                let is_buyer_maker = k.get("m").unwrap().as_bool().unwrap();
+                (ts, close, vol, is_buyer_maker)
+            } else {
+                let ts = k[0].as_u64().unwrap();
+                let close: f64 = k[4].as_str().unwrap().parse().unwrap();
+                let vol: f64 = k[5].as_str().unwrap().parse().unwrap();
+                (ts, close, vol, false)
+            };
 
             let tick = NormalizedTick {
                 symbol: args.symbol.clone(),
                 timestamp: ts,
                 price: close,
                 volume: vol,
-                is_buyer_maker: false,
+                is_buyer_maker,
             };
 
             let line = format!("{}\n", serde_json::to_string(&tick).unwrap());
@@ -132,7 +149,11 @@ fn main() {
             hasher.update(line.as_bytes());
             tick_count += 1;
             
-            current_start = ts + 1;
+            if is_tick {
+                current_start = std::cmp::max(current_start, ts + 1);
+            } else {
+                current_start = ts + 1;
+            }
         }
 
         println!("Fetched {} ticks. Current ts: {}", tick_count, current_start);

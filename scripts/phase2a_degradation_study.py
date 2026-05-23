@@ -32,26 +32,26 @@ def run_degradation_comparison(tier0_path, tier1_path):
     print(f"Event Density Retained: {(tier1['total_ticks'] / max(1, tier0['total_ticks'])) * 100:.2f}%")
 
     # Occupancy Deformation
-    t0_intensities = [t['intensity'] for t in t0_traces]
-    t1_intensities = [t['intensity'] for t in t1_traces]
+    t0_intensities = [t['occupancy'] for t in t0_traces]
+    t1_intensities = [t['occupancy'] for t in t1_traces]
     
     t0_max_intensity = max(t0_intensities) if t0_intensities else 0
     t1_max_intensity = max(t1_intensities) if t1_intensities else 0
     
     print(f"\nPeak Occupancy Deformation:")
-    print(f"Tier 0 Max Intensity: {t0_max_intensity}")
-    print(f"Tier 1 Max Intensity: {t1_max_intensity}")
-    print(f"Intensity Erased by Aggregation: {t0_max_intensity - t1_max_intensity}")
+    print(f"Tier 0 Max Occupancy: {t0_max_intensity}")
+    print(f"Tier 1 Max Occupancy: {t1_max_intensity}")
+    print(f"Occupancy Erased by Aggregation: {t0_max_intensity - t1_max_intensity}")
 
     # Persistence Collapse
     print("\nPersistence Structure:")
-    # A simple metric for persistence: how many consecutive steps the intensity stayed above a threshold
+    # A simple metric for persistence: how many consecutive steps the occupancy stayed above a threshold
     threshold = np.mean(t0_intensities) if t0_intensities else 0
     t0_above = sum(1 for x in t0_intensities if x > threshold)
     t1_above = sum(1 for x in t1_intensities if x > threshold)
     
-    print(f"Tier 0 High-Intensity States: {t0_above}")
-    print(f"Tier 1 High-Intensity States: {t1_above}")
+    print(f"Tier 0 High-Occupancy States: {t0_above}")
+    print(f"Tier 1 High-Occupancy States: {t1_above}")
     
     print("\nConclusion: The geometric information loss is explicitly measurable.")
     print("Exporting metrics for Claims Repository validation...")

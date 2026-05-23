@@ -29,7 +29,7 @@ struct Args {
 
 #[derive(Deserialize)]
 struct ChronologyEvent {
-    close: f64,
+    price: f64,
 }
 
 fn parse_topology(ident: &str) -> TopologyField {
@@ -73,7 +73,7 @@ fn main() {
         for line in reader.lines() {
             let line = line.unwrap();
             let event: ChronologyEvent = serde_json::from_str(&line).expect("Failed to parse jsonl event");
-            prices.push(event.close.max(1.0));
+            prices.push(event.price.max(1.0));
         }
     } else {
         let mut current_price = 40000.0;
