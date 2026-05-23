@@ -14,3 +14,4 @@ This board tracks the stabilization or weakening of key findings as new phenomen
 | asset-class rupture transfer | bounded (tested SPY macro event did not reproduce the persistence collapse geometry of prior crypto ruptures) |
 | continuity concentration correspondence | Cross-Ecology Recurring (highly concentrated composite replays emitted persistence-collapse geometry corresponding with crypto rupture families) |
 | directional asymmetry correspondence | Observed (concentration alone is insufficient; upward accumulation propagates differently than downward liquidation under equal magnitude) |
+| upward continuity fracture | Observed (extreme upward squeeze contradicted asymmetry assumption, emitting collapse geometry similar to downward liquidation) |

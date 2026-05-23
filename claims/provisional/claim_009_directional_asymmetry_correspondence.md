@@ -11,13 +11,13 @@
 - **Chronology Density:** 5m Presentation
 
 ## Core Assertion
-Under the tested counter-pressure replay, a higher-magnitude continuous upward accumulation (5.02% TSLA rally) did NOT emit the severe persistence-collapse geometry observed in the lower-magnitude downward cascade (4.05% NVDA). This suggests that continuity concentration alone is insufficient to mandate persistence fracture; directional asymmetry (accumulation vs. liquidation) structurally alters bounded composite deformation.
+Under the tested bounded-session composite replay, the upward directional continuity concentration did not emit the persistence-collapse geometry previously observed in downward concentrated continuity replays. This suggests that magnitude and concentration alone are insufficient to mandate persistence fracture.
 
 ## Evidence Base
 1. **TSLA Upward Rally (`2026_tsla_upward_rally_5m`):**
    - **`rolling_50` (Baseline A) Persistence:** 41
    - **`event_reset` (Baseline B) Persistence:** 34
-   - **Interpretation:** Despite a 5.02% concentration over 60 minutes, the geometry merely deformed slightly (41 → 34). It explicitly avoided the deep fracture geometry (26) emitted by the 4.05% NVDA liquidation cascade.
+   - **Interpretation:** Despite a higher magnitude (5.02%) over 60 minutes, the geometry emitted slight deformation (41 → 34), avoiding the deep fracture geometry (26) emitted by the lower magnitude downward cascade (4.05% NVDA).
 
 ## Scientific Conclusion
-Bounded-session continuity deformation is not purely a function of concentrated magnitude. The observed structural difference between the NVDA cascade (fracture) and the TSLA rally (partial deformation) suggests that liquidation mechanics and accumulation mechanics possess distinct continuity propagation structures within the composite authority ecology.
+Certain downward concentrated continuity replays have corresponded with persistence-collapse geometry, while certain upward concentrated continuity replays have not. The observatory does not yet know whether directionality itself, continuity fragmentation, propagation topology, or another structural feature carries the deformation correspondence. Magnitude and concentration alone are insufficient to explain the separation.
