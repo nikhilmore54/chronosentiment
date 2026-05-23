@@ -20,6 +20,20 @@ cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m 
 echo "Fetching 2026_weekend_liquidity_gap..."
 cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1775260800000 --end-time 1775347200000 --name 2026_weekend_liquidity_gap
 
-# Add more ranges here as needed
+# --- FUTURE CURATED TARGETS ---
+# Do NOT bulk-scrape. Adhere strictly to bounded, semantic universes.
+#
+# Target: 2024 CPI Release Shock (e.g., Feb 13 2024)
+# Reason: Burst compression
+# cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1707829200000 --end-time 1707915600000 --name 2024_cpi_release
+#
+# Target: Liquidation Cascade (e.g., Aug 17 2023 or FTX collapse)
+# Reason: Rapid occupancy shock
+# 
+# Target: Low-Volatility Drift Week
+# Reason: Continuity persistence
+#
+# Target: Exchange Outage Period
+# Reason: Explicit discontinuity truth
 
 echo "Done."
