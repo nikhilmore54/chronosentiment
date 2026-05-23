@@ -111,6 +111,30 @@ def inject_topology(ledger_path: Path, mode: str):
                 accept = min(1.0, wave_prog + 0.3)
                 lag_stddev = 45.0
                 median_lag = int(90 * amplitude)
+            elif mode == "plateau_low":
+                wave_prog = 0.2
+                strict = wave_prog
+                accept = wave_prog
+                lag_stddev = 10.0
+                median_lag = 300
+            elif mode == "impulse_shock":
+                wave_prog = 0.0 if 2000 < row_index < 2010 else 1.0
+                strict = wave_prog
+                accept = wave_prog
+                lag_stddev = 10.0 if wave_prog == 0.0 else 0.0
+                median_lag = 300 if wave_prog == 0.0 else 0
+            elif mode == "drift_field":
+                wave_prog = max(0.1, 1.0 - (row_index / 4320.0))
+                strict = wave_prog
+                accept = wave_prog
+                lag_stddev = 10.0
+                median_lag = int((1.0 - wave_prog) * 100)
+            elif mode == "fragmented_regime":
+                wave_prog = 1.0 if (row_index // 10) % 2 == 0 else 0.1
+                strict = wave_prog
+                accept = wave_prog
+                lag_stddev = 10.0
+                median_lag = 300 if wave_prog == 0.1 else 0
             else:
                 pass # Baseline
                 

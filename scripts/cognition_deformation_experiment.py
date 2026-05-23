@@ -98,7 +98,7 @@ def run_orthogonal_geometries():
     df = data[symbol].sort_index()
     
     base_ledger = Path(f"state_archive/batches/batch_{batch_id}/runs/live/metadata/live_session_steps.jsonl")
-    topologies = ["osc_P50_A100", "osc_P100_A100"]
+    topologies = ["plateau_low", "impulse_shock", "drift_field", "fragmented_regime"]
     geometries = ["rolling_50", "rolling_100", "event_reset", "accumulator"]
     
     print(f"{'TOPOLOGY':<16} | {'MEMORY GEOMETRY':<16} | {'MEAN OCC.':<10} | {'AC(L=1)':<12} | {'TRANS. ENT.':<12}")
