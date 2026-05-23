@@ -15,3 +15,5 @@ This board tracks the stabilization or weakening of key findings as new phenomen
 | continuity concentration correspondence | Cross-Ecology Recurring (highly concentrated composite replays emitted persistence-collapse geometry corresponding with crypto rupture families) |
 | directional asymmetry correspondence | Observed (concentration alone is insufficient; upward accumulation propagates differently than downward liquidation under equal magnitude) |
 | upward continuity fracture | Observed (extreme upward squeeze contradicted asymmetry assumption, emitting collapse geometry similar to downward liquidation) |
+| downward continuity preservation | Observed (buffered institutional drop contradicted concentration assumption, emitting preservation geometry) |
+| structural similarity divergence | Observed (near-isomorphic synchronized replays emitted divergent outputs, proving sensitivity to latent propagation topologies) |
