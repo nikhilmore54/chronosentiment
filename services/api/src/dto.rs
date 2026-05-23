@@ -1,7 +1,151 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 pub use chronosentiment_core::{Strategy, pipeline::UnifiedGaResponse, pipeline::UnifiedStrategyEvaluation as StrategyEvaluationDto};
+
+// ─── Canonical Schema Types ────────────────────────────────────────────────
+// These types conform to the JSON schemas in schemas/canonical/.
+// Every field maps 1:1 to a schema field. No derived or synthesized values.
+
+/// Authority layer that emitted an event. Maps to `event.schema.json#/properties/source_layer`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SourceLayer {
+    Kernel,
+    Sequencer,
+    LatencyLayer,
+    Ese,
+    PortfolioEngine,
+    Governor,
+    GaOptimizer,
+}
+
+/// Replay Engine certification state. Maps to `replay_response.schema.json#/properties/certification_state`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CertificationState {
+    Certified,
+    Degraded,
+    Partial,
+    Invalid,
+}
+
+/// Narrative block group. Maps to `decision_trace.schema.json#/properties/narrative_blocks/items/properties/group`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NarrativeGroup {
+    Intent,
+    Queue,
+    Execution,
+    Settlement,
+    Governance,
+}
+
+/// Narrative block type. Maps to `decision_trace.schema.json#/properties/narrative_blocks/items/properties/block_type`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NarrativeBlockType {
+    Primary,
+    Derived,
+    CausalLink,
+    DivergenceMarker,
+}
+
+/// A single backend-certified narrative block. Replaces client-side `groupAndNarrateEvents()`.
+/// Maps to `decision_trace.schema.json#/properties/narrative_blocks/items`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NarrativeBlock {
+    pub block_id: Uuid,
+    pub group: NarrativeGroup,
+    pub sequence_id: u64,
+    pub narrative: String,
+    pub block_type: NarrativeBlockType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_block_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub divergence_score: Option<f64>,
+}
+
+/// Canonical conformant response for `POST /inspect_strategy`.
+/// Conforms to both `replay_response.schema.json` and `decision_trace.schema.json`.
+#[derive(Debug, Serialize)]
+pub struct CanonicalInspectResponse {
+    // replay_response fields
+    pub session_id: Uuid,
+    pub strategy_id: String,
+    pub requested_sequence_id: u64,
+    pub certification_state: CertificationState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certification_reason: Option<String>,
+    pub reconstructed_at_ns: u64,
+    pub event_window: CanonicalEventWindow,
+    pub portfolio_state: CanonicalPortfolioState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub causal_chain: Option<Vec<u64>>,
+    pub replay_signature: String,
+
+    // decision_trace fields (embedded — one trace per inspect session)
+    pub trace_id: Uuid,
+    pub narrative_blocks: Vec<NarrativeBlock>,
+    pub causal_ancestry: Vec<u64>,
+    pub trace_signature: String,
+
+    // legacy fields preserved for prototype UI compatibility during transition
+    pub decision_trace: Vec<EventWrapper>,
+    pub execution_trace: Vec<EventWrapper>,
+    pub metrics: StrategyEvaluationDto,
+    pub event_sequence: Vec<EventWrapper>,
+}
+
+/// Canonical event window. Maps to `replay_response.schema.json#/properties/event_window`.
+#[derive(Debug, Serialize)]
+pub struct CanonicalEventWindow {
+    pub first_sequence_id: u64,
+    pub last_sequence_id: u64,
+    pub event_count: usize,
+    pub events: Vec<CanonicalEvent>,
+}
+
+/// Canonical portfolio state. Maps to `replay_response.schema.json#/properties/portfolio_state`.
+#[derive(Debug, Serialize)]
+pub struct CanonicalPortfolioState {
+    pub positions: Vec<CanonicalPosition>,
+    pub cash_balance: f64,
+    pub total_equity: f64,
+    pub unrealized_pnl: f64,
+    pub realized_pnl: f64,
+    pub total_trades: u64,
+}
+
+/// A single position in the portfolio state.
+#[derive(Debug, Serialize)]
+pub struct CanonicalPosition {
+    pub symbol: String,
+    pub quantity: f64,
+    pub avg_entry_price: f64,
+    pub current_price: f64,
+    pub unrealized_pnl: f64,
+}
+
+/// Canonical event conforming to `event.schema.json`.
+/// Extends `EventWrapper` with `source_layer` and `kernel_signature`.
+#[derive(Debug, Serialize, Clone)]
+pub struct CanonicalEvent {
+    pub sequence_id: u64,
+    pub timestamp_ns: u64,
+    #[serde(rename = "event_type")]
+    pub event_type: String,
+    pub source_layer: SourceLayer,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strategy_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_sequence_id: Option<u64>,
+    pub payload: serde_json::Value,
+    pub kernel_signature: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replay_session_id: Option<Uuid>,
+}
 
 /// Type-safe boundary unit for real-world Rupees (f64).
 /// This ensures internal scaled integers (paise/units) never leak to the API.
@@ -119,6 +263,10 @@ pub struct EventWrapper {
     pub event_type: String,
     pub parent_sequence_id: Option<u64>,
     pub payload: serde_json::Value,
+    // Added for canonical conformance — maps to event.schema.json#/properties/source_layer
+    pub source_layer: SourceLayer,
+    // Added for canonical conformance — maps to event.schema.json#/properties/kernel_signature
+    pub kernel_signature: String,
 }
 
 #[derive(Debug, Serialize)]

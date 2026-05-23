@@ -4,6 +4,7 @@ mod errors;
 mod handlers;
 mod routes;
 mod services;
+mod signatures;
 mod strategy_id_parse;
 
 use axum::{routing::get, Router};
