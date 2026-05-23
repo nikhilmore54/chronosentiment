@@ -813,27 +813,12 @@ impl EvaluationService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dto::{RunGaRequest, ScenarioInput};
-    use chronosentiment_core::MarketEvent;
 
     #[test]
     fn test_run_ga_api_determinism() {
-        let request = RunGaRequest {
-            population_size: 10,
-            generations: 5,
-            mutation_rate: 0.1,
-            scenarios: vec![ScenarioInput { events: vec![
-                MarketEvent { subtype: chronosentiment_core::MarketEventType::NewOrder, price: 100, quantity: 2000, side: Some(chronosentiment_core::Side::Sell), exchange_ts: 10 },
-                MarketEvent { subtype: chronosentiment_core::MarketEventType::Trade, price: 100, quantity: 500, side: None, exchange_ts: 15 },
-            ]}],
-            seed: 789,
-            top_k: Some(3),
-            lambda: Some(0.5),
-        };
-
         let service = EvaluationService::new();
-        let r1 = service.run_ga(request.clone()).expect("Failed to run GA in test");
-        let r2 = service.run_ga(request).expect("Failed to run GA in test");
+        let r1 = service.run_ga().expect("Failed to run GA in test");
+        let r2 = service.run_ga().expect("Failed to run GA in test");
 
         assert_eq!(r1.results.len(), r2.results.len(), "Results length diverged");
         for i in 0..r1.results.len() {
