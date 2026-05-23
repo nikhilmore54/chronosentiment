@@ -1,4 +1,5 @@
 pub mod topology;
+pub mod cognition;
 pub mod binance_adapter;
 pub mod csv_source;
 pub mod data_source;
