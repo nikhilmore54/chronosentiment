@@ -5,9 +5,9 @@ print(f"{'Universe':<42} | {'Baseline':<12} | {'T0 Max':<8} | {'T1 Max':<8} | {'
 print("-" * 102)
 
 universes = [
-    "2024_asia_open_impulse_2h",
-    "2026_recent_crossfeed_1h",
-    "2026_recent_discontinuity_1h"
+    "2021_may_19_cascade_4h",
+    "2021_oct_17_quiet_sunday_4h",
+    "2022_sep_13_cpi_shock_2h"
 ]
 
 for universe in universes:

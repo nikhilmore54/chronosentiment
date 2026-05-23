@@ -109,6 +109,31 @@ cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tic
 echo "Fetching 2026_recent_discontinuity_1h (Yahoo 1m)..."
 python3 ../scripts/yahoo_fetcher.py --symbol BTC-USD --name 2026_recent_discontinuity_1h_yahoo_1m
 
+# ---------------------------------------------------------
+# PHASE 2C: WAVE 3 ACQUISITION (Longitudinal Deepening)
+# ---------------------------------------------------------
+
+# 2021 May 19 Cascade (May 19 12:00 to 16:00 UTC)
+# Justification: archive_justifications/2021_may_19_cascade_4h.md
+echo "Fetching 2021_may_19_cascade_4h (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1621425600000 --end-time 1621440000000 --name 2021_may_19_cascade_4h_tick
+echo "Fetching 2021_may_19_cascade_4h (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1621425600000 --end-time 1621440000000 --name 2021_may_19_cascade_4h_1m
+
+# 2021 Oct 17 Quiet Sunday (Oct 17 00:00 to 04:00 UTC)
+# Justification: archive_justifications/2021_oct_17_quiet_sunday_4h.md
+echo "Fetching 2021_oct_17_quiet_sunday_4h (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1634428800000 --end-time 1634443200000 --name 2021_oct_17_quiet_sunday_4h_tick
+echo "Fetching 2021_oct_17_quiet_sunday_4h (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1634428800000 --end-time 1634443200000 --name 2021_oct_17_quiet_sunday_4h_1m
+
+# 2022 Sep 13 CPI Shock (Sep 13 12:00 to 14:00 UTC)
+# Justification: archive_justifications/2022_sep_13_cpi_shock_2h.md
+echo "Fetching 2022_sep_13_cpi_shock_2h (Tick)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval tick --start-time 1663070400000 --end-time 1663077600000 --name 2022_sep_13_cpi_shock_2h_tick
+echo "Fetching 2022_sep_13_cpi_shock_2h (1m)..."
+cargo run --release --bin historical_importer -- --symbol BTCUSDT --interval 1m --start-time 1663070400000 --end-time 1663077600000 --name 2022_sep_13_cpi_shock_2h_1m
+
 echo "Done."
 
 # --- PHASE 2C: CURATED CHRONOLOGY PRESSURE ACQUISITION ---
