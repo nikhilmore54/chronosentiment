@@ -41,6 +41,10 @@ struct CaptureGap {
 
 #[derive(Debug, Serialize)]
 struct CaptureManifest {
+    source: String,
+    resolution: String,
+    capture_method: String,
+    import_timestamp: u64,
     substrate: String,
     capture_start: u64,
     capture_end: u64,
@@ -106,7 +110,12 @@ async fn main() {
                             // Finalize current rotation
                             let final_hash = std::mem::replace(&mut hasher, Sha256::new()).finalize();
                             let hash_hex = final_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                            let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
                             let manifest = CaptureManifest {
+                                source: "Binance Live Stream".to_string(),
+                                resolution: "aggTrade".to_string(),
+                                capture_method: "capture_daemon".to_string(),
+                                import_timestamp,
                                 substrate: raw_trade.symbol.clone(),
                                 capture_start: current_rotation_start,
                                 capture_end: now,

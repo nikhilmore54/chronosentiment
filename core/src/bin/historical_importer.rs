@@ -45,6 +45,10 @@ struct CaptureGap {
 
 #[derive(Debug, Serialize)]
 struct CaptureManifest {
+    source: String,
+    resolution: String,
+    capture_method: String,
+    import_timestamp: u64,
     substrate: String,
     capture_start: u64,
     capture_end: u64,
@@ -138,7 +142,13 @@ fn main() {
     let final_hash = hasher.finalize();
     let hash_hex = final_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
 
+    let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
     let manifest = CaptureManifest {
+        source: "Binance Historical API".to_string(),
+        resolution: format!("kline_{}", args.interval),
+        capture_method: "historical_importer".to_string(),
+        import_timestamp,
         substrate: args.symbol,
         capture_start: args.start_time,
         capture_end: args.end_time,
