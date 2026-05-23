@@ -7,7 +7,7 @@ The value of the observatory comes from how carefully curated its continuity geo
 
 ## Rule 1: Pressure-First Expansion
 The archive must expand via qualitative pressure, never volumetric accumulation. Bulk ingestion of continuous historical data ("downloading everything since 2017") is strictly forbidden, as it collapses the signal-to-noise ratio, destroys causal clarity, and reintroduces hidden optimization gravity.
-
+ 
 ## Rule 2: Combinatorial Discipline
 The dimensional matrix of `Universe × Fidelity × Topology × Cognition` must remain severely restricted. Do not recklessly multiply baselines or topologies to fish for divergence. Freeze the machinery; only vary the environment.
 

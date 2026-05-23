@@ -66,19 +66,30 @@ echo "Done."
 # Do NOT bulk-scrape. Do NOT move to Phase 3 (execution survivability).
 # Ingest ONE carefully justified universe at a time from these priority classes:
 #
-# Priority 1: Violent Rupture Universes (e.g., FTX collapse, Flash Crashes)
-# Reason: Tests multi-stage collapse and persistent rupture propagation.
+# CLASS A: Violent Rupture (FTX collapse, flash crashes)
+# CLASS B: Macro Shock (CPI Release, FOMC, US Banking Crisis)
+# CLASS C: Continuity Persistence (Christmas Eve, Weekend Drift, Random Sunday)
+# CLASS D: Ontology Divergence (Cross-Feed Disagreement, Binance vs Yahoo)
+# CLASS E: Explicit Discontinuity (Exchange Outages, API Instability, 36h gap)
 #
-# Priority 2: Macro Shock Universes (e.g., CPI Release, FOMC Announcements)
-# Reason: Tests ultra-localized rupture and deterministic discontinuity.
+# IMMEDIATE ACQUISITION SCHEDULE:
+# Week 1:
+#   - FTX collapse (Class A)
+#   - CPI shock (Class B)
+#   - Quiet Sunday (Class C)
 #
-# Priority 3: Continuity Persistence Universes (e.g., Asia-open impulse, weekend deserts)
-# Reason: Tests sparse continuity and persistence carryover.
+# Week 2:
+#   - Cross-feed CPI (Class D)
+#   - Asia-open impulse (Class C)
+#   - Outage specimen (Class E)
 #
-# Priority 4: Ontology Divergence Universes (e.g., Cross-Feed Disagreement)
-# Reason: Tests execution reality (Binance native) vs presentation ontology (Yahoo/TV).
+# Week 3:
+#   - May 2021 collapse (Class A)
+#   - Weekend liquidity vacuum (Class C)
+#   - FOMC recurrence (Class B)
 #
-# Priority 5: Explicit Discontinuity Universes (e.g., Exchange Outages)
-# Reason: Missing chronology is itself chronology. Tests replay integrity.
-#
-# Rule: No new scenario enters the permanent archive without explicit justification.
+# Rule: No new scenario enters the permanent archive without explicit justification answering:
+# 1. What pressure class?
+# 2. What recurrence axis?
+# 3. What existing assumption does it pressure?
+# 4. What makes it phenomenologically distinct?
