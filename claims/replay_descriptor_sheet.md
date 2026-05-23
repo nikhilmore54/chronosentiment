@@ -14,6 +14,10 @@ This sheet stabilizes replay bookkeeping without attempting to compress or model
 | `2026_amd_sync_drop_5m` | Bounded (Equity) | Downward | Strong (-2.88%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Divergence |
 | `2026_nvda_sync_rally_5m` | Bounded (Equity) | Upward | Strong (+3.16%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Collapse (41 -> 25) | Correspondence |
 | `2026_amd_sync_rally_5m` | Bounded (Equity) | Upward | Strong (+2.22%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 23) | Correspondence |
+| `2026_nvda_sync_rally_weak_5m` | Bounded (Equity) | Upward | Weak (+0.88%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 36) | Divergence |
+| `2026_amd_sync_rally_weak_5m` | Bounded (Equity) | Upward | Weak (+0.52%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Divergence |
+| `2026_nvda_sync_rally_moderate_5m` | Bounded (Equity) | Upward | Moderate (+1.50%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Collapse (41 -> 27) | Correspondence |
+| `2026_amd_sync_rally_moderate_5m` | Bounded (Equity) | Upward | Moderate (+1.33%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 26) | Correspondence |
 | `2026_nvda_sync_drop_weak_5m` | Bounded (Equity) | Downward | Weak (-0.55%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 37) | Divergence |
 | `2026_amd_sync_drop_weak_5m` | Bounded (Equity) | Downward | Weak (-0.90%) | 5m Presentation | Composite | High (vs NVDA) | Semiconductor Pair | Collapse (41 -> 31) | Divergence |
 | `2026_nvda_sync_drop_moderate_5m` | Bounded (Equity) | Downward | Moderate (-1.60%) | 5m Presentation | Composite | High (vs AMD) | Semiconductor Pair | Preservation (41 -> 34) | Divergence |

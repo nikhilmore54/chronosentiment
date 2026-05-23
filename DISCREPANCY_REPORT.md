@@ -1,17 +1,86 @@
 # ChronoSentiment — Documentation vs. UI Implementation Discrepancy Report
 
-**Generated:** 2026-05-23  
-**Scope:** All `.md` documentation files across the project + all React UI components in `my-chrono-sentiment-ui/src/`  
+**Generated:** 2026-05-23
+**Scope:** All `.md` documentation files across the project + all React UI components in `my-chrono-sentiment-ui/src/`
 **Methodology:** Full read of every doc and every component, cross-referenced against each other.
+**Status:** Constitutional governance artifact — architectural transition document for ChronoSentiment.
+
+---
+
+## Constitutional Architecture Laws (Established by This Report)
+
+These laws are not guidelines. They are correctness constraints. Any system behavior that violates them is not a style issue — it is a correctness failure.
+
+| Law | Statement | Governs |
+|-----|-----------|---------|
+| **Law Zero** | The UI must never invent reality | Philosophical root constraint — replay validity, observability trust, execution explainability |
+| **Law One** | Every UI element must trace to a backend-emitted field in an authoritative schema | Operational enforcement of Law Zero — converts it into a testable engineering rule |
+| **Law Two** | Every replay must be reconstructible from certified chronology alone | Deterministic replay guarantee — UI is a consumer of replay output, not a participant |
+| **Law Three** | No derived certainty without kernel certification | Certification authority boundary — verdicts, confidence, divergence, causal attribution |
+
+### Authority Layer Hierarchy
+
+The four laws map to a five-layer authority structure. Each layer has exactly one authority role. No layer may assume the authority of another.
+
+| Layer | Authority Role | What It Owns |
+|-------|---------------|--------------|
+| **Kernel** | Truth authority | Event ordering, state transitions, execution outcomes |
+| **Schemas** | Transmission authority | What fields are emitted, their types, their semantics |
+| **Replay Engine** | Reconstruction authority | Deterministic state reconstruction from event stream |
+| **UI** | Observation authority | Display of backend-certified state — nothing more |
+| **Experimental Tooling** | Non-authoritative exploration | Interaction ideas, UX prototyping — not canonical |
+
+Any component that operates outside its layer's authority role is a constitutional violation. The current React UI (`my-chrono-sentiment-ui/`) operates at the Kernel and Replay Engine layers when it synthesizes narratives, computes verdicts, and derives causal chains. That is the root cause of the 93+ discrepancies documented below.
+
+### Law Zero — The UI Must Never Invent Reality
+
+> **The UI must never invent reality.**
+
+This is the foundational constraint. It governs:
+
+- **Replay validity** — a UI that synthesizes causality cannot be used to debug a deterministic kernel, because the UI's invented state may contradict the kernel's actual state
+- **Observability trust** — hardcoded telemetry makes the system appear healthy regardless of actual state
+- **Execution explainability** — client-derived narratives are not certified by the kernel and cannot be replayed
+
+### Law One — Every UI Element Must Trace to Backend-Emitted Authority
+
+> **No UI element should exist that cannot point to a specific field in a specific backend schema.**
+
+This is the operational enforcement mechanism for Law Zero. It converts the philosophical constraint into a testable engineering rule. If a UI element cannot name its source schema and field, it is inventing reality.
+
+### Law Two — Every Replay Must Be Reconstructible from Certified Chronology
+
+> **Replay must produce identical system states for identical inputs, without UI participation.**
+
+The UI is a consumer of replay output, not a participant in replay computation. Any replay logic that depends on UI state is a violation.
+
+### Law Three — No Derived Certainty Without Kernel Certification
+
+> **Verdicts, confidence levels, divergence classifications, and causal attributions must originate in the kernel, not the frontend.**
+
+Client-side computation of these values (as currently implemented in [`StrategyInspector.js:246-273`](my-chrono-sentiment-ui/src/components/StrategyInspector.js:246) and [`ComparisonPanels.js`](my-chrono-sentiment-ui/src/components/ComparisonPanels.js)) violates this law.
+
+Violations of all four laws are documented in Section 15. They are not cosmetic issues — they are correctness failures.
 
 ---
 
 ## Executive Summary
 
-The ChronoSentiment React UI (`my-chrono-sentiment-ui`) has diverged significantly from the architecture and UX direction described in the documentation. The divergences fall into five categories:
+This report documents an **ontology divergence**, not merely implementation incompleteness. The 93+ discrepancies below are evidence of an unresolved identity split between two distinct system philosophies that evolved in parallel:
+
+| Identity A (Documented) | Identity B (Implemented) |
+|------------------------|--------------------------|
+| Chronology observability infrastructure | GA optimization workstation |
+| Replay authority | Strategy experimentation |
+| Observer UI — backend-certified truth only | Analytical UI — client-derived interpretation |
+| Deterministic causality | Client-synthesized narrative |
+
+The correct response is **architectural succession**, not incremental repair. See Section 18 for the full strategic analysis.
+
+The technical divergences fall into five categories:
 
 1. **API endpoint mismatches** — components call hardcoded, non-standard URLs that don't match any documented API spec.
-2. **Navigation / surface architecture mismatch** — the UI uses 4 tabs that don't align with the 4 surfaces defined in `docs/frontend_cleanup_strategy.md`.
+2. **Navigation / surface architecture mismatch** — the UI uses 4 tabs that don't align with the 5 surfaces defined in `docs/frontend_cleanup_strategy.md`.
 3. **Component prop/data contract divergence** — every component's props and data model differ from what the specs describe.
 4. **Backend identity mismatch** — `app.py` is a Streamlit analytics dashboard, not the Flask REST API the React UI expects.
 5. **Design system / theme divergence** — the CSS uses a light theme; docs call for a dark, infrastructure-grade aesthetic.
@@ -666,3 +735,132 @@ The React UI simply has not caught up yet. This discrepancy report is the eviden
 ---
 
 *End of Discrepancy Report.*
+---
+
+## 19. The Observer vs. Analyst Distinction — A Foundational Governance Principle
+
+This distinction is the deepest architectural boundary established by this report. It must govern all future frontend decisions.
+
+| Observer UI | Analytical UI |
+|-------------|---------------|
+| Shows certified state | Computes interpretation |
+| Replay-authoritative | Interpretation-authoritative |
+| Kernel-derived | Client-derived |
+| Chronology truth | Analytical convenience |
+| Passive instrument | Active synthesizer |
+
+ChronoSentiment must remain **observer-first**. The moment the UI becomes an analyst, it becomes a second simulation layer — one that is neither deterministic nor certifiable.
+
+The current React UI is an analytical UI. The canonical `services/ui` must be an observer UI.
+
+The test for any proposed frontend feature is:
+
+> Does this feature display backend-certified state, or does it compute its own interpretation of that state?
+
+If it computes interpretation: it belongs in the backend, not the frontend.
+
+---
+
+## 20. The Next Architectural Layer — Before Frontend Implementation Begins
+
+The feedback from this report is clear: the next step is **not** to begin building `services/ui` immediately. The next step is to define the authoritative backend schemas that the UI will observe.
+
+The UI can only become truthful if the backend emits authoritative truth structures. Schema definition precedes frontend implementation.
+
+### Required Schemas (in priority order)
+
+| Schema | Purpose | Governs |
+|--------|---------|---------|
+| **Authoritative event schema** | Canonical event envelope with `sequence_id`, `timestamp`, `type`, `payload`, `parent_sequence_id` | All event stream consumers |
+| **Replay response schema** | Certified replay session structure with state hash | Replay surface |
+| **Observatory state schema** | Live telemetry: sync ratio, provider fragmentation, chronology integrity, propagation dispersion, replay safety, confidence state | Observatory surface |
+| **Governor telemetry schema** | Kernel governor state, throttle state, activation conditions | Observatory + Settings surfaces |
+| **`decision_trace` schema** | Per-trade explainability: signals observed, conditions evaluated, reason string | Trades surface |
+
+Until these schemas are defined and the backend emits them, any frontend built against them will repeat the same mistake as the current React UI — evolving against imagined APIs.
+
+### The Correct Build Sequence
+
+```
+1. Define authoritative backend schemas (above)
+2. Implement backend endpoints that emit those schemas
+3. Build services/ui as a pure observer of those schemas
+4. Validate: every UI element must trace to a backend-emitted field
+```
+
+No UI element should exist that cannot point to a specific field in a specific backend schema. If it cannot, it is inventing reality.
+
+---
+
+## 21. Conclusion — ChronoSentiment as a Governed Infrastructure System
+
+ChronoSentiment is no longer a collection of experiments. It is beginning to behave like a governed infrastructure system. Governed systems require:
+
+- **Architectural succession** — clear lineage decisions about what is canonical and what is exploratory
+- **Ontology discipline** — a single, consistent vocabulary for what the system is and does
+- **Authoritative boundaries** — explicit rules about who can compute what, and where
+
+This report successfully establishes those boundaries.
+
+The transition from exploratory quant tooling to institutional chronology observability infrastructure is now documented, justified, and governed.
+
+### The Succession Table (Final)
+
+| Artifact | Status | Action |
+|----------|--------|--------|
+| `my-chrono-sentiment-ui/` | Exploratory prototype lineage | Freeze. Preserve as historical continuity. Do not extend. |
+| `services/ui` | Canonical observability frontend | Build from scratch against authoritative schemas. Observer-only. |
+| `app.py` | Transitional operational tooling | Maintain separately. Not the product UI. |
+| `docs/` | Canonical product ontology | Authoritative. All implementation must trace to docs. |
+
+### The Foundational Principle (Repeated for Governance)
+
+> **The UI must never invent reality.**
+
+This is the single most important constraint established by this report. It is not a UX guideline. It is a correctness constraint that governs replay validity, observability trust, and execution explainability.
+
+Every future frontend decision must be evaluated against it.
+
+---
+
+*End of ChronoSentiment Discrepancy Report*  
+*18 Technical Sections · 93+ Discrepancies · 3 Governance Sections · 1 Foundational Principle*
+---
+
+## 22. The Concept Extraction Pathway — What the Prototype Lineage Contributes
+
+The architectural succession declared in Section 18 does not invalidate the current React UI. It reclassifies it. That distinction is important.
+
+The current `my-chrono-sentiment-ui/` clearly produced valuable discoveries through exploratory development. These should be extracted, reinterpreted, and rebuilt inside the observer-first architecture — not discarded, and not incrementally patched into canonical infrastructure.
+
+### Valuable Concepts Discovered in the Prototype Lineage
+
+| Concept | Where It Appears | How to Reinterpret for `services/ui` |
+|---------|-----------------|--------------------------------------|
+| Replay position slider (sequence ID scrubber) | [`StrategyInspector.js:286-299`](my-chrono-sentiment-ui/src/components/StrategyInspector.js:286) | Rebuild as a backend-driven replay cursor — the slider requests a certified state snapshot at a given `sequence_id` from the Replay Engine; the UI does not filter events locally |
+| Causal chain highlighting (click a block → highlight ancestors) | [`StrategyColumn.js:84-108`](my-chrono-sentiment-ui/src/components/StrategyColumn.js:84) | Rebuild as a backend-resolved causal query — the UI sends a `sequence_id` to the backend; the backend returns the certified causal chain; the UI renders it |
+| Execution narrative stream (Intent → Queue → Execution grouping) | [`StrategyInspector.js:27-97`](my-chrono-sentiment-ui/src/components/StrategyInspector.js:27) | Rebuild as a backend-emitted narrative — the `decision_trace` schema (Section 20) should include pre-computed narrative groups; the UI renders them without synthesis |
+| Divergence visualization (two strategies side by side) | [`ComparisonPanels.js`](my-chrono-sentiment-ui/src/components/ComparisonPanels.js) | Rebuild as a backend-certified comparison — the backend computes divergence between two certified replay sessions; the UI renders the diff |
+| Divergence badge system (Overfit / Hidden Gem / Aligned) | [`RunGA.js:23-32`](my-chrono-sentiment-ui/src/components/RunGA.js:23) | Rebuild as a backend-classified field in the strategy schema — the kernel certifies the classification; the UI renders the badge |
+| Operational awareness strip (system state, governor, cohort) | [`App.js:97-117`](my-chrono-sentiment-ui/src/App.js:97) | Rebuild as a live Observatory schema subscription — all values come from the governor telemetry schema (Section 20); nothing is hardcoded |
+
+### The Transformation Pathway
+
+| Old Mental Model | New Mental Model |
+|-----------------|-----------------|
+| Fix the existing UI | Extract concepts, rebuild architecture |
+| Frontend feature parity | Observer-certified surfaces |
+| React app with backend APIs | Chronology observability frontend |
+| UI-driven workflows | Schema-driven observability |
+| Client-side truth synthesis | Backend-certified truth display |
+
+The prototype lineage answered the question: *what does the user need to see?*
+
+The canonical `services/ui` must answer a different question: *what has the kernel certified as true, and how do we display it faithfully?*
+
+Both questions are necessary. The prototype answered the first. The constitutional architecture now governs the second.
+
+---
+
+*End of ChronoSentiment Constitutional Discrepancy Report*  
+*21 Technical + Governance Sections · 22 Total Sections · 93+ Discrepancies · 4 Constitutional Laws · 5-Layer Authority Hierarchy · 1 Foundational Principle*
