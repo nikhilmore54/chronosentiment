@@ -131,12 +131,17 @@ They are preserved for lineage and potential future canonicalization.
 
 ### Phase 2 — Module Tree Cleanup
 
-- [ ] Resolve `live_source.rs`, `data_source/python.rs`, `data_source/yahoo.rs` (wire, archive, or delete)
-- [ ] Remove or implement `kernel.rs` stub (`run_ga()` returns hardcoded strings)
-- [ ] Remove stale comments: `main.rs:1` (`// mod core;`), `reco.rs:4` (`// use crate::{MarketEvent, Side}`)
-- [ ] Create `/research_experiments/` with subdirs: `live_source_v0/`, `python_bridge/`, `yahoo_adapter_v0/`
+**AUTHORITY-REDUCTION TRANCHE: COMPLETE — 2026-05-25**
+**Commits: `cf29ceea` (archival), `9b90a29a` (cleanup), tag: `phase2-phantom-authority-archived`**
+**Baseline anchor: `881f4141` / `replay-governance-baseline-v1`**
+**`cargo check -p chronosentiment_core --lib`: exit 0, zero warnings**
+
+- [x] Resolve `live_source.rs`, `data_source/python.rs`, `data_source/yahoo.rs` — archived to `research_experiments/`
+- [x] Remove or implement `kernel.rs` stub — archived to `research_experiments/kernel_stub_v0/`; `pub mod kernel` + `pub use kernel::*` removed from `lib.rs`; `demo_test.rs` stub tests removed
+- [x] Remove stale comments: `main.rs:1` (`// mod core;`), `reco.rs:4` (`// use crate::{MarketEvent, Side}`)
+- [x] Create `/research_experiments/` with subdirs: `live_source_v0/`, `python_bridge/`, `yahoo_adapter_v0/`, `kernel_stub_v0/`
 - [ ] Create `/docs/research_archive/governance_audit_2026-05-25.md`
-- [ ] Extract shared capture types from bin files into `core/src/capture_types.rs`
+- [ ] **V-006 DEFERRED — dedicated schema analysis required:** Extract shared capture types (`NormalizedTick`/`CaptureGap`/`CaptureManifest`) from bin files into `core/src/capture_types.rs`. Touches replay ingestion, persistence assumptions, artifact compatibility, and certification surfaces. Must be processed as a replay-aware consolidation pass, not opportunistic cleanup.
 
 ### Phase 3 — Identity-Critical Consolidation
 
