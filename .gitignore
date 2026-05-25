@@ -13,3 +13,14 @@ __pycache__/
 # Generated Artifacts & Substrates
 artifacts/
 core/chronology/soak/
+core/elite/
+state_archive/
+*.log
+services/ui/dist/
+test_config.json
+core/core/
+scripts/configs/
+scripts/verify_manifest.py
+scripts/lint_forbidden_semantics.py
+scripts/test_ordering_invariance.py
+scripts/validate_schema_conformance.py
