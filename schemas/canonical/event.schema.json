@@ -27,24 +27,24 @@
     "event_type": {
       "type": "string",
       "enum": [
-        "SIGNAL_RECEIVED",
-        "ORDER_QUEUED",
-        "ORDER_DISPATCHED",
+        "ORDER_INTENT",
+        "ORDER_ENTERED_QUEUE",
+        "QUEUE_PROGRESSION",
+        "PARTIAL_FILL",
         "ORDER_FILLED",
-        "ORDER_REJECTED",
         "ORDER_CANCELLED",
+        "MARKET_NEW_ORDER",
+        "MARKET_TRADE",
+        "MARKET_CANCEL",
         "POSITION_OPENED",
         "POSITION_CLOSED",
-        "POSITION_MODIFIED",
-        "PORTFOLIO_REBALANCED",
-        "LATENCY_RECORDED",
-        "GOVERNOR_THROTTLE_APPLIED",
-        "GOVERNOR_THROTTLE_RELEASED",
-        "REPLAY_CHECKPOINT",
-        "STRATEGY_EVALUATED",
-        "GA_GENERATION_COMPLETE"
+        "EQUITY_SNAPSHOT",
+        "REPLAY_SESSION_START",
+        "REPLAY_SESSION_END",
+        "CERTIFICATION_VERDICT",
+        "GOVERNOR_TELEMETRY"
       ],
-      "description": "Canonical event type classifier. Exhaustive enumeration — no client-side event types are valid."
+      "description": "Canonical event type classifier. 16 exhaustive types from event_taxonomy.md. Authority: docs/governance/event_taxonomy.md. Updated 2026-05-25 to align with taxonomy (previous schema used pre-taxonomy types)."
     },
     "source_layer": {
       "type": "string",

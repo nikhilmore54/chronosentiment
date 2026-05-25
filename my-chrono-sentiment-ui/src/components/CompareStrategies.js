@@ -8,14 +8,9 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const resolveExecutionFitness = (row) => {
-    if (!row) return 0;
-    if (typeof row.execution_fitness === 'number') return row.execution_fitness;
-    if (typeof row.fitness === 'number') return row.fitness;
-    if (typeof row.score === 'number') return row.score;
-    if (typeof row.final_fitness === 'number') return row.final_fitness;
-    return 0;
-  };
+  // ARTIFACT-001 REMOVED: resolveExecutionFitness() fallback cascade eliminated.
+  // Backend guarantees execution_fitness is always present in StrategyEvaluationDto.
+  // Direct field access: row.execution_fitness
 
   const resolveGaFitness = (row) => {
     if (!row) return null;
@@ -170,7 +165,7 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
                           <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {row.strategy_id}
                           </td>
-                          <td className="right blu bold">{resolveExecutionFitness(row).toFixed(6)}</td>
+                          <td className="right blu bold">{(row.execution_fitness ?? 0).toFixed(6)}</td>
                           <td className="right">
                             {gaFit === null ? <span style={{ color: 'var(--tm)' }}>—</span> : gaFit.toFixed(6)}
                           </td>

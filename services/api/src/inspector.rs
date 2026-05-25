@@ -3,14 +3,34 @@ use crate::ApiError;
 use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
 
+/// Canonical event type enum. Conforms to `event_taxonomy.md`.
+/// Serializes to SCREAMING_SNAKE_CASE per canonical naming rules.
+/// `MarketEvent` is NON-CANONICAL — decomposed into the three `Market*` variants.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EventType {
+    // Layer 2: Order Lifecycle (implemented)
     OrderIntent,
     OrderEnteredQueue,
     QueueProgression,
     PartialFill,
     OrderFilled,
-    MarketEvent,
+    // Layer 2: Order Lifecycle (stub — ARTIFACT-009)
+    OrderCancelled,
+    // Layer 1: Market Microstructure — replaces non-canonical MarketEvent wrapper
+    MarketNewOrder,
+    MarketTrade,
+    MarketCancel,
+    // Layer 3: Portfolio (stub — ARTIFACT-010 through ARTIFACT-012)
+    PositionOpened,
+    PositionClosed,
+    EquitySnapshot,
+    // Layer 4: Replay/Certification (stub — ARTIFACT-013 through ARTIFACT-015)
+    ReplaySessionStart,
+    ReplaySessionEnd,
+    CertificationVerdict,
+    // Layer 5: Governor (stub — ARTIFACT-016)
+    GovernorTelemetry,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -38,7 +58,15 @@ pub fn to_minimal_event(event: &SimEvent) -> MinimalEvent {
         SimEvent::QueueProgression { queue_ahead, .. } => (EventType::QueueProgression, Some(*queue_ahead), None, None),
         SimEvent::PartialFill { filled_qty, price, .. } => (EventType::PartialFill, None, Some(*filled_qty), Some(*price as f64 / scale)),
         SimEvent::OrderFilled { .. } => (EventType::OrderFilled, None, None, None),
-        SimEvent::MarketEvent { price, .. } => (EventType::MarketEvent, None, None, Some(*price as f64 / scale)),
+        // Decompose non-canonical MarketEvent wrapper into canonical market subtypes
+        SimEvent::MarketEvent { subtype, price, .. } => {
+            let canonical_type = match subtype {
+                MarketEventType::NewOrder => EventType::MarketNewOrder,
+                MarketEventType::Trade => EventType::MarketTrade,
+                MarketEventType::Cancel => EventType::MarketCancel,
+            };
+            (canonical_type, None, None, Some(*price as f64 / scale))
+        },
     };
 
     MinimalEvent {
@@ -404,7 +432,7 @@ mod tests {
         assert_eq!(response.outcome.remaining_qty, 0);
         assert_eq!(response.outcome.avg_price, 0.01); // 100 internal units / PRICE_SCALE(10000) = ₹0.01
 
-        // Verify Execution Layer and MarketEvent filtering
+        // Verify Execution Layer and canonical market event type decomposition
         let execution_event_types: Vec<EventType> = response.execution.iter().map(|event_value| {
             event_value.event_type.clone()
         }).collect();
@@ -414,11 +442,11 @@ mod tests {
         assert!(execution_event_types.contains(&EventType::PartialFill));
         assert!(execution_event_types.contains(&EventType::OrderFilled));
         
-        // MarketEvent (Trade) at sequence 7 should be included as it's between queue_start and final_fill at same price
-        assert!(execution_event_types.contains(&EventType::MarketEvent));
-        // MarketEvent (NewOrder) at sequence 11 should NOT be included (wrong subtype or not relevant)
-        // This check implicitly passes if "MarketEvent" is present only once for the relevant trade.
-        // If there were two "MarketEvent"s, and one was "MarketEvent(NewOrder)", we'd need a more specific check.
+        // MarketEvent (Trade) at sequence 7 should be included as canonical MARKET_TRADE
+        // (non-canonical MarketEvent wrapper is now decomposed into MarketTrade/MarketNewOrder/MarketCancel)
+        assert!(execution_event_types.contains(&EventType::MarketTrade));
+        // MarketEvent (NewOrder) at sequence 11 should NOT be included (wrong subtype — filtered out)
+        assert!(!execution_event_types.contains(&EventType::MarketNewOrder));
 
         // Verify causal_chain is present when include_chain is true
         assert!(response.causal_chain.is_some());

@@ -5,14 +5,9 @@ function safeDisplay(value, digits = 2) {
   return typeof value === 'number' ? value.toFixed(digits) : value;
 }
 
-function resolveExecutionFitness(entry) {
-  if (!entry) return undefined;
-  if (typeof entry.execution_fitness === 'number') return entry.execution_fitness;
-  if (typeof entry.fitness === 'number') return entry.fitness;
-  if (typeof entry.score === 'number') return entry.score;
-  if (typeof entry.final_fitness === 'number') return entry.final_fitness;
-  return undefined;
-}
+// ARTIFACT-001 REMOVED: resolveExecutionFitness() fallback cascade eliminated.
+// Backend guarantees execution_fitness is always present in StrategyEvaluationDto.
+// Direct field access: entry.execution_fitness
 
 function resolveGaFitness(entry) {
   if (!entry) return undefined;
@@ -22,7 +17,7 @@ function resolveGaFitness(entry) {
 
 function divergenceBadge(entry) {
   const ga   = resolveGaFitness(entry);
-  const exec = resolveExecutionFitness(entry);
+  const exec = (entry && typeof entry.execution_fitness === 'number') ? entry.execution_fitness : undefined;
   if (ga === undefined || exec === undefined) return { label: '—', cls: 'gray' };
   const normalizedGa = Math.max(0, Math.min(1, ga / 100.0));
   const divergence   = exec - normalizedGa;
@@ -261,7 +256,7 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
               <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>Execution verdict</h2>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '8px' }}>
                 <div style={{ fontSize: '48px', fontWeight: 600, color: 'var(--t1)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-                  {safeDisplay(resolveExecutionFitness(gaResult.global_best), 6)}
+                  {safeDisplay(gaResult.global_best?.execution_fitness, 6)}
                 </div>
                 {divergenceBadge(gaResult.global_best) && (
                   <span className={`cs-badge ${divergenceBadge(gaResult.global_best).cls}`}>

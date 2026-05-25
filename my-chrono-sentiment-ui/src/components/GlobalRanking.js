@@ -5,14 +5,9 @@ function safeDisplay(value, digits = 2) {
   return typeof value === 'number' ? value.toFixed(digits) : value;
 }
 
-function resolveExecutionFitness(row) {
-  if (!row) return undefined;
-  if (typeof row.execution_fitness === 'number') return row.execution_fitness;
-  if (typeof row.fitness === 'number') return row.fitness;
-  if (typeof row.score === 'number') return row.score;
-  if (typeof row.final_fitness === 'number') return row.final_fitness;
-  return undefined;
-}
+// ARTIFACT-001 REMOVED: resolveExecutionFitness() fallback cascade eliminated.
+// Backend guarantees execution_fitness is always present in StrategyEvaluationDto.
+// Direct field access: row.execution_fitness
 
 function resolveGaFitness(row) {
   if (!row) return undefined;
@@ -52,7 +47,7 @@ const GlobalRanking = () => {
   useEffect(() => { fetchRanking(); }, []);
 
   const sorted = [...ranking].sort(
-    (a, b) => (resolveExecutionFitness(b) ?? 0) - (resolveExecutionFitness(a) ?? 0)
+    (a, b) => (b.execution_fitness ?? 0) - (a.execution_fitness ?? 0)
   );
 
   return (
@@ -97,7 +92,7 @@ const GlobalRanking = () => {
             <tbody>
               {sorted.length > 0 ? (
                 sorted.map((row, index) => {
-                  const execFit = resolveExecutionFitness(row);
+                  const execFit = row.execution_fitness;
                   const gaFit   = resolveGaFitness(row);
                   const cls     = classificationColor(row.classification);
                   return (

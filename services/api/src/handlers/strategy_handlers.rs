@@ -195,18 +195,20 @@ pub async fn inspect_strategy_handler(
         chain
     };
 
-    // Build backend-certified narrative blocks (replaces client-side groupAndNarrateEvents)
+    // Build backend-certified narrative blocks (replaces client-side groupAndNarrateEvents).
+    // Match on canonical SCREAMING_SNAKE_CASE event type strings per event_taxonomy.md.
+    // inspector.rs EventType enum serializes to SCREAMING_SNAKE_CASE via serde rename_all.
     let narrative_blocks: Vec<NarrativeBlock> = canonical_events.iter().map(|event| {
         let (group, block_type, narrative) = match event.event_type.as_str() {
-            "OrderIntent" => (
+            "ORDER_INTENT" => (
                 NarrativeGroup::Intent,
                 NarrativeBlockType::Primary,
                 format!(
-                    "Strategy decision: order placed. Seq {}.",
+                    "Strategy decision: order placed at seq {}.",
                     event.sequence_id
                 ),
             ),
-            "OrderEnteredQueue" => (
+            "ORDER_ENTERED_QUEUE" => (
                 NarrativeGroup::Queue,
                 NarrativeBlockType::Derived,
                 format!(
@@ -214,7 +216,7 @@ pub async fn inspect_strategy_handler(
                     event.sequence_id
                 ),
             ),
-            "QueueProgression" => (
+            "QUEUE_PROGRESSION" => (
                 NarrativeGroup::Queue,
                 NarrativeBlockType::Derived,
                 format!(
@@ -222,7 +224,7 @@ pub async fn inspect_strategy_handler(
                     event.sequence_id
                 ),
             ),
-            "PartialFill" => (
+            "PARTIAL_FILL" => (
                 NarrativeGroup::Execution,
                 NarrativeBlockType::Primary,
                 format!(
@@ -230,11 +232,43 @@ pub async fn inspect_strategy_handler(
                     event.sequence_id
                 ),
             ),
-            "OrderFilled" => (
+            "ORDER_FILLED" => (
                 NarrativeGroup::Execution,
                 NarrativeBlockType::Primary,
                 format!(
                     "Order fully executed at seq {}.",
+                    event.sequence_id
+                ),
+            ),
+            "ORDER_CANCELLED" => (
+                NarrativeGroup::Execution,
+                NarrativeBlockType::Primary,
+                format!(
+                    "Order cancelled at seq {}.",
+                    event.sequence_id
+                ),
+            ),
+            "MARKET_NEW_ORDER" => (
+                NarrativeGroup::Queue,
+                NarrativeBlockType::CausalLink,
+                format!(
+                    "Market new order at seq {} (liquidity added).",
+                    event.sequence_id
+                ),
+            ),
+            "MARKET_TRADE" => (
+                NarrativeGroup::Queue,
+                NarrativeBlockType::CausalLink,
+                format!(
+                    "Market trade at seq {} (queue consumed).",
+                    event.sequence_id
+                ),
+            ),
+            "MARKET_CANCEL" => (
+                NarrativeGroup::Queue,
+                NarrativeBlockType::CausalLink,
+                format!(
+                    "Market cancel at seq {} (liquidity removed).",
                     event.sequence_id
                 ),
             ),
@@ -248,8 +282,8 @@ pub async fn inspect_strategy_handler(
             ),
         };
 
-        // Find parent block id by matching parent_sequence_id to a block's sequence_id
-        let parent_block_id: Option<Uuid> = None; // resolved in a second pass if needed
+        // parent_block_id resolved in a second pass if needed
+        let parent_block_id: Option<Uuid> = None;
 
         NarrativeBlock {
             block_id: Uuid::new_v4(),
@@ -262,11 +296,28 @@ pub async fn inspect_strategy_handler(
         }
     }).collect();
 
-    // Determine certification state
+    // Determine certification state per event_taxonomy.md certification impact matrix.
+    // INVALID: missing any event type whose absence = INVALID.
+    // DEGRADED: missing event types whose absence = DEGRADED.
+    // PARTIAL: missing event types whose absence = PARTIAL.
+    // CERTIFIED: all required event types present.
+    let event_types_present: std::collections::HashSet<&str> = canonical_events
+        .iter()
+        .map(|e| e.event_type.as_str())
+        .collect();
+
     let (certification_state, certification_reason) = if event_count == 0 {
         (CertificationState::Invalid, Some("No events in execution trace".to_string()))
     } else if first_seq == 0 && last_seq == 0 {
         (CertificationState::Degraded, Some("Sequence IDs could not be determined".to_string()))
+    } else if !event_types_present.contains("ORDER_INTENT") {
+        (CertificationState::Invalid, Some("ORDER_INTENT missing — no order lifecycle to certify".to_string()))
+    } else if !event_types_present.contains("ORDER_FILLED") && !event_types_present.contains("ORDER_CANCELLED") {
+        (CertificationState::Invalid, Some("ORDER_FILLED/ORDER_CANCELLED missing — execution not confirmed".to_string()))
+    } else if !event_types_present.contains("ORDER_ENTERED_QUEUE") {
+        (CertificationState::Partial, Some("ORDER_ENTERED_QUEUE missing — queue position unknown".to_string()))
+    } else if !event_types_present.contains("MARKET_TRADE") {
+        (CertificationState::Degraded, Some("MARKET_TRADE missing — fill simulation accuracy reduced".to_string()))
     } else {
         (CertificationState::Certified, None)
     };

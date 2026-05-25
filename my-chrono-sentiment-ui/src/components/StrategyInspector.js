@@ -8,94 +8,42 @@ function normalizeTraceEvent(raw) {
   return { ...raw, ...p, type: raw.type };
 }
 
+// ARTIFACT-009: normalizeNarrativeBlock — field-name bridge between backend snake_case
+// and the camelCase shape expected by NarrativeBlock.js / StrategyColumn.js.
+// Sunset condition: backend emits camelCase narrative_blocks[] natively, or a
+// canonical JS SDK handles the mapping. Registered: 2026-05-25.
+function normalizeNarrativeBlock(block) {
+  if (!block || typeof block !== 'object') return block;
+  return {
+    group:          block.group,
+    narrative:      block.narrative,
+    id:             block.sequence_id ?? block.id ?? null,
+    parentId:       block.parent_sequence_id ?? block.parentId ?? null,
+    timestamp:      block.timestamp ?? null,
+    isKeyEvent:     block.is_key_event    ?? block.isKeyEvent    ?? false,
+    keyEventMarker: block.key_event_marker ?? block.keyEventMarker ?? null,
+  };
+}
+
 function normalizeInspectResponse(data) {
   if (!data || typeof data !== 'object') return data;
   return {
     ...data,
-    execution_trace: Array.isArray(data.execution_trace) ? data.execution_trace.map(normalizeTraceEvent) : data.execution_trace,
-    decision_trace:  Array.isArray(data.decision_trace)  ? data.decision_trace.map(normalizeTraceEvent)  : data.decision_trace,
-    event_sequence:  Array.isArray(data.event_sequence)  ? data.event_sequence.map(normalizeTraceEvent)  : data.event_sequence,
+    execution_trace:  Array.isArray(data.execution_trace)  ? data.execution_trace.map(normalizeTraceEvent)   : data.execution_trace,
+    decision_trace:   Array.isArray(data.decision_trace)   ? data.decision_trace.map(normalizeTraceEvent)    : data.decision_trace,
+    event_sequence:   Array.isArray(data.event_sequence)   ? data.event_sequence.map(normalizeTraceEvent)    : data.event_sequence,
+    // Consume backend-certified narrative_blocks[] — Law One: UI must not synthesize narrative.
+    narrative_blocks: Array.isArray(data.narrative_blocks) ? data.narrative_blocks.map(normalizeNarrativeBlock) : [],
   };
 }
 
-const getOrderId = (event) => {
-  if (event && event.order_id !== undefined && event.order_id !== null) return event.order_id;
-  if (event && event.sequence_id !== undefined) return `seq-${event.sequence_id}`;
-  return 'N/A';
-};
+// ARTIFACT-002 (groupAndNarrateEvents) eliminated 2026-05-25.
+// getOrderId() was its sole dependent — removed with it.
+// Backend emits certified narrative_blocks[] via POST /inspect_strategy.
 
-const groupAndNarrateEvents = (trace, maxSeqIdFilter) => {
-  if (!trace || trace.length === 0) return [];
-  const sortedTrace = [...trace].sort((a, b) => a.sequence_id - b.sequence_id);
-  const narrativeBlocks = [];
-  let currentOrderId = null;
-  let currentQueueProgressionEvents = [];
-  let currentQueueParentId = null;
-
-  const flushQueueProgression = () => {
-    if (currentQueueProgressionEvents.length > 0) {
-      const queueAheads = currentQueueProgressionEvents.map(e => e.queue_ahead !== undefined && e.queue_ahead !== null ? e.queue_ahead : '?');
-      narrativeBlocks.push({
-        group: 'Queue Progression',
-        id: currentQueueProgressionEvents[0].sequence_id,
-        parentId: currentQueueProgressionEvents[0].parent_sequence_id,
-        timestamp: currentQueueProgressionEvents[0].timestamp,
-        narrative: `Order ${getOrderId(currentQueueProgressionEvents[0])} waiting in queue, position improving: ${queueAheads.join(' → ')}`,
-        isKeyEvent: queueAheads.includes(0),
-        keyEventMarker: queueAheads.includes(0) ? 'Queue cleared' : null,
-      });
-      currentQueueProgressionEvents = [];
-      currentQueueParentId = null;
-    }
-  };
-
-  const filteredTrace = maxSeqIdFilter !== null ? sortedTrace.filter(e => e.sequence_id <= maxSeqIdFilter) : sortedTrace;
-  let firstExecutionEventAdded = false;
-
-  filteredTrace.forEach((event) => {
-    const eventOrderId = getOrderId(event);
-    if (
-      (event.type !== 'QueueProgression' && currentQueueProgressionEvents.length > 0) ||
-      (currentOrderId !== null && eventOrderId !== 'N/A' && eventOrderId !== currentOrderId) ||
-      (event.type === 'QueueProgression' && currentQueueProgressionEvents.length > 0 && event.parent_sequence_id !== currentQueueProgressionEvents[0].parent_sequence_id)
-    ) { flushQueueProgression(); }
-
-    currentOrderId = eventOrderId;
-    let isKeyEvent = false, keyEventMarker = null;
-
-    switch (event.type) {
-      case 'OrderIntent':
-        narrativeBlocks.push({ group: 'Intent', narrative: `Strategy decision: Order ${getOrderId(event)} placed for ${event.quantity} at price ${event.price} (Side: ${event.side}).`, id: event.sequence_id, parentId: event.parent_sequence_id, timestamp: event.timestamp, isKeyEvent, keyEventMarker });
-        break;
-      case 'OrderEnteredQueue':
-        narrativeBlocks.push({ group: 'Queue Entry', narrative: `Order ${getOrderId(event)} entered the queue at position ${event.queue_ahead}.`, id: event.sequence_id, parentId: event.parent_sequence_id, timestamp: event.timestamp, isKeyEvent, keyEventMarker });
-        currentQueueParentId = event.parent_sequence_id;
-        break;
-      case 'QueueProgression':
-        if (currentQueueParentId === null || event.parent_sequence_id === currentQueueParentId) {
-          currentQueueProgressionEvents.push(event); currentQueueParentId = event.parent_sequence_id;
-        } else { flushQueueProgression(); currentQueueProgressionEvents.push(event); currentQueueParentId = event.parent_sequence_id; }
-        break;
-      case 'PartialFill':
-        isKeyEvent = true;
-        keyEventMarker = !firstExecutionEventAdded ? 'Execution begins (Partial Fill)' : 'Partial Fill';
-        firstExecutionEventAdded = true;
-        narrativeBlocks.push({ group: 'Execution', narrative: `Execution started: Order ${getOrderId(event)} partially filled ${event.filled_qty} at price ${event.price}.`, id: event.sequence_id, parentId: event.parent_sequence_id, timestamp: event.timestamp, isKeyEvent, keyEventMarker });
-        break;
-      case 'OrderFilled':
-        if (!firstExecutionEventAdded) { isKeyEvent = true; keyEventMarker = 'Execution begins (Full Fill)'; firstExecutionEventAdded = true; }
-        narrativeBlocks.push({ group: 'Execution', narrative: `Order ${getOrderId(event)} fully executed.`, id: event.sequence_id, parentId: event.parent_sequence_id, timestamp: event.timestamp, isKeyEvent, keyEventMarker });
-        break;
-      case 'MarketEvent': break;
-      default:
-        narrativeBlocks.push({ group: 'Other', narrative: `Unhandled event type: ${event.type} for order ${eventOrderId}.`, id: event.sequence_id, parentId: event.parent_sequence_id, timestamp: event.timestamp, isKeyEvent, keyEventMarker });
-    }
-  });
-
-  flushQueueProgression();
-  return narrativeBlocks;
-};
-
+// ARTIFACT-010: compareNarrativeBlocks — frontend divergence analysis between two
+// backend-certified narrative_blocks[] arrays. Sunset condition: backend emits
+// divergence_analysis[] in CanonicalInspectResponse. Registered: 2026-05-25.
 const compareNarrativeBlocks = (b1, b2) => {
   const divergenceStatements = [];
   const maxLength = Math.max(b1.length, b2.length);
@@ -113,6 +61,9 @@ const compareNarrativeBlocks = (b1, b2) => {
   return divergenceStatements;
 };
 
+// ARTIFACT-011: getExecutionSummary — frontend execution summary derived from
+// backend narrative_blocks[]. Sunset condition: backend emits execution_summary
+// object in CanonicalInspectResponse. Registered: 2026-05-25.
 const getExecutionSummary = (narrativeBlocks) => ({
   totalSteps: narrativeBlocks.length,
   partialFills: narrativeBlocks.filter(b => b.group === 'Execution' && b.narrative.includes('partially filled')).length || 0,
@@ -202,8 +153,10 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
     }
   }, [selectedSeqId, showRawEvents]);
 
-  const allNarrativeBlocks1 = useMemo(() => inspectionResult?.execution_trace ? groupAndNarrateEvents(inspectionResult.execution_trace, null) : [], [inspectionResult?.execution_trace]);
-  const allNarrativeBlocks2 = useMemo(() => inspectionResult2?.execution_trace ? groupAndNarrateEvents(inspectionResult2.execution_trace, null) : [], [inspectionResult2?.execution_trace]);
+  // Law One: consume backend-certified narrative_blocks[] directly.
+  // normalizeInspectResponse() maps snake_case → camelCase (ARTIFACT-009).
+  const allNarrativeBlocks1 = useMemo(() => inspectionResult?.narrative_blocks  ?? [], [inspectionResult?.narrative_blocks]);
+  const allNarrativeBlocks2 = useMemo(() => inspectionResult2?.narrative_blocks ?? [], [inspectionResult2?.narrative_blocks]);
 
   const eventMap = useMemo(() => {
     const map = {};
@@ -220,8 +173,16 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
 
   const activeChain = selectedSeqId ? getCausalChain(selectedSeqId) : new Set();
 
-  const narratedExecutionTrace1 = useMemo(() => inspectionResult?.execution_trace ? groupAndNarrateEvents(inspectionResult.execution_trace, selectedMaxSeqId) : [], [inspectionResult?.execution_trace, selectedMaxSeqId]);
-  const narratedExecutionTrace2 = useMemo(() => inspectionResult2?.execution_trace ? groupAndNarrateEvents(inspectionResult2.execution_trace, selectedMaxSeqId) : [], [inspectionResult2?.execution_trace, selectedMaxSeqId]);
+  // Slider filtering: pure observer operation — filters backend blocks by sequence position.
+  // No synthesis; block content is unchanged from backend emission.
+  const narratedExecutionTrace1 = useMemo(() => {
+    const blocks = inspectionResult?.narrative_blocks ?? [];
+    return selectedMaxSeqId !== null ? blocks.filter(b => (b.id ?? 0) <= selectedMaxSeqId) : blocks;
+  }, [inspectionResult?.narrative_blocks, selectedMaxSeqId]);
+  const narratedExecutionTrace2 = useMemo(() => {
+    const blocks = inspectionResult2?.narrative_blocks ?? [];
+    return selectedMaxSeqId !== null ? blocks.filter(b => (b.id ?? 0) <= selectedMaxSeqId) : blocks;
+  }, [inspectionResult2?.narrative_blocks, selectedMaxSeqId]);
 
   const minSeqId = useMemo(() => inspectionResult?.execution_trace?.length > 0 ? Math.min(...inspectionResult.execution_trace.map(e => e.sequence_id)) : 0, [inspectionResult?.execution_trace]);
   const maxAvailableSeqId = useMemo(() => inspectionResult?.execution_trace?.length > 0 ? Math.max(...inspectionResult.execution_trace.map(e => e.sequence_id)) : 0, [inspectionResult?.execution_trace]);

@@ -326,9 +326,11 @@ pub struct TradeSuggestionsResponse {
 pub struct TopStrategySnapshot {
     pub strategy_id: String,
     pub action: String,
-    pub live_score: f64,
+    /// Signal-quality fitness from GA phase. Canonical term per semantic_registry.md §6.
+    pub ga_fitness: f64,
     pub expected_edge: f64,
-    pub execution_score: f64,
+    /// Execution-phase microstructure quality. Canonical term per semantic_registry.md §6.
+    pub execution_fitness: f64,
 }
 
 #[derive(Debug, Serialize, Clone)]
