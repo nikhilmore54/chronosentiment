@@ -124,7 +124,7 @@ def verify_manifest(manifest_path, project_root="core"):
                 baseline_key = "baseline_a" if is_baseline_a else "baseline_b"
                 expected_persistence = geometry_outputs.get(baseline_key)
                 
-                if actual_persistence == expected_persistence:
+                if actual_persistence == expected_persistence and type(actual_persistence) is type(expected_persistence):
                      results["attestations"].append(f"GEOMETRY_MATCH_{baseline_key.upper()}")
                 else:
                      results["failures"].append({"error": "GEOMETRY_MISMATCH", "component": baseline_key, "expected": expected_persistence, "actual": actual_persistence})
