@@ -1,81 +1,109 @@
-# ChronoSentiment — Provider Chronology Observatory
+# ChronoSentiment
 
-> **ChronoSentiment is a deterministic chronology interpreter with constrained operational governance.**
+**Reproducible execution divergence isolation.**
 
-The platform provides a rigorous framework to observe market provider synchronization, validate chronology, and enforce fail-closed execution constraints. It does not attempt to predict market behavior, extract alpha, or define market cognition.
+## What is ChronoSentiment?
+ChronoSentiment is a deterministic infrastructure system. It provides a tightly constrained execution engine designed to guarantee byte-for-byte replay equivalence and strictly isolate operational divergence when that equivalence breaks.
 
----
+## What problem does it solve?
+In complex execution pipelines, small numerical coercions, ordering bugs, or cross-language serialization drift can silently poison execution state. Traditional debugging struggles to locate these non-crashing drift errors. ChronoSentiment solves this by answering one specific engineering question:
 
-## 🌍 The Core Philosophy: Deterministic Chronology
+**Where did deterministic state equality first stop holding?**
 
-ChronoSentiment has moved beyond the search for static, globally invariant trading laws or abstract market interpretation. The core operating principle is: **execution integrity requires absolute timeline determinism.**
+It achieves this through:
+- Strictly ordered, integer-scaled state ingestion.
+- Deterministic trace artifacts (`trace_v1.json`).
+- Passive manifest attestation.
+- Mechanical isolation of the exact event index where equivalence fails.
 
-We categorize the system into three distinct operational layers:
-
-1. **Rust Kernel:** Deterministic chronology interpretation.
-2. **Governor:** Operational constraint enforcement based on synchronization limits.
-3. **Observatory:** Infrastructure measurement and delayed reconciliation profiling.
-
----
-
-## 🔬 Provider Chronology Observatory
-
-The system's findings are explored via a high-performance **observability dashboard** that visualizes timeline infrastructure reality:
-
-| Diagnostic Domain | Key Metric |
-| :--- | :--- |
-| **Provider Synchronization** | Percentage of cohort successfully fetched at target timestamp |
-| **Temporal Fragmentation** | Synchronization dispersion and cross-symbol non-uniformity |
-| **Chronology Constraints** | Live governor permission (Nominal, Throttled, Halted) |
-| **Reconciliation Duration** | Age-based completion delays for end-of-day closure ticks |
-| **Trade Replay** | Step-by-step causal auditor ensuring exact replay equivalence |
-
----
-
-## ⚙️ Architectural Disentanglement
-
-ChronoSentiment separates the physical forces of execution through a frozen back-end engine:
-
-*   **The Execution Simulation Engine (ESE):** Implements exact integer-scaled tick-by-tick order reconstruction. Decouples timing latency and execution friction.
-*   **The Governor:** Dynamically constrains execution based on strict synchronization limits. If provider fragmentation exceeds safe thresholds, the governor halts execution.
-*   **Fail-Closed Invariants:** The system assumes data is fragmented unless mathematically proven otherwise. No missing data is interpolated.
-
----
-
-## 📊 Summary of Out-of-Sample (OOS) Baseline Checks
-
-*Frozen Architecture, 30-Day Windows*
-
-| Component | Validation Step | Required Outcome |
-| :--- | :--- | :--- |
-| **Kernel Replay** | `scripts/certify_replay_chain.py` | 100% Deterministic Match |
-| **Cohort Baseline** | `scripts/verify_cohort_baseline.py` | Validated Dedupe & Signature Intact |
-| **System Check** | `scripts/validate_system.sh` | Zero Archival Corruptions |
-
----
-
-## 🚀 Scientific Roadmap
-
-Our current development cycle targets **Track B: Soak Era Observation**:
-
-1.  **Continuous Live Soak:** Letting the system run unedited for 2-6 weeks to observe natural boundary breaks.
-2.  **Constraint Hardening:** Enforcing strict fail-closed bounds when temporal fragmentation occurs.
-3.  **Observability Maturation:** Measuring provider delays directly rather than hypothesizing about market structures.
-
----
-
-## 📂 Quick Start for Operational Proving
-
-Run the live operational soak directly. Do not use legacy research scripts.
+## Installation
+Requires Python 3.10+ and Rust (cargo).
 
 ```bash
-# 1. Establish Clean Baseline
-./scripts/validate_system.sh
-
-# 2. Run Live Provider Observation
-python3 scripts/run_live_session.py --batch-id 003 --cycles 4 --live-only
-
-# 3. Serve the Observatory
-cd observatory
-python3 -m http.server 8888
+# Build the deterministic core engine (release mode)
+./chrono install
 ```
+
+## Quickstart
+Run the pre-configured replay demo to verify the engine operates deterministically on your host architecture.
+
+```bash
+./chrono demo
+```
+
+This will:
+1. Replay a canonical substrate.
+2. Emit an architectural artifact footprint.
+3. Certify that the newly generated footprint matches the expected canonical determinism bounds exactly.
+
+## Certification Workflow
+To replay a known substrate and passively certify its execution footprint:
+
+```bash
+./chrono replay osc_50_1.0 rolling_50 --substrate-file core/chronology/historical/.../file.jsonl
+./chrono certify artifacts/<substrate_namespace>/osc_50_1.0/rolling_50
+```
+
+*Note: Certification asserts that equivalence holds, or safely aborts if it does not.*
+
+## Divergence Isolation Workflow
+When equivalence fails (e.g. `ATTESTATION_FAILED`), you must locate the exact mechanical index of the drift.
+
+```bash
+./chrono inspect <baseline_artifact_dir> <suspect_artifact_dir>
+```
+
+This performs a strict chronological trace traversal and isolates the precise tick and geometric field where divergence first emerged.
+
+To see this interactive workflow (including controlled injection of a subtle float-coercion defect):
+
+```bash
+./chrono demo-divergence
+```
+
+## Artifact Lifecycle
+ChronoSentiment outputs mechanical traces and certification manifests to the `artifacts/` directory.
+
+To keep the operational environment bounded and sanitary, explicitly remove all generated replay footprints with:
+
+```bash
+./chrono clean
+```
+
+*(Note: `clean` will never modify or target the canonical event substrates located in `core/chronology/historical`.)*
+
+## CLI Commands
+Run `./chrono help` to see the full operational interface:
+
+```text
+./chrono install
+    Build the deterministic engine (trace_replay) in release mode.
+
+./chrono demo
+    Run deterministic replay certification walkthrough.
+
+./chrono demo-divergence
+    Inject controlled divergence and isolate first mismatch.
+
+./chrono survive <tier>
+    Execute long-duration deterministic survivability test.
+    Tiers: 1 (100k), 2 (1M), 3 (5M), 4 (10M)
+
+./chrono replay <topology> <cognition> --substrate-file <file>
+    Run the deterministic trace replay engine manually.
+
+./chrono certify <artifact_dir>
+    Certify a generated artifact directory manifest.
+
+./chrono inspect <baseline> <suspect>
+    Strict mechanical trace divergence isolation.
+
+./chrono clean
+    Mechanically remove generated artifacts and soak substrates.
+```
+
+## Operational Notes
+- **Substrate**: The immutable chronological event log.
+- **Replay Artifact**: The deterministic execution footprint resulting from ingestion (`trace_v1.json`, `metadata.json`).
+- **Certification**: The passive structural verification of an artifact against a canonical signature.
+- **Divergence**: The explicit breaking of replay equivalence.

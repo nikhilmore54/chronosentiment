@@ -1,37 +1,15 @@
 # Rust
 target/
-
-# Node / frontend
-node_modules/
-dist/
-.next/
+**/*.rs.bk
 
 # Python
 __pycache__/
 *.pyc
+
+# Local Config
 .env
-venv/
-
-# Logs and runtime dumps
-*.log
-logs/
-
-# OS / editor
 .DS_Store
-.idea/
-.vscode/
 
-# Temp
-tmp/
-*.tmp
-
-# Data Artifacts
-clusters.json
-clusters_output.png
-core/elite/elite_*.json
-core/core/elite/
-global_state.json
-verify_edge_fix.txt
-state_archive/
-core/artifacts/
-core/chronology/
+# Generated Artifacts & Substrates
+artifacts/
+core/chronology/soak/
