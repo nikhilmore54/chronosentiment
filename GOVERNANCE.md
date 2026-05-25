@@ -10,6 +10,18 @@ ChronoSentiment has reached operational maturity. To protect the integrity of th
 | **Invariant Freeze** | No new certification theories or abstract topologies. | The certification surface is locked to explicit chronological equivalence, sequence integrity, and deterministic trace boundaries. |
 | **Narrative Freeze** | The `README.md` and public facing documentation must remain strictly operational. | No philosophy, no ecology terminology, no taxonomy debates. The documentation only answers what the tool does, how to install it, and how to operate it. |
 
+## Operational Scope Constraint
+
+ChronoSentiment is designed for deterministic replay, verification, and divergence isolation workflows.
+
+It is not:
+- a live trading engine,
+- an autonomous execution agent,
+- a generalized observability platform,
+- or a distributed stream-processing framework.
+
+Future development must preserve the project's bounded operational scope.
+
 ## Allowed Contributions
 Future development is strictly limited to:
 * **Usability & Ergonomics:** Making the CLI output clearer, safer, and more mechanically explicit.
