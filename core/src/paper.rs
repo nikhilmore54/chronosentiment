@@ -576,14 +576,11 @@ pub fn update_paper_registry(
         let mut size_multiplier = 1.0;
         let mut hostility_expansion = 1.0;
         let mut temporal_expansion = 1.0;
-        let mut is_durable_topology = false;
-
         let is_trend_regime = intent.regime == "BullTrend" || intent.regime == "BearTrend" || intent.regime == "DirectionalTrend";
         let has_extreme_conviction = intent.rec_conf >= 0.65;
         let low_hostility_start = intent.vol_5 > 0.0 && (intent.momentum_3.abs() / intent.vol_5) > 1.5;
 
         if is_trend_regime && has_extreme_conviction && low_hostility_start {
-            is_durable_topology = true;
             size_multiplier = 2.0;
             hostility_expansion = 1.25;
             temporal_expansion = 1.30;

@@ -7,23 +7,17 @@
 
 #[cfg(test)]
 mod demo_tests {
-    use chronosentiment_core::{run_ga, run_simulation, ExecutionMode};
+    use chronosentiment_core::{run_simulation, ExecutionMode};
 
     // Test 1 — Determinism: same seed → identical output
-    // This test will require a way to set a seed for the simulation/GA
-    // For now, we'll assume `run_simulation` and `run_ga` are deterministic.
+    // NOTE: run_ga stub (kernel.rs) removed in Phase 2 authority consolidation.
+    // GA determinism is now covered by evaluation_service::test_run_ga_api_determinism.
     #[test]
     fn test_determinism() {
-        // Assuming a mechanism to set a seed or that the system is inherently deterministic
-        // with the same inputs. Since we're not modifying the core engine, this should hold.
         let result1_sim = run_simulation(ExecutionMode::Real);
         let result2_sim = run_simulation(ExecutionMode::Real);
         assert_eq!(result1_sim.pnl, result2_sim.pnl);
         assert_eq!(result1_sim.trades, result2_sim.trades);
-
-        let result1_ga = run_ga(ExecutionMode::Real);
-        let result2_ga = run_ga(ExecutionMode::Real);
-        assert_eq!(result1_ga.best_config, result2_ga.best_config);
     }
 
     // Test 2 — Mode Difference: ideal_result != real_result
@@ -64,11 +58,7 @@ mod demo_tests {
         }
     }
 
-    // Test 5 — GA Divergence: best_config_ideal != best_config_real
-    #[test]
-    fn test_ga_divergence() {
-        let ideal_ga_result = run_ga(ExecutionMode::Ideal);
-        let real_ga_result = run_ga(ExecutionMode::Real);
-        assert_ne!(ideal_ga_result.best_config, real_ga_result.best_config);
-    }
+    // Test 5 — GA Divergence: removed in Phase 2 authority consolidation.
+    // kernel::run_ga() was a stub returning hardcoded strings, not the real GA.
+    // Real GA mode-divergence is exercised via evaluation_service and pipeline tests.
 }

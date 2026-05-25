@@ -1,6 +1,9 @@
 use chrono::Local;
 use chronosentiment_core::csv_source::CsvCandleSource;
-use chronosentiment_core::data_source::{CandleSource, PythonCandleSource, YahooCandleSource};
+use chronosentiment_core::data_source::CandleSource;
+// PythonCandleSource and YahooCandleSource archived to research_experiments/ in Phase 2.
+// Live API source integration is deferred — see research_experiments/python_bridge/ and
+// research_experiments/yahoo_adapter_v0/ for lineage.
 use chronosentiment_core::folder_source::FolderCandleSource;
 use chronosentiment_core::ga::{
     calculate_capture_efficiency, classify_efficiency, evaluate_consensus_status,
@@ -211,13 +214,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for symbol in &symbols {
         if use_live_api {
-            let use_python = intl_suffixes.iter().any(|sfx| symbol.ends_with(sfx));
-            let source: Box<dyn CandleSource> = if use_python {
-                Box::new(PythonCandleSource::new(symbol, &interval, window_size))
-            } else {
-                Box::new(YahooCandleSource::new(symbol, &interval, window_size))
-            };
-            sources.insert(symbol.clone(), source);
+            // Live API sources (PythonCandleSource, YahooCandleSource) archived to
+            // research_experiments/ in Phase 2 authority consolidation.
+            // Re-integrate via a canonical CandleSource implementation before enabling.
+            unimplemented!(
+                "Live API source for '{}' not available: PythonCandleSource and \
+                 YahooCandleSource have been archived to research_experiments/. \
+                 Implement a canonical CandleSource before re-enabling use_live_api.",
+                symbol
+            );
         } else {
             let path = Path::new(&csv_dir).join(format!("{}.csv", symbol));
             if !path.exists() {
