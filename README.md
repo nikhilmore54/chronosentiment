@@ -16,6 +16,18 @@ It achieves this through:
 - Passive manifest attestation.
 - Mechanical isolation of the exact event index where equivalence fails.
 
+## Evaluation Documentation Suite
+The operational behavior and boundaries of the system are heavily documented. Please review these before operating the system.
+
+- [Getting Started](GETTING_STARTED.md) - 10-minute installation and onboarding guide.
+- [Known Limitations](KNOWN_LIMITATIONS.md) - Explicit boundaries and failure semantics.
+- [Operational Model](OPERATIONAL_MODEL.md) - The Observer vs. The Actor.
+- [Workflow Guide](WORKFLOW_GUIDE.md) - Replay → Certify → Inspect.
+- [Divergence Walkthrough](DIVERGENCE_WALKTHROUGH.md) - Guided deterministic failure isolation.
+- [Architecture](ARCHITECTURE.md) - Bounded component design.
+- [Governance](GOVERNANCE.md) - Scope enforcement policy.
+- [FAQ](FAQ.md) - Frequently asked questions.
+
 ## Installation
 Requires Python 3.10+ and Rust (cargo).
 
