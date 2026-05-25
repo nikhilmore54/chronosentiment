@@ -94,6 +94,17 @@ fn main() {
     }
     let substrate_hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
 
+    if std::env::var("CHRONO_INJECT_FLOAT_COERCION").unwrap_or_else(|_| "0".to_string()) == "1" {
+        println!("\nWARNING:\nExperimental divergence injection enabled:\nCHRONO_INJECT_FLOAT_COERCION=1\n");
+        // Simulate internal float accumulation drift after tick 10
+        for (i, p) in prices.iter_mut().enumerate() {
+            if i >= 10 {
+                // Add a microscopic rounding error that snowballs
+                *p += 0.000001;
+            }
+        }
+    }
+
     // 2. Parse Canonical Definitions
     let topology = parse_topology(&args.topology);
     let cognition = parse_cognition(&args.cognition);
