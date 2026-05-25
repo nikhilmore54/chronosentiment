@@ -27,7 +27,7 @@ def hash_file(filepath):
 def hash_dict(d):
     """Returns SHA-256 hash of a dictionary (keys sorted)."""
     h = hashlib.sha256()
-    h.update(json.dumps(d, sort_keys=True).encode('utf-8'))
+    h.update(json.dumps(d, sort_keys=True, separators=(',', ':')).encode('utf-8'))
     return h.hexdigest()
 
 def emit_manifest(
@@ -45,7 +45,8 @@ def emit_manifest(
     topology, 
     cognition_a, 
     cognition_b,
-    artifact_dir
+    artifact_dir,
+    commit_hash=None
 ):
     
     # 1. Hashes
@@ -104,8 +105,8 @@ def emit_manifest(
             "baseline_b": baseline_b
         },
         "artifact_fingerprints": {
-            f"tier1_5m/{cognition_a}/trace_summary.json": trace_a_hash,
-            f"tier1_5m/{cognition_b}/trace_summary.json": trace_b_hash
+            f"{cognition_a}/trace_summary.json": trace_a_hash,
+            f"{cognition_b}/trace_summary.json": trace_b_hash
         },
         "determinism_metadata": {
             "topology_hash": topology_hash,
@@ -115,7 +116,7 @@ def emit_manifest(
             }
         },
         "provenance": {
-            "commit_hash": get_git_commit(),
+            "commit_hash": commit_hash if commit_hash else get_git_commit(),
             "manifest_version": MANIFEST_VERSION,
             "schema_hash": schema_hash,
             "generator_version": GENERATOR_VERSION,
