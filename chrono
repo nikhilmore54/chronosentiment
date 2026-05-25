@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import subprocess
+import sys
+import json
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+CORE_DIR = os.path.join(PROJECT_ROOT, "core")
+TARGET_DIR = os.path.join(PROJECT_ROOT, "target", "release")
+TRACE_REPLAY_BIN = os.path.join(TARGET_DIR, "trace_replay")
+VERIFY_SCRIPT = os.path.join(PROJECT_ROOT, "scripts", "verify_manifest_v1.py")
+
+def print_header(title):
+    print(f"\n{'='*60}")
+    print(f" {title.upper()}")
+    print(f"{'='*60}\n")
+
+def run_install(args):
+    print_header("Installing ChronoSentiment")
+    print("Building trace_replay core engine (release mode)...")
+    
+    try:
+        subprocess.run(["cargo", "build", "--release"], cwd=CORE_DIR, check=True)
+        print(f"\n✅ Engine built successfully at: {TRACE_REPLAY_BIN}")
+        print("Ready for operational contact.")
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Build failed. Is Rust installed? (cargo build error)")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("\n❌ Cargo not found. Please install Rust: https://rustup.rs/")
+        sys.exit(1)
+
+def run_replay(args):
+    print_header("Chrono Replay")
+    
+    if not os.path.exists(TRACE_REPLAY_BIN):
+        print(f"❌ Binary not found at {TRACE_REPLAY_BIN}. Please run './chrono install' first.")
+        sys.exit(1)
+        
+    substrate_file = os.path.abspath(args.substrate_file)
+    if not os.path.exists(substrate_file):
+        print(f"❌ Substrate file not found: {substrate_file}")
+        sys.exit(1)
+        
+    cmd = [
+        TRACE_REPLAY_BIN,
+        "--substrate", args.substrate,
+        "--substrate-file", substrate_file,
+        "--topology", args.topology,
+        "--cognition", args.cognition
+    ]
+    
+    print(f"🚀 Launching deterministic replay engine...")
+    print(f"   Substrate: {args.substrate}")
+    print(f"   Topology:  {args.topology}")
+    print(f"   Cognition: {args.cognition}")
+    print(f"   Source:    {substrate_file}")
+    
+    # We run from PROJECT_ROOT so artifacts write to PROJECT_ROOT/artifacts/...
+    try:
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Replay engine failed with exit code {e.returncode}")
+        sys.exit(1)
+        
+    expected_artifact_dir = os.path.join(PROJECT_ROOT, "artifacts", args.substrate, args.topology, args.cognition)
+    manifest_path = os.path.join(expected_artifact_dir, "metadata.json")
+    
+    if os.path.exists(manifest_path):
+        print(f"\n✅ Replay Complete.")
+        print(f"   Artifact Directory: {expected_artifact_dir}")
+        print(f"   Verify with: ./chrono certify {expected_artifact_dir}")
+    else:
+        print(f"\n⚠️ Replay completed but expected manifest was not found at {manifest_path}")
+
+def run_certify(args):
+    print_header("Manifest Certification")
+    
+    artifact_dir = os.path.abspath(args.artifact_dir)
+    manifest_path = os.path.join(artifact_dir, "metadata.json")
+    
+    if not os.path.exists(manifest_path):
+        # Fallback for old layouts
+        manifest_path = os.path.join(artifact_dir, "manifest.json")
+        if not os.path.exists(manifest_path):
+            print(f"❌ Manifest not found in {artifact_dir}")
+            sys.exit(1)
+            
+    print(f"🔍 Certifying artifact manifest at: {manifest_path}\n")
+    
+    cmd = [sys.executable, VERIFY_SCRIPT, manifest_path]
+    try:
+        res = subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True)
+        try:
+            data = json.loads(res.stdout)
+            status = data.get("status", "UNKNOWN")
+            
+            if status == "ATTESTATION_PASSED":
+                print(f"✅ ATTESTATION PASSED")
+                print(f"   Chronology Hash: {data.get('provenance', {}).get('chronology_hash', 'N/A')}")
+                for att in data.get("attestations", []):
+                    print(f"   - {att}")
+            else:
+                print(f"❌ ATTESTATION FAILED")
+                for f in data.get("failures", []):
+                    print(f"   - {f.get('error')}: {f.get('component')} (Expected: {f.get('expected')}, Actual: {f.get('actual')})")
+        except json.JSONDecodeError:
+            print("❌ Verifier output was not valid JSON.")
+            print(res.stdout)
+            
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Verifier script failed with exit code {e.returncode}")
+        print(e.stderr or e.stdout)
+        sys.exit(1)
+
+def run_demo(args):
+    print_header("Interactive Deterministic Replay Demo")
+    
+    if not os.path.exists(TRACE_REPLAY_BIN):
+        print("Build required. Installing...")
+        run_install(args)
+        
+    demo_substrate = os.path.join(CORE_DIR, "chronology", "historical", "2026_nvda_sync_oscillatory_fragmentation_5m", "nvda_1779197400000.jsonl")
+    
+    if not os.path.exists(demo_substrate):
+        print(f"❌ Could not find demo substrate: {demo_substrate}")
+        sys.exit(1)
+        
+    print("Step 1: Orchestrating deterministic replay...")
+    print("Command: chrono replay osc_50_1.0 rolling_50 --substrate tier1_demo_5m --substrate-file <file>")
+    print("-" * 60)
+    
+    # Run cognition A
+    class DummyArgs:
+        substrate = "tier1_demo_5m"
+        topology = "osc_50_1.0"
+        cognition = "rolling_50"
+        substrate_file = demo_substrate
+    run_replay(DummyArgs())
+
+    print("\nCommand: chrono replay osc_50_1.0 rolling_100 --substrate tier1_demo_5m --substrate-file <file>")
+    print("-" * 60)
+    # Run cognition B
+    DummyArgs.cognition = "rolling_100"
+    run_replay(DummyArgs())
+    
+    artifact_dir = os.path.join(PROJECT_ROOT, "artifacts", "tier1_demo_5m", "osc_50_1.0")
+    
+    print("\nStep 2: Emitting composite manifest...")
+    print(f"Command: python3 scripts/emit_manifest_v1.py <config>")
+    print("-" * 60)
+    
+    config = {
+        "replay_id": "2026_nvda_sync_oscillatory_fragmentation",
+        "replay_class": "oscillatory_fragmentation",
+        "authority_type": "yahoo_finance",
+        "session_ontology": "5m_sync",
+        "start_ts": 1779197400000,
+        "end_ts": 1779219000000,
+        "shift_offset": 0,
+        "symbols": ["NVDA"],
+        "timeframe": "5m",
+        "descriptors": ["demo"],
+        "substrate_file": demo_substrate,
+        "topology": "osc_50_1.0",
+        "cognition_a": "rolling_50",
+        "cognition_b": "rolling_100",
+        "artifact_dir": artifact_dir,
+        "commit_hash": "demo_commit"
+    }
+    
+    config_path = os.path.join(artifact_dir, "demo_config.json")
+    with open(config_path, 'w') as f:
+        json.dump(config, f)
+        
+    subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "scripts", "emit_manifest_v1.py"), config_path], check=True)
+    
+    print("\nStep 3: Passive Verifier Attestation...")
+    print(f"Command: chrono certify {os.path.relpath(artifact_dir, PROJECT_ROOT)}")
+    print("-" * 60)
+    
+    class DummyCertifyArgs:
+        artifact_dir_arg = artifact_dir
+    
+    setattr(DummyCertifyArgs, "artifact_dir", artifact_dir)
+    run_certify(DummyCertifyArgs())
+    
+    print("\nDemo concluded successfully. The infrastructure is operational.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ChronoSentiment Operational CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    
+    install_p = subparsers.add_parser("install", help="Build the deterministic engine")
+    install_p.set_defaults(func=run_install)
+    
+    replay_p = subparsers.add_parser("replay", help="Run the deterministic trace replay engine")
+    replay_p.add_argument("topology", help="Topology identifier (e.g., osc_50_1.0)")
+    replay_p.add_argument("cognition", help="Cognition geometry identifier (e.g., rolling_50)")
+    replay_p.add_argument("--substrate-file", required=True, help="Path to historical jsonl substrate")
+    replay_p.add_argument("--substrate", default="tier1_5m", help="Substrate namespace/tier")
+    replay_p.set_defaults(func=run_replay)
+    
+    certify_p = subparsers.add_parser("certify", help="Certify a generated artifact directory manifest")
+    certify_p.add_argument("artifact_dir", help="Path to the artifact directory containing metadata.json")
+    certify_p.set_defaults(func=run_certify)
+    
+    demo_p = subparsers.add_parser("demo", help="Run a polished end-to-end replay and certify walkthrough")
+    demo_p.set_defaults(func=run_demo)
+    
+    args = parser.parse_args()
+    args.func(args)
+
+if __name__ == "__main__":
+    main()
