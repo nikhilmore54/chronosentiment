@@ -371,7 +371,7 @@ impl PercentileBuffer {
         vals
     }
 }
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 /// --- PHASE 16 (V3.6.8): DETERMINISTIC KERNELS ---
@@ -3016,8 +3016,9 @@ pub fn run_ga_evolution<'a>(
     let mut final_p: Vec<Strategy> = Vec::new();
     let mut generation_peaks: Vec<f64> = vec![f64::NEG_INFINITY; config.generations];
 
-    let mut asset_regime_scenarios: HashMap<(String, String), Vec<ScenarioPair<'a>>> =
-        HashMap::new();
+    // BTreeMap ensures deterministic iteration order across runs (HashMap order is random).
+    let mut asset_regime_scenarios: BTreeMap<(String, String), Vec<ScenarioPair<'a>>> =
+        BTreeMap::new();
     for pair in all_scenarios {
         let name = pair.name;
         let asset = name.split('_').next().unwrap_or("BTC").to_string();
@@ -3039,7 +3040,7 @@ pub fn run_ga_evolution<'a>(
             .push(pair.clone());
     }
 
-    let mut best_per_bucket: HashMap<(String, String), StrategyEvaluation> = HashMap::new();
+    let mut best_per_bucket: BTreeMap<(String, String), StrategyEvaluation> = BTreeMap::new();
     let mut all_final_evaluations: Vec<StrategyEvaluation> = Vec::new();
     let mut asset_states: HashMap<String, AssetEvoState> = HashMap::new();
 
