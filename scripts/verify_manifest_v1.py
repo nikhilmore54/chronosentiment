@@ -61,7 +61,7 @@ def verify_manifest(manifest_path, project_root="core"):
     symbols = manifest.get("instrument_metadata", {}).get("symbols", [])
     start_ts = manifest.get("extraction_metadata", {}).get("start_ts")
     
-    if not replay_id or not symbols or not start_ts:
+    if not replay_id or not symbols or start_ts is None:
         results["failures"].append({"error": "MALFORMED_MANIFEST", "details": "Missing replay_id, symbols, or start_ts"})
         return results
         
@@ -74,8 +74,11 @@ def verify_manifest(manifest_path, project_root="core"):
     if clean_replay_id.endswith(f"_{tf_str}"):
         clean_replay_id = clean_replay_id[:-len(f"_{tf_str}")]
         
-    substrate_dir = os.path.join(project_root, "chronology", "historical", f"{clean_replay_id}_{tf_str}")
-    substrate_file = os.path.join(substrate_dir, f"{sym}_{start_ts}.jsonl")
+    if replay_id.startswith("soak"):
+        substrate_file = os.path.join(project_root, "chronology", "soak", f"{replay_id}.jsonl")
+    else:
+        substrate_dir = os.path.join(project_root, "chronology", "historical", f"{clean_replay_id}_{tf_str}")
+        substrate_file = os.path.join(substrate_dir, f"{sym}_{start_ts}.jsonl")
     
     actual_chronology_hash = hash_file(substrate_file)
     expected_chronology_hash = manifest.get("replay_identity", {}).get("chronology_hash")
