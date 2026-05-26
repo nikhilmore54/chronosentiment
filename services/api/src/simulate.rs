@@ -23,13 +23,15 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let mode = match input.mode.as_str() {
         "real" => ExecutionMode::Real,
         "ideal" => ExecutionMode::Ideal,
-        _ => return Err(ApiError::InvalidInput("mode must be 'real' or 'ideal'".to_string())),
+        _ => return Err(ApiError::ValidationError("mode must be 'real' or 'ideal'".to_string())),
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(input.seed);
 
+    let folder_path = chronosentiment_core::resolve_test_assets_dir()
+        .map_err(|e| ApiError::InternalError(format!("test assets path resolution failed: {e}")))?;
     let source = chronosentiment_core::FolderCandleSource {
-        folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+        folder_path: folder_path.to_string_lossy().into_owned(),
     };
     let assets_with_candles = source.load_all();
     let mut all_scenarios = std::collections::HashMap::new();

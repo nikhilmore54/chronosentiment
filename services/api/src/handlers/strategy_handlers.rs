@@ -124,7 +124,7 @@ pub async fn inspect_strategy_handler(
     } else if let Some(s) = scenario_from_id {
         s
     } else {
-        service.load_all_real_scenarios()
+        service.load_all_real_scenarios()?
             .keys()
             .next()
             .cloned()

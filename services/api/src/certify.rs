@@ -8,17 +8,16 @@ pub fn handle_certify(sim: &SimulationResult) -> Result<CertificationResponse, A
     // Since we have 'sim', we'll run it again and compare.
     
     // Reconstruct CreateOrder from the simulation events or a default for replay
+    let replay_fill_probability = 0.5;
     let create_orders_for_replay = sim.events.iter().filter_map(|event| {
         if let SimEvent::OrderIntent { order_id, side, price, quantity, timestamp, .. } = event {
-            // For replay, we need to make an assumption about fill_probability.
-            // For determinism, it's best to use a fixed value or derive it if possible
             Some(CreateOrder {
                 order_id: order_id.clone(),
                 side: *side,
                 price: *price,
                 quantity: *quantity,
                 timestamp: *timestamp,
-                fill_probability: 0.5, // Default for replay, adjust if needed
+                fill_probability: replay_fill_probability,
             })
         } else { None }
     }).collect::<Vec<CreateOrder>>();
@@ -35,7 +34,8 @@ pub fn handle_certify(sim: &SimulationResult) -> Result<CertificationResponse, A
         } else { None }
     }).collect::<Vec<MarketEvent>>();
 
-    let (_, replay_sim, _) = run_simulation_harness(ExecutionMode::Real, market_events_for_replay, create_orders_for_replay); 
+    let replay_mode = ExecutionMode::Real;
+    let (_, replay_sim, _) = run_simulation_harness(replay_mode, market_events_for_replay, create_orders_for_replay.clone());
 
     // 2. Compare event sequences and find divergence point
     let mut divergence_point = None;
@@ -57,11 +57,13 @@ pub fn handle_certify(sim: &SimulationResult) -> Result<CertificationResponse, A
 
     let passes = hash_1 == hash_2 && divergence_point.is_none();
 
+    let config_hash = certification_config_hash(replay_mode, replay_fill_probability, &create_orders_for_replay);
+
     let fingerprint = Some(crate::DeterminismFingerprint {
         engine_version: "v1.0-deterministic-core".to_string(),
         event_count: sim.events.len(),
         final_hash: hash_1.clone(),
-        config_hash: "default-config-hash".to_string(), // In a real system, this would be a hash of the simulation config
+        config_hash,
     });
 
     Ok(CertificationResponse {
@@ -71,6 +73,32 @@ pub fn handle_certify(sim: &SimulationResult) -> Result<CertificationResponse, A
         divergence_point,
         fingerprint,
     })
+}
+
+fn certification_config_hash(
+    mode: ExecutionMode,
+    fill_probability: f64,
+    orders: &[CreateOrder],
+) -> String {
+    #[derive(serde::Serialize)]
+    struct CertificationConfig<'a> {
+        execution_mode: &'static str,
+        fill_probability: f64,
+        orders: &'a [CreateOrder],
+    }
+
+    let execution_mode = match mode {
+        ExecutionMode::Real => "real",
+        ExecutionMode::Ideal => "ideal",
+    };
+
+    let payload = CertificationConfig {
+        execution_mode,
+        fill_probability,
+        orders,
+    };
+    let serialized = serde_json::to_string(&payload).unwrap_or_default();
+    blake3::hash(serialized.as_bytes()).to_hex().to_string()
 }
 
 fn hash_simulation_events(events: &[SimEvent]) -> String {

@@ -12,7 +12,7 @@ pub fn handle_simulate_with_market_data(input: MarketDataSimulateInput) -> Resul
     let mode = match input.mode.as_str() {
         "real" => ExecutionMode::Real,
         "ideal" => ExecutionMode::Ideal,
-        _ => return Err(ApiError::InvalidInput("mode must be 'real' or 'ideal'".to_string())),
+        _ => return Err(ApiError::ValidationError("mode must be 'real' or 'ideal'".to_string())),
     };
 
     let market_events = market_adapter::parse_market_data(input.market_data_jsonl);

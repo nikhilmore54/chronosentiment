@@ -1,10 +1,11 @@
-mod dto;
-mod errors;
+pub use api::dto;
 mod handlers;
 mod routes;
 mod services;
 mod signatures;
 mod strategy_id_parse;
+
+pub use api::errors;
 
 use axum::{routing::get, Router};
 use services::evaluation_service::EvaluationService;

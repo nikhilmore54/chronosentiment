@@ -22,8 +22,10 @@ pub mod reco;
 pub mod replay;
 pub mod replay_evaluator;
 pub mod selection_cap;
+pub mod strategy_id;
 pub mod strategy_ranking;
 pub mod synthetic;
+pub mod test_assets;
 pub mod tick_replay;
 
 pub use binance_adapter::load_binance_events_from_jsonl;
@@ -46,8 +48,10 @@ pub use reco::*;
 pub use replay::*;
 pub use replay_evaluator::*;
 pub use selection_cap::*;
+pub use strategy_id::*;
 pub use strategy_ranking::*;
 pub use synthetic::*;
+pub use test_assets::{resolve_test_assets_dir, TestAssetsPathError};
 pub use tick_replay::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

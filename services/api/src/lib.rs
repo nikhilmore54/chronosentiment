@@ -1,3 +1,5 @@
+pub mod dto;
+pub mod errors;
 pub mod simulate;
 pub mod inspector;
 pub mod timeline;
@@ -7,10 +9,12 @@ pub mod certify;
 pub mod market_adapter;
 pub mod market_data_simulate;
 
+pub use errors::ApiError;
+
 pub use simulate::*;
 pub use inspector::{TradeInspectorResponse, MinimalEvent, build_trade_inspector, handle_inspect, to_minimal_event};
 pub use timeline::*;
-pub use replay::*;
+pub use replay::reduce_replay_state;
 pub use events::*;
 pub use certify::*;
 pub use market_adapter::*;
@@ -51,8 +55,3 @@ pub struct DeterminismFingerprint {
     pub config_hash: String,
 }
 
-#[derive(Debug, Clone)]
-pub enum ApiError {
-    InvalidInput(String),
-    InternalError(String),
-}

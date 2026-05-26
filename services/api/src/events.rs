@@ -6,7 +6,7 @@ pub fn handle_events(sim: &SimulationResult, from: Option<u64>, to: Option<u64>)
     let to = to.unwrap_or(u64::MAX);
 
     if from > to {
-        return Err(ApiError::InvalidInput("from must be <= to".to_string()));
+        return Err(ApiError::ValidationError("from must be <= to".to_string()));
     }
 
     let subset: Vec<SimEvent> = sim.events.iter()

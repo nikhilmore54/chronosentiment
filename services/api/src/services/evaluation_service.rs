@@ -1,3 +1,4 @@
+use api::replay::reduce_replay_state;
 use crate::{dto::{EvaluateStrategyResponse, CompareStrategiesResponse, ComparisonSummary, InspectStrategyResponse, RunGaResponse, EventWrapper, TradeInspectorResponse, StrategyEvaluationDto},
     errors::ApiError,
 };
@@ -612,8 +613,10 @@ impl EvaluationService {
             .unwrap_or_else(|_| "synthetic".to_string())
             .to_lowercase();
         let assets = if data_source == "folder" {
+            let folder_path = chronosentiment_core::resolve_test_assets_dir()
+                .map_err(|e| ApiError::EngineError(format!("test assets path resolution failed: {e}")))?;
             let source = chronosentiment_core::FolderCandleSource {
-                folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+                folder_path: folder_path.to_string_lossy().into_owned(),
             };
             let mut names: Vec<String> = source
                 .load_all()
@@ -711,75 +714,12 @@ impl EvaluationService {
 
     pub fn get_replay(&self, seq_id: u64) -> Result<crate::dto::SystemState, ApiError> {
         let last_sim = self.last_simulation.lock().unwrap_or_else(|e| e.into_inner());
-        
-        let sim = last_sim.as_ref().ok_or_else(|| ApiError::InternalError("No simulation results available".to_string()))?;
-        let events = &sim.events;
-        
-        let mut orders: HashMap<String, crate::dto::OrderState> = HashMap::new();
-        let mut pnl = 0.0;
-        let mut position = 0i64;
 
-        for event in events.iter() {
-            if event.sequence_id() > seq_id {
-                break;
-            }
+        let sim = last_sim
+            .as_ref()
+            .ok_or_else(|| ApiError::InternalError("No simulation results available".to_string()))?;
 
-            match event {
-                SimEvent::OrderIntent { order_id, side, price, quantity, .. } => {
-                    orders.insert(order_id.clone(), crate::dto::OrderState {
-                        order_id: order_id.clone(),
-                        status: "NEW".to_string(),
-                        quantity_total: *quantity,
-                        quantity_filled: 0,
-                        quantity_remaining: *quantity,
-                        queue_ahead: 0,
-                        price: chronosentiment_core::to_real(*price),
-                        side: *side,
-                    });
-                }
-                SimEvent::OrderEnteredQueue { order_id, queue_ahead, .. } => {
-                    if let Some(order) = orders.get_mut(order_id) {
-                        order.status = "ACTIVE".to_string();
-                        order.queue_ahead = *queue_ahead;
-                    }
-                }
-                SimEvent::PartialFill { order_id, filled_qty, price, .. } => {
-                    if let Some(order) = orders.get_mut(order_id) {
-                        order.status = "PARTIAL".to_string();
-                        order.quantity_filled += *filled_qty;
-                        order.quantity_remaining = order.quantity_remaining.saturating_sub(*filled_qty);
-                        
-                        // Update portfolio
-                        let multiplier = match order.side {
-                            chronosentiment_core::Side::Buy => 1,
-                            chronosentiment_core::Side::Sell => -1,
-                        };
-                        position += multiplier * (*filled_qty as i64);
-                        pnl += multiplier as f64 * (*filled_qty as f64) * chronosentiment_core::to_real(*price);
-                    }
-                }
-                SimEvent::QueueProgression { order_id, queue_ahead, .. } => {
-                    if let Some(order) = orders.get_mut(order_id) {
-                        order.queue_ahead = *queue_ahead;
-                    }
-                }
-                SimEvent::OrderFilled { order_id, .. } => {
-                    if let Some(order) = orders.get_mut(order_id) {
-                        order.status = "FILLED".to_string();
-                        order.quantity_remaining = 0;
-                    }
-                }
-                SimEvent::MarketEvent { .. } => {
-                    // Market events don't change our internal state directly in this simple replay
-                }
-            }
-        }
-
-        Ok(crate::dto::SystemState {
-            orders,
-            portfolio: crate::dto::PortfolioState { pnl, position },
-            last_sequence_id: seq_id,
-        })
+        Ok(reduce_replay_state(&sim.events, seq_id))
     }
     pub fn get_trade_suggestions(&self) -> Result<crate::dto::TradeSuggestionsResponse, ApiError> {
         Ok(crate::dto::TradeSuggestionsResponse {
@@ -800,15 +740,19 @@ impl EvaluationService {
         })
     }
 
-    pub fn load_all_real_scenarios(&self) -> HashMap<String, Vec<chronosentiment_core::SimEvent>> {
+    pub fn load_all_real_scenarios(
+        &self,
+    ) -> Result<HashMap<String, Vec<chronosentiment_core::SimEvent>>, ApiError> {
+        let folder_path = chronosentiment_core::resolve_test_assets_dir()
+            .map_err(|e| ApiError::EngineError(format!("test assets path resolution failed: {e}")))?;
         let source = chronosentiment_core::FolderCandleSource {
-            folder_path: "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string(),
+            folder_path: folder_path.to_string_lossy().into_owned(),
         };
         let mut scenarios = HashMap::new();
         for (asset, candles) in source.load_all() {
             scenarios.insert(asset, chronosentiment_core::convert_series_to_events(&candles, 1));
         }
-        scenarios
+        Ok(scenarios)
     }
 }
 

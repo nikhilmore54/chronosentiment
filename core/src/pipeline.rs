@@ -1098,12 +1098,18 @@ pub fn evaluate_on_real_data(
         .unwrap_or_else(|_| "synthetic".to_string())
         .to_lowercase();
 
-    let folder_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets".to_string();
     let mut folder_candles_by_asset: HashMap<String, Vec<Candle>> = HashMap::new();
 
     let assets_to_process: Vec<(String, String)> = if data_source == "folder" {
+        let folder_path = match crate::test_assets::resolve_test_assets_dir() {
+            Ok(path) => path.to_string_lossy().into_owned(),
+            Err(err) => {
+                eprintln!("ERROR: test assets path resolution failed: {err}");
+                return aggregated_metrics;
+            }
+        };
         println!("DATA_SOURCE=FOLDER");
-        println!("folder_path={}", folder_path);
+        println!("folder_path={folder_path}");
         let source = FolderCandleSource { folder_path };
         let datasets = source.load_all();
         println!("dataset_count={}", datasets.len());

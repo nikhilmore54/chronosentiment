@@ -163,7 +163,7 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             order_price = *price;
         }
     } else {
-        return Err(ApiError::InvalidInput(format!("OrderIntent for {} not found", order_id)));
+        return Err(ApiError::ValidationError(format!("OrderIntent for {} not found", order_id)));
     }
 
     // Hybrid event collection
@@ -299,7 +299,7 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
 
 pub fn handle_inspect(id: String, sim: &SimulationResult) -> Result<TradeInspection, ApiError> {
     if !sim.order_outcomes.contains_key(&id) {
-        return Err(ApiError::InvalidInput("Order not found".into()));
+        return Err(ApiError::ValidationError("Order not found".into()));
     }
     Ok(chronosentiment_core::inspect_trade(&id, sim))
 }

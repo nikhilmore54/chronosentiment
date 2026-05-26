@@ -8,7 +8,7 @@ use serde::Deserialize;
 use chronosentiment_core::topology::TopologyField;
 use chronosentiment_core::cognition::CognitionGeometry;
 use chronosentiment_core::morphology::{generate_occupancy_traces, TraceArtifactV1};
-use chronosentiment_core::observatory::{ObservatoryManifestV1, ChronologyBounds};
+use chronosentiment_core::observatory::{ObservatoryManifestV1, ChronologyBounds, resolve_git_commit_hash};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser, Debug)]
@@ -127,7 +127,7 @@ fn main() {
         replay_version: "v1".to_string(),
         topology_version: "v1".to_string(),
         cognition_version: "v1".to_string(),
-        commit_hash: "canonical".to_string(), // In production, inject via build script
+        commit_hash: resolve_git_commit_hash(),
         artifact_hash,
         generation_timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
         chronology_bounds: ChronologyBounds {

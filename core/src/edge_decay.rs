@@ -32,57 +32,9 @@ fn map_regime_local(regime: &str) -> LiveRegime {
     }
 }
 
-// Local helper to parse strategy from ID (simplified for reporting)
+// V-001: edge-decay is the first legacy lineage routed through canonical identity parsing.
 fn parse_strategy_from_id_local(id: &str) -> Option<Strategy> {
-    let parts: Vec<&str> = id.split('v').collect();
-    if parts.len() < 13 {
-        return None;
-    }
-
-    // Format: STRAT_QvEvTPvSLvHPvW_CONVvW_MOMvW_VOLvEXP_CONVvEXP_MOMvEXP_VOLvSELvARCH[vBIASvVFLOORvMFLOORvRRvPART]
-    let q = parts[0].trim_start_matches("STRAT_").parse().ok()?;
-    let e = parts[1].parse().ok()?;
-    let tp = parts[2].parse().ok()?;
-    let sl = parts[3].parse().ok()?;
-    let holding = parts[4].parse().ok()?;
-    let w_conv = parts[5].parse().ok()?;
-    let w_mom = parts[6].parse().ok()?;
-    let w_vol = parts[7].parse().ok().unwrap_or(20);
-    let exp_conv = parts[8].parse().ok().unwrap_or(100);
-    let exp_mom = parts[9].parse().ok().unwrap_or(100);
-    let exp_vol = parts[10].parse().ok().unwrap_or(100);
-    let selectivity = parts[11].parse().ok().unwrap_or(75);
-    let archetype = parts[12].parse().ok().unwrap_or(0);
-
-    // Phase D.1.21 Extended Genes
-    let direction_bias: u8 = parts.get(13).and_then(|p| p.parse().ok()).unwrap_or(50);
-    let vol_floor: u8 = parts.get(14).and_then(|p| p.parse().ok()).unwrap_or(20);
-    let mom_floor: u8 = parts.get(15).and_then(|p| p.parse().ok()).unwrap_or(20);
-    let edge_ratio: u8 = parts.get(16).and_then(|p| p.parse().ok()).unwrap_or(150);
-    let participation_threshold: u8 = parts.get(17).and_then(|p| p.parse().ok()).unwrap_or(30);
-
-    Some(Strategy {
-        queue_threshold: q,
-        base_edge: e,
-        take_profit: tp,
-        stop_loss: sl,
-        holding_period: holding,
-        w_conviction: w_conv,
-        w_momentum: w_mom,
-        w_volatility: w_vol,
-        exp_conviction: exp_conv,
-        exp_momentum: exp_mom,
-        exp_volatility: exp_vol,
-        selectivity,
-        archetype,
-        direction_bias,
-        vol_floor,
-        mom_floor,
-        edge_ratio,
-        participation_threshold,
-        entry_offset: parts.get(18).and_then(|p| p.parse().ok()).unwrap_or(0),
-        exec_aggression: 50, latency_bias: 10, fill_threshold: 50, lineage: 0,
-        })
+    crate::strategy_id::parse_strategy_id(id).parsed_strategy
 }
 
 fn _parse_fallback(sig: &StrategyProfile) -> Strategy {

@@ -60,16 +60,14 @@ fn parse_timestamp(ts: &str) -> i64 {
         .timestamp()
 }
 
-const PRICE_SCALE: f64 = 10000.0;
-
 pub fn rows_to_candles(rows: Vec<CandleRow>) -> Vec<Candle> {
     rows.into_iter()
         .map(|row| Candle {
             timestamp: parse_timestamp(&row.timestamp) as u64,
-            open: (row.open * PRICE_SCALE) as u64,
-            high: (row.high * PRICE_SCALE) as u64,
-            low: (row.low * PRICE_SCALE) as u64,
-            close: (row.close * PRICE_SCALE) as u64,
+            open: (row.open * crate::PRICE_SCALE as f64) as u64,
+            high: (row.high * crate::PRICE_SCALE as f64) as u64,
+            low: (row.low * crate::PRICE_SCALE as f64) as u64,
+            close: (row.close * crate::PRICE_SCALE as f64) as u64,
             volume: row.volume as u64,
         })
         .collect()
