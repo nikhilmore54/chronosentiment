@@ -1,0 +1,186 @@
+{
+  "producer": "capture_daemon",
+  "ratification_granted": false,
+  "phase": "B",
+  "classification_taxonomy": [
+    "byte_identical",
+    "hash_identical_semantic_drift",
+    "serialization_drift",
+    "dialect_drift",
+    "timestamp_unit_drift",
+    "path_authority_drift",
+    "ratification_blocked"
+  ],
+  "verdicts": [
+    {
+      "fixture_id": "historical_dialect_a_cpi_shock_tick",
+      "producer": "capture_daemon",
+      "tick_classification": "byte_identical",
+      "manifest_classification": "byte_identical",
+      "producer_static_classification": "path_authority_drift",
+      "overall": "path_authority_drift",
+      "notes": [
+        "code emits under `chronology/live_capture/`; lawful root is `core/chronology/`"
+      ],
+      "probe_report": {
+        "fixture_id": "historical_dialect_a_cpi_shock_tick",
+        "producer": "capture_daemon",
+        "line_count": 5,
+        "lines_byte_identical": true,
+        "first_line_hex_match": true,
+        "expected_excerpt_hash": "311ca81e8511994045ca6690669bdffc15d530c3b24c452f5fea92e1b8087870",
+        "emitted_excerpt_hash": "311ca81e8511994045ca6690669bdffc15d530c3b24c452f5fea92e1b8087870",
+        "hash_identical": true,
+        "line_diffs": [
+          {
+            "line": 1,
+            "byte_identical": true,
+            "expected_len": 102,
+            "emitted_len": 102
+          },
+          {
+            "line": 2,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 3,
+            "byte_identical": true,
+            "expected_len": 102,
+            "emitted_len": 102
+          },
+          {
+            "line": 4,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 5,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          }
+        ],
+        "suggested_classification": "byte_identical"
+      }
+    },
+    {
+      "fixture_id": "live_dialect_b_btcusdt_1779545161",
+      "producer": "capture_daemon",
+      "tick_classification": "byte_identical",
+      "manifest_classification": "timestamp_unit_drift",
+      "producer_static_classification": "timestamp_unit_drift",
+      "overall": "timestamp_unit_drift",
+      "notes": [
+        "Dialect B historically admitted; not forward canonical manifest law",
+        "code emits under `chronology/live_capture/`; lawful root is `core/chronology/`",
+        "forward live law requires Dialect A + millisecond manifest bounds",
+        "capture_daemon currently emits seconds bounds (Phase A defect CD-2)"
+      ],
+      "probe_report": {
+        "fixture_id": "live_dialect_b_btcusdt_1779545161",
+        "producer": "capture_daemon",
+        "line_count": 5,
+        "lines_byte_identical": true,
+        "first_line_hex_match": true,
+        "expected_excerpt_hash": "c8bac6931d7744d156c16433cf6b1ebbc4db67386c86330d358f47685f334ab5",
+        "emitted_excerpt_hash": "c8bac6931d7744d156c16433cf6b1ebbc4db67386c86330d358f47685f334ab5",
+        "hash_identical": true,
+        "line_diffs": [
+          {
+            "line": 1,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 2,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 3,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 4,
+            "byte_identical": true,
+            "expected_len": 104,
+            "emitted_len": 104
+          },
+          {
+            "line": 5,
+            "byte_identical": true,
+            "expected_len": 103,
+            "emitted_len": 103
+          }
+        ],
+        "suggested_classification": "byte_identical"
+      }
+    },
+    {
+      "fixture_id": "yahoo_dialect_c_btcusd_crossfeed",
+      "producer": "capture_daemon",
+      "tick_classification": "serialization_drift",
+      "manifest_classification": "byte_identical",
+      "producer_static_classification": "path_authority_drift",
+      "overall": "serialization_drift",
+      "notes": [
+        "code emits under `chronology/live_capture/`; lawful root is `core/chronology/`"
+      ],
+      "probe_report": {
+        "fixture_id": "yahoo_dialect_c_btcusd_crossfeed",
+        "producer": "capture_daemon",
+        "line_count": 5,
+        "lines_byte_identical": false,
+        "first_line_hex_match": false,
+        "expected_excerpt_hash": "27f0589519840bf1ab16715cd3bd4ce20d9a89fd353586c871d666ba60cf6126",
+        "emitted_excerpt_hash": "7ba8bdfadcf2a9fecf87bb82201adfb8e48d8a5c6289fbcf762f236ff83dc68d",
+        "hash_identical": false,
+        "line_diffs": [
+          {
+            "line": 1,
+            "byte_identical": false,
+            "expected_len": 114,
+            "emitted_len": 105
+          },
+          {
+            "line": 2,
+            "byte_identical": false,
+            "expected_len": 119,
+            "emitted_len": 110
+          },
+          {
+            "line": 3,
+            "byte_identical": false,
+            "expected_len": 120,
+            "emitted_len": 111
+          },
+          {
+            "line": 4,
+            "byte_identical": false,
+            "expected_len": 114,
+            "emitted_len": 105
+          },
+          {
+            "line": 5,
+            "byte_identical": false,
+            "expected_len": 121,
+            "emitted_len": 112
+          }
+        ],
+        "suggested_classification": "serialization_drift"
+      }
+    }
+  ],
+  "summary": {
+    "fixtures_tested": 3,
+    "byte_identical_count": 0,
+    "failures": 3
+  }
+}
