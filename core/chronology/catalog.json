@@ -1,0 +1,184 @@
+{
+    "universes": [
+        {
+            "name": "2023_binance_outage_1h_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-03-24 17:00:00 UTC",
+            "total_ticks": 61,
+            "gaps_recorded": 0,
+            "chronology_hash": "2114db4be683027bfbabd310d4da12d061795ba0378d72d62eebcbdbd029a602"
+        },
+        {
+            "name": "2023_binance_outage_1h_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-03-24 17:00:00 UTC",
+            "total_ticks": 0,
+            "gaps_recorded": 0,
+            "chronology_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+            "name": "2023_christmas_drift_1h_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-12-24 17:30:00 UTC",
+            "total_ticks": 61,
+            "gaps_recorded": 0,
+            "chronology_hash": "4b01424ae347285f4fad1c203b8a1172dffbd26ca713f428ef6644ac8d02e756"
+        },
+        {
+            "name": "2023_christmas_drift_1h_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-12-24 17:30:00 UTC",
+            "total_ticks": 35088,
+            "gaps_recorded": 0,
+            "chronology_hash": "ccb5b22f4ccd763c1300a5d41d937dcea5601d9cf24c50ac790ca4bc87def5c7"
+        },
+        {
+            "name": "2023_liquidation_cascade_1h_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-08-18 02:30:00 UTC",
+            "total_ticks": 61,
+            "gaps_recorded": 0,
+            "chronology_hash": "81d657e8073e02594c6c6ee6a9a2ddb8076b73b5ca964c291c51f7b291a69ff1"
+        },
+        {
+            "name": "2023_liquidation_cascade_1h_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2023-08-18 02:30:00 UTC",
+            "total_ticks": 317208,
+            "gaps_recorded": 0,
+            "chronology_hash": "dfec76d60d8ac7888477924ff07fcab4406c32bd074edb7f384b322a669d9399"
+        },
+        {
+            "name": "2024_etf_approval",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2024-01-08 05:30:00 UTC",
+            "total_ticks": 1441,
+            "gaps_recorded": 0,
+            "chronology_hash": "f8dba9ba66e9f5b2757c7e6ec770c4940c6ddcba56d0de9cb71bccd12e1da4cf"
+        },
+        {
+            "name": "2024_etf_approval_1h_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2024-01-08 17:30:00 UTC",
+            "total_ticks": 61,
+            "gaps_recorded": 0,
+            "chronology_hash": "be633c0a1deeee82204f710ef0dca781210c7088e2159b8fd8588d9604c3f6ae"
+        },
+        {
+            "name": "2024_etf_approval_1h_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2024-01-08 17:30:00 UTC",
+            "total_ticks": 217523,
+            "gaps_recorded": 0,
+            "chronology_hash": "6dd9aa2b57725d613a93fdac9db38ed0406061f1480a5d26895c5f2763d02846"
+        },
+        {
+            "name": "2026_fomc_march",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-03-18 05:30:00 UTC",
+            "total_ticks": 1441,
+            "gaps_recorded": 0,
+            "chronology_hash": "86ac8882965c86b8ecdd9d99b872befcdba2789e863001ce1dfd8f759f6b2ff4"
+        },
+        {
+            "name": "2026_intraday_impulse_shock_0730_0800_utc_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-05-23 13:00:00 UTC",
+            "total_ticks": 31,
+            "gaps_recorded": 0,
+            "chronology_hash": "81156b67e1ec28eeb1b2a0b7d8943fc6b16898c108fd7ce26ac36a8139486128"
+        },
+        {
+            "name": "2026_intraday_impulse_shock_0730_0800_utc_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-05-23 13:00:00 UTC",
+            "total_ticks": 62714,
+            "gaps_recorded": 0,
+            "chronology_hash": "66e6f8d90adc2e1000fa981e441d54974af4e87accaafb614ef8d3d226efceaa"
+        },
+        {
+            "name": "2026_multi_stage_cascade_transition_1m",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-05-23 01:30:00 UTC",
+            "total_ticks": 481,
+            "gaps_recorded": 0,
+            "chronology_hash": "f5784964549f84d4e63c2ae1796b204fc344a79fa72b25981f09a4762780ff4e"
+        },
+        {
+            "name": "2026_multi_stage_cascade_transition_tick",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-05-23 01:30:00 UTC",
+            "total_ticks": 264760,
+            "gaps_recorded": 0,
+            "chronology_hash": "501066541b471850f11d39a156b26b3cdc9cd3c1e3c5f3735f4178801b7f64f3"
+        },
+        {
+            "name": "2026_q1_volatility_expansion",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-01-01 05:30:00 UTC",
+            "total_ticks": 1441,
+            "gaps_recorded": 0,
+            "chronology_hash": "d40226b4ecb9c04b13c704487f8d08d509ee0b24e68a112e64fce0f3f45d550d"
+        },
+        {
+            "name": "2026_weekend_liquidity_gap",
+            "substrate": "BTCUSDT",
+            "provenance": "Historical REST API",
+            "start_date": "2026-04-04 05:30:00 UTC",
+            "total_ticks": 1441,
+            "gaps_recorded": 0,
+            "chronology_hash": "d08d4e096758ca9a38d7a55b86e2de895ba42a81e1aa0d5124ca5b0adef65ee3"
+        },
+        {
+            "name": "live_rotation_1779512759",
+            "substrate": "BTCUSDT",
+            "provenance": "Live WebSocket",
+            "start_date": "2026-05-23 10:35:59 UTC",
+            "total_ticks": 13956,
+            "gaps_recorded": 0,
+            "chronology_hash": "3534a6f2ac8909bfee418d2797362cc9ebf47c0d21fde122f415438f634329ad"
+        },
+        {
+            "name": "live_rotation_1779516360",
+            "substrate": "BTCUSDT",
+            "provenance": "Live WebSocket",
+            "start_date": "2026-05-23 11:36:00 UTC",
+            "total_ticks": 13945,
+            "gaps_recorded": 0,
+            "chronology_hash": "2f2c0fdcd1e26a9cb744c892dc4f43fe886dce1a66b7753e53cdee10bce3ab4f"
+        },
+        {
+            "name": "live_rotation_1779519960",
+            "substrate": "BTCUSDT",
+            "provenance": "Live WebSocket",
+            "start_date": "2026-05-23 12:36:00 UTC",
+            "total_ticks": 77258,
+            "gaps_recorded": 0,
+            "chronology_hash": "41bd242d0eb19ef5fb6d6bcdb4f22ce55e17782fc8f517788ff7b1858cefe360"
+        },
+        {
+            "name": "unknown",
+            "substrate": "BTCUSDT",
+            "provenance": "Unknown",
+            "start_date": "2026-05-20 09:34:00 UTC",
+            "total_ticks": 4320,
+            "gaps_recorded": 0,
+            "chronology_hash": "906c9160323afcc59e9adbb72f65101c9047aa449c35d8957d30ad2a951b42f8"
+        }
+    ]
+}

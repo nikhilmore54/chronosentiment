@@ -1,0 +1,9 @@
+{
+  "substrate": "SPY",
+  "capture_start": 1778765400000,
+  "capture_end": 1779479940000,
+  "total_ticks": 2730,
+  "chronology_hash": "52f0af651fd76d9c68b0e38500f159fa144c9a5d5b5a3e1e3af1a5a2897ab6bd",
+  "gaps": [],
+  "provenance": "Python Yahoo API (7-day rolling)"
+}

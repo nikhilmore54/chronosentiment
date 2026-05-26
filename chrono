@@ -116,7 +116,16 @@ def run_certify(args):
         sys.exit(1)
 
 def run_demo(args):
-    print_header("Interactive Deterministic Replay Demo")
+    script = os.path.join(PROJECT_ROOT, "scripts", "run_tier1_observability_demo.py")
+    scenario = getattr(args, "scenario", "primary")
+    cmd = [sys.executable, script, "--scenario", scenario]
+    try:
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode or 1)
+
+def run_demo_observer(args):
+    print_header("Optional Observer Demo (NVDA oscillatory fragmentation)")
     
     if not os.path.exists(TRACE_REPLAY_BIN):
         print("Build required. Installing...")
@@ -132,7 +141,6 @@ def run_demo(args):
     print("Command: chrono replay osc_50_1.0 rolling_50 --substrate tier1_demo_5m --substrate-file <file>")
     print("-" * 60)
     
-    # Run cognition A
     class DummyArgs:
         substrate = "tier1_demo_5m"
         topology = "osc_50_1.0"
@@ -142,7 +150,6 @@ def run_demo(args):
 
     print("\nCommand: chrono replay osc_50_1.0 rolling_100 --substrate tier1_demo_5m --substrate-file <file>")
     print("-" * 60)
-    # Run cognition B
     DummyArgs.cognition = "rolling_100"
     run_replay(DummyArgs())
     
@@ -151,6 +158,15 @@ def run_demo(args):
     print("\nStep 2: Emitting composite manifest...")
     print(f"Command: python3 scripts/emit_manifest_v1.py <config>")
     print("-" * 60)
+    
+    try:
+        commit_hash = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            stderr=subprocess.DEVNULL,
+        ).decode("utf-8").strip()
+    except Exception:
+        commit_hash = "unknown"
     
     config = {
         "replay_id": "2026_nvda_sync_oscillatory_fragmentation",
@@ -162,13 +178,13 @@ def run_demo(args):
         "shift_offset": 0,
         "symbols": ["NVDA"],
         "timeframe": "5m",
-        "descriptors": ["demo"],
+        "descriptors": ["demo_observer"],
         "substrate_file": demo_substrate,
         "topology": "osc_50_1.0",
         "cognition_a": "rolling_50",
         "cognition_b": "rolling_100",
         "artifact_dir": artifact_dir,
-        "commit_hash": "demo_commit"
+        "commit_hash": commit_hash
     }
     
     config_path = os.path.join(artifact_dir, "demo_config.json")
@@ -187,7 +203,7 @@ def run_demo(args):
     setattr(DummyCertifyArgs, "artifact_dir", artifact_dir)
     run_certify(DummyCertifyArgs())
     
-    print("\nDemo concluded successfully. The infrastructure is operational.")
+    print("\nObserver demo concluded successfully.")
 
 
 def run_inspect(args):
@@ -459,8 +475,11 @@ ChronoSentiment Operational CLI
 ./chrono install
     Build the deterministic engine (trace_replay) in release mode.
 
-./chrono demo
-    Run deterministic replay certification walkthrough.
+./chrono demo [--scenario primary|alternate]
+    Tier 1 replay-certified observability demo (DEMO_SCOPE.md primary scenario).
+
+./chrono demo-observer
+    Optional NVDA oscillatory fragmentation tooling-chain panel.
 
 ./chrono demo-divergence
     Inject controlled divergence and isolate first mismatch.
@@ -501,8 +520,20 @@ def main():
     certify_p.add_argument("artifact_dir", help="Path to the artifact directory containing metadata.json")
     certify_p.set_defaults(func=run_certify)
     
-    demo_p = subparsers.add_parser("demo", help="Run a polished end-to-end replay and certify walkthrough")
+    demo_p = subparsers.add_parser("demo", help="Tier 1 replay-certified observability demo")
+    demo_p.add_argument(
+        "--scenario",
+        choices=["primary", "alternate"],
+        default="primary",
+        help="Bounded scenario preset (default: primary)",
+    )
     demo_p.set_defaults(func=run_demo)
+
+    demo_observer_p = subparsers.add_parser(
+        "demo-observer",
+        help="Optional NVDA oscillatory fragmentation observer panel",
+    )
+    demo_observer_p.set_defaults(func=run_demo_observer)
     
     inspect_p = subparsers.add_parser("inspect", help="Strict mechanical trace divergence isolation")
     inspect_p.add_argument("baseline", help="Baseline artifact directory")

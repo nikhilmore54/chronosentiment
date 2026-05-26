@@ -20,6 +20,8 @@ Building trace_replay engine in release mode...
 ## 3. Verify Deterministic Replay (The Observer)
 We will run a canonical substrate through the engine and passively certify the resulting trace artifact.
 
+Tier 1 scope and primary scenario (`2026_multi_stage_cascade_transition_1m`): see [`docs/governance/DEMO_SCOPE.md`](docs/governance/DEMO_SCOPE.md).
+
 ```bash
 ./chrono demo
 ```

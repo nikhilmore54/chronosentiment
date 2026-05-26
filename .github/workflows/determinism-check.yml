@@ -41,3 +41,87 @@ jobs:
       run: |
         chmod +x verify_api_contract.sh
         ./verify_api_contract.sh
+
+  tier1-alternate-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Build trace_replay (release)
+      run: cargo build --release --bin trace_replay
+      working-directory: core
+
+    - name: Tier 1 alternate scenario smoke
+      run: python3 scripts/run_tier1_observability_demo.py --scenario alternate --smoke
+
+  lane3-replay-rerun-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Build trace_replay (release)
+      run: cargo build --release --bin trace_replay
+      working-directory: core
+
+    - name: Lane 3 deterministic replay rerun guard
+      run: python3 scripts/lane3_replay_rerun_guard.py --scenario primary
+
+  lane3-reproducibility-envelope:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Build trace_replay (release)
+      run: cargo build --release --bin trace_replay
+      working-directory: core
+
+    - name: Lane 3 reproducibility envelope freeze
+      run: python3 scripts/lane3_reproducibility_envelope.py --scenario primary --check-reference
+
+  lane3-artifact-integrity:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Build trace_replay (release)
+      run: cargo build --release --bin trace_replay
+      working-directory: core
+
+    - name: Lane 3 artifact integrity attestation
+      run: python3 scripts/lane3_artifact_integrity_attestation.py --scenario primary --run-tamper-tests --check-reference

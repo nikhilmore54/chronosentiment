@@ -1,0 +1,12 @@
+{
+  "source": "Binance Historical API",
+  "resolution": "kline_tick",
+  "capture_method": "historical_importer",
+  "import_timestamp": 1779541975,
+  "substrate": "BTCUSDT",
+  "capture_start": 1621425600000,
+  "capture_end": 1621440000000,
+  "total_ticks": 0,
+  "chronology_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "gaps": []
+}
