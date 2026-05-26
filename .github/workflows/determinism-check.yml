@@ -145,3 +145,13 @@ jobs:
 
     - name: Lane 2 manifest ms assumption probe
       run: python3 scripts/lane2_manifest_ms_assumption_probe.py --check-reference
+
+  lane4-experimental-consumer-labeling:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Lane 4 experimental consumer labeling audit
+      run: python3 scripts/lane4_experimental_consumer_labeling_audit.py --check-reference

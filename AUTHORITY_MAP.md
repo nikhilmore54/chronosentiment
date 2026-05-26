@@ -122,7 +122,7 @@ Not cultural guidelines — encoded operational physics:
 | **1 — Authority convergence** | bounded structural cleanup | V-007–V-010 | **closed — pause** | Lane 1 complete; reassess before new constitutional work |
 | **2 — Replay substrate law** | chronology serialization + dialect governance | V-006 | **prerequisite inventory + assumption probe complete** — migration tranche-scoped; **paused** | per-tranche scope doc required; see `V006_PHASE_C_CLASSIFICATION.md`; **no** `capture_types.rs` without authorization |
 | **3 — Certifiability infrastructure** | repeatable replay generation | (operational) | **pause — slices 1–3 shipped**; slice 4+ authorization-gated | attributable replay execution only; not framework expansion |
-| **4 — Authority boundary containment** | Phase 4 research quarantine | Phase 4 checklist | partial — `/research_experiments/` exists; lineage docs incomplete | preserve lineage; **documented ≠ operational authority** |
+| **4 — Authority boundary containment** | Phase 4 research quarantine | Phase 4 checklist | **lineage doc + consumer audit shipped** — relocation deferred | preserve lineage; **documented ≠ operational authority** |
 
 **Phase transition:** semantic convergence complete (Lane 1 closed). Next proof burden: **operational legitimacy** — can the bounded identity operate credibly and reproducibly?
 
@@ -132,7 +132,7 @@ Not cultural guidelines — encoded operational physics:
 2. **Lane 3 operational hardening** — **complete (slices 1–3 shipped)** — rerun guard, reproducibility envelope, artifact integrity attestation; **pause** before slices 4–6.
 3. **Lane 2 prerequisite clarification** — **manifest ms impact inventory + assumption probe complete** (observational); tranche reopening still **authorization-bound** — see `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`.
 4. **Reassess one bounded V-006 tranche** — only after explicit authorization; likely candidate remains manifest ms correction migration (not inventory).
-5. **Phase 4 boundary refinement** — as needed; containment maintenance, not capability expansion.
+5. **Phase 4 boundary refinement** — **RESEARCH_LINEAGE.md + consumer labeling audit complete** (observational); script relocation remains deferred.
 
 **Constraints:** No automatic constitutional expansion. Lane 2 remains tranche-scoped and authorization-bound. No cleanup momentum, replay-law inflation, or remediation recursion without explicit escalation. **Tier 1 demo:** must not become dashboard/platform/AI-trader scope creep — see `DEMO_SCOPE.md` non-goals.
 
@@ -152,6 +152,28 @@ Not cultural guidelines — encoded operational physics:
 **Lane 2 artifacts:** `V006_CAPTURE_SCHEMA_SCOPE.md`, `V006_MANIFEST_DIALECT_POLICY.md`, `V006_SERIALIZATION_LAW_DECLARATION.md`, `V006_PHASE_C_CLASSIFICATION.md`, `fixtures/chronology_serialization/`, `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`, `fixtures/lane2/manifest_ms_impact_inventory.json`, `fixtures/lane2/manifest_ms_assumption_probe.json`, `scripts/lane2_manifest_ms_impact_inventory.py`, `scripts/lane2_manifest_ms_assumption_probe.py`; CI jobs `lane2-manifest-ms-inventory`, `lane2-manifest-ms-assumption-probe`.
 
 **Lane 3 shipped (slices 1–3):** `scripts/lane3_replay_rerun_guard.py`, `scripts/lane3_reproducibility_envelope.py`, `scripts/lane3_artifact_integrity_attestation.py`, `scripts/lane3_passive_recomputation_probe.py` (empirical gate); fixtures under `fixtures/lane3/`; `rust-toolchain.toml`; CI jobs `lane3-replay-rerun-guard`, `lane3-reproducibility-envelope`, `lane3-artifact-integrity`, `tier1-alternate-smoke`.
+
+**Lane 4 shipped (containment):** `docs/RESEARCH_LINEAGE.md`, `docs/governance/LANE4_EXPERIMENTAL_CONSUMER_LABELING_SCOPE.md`, `scripts/lane4_experimental_consumer_labeling_audit.py`, `fixtures/lane4/experimental_consumer_labeling_audit.json`; CI job `lane4-experimental-consumer-labeling`.
+
+---
+
+## LANE 4 — RESEARCH LINEAGE + CONSUMER LABELING AUDIT
+
+**Status:** **containment unit complete** — lineage registry + experimental consumer labeling; **no convergence authorized**.  
+**Burden:** make `documented ≠ operational authority` executable without promoting research surfaces.
+
+**Core asymmetry (non-negotiable):**
+
+```text
+research preserved
+authority bounded
+```
+
+**Audit findings (2026-05-26):** 93 surfaces scanned — 4 detached archives, 7 semantic duplicates (map-aligned), 58 downstream consumers, 24 observational — 0 operational authority grants. Full labels: `fixtures/lane4/experimental_consumer_labeling_audit.json`.
+
+**Explicit non-goals:** no script relocation, convergence plans, canonical replacement, or remediation prescriptions.
+
+**Deferred:** moving Python research scripts to `/research_experiments/` remains a separate Phase 4 item — not bundled with this unit.
 
 ---
 
@@ -676,7 +698,8 @@ authority changes without replacing them.
 **Purpose:** prevent non-authoritative experimentation from silently regaining semantic authority. Partial execution complete (`/research_experiments/`, phantom module archival). Remaining work is boundary refinement, not emergency triage.
 
 - [ ] Move Python research scripts to `/research_experiments/`
-- [ ] Create `RESEARCH_LINEAGE.md` documenting relationship to Rust authority surface
+- [x] Create `docs/RESEARCH_LINEAGE.md` documenting relationship to Rust authority surface
+- [x] **Lane 4 consumer labeling audit:** `docs/governance/LANE4_EXPERIMENTAL_CONSUMER_LABELING_SCOPE.md`, `scripts/lane4_experimental_consumer_labeling_audit.py`, `fixtures/lane4/experimental_consumer_labeling_audit.json` (convergence **not** authorized)
 - [ ] Do **not** delete — preserve for reference and potential future canonicalization
 - [ ] Mark duplicated scoring formulas as downstream consumers (see RESEARCH / NON-AUTHORITATIVE SURFACES)
 - [ ] Update this `AUTHORITY_MAP.md` to reflect final dispositions
