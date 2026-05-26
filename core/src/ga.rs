@@ -13593,7 +13593,7 @@ mod tests {
     fn test_evaluate_strategy_multi_trade_cap_respected() {
         let test_assets = format!("{}/../test_assets", env!("CARGO_MANIFEST_DIR"));
         let path = format!("{}/RELIANCE_5m_clean.csv", test_assets);
-        let candles = CsvCandleSource { path }.get_candles_sync();
+        let candles = CsvCandleSource { path }.get_candles();
         let scenarios = crate::pipeline::scenarios_from_candles("RELIANCE_SIM", &candles);
         let mut keys: Vec<String> = scenarios.keys().cloned().collect();
         keys.sort();
@@ -14284,7 +14284,7 @@ mod tests {
             let candles = CsvCandleSource {
                 path: csv_path.clone(),
             }
-            .get_candles_sync();
+            .get_candles();
             let asset = Path::new(file)
                 .file_stem()
                 .and_then(|s| s.to_str())
