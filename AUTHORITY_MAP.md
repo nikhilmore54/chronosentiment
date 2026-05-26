@@ -120,8 +120,8 @@ Not cultural guidelines — encoded operational physics:
 | Lane | Constitutional burden | Active IDs | Current posture | Escalation rule |
 |------|----------------------|------------|-----------------|-----------------|
 | **1 — Authority convergence** | bounded structural cleanup | V-007–V-010 | **closed — pause** | Lane 1 complete; reassess before new constitutional work |
-| **2 — Replay substrate law** | chronology serialization + dialect governance | V-006 | **paused** — law declared; migration tranche-scoped only | per-tranche scope doc required; see `V006_PHASE_C_CLASSIFICATION.md`; **no** `capture_types.rs` without authorization |
-| **3 — Certifiability infrastructure** | repeatable replay generation | (operational) | **in progress — slice 3 shipped** artifact integrity attestation; slices 1–2 retained; pause before 4–6 | attributable replay execution only; not framework expansion |
+| **2 — Replay substrate law** | chronology serialization + dialect governance | V-006 | **prerequisite inventory complete** — migration tranche-scoped; **paused** | per-tranche scope doc required; see `V006_PHASE_C_CLASSIFICATION.md`; **no** `capture_types.rs` without authorization |
+| **3 — Certifiability infrastructure** | repeatable replay generation | (operational) | **pause — slices 1–3 shipped**; slice 4+ authorization-gated | attributable replay execution only; not framework expansion |
 | **4 — Authority boundary containment** | Phase 4 research quarantine | Phase 4 checklist | partial — `/research_experiments/` exists; lineage docs incomplete | preserve lineage; **documented ≠ operational authority** |
 
 **Phase transition:** semantic convergence complete (Lane 1 closed). Next proof burden: **operational legitimacy** — can the bounded identity operate credibly and reproducibly?
@@ -129,9 +129,10 @@ Not cultural guidelines — encoded operational physics:
 **Near-term execution posture** (declared bounded order — not automatic roadmap):
 
 1. **Replay-certified observability demonstration** — **complete — operational legitimacy threshold crossed**; scope: `docs/governance/DEMO_SCOPE.md`; entry: `./chrono demo`; evidence: `fixtures/demo/tier1_observability_report.json`.
-2. **Lane 3 operational hardening** — **in progress (slice 3 shipped)** — rerun guard, reproducibility envelope, artifact integrity attestation; slices 4–6 remain authorization-gated; procedural reproducibility only.
-3. **Reassess one bounded V-006 tranche** — after steps 1–2; likely candidate: manifest ms correction (known defect, bounded interpretation surface). Authorization-bound; not “finish V-006.”
-4. **Phase 4 boundary refinement** — as needed; containment maintenance, not capability expansion.
+2. **Lane 3 operational hardening** — **complete (slices 1–3 shipped)** — rerun guard, reproducibility envelope, artifact integrity attestation; **pause** before slices 4–6.
+3. **Lane 2 prerequisite clarification** — **manifest ms impact inventory complete** (observational); tranche reopening still **authorization-bound** — see `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`.
+4. **Reassess one bounded V-006 tranche** — only after explicit authorization; likely candidate remains manifest ms correction migration (not inventory).
+5. **Phase 4 boundary refinement** — as needed; containment maintenance, not capability expansion.
 
 **Constraints:** No automatic constitutional expansion. Lane 2 remains tranche-scoped and authorization-bound. No cleanup momentum, replay-law inflation, or remediation recursion without explicit escalation. **Tier 1 demo:** must not become dashboard/platform/AI-trader scope creep — see `DEMO_SCOPE.md` non-goals.
 
@@ -148,9 +149,31 @@ Not cultural guidelines — encoded operational physics:
 | Yahoo compact re-emission | serialization-law migration |
 | Shared struct extraction | post-ratification convergence only |
 
-**Lane 2 artifacts:** `V006_CAPTURE_SCHEMA_SCOPE.md`, `V006_MANIFEST_DIALECT_POLICY.md`, `V006_SERIALIZATION_LAW_DECLARATION.md`, `V006_PHASE_C_CLASSIFICATION.md`, `fixtures/chronology_serialization/`.
+**Lane 2 artifacts:** `V006_CAPTURE_SCHEMA_SCOPE.md`, `V006_MANIFEST_DIALECT_POLICY.md`, `V006_SERIALIZATION_LAW_DECLARATION.md`, `V006_PHASE_C_CLASSIFICATION.md`, `fixtures/chronology_serialization/`, `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `fixtures/lane2/manifest_ms_impact_inventory.json`, `scripts/lane2_manifest_ms_impact_inventory.py`; CI job `lane2-manifest-ms-inventory`.
 
 **Lane 3 shipped (slices 1–3):** `scripts/lane3_replay_rerun_guard.py`, `scripts/lane3_reproducibility_envelope.py`, `scripts/lane3_artifact_integrity_attestation.py`, `scripts/lane3_passive_recomputation_probe.py` (empirical gate); fixtures under `fixtures/lane3/`; `rust-toolchain.toml`; CI jobs `lane3-replay-rerun-guard`, `lane3-reproducibility-envelope`, `lane3-artifact-integrity`, `tier1-alternate-smoke`.
+
+---
+
+## LANE 2 PREREQUISITE — MANIFEST MS IMPACT INVENTORY
+
+**Status:** **inventory complete** — observational exposure map only; **no tranche authorized**.  
+**Burden:** reduce future constitutional uncertainty around seconds/ms manifest bounds **without** changing present replay law or persisted bytes.
+
+**Core asymmetry (non-negotiable):**
+
+```text
+inventory maps exposure
+inventory does not design migration
+```
+
+**Four-question admissibility:** meaning unchanged; only inventory artifacts mutate; chronology JSONL bytes untouched; producer/schema convergence pressure → stop and escalate.
+
+**Inventory findings (2026-05-26 scan):** 60 manifests scanned — 46 ms bounds, 13 seconds bounds (12 live capture + 1 frozen Dialect B fixture), 13 seconds/ms ambiguity rows (tick ms + bounds seconds), 12 forward-law violations (live capture seconds bounds). Consumer surfaces and escalation triggers recorded in `fixtures/lane2/manifest_ms_impact_inventory.json`.
+
+**Explicit non-goals:** no migration, manifest rewrite, producer alignment, schema normalization, or `"while inventorying we also fixed..."` drift.
+
+**Tranche posture:** manifest ms correction remains **blocked until authorized** per-tranche scope doc; inventory satisfies prerequisite clarification only.
 
 ---
 
@@ -579,6 +602,7 @@ authority changes without replacing them.
 - [x] **V-006 producer ratification Phase B:** `chronology_serialize_probe` + `verify_chronology_producer_ratification.py` + `ratification_report.json`
 - [x] **V-006 serialization law declaration:** `docs/governance/V006_SERIALIZATION_LAW_DECLARATION.md`
 - [x] **V-006 Phase C classification:** drift matrix + ratification posture — `docs/governance/V006_PHASE_C_CLASSIFICATION.md` (all producers NOT RATIFIED; migration blocked)
+- [x] **V-006 manifest ms impact inventory (prerequisite):** observational exposure map — `docs/governance/V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `scripts/lane2_manifest_ms_impact_inventory.py`, `fixtures/lane2/manifest_ms_impact_inventory.json` (tranche **not** authorized)
 - [ ] **V-006 scoped migration authorization:** per-tranche scope docs required before any producer alignment or `capture_types.rs`
 
 ### Phase 3A — Strategy Identity Law Operationalization
