@@ -201,13 +201,61 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
           </div>
         </div>
 
+        {/* Signal filter controls — visible in both pre- and post-execution states */}
+        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--b)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--tm)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+            Signal Filters
+          </div>
+          <div className="cs-field" style={{ marginBottom: '10px' }}>
+            <label className="cs-label" htmlFor="signals_topk">Top-K per asset</label>
+            <input
+              type="number" id="signals_topk" min={1} max={10}
+              className="cs-input"
+              style={{ background: 'var(--card)', border: '1px solid var(--b)' }}
+              value={signalsTopK}
+              onChange={e => setSignalsTopK(Math.max(1, Number(e.target.value)))}
+            />
+          </div>
+          <label className="cs-checkbox-label" style={{ marginBottom: '8px', display: 'flex' }}>
+            <input
+              type="checkbox" className="cs-checkbox"
+              checked={includeWeakSignals}
+              onChange={e => { setIncludeWeakSignals(e.target.checked); if (e.target.checked) setStrongOnlySignals(false); }}
+            />
+            Include weak signals
+          </label>
+          <label className="cs-checkbox-label" style={{ display: 'flex' }}>
+            <input
+              type="checkbox" className="cs-checkbox"
+              checked={strongOnlySignals}
+              onChange={e => { setStrongOnlySignals(e.target.checked); if (e.target.checked) setIncludeWeakSignals(false); }}
+            />
+            Strong signals only
+          </label>
+        </div>
+
         <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0' }} onClick={handleRunGA} disabled={loading}>
           {loading ? 'Running execution...' : 'Execute baseline'}
         </button>
 
         {error && (
-          <div style={{ marginTop: '20px', color: 'var(--red)', fontSize: '13px' }}>
-            Error: {error}
+          <div style={{ marginTop: '16px', padding: '12px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Persisted store status */}
+        {!loading && (
+          <div style={{ marginTop: '20px', fontSize: '11px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+            {storeLoading ? (
+              <span>Loading store...</span>
+            ) : storeError ? (
+              <span style={{ color: 'var(--amb)' }}>Store unavailable</span>
+            ) : persistedStorePayload ? (
+              <span style={{ color: 'var(--grn)' }}>
+                Store: {Array.isArray(persistedStorePayload.strategies) ? persistedStorePayload.strategies.length : '?'} strategies
+              </span>
+            ) : null}
           </div>
         )}
       </aside>
@@ -215,6 +263,20 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
       {/* ─── RIGHT: The Narrative Stream ─── */}
       <main style={{ flex: 1, maxWidth: '800px', minHeight: '600px' }}>
         
+        {/* State: Loading */}
+        {loading && (
+          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+            <div className="cs-skeleton" style={{ height: '14px', width: '140px', marginBottom: '24px' }}></div>
+            <div className="cs-skeleton" style={{ height: '56px', marginBottom: '12px' }}></div>
+            <div className="cs-skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+            <div className="cs-skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+            <div className="cs-skeleton" style={{ height: '40px' }}></div>
+            <div style={{ marginTop: '24px', fontSize: '12px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+              Executing genetic algorithm...
+            </div>
+          </div>
+        )}
+
         {/* State: Pre-Execution Live Environment Block */}
         {!gaResult && !loading && (
           <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>

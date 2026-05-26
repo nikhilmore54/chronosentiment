@@ -103,39 +103,41 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
         </button>
 
         {error && (
-          <div style={{ marginTop: '20px', color: 'var(--red)', fontSize: '13px' }}>
-            Error: {error}
+          <div style={{ marginTop: '16px', padding: '12px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+            {error}
           </div>
         )}
       </aside>
 
       {/* ─── RIGHT: The Narrative Stream ─── */}
       <main style={{ flex: 1, maxWidth: '900px', minHeight: '600px' }}>
-        
-        {/* State: Pre-Execution Live Environment Block */}
-        {!comparisonResult && !loading && (
-          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Divergence</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>State</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--grn)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ARMED</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Waiting for vector input</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Baseline</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>Deterministic</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Fitness parity: 100%</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
-              Awaiting evaluation mandate...
+
+        {/* State: Pre-Execution idle block */}
+        {!comparisonResult && !loading && !error && (
+          <div className="cs-empty" style={{ padding: '48px 32px', background: 'var(--card)', border: '1px solid var(--b)', borderRadius: 'var(--r10)', textAlign: 'center' }}>
+            <div className="cs-empty-icon">⚖</div>
+            <div className="cs-empty-title">No comparison loaded</div>
+            <div style={{ fontSize: '12px', color: 'var(--tm)', marginTop: '8px', lineHeight: 1.6 }}>
+              Enter two or more strategy IDs separated by commas and press <strong style={{ color: 'var(--t2)' }}>Execute comparison</strong>.
             </div>
           </div>
         )}
 
+        {/* State: Loading */}
+        {loading && (
+          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <div className="cs-skeleton" style={{ height: '14px', width: '120px', marginBottom: '16px' }}></div>
+              <div className="cs-skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+              <div className="cs-skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+              <div className="cs-skeleton" style={{ height: '40px' }}></div>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>Evaluating strategies...</div>
+          </div>
+        )}
+
         {/* State: Comparison Complete */}
-        {comparisonResult && (
+        {comparisonResult && !loading && (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             
             {/* Zone 1: Ranking */}
@@ -153,87 +155,116 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {comparisonResult.ranking.map((row, i) => {
-                      const gaFit = resolveGaFitness(row);
-                      return (
-                        <tr
-                          key={row.strategy_id}
-                          className={setSelectedStrategyForInspection ? 'clickable' : ''}
-                          onClick={() => setSelectedStrategyForInspection && setSelectedStrategyForInspection(row.strategy_id, seed)}
-                        >
-                          <td style={{ color: 'var(--tm)', fontSize: 11 }}>{i + 1}</td>
-                          <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {row.strategy_id}
-                          </td>
-                          <td className="right blu bold">{(row.execution_fitness ?? 0).toFixed(6)}</td>
-                          <td className="right">
-                            {gaFit === null ? <span style={{ color: 'var(--tm)' }}>—</span> : gaFit.toFixed(6)}
-                          </td>
-                          {setSelectedStrategyForInspection && (
-                            <td style={{ color: 'var(--tm)', fontSize: 11 }}>Inspect →</td>
-                          )}
-                        </tr>
-                      );
-                    })}
+                    {Array.isArray(comparisonResult.ranking) && comparisonResult.ranking.length > 0 ? (
+                      comparisonResult.ranking.map((row, i) => {
+                        const gaFit = resolveGaFitness(row);
+                        return (
+                          <tr
+                            key={row.strategy_id}
+                            className={setSelectedStrategyForInspection ? 'clickable' : ''}
+                            onClick={() => setSelectedStrategyForInspection && setSelectedStrategyForInspection(row.strategy_id, seed)}
+                          >
+                            <td style={{ color: 'var(--tm)', fontSize: 11 }}>{i + 1}</td>
+                            <td className="bold" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {row.strategy_id}
+                            </td>
+                            <td className="right blu bold">{(row.execution_fitness ?? 0).toFixed(6)}</td>
+                            <td className="right">
+                              {gaFit === null ? <span style={{ color: 'var(--tm)' }}>—</span> : gaFit.toFixed(6)}
+                            </td>
+                            {setSelectedStrategyForInspection && (
+                              <td style={{ color: 'var(--tm)', fontSize: 11 }}>Inspect →</td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={setSelectedStrategyForInspection ? 5 : 4} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tm)', fontSize: '13px' }}>
+                          No ranking data returned.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </section>
 
-            {/* Zone 2: Insights */}
-            {comparisonResult.comparison_summary?.reason && (
+            {/* Zone 2: Structural Comparison */}
+            {comparisonResult.comparison_summary && (
               <section>
                 <div style={{ padding: '24px', background: 'var(--card)', border: '1px solid var(--b)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', paddingBottom: '16px', marginBottom: '16px' }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)' }}>Structural comparison</div>
-                    <div style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--tm)' }}>Replay Cert: <span style={{ color: 'var(--grn)' }}>VALID</span></div>
+                    {comparisonResult.comparison_summary.replay_certified !== undefined && (
+                      <div style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--tm)' }}>
+                        Replay Cert:{' '}
+                        <span style={{ color: comparisonResult.comparison_summary.replay_certified ? 'var(--grn)' : 'var(--red)' }}>
+                          {comparisonResult.comparison_summary.replay_certified ? 'VALID' : 'INVALID'}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-                    {/* Certification Rows */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
-                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Replay Integrity</span>
-                        <span style={{ color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>CERTIFIED</span>
+
+                  {/* Certification rows — driven by API response fields */}
+                  {(() => {
+                    const s = comparisonResult.comparison_summary;
+                    const certRows = [
+                      s.replay_integrity   !== undefined && { label: 'Replay Integrity',     value: s.replay_integrity,   color: s.replay_integrity   === 'CERTIFIED' ? 'var(--grn)' : 'var(--amb)' },
+                      s.timestamp_cohesion !== undefined && { label: 'Timestamp Cohesion',   value: s.timestamp_cohesion, color: s.timestamp_cohesion === 'VALID'     ? 'var(--grn)' : 'var(--amb)' },
+                      s.sync_state         !== undefined && { label: 'Synchronization State',value: s.sync_state,         color: s.sync_state         === 'NOMINAL'   ? 'var(--grn)' : s.sync_state === 'DEGRADED' ? 'var(--amb)' : 'var(--red)' },
+                      s.governor_action    !== undefined && { label: 'Governor Action',       value: s.governor_action,    color: 'var(--blu)' },
+                    ].filter(Boolean);
+
+                    const metricRows = Array.isArray(s.metrics) ? s.metrics : [];
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: certRows.length > 0 ? '1fr 1fr' : '1fr', gap: '32px' }}>
+                        {certRows.length > 0 && (
+                          <div>
+                            {certRows.map(row => (
+                              <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
+                                <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>{row.label}</span>
+                                <span style={{ color: row.color, fontFamily: 'var(--mono)', fontWeight: 600 }}>{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div>
+                          {metricRows.length > 0 && (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', paddingBottom: '8px', marginBottom: '8px', fontSize: '11px', color: 'var(--tm)', fontWeight: 600, textTransform: 'uppercase' }}>
+                                <span>Expected</span>
+                                <span>Observed</span>
+                              </div>
+                              {metricRows.map((m, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
+                                  <span>{m.key}={m.expected}</span>
+                                  <span style={{ color: m.diverged ? 'var(--amb)' : 'var(--t2)' }}>{m.key}={m.observed}</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+
+                          {s.reason && (
+                            <div style={{ marginTop: metricRows.length > 0 ? '16px' : '0', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.5, padding: '12px', background: 'var(--bg)', borderLeft: '2px solid var(--b)' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--t1)', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Analytical Conclusion</div>
+                              {s.reason}
+                            </div>
+                          )}
+
+                          {!s.reason && metricRows.length === 0 && certRows.length === 0 && (
+                            <div className="cs-empty">
+                              <div className="cs-empty-icon">—</div>
+                              <div className="cs-empty-title">No structural data</div>
+                              <div>Backend did not return comparison metadata.</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
-                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Timestamp Cohesion</span>
-                        <span style={{ color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>VALID</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
-                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Synchronization State</span>
-                        <span style={{ color: 'var(--amb)', fontFamily: 'var(--mono)', fontWeight: 600 }}>DEGRADED</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', padding: '8px 0', fontSize: '12px' }}>
-                        <span style={{ color: 'var(--t2)', fontFamily: 'var(--sans)' }}>Governor Action</span>
-                        <span style={{ color: 'var(--blu)', fontFamily: 'var(--mono)', fontWeight: 600 }}>THROTTLED</span>
-                      </div>
-                    </div>
-                    
-                    {/* Comparative columns */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--b)', paddingBottom: '8px', marginBottom: '8px', fontSize: '11px', color: 'var(--tm)', fontWeight: 600, textTransform: 'uppercase' }}>
-                        <span>Expected State</span>
-                        <span>Observed State</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
-                        <span>queue_depth=12</span>
-                        <span>queue_depth=17</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
-                        <span>fill_latency=42ms</span>
-                        <span>fill_latency=58ms</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--t2)' }}>
-                        <span>sync_ratio=0.91</span>
-                        <span>sync_ratio=0.67</span>
-                      </div>
-                      <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.5, padding: '12px', background: 'var(--bg)', borderLeft: '2px solid var(--b)' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--t1)', marginBottom: '4px', fontFamily: 'var(--sans)' }}>Analytical Conclusion</div>
-                        {comparisonResult.comparison_summary.reason}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
               </section>
             )}

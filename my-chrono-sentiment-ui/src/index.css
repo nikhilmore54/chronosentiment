@@ -15,19 +15,23 @@
   --tm:    #828C9D;
   --red:   #B05A5A;
   --rdim:  rgba(176,90,90,.1);
+  --bred:  rgba(176,90,90,.3);
   --amb:   #C27A5A;
   --adim:  rgba(194,122,90,.1);
-  --grn:   #4F6BFF;
-  --gdim:  rgba(79,107,255,.1);
+  --bamb:  rgba(194,122,90,.3);
+  --grn:   #3D7A5E;
+  --gdim:  rgba(61,122,94,.1);
+  --bgrn:  rgba(61,122,94,.3);
   --blu:   #4F6BFF;
   --bdim:  rgba(79,107,255,.1);
+  --bblu:  rgba(79,107,255,.3);
   --pur:   #6366F1;
   --sans:  'IBM Plex Sans', -apple-system, sans-serif;
   --mono:  'IBM Plex Mono', monospace;
-  --r4:    0px;
-  --r8:    0px;
-  --r10:   0px;
-  --r12:   0px;
+  --r4:    4px;
+  --r8:    8px;
+  --r10:   10px;
+  --r12:   12px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -155,13 +159,107 @@ body::before {
   border-bottom-color: var(--t1);
 }
 
+/* ─── Left-rail navigation ───────────────────────────────────────────────── */
+.cs-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 2px;
+  border-radius: var(--r8);
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--t2);
+  font-weight: 500;
+  font-size: 13px;
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  width: 100%;
+}
+
+.cs-nav-item:hover {
+  background: var(--card2);
+  color: var(--t1);
+}
+
+.cs-nav-item.active {
+  background: var(--card2);
+  color: var(--t1);
+  font-weight: 600;
+  border-left-color: var(--blu);
+}
+
+.cs-nav-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.cs-nav-item.active .cs-nav-icon { opacity: 1; }
+
+/* ─── Status dot ─────────────────────────────────────────────────────────── */
+.cs-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.cs-status-dot.grn { background: var(--grn); box-shadow: 0 0 0 2px var(--gdim); }
+.cs-status-dot.amb { background: var(--amb); box-shadow: 0 0 0 2px var(--adim); }
+.cs-status-dot.red { background: var(--red); box-shadow: 0 0 0 2px var(--rdim); }
+.cs-status-dot.blu { background: var(--blu); box-shadow: 0 0 0 2px var(--bdim); }
+
+/* ─── Loading skeleton ───────────────────────────────────────────────────── */
+@keyframes cs-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.cs-skeleton {
+  background: linear-gradient(90deg, var(--card2) 25%, var(--b) 50%, var(--card2) 75%);
+  background-size: 800px 100%;
+  animation: cs-shimmer 1.4s infinite linear;
+  border-radius: var(--r4);
+}
+
+/* ─── Empty state ────────────────────────────────────────────────────────── */
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 32px;
+  text-align: center;
+  color: var(--tm);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.cs-empty-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: 0.4;
+}
+
+.cs-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t2);
+  margin-bottom: 4px;
+}
+
 /* ─── Main content area ──────────────────────────────────────────────────── */
 .cs-main {
   flex: 1;
   padding: 40px 32px 60px;
-  max-width: 1600px;
-  margin: 0 auto;
   width: 100%;
+  overflow-x: hidden;
 }
 
 /* ─── Section heading ────────────────────────────────────────────────────── */
@@ -220,10 +318,10 @@ body::before {
   gap: 5px;
 }
 
-.cs-metric.crit { border-color: var(--bred); background: var(--rdim); }
-.cs-metric.warn { border-color: var(--bamb); background: var(--adim); }
-.cs-metric.ok   { border-color: var(--bgrn); background: var(--gdim); }
-.cs-metric.info { border-color: rgba(59,130,246,.25); background: var(--bdim); }
+.cs-metric.crit { border-color: var(--bred);  background: var(--rdim); }
+.cs-metric.warn { border-color: var(--bamb);  background: var(--adim); }
+.cs-metric.ok   { border-color: var(--bgrn);  background: var(--gdim); }
+.cs-metric.info { border-color: var(--bblu);  background: var(--bdim); }
 
 .cs-metric-label {
   font-size: 12px;
@@ -401,10 +499,10 @@ body::before {
   border-radius: var(--r4);
 }
 
-.cs-badge.red  { background: rgba(239,68,68,.15);  border: 1px solid var(--bred); color: var(--red); }
-.cs-badge.amb  { background: rgba(245,158,11,.12);  border: 1px solid var(--bamb); color: var(--amb); }
-.cs-badge.grn  { background: rgba(16,185,129,.1);   border: 1px solid var(--bgrn); color: var(--grn); }
-.cs-badge.blu  { background: rgba(59,130,246,.1);   border: 1px solid rgba(59,130,246,.3); color: var(--blu); }
+.cs-badge.red  { background: var(--rdim); border: 1px solid var(--bred); color: var(--red); }
+.cs-badge.amb  { background: var(--adim); border: 1px solid var(--bamb); color: var(--amb); }
+.cs-badge.grn  { background: var(--gdim); border: 1px solid var(--bgrn); color: var(--grn); }
+.cs-badge.blu  { background: var(--bdim); border: 1px solid var(--bblu); color: var(--blu); }
 .cs-badge.gray { background: rgba(148,163,184,.08); border: 1px solid var(--b); color: var(--tm); }
 
 /* ─── Alert / info banners ───────────────────────────────────────────────── */
@@ -415,10 +513,10 @@ body::before {
   margin-bottom: 16px;
 }
 
-.cs-alert.red  { background: var(--rdim); border-color: var(--red); }
-.cs-alert.amb  { background: var(--adim); border-color: var(--amb); }
-.cs-alert.grn  { background: var(--gdim); border-color: var(--grn); }
-.cs-alert.blu  { background: var(--bdim); border-color: var(--blu); }
+.cs-alert.red  { background: var(--rdim); border-color: var(--bred); }
+.cs-alert.amb  { background: var(--adim); border-color: var(--bamb); }
+.cs-alert.grn  { background: var(--gdim); border-color: var(--bgrn); }
+.cs-alert.blu  { background: var(--bdim); border-color: var(--bblu); }
 .cs-alert.gray { background: rgba(148,163,184,.05); border-color: var(--tm); }
 
 .cs-alert-title {
@@ -713,8 +811,8 @@ body::before {
   gap: 6px;
 }
 
-.cs-signal-card.strong { border-color: var(--bgrn); background: var(--gdim); }
-.cs-signal-card.weak   { border-color: var(--bamb); background: var(--adim); }
+.cs-signal-card.strong { border-color: var(--bgrn);  background: var(--gdim); }
+.cs-signal-card.weak   { border-color: var(--bamb);  background: var(--adim); }
 
 .cs-signal-asset {
   font-size: 13px;

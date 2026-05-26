@@ -26,6 +26,18 @@ const StrategyColumn = ({
     return divergenceStatements.find(s => s.block2 && s.block2.id === blockId)?.message;
   };
 
+  // Returns the divergence type string for a given block id, used by NarrativeBlock
+  // to render a type-specific label (GROUP DIVERGENCE, TIMING DIVERGENCE, etc.)
+  const getBlockDivergenceType = (blockId) => {
+    if (strategyNum === 1) return divergenceStatements.find(s => s.block1 && s.block1.id === blockId)?.type;
+    return divergenceStatements.find(s => s.block2 && s.block2.id === blockId)?.type;
+  };
+
+  // Forward propagation: compute direct children of a given block id from eventMap.
+  // Pure derivation from backend-certified parentId fields — no synthesis.
+  const getForwardChildren = (blockId) =>
+    Object.values(eventMap).filter(b => b.parentId === blockId);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
       {/* Column header & Context */}
@@ -66,46 +78,100 @@ const StrategyColumn = ({
                 key={block.id || blockIndex}
                 block={block}
                 blockIndex={blockIndex}
+                narratedExecutionTrace={narratedExecutionTrace}
                 narratedExecutionTraceLength={narratedExecutionTrace.length}
                 activeChain={activeChain}
                 getGroupColorClass={getGroupColorClass}
                 isBlockDivergent={isBlockDivergent}
                 blockDivergenceMessage={getBlockDivergenceMessage(block.id)}
+                blockDivergenceType={getBlockDivergenceType(block.id)}
                 setSelectedSeqId={setSelectedSeqId}
               />
             ))
           ) : (
-            <p style={{ fontSize: 12, color: 'var(--tm)', padding: '12px 0' }}>
-              No execution narrative available for Strategy {strategyNum}.
-            </p>
+            <div className="cs-empty" style={{ padding: '32px 16px' }}>
+              <div className="cs-empty-icon">∅</div>
+              <div className="cs-empty-title">No narrative events</div>
+              <div style={{ fontSize: '11px', color: 'var(--tm)', marginTop: '4px' }}>
+                Strategy {strategyNum} produced no certified narrative blocks at this replay position.
+              </div>
+            </div>
           )}
         </div>
 
         {/* Causal chain panel */}
-        {selectedSeqId && inspectionResult && (
-          <div style={{ marginTop: 16 }}>
-            <div className="cs-card-title">Causal Chain — Seq {selectedSeqId}</div>
-            <div className="cs-causal-chain">
-              {Array.from(activeChain)
-                .sort((a, b) => b - a)
-                .map((seqIdInChain, idx) => {
-                  const block = eventMap[seqIdInChain];
-                  if (!block) return null;
-                  return (
-                    <React.Fragment key={block.id}>
-                      <div className="cs-causal-step">
-                        <div className="cs-causal-step-group">{block.group} · Seq {block.id}</div>
-                        <div className="cs-causal-step-text">{block.narrative}</div>
+        {selectedSeqId && inspectionResult && (() => {
+          const forwardChildren = getForwardChildren(selectedSeqId);
+          return (
+            <div style={{ marginTop: 20, padding: '16px', background: 'var(--card2)', border: '1px solid var(--b)', borderRadius: 'var(--r8)' }}>
+              {/* Panel header with depth counter */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div className="cs-card-title" style={{ marginBottom: 0 }}>Causal ancestry</div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+                    depth {activeChain.size}
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--blu)', fontFamily: 'var(--mono)', padding: '2px 6px', background: 'var(--bdim)', borderRadius: 'var(--r4)' }}>
+                    Seq {selectedSeqId}
+                  </span>
+                </div>
+              </div>
+              {/* Ancestry path label */}
+              <div style={{ fontSize: '10px', color: 'var(--tm)', fontFamily: 'var(--mono)', marginBottom: '12px', letterSpacing: '0.03em' }}>
+                {Array.from(activeChain).sort((a, b) => a - b).join(' → ')}
+              </div>
+              <div className="cs-causal-chain">
+                {Array.from(activeChain)
+                  .sort((a, b) => b - a)
+                  .map((seqIdInChain, idx) => {
+                    const b = eventMap[seqIdInChain];
+                    if (!b) return null;
+                    return (
+                      <React.Fragment key={b.id}>
+                        <div className="cs-causal-step">
+                          <div className="cs-causal-step-group">{b.group} · Seq {b.id}</div>
+                          <div className="cs-causal-step-text">{b.narrative}</div>
+                        </div>
+                        {idx < activeChain.size - 1 && (
+                          <div className="cs-causal-arrow">↑</div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              {/* Forward propagation: children of selected block */}
+              {forwardChildren.length > 0 && (
+                <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--b)' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--tm)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Propagates to ({forwardChildren.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {forwardChildren.map(child => (
+                      <div
+                        key={child.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '6px 8px', background: 'var(--card)', border: '1px solid var(--b)', borderRadius: 'var(--r4)' }}
+                        onClick={() => setSelectedSeqId(child.id)}
+                      >
+                        <span style={{ fontSize: '10px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>↓</span>
+                        <span style={{ fontSize: '11px', color: 'var(--t2)', fontWeight: 500 }}>{child.group}</span>
+                        <span style={{ fontSize: '10px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>Seq {child.id}</span>
+                        {isBlockDivergent(child.id) && (
+                          <span style={{ fontSize: '9px', color: 'var(--red)', fontFamily: 'var(--mono)', fontWeight: 700, marginLeft: 'auto' }}>⚑ DIVERGENT</span>
+                        )}
                       </div>
-                      {idx < activeChain.size - 1 && (
-                        <div className="cs-causal-arrow">↑</div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
+              )}
+              {forwardChildren.length === 0 && (
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--b)', fontSize: '10px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+                  No downstream events — terminal node
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Raw events */}
         {showRawEvents && inspectionResult?.execution_trace?.length > 0 && (

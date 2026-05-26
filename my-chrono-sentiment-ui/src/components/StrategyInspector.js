@@ -201,6 +201,35 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
   const currentMaxSeqId = selectedMaxSeqId !== null ? selectedMaxSeqId : maxAvailableSeqId;
 
   const divergenceStatements = useMemo(() => isDualMode ? compareNarrativeBlocks(allNarrativeBlocks1, allNarrativeBlocks2) : [], [isDualMode, allNarrativeBlocks1, allNarrativeBlocks2]);
+
+  // Divergence accumulation at current replay position:
+  // filter to divergences where at least one involved block is within the visible window.
+  // Pure derivation from backend-certified blocks — no synthesis.
+  const visibleDivergences = useMemo(() => {
+    if (!isDualMode) return [];
+    return divergenceStatements.filter(d => {
+      const id1 = d.block1?.id ?? d.block?.id ?? null;
+      const id2 = d.block2?.id ?? null;
+      const withinWindow = (id) => id !== null && id <= currentMaxSeqId;
+      return withinWindow(id1) || withinWindow(id2);
+    });
+  }, [divergenceStatements, isDualMode, currentMaxSeqId]);
+
+  // Type distribution of visible divergences
+  const divergenceTypeCounts = useMemo(() => {
+    const counts = {};
+    visibleDivergences.forEach(d => { counts[d.type] = (counts[d.type] ?? 0) + 1; });
+    return counts;
+  }, [visibleDivergences]);
+
+  const DIVERGENCE_SHORT = {
+    group_type_divergence:         'Group',
+    narrative_content_divergence:  'Narrative',
+    sequence_id_timing_divergence: 'Timing',
+    causal_parent_divergence:      'Causal',
+    missing_s1:                    'Missing S1',
+    missing_s2:                    'Missing S2',
+  };
   const executionSummary1 = useMemo(() => getExecutionSummary(allNarrativeBlocks1), [allNarrativeBlocks1]);
   const executionSummary2 = useMemo(() => getExecutionSummary(allNarrativeBlocks2), [allNarrativeBlocks2]);
 
@@ -233,6 +262,18 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
   }
   if (confidenceLevel === CONFIDENCE_LEVELS.LOW) confidenceReason = 'No clear dominance or significant trade-offs found.';
 
+  // Derive certification state from backend response (Law One: never compute client-side)
+  const certState = inspectionResult?.certification_state ?? null;
+  const certReason = inspectionResult?.certification_reason ?? null;
+  const certBadgeColor = certState === 'CERTIFIED' ? 'var(--grn)' : certState === 'DEGRADED' ? 'var(--amb)' : certState === 'PARTIAL' ? 'var(--amb)' : certState === 'INVALID' ? 'var(--red)' : 'var(--tm)';
+  const certBgColor   = certState === 'CERTIFIED' ? 'var(--gdim)' : certState === 'DEGRADED' ? 'var(--adim)' : certState === 'PARTIAL' ? 'var(--adim)' : certState === 'INVALID' ? 'var(--rdim)' : 'var(--card2)';
+  const certBorderColor = certState === 'CERTIFIED' ? 'var(--bgrn)' : certState === 'DEGRADED' ? 'var(--bamb)' : certState === 'PARTIAL' ? 'var(--bamb)' : certState === 'INVALID' ? 'var(--bred)' : 'var(--b)';
+
+  // Visible event count at current replay position
+  const visibleEventCount1 = narratedExecutionTrace1.length;
+  const visibleEventCount2 = narratedExecutionTrace2.length;
+  const totalEventCount = Math.max(allNarrativeBlocks1.length, allNarrativeBlocks2.length);
+
   return (
     <div style={{ display: 'flex', gap: '60px', alignItems: 'flex-start', paddingTop: '20px' }}>
       
@@ -243,8 +284,17 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
         {/* Timeline anchor */}
         {inspectionResult && (
           <div style={{ marginBottom: '40px', paddingBottom: '30px', borderBottom: '1px solid var(--b)' }}>
+            {/* Certification badge */}
+            {certState && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: '8px 10px', background: certBgColor, border: `1px solid ${certBorderColor}`, borderRadius: 'var(--r8)' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: certBadgeColor, fontFamily: 'var(--mono)', letterSpacing: '0.05em' }}>{certState}</span>
+                {certReason && (
+                  <span style={{ fontSize: '10px', color: 'var(--tm)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={certReason}>— {certReason}</span>
+                )}
+              </div>
+            )}
             <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--t2)', marginBottom: '16px' }}>Replay position</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
               <input
                 type="range"
                 className="cs-range"
@@ -254,9 +304,25 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
                 onChange={e => setSelectedMaxSeqId(Number(e.target.value))}
               />
             </div>
+            {/* Replay position context strip */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>Seq {minSeqId}</span>
+              <span style={{ fontSize: '13px', color: 'var(--t1)', fontWeight: 600, fontFamily: 'var(--mono)' }}>Seq {currentMaxSeqId}</span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>Seq {minSeqId}</span>
-              <span style={{ fontSize: '14px', color: 'var(--t1)', fontWeight: 500, fontFamily: 'var(--mono)' }}>Seq {currentMaxSeqId}</span>
+              <span style={{ fontSize: '10px', color: 'var(--tm)' }}>
+                {isDualMode
+                  ? `S1: ${visibleEventCount1} / S2: ${visibleEventCount2} events`
+                  : `${visibleEventCount1} of ${totalEventCount} events`}
+              </span>
+              {selectedMaxSeqId !== null && selectedMaxSeqId < maxAvailableSeqId && (
+                <button
+                  style={{ fontSize: '10px', color: 'var(--blu)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--sans)' }}
+                  onClick={() => setSelectedMaxSeqId(maxAvailableSeqId)}
+                >
+                  Jump to end
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -276,40 +342,65 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
           {(loading || loading2) ? 'Inspecting...' : 'Reconstruct trace'}
         </button>
 
-        {error && <div style={{ color: 'var(--red)', fontSize: '13px' }}>Error: {error}</div>}
+        {error && (
+          <div style={{ padding: '12px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+            {error}
+          </div>
+        )}
       </aside>
 
       {/* ─── RIGHT: The Forensics Stream ─── */}
       <main style={{ flex: 1, maxWidth: '900px', minHeight: '600px' }}>
-        
-        {/* State: Pre-Execution Live Environment Block */}
-        {!inspectionResult && !loading && (
+
+        {/* State: Loading skeleton */}
+        {(loading || loading2) && (
           <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Replay</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Vector</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--grn)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ONLINE</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Tracking initialized</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Latch</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>Locked</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Awaiting trace ID</div>
-              </div>
+            <div className="cs-skeleton" style={{ height: '14px', width: '100px', marginBottom: '24px' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div className="cs-skeleton" style={{ height: '12px', width: '60px', flexShrink: 0 }}></div>
+                  <div className="cs-skeleton" style={{ height: '12px', flex: 1 }}></div>
+                </div>
+              ))}
             </div>
-            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
-              Awaiting strategy vector...
+            <div style={{ marginTop: '24px', fontSize: '12px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+              Reconstructing causal trace...
             </div>
           </div>
         )}
 
-      {inspectionResult && (
+        {/* State: Error */}
+        {(error || error2) && !loading && !loading2 && (
+          <div style={{ padding: '16px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)', marginBottom: '16px' }}>
+            {error || error2}
+          </div>
+        )}
+
+        {/* State: Pre-Execution idle block */}
+        {!inspectionResult && !loading && !loading2 && !error && (
+          <div className="cs-empty" style={{ padding: '48px 32px', background: 'var(--card)', border: '1px solid var(--b)', borderRadius: 'var(--r10)', textAlign: 'center' }}>
+            <div className="cs-empty-icon">⟳</div>
+            <div className="cs-empty-title">No trace loaded</div>
+            <div style={{ fontSize: '12px', color: 'var(--tm)', marginTop: '8px', lineHeight: 1.6 }}>
+              Enter a strategy ID in the sidebar and press <strong style={{ color: 'var(--t2)' }}>Reconstruct trace</strong> to begin causal replay.
+            </div>
+          </div>
+        )}
+
+      {inspectionResult && !loading && !loading2 && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Execution Model Context Strip */}
           <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>Vector</h2>
-            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--b)', paddingBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', margin: 0 }}>Causal trace</h2>
+              {certState && (
+                <span style={{ fontSize: '10px', fontWeight: 700, color: certBadgeColor, fontFamily: 'var(--mono)', letterSpacing: '0.05em', padding: '2px 8px', background: certBgColor, border: `1px solid ${certBorderColor}`, borderRadius: 'var(--r4)' }}>
+                  {certState}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--b)', paddingBottom: '20px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Decision</span>
                 <span style={{ color: 'var(--tm)' }}>→</span>
@@ -319,7 +410,39 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
                 <span style={{ color: 'var(--tm)' }}>→</span>
                 <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Execution</span>
               </div>
+              <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--tm)', fontFamily: 'var(--mono)' }}>
+                {totalEventCount} event{totalEventCount !== 1 ? 's' : ''} · Seq {minSeqId}–{maxAvailableSeqId}
+              </div>
             </div>
+
+            {/* Divergence accumulation summary — only in dual mode */}
+            {isDualMode && (
+              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '10px', color: 'var(--tm)', fontWeight: 500 }}>
+                  Divergences at Seq {currentMaxSeqId}:
+                </span>
+                {visibleDivergences.length === 0 ? (
+                  <span style={{ fontSize: '10px', color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>none detected</span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '10px', color: 'var(--red)', fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                      {visibleDivergences.length} total
+                    </span>
+                    {Object.entries(divergenceTypeCounts).map(([type, count]) => (
+                      <span key={type} style={{
+                        fontSize: '9px', fontFamily: 'var(--mono)', fontWeight: 600,
+                        color: (type === 'group_type_divergence' || type === 'causal_parent_divergence' || type === 'missing_s1' || type === 'missing_s2') ? 'var(--red)' : 'var(--amb)',
+                        padding: '1px 5px', borderRadius: 'var(--r4)',
+                        background: 'rgba(0,0,0,0.08)',
+                        border: '1px solid currentColor',
+                      }}>
+                        {DIVERGENCE_SHORT[type] ?? type} ×{count}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={isDualMode ? 'cs-dual-grid' : ''} style={{ gap: '40px' }}>
