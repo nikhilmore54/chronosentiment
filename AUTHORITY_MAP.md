@@ -120,7 +120,7 @@ Not cultural guidelines — encoded operational physics:
 | Lane | Constitutional burden | Active IDs | Current posture | Escalation rule |
 |------|----------------------|------------|-----------------|-----------------|
 | **1 — Authority convergence** | bounded structural cleanup | V-007–V-010 | **closed — pause** | Lane 1 complete; reassess before new constitutional work |
-| **2 — Replay substrate law** | chronology serialization + dialect governance | V-006 | **prerequisite inventory complete** — migration tranche-scoped; **paused** | per-tranche scope doc required; see `V006_PHASE_C_CLASSIFICATION.md`; **no** `capture_types.rs` without authorization |
+| **2 — Replay substrate law** | chronology serialization + dialect governance | V-006 | **prerequisite inventory + assumption probe complete** — migration tranche-scoped; **paused** | per-tranche scope doc required; see `V006_PHASE_C_CLASSIFICATION.md`; **no** `capture_types.rs` without authorization |
 | **3 — Certifiability infrastructure** | repeatable replay generation | (operational) | **pause — slices 1–3 shipped**; slice 4+ authorization-gated | attributable replay execution only; not framework expansion |
 | **4 — Authority boundary containment** | Phase 4 research quarantine | Phase 4 checklist | partial — `/research_experiments/` exists; lineage docs incomplete | preserve lineage; **documented ≠ operational authority** |
 
@@ -130,7 +130,7 @@ Not cultural guidelines — encoded operational physics:
 
 1. **Replay-certified observability demonstration** — **complete — operational legitimacy threshold crossed**; scope: `docs/governance/DEMO_SCOPE.md`; entry: `./chrono demo`; evidence: `fixtures/demo/tier1_observability_report.json`.
 2. **Lane 3 operational hardening** — **complete (slices 1–3 shipped)** — rerun guard, reproducibility envelope, artifact integrity attestation; **pause** before slices 4–6.
-3. **Lane 2 prerequisite clarification** — **manifest ms impact inventory complete** (observational); tranche reopening still **authorization-bound** — see `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`.
+3. **Lane 2 prerequisite clarification** — **manifest ms impact inventory + assumption probe complete** (observational); tranche reopening still **authorization-bound** — see `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`.
 4. **Reassess one bounded V-006 tranche** — only after explicit authorization; likely candidate remains manifest ms correction migration (not inventory).
 5. **Phase 4 boundary refinement** — as needed; containment maintenance, not capability expansion.
 
@@ -149,7 +149,7 @@ Not cultural guidelines — encoded operational physics:
 | Yahoo compact re-emission | serialization-law migration |
 | Shared struct extraction | post-ratification convergence only |
 
-**Lane 2 artifacts:** `V006_CAPTURE_SCHEMA_SCOPE.md`, `V006_MANIFEST_DIALECT_POLICY.md`, `V006_SERIALIZATION_LAW_DECLARATION.md`, `V006_PHASE_C_CLASSIFICATION.md`, `fixtures/chronology_serialization/`, `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `fixtures/lane2/manifest_ms_impact_inventory.json`, `scripts/lane2_manifest_ms_impact_inventory.py`; CI job `lane2-manifest-ms-inventory`.
+**Lane 2 artifacts:** `V006_CAPTURE_SCHEMA_SCOPE.md`, `V006_MANIFEST_DIALECT_POLICY.md`, `V006_SERIALIZATION_LAW_DECLARATION.md`, `V006_PHASE_C_CLASSIFICATION.md`, `fixtures/chronology_serialization/`, `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`, `fixtures/lane2/manifest_ms_impact_inventory.json`, `fixtures/lane2/manifest_ms_assumption_probe.json`, `scripts/lane2_manifest_ms_impact_inventory.py`, `scripts/lane2_manifest_ms_assumption_probe.py`; CI jobs `lane2-manifest-ms-inventory`, `lane2-manifest-ms-assumption-probe`.
 
 **Lane 3 shipped (slices 1–3):** `scripts/lane3_replay_rerun_guard.py`, `scripts/lane3_reproducibility_envelope.py`, `scripts/lane3_artifact_integrity_attestation.py`, `scripts/lane3_passive_recomputation_probe.py` (empirical gate); fixtures under `fixtures/lane3/`; `rust-toolchain.toml`; CI jobs `lane3-replay-rerun-guard`, `lane3-reproducibility-envelope`, `lane3-artifact-integrity`, `tier1-alternate-smoke`.
 
@@ -174,6 +174,25 @@ inventory does not design migration
 **Explicit non-goals:** no migration, manifest rewrite, producer alignment, schema normalization, or `"while inventorying we also fixed..."` drift.
 
 **Tranche posture:** manifest ms correction remains **blocked until authorized** per-tranche scope doc; inventory satisfies prerequisite clarification only.
+
+---
+
+## LANE 2 PREREQUISITE — MANIFEST MS ASSUMPTION PROBE
+
+**Status:** **probe complete** — implicit ms semantics detection only; **no tranche authorized**.  
+**Parent:** manifest ms impact inventory — inventory mapped exposure; probe detects implicit assumptions.  
+**Burden:** answer *which consumers implicitly assume millisecond semantics?* without producer edits, manifest rewrites, or schema normalization.
+
+**Core asymmetry (non-negotiable):**
+
+```text
+probe exposes assumptions
+probe does not correct semantics
+```
+
+**Probe findings (2026-05-26):** 8 bounded surfaces scanned — implicit ms naming on `scripts/run_tier1_observability_demo.py` (`capture_start_ms` without dialect gate); heuristic unit handling on `scripts/rebuild_catalog.py`; explicit ms-law checks in `scripts/verify_chronology_producer_ratification.py`; producer seconds emission in `core/src/bin/capture_daemon.rs`. Full findings: `fixtures/lane2/manifest_ms_assumption_probe.json`.
+
+**Explicit non-goals:** no manifest rewrites, migration sequencing, tranche preparation tooling, or correction inevitability.
 
 ---
 
@@ -398,7 +417,45 @@ Stability classes:
 **Serialization law:** `docs/governance/V006_SERIALIZATION_LAW_DECLARATION.md`  
 **Phase C classification:** `docs/governance/V006_PHASE_C_CLASSIFICATION.md` (all producers NOT RATIFIED; migration blocked)  
 **Producer ratification:** `docs/governance/V006_PRODUCER_RATIFICATION.md`  
-**Discipline:** no `capture_types.rs` until scoped tranche authorization; see Lane 2
+**Discipline:** no `capture_types.rs` until scoped tranche authorization; see Lane 2  
+**Lane 2 prerequisites (observational):** `V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`
+
+### `NormalizedTick`
+
+| Attribute | Value |
+|-----------|-------|
+| Rust lineage locations | `core/src/bin/capture_daemon.rs`, `historical_importer.rs`, `yahoo_importer.rs` |
+| Python lineage locations | `scripts/yahoo_fetcher.py`, `fetch_yahoo.py` |
+| Persisted JSON authority | `{ symbol, timestamp, price, volume, is_buyer_maker }` |
+| Rust struct drift | **none** (field-identical across bins) |
+| JSON drift | **yes** — legacy OHLC 7-field ticks in `live_capture_0001.jsonl`; isolated 3-field outlier |
+| Serialization consumers | ad-hoc Python utilities; **not** `binance_adapter` (expects Binance raw keys) |
+| Persistence exposure | all `core/chronology/**/*.jsonl` capture substrates |
+| Replay sensitivity | **HIGH** — `chronology_hash` hashes JSONL line bytes |
+
+### `CaptureGap`
+
+| Attribute | Value |
+|-----------|-------|
+| Rust lineage locations | same three bins (identical struct) |
+| Persisted exposure | embedded in manifest `gaps` arrays |
+| Replay sensitivity | **MEDIUM** — affects manifest metadata; not hashed into `chronology_hash` directly |
+
+### `CaptureManifest`
+
+| Attribute | Value |
+|-----------|-------|
+| Rust lineage locations | same three bins (**manifest fields diverge**) |
+| Python lineage locations | `scripts/yahoo_fetcher.py`, `fetch_yahoo.py`, `scripts/capture_live_chronology.py` (legacy) |
+| Canonical persisted dialect (historical) | 10-field `historical_importer` shape (see inventory scan: 39 Dialect A of 60 manifests) |
+| Alternate dialects | slim 6-field live (12), slim+`provenance` yahoo (7), legacy kline script (1) |
+| `yahoo_importer` drift class | **lossy** at manifest layer (drops `source`, `resolution`, `capture_method`, `import_timestamp`; adds `provenance`) |
+| Known semantic defect | live rotation `capture_start`/`capture_end` persisted in **seconds** while contract + ticks use **milliseconds** — see `fixtures/lane2/manifest_ms_impact_inventory.json` |
+| Implicit ms assumptions | `scripts/run_tier1_observability_demo.py` (`capture_start_ms` naming) — see `fixtures/lane2/manifest_ms_assumption_probe.json` |
+| Code/artifact mismatch | `capture_daemon.rs` emits 10-field manifest; on-disk `core/chronology/live_capture/*` manifests are slim 6-field |
+| Serialization consumers | `scripts/rebuild_catalog.py`, `core/chronology/catalog.json` (optional-field tolerant) |
+| Certification coupling | indirect — `emit_manifest_v1.py` / `verify_manifest_v1.py` use separate certification manifest schema + substrate file hash |
+| Replay sensitivity | **HIGH** for hash/catalog identity; **LOW** direct coupling to `cs-ingest` frozen cohort replay |
 
 ---
 
@@ -447,42 +504,6 @@ Stability classes:
 | Replay / chronology coupling | **NONE** — Lane 2 not triggered |
 | Classification | environmental authority hygiene (V-002-class) |
 | Next gate | closed — V-008 resolved |
-
-### `NormalizedTick`
-
-| Attribute | Value |
-|-----------|-------|
-| Rust lineage locations | `core/src/bin/capture_daemon.rs`, `historical_importer.rs`, `yahoo_importer.rs` |
-| Python lineage locations | `scripts/yahoo_fetcher.py`, `fetch_yahoo.py` |
-| Persisted JSON authority | `{ symbol, timestamp, price, volume, is_buyer_maker }` |
-| Rust struct drift | **none** (field-identical across bins) |
-| JSON drift | **yes** — legacy OHLC 7-field ticks in `live_capture_0001.jsonl`; isolated 3-field outlier |
-| Serialization consumers | ad-hoc Python utilities; **not** `binance_adapter` (expects Binance raw keys) |
-| Persistence exposure | all `core/chronology/**/*.jsonl` capture substrates |
-| Replay sensitivity | **HIGH** — `chronology_hash` hashes JSONL line bytes |
-
-### `CaptureGap`
-
-| Attribute | Value |
-|-----------|-------|
-| Rust lineage locations | same three bins (identical struct) |
-| Persisted exposure | embedded in manifest `gaps` arrays |
-| Replay sensitivity | **MEDIUM** — affects manifest metadata; not hashed into `chronology_hash` directly |
-
-### `CaptureManifest`
-
-| Attribute | Value |
-|-----------|-------|
-| Rust lineage locations | same three bins (**manifest fields diverge**) |
-| Python lineage locations | `scripts/yahoo_fetcher.py`, `fetch_yahoo.py`, `scripts/capture_live_chronology.py` (legacy) |
-| Canonical persisted dialect (historical) | 10-field `historical_importer` shape (38/57 manifests) |
-| Alternate dialects | slim 6-field live (12), slim+`provenance` yahoo (6), legacy kline script (1) |
-| `yahoo_importer` drift class | **lossy** at manifest layer (drops `source`, `resolution`, `capture_method`, `import_timestamp`; adds `provenance`) |
-| Known semantic defect | live rotation `capture_start`/`capture_end` persisted in **seconds** while contract + ticks use **milliseconds** |
-| Code/artifact mismatch | `capture_daemon.rs` emits 10-field manifest; on-disk `core/chronology/live_capture/*` manifests are slim 6-field |
-| Serialization consumers | `scripts/rebuild_catalog.py`, `core/chronology/catalog.json` (optional-field tolerant) |
-| Certification coupling | indirect — `emit_manifest_v1.py` / `verify_manifest_v1.py` use separate certification manifest schema + substrate file hash |
-| Replay sensitivity | **HIGH** for hash/catalog identity; **LOW** direct coupling to `cs-ingest` frozen cohort replay |
 
 ---
 
@@ -603,6 +624,7 @@ authority changes without replacing them.
 - [x] **V-006 serialization law declaration:** `docs/governance/V006_SERIALIZATION_LAW_DECLARATION.md`
 - [x] **V-006 Phase C classification:** drift matrix + ratification posture — `docs/governance/V006_PHASE_C_CLASSIFICATION.md` (all producers NOT RATIFIED; migration blocked)
 - [x] **V-006 manifest ms impact inventory (prerequisite):** observational exposure map — `docs/governance/V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md`, `scripts/lane2_manifest_ms_impact_inventory.py`, `fixtures/lane2/manifest_ms_impact_inventory.json` (tranche **not** authorized)
+- [x] **V-006 manifest ms assumption probe (prerequisite):** implicit ms semantics detection — `docs/governance/V006_MANIFEST_MS_ASSUMPTION_PROBE_SCOPE.md`, `scripts/lane2_manifest_ms_assumption_probe.py`, `fixtures/lane2/manifest_ms_assumption_probe.json` (tranche **not** authorized)
 - [ ] **V-006 scoped migration authorization:** per-tranche scope docs required before any producer alignment or `capture_types.rs`
 
 ### Phase 3A — Strategy Identity Law Operationalization

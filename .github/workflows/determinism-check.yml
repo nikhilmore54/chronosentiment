@@ -135,3 +135,13 @@ jobs:
 
     - name: Lane 2 manifest ms impact inventory
       run: python3 scripts/lane2_manifest_ms_impact_inventory.py --check-reference
+
+  lane2-manifest-ms-assumption-probe:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Lane 2 manifest ms assumption probe
+      run: python3 scripts/lane2_manifest_ms_assumption_probe.py --check-reference
