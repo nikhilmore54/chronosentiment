@@ -36,6 +36,15 @@ Each entry records:
 | 2026-05-27T05:34:42+05:30 | verify_strategy_identity_fixtures.py (Step 2 run 1) | n/a (fixture check) | PASS | local (macOS) | 8 records; identical to baseline; differential_report.json written |
 | 2026-05-27T05:35:34+05:30 | verify_chronology_byte_fixtures.py (Step 2 run 2) | n/a (fixture check) | PASS | local (macOS) | 3 fixtures; identical to run 1; no anomalies |
 | 2026-05-27T05:35:34+05:30 | verify_strategy_identity_fixtures.py (Step 2 run 2) | n/a (fixture check) | PASS | local (macOS) | 8 records; identical to run 1; no anomalies |
+| 2026-05-27T05:43:52+05:30 | cargo test replay (Step 3 sub-step 1 — historical anchor) | n/a (unit test) | PASS | local (macOS) | 6 passed; 0 failed; byte-identical to prior certified runs |
+| 2026-05-27T05:44:04+05:30 | cargo test chronology (Step 3 sub-step 1 — historical anchor) | n/a (unit test) | PASS | local (macOS) | 0 passed; 0 failed; all filtered; identical to prior certified runs |
+| 2026-05-27T05:44:14+05:30 | verify_chronology_byte_fixtures.py (Step 3 sub-step 1 — historical anchor) | n/a (fixture check) | PASS | local (macOS) | 3 fixtures; byte-identical to prior certified runs |
+| 2026-05-27T05:44:28+05:30 | verify_strategy_identity_fixtures.py (Step 3 sub-step 1 — historical anchor) | n/a (fixture check) | PASS | local (macOS) | 8 records; byte-identical to prior certified runs |
+| 2026-05-27T05:47:20+05:30 | capture_live_chronology (Step 3 sub-step 2 — bounded live ingress) | 0e4adda2c26f1f3c0d5c3a114115f4ae96991d4147239e3f5cb84c9d0fca1bc4 | PASS | local (macOS) | 60 BTCUSDT 1m candles; ts 1779837480000–1779841020000; output: core/chronology/live_capture_step3_bounded.jsonl; observational only; no semantic mutation |
+| 2026-05-27T05:48:21+05:30 | cargo test replay (Step 3 sub-step 3 — post-live-ingress) | n/a (unit test) | PASS | local (macOS) | 6 passed; 0 failed; byte-identical to pre-ingress run; no replay divergence |
+| 2026-05-27T05:48:40+05:30 | cargo test chronology (Step 3 sub-step 3 — post-live-ingress) | n/a (unit test) | PASS | local (macOS) | 0 passed; 0 failed; all filtered; identical to pre-ingress run |
+| 2026-05-27T05:48:40+05:30 | verify_chronology_byte_fixtures.py (Step 3 sub-step 3 — post-live-ingress) | n/a (fixture check) | PASS | local (macOS) | 3 fixtures; byte-identical to pre-ingress run; no chronology inconsistency |
+| 2026-05-27T05:48:40+05:30 | verify_strategy_identity_fixtures.py (Step 3 sub-step 3 — post-live-ingress) | n/a (fixture check) | PASS | local (macOS) | 8 records; byte-identical to pre-ingress run; no semantic widening pressure observed |
 
 ---
 
