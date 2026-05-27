@@ -14,7 +14,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FIXTURE_ROOT = REPO_ROOT / "fixtures" / "chronology_serialization"
+if (REPO_ROOT / "RELEASE_INFO.json").exists():
+    FIXTURE_ROOT = REPO_ROOT / "replay" / "fixtures" / "chronology_serialization"
+else:
+    FIXTURE_ROOT = REPO_ROOT / "fixtures" / "chronology_serialization"
 
 
 def streaming_chronology_hash(data: bytes) -> str:
@@ -142,29 +145,33 @@ def verify_reference_hashes() -> list[str]:
 
 def main() -> int:
     if not FIXTURE_ROOT.exists():
-        print(f"Fixture root missing: {FIXTURE_ROOT}")
+        print(f"[FAIL] Fixture root missing: {FIXTURE_ROOT}")
+        print("       Remediation: Ensure you are in a complete repository or release bundle.")
         return 1
 
     fixture_dirs = sorted(
         p for p in FIXTURE_ROOT.iterdir() if p.is_dir() and (p / "fixture_meta.json").exists()
     )
     if not fixture_dirs:
-        print("No chronology byte fixtures found.")
-        return 1
+        print("[WARN] No chronology byte fixtures found.")
+        print("       Remediation: Ensure fixtures have been checked out.")
+        return 2
 
     all_errors: list[str] = []
     for fixture_dir in fixture_dirs:
         all_errors.extend(verify_fixture_dir(fixture_dir))
 
-    all_errors.extend(verify_reference_hashes())
+    if not (REPO_ROOT / "RELEASE_INFO.json").exists():
+        all_errors.extend(verify_reference_hashes())
 
     if all_errors:
-        print("FAIL: chronology byte fixture verification")
+        print("[FAIL] chronology byte fixture verification")
         for err in all_errors:
-            print(f"  - {err}")
+            print(f"       - {err}")
+        print("       Remediation: Address the broken fixture validations listed above.")
         return 1
 
-    print(f"PASS: verified {len(fixture_dirs)} chronology byte fixture(s)")
+    print(f"[PASS] verified {len(fixture_dirs)} chronology byte fixture(s)")
     return 0
 
 

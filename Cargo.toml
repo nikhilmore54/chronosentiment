@@ -1,7 +1,9 @@
 [workspace]
 members = [
-    "core",
-    "cs-ingest",
-    "services/api",
+    "infrastructure/core",
+    "infrastructure/optimization",
+    "infrastructure/observatory/api",
+    "financial/ese",
+    "financial/strategies",
 ]
 resolver = "2"

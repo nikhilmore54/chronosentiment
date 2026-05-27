@@ -75,7 +75,7 @@ echo ""
 echo "── Corpus files"
 CORPUS_JSON="[]"
 
-if [ -d "${REPO_ROOT}/core/chronology" ]; then
+if [ -d "${REPO_ROOT}/infrastructure/core/chronology" ]; then
     CORPUS_ENTRIES=""
     FIRST=true
     while IFS= read -r -d '' f; do
@@ -92,7 +92,7 @@ if [ -d "${REPO_ROOT}/core/chronology" ]; then
         else
             CORPUS_ENTRIES="${CORPUS_ENTRIES},${ENTRY}"
         fi
-    done < <(find "${REPO_ROOT}/core/chronology" -name "*.jsonl" -print0 | sort -z)
+    done < <(find "${REPO_ROOT}/infrastructure/core/chronology" -name "*.jsonl" -print0 | sort -z)
     CORPUS_JSON="[${CORPUS_ENTRIES}]"
 fi
 echo ""
@@ -162,7 +162,7 @@ BINARY_PATH="NOT_BUILT"
 
 if [ "${SKIP_BUILD}" = false ]; then
     echo "  Building release binary..."
-    if cargo build --release --manifest-path core/Cargo.toml --quiet 2>&1; then
+    if cargo build --release --manifest-path infrastructure/core/Cargo.toml --quiet 2>&1; then
         # Find the primary binary
         CANDIDATE_BIN="${REPO_ROOT}/target/release/trace_replay"
         if [ ! -f "${CANDIDATE_BIN}" ]; then
@@ -195,16 +195,16 @@ echo "── Double-build determinism"
 DOUBLE_BUILD_RESULT="SKIP"
 
 if [ "${SKIP_DOUBLE_BUILD}" = false ] && [ "${SKIP_BUILD}" = false ]; then
-    SUBSTRATE="${REPO_ROOT}/core/chronology/live_capture_step3_bounded.jsonl"
+    SUBSTRATE="${REPO_ROOT}/infrastructure/core/chronology/live_capture_step3_bounded.jsonl"
     TOPOLOGY="plateau_low"
     COGNITION="event_reset"
     ARTIFACT_META="${REPO_ROOT}/artifacts/BTCUSDT/${TOPOLOGY}/${COGNITION}/metadata.json"
 
     if [ -f "${SUBSTRATE}" ] && command -v cargo >/dev/null 2>&1; then
         # First run
-        cargo run --release --manifest-path core/Cargo.toml \
+        cargo run --release --manifest-path infrastructure/core/Cargo.toml \
             --bin trace_replay -- \
-            --input "core/chronology/live_capture_step3_bounded.jsonl" \
+            --input "infrastructure/core/chronology/live_capture_step3_bounded.jsonl" \
             --topology "${TOPOLOGY}" \
             --cognition "${COGNITION}" \
             --output-dir artifacts \
@@ -216,9 +216,9 @@ if [ "${SKIP_DOUBLE_BUILD}" = false ] && [ "${SKIP_BUILD}" = false ]; then
         fi
 
         # Second run
-        cargo run --release --manifest-path core/Cargo.toml \
+        cargo run --release --manifest-path infrastructure/core/Cargo.toml \
             --bin trace_replay -- \
-            --input "core/chronology/live_capture_step3_bounded.jsonl" \
+            --input "infrastructure/core/chronology/live_capture_step3_bounded.jsonl" \
             --topology "${TOPOLOGY}" \
             --cognition "${COGNITION}" \
             --output-dir artifacts \
@@ -316,6 +316,7 @@ if [ "${OVERALL_STATUS}" = "PASS" ]; then
     echo "  git commit -m \"chore(release): manifest ${GIT_COMMIT_SHORT} — ${OVERALL_STATUS}\""
     exit 0
 else
-    echo "[FAIL] ${OVERALL_FAIL} check(s) failed. Manifest written with FAIL status." >&2
+    echo "[FAIL] ${OVERALL_FAIL} check(s) failed." >&2
+    echo "       Remediation: Manifest written with FAIL status. Resolve failures before packaging release." >&2
     exit 1
 fi

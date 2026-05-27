@@ -1,17 +1,17 @@
 {
   "references": [
     {
-      "path": "core/chronology/live_capture/btcusdt_1779545161.jsonl",
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779545161.jsonl",
       "full_file_sha256": "87045cf2e62303992e276ce78a947d462322aa9bc5348ed8fe41088dbc558fea",
       "note": "full file hash != chronology_hash unless manifest computed same way"
     },
     {
-      "path": "core/chronology/historical/2024_cpi_shock_1h_tick/btcusdt_1707829200000.jsonl",
+      "path": "infrastructure/core/chronology/historical/2024_cpi_shock_1h_tick/btcusdt_1707829200000.jsonl",
       "full_file_sha256": "d970abd2669acfc28cfb61046bf7c2d2d3170ab4ddffea899e8cb013212d1e64",
       "note": "full file hash != chronology_hash unless manifest computed same way"
     },
     {
-      "path": "core/chronology/live_capture/btcusdt_1779545161.jsonl",
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779545161.jsonl",
       "manifest_chronology_hash": "87045cf2e62303992e276ce78a947d462322aa9bc5348ed8fe41088dbc558fea",
       "streaming_line_sha256": "87045cf2e62303992e276ce78a947d462322aa9bc5348ed8fe41088dbc558fea",
       "match": true

@@ -19,7 +19,19 @@ def hash_dict(d):
 def run_verifier(manifest_path):
     try:
         res = subprocess.run(["python3", "scripts/verify_manifest_v1.py", manifest_path], capture_output=True, text=True)
-        return json.loads(res.stdout)
+        if res.returncode == 0:
+            return {"status": "ATTESTATION_PASSED", "failures": []}
+        
+        failures = []
+        for line in res.stdout.splitlines():
+            if line.strip().startswith("- "):
+                parts = line.strip()[2:].split(":", 1)
+                if len(parts) == 2:
+                    err = parts[0].strip()
+                    det = parts[1].strip()
+                    comp = det.split(" ")[0] if det else ""
+                    failures.append({"error": err, "component": comp, "details": det})
+        return {"status": "ATTESTATION_FAILED", "failures": failures}
     except Exception as e:
         print(f"Error running verifier: {e}")
         return None

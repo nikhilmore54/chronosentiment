@@ -36,7 +36,7 @@ def capture_binance_chronology(symbol="BTCUSDT", interval="1m", limit=4320):
         end_time = batch[0][0] - 1 # prior to the first candle in this batch
         remaining -= len(batch)
 
-    output_dir = Path("core/chronology")
+    output_dir = Path("infrastructure/core/chronology")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     output_file = output_dir / "live_capture_0001.jsonl"

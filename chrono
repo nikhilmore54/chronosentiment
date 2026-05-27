@@ -1,565 +1,85 @@
-#!/usr/bin/env python3
+#!/usr/bin/env bash
+# chrono
+# ChronoSentiment — Unified Operator Facade
+#
+# Purpose: Deterministic command routing for operational tasks.
+#          Stateless passthrough. No orchestration or adaptive logic.
 
-import argparse
-import os
-import subprocess
-import sys
-import json
+set -euo pipefail
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-CORE_DIR = os.path.join(PROJECT_ROOT, "core")
-TARGET_DIR = os.path.join(PROJECT_ROOT, "target", "release")
-TRACE_REPLAY_BIN = os.path.join(TARGET_DIR, "trace_replay")
-VERIFY_SCRIPT = os.path.join(PROJECT_ROOT, "scripts", "verify_manifest_v1.py")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-def print_header(title):
-    print(f"\n{'='*60}")
-    print(f" {title.upper()}")
-    print(f"{'='*60}\n")
+# Deterministic Environment Banner
+if [ -f "${SCRIPT_DIR}/rust-toolchain.toml" ]; then
+    RUST_VER="$(grep channel "${SCRIPT_DIR}/rust-toolchain.toml" | cut -d'"' -f2 || echo "unknown")"
+else
+    RUST_VER="unknown"
+fi
+if [ -f "${SCRIPT_DIR}/.python-version" ]; then
+    PY_VER="$(cat "${SCRIPT_DIR}/.python-version" 2>/dev/null || echo "unknown")"
+else
+    PY_VER="unknown"
+fi
 
-def run_install(args):
-    print_header("Installing ChronoSentiment")
-    print("Building trace_replay core engine (release mode)...")
-    
-    try:
-        subprocess.run(["cargo", "build", "--release"], cwd=CORE_DIR, check=True)
-        print(f"\n[OK] Engine built successfully at: {TRACE_REPLAY_BIN}")
-        print("Ready for operational contact.")
-    except subprocess.CalledProcessError as e:
-        print(f"\n[FAIL] Build failed. Is Rust installed? (cargo build error)")
-        sys.exit(1)
-    except FileNotFoundError:
-        print("\n[FAIL] Cargo not found. Please install Rust: https://rustup.rs/")
-        sys.exit(1)
+if [ -f "${SCRIPT_DIR}/RELEASE_INFO.json" ]; then
+    RUNTIME_MODE="RELEASE"
+else
+    RUNTIME_MODE="SOURCE"
+fi
 
-def run_replay(args):
-    print_header("Chrono Replay")
-    
-    if not os.path.exists(TRACE_REPLAY_BIN):
-        print(f"[FAIL] Binary not found at {TRACE_REPLAY_BIN}. Please run './chrono install' first.")
-        sys.exit(1)
-        
-    substrate_file = os.path.abspath(args.substrate_file)
-    if not os.path.exists(substrate_file):
-        print(f"[FAIL] Substrate file not found: {substrate_file}")
-        sys.exit(1)
-        
-    cmd = [
-        TRACE_REPLAY_BIN,
-        "--substrate", args.substrate,
-        "--substrate-file", substrate_file,
-        "--topology", args.topology,
-        "--cognition", args.cognition
-    ]
-    
-    print(f"Launching deterministic replay engine...")
-    print(f"   Substrate: {args.substrate}")
-    print(f"   Topology:  {args.topology}")
-    print(f"   Cognition: {args.cognition}")
-    print(f"   Source:    {substrate_file}")
-    
-    # We run from PROJECT_ROOT so artifacts write to PROJECT_ROOT/artifacts/...
-    try:
-        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"\n[FAIL] Replay engine failed with exit code {e.returncode}")
-        sys.exit(1)
-        
-    expected_artifact_dir = os.path.join(PROJECT_ROOT, "artifacts", args.substrate, args.topology, args.cognition)
-    manifest_path = os.path.join(expected_artifact_dir, "metadata.json")
-    
-    if os.path.exists(manifest_path):
-        print(f"\n[OK] Replay Complete.")
-        print(f"   Artifact Directory: {expected_artifact_dir}")
-        print(f"   Verify with: ./chrono certify {expected_artifact_dir}")
-    else:
-        print(f"\n[WARN] Replay completed but expected manifest was not found at {manifest_path}")
+echo "[INFO] Rust toolchain: ${RUST_VER}" >&2
+echo "[INFO] Python version: ${PY_VER}" >&2
+echo "[INFO] Runtime mode: ${RUNTIME_MODE}" >&2
+echo "[INFO] Platform: $(uname -sm)" >&2
+echo "" >&2
 
-def run_certify(args):
-    print_header("Manifest Certification")
-    
-    artifact_dir = os.path.abspath(args.artifact_dir)
-    manifest_path = os.path.join(artifact_dir, "metadata.json")
-    
-    if not os.path.exists(manifest_path):
-        # Fallback for old layouts
-        manifest_path = os.path.join(artifact_dir, "manifest.json")
-        if not os.path.exists(manifest_path):
-            print(f"[FAIL] Manifest not found in {artifact_dir}")
-            sys.exit(1)
-            
-    print(f"Certifying artifact manifest at: {manifest_path}\n")
-    
-    cmd = [sys.executable, VERIFY_SCRIPT, manifest_path]
-    try:
-        res = subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True)
-        try:
-            data = json.loads(res.stdout)
-            status = data.get("status", "UNKNOWN")
-            
-            if status == "ATTESTATION_PASSED":
-                print(f"[OK] ATTESTATION PASSED")
-                print(f"   Chronology Hash: {data.get('provenance', {}).get('chronology_hash', 'N/A')}")
-                for att in data.get("attestations", []):
-                    print(f"   - {att}")
-            else:
-                print(f"[FAIL] ATTESTATION FAILED")
-                for f in data.get("failures", []):
-                    print(f"   - {f.get('error')}: {f.get('component')} (Expected: {f.get('expected')}, Actual: {f.get('actual')})")
-        except json.JSONDecodeError:
-            print("[FAIL] Verifier output was not valid JSON.")
-            print(res.stdout)
-            
-    except subprocess.CalledProcessError as e:
-        print(f"[FAIL] Verifier script failed with exit code {e.returncode}")
-        print(e.stderr or e.stdout)
-        sys.exit(1)
+usage() {
+    echo "========================================================"
+    echo " ChronoSentiment — Operator Facade"
+    echo "========================================================"
+    echo "Usage: ./chrono <command> [args...]"
+    echo ""
+    echo "Commands:"
+    echo "  bootstrap         Environment validation (scripts/operator_bootstrap.sh)"
+    echo "  smoke             Replay smoke suite (scripts/replay_smoke_suite.sh)"
+    echo "  package           Generate release artifact (scripts/package_release.sh)"
+    echo "  manifest          Generate release manifest (scripts/generate_release_manifest.sh)"
+    echo "  release-verify    Verify release consistency (scripts/verify_release_consistency.sh)"
+    echo "  help              Show this output"
+    echo "========================================================"
+}
 
-def run_demo(args):
-    script = os.path.join(PROJECT_ROOT, "scripts", "run_tier1_observability_demo.py")
-    scenario = getattr(args, "scenario", "primary")
-    cmd = [sys.executable, script, "--scenario", scenario]
-    try:
-        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
-    except subprocess.CalledProcessError as e:
-        sys.exit(e.returncode or 1)
+if [ $# -eq 0 ]; then
+    usage
+    exit 1
+fi
 
-def run_demo_observer(args):
-    print_header("Optional Observer Demo (NVDA oscillatory fragmentation)")
-    
-    if not os.path.exists(TRACE_REPLAY_BIN):
-        print("Build required. Installing...")
-        run_install(args)
-        
-    demo_substrate = os.path.join(CORE_DIR, "chronology", "historical", "2026_nvda_sync_oscillatory_fragmentation_5m", "nvda_1779197400000.jsonl")
-    
-    if not os.path.exists(demo_substrate):
-        print(f"[FAIL] Could not find demo substrate: {demo_substrate}")
-        sys.exit(1)
-        
-    print("Step 1: Orchestrating deterministic replay...")
-    print("Command: chrono replay osc_50_1.0 rolling_50 --substrate tier1_demo_5m --substrate-file <file>")
-    print("-" * 60)
-    
-    class DummyArgs:
-        substrate = "tier1_demo_5m"
-        topology = "osc_50_1.0"
-        cognition = "rolling_50"
-        substrate_file = demo_substrate
-    run_replay(DummyArgs())
+COMMAND="$1"
+shift
 
-    print("\nCommand: chrono replay osc_50_1.0 rolling_100 --substrate tier1_demo_5m --substrate-file <file>")
-    print("-" * 60)
-    DummyArgs.cognition = "rolling_100"
-    run_replay(DummyArgs())
-    
-    artifact_dir = os.path.join(PROJECT_ROOT, "artifacts", "tier1_demo_5m", "osc_50_1.0")
-    
-    print("\nStep 2: Emitting composite manifest...")
-    print(f"Command: python3 scripts/emit_manifest_v1.py <config>")
-    print("-" * 60)
-    
-    try:
-        commit_hash = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=PROJECT_ROOT,
-            stderr=subprocess.DEVNULL,
-        ).decode("utf-8").strip()
-    except Exception:
-        commit_hash = "unknown"
-    
-    config = {
-        "replay_id": "2026_nvda_sync_oscillatory_fragmentation",
-        "replay_class": "oscillatory_fragmentation",
-        "authority_type": "yahoo_finance",
-        "session_ontology": "5m_sync",
-        "start_ts": 1779197400000,
-        "end_ts": 1779219000000,
-        "shift_offset": 0,
-        "symbols": ["NVDA"],
-        "timeframe": "5m",
-        "descriptors": ["demo_observer"],
-        "substrate_file": demo_substrate,
-        "topology": "osc_50_1.0",
-        "cognition_a": "rolling_50",
-        "cognition_b": "rolling_100",
-        "artifact_dir": artifact_dir,
-        "commit_hash": commit_hash
-    }
-    
-    config_path = os.path.join(artifact_dir, "demo_config.json")
-    with open(config_path, 'w') as f:
-        json.dump(config, f)
-        
-    subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "scripts", "emit_manifest_v1.py"), config_path], check=True)
-    
-    print("\nStep 3: Passive Verifier Attestation...")
-    print(f"Command: chrono certify {os.path.relpath(artifact_dir, PROJECT_ROOT)}")
-    print("-" * 60)
-    
-    class DummyCertifyArgs:
-        artifact_dir_arg = artifact_dir
-    
-    setattr(DummyCertifyArgs, "artifact_dir", artifact_dir)
-    run_certify(DummyCertifyArgs())
-    
-    print("\nObserver demo concluded successfully.")
-
-
-def run_inspect(args):
-    print_header("Divergence Inspection")
-    
-    baseline = os.path.abspath(args.baseline)
-    suspect = os.path.abspath(args.suspect)
-    
-    t1_path = os.path.join(baseline, "trace_v1.json")
-    t2_path = os.path.join(suspect, "trace_v1.json")
-    
-    if not os.path.exists(t1_path) or not os.path.exists(t2_path):
-        print(f"[FAIL] trace_v1.json artifacts missing. Both artifacts must have been generated with total_ticks < 500k.")
-        sys.exit(1)
-        
-    print(f"Loading Baseline: {os.path.relpath(baseline, PROJECT_ROOT)}")
-    print(f"Loading Suspect:  {os.path.relpath(suspect, PROJECT_ROOT)}\n")
-    
-    with open(t1_path) as f:
-        d1 = json.load(f)
-    with open(t2_path) as f:
-        d2 = json.load(f)
-        
-    traces1 = d1.get("traces", [])
-    traces2 = d2.get("traces", [])
-    
-    if len(traces1) != len(traces2):
-        print("Replay divergence detected.")
-        print("\nFailure:")
-        print("- CHRONOLOGY_LENGTH_MISMATCH")
-        print(f"\nFirst divergence:")
-        print(f"- Baseline length: {len(traces1)}")
-        print(f"- Suspect length:  {len(traces2)}")
-        print("\nDivergence isolation complete.")
-        sys.exit(1)
-        
-    for i, (t1, t2) in enumerate(zip(traces1, traces2)):
-        if t1 != t2:
-            print("Replay divergence detected.")
-            print("\nFailure:")
-            print("- GEOMETRY_STATE_DIVERGENCE")
-            print(f"\nFirst divergence:")
-            print(f"- Event Index: {i}")
-            for k in t1.keys():
-                if t1.get(k) != t2.get(k):
-                    print(f"- Expected {k.capitalize()}: {t1.get(k)}")
-                    print(f"- Actual {k.capitalize()}:   {t2.get(k)}")
-            print("\nDivergence isolation complete.")
-            sys.exit(1)
-            
-    print("[OK] No divergence detected. Traces are mechanically equivalent.")
-
-def run_demo_divergence(args):
-    print_header("Interactive Deterministic Debugging Demo")
-    
-    if not os.path.exists(TRACE_REPLAY_BIN):
-        print("Build required. Installing...")
-        run_install(args)
-        
-    demo_substrate = os.path.join(CORE_DIR, "chronology", "historical", "2026_nvda_sync_oscillatory_fragmentation_5m", "nvda_1779197400000.jsonl")
-    
-    print("Step 1: Generating Known Deterministic Baseline...")
-    print("-" * 60)
-    class DummyArgs:
-        substrate = "demo_baseline"
-        topology = "osc_50_1.0"
-        cognition = "rolling_50"
-        substrate_file = demo_substrate
-    run_replay(DummyArgs())
-    baseline_dir = os.path.join(PROJECT_ROOT, "artifacts", "demo_baseline", "osc_50_1.0", "rolling_50")
-    
-    print("\nStep 2: Injecting Subtle Nondeterministic Defect...")
-    print("Injecting float coercion into accumulator state via environment variable...")
-    print("-" * 60)
-    
-    os.environ["CHRONO_INJECT_FLOAT_COERCION"] = "1"
-    DummyArgs.substrate = "demo_suspect"
-    run_replay(DummyArgs())
-    suspect_dir = os.path.join(PROJECT_ROOT, "artifacts", "demo_suspect", "osc_50_1.0", "rolling_50")
-    del os.environ["CHRONO_INJECT_FLOAT_COERCION"]
-    
-    print("\nStep 3: Certification Fails...")
-    print(f"Command: chrono certify {os.path.relpath(suspect_dir, PROJECT_ROOT)}")
-    print("-" * 60)
-    
-    # Certify suspect against its own generated manifest? No!
-    # Wait, the certifier verifies the internal metadata.json consistency.
-    # But a true drift demo certifies the suspect artifact against the BASELINE manifest.
-    # We will simulate certifying the suspect against the baseline manifest.
-    
-    # Actually `verify_manifest_v1.py` can be pointed to the baseline manifest, 
-    # but the suspect files need to be tested.
-    # Or we can just let `chrono certify` run on suspect, and because the suspect generated its OWN manifest, it might pass internal attestation?
-    # NO! trace_replay will generate a new manifest for the suspect! It will pass internal attestation!
-    # A true certifier checks the NEW run against the PREVIOUS baseline manifest!
-    
-    print("Simulating CI/CD Verification of Suspect Run against Baseline Manifest...")
-    
-    baseline_manifest = os.path.join(baseline_dir, "metadata.json")
-    suspect_trace_summary = os.path.join(suspect_dir, "trace_summary.json")
-    
-    with open(baseline_manifest, 'r') as f:
-        b_meta = json.load(f)
-        
-    with open(suspect_trace_summary, 'r') as f:
-        s_sum = json.load(f)
-        
-    # We manually show the drift in the verification step:
-    if b_meta.get("geometry_outputs", {}).get("baseline_a") != s_sum.get("persistence"):
-        print("[FAIL] ATTESTATION FAILED")
-        print("   - GEOMETRY_MISMATCH: trace_summary.json")
-        print(f"     Expected Persistence: {b_meta.get('geometry_outputs', {}).get('baseline_a', b_meta.get('persistence', 'unknown'))}")
-        print(f"     Actual Persistence:   {s_sum.get('persistence')}")
-    
-    print("\nStep 4: Divergence Isolation...")
-    print(f"Command: chrono inspect {os.path.relpath(baseline_dir, PROJECT_ROOT)} {os.path.relpath(suspect_dir, PROJECT_ROOT)}")
-    print("-" * 60)
-    
-    class DummyInspectArgs:
-        baseline = baseline_dir
-        suspect = suspect_dir
-    
-    try:
-        run_inspect(DummyInspectArgs())
-    except SystemExit:
-        pass
-        
-    print("\nStep 5: Corrected Replay Certification Restored.")
-    print("Fix applied (CHRONO_INJECT_FLOAT_COERCION removed). Rerunning baseline...")
-    print("-" * 60)
-    run_replay(DummyArgs())
-    print("\n[OK] Lifecycle Complete: drift -> isolation -> correction -> equivalence restoration.")
-
-def run_survive(args):
-    print_header(f"Long-Duration Deterministic Survivability (Tier: {args.tier})")
-    
-    tier_map = {
-        "1": 100_000,
-        "2": 1_000_000,
-        "3": 5_000_000,
-        "4": 10_000_000
-    }
-    
-    count = tier_map.get(args.tier)
-    if not count:
-        print(f"[FAIL] Unknown tier: {args.tier}. Valid tiers: 1, 2, 3, 4")
-        sys.exit(1)
-        
-    soak_file = os.path.join(CORE_DIR, "chronology", "soak", f"soak_tier{args.tier}.jsonl")
-    
-    print("Step 1: Generating Realistic Soak Substrate...")
-    subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "scripts", "generate_soak_substrate.py"), str(count), soak_file], check=True)
-    
-    print("\nStep 2: Executing Trace Replay Engine...")
-    import time
-    import resource
-    
-    start_time = time.time()
-    
-    cmd = [
-        TRACE_REPLAY_BIN,
-        "--substrate", f"soak_tier{args.tier}",
-        "--substrate-file", soak_file,
-        "--topology", "osc_50_1.0",
-        "--cognition", "rolling_50"
-    ]
-    
-    try:
-        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, stdout=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as e:
-        print(f"[FAIL] Replay engine crashed during soak: {e}")
-        sys.exit(1)
-        
-    usage_end = resource.getrusage(resource.RUSAGE_CHILDREN)
-    end_time = time.time()
-    
-    duration = end_time - start_time
-    # ru_maxrss is bytes on macOS, kilobytes on Linux
-    max_rss_mb = usage_end.ru_maxrss / (1024 * 1024) if sys.platform == "darwin" else usage_end.ru_maxrss / 1024
-    
-    print(f"[OK] Soak Execution Complete")
-    print(f"   Throughput : {count / duration:,.0f} events/sec")
-    print(f"   Duration   : {duration:.2f} seconds")
-    print(f"   Max RSS    : {max_rss_mb:.2f} MB")
-    
-    artifact_dir = os.path.join(PROJECT_ROOT, "artifacts", f"soak_tier{args.tier}", "osc_50_1.0", "rolling_50")
-    
-    print("\nStep 3: Passive Verification Validation...")
-    start_time = time.time()
-    
-    config = {
-        "replay_id": f"soak_tier{args.tier}",
-        "replay_class": "soak",
-        "authority_type": "synthetic",
-        "session_ontology": "soak",
-        "start_ts": 0,
-        "end_ts": 0,
-        "shift_offset": 0,
-        "symbols": ["SOAK"],
-        "timeframe": "1m",
-        "descriptors": [],
-        "substrate_file": soak_file,
-        "topology": "osc_50_1.0",
-        "cognition_a": "rolling_50",
-        "cognition_b": "rolling_50",
-        "artifact_dir": os.path.join(PROJECT_ROOT, "artifacts", f"soak_tier{args.tier}", "osc_50_1.0"),
-        "commit_hash": "soak"
-    }
-    
-    os.makedirs(artifact_dir, exist_ok=True)
-    config_path = os.path.join(artifact_dir, "soak_config.json")
-    with open(config_path, 'w') as f:
-        json.dump(config, f)
-        
-    subprocess.run([sys.executable, os.path.join(PROJECT_ROOT, "scripts", "emit_manifest_v1.py"), config_path], check=True, stdout=subprocess.DEVNULL)
-    
-    manifest_path = os.path.join(PROJECT_ROOT, "artifacts", f"soak_tier{args.tier}", "osc_50_1.0", "manifest.json")
-    try:
-        subprocess.run([sys.executable, VERIFY_SCRIPT, manifest_path], cwd=PROJECT_ROOT, check=True, stdout=subprocess.DEVNULL)
-        ver_duration = time.time() - start_time
-        print(f"[OK] Verification Survived")
-        print(f"   Duration   : {ver_duration:.2f} seconds")
-    except subprocess.CalledProcessError:
-        print("[FAIL] Verification Failed")
-        
-    t1_path = os.path.join(artifact_dir, "trace_v1.json")
-    sum_path = os.path.join(artifact_dir, "trace_summary.json")
-    meta_path = os.path.join(artifact_dir, "metadata.json")
-    
-    print("\nStep 4: Artifact Scaling Profile...")
-    if os.path.exists(t1_path):
-        print(f"   trace_v1.json      : {os.path.getsize(t1_path) / (1024*1024):.2f} MB")
-    else:
-        print(f"   trace_v1.json      : Truncated (Scale > 500k)")
-    print(f"   trace_summary.json : {os.path.getsize(sum_path)} bytes")
-    print(f"   metadata.json      : {os.path.getsize(meta_path)} bytes")
-    
-    print("\n[OK] Long-Duration Deterministic Survivability validated.")
-
-def run_clean(args):
-    import shutil
-    print_header("Artifact Cleanup")
-    
-    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts")
-    soak_dir = os.path.join(CORE_DIR, "chronology", "soak")
-    
-    removed = []
-    
-    if os.path.exists(artifacts_dir):
-        shutil.rmtree(artifacts_dir)
-        removed.append("artifacts/")
-        
-    if os.path.exists(soak_dir):
-        shutil.rmtree(soak_dir)
-        removed.append("core/chronology/soak/")
-        
-    if removed:
-        print("Removed:")
-        for r in removed:
-            print(f"- {r}")
-    else:
-        print("Environment already clean. No artifacts removed.")
-        
-def run_help(args):
-    print("""
-ChronoSentiment Operational CLI
-===============================
-
-./chrono install
-    Build the deterministic engine (trace_replay) in release mode.
-
-./chrono demo [--scenario primary|alternate]
-    Tier 1 replay-certified observability demo (DEMO_SCOPE.md primary scenario).
-
-./chrono demo-observer
-    Optional NVDA oscillatory fragmentation tooling-chain panel.
-
-./chrono demo-divergence
-    Inject controlled divergence and isolate first mismatch.
-
-./chrono survive <tier>
-    Execute long-duration deterministic survivability test.
-    Tiers: 1 (100k), 2 (1M), 3 (5M), 4 (10M)
-
-./chrono replay <topology> <cognition> --substrate-file <file>
-    Run the deterministic trace replay engine manually.
-
-./chrono certify <artifact_dir>
-    Certify a generated artifact directory manifest.
-
-./chrono inspect <baseline> <suspect>
-    Strict mechanical trace divergence isolation.
-
-./chrono clean
-    Mechanically remove generated artifacts and soak substrates.
-    (Will never touch core/chronology/historical/)
-""")
-
-def main():
-    parser = argparse.ArgumentParser(description="ChronoSentiment Operational CLI")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    
-    install_p = subparsers.add_parser("install", help="Build the deterministic engine")
-    install_p.set_defaults(func=run_install)
-    
-    replay_p = subparsers.add_parser("replay", help="Run the deterministic trace replay engine")
-    replay_p.add_argument("topology", help="Topology identifier (e.g., osc_50_1.0)")
-    replay_p.add_argument("cognition", help="Cognition geometry identifier (e.g., rolling_50)")
-    replay_p.add_argument("--substrate-file", required=True, help="Path to historical jsonl substrate")
-    replay_p.add_argument("--substrate", default="tier1_5m", help="Substrate namespace/tier")
-    replay_p.set_defaults(func=run_replay)
-    
-    certify_p = subparsers.add_parser("certify", help="Certify a generated artifact directory manifest")
-    certify_p.add_argument("artifact_dir", help="Path to the artifact directory containing metadata.json")
-    certify_p.set_defaults(func=run_certify)
-    
-    demo_p = subparsers.add_parser("demo", help="Tier 1 replay-certified observability demo")
-    demo_p.add_argument(
-        "--scenario",
-        choices=["primary", "alternate"],
-        default="primary",
-        help="Bounded scenario preset (default: primary)",
-    )
-    demo_p.set_defaults(func=run_demo)
-
-    demo_observer_p = subparsers.add_parser(
-        "demo-observer",
-        help="Optional NVDA oscillatory fragmentation observer panel",
-    )
-    demo_observer_p.set_defaults(func=run_demo_observer)
-    
-    inspect_p = subparsers.add_parser("inspect", help="Strict mechanical trace divergence isolation")
-    inspect_p.add_argument("baseline", help="Baseline artifact directory")
-    inspect_p.add_argument("suspect", help="Suspect artifact directory")
-    inspect_p.set_defaults(func=run_inspect)
-    
-    demo_div_p = subparsers.add_parser("demo-divergence", help="Interactive deterministic debugging demo")
-    demo_div_p.set_defaults(func=run_demo_divergence)
-    
-    survive_p = subparsers.add_parser("survive", help="Long-Duration Deterministic Survivability Runner")
-    survive_p.add_argument("tier", help="Progressive tier (1: 100k, 2: 1M, 3: 5M, 4: 10M)")
-    survive_p.set_defaults(func=run_survive)
-    
-    clean_p = subparsers.add_parser("clean", help="Mechanically remove generated artifacts and soak substrates")
-    clean_p.set_defaults(func=run_clean)
-    
-    help_p = subparsers.add_parser("help", help="Show explicit operational help")
-    help_p.set_defaults(func=run_help)
-    
-    # If no args or just "help", print our custom help
-    if len(sys.argv) <= 1 or sys.argv[1] in ("help", "--help", "-h"):
-        run_help(None)
-        sys.exit(0)
-        
-    args = parser.parse_args()
-    args.func(args)
-
-if __name__ == "__main__":
-    main()
+case "${COMMAND}" in
+    bootstrap)
+        exec bash "${SCRIPT_DIR}/scripts/operator_bootstrap.sh" "$@"
+        ;;
+    smoke)
+        exec bash "${SCRIPT_DIR}/scripts/replay_smoke_suite.sh" "$@"
+        ;;
+    package)
+        exec bash "${SCRIPT_DIR}/scripts/package_release.sh" "$@"
+        ;;
+    manifest)
+        exec bash "${SCRIPT_DIR}/scripts/generate_release_manifest.sh" "$@"
+        ;;
+    release-verify)
+        exec bash "${SCRIPT_DIR}/scripts/verify_release_consistency.sh" "$@"
+        ;;
+    help|--help|-h)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "[FAIL] Unknown command: ${COMMAND}" >&2
+        echo "       Run './chrono help' for valid commands." >&2
+        exit 1
+        ;;
+esac

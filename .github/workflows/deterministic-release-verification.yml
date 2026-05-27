@@ -1,0 +1,167 @@
+name: Deterministic Release Verification
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify-release-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Release Manifest Generation
+      run: bash scripts/generate_release_manifest.sh --notes "CI Deterministic Build"
+
+    - name: Release Artifact Packaging
+      run: bash scripts/package_release.sh
+
+    - name: Artifact Isolation Environment Setup
+      run: |
+        mkdir -p test_release
+        cd test_release
+        # Extract the dynamically named tarball
+        tar -xzf ../chronosentiment_*.tar.gz
+
+    - name: Release Mode Invariant Assertion
+      working-directory: test_release
+      run: |
+        # Change into the extracted directory
+        cd chronosentiment_*
+        
+        echo "Validating Release Mode markers..."
+        if [ ! -f "RELEASE_INFO.json" ]; then
+            echo "::error::RELEASE_INFO.json missing! Release Mode invariant violated."
+            exit 1
+        fi
+        if [ ! -f "VERSION" ]; then
+            echo "::error::VERSION missing! Release Mode invariant violated."
+            exit 1
+        fi
+        echo "Release mode markers present."
+
+    - name: Artifact Hash Certification
+      working-directory: test_release
+      run: |
+        cd chronosentiment_*
+        shasum -a 256 -c SHA256SUMS
+
+    - name: Operational Environment Bootstrap
+      working-directory: test_release
+      run: |
+        cd chronosentiment_*
+        bash scripts/operator_bootstrap.sh
+
+    - name: Replay Smoke Verification
+      working-directory: test_release
+      run: |
+        cd chronosentiment_*
+        bash scripts/replay_smoke_suite.sh
+
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: chronosentiment-release-bundle
+        path: |
+          chronosentiment_*.tar.gz
+          docs/releases/*.json
+
+  external-operational-validation:
+    needs: verify-release-artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        image: [ubuntu:22.04, debian:bookworm-slim]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Download Release Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: chronosentiment-release-bundle
+        path: ./
+
+    - name: Assert Compiler Independence (External Validation)
+      run: |
+        TARBALL="$(ls chronosentiment_*.tar.gz | head -1)"
+        bash scripts/validate_external_deployment.sh "${TARBALL}" "${{ matrix.image }}"
+
+  build-release-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Rust Stable Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Install Cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: Release Manifest Generation
+      run: bash scripts/generate_release_manifest.sh --notes "CI Deterministic Build ARM64"
+
+    - name: Release Artifact Packaging (ARM64)
+      env:
+        CARGO_CMD: cross
+        TARGET_ARCH: aarch64-unknown-linux-gnu
+      run: bash scripts/package_release.sh --force
+
+    - name: Upload Release Artifacts (ARM64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chronosentiment-release-bundle-arm64
+        path: |
+          chronosentiment_*.tar.gz
+          docs/releases/*.json
+
+  external-operational-validation-arm64:
+    needs: build-release-arm64
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        image: [arm64v8/debian:bookworm-slim]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Download Release Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: chronosentiment-release-bundle-arm64
+        path: ./
+
+    - name: Assert Compiler Independence (External Validation ARM64)
+      run: |
+        TARBALL="$(ls chronosentiment_*.tar.gz | head -1)"
+        bash scripts/validate_external_deployment.sh "${TARBALL}" "${{ matrix.image }}"

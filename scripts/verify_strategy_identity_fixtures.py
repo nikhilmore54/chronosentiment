@@ -16,12 +16,15 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-FIXTURE_ROOT = REPO_ROOT / "fixtures" / "strategy_identity"
+if (REPO_ROOT / "RELEASE_INFO.json").exists():
+    FIXTURE_ROOT = REPO_ROOT / "replay" / "fixtures" / "strategy_identity"
+else:
+    FIXTURE_ROOT = REPO_ROOT / "fixtures" / "strategy_identity"
 DIFFERENTIAL_REPORT_PATH = FIXTURE_ROOT / "differential_report.json"
 
-EDGE_DECAY_PARSER = "core/src/edge_decay.rs::parse_strategy_from_id_local"
-API_PARSER = "services/api/src/strategy_id_parse.rs::parse_strategy_id_full"
-CANONICAL_PARSER = "core/src/strategy_id.rs::parse_strategy_id"
+EDGE_DECAY_PARSER = "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local"
+API_PARSER = "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full"
+CANONICAL_PARSER = "infrastructure/core/src/strategy_id.rs::parse_strategy_id"
 
 
 def parse_int(value: str) -> int:
@@ -321,22 +324,25 @@ def write_differential_report(records: list[tuple[Path, int, dict[str, Any]]]) -
 def main() -> int:
     records = load_fixtures()
     if not records:
-        print(f"no strategy identity fixtures found under {FIXTURE_ROOT}", file=sys.stderr)
-        return 1
+        print(f"[WARN] no strategy identity fixtures found under {FIXTURE_ROOT}", file=sys.stderr)
+        print("       Remediation: Ensure fixtures have been checked out.", file=sys.stderr)
+        return 2
 
     errors: list[str] = []
     for path, line_number, record in records:
         errors.extend(verify_record(path, line_number, record))
 
     if errors:
+        print("[FAIL] strategy identity fixture verification", file=sys.stderr)
         for error in errors:
-            print(error, file=sys.stderr)
+            print(f"       - {error}", file=sys.stderr)
+        print("       Remediation: Address the broken fixture validations listed above.", file=sys.stderr)
         return 1
 
     report_path = write_differential_report(records)
     relative_report_path = report_path.relative_to(REPO_ROOT)
-    print(f"verified {len(records)} strategy identity fixture records")
-    print(f"wrote differential parser report: {relative_report_path}")
+    print(f"[PASS] verified {len(records)} strategy identity fixture records")
+    print(f"[INFO] wrote differential parser report: {relative_report_path}")
     return 0
 
 

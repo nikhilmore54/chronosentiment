@@ -36,7 +36,7 @@ PRODUCER_PATHS = {
     "yahoo_importer": "chronology/historical/",
 }
 
-LAWFUL_ROOT = "core/chronology/"
+LAWFUL_ROOT = "infrastructure/core/chronology/"
 
 
 @dataclass

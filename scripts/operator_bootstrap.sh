@@ -27,7 +27,7 @@ FAIL_COUNT=0
 WARN_COUNT=0
 LINES=()
 
-ok()   { PASS_COUNT=$((PASS_COUNT + 1)); LINES+=("  OK    ${1}"); echo "  [OK]  ${1}"; }
+ok()   { PASS_COUNT=$((PASS_COUNT + 1)); LINES+=("  PASS  ${1}"); echo "  [PASS] ${1}"; }
 fail() { FAIL_COUNT=$((FAIL_COUNT + 1)); LINES+=("  FAIL  ${1}"); echo "  [FAIL] ${1}" >&2; }
 warn() { WARN_COUNT=$((WARN_COUNT + 1)); LINES+=("  WARN  ${1}"); echo "  [WARN] ${1}"; }
 
@@ -39,6 +39,15 @@ echo "========================================================"
 echo ""
 
 cd "${REPO_ROOT}"
+
+RELEASE_MODE=false
+if [ -f "${REPO_ROOT}/RELEASE_INFO.json" ] && [ -f "${REPO_ROOT}/VERSION" ]; then
+    RELEASE_MODE=true
+    echo "── Environment : Release Bundle Mode"
+else
+    echo "── Environment : Source Repository Mode"
+fi
+echo ""
 
 # ── Section 1: Required tools ─────────────────────────────────────────────────
 echo "── Section 1: Required tools"
@@ -55,43 +64,66 @@ check_tool() {
     fi
 }
 
-check_tool "cargo"
-check_tool "rustc"
-check_tool "python3"
-check_tool "git"
-check_tool "jq"
+if [ "${RELEASE_MODE}" = true ]; then
+    check_tool "python3"
+else
+    check_tool "cargo"
+    check_tool "rustc"
+    check_tool "python3"
+    check_tool "git"
+    check_tool "jq"
+fi
 echo ""
 
 # ── Section 2: Rust toolchain ─────────────────────────────────────────────────
 echo "── Section 2: Rust toolchain"
 
-if command -v cargo >/dev/null 2>&1; then
-    RUST_EDITION="$(cargo metadata --no-deps --format-version 1 2>/dev/null \
-        | python3 -c "import sys,json; pkgs=json.load(sys.stdin)['packages']; print(pkgs[0].get('edition','?')) if pkgs else print('?')" \
-        2>/dev/null || echo "?")"
-    ok "Cargo workspace edition: ${RUST_EDITION}"
-
-    # Check core Cargo.toml exists
-    if [ -f "${REPO_ROOT}/core/Cargo.toml" ]; then
-        ok "core/Cargo.toml present"
-    else
-        fail "core/Cargo.toml missing"
-    fi
+if [ "${RELEASE_MODE}" = true ]; then
+    ok "Cargo workspace edition: N/A (Release Mode)"
+    ok "infrastructure/core/Cargo.toml: N/A (Release Mode)"
 else
-    fail "cargo not available — Rust toolchain check skipped"
+    if command -v cargo >/dev/null 2>&1; then
+        RUST_EDITION="$(cargo metadata --no-deps --format-version 1 2>/dev/null \
+            | python3 -c "import sys,json; pkgs=json.load(sys.stdin)['packages']; print(pkgs[0].get('edition','?')) if pkgs else print('?')" \
+            2>/dev/null || echo "?")"
+        ok "Cargo workspace edition: ${RUST_EDITION}"
+
+        # Check core Cargo.toml exists
+        if [ -f "${REPO_ROOT}/infrastructure/core/Cargo.toml" ]; then
+            ok "infrastructure/core/Cargo.toml present"
+        else
+            fail "infrastructure/core/Cargo.toml missing"
+        fi
+    else
+        fail "cargo not available — Rust toolchain check skipped"
+    fi
 fi
 echo ""
 
 # ── Section 3: Fixture availability ───────────────────────────────────────────
 echo "── Section 3: Fixture availability"
 
-FIXTURE_SCRIPTS=(
-    "scripts/verify_chronology_byte_fixtures.py"
-    "scripts/verify_strategy_identity_fixtures.py"
-    "scripts/certify_replay_chain.py"
-    "scripts/compare_replay_equivalence.py"
-    "scripts/capture_live_chronology.py"
-)
+if [ "${RELEASE_MODE}" = true ]; then
+    FIXTURE_SCRIPTS=(
+        "scripts/verify_chronology_byte_fixtures.py"
+        "scripts/verify_strategy_identity_fixtures.py"
+    )
+    FIXTURE_DIRS=(
+        "replay/fixtures"
+    )
+else
+    FIXTURE_SCRIPTS=(
+        "scripts/verify_chronology_byte_fixtures.py"
+        "scripts/verify_strategy_identity_fixtures.py"
+        "scripts/certify_replay_chain.py"
+        "scripts/compare_replay_equivalence.py"
+        "scripts/capture_live_chronology.py"
+    )
+    FIXTURE_DIRS=(
+        "fixtures"
+        "infrastructure/core/chronology"
+    )
+fi
 
 for f in "${FIXTURE_SCRIPTS[@]}"; do
     if [ -f "${REPO_ROOT}/${f}" ]; then
@@ -102,11 +134,6 @@ for f in "${FIXTURE_SCRIPTS[@]}"; do
 done
 
 # Check fixture data directories
-FIXTURE_DIRS=(
-    "fixtures"
-    "core/chronology"
-)
-
 for d in "${FIXTURE_DIRS[@]}"; do
     if [ -d "${REPO_ROOT}/${d}" ]; then
         COUNT="$(find "${REPO_ROOT}/${d}" -type f 2>/dev/null | wc -l | tr -d ' ')"
@@ -120,26 +147,30 @@ echo ""
 # ── Section 4: Replay corpus presence ─────────────────────────────────────────
 echo "── Section 4: Replay corpus presence"
 
-CORPUS_FILES=(
-    "core/chronology/live_capture_step3_bounded.jsonl"
-)
+if [ "${RELEASE_MODE}" = true ]; then
+    ok "Replay corpus presence: N/A (Release Mode)"
+else
+    CORPUS_FILES=(
+        "infrastructure/core/chronology/live_capture_step3_bounded.jsonl"
+    )
 
-for f in "${CORPUS_FILES[@]}"; do
-    if [ -f "${REPO_ROOT}/${f}" ]; then
-        LINES_COUNT="$(wc -l < "${REPO_ROOT}/${f}" | tr -d ' ')"
-        ok "${f}: ${LINES_COUNT} records"
-    else
-        warn "${f}: not found (bounded live ingress corpus absent)"
-    fi
-done
+    for f in "${CORPUS_FILES[@]}"; do
+        if [ -f "${REPO_ROOT}/${f}" ]; then
+            LINES_COUNT="$(wc -l < "${REPO_ROOT}/${f}" | tr -d ' ')"
+            ok "${f}: ${LINES_COUNT} records"
+        else
+            warn "${f}: not found (bounded live ingress corpus absent)"
+        fi
+    done
 
-# Check for any JSONL corpus files in core/chronology
-if [ -d "${REPO_ROOT}/core/chronology" ]; then
-    JSONL_COUNT="$(find "${REPO_ROOT}/core/chronology" -name "*.jsonl" 2>/dev/null | wc -l | tr -d ' ')"
-    if [ "${JSONL_COUNT}" -gt 0 ]; then
-        ok "core/chronology/: ${JSONL_COUNT} JSONL corpus file(s) present"
-    else
-        warn "core/chronology/: no JSONL corpus files found"
+    # Check for any JSONL corpus files in infrastructure/core/chronology
+    if [ -d "${REPO_ROOT}/infrastructure/core/chronology" ]; then
+        JSONL_COUNT="$(find "${REPO_ROOT}/infrastructure/core/chronology" -name "*.jsonl" 2>/dev/null | wc -l | tr -d ' ')"
+        if [ "${JSONL_COUNT}" -gt 0 ]; then
+            ok "infrastructure/core/chronology/: ${JSONL_COUNT} JSONL corpus file(s) present"
+        else
+            warn "infrastructure/core/chronology/: no JSONL corpus files found"
+        fi
     fi
 fi
 echo ""
@@ -147,35 +178,50 @@ echo ""
 # ── Section 5: Certification ledger ───────────────────────────────────────────
 echo "── Section 5: Certification ledger"
 
-LEDGER="${REPO_ROOT}/docs/certification/replay_certification_log.md"
+if [ "${RELEASE_MODE}" = true ]; then
+    LEDGER="${REPO_ROOT}/certification/replay_certification_log.md"
+else
+    LEDGER="${REPO_ROOT}/docs/certification/replay_certification_log.md"
+fi
+
 if [ -f "${LEDGER}" ]; then
     ENTRY_COUNT="$(grep -c "^| 20" "${LEDGER}" 2>/dev/null || echo "0")"
-    ok "docs/certification/replay_certification_log.md: ${ENTRY_COUNT} certification entries"
+    ok "${LEDGER#${REPO_ROOT}/}: ${ENTRY_COUNT} certification entries"
 else
-    fail "docs/certification/replay_certification_log.md: missing"
+    fail "${LEDGER#${REPO_ROOT}/}: missing"
 fi
 echo ""
 
 # ── Section 6: Git state ───────────────────────────────────────────────────────
 echo "── Section 6: Git state"
 
-if command -v git >/dev/null 2>&1 && git -C "${REPO_ROOT}" rev-parse HEAD >/dev/null 2>&1; then
-    GIT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
-    GIT_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD)"
-    GIT_DIRTY="$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
-    ok "commit: ${GIT_COMMIT}  branch: ${GIT_BRANCH}  dirty: ${GIT_DIRTY} file(s)"
+if [ "${RELEASE_MODE}" = true ]; then
+    ok "git state: N/A (Release Mode)"
 else
-    warn "git state unavailable"
+    if command -v git >/dev/null 2>&1 && git -C "${REPO_ROOT}" rev-parse HEAD >/dev/null 2>&1; then
+        GIT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
+        GIT_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD)"
+        GIT_DIRTY="$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+        ok "commit: ${GIT_COMMIT}  branch: ${GIT_BRANCH}  dirty: ${GIT_DIRTY} file(s)"
+    else
+        warn "git state unavailable"
+    fi
 fi
 echo ""
 
 # ── Section 7: Release tooling ────────────────────────────────────────────────
 echo "── Section 7: Release tooling"
 
-RELEASE_SCRIPTS=(
-    "scripts/verify_release_consistency.sh"
-    "scripts/ci_determinism_test.sh"
-)
+if [ "${RELEASE_MODE}" = true ]; then
+    RELEASE_SCRIPTS=(
+        "scripts/verify_release_consistency.sh"
+    )
+else
+    RELEASE_SCRIPTS=(
+        "scripts/verify_release_consistency.sh"
+        "scripts/ci_determinism_test.sh"
+    )
+fi
 
 for f in "${RELEASE_SCRIPTS[@]}"; do
     if [ -f "${REPO_ROOT}/${f}" ]; then
@@ -195,12 +241,13 @@ for line in "${LINES[@]}"; do
     echo "${line}"
 done
 echo "--------------------------------------------------------"
-echo " OK: ${PASS_COUNT}  FAIL: ${FAIL_COUNT}  WARN: ${WARN_COUNT}"
+echo " PASS: ${PASS_COUNT}  FAIL: ${FAIL_COUNT}  WARN: ${WARN_COUNT}"
 echo "========================================================"
 echo ""
 
 if [ "${FAIL_COUNT}" -gt 0 ]; then
-    echo "[NOT READY] ${FAIL_COUNT} required check(s) failed. Resolve before operating."
+    echo "[FAIL] ${FAIL_COUNT} required check(s) failed."
+    echo "       Remediation: Resolve missing dependencies listed above before operating."
     exit 1
 else
     if [ "${WARN_COUNT}" -gt 0 ]; then
@@ -210,8 +257,13 @@ else
     fi
     echo ""
     echo "  Quick start:"
-    echo "    cargo build --release --manifest-path core/Cargo.toml"
-    echo "    bash scripts/verify_release_consistency.sh --skip-double-build"
-    echo "    cargo test replay"
+    if [ "${RELEASE_MODE}" = true ]; then
+        echo "    ./chrono release-verify --skip-double-build"
+        echo "    ./chrono smoke"
+    else
+        echo "    cargo build --release --manifest-path infrastructure/core/Cargo.toml"
+        echo "    ./chrono release-verify --skip-double-build"
+        echo "    cargo test replay"
+    fi
     exit 0
 fi

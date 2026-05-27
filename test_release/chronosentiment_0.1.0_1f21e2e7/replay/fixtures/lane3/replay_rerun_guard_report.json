@@ -1,0 +1,40 @@
+{
+  "deterministic_artifacts": [
+    "trace_summary.json",
+    "replay_hash.txt",
+    "trace_v1.json"
+  ],
+  "failures": [],
+  "fingerprints_run_a": {
+    "event_reset": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "27b0c1c5e5bcbdd9756d7e71de27500eba6a70cff5075ffac808a308e857c06a",
+      "trace_v1.json": "aa133ecd71257ced3d847e2760604fc22484c51444893426bad5ea296b3051d5"
+    },
+    "rolling_50": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "c50ad1cce9b66c0dc9df908460e73daf4d13f2de897a93e2ebc485acaf8645dd",
+      "trace_v1.json": "6ab1c88c48f5e42935864e100214d91a12895b100c2e031055194b5644aa1907"
+    }
+  },
+  "fingerprints_run_b": {
+    "event_reset": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "27b0c1c5e5bcbdd9756d7e71de27500eba6a70cff5075ffac808a308e857c06a",
+      "trace_v1.json": "aa133ecd71257ced3d847e2760604fc22484c51444893426bad5ea296b3051d5"
+    },
+    "rolling_50": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "c50ad1cce9b66c0dc9df908460e73daf4d13f2de897a93e2ebc485acaf8645dd",
+      "trace_v1.json": "6ab1c88c48f5e42935864e100214d91a12895b100c2e031055194b5644aa1907"
+    }
+  },
+  "generated_at": "2026-05-26T15:43:03.965286+00:00",
+  "git_commit": "cd100bd729f83a19197e199132abd67ea65f0b3b",
+  "guard": "deterministic_replay_rerun",
+  "lane": "Lane 3 \u2014 certifiability infrastructure",
+  "manifest_id_run_a": "f735e9b4dc0fc6a81b28bf4dd4b4bedd5c869122c38912a5f89cc55f63354bdb",
+  "manifest_id_run_b": "f735e9b4dc0fc6a81b28bf4dd4b4bedd5c869122c38912a5f89cc55f63354bdb",
+  "scenario": "2026_multi_stage_cascade_transition_1m",
+  "status": "RERUN_EQUIVALENT"
+}

@@ -1,5 +1,5 @@
 {
-  "canonical_candidate": "core/src/strategy_id.rs::parse_strategy_id",
+  "canonical_candidate": "infrastructure/core/src/strategy_id.rs::parse_strategy_id",
   "case_count": 4,
   "cases": [
     {
@@ -10,7 +10,7 @@
       ],
       "outcome_category": "accepted_same_meaning",
       "parser_outputs": {
-        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+        "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -41,7 +41,7 @@
           "resolution": "canonical",
           "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
         },
-        "core/src/strategy_id.rs::parse_strategy_id": {
+        "infrastructure/core/src/strategy_id.rs::parse_strategy_id": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -72,7 +72,7 @@
           "resolution": "canonical",
           "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
         },
-        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+        "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -126,7 +126,7 @@
       ],
       "outcome_category": "accepted_same_meaning",
       "parser_outputs": {
-        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+        "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -157,7 +157,7 @@
           "resolution": "canonical",
           "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
         },
-        "core/src/strategy_id.rs::parse_strategy_id": {
+        "infrastructure/core/src/strategy_id.rs::parse_strategy_id": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -188,7 +188,7 @@
           "resolution": "canonical",
           "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
         },
-        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+        "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -242,21 +242,21 @@
       ],
       "outcome_category": "rejected_universally",
       "parser_outputs": {
-        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+        "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local": {
           "error": "invalid literal for int() with base 10: 'BAD'",
           "parsed_structure": null,
           "parser_result": "rejected",
           "resolution": "rejected",
           "round_trip_serialization": null
         },
-        "core/src/strategy_id.rs::parse_strategy_id": {
+        "infrastructure/core/src/strategy_id.rs::parse_strategy_id": {
           "error": "invalid literal for int() with base 10: 'BAD'",
           "parsed_structure": null,
           "parser_result": "rejected",
           "resolution": "rejected",
           "round_trip_serialization": null
         },
-        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+        "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
           "error": "invalid literal for int() with base 10: 'BAD'",
           "parsed_structure": null,
           "parser_result": "rejected",
@@ -286,21 +286,21 @@
       ],
       "outcome_category": "accepted_normalized",
       "parser_outputs": {
-        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+        "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local": {
           "error": "unsupported legacy format",
           "parsed_structure": null,
           "parser_result": "rejected",
           "resolution": "rejected",
           "round_trip_serialization": null
         },
-        "core/src/strategy_id.rs::parse_strategy_id": {
+        "infrastructure/core/src/strategy_id.rs::parse_strategy_id": {
           "error": "unsupported legacy format",
           "parsed_structure": null,
           "parser_result": "rejected",
           "resolution": "rejected",
           "round_trip_serialization": null
         },
-        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+        "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
           "error": null,
           "parsed_structure": {
             "archetype": 0,
@@ -361,9 +361,9 @@
     ]
   },
   "parser_sources": [
-    "core/src/edge_decay.rs::parse_strategy_from_id_local",
-    "core/src/strategy_id.rs::parse_strategy_id",
-    "services/api/src/strategy_id_parse.rs::parse_strategy_id_full"
+    "infrastructure/core/src/edge_decay.rs::parse_strategy_from_id_local",
+    "infrastructure/core/src/strategy_id.rs::parse_strategy_id",
+    "infrastructure/observatory/api/src/strategy_id_parse.rs::parse_strategy_id_full"
   ],
   "report_type": "strategy_identity_differential_parser_report",
   "status": "generated_from_frozen_fixtures"

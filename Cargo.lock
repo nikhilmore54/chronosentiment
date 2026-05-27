@@ -318,6 +318,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "chronosentiment_optimization"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "chronosentiment_core",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_xorshift",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "chronosentiment_strategies"
+version = "0.1.0"
+dependencies = [
+ "chronosentiment_core",
+ "chronosentiment_optimization",
+ "clap",
+ "cs-ingest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "clap"
 version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

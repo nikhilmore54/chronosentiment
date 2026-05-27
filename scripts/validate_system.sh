@@ -55,7 +55,7 @@ run_check() {
 
 # ── Check 1: Rust build (release) ────────────────────────────────────────────
 run_check "Rust release build" \
-  bash -c "cargo build --release --manifest-path cs-ingest/Cargo.toml --quiet && cargo build --release --example live_observatory --manifest-path core/Cargo.toml --quiet"
+  bash -c "cargo build --release --manifest-path cs-ingest/Cargo.toml --quiet && cargo build --release --example live_observatory --manifest-path infrastructure/core/Cargo.toml --quiet"
 
 # ── Check 2: Timeline fingerprint (frozen substrate loads + aligns) ───────────
 run_check "Timeline fingerprint (batch $BATCH_ID)" \

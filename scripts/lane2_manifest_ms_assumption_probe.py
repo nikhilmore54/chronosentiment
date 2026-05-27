@@ -32,9 +32,9 @@ PROBE_SURFACES: tuple[str, ...] = (
     "scripts/verify_chronology_producer_ratification.py",
     "scripts/verify_chronology_byte_fixtures.py",
     "scripts/emit_manifest_v1.py",
-    "core/src/bin/capture_daemon.rs",
-    "core/src/bin/historical_importer.rs",
-    "core/src/bin/yahoo_importer.rs",
+    "infrastructure/core/src/bin/capture_daemon.rs",
+    "infrastructure/core/src/bin/historical_importer.rs",
+    "infrastructure/core/src/bin/yahoo_importer.rs",
 )
 
 PATTERN_RULES: tuple[dict[str, str], ...] = (

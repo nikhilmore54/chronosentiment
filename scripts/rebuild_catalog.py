@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 def build_catalog():
-    chronology_dir = Path("core/chronology")
+    chronology_dir = Path("infrastructure/core/chronology")
     catalog_md_path = chronology_dir / "CHRONOLOGY_CATALOG.md"
     catalog_json_path = chronology_dir / "catalog.json"
     
