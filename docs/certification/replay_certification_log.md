@@ -45,6 +45,9 @@ Each entry records:
 | 2026-05-27T05:48:40+05:30 | cargo test chronology (Step 3 sub-step 3 — post-live-ingress) | n/a (unit test) | PASS | local (macOS) | 0 passed; 0 failed; all filtered; identical to pre-ingress run |
 | 2026-05-27T05:48:40+05:30 | verify_chronology_byte_fixtures.py (Step 3 sub-step 3 — post-live-ingress) | n/a (fixture check) | PASS | local (macOS) | 3 fixtures; byte-identical to pre-ingress run; no chronology inconsistency |
 | 2026-05-27T05:48:40+05:30 | verify_strategy_identity_fixtures.py (Step 3 sub-step 3 — post-live-ingress) | n/a (fixture check) | PASS | local (macOS) | 8 records; byte-identical to pre-ingress run; no semantic widening pressure observed |
+| 2026-05-27T06:05:47+05:30 | cargo test replay (steady-state cadence run) | n/a (unit test) | PASS | local (macOS) | 6 passed; 0 failed; warnings only; no divergence; no chronology mismatch; no routing ambiguity |
+| 2026-05-27T06:06:01+05:30 | verify_chronology_byte_fixtures.py (steady-state cadence run) | n/a (fixture check) | PASS | local (macOS) | 3 fixtures; byte-identical to certified baseline; no anomalies |
+| 2026-05-27T06:06:35+05:30 | verify_strategy_identity_fixtures.py (steady-state cadence run) | n/a (fixture check) | PASS | local (macOS) | 8 records; byte-identical to certified baseline; differential_report.json written; no anomalies |
 
 ---
 
