@@ -28,7 +28,10 @@ Each entry records:
 
 | Date | Suite | Hash | Equivalence | Environment | Anomalies |
 |------|-------|------|-------------|-------------|-----------|
-| 2026-05-27 | strategy_identity_fixtures | (pending first run) | — | — | Initial ledger creation; no run yet |
+| 2026-05-27T05:29:09+05:30 | cargo test replay | n/a (unit test) | PASS | local (macOS) | 1 passed; 0 failed; 4 filtered out; finished in 0.00s |
+| 2026-05-27T05:29:19+05:30 | cargo test chronology | n/a (unit test) | PASS | local (macOS) | 0 passed; 0 failed; 5 filtered out; finished in 0.00s |
+| 2026-05-27T05:29:35+05:30 | verify_strategy_identity_fixtures.py | n/a (fixture check) | PASS | local (macOS) | 8 strategy identity fixture records verified; differential_report.json written |
+| 2026-05-27T05:29:35+05:30 | verify_chronology_byte_fixtures.py | n/a (fixture check) | PASS | local (macOS) | 3 chronology byte fixtures verified; no anomalies |
 
 ---
 
