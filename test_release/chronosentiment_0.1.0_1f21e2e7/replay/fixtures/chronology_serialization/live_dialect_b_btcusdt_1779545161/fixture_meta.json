@@ -1,0 +1,10 @@
+{
+  "fixture_id": "live_dialect_b_btcusdt_1779545161",
+  "dialect": "B",
+  "source_jsonl": "core/chronology/live_capture/btcusdt_1779545161.jsonl",
+  "source_manifest": "core/chronology/live_capture/btcusdt_1779545161_manifest.json",
+  "excerpt_line_count": 5,
+  "excerpt_chronology_hash": "c8bac6931d7744d156c16433cf6b1ebbc4db67386c86330d358f47685f334ab5",
+  "hash_algorithm": "sha256_over_jsonl_line_bytes_including_trailing_newline",
+  "notes": "Lawful historical live rotation; manifest bounds in seconds; tick timestamps in ms."
+}

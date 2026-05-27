@@ -233,8 +233,15 @@ def emit_manifest(scenario: dict[str, Any], chronology_manifest: dict[str, Any],
 
 def verify_manifest(manifest_path: str) -> dict[str, Any]:
     print_header("Step 4 — Passive manifest attestation")
-    result = run_command([sys.executable, VERIFY_SCRIPT, manifest_path], capture=True)
-    data = json.loads(result.stdout)
+    try:
+        result = run_command([sys.executable, VERIFY_SCRIPT, manifest_path], capture=True)
+        data = {"status": "ATTESTATION_PASSED", "attestations": []}
+        for line in result.stdout.splitlines():
+            if "[VERIFY]" in line:
+                data["attestations"].append(line.split("[VERIFY]")[-1].strip())
+    except subprocess.CalledProcessError as e:
+        data = {"status": "ATTESTATION_FAILED", "failures": [{"error": e.stdout}]}
+    
     print(f"Status: {data.get('status')}")
     for attestation in data.get("attestations", []):
         print(f"  + {attestation}")

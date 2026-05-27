@@ -101,13 +101,14 @@ def verify_manifest_passive(manifest_path: str) -> tuple[bool, list[str], list[d
         capture_output=True,
         text=True,
     )
-    try:
-        data = json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        return False, [], [{"error": "VERIFY_OUTPUT_INVALID", "details": proc.stdout or proc.stderr}]
-    attestations = list(data.get("attestations", []))
-    failures = list(data.get("failures", []))
-    ok = data.get("status") == "ATTESTATION_PASSED" and proc.returncode == 0
+    ok = proc.returncode == 0
+    attestations = []
+    failures = []
+    for line in proc.stdout.splitlines():
+        if "[VERIFY]" in line:
+            attestations.append(line.split("[VERIFY]")[-1].strip())
+        elif "[FAIL]" in line:
+            failures.append({"error": "VERIFICATION_FAILURE", "details": line.strip()})
     return ok, attestations, failures
 
 

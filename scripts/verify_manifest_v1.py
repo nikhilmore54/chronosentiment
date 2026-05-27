@@ -164,12 +164,23 @@ def verify_manifest(manifest_path, project_root="core"):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 verify_manifest_v1.py <manifest.json>")
+        print("[FAIL] Usage: python3 verify_manifest_v1.py <manifest.json>")
+        print("       Remediation: Provide a path to a manifest.json file to verify.")
         sys.exit(1)
         
     manifest_path = sys.argv[1]
     res = verify_manifest(manifest_path)
     
-    print(json.dumps(res, indent=4))
     if res["status"] != "ATTESTATION_PASSED":
+        print(f"[FAIL] verify_manifest_v1.py: ATTESTATION_FAILED for {manifest_path}")
+        for failure in res["failures"]:
+            comp = failure.get("component", "")
+            det = failure.get("details", "")
+            print(f"       - {failure.get('error')}: {comp} {det}")
+        print("       Remediation: Ensure manifest and artifacts are strictly matched and deterministically generated.")
         sys.exit(1)
+    else:
+        print(f"[PASS] verify_manifest_v1.py: ATTESTATION_PASSED for {manifest_path}")
+        for att in res["attestations"]:
+            print(f"       - [VERIFY] {att}")
+        sys.exit(0)

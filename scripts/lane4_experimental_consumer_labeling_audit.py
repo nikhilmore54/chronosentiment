@@ -82,7 +82,7 @@ PATTERN_RULES: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "orphaned_lineage",
-        r"core/src/live_source|core/src/data_source/python|core/src/data_source/yahoo|mod kernel|kernel::run_ga",
+        r"infrastructure/core/src/live_source|infrastructure/core/src/data_source/python|infrastructure/core/src/data_source/yahoo|mod kernel|kernel::run_ga",
         "former core path or deprecated stub reference",
     ),
 )

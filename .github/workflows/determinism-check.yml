@@ -15,7 +15,11 @@ env:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
@@ -31,19 +35,23 @@ jobs:
     - name: Build All
       run: cargo build --all --verbose
 
-    - name: Run All Tests
+    - name: Global Test Verification
       run: cargo test --all --verbose
 
-    - name: Run Determinism Harness Test
+    - name: Determinism Harness Assertion
       run: cargo test test_determinism_certification_harness -- --nocapture
 
-    - name: Run API Contract Validation Script
+    - name: API Contract Verification
       run: |
         chmod +x verify_api_contract.sh
         ./verify_api_contract.sh
 
   tier1-alternate-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
@@ -60,11 +68,15 @@ jobs:
       run: cargo build --release --bin trace_replay
       working-directory: core
 
-    - name: Tier 1 alternate scenario smoke
+    - name: Tier 1 Alternate Scenario Smoke Verification
       run: python3 scripts/run_tier1_observability_demo.py --scenario alternate --smoke
 
   lane3-replay-rerun-guard:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
@@ -81,11 +93,15 @@ jobs:
       run: cargo build --release --bin trace_replay
       working-directory: core
 
-    - name: Lane 3 deterministic replay rerun guard
+    - name: Replay Rerun Guard Assertion
       run: python3 scripts/lane3_replay_rerun_guard.py --scenario primary
 
   lane3-reproducibility-envelope:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
@@ -102,11 +118,15 @@ jobs:
       run: cargo build --release --bin trace_replay
       working-directory: core
 
-    - name: Lane 3 reproducibility envelope freeze
+    - name: Reproducibility Envelope Freeze Assertion
       run: python3 scripts/lane3_reproducibility_envelope.py --scenario primary --check-reference
 
   lane3-artifact-integrity:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
@@ -123,35 +143,47 @@ jobs:
       run: cargo build --release --bin trace_replay
       working-directory: core
 
-    - name: Lane 3 artifact integrity attestation
+    - name: Artifact Integrity Attestation Verification
       run: python3 scripts/lane3_artifact_integrity_attestation.py --scenario primary --run-tamper-tests --check-reference
 
   lane2-manifest-ms-inventory:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Lane 2 manifest ms impact inventory
+    - name: Manifest Millisecond Impact Inventory Verification
       run: python3 scripts/lane2_manifest_ms_impact_inventory.py --check-reference
 
   lane2-manifest-ms-assumption-probe:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Lane 2 manifest ms assumption probe
+    - name: Manifest Schema Assumption Probe Verification
       run: python3 scripts/lane2_manifest_ms_assumption_probe.py --check-reference
 
   lane4-experimental-consumer-labeling:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Lane 4 experimental consumer labeling audit
+    - name: Experimental Consumer Labeling Audit Verification
       run: python3 scripts/lane4_experimental_consumer_labeling_audit.py --check-reference

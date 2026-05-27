@@ -147,15 +147,9 @@ def certify_equivalence(original_manifest_path):
         # Verify using verify script on temp manifest just to be thorough
         try:
             verify_output = run_command(["python3", "scripts/verify_manifest_v1.py", temp_manifest_path])
+            result["attestations"].append("TEMP_MANIFEST_PASSED_VERIFICATION")
         except subprocess.CalledProcessError as e:
-            verify_output = e.output
-            
-        verify_data = json.loads(verify_output)
-        
-        if verify_data.get("status") == "ATTESTATION_PASSED":
-             result["attestations"].append("TEMP_MANIFEST_PASSED_VERIFICATION")
-        else:
-             result["failures"].append({"error": "VERIFICATION_FAILED", "details": verify_data.get("failures")})
+            result["failures"].append({"error": "VERIFICATION_FAILED", "details": e.output})
 
         if len(result["failures"]) == 0:
             result["status"] = "EQUIVALENCE_CERTIFIED"

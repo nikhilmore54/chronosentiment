@@ -66,19 +66,19 @@ CONSUMER_SURFACES: list[dict[str, str]] = [
         "replay_coupling": "downstream certification only",
     },
     {
-        "surface": "core/src/bin/capture_daemon.rs",
+        "surface": "infrastructure/core/src/bin/capture_daemon.rs",
         "observation": "Emits Dialect A-shaped manifest; capture_start/end from as_secs() (CD-2 defect).",
         "bounds_sensitive": "yes",
         "replay_coupling": "forward producer; not replay hash if JSONL unchanged",
     },
     {
-        "surface": "core/src/bin/historical_importer.rs",
+        "surface": "infrastructure/core/src/bin/historical_importer.rs",
         "observation": "Emits Dialect A with millisecond capture_start/end.",
         "bounds_sensitive": "yes",
         "replay_coupling": "none on bounds alone",
     },
     {
-        "surface": "core/src/bin/yahoo_importer.rs",
+        "surface": "infrastructure/core/src/bin/yahoo_importer.rs",
         "observation": "Emits millisecond capture_start/end (Dialect C with provenance).",
         "bounds_sensitive": "yes",
         "replay_coupling": "none on bounds alone",
@@ -171,7 +171,7 @@ def infer_dialect(manifest: dict[str, Any], lineage: str) -> str:
 
 def infer_lineage(path: Path) -> str:
     rel = path.relative_to(REPO_ROOT).as_posix()
-    if "/live_capture/" in rel or rel.startswith("core/chronology/live_capture"):
+    if "/live_capture/" in rel or rel.startswith("infrastructure/core/chronology/live_capture"):
         return "live_capture"
     if "/historical/" in rel:
         return "historical"

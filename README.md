@@ -1,121 +1,116 @@
 # ChronoSentiment
 
-**Reproducible execution divergence isolation.**
+ChronoSentiment is a constitutionally governed, replay-certified operational substrate. 
+It provides a tightly constrained execution engine designed to guarantee byte-for-byte replay equivalence and strictly isolate operational divergence when that equivalence breaks.
 
-## What is ChronoSentiment?
-ChronoSentiment is a deterministic infrastructure system. It provides a tightly constrained execution engine designed to guarantee byte-for-byte replay equivalence and strictly isolate operational divergence when that equivalence breaks.
+---
 
-## What problem does it solve?
-In complex execution pipelines, small numerical coercions, ordering bugs, or cross-language serialization drift can silently poison execution state. Traditional debugging struggles to locate these non-crashing drift errors. ChronoSentiment solves this by answering one specific engineering question:
+## ⏱ The 3-Minute Understanding Path
 
-**Where did deterministic state equality first stop holding?**
+### Instant Architectural Orientation
 
-It achieves this through:
-- Strictly ordered, integer-scaled state ingestion.
-- Deterministic trace artifacts (`trace_v1.json`).
-- Passive manifest attestation.
-- Mechanical isolation of the exact event index where equivalence fails.
+| Question | Immediate Answer |
+| --- | --- |
+| **What is this?** | A replay-certified causal substrate. |
+| **What does it guarantee?** | Deterministic replay equivalence across architectures. |
+| **What makes it unusual?** | Constitutional authority separation that resists drift. |
+| **What is observability allowed to do?** | Evidentiary attestation only (read-only). |
+| **What is explicitly forbidden?** | Adaptive governance and semantic mutation. |
 
-## Evaluation Documentation Suite
-The operational behavior and boundaries of the system are heavily documented. Please review these before operating the system.
+### Explicit Non-Claims (What This Is NOT)
+To be absolutely clear, ChronoSentiment is **not**:
+- A distributed orchestration platform.
+- An adaptive AI governance engine.
+- Autonomous trading infrastructure.
+- A self-optimizing execution intelligence layer.
 
-- [Getting Started](GETTING_STARTED.md) - 10-minute installation and onboarding guide.
-- [Known Limitations](KNOWN_LIMITATIONS.md) - Explicit boundaries and failure semantics.
-- [Operational Model](OPERATIONAL_MODEL.md) - The Observer vs. The Actor.
-- [Workflow Guide](WORKFLOW_GUIDE.md) - Replay → Certify → Inspect.
-- [Divergence Walkthrough](DIVERGENCE_WALKTHROUGH.md) - Guided deterministic failure isolation.
-- [Architecture](ARCHITECTURE.md) - Bounded component design.
-- [Governance](GOVERNANCE.md) - Scope enforcement policy.
-- [FAQ](FAQ.md) - Frequently asked questions.
+The repository explicitly denies these surfaces. We enforce bounded legitimacy signaling: the architecture is mechanically sovereign but intentionally avoids semantic autonomy and distributed federation.
 
-## Installation
-Requires Python 3.10+ and Rust (cargo).
+---
+
+## 🏛 Authority Geometry
+
+ChronoSentiment enforces a strict presentation-grade directory topology to segregate authority. The most important architectural insight is not how data moves, but **which layer is forbidden from becoming another layer.**
+
+```mermaid
+graph TD
+    %% Define Top-Level Layers
+    subgraph S_INFRA [ /infrastructure (Generic Causal Infrastructure) ]
+        Core[Causal Substrate]
+        Obs[Evidentiary Observability]
+    end
+    
+    subgraph S_FIN [ /financial (Financial Semantic Realization) ]
+        ESE[Financial ESE]
+        Strat[Intent Generation]
+    end
+
+    %% Allowed Data Flows
+    Strat -->|Submits Intents| ESE
+    ESE -->|Mutates State deterministically| Core
+    Core -->|Emits Replay Traces| Obs
+
+    %% Forbidden Authority (Red Dashed Lines)
+    Obs -.->|FORBIDDEN: Adaptive Remediation| Core
+    Obs -.->|FORBIDDEN: Semantic Orchestration| Strat
+    
+    %% Styling
+    style Core fill:#1f2937,stroke:#9ca3af,color:#fff
+    style Obs fill:#065f46,stroke:#34d399,color:#fff
+    style ESE fill:#1e3a8a,stroke:#60a5fa,color:#fff
+    style Strat fill:#701a75,stroke:#f472b6,color:#fff
+    
+    linkStyle 2 stroke:#ef4444,stroke-width:2px,stroke-dasharray: 5 5;
+    linkStyle 3 stroke:#ef4444,stroke-width:2px,stroke-dasharray: 5 5;
+```
+
+> [!WARNING]
+> **Constitutional Constraint:** Directory separation does not imply runtime independence. The topology explicitly exposes the authority boundaries between the Causal Infrastructure and the Financial Realization layer, but both execute entirely inside a single, unified, replay-certified operational appliance. Distributed orchestration is explicitly forbidden until it can earn equal replay legitimacy.
+
+---
+
+## 🛡 Why Replay Certification Exists
+
+Replay certification is not analytics; it is **operational infrastructure.**
+
+- Deterministic replay prevents silent semantic drift.
+- Replay equivalence mechanically constrains runtime mutation.
+- Observability remains purely evidentiary because replay integrity must remain the absolute authority.
+- By forcing the runtime to prove it generates identical state transitions offline, we ensure the core engine remains causally honest.
+
+---
+
+## ⚙️ Operational Demonstration
+
+The system proves its composure through operation, not explanation.
+You can execute the entire **Air-Gapped Operational Certification** sequence on your host to mechanically prove artifact sovereignty, compiler independence, and resource scarcity composure.
 
 ```bash
-# Build the deterministic core engine (release mode)
-./chrono install
+# 1. Package the deterministic appliance natively or via cross-compilation
+./chrono package
+
+# 2. Extract the read-only operational footprint (no cargo, no git)
+./chrono bootstrap
+
+# 3. Mechanically verify execution traces against the unified canonical hash
+./chrono release-verify
+
+# 4. Run the bounded offline ingestion smoke tests
+./chrono smoke
 ```
 
-## Quickstart
-Run the pre-configured replay demo to verify the engine operates deterministically on your host architecture.
+When tested under our strict validation harnesses, this sequence succeeds even in a transient container with `--network none` and `--memory 512m`, proving the appliance relies on mechanical composure rather than environmental abundance.
 
-```bash
-./chrono demo
-```
+---
 
-This will:
-1. Replay a canonical substrate.
-2. Emit an architectural artifact footprint.
-3. Certify that the newly generated footprint matches the expected canonical determinism bounds exactly.
+## 📜 The 15-Minute Deep Path
 
-## Certification Workflow
-To replay a known substrate and passively certify its execution footprint:
+For deep architectural scrutiny, ChronoSentiment is guarded by a constitution that explicitly defines the authority bounds of its components. Review the following non-executable governance documents to understand how the system structurally resists illegitimate evolution.
 
-```bash
-./chrono replay osc_50_1.0 rolling_50 --substrate-file core/chronology/historical/.../file.jsonl
-./chrono certify artifacts/<substrate_namespace>/osc_50_1.0/rolling_50
-```
+- **[AUTHORITY_MAP.md](AUTHORITY_MAP.md)**: The holistic authority geography of the entire repository.
+- **[Observatory Authority](docs/constitution/OBSERVATORY_AUTHORITY.md)**: Why telemetry must never become governance.
+- **[Semantic Realization Gates](docs/constitution/SEMANTIC_REALIZATION_GATES.md)**: Why expansion is gated by operational pressure, not roadmap momentum.
+- **[Generic Layer](docs/constitution/GENERIC_LAYER.md)**: Why the substrate preserves causal history rather than "truth."
+- **[Operational Sovereignty](docs/constitution/OPERATIONAL_SOVEREIGNTY.md)**: The "appliance philosophy" underpinning offline deployment.
 
-*Note: Certification asserts that equivalence holds, or safely aborts if it does not.*
-
-## Divergence Isolation Workflow
-When equivalence fails (e.g. `ATTESTATION_FAILED`), you must locate the exact mechanical index of the drift.
-
-```bash
-./chrono inspect <baseline_artifact_dir> <suspect_artifact_dir>
-```
-
-This performs a strict chronological trace traversal and isolates the precise tick and geometric field where divergence first emerged.
-
-To see this interactive workflow (including controlled injection of a subtle float-coercion defect):
-
-```bash
-./chrono demo-divergence
-```
-
-## Artifact Lifecycle
-ChronoSentiment outputs mechanical traces and certification manifests to the `artifacts/` directory.
-
-To keep the operational environment bounded and sanitary, explicitly remove all generated replay footprints with:
-
-```bash
-./chrono clean
-```
-
-*(Note: `clean` will never modify or target the canonical event substrates located in `core/chronology/historical`.)*
-
-## CLI Commands
-Run `./chrono help` to see the full operational interface:
-
-```text
-./chrono install
-    Build the deterministic engine (trace_replay) in release mode.
-
-./chrono demo
-    Run deterministic replay certification walkthrough.
-
-./chrono demo-divergence
-    Inject controlled divergence and isolate first mismatch.
-
-./chrono survive <tier>
-    Execute long-duration deterministic survivability test.
-    Tiers: 1 (100k), 2 (1M), 3 (5M), 4 (10M)
-
-./chrono replay <topology> <cognition> --substrate-file <file>
-    Run the deterministic trace replay engine manually.
-
-./chrono certify <artifact_dir>
-    Certify a generated artifact directory manifest.
-
-./chrono inspect <baseline> <suspect>
-    Strict mechanical trace divergence isolation.
-
-./chrono clean
-    Mechanically remove generated artifacts and soak substrates.
-```
-
-## Operational Notes
-- **Substrate**: The immutable chronological event log.
-- **Replay Artifact**: The deterministic execution footprint resulting from ingestion (`trace_v1.json`, `metadata.json`).
-- **Certification**: The passive structural verification of an artifact against a canonical signature.
-- **Divergence**: The explicit breaking of replay equivalence.
+*(For detailed execution instructions, see [Workflow Guide](WORKFLOW_GUIDE.md) and [Divergence Walkthrough](DIVERGENCE_WALKTHROUGH.md).)*

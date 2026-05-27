@@ -1,0 +1,17 @@
+[package]
+name = "chronosentiment_strategies"
+version = "0.1.0"
+edition = "2021"
+description = "Financial semantics, fitness rules, and domain execution heuristics"
+
+[[bin]]
+name = "financial_replay"
+path = "src/bin/financial_replay.rs"
+
+[dependencies]
+chronosentiment_core = { path = "../../infrastructure/core" }
+cs-ingest = { path = "../ese" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+chronosentiment_optimization = { path = "../../infrastructure/optimization" }

@@ -1,0 +1,10 @@
+{
+  "fixture_id": "historical_dialect_a_cpi_shock_tick",
+  "dialect": "A",
+  "source_jsonl": "core/chronology/historical/2024_cpi_shock_1h_tick/btcusdt_1707829200000.jsonl",
+  "source_manifest": "core/chronology/historical/2024_cpi_shock_1h_tick/2024_cpi_shock_1h_tick_1707829200000_manifest.json",
+  "excerpt_line_count": 5,
+  "excerpt_chronology_hash": "311ca81e8511994045ca6690669bdffc15d530c3b24c452f5fea92e1b8087870",
+  "hash_algorithm": "sha256_over_jsonl_line_bytes_including_trailing_newline",
+  "notes": "Lawful historical Binance tick universe; full 10-field manifest; ms bounds."
+}

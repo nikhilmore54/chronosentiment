@@ -41,6 +41,6 @@ fi
 
 echo "🔍 Checking for legacy fields in codebase (excluding tests)..."
 
-grep -rE "\bts:" core services/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'ts:'" || echo "✅ No 'ts:'"
-grep -r "quantity_ahead" core services/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'quantity_ahead'" || echo "✅ Clean"
-grep -r "new_quantity_ahead" core services/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'new_quantity_ahead'" || echo "✅ Clean"
+grep -rE "\bts:" infrastructure/core infrastructure/observatory/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'ts:'" || echo "✅ No 'ts:'"
+grep -r "quantity_ahead" infrastructure/core infrastructure/observatory/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'quantity_ahead'" || echo "✅ Clean"
+grep -r "new_quantity_ahead" infrastructure/core infrastructure/observatory/api/src --exclude-dir=target --exclude-dir=node_modules --exclude-dir=tests && echo "❌ Found 'new_quantity_ahead'" || echo "✅ Clean"
