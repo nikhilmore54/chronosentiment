@@ -1,5 +1,5 @@
-use crate::NormalizedMarketEvent;
-use crate::MarketEvent;
+use chronosentiment_core::NormalizedMarketEvent;
+use chronosentiment_core::MarketEvent;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,7 +63,7 @@ impl TickReplayEngine {
         config: ReplayConfig,
         depth_top_k: usize,
     ) -> std::io::Result<Self> {
-        let events = crate::binance_adapter::load_binance_events_from_jsonl(path, depth_top_k)
+        let events = chronosentiment_core::binance_adapter::load_binance_events_from_jsonl(path, depth_top_k)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(Self::from_events(events, config))
     }
@@ -143,7 +143,7 @@ fn now_unix_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Side;
+    use chronosentiment_core::Side;
 
     #[test]
     fn deterministic_latency_is_stable() {

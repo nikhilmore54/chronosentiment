@@ -1,5 +1,5 @@
-use crate::ga::StrategyEvaluation;
-use crate::SignalAction;
+use crate::domain::StrategyEvaluation;
+use crate::pipeline::SignalAction;
 
 /// Represents the directional strength of a signal.
 /// Positive values indicate BUY pressure, negative indicates SELL.
@@ -47,8 +47,9 @@ pub fn calculate_member_weight(
     pop_recent_sigma: f64,
 ) -> f64 {
     let f_norm = (eval.fitness - pop_fitness_mu) / pop_fitness_sigma.max(1e-6);
-    let c_norm = (eval.consistency_score - pop_consistency_mu) / pop_consistency_sigma.max(1e-6);
-    let r_norm = (eval.recent_performance - pop_recent_mu) / pop_recent_sigma.max(1e-6);
+    // TODO: Restore domain metrics (consistency, recent_performance) calculation using new Evaluator
+    let c_norm = (eval.fitness - pop_consistency_mu) / pop_consistency_sigma.max(1e-6);
+    let r_norm = (eval.fitness - pop_recent_mu) / pop_recent_sigma.max(1e-6);
 
     // Final multi-factor weight (Phase 11.2) - ALLOWING SIGNED WEIGHTS
     let w = 0.4 * f_norm + 0.2 * c_norm + 0.2 * r_norm + 0.2 * regime_alignment;

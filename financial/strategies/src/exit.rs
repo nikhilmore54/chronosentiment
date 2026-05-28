@@ -1,4 +1,4 @@
-use crate::ConsensusDecision;
+use crate::ensemble::ConsensusDecision;
 use crate::pipeline::SignalAction;
 use serde::{Deserialize, Serialize};
 

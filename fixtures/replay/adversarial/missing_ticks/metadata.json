@@ -1,0 +1,6 @@
+{
+  "fixture_type": "missing_ticks",
+  "expected_behavior": "normalized",
+  "canonical_hash": "PENDING_CERTIFICATION",
+  "semantic_equivalence_group": "replay_gap"
+}

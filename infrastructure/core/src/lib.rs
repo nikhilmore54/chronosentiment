@@ -13,9 +13,7 @@ pub mod market_adapter;
 pub mod replay;
 
 pub mod selection_cap;
-pub mod synthetic;
 pub mod test_assets;
-pub mod tick_replay;
 pub mod ese;
 
 pub use binance_adapter::load_binance_events_from_jsonl;
@@ -38,9 +36,7 @@ pub use replay::*;
 pub use selection_cap::*;
 
 
-pub use synthetic::*;
 pub use test_assets::{resolve_test_assets_dir, TestAssetsPathError};
-pub use tick_replay::*;
 pub use ese::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

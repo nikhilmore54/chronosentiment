@@ -1,4 +1,5 @@
-use chronosentiment_core::{*, ga::GaConfig, harness::run_simulation_harness};
+use chronosentiment_optimization::GaConfig;
+use chronosentiment_core::{harness::run_simulation_harness, *};
 use crate::ApiError;
 use rand::{Rng, SeedableRng};
 
@@ -36,7 +37,7 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let assets_with_candles = source.load_all();
     let mut all_scenarios = std::collections::HashMap::new();
     for (asset, candles) in assets_with_candles {
-        let asset_scenarios = chronosentiment_core::pipeline::scenarios_from_candles(&asset, &candles);
+        let asset_scenarios = chronosentiment_strategies::compatibility::scenarios_from_candles(&asset, &candles);
         all_scenarios.extend(asset_scenarios);
     }
     
@@ -46,26 +47,12 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let first_event_price = market_events.first().map(|e| e.price).unwrap_or(100);
     let first_event_timestamp = market_events.first().map(|e| e.exchange_ts).unwrap_or(0);
 
-    let config = GaConfig {
-        population_size: 1,
-        generations: 1,
-        mutation_rate: 0.0,
-        seed: input.seed,
-        order_id_prefix: "SIMULATE".to_string(),
-        order_price: first_event_price,
-        order_quantity_for_strategy: 100,
-        order_timestamp: first_event_timestamp,
-        lambda: 0.5,
-        initial_queue_threshold: 200,
-        ..GaConfig::default()
-    };
-
     let create_orders = vec![CreateOrder {
         order_id: "sim_order_1".to_string(),
         side: Side::Buy,
-        price: config.order_price,
-        quantity: config.order_quantity_for_strategy,
-        timestamp: config.order_timestamp,
+        price: first_event_price,
+        quantity: 100,
+        timestamp: first_event_timestamp,
         fill_probability: rng.gen_range(0.0..1.0),
     }];
 

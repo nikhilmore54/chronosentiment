@@ -1,0 +1,6 @@
+{
+  "fixture_type": "reversed_chunk",
+  "expected_behavior": "normalized",
+  "canonical_hash": "PENDING_CERTIFICATION",
+  "semantic_equivalence_group": "chronology_normalization"
+}

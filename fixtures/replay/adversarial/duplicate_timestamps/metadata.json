@@ -1,0 +1,6 @@
+{
+  "fixture_type": "duplicate_timestamps",
+  "expected_behavior": "normalized",
+  "canonical_hash": "PENDING_CERTIFICATION",
+  "semantic_equivalence_group": "timestamp_collision"
+}

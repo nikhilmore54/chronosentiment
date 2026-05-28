@@ -8,7 +8,7 @@ pub struct MarketDataSimulateInput {
     pub order_intents: Vec<CreateOrder>,
 }
 
-pub fn handle_simulate_with_market_data(input: MarketDataSimulateInput) -> Result<crate::SimulateOutput, ApiError> {
+pub fn handle_simulate_with_market_data(input: MarketDataSimulateInput) -> Result<crate::SimulateOutputDto, ApiError> {
     let mode = match input.mode.as_str() {
         "real" => ExecutionMode::Real,
         "ideal" => ExecutionMode::Ideal,
@@ -34,11 +34,10 @@ pub fn handle_simulate_with_market_data(input: MarketDataSimulateInput) -> Resul
 
     let state_hash = format!("{:x}", res1.pnl.abs()); 
 
-    Ok(crate::SimulateOutput {
+    Ok(crate::SimulateOutputDto {
         pnl: res1.pnl,
         trade_count: res1.trades,
-        events: res1.events.clone(),
+        events: res1.events.iter().map(crate::inspector::to_minimal_event).collect(),
         state_hash,
-        original_result: res1,
     })
 }

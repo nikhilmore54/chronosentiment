@@ -2,13 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub use chronosentiment_core::Strategy;
+pub use chronosentiment_optimization::Candidate as Strategy;
 
 /// API-layer evaluation DTO. Defined locally so we can add `Serialize`, `PartialEq`,
 /// and extra fields (`ga_fitness`, `execution_fitness`, `total_trades`) that the
-/// core `pipeline::StrategyEvaluationDto` does not expose.
+/// core `pipeline::CandidateEvaluationDto` does not expose.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct StrategyEvaluationDto {
+pub struct CandidateEvaluationDto {
     pub strategy_id: String,
     pub avg: f64,
     pub std: f64,
@@ -23,14 +23,14 @@ pub struct StrategyEvaluationDto {
     pub total_trades: usize,
 }
 
-impl From<chronosentiment_core::ga::StrategyEvaluation> for StrategyEvaluationDto {
-    fn from(e: chronosentiment_core::ga::StrategyEvaluation) -> Self {
+impl From<chronosentiment_optimization::CandidateEvaluation> for CandidateEvaluationDto {
+    fn from(e: chronosentiment_optimization::CandidateEvaluation) -> Self {
         Self {
             strategy_id: e.strategy_id.clone(),
             avg: e.avg_pnl,
             std: e.std_dev,
             fitness: e.fitness,
-            classification: chronosentiment_core::ga::get_strategy_classification(&e),
+            classification: e.strategy_id.clone(),
             ga_fitness: Some(e.fitness),
             execution_fitness: e.fitness,
             total_trades: e.trade_count,
@@ -128,7 +128,7 @@ pub struct CanonicalInspectResponse {
     // legacy fields preserved for prototype UI compatibility during transition
     pub decision_trace: Vec<EventWrapper>,
     pub execution_trace: Vec<EventWrapper>,
-    pub metrics: StrategyEvaluationDto,
+    pub metrics: CandidateEvaluationDto,
     pub event_sequence: Vec<EventWrapper>,
 }
 
@@ -236,13 +236,13 @@ pub struct InspectStrategyRequest {
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct EvaluateStrategyResponse {
-    pub strategy_evaluation: StrategyEvaluationDto,
+    pub strategy_evaluation: CandidateEvaluationDto,
 }
 
 
 #[derive(Debug, Serialize)]
 pub struct CompareStrategiesResponse {
-    pub ranking: Vec<StrategyEvaluationDto>,
+    pub ranking: Vec<CandidateEvaluationDto>,
     pub comparison_summary: ComparisonSummary,
 }
 
@@ -258,37 +258,35 @@ pub struct InspectStrategyResponse {
     pub strategy_id: String,
     pub decision_trace: Vec<EventWrapper>, 
     pub execution_trace: Vec<EventWrapper>, 
-    pub metrics: StrategyEvaluationDto,
+    pub metrics: CandidateEvaluationDto,
     pub event_sequence: Vec<EventWrapper>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RunGaResponse {
-    pub results: Vec<StrategyEvaluationDto>,
-    pub generation_history: Vec<StrategyEvaluationDto>,
-    pub best_per_regime: HashMap<String, StrategyEvaluationDto>,
-    pub global_best: StrategyEvaluationDto,
+    pub results: Vec<CandidateEvaluationDto>,
+    pub generation_history: Vec<CandidateEvaluationDto>,
+    pub best_per_regime: HashMap<String, CandidateEvaluationDto>,
+    pub global_best: CandidateEvaluationDto,
     pub global_best_generation: usize,
     pub generation_found: usize,
-    pub final_generation_best: StrategyEvaluationDto,
-    pub final_gen_best: StrategyEvaluationDto,
+    pub final_generation_best: CandidateEvaluationDto,
+    pub final_gen_best: CandidateEvaluationDto,
 }
 
-impl From<chronosentiment_core::ga::GaResult> for RunGaResponse {
-    fn from(res: chronosentiment_core::ga::GaResult) -> Self {
-        let global_best: StrategyEvaluationDto = res.global_best.clone().into();
-        let final_gen_best: StrategyEvaluationDto = res.final_generation_best.clone().into();
-        let history: Vec<StrategyEvaluationDto> = res.generation_history.into_iter().map(Into::into).collect();
-        let best_per_regime: HashMap<String, StrategyEvaluationDto> = res.best_per_regime.into_iter().map(|(k, v)| (k, v.into())).collect();
+impl From<chronosentiment_optimization::GaResult> for RunGaResponse {
+    fn from(res: chronosentiment_optimization::GaResult) -> Self {
+        let global_best: CandidateEvaluationDto = res.global_best.clone().into();
+        let history: Vec<CandidateEvaluationDto> = res.generation_history.into_iter().map(Into::into).collect();
         Self {
-            results: vec![global_best.clone(), final_gen_best.clone()],
+            results: vec![global_best.clone()],
             generation_history: history,
-            best_per_regime,
+            best_per_regime: HashMap::new(),
             global_best: global_best.clone(),
-            global_best_generation: res.global_best_generation,
-            generation_found: res.global_best_generation,
-            final_generation_best: final_gen_best.clone(),
-            final_gen_best,
+            global_best_generation: 0,
+            generation_found: 0,
+            final_generation_best: global_best.clone(),
+            final_gen_best: global_best.clone(),
         }
     }
 }
@@ -317,9 +315,9 @@ pub struct TimelineResponse {
 pub struct TradeSuggestionsResponse {
     pub asset: String,
     pub timestamp: u64,
-    pub suggestions: Vec<chronosentiment_core::strategy_ranking::RankedStrategy>,
+    pub suggestions: Vec<chronosentiment_strategies::compatibility::RankedStrategy>,
     pub count: usize,
-    pub debug: chronosentiment_core::strategy_ranking::SuggestionDebug,
+    pub debug: chronosentiment_strategies::compatibility::SuggestionDebug,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -347,19 +345,19 @@ pub struct ReplaySuggestionPoint {
 #[derive(Debug, Serialize, Clone)]
 pub struct ReplaySuggestionsResponse {
     pub asset: String,
-    pub metrics: chronosentiment_core::replay_evaluator::ReplayMetrics,
+    pub metrics: chronosentiment_strategies::replay_evaluator::ReplayMetrics,
     pub timeline: Vec<ReplaySuggestionPoint>,
-    pub pnl: Option<chronosentiment_core::pnl_overlay::PnLMetrics>,
+    pub pnl: Option<chronosentiment_strategies::pnl_overlay::PnLMetrics>,
 }
 
-/// Mirror of `chronosentiment_core::pipeline::TradeSignal` using `PriceDto` for monetary fields.
+/// Mirror of `chronosentiment_strategies::compatibility::TradeSignal` using `PriceDto` for monetary fields.
 #[derive(Debug, Serialize)]
 pub struct TradeSignalDto {
     pub asset: String,
     pub regime: String,
     pub confidence: f64,
-    pub action: chronosentiment_core::pipeline::SignalAction,
-    pub entry_type: chronosentiment_core::pipeline::EntryType,
+    pub action: chronosentiment_strategies::compatibility::SignalAction,
+    pub entry_type: chronosentiment_strategies::compatibility::EntryType,
     pub entry_zone: Option<(PriceDto, PriceDto)>,
     pub stop_loss: Option<PriceDto>,
     pub target: Option<PriceDto>,
@@ -373,7 +371,7 @@ pub struct TradeSignalDto {
     pub expected_holding_time: String,
     pub current_pnl: f64,
     pub peak_pnl: f64,
-    pub exit_reason: Option<chronosentiment_core::pipeline::ExitReason>,
+    pub exit_reason: Option<chronosentiment_strategies::exit::ExitReason>,
     pub is_open: bool,
     pub strategy_id: String,
     pub reason: String,
@@ -386,8 +384,8 @@ pub struct TradeSignalDto {
     pub porosity_trend: f64,
 }
 
-impl From<chronosentiment_core::pipeline::TradeSignal> for TradeSignalDto {
-    fn from(s: chronosentiment_core::pipeline::TradeSignal) -> Self {
+impl From<chronosentiment_strategies::compatibility::TradeSignal> for TradeSignalDto {
+    fn from(s: chronosentiment_strategies::compatibility::TradeSignal) -> Self {
         Self {
             asset: s.asset,
             regime: s.regime,
@@ -428,8 +426,8 @@ pub struct SignalsSnapshotDto {
     pub signals: Vec<TradeSignalDto>,
 }
 
-impl From<chronosentiment_core::pipeline::SignalsSnapshot> for SignalsSnapshotDto {
-    fn from(s: chronosentiment_core::pipeline::SignalsSnapshot) -> Self {
+impl From<chronosentiment_strategies::compatibility::SignalsSnapshot<chronosentiment_strategies::compatibility::TradeSignal>> for SignalsSnapshotDto {
+    fn from(s: chronosentiment_strategies::compatibility::SignalsSnapshot<chronosentiment_strategies::compatibility::TradeSignal>) -> Self {
         Self {
             timestamp: s.timestamp,
             signals: s.signals.into_iter().map(TradeSignalDto::from).collect(),

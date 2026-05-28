@@ -1,5 +1,5 @@
 use crate::strategy_ranking::{LiveEvaluator, RankedStrategy, SuggestionDebug};
-use crate::tick_replay::TickReplayEngine;
+use chronosentiment_financial_core::runtime::tick_replay::TickReplayEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -138,12 +138,12 @@ pub fn run_replay_with_evaluator(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ga::Strategy;
+    use chronosentiment_optimization::Candidate as Strategy;
     use crate::strategy_ranking::{
         LiveMarketState, LiveRegime, RankingWeights, StrategyProfile, StrategyRegistry,
     };
-    use crate::tick_replay::{ReplayConfig, ReplayMode};
-    use crate::NormalizedMarketEvent;
+    use chronosentiment_financial_core::runtime::tick_replay::{ReplayConfig, ReplayMode};
+    use chronosentiment_core::NormalizedMarketEvent;
 
     #[test]
     fn replay_metrics_populate() {
@@ -200,8 +200,7 @@ mod tests {
                 edge_ratio: 150,
                 participation_threshold: 30,
             exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
-                lineage: 0,
-                entry_offset: 0, // TODO: replace with latency-derived offset
+                                entry_offset: 0, // TODO: replace with latency-derived offset
             },
             preferred_regimes: vec![LiveRegime::TrendingUp, LiveRegime::Mixed],
             confidence_weight: 1.0,

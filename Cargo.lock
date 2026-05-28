@@ -89,6 +89,8 @@ dependencies = [
  "axum",
  "blake3",
  "chronosentiment_core",
+ "chronosentiment_optimization",
+ "chronosentiment_strategies",
  "env_logger",
  "log",
  "rand 0.8.5",
@@ -318,10 +320,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "chronosentiment_financial_core"
+version = "0.1.0"
+dependencies = [
+ "chronosentiment_core",
+]
+
+[[package]]
 name = "chronosentiment_optimization"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "chrono",
  "chronosentiment_core",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -336,11 +346,13 @@ name = "chronosentiment_strategies"
 version = "0.1.0"
 dependencies = [
  "chronosentiment_core",
+ "chronosentiment_financial_core",
  "chronosentiment_optimization",
  "clap",
  "cs-ingest",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]

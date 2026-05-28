@@ -16,6 +16,8 @@ rand = "0.8.5"
 blake3 = "1.5.0"
 
 chronosentiment_core = { path = "../../core" }
+chronosentiment_strategies = { version = "0.1.0", path = "../../../financial/strategies" }
+chronosentiment_optimization = { version = "0.1.0", path = "../../optimization" }
 
 [features]
 debug_decision = ["chronosentiment_core/debug_decision"]

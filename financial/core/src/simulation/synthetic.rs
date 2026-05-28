@@ -1,4 +1,4 @@
-use crate::{MarketEvent, MarketEventType, Side};
+use chronosentiment_core::{MarketEvent, MarketEventType, Side};
 use std::collections::HashMap;
 
 fn make_events(base_price: u64, scenario_idx: usize, seed: u64, regime: &str) -> Vec<MarketEvent> {

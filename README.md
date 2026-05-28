@@ -1,116 +1,55 @@
 # ChronoSentiment
 
-ChronoSentiment is a constitutionally governed, replay-certified operational substrate. 
-It provides a tightly constrained execution engine designed to guarantee byte-for-byte replay equivalence and strictly isolate operational divergence when that equivalence breaks.
+**Deterministic market replay and evaluation infrastructure for certifiable financial simulation.**
 
----
+[![Constitutional Architecture Gates](https://github.com/nikhil/ChronoSentiment_MEGA_FINAL/actions/workflows/constitution.yml/badge.svg)](https://github.com/nikhil/ChronoSentiment_MEGA_FINAL/actions/workflows/constitution.yml)
 
-## ⏱ The 3-Minute Understanding Path
+## Overview
 
-### Instant Architectural Orientation
+Most financial simulation systems suffer from *silent semantic drift*: identical strategies produce disparate outcomes under structurally inconsistent replay conditions. ChronoSentiment is engineered to solve this hidden infrastructure problem. 
 
-| Question | Immediate Answer |
-| --- | --- |
-| **What is this?** | A replay-certified causal substrate. |
-| **What does it guarantee?** | Deterministic replay equivalence across architectures. |
-| **What makes it unusual?** | Constitutional authority separation that resists drift. |
-| **What is observability allowed to do?** | Evidentiary attestation only (read-only). |
-| **What is explicitly forbidden?** | Adaptive governance and semantic mutation. |
+ChronoSentiment is a highly constrained, deterministic market replay and evaluation infrastructure designed to enforce scientific reproducibility and structural integrity in algorithmic discovery. By establishing strict constitutional isolation between mechanical search and market causality, ChronoSentiment guarantees that optimization remains mathematically pure while evaluation remains completely deterministic.
 
-### Explicit Non-Claims (What This Is NOT)
-To be absolutely clear, ChronoSentiment is **not**:
-- A distributed orchestration platform.
-- An adaptive AI governance engine.
-- Autonomous trading infrastructure.
-- A self-optimizing execution intelligence layer.
+## Constitutional Architecture
 
-The repository explicitly denies these surfaces. We enforce bounded legitimacy signaling: the architecture is mechanically sovereign but intentionally avoids semantic autonomy and distributed federation.
+ChronoSentiment enforces a rigid 4-layer acyclic topology, ensuring that financial domain vocabulary never leaks into mathematical search algorithms, and simulation mechanics never leak into strategy evaluation:
 
----
+1. **`infrastructure/optimization`**: A mathematically pure evolutionary search engine (GA). It maintains absolute seed determinism and operates entirely blind to financial semantics (no knowledge of assets, regimes, or PnL).
+2. **`financial/core`**: The chronological substrate. Enforces market causality, strict monotonic timestamps, deterministic latency execution bounds, and perfectly reproducible event trace hashing.
+3. **`financial/strategies`**: The semantic bridge. Translates pure candidate bytes into domain logic, manages strategy behavior, and guarantees lossless semantic projections.
+4. **`infrastructure/observatory/api`**: External observability, tracking, and serialization.
 
-## 🏛 Authority Geometry
+*Dependency Law: The pure optimization layer must never import domain logic. Violation of this dependency direction triggers an immediate CI failure.*
 
-ChronoSentiment enforces a strict presentation-grade directory topology to segregate authority. The most important architectural insight is not how data moves, but **which layer is forbidden from becoming another layer.**
+## Adversarial Replay Certification
 
-```mermaid
-graph TD
-    %% Define Top-Level Layers
-    subgraph S_INFRA [ /infrastructure (Generic Causal Infrastructure) ]
-        Core[Causal Substrate]
-        Obs[Evidentiary Observability]
-    end
-    
-    subgraph S_FIN [ /financial (Financial Semantic Realization) ]
-        ESE[Financial ESE]
-        Strat[Intent Generation]
-    end
+We don't just test the "happy path." ChronoSentiment relies on an **Adversarial Fixture Philosophy** for verification. 
 
-    %% Allowed Data Flows
-    Strat -->|Submits Intents| ESE
-    ESE -->|Mutates State deterministically| Core
-    Core -->|Emits Replay Traces| Obs
+Using raw, captured market slices and malformed synthetic streams (timestamp collisions, missing ticks, reversed chunks, negative latency), ChronoSentiment forces the simulation through a rigid chronology normalizer. If equivalent inputs fail to converge to an **identical canonical replay hash**, the system blocks the build.
 
-    %% Forbidden Authority (Red Dashed Lines)
-    Obs -.->|FORBIDDEN: Adaptive Remediation| Core
-    Obs -.->|FORBIDDEN: Semantic Orchestration| Strat
-    
-    %% Styling
-    style Core fill:#1f2937,stroke:#9ca3af,color:#fff
-    style Obs fill:#065f46,stroke:#34d399,color:#fff
-    style ESE fill:#1e3a8a,stroke:#60a5fa,color:#fff
-    style Strat fill:#701a75,stroke:#f472b6,color:#fff
-    
-    linkStyle 2 stroke:#ef4444,stroke-width:2px,stroke-dasharray: 5 5;
-    linkStyle 3 stroke:#ef4444,stroke-width:2px,stroke-dasharray: 5 5;
-```
+**Semantic Drift Authorization:** Any change that modifies a canonical replay hash, classification boundary, or sequence trace is considered a constitutional violation unless explicitly documented, authorized, and recertified.
 
-> [!WARNING]
-> **Constitutional Constraint:** Directory separation does not imply runtime independence. The topology explicitly exposes the authority boundaries between the Causal Infrastructure and the Financial Realization layer, but both execute entirely inside a single, unified, replay-certified operational appliance. Distributed orchestration is explicitly forbidden until it can earn equal replay legitimacy.
+## Core Capabilities
 
----
+- **Lossless State Snapshots**: Simulate serialize/deserialize roundtripping of active execution bounds to enable distributed, pause-and-resume cluster architectures.
+- **Chunking Invariance**: Replay stability is guaranteed whether data is streamed individually, batched, or completely loaded in-memory.
+- **Certifiable Semantic Equivalence**: Robust testing guarantees that the classification, edge scoring, and regime assignments for a strategy do not drift across execution boundaries.
 
-## 🛡 Why Replay Certification Exists
+## Quick Start (Development)
 
-Replay certification is not analytics; it is **operational infrastructure.**
-
-- Deterministic replay prevents silent semantic drift.
-- Replay equivalence mechanically constrains runtime mutation.
-- Observability remains purely evidentiary because replay integrity must remain the absolute authority.
-- By forcing the runtime to prove it generates identical state transitions offline, we ensure the core engine remains causally honest.
-
----
-
-## ⚙️ Operational Demonstration
-
-The system proves its composure through operation, not explanation.
-You can execute the entire **Air-Gapped Operational Certification** sequence on your host to mechanically prove artifact sovereignty, compiler independence, and resource scarcity composure.
-
+Run the fast constitutional gates to verify vocabulary isolation and basic topology constraints:
 ```bash
-# 1. Package the deterministic appliance natively or via cross-compilation
-./chrono package
-
-# 2. Extract the read-only operational footprint (no cargo, no git)
-./chrono bootstrap
-
-# 3. Mechanically verify execution traces against the unified canonical hash
-./chrono release-verify
-
-# 4. Run the bounded offline ingestion smoke tests
-./chrono smoke
+./scripts/ci_fast.sh
 ```
 
-When tested under our strict validation harnesses, this sequence succeeds even in a transient container with `--network none` and `--memory 512m`, proving the appliance relies on mechanical composure rather than environmental abundance.
+Run the complete replay certification loop (including single-threaded release mode to verify hash stability):
+```bash
+./scripts/ci_full.sh
+```
 
----
+## Documentation
 
-## 📜 The 15-Minute Deep Path
-
-For deep architectural scrutiny, ChronoSentiment is guarded by a constitution that explicitly defines the authority bounds of its components. Review the following non-executable governance documents to understand how the system structurally resists illegitimate evolution.
-
-- **[AUTHORITY_MAP.md](AUTHORITY_MAP.md)**: The holistic authority geography of the entire repository.
-- **[Observatory Authority](docs/constitution/OBSERVATORY_AUTHORITY.md)**: Why telemetry must never become governance.
-- **[Semantic Realization Gates](docs/constitution/SEMANTIC_REALIZATION_GATES.md)**: Why expansion is gated by operational pressure, not roadmap momentum.
-- **[Generic Layer](docs/constitution/GENERIC_LAYER.md)**: Why the substrate preserves causal history rather than "truth."
-- **[Operational Sovereignty](docs/constitution/OPERATIONAL_SOVEREIGNTY.md)**: The "appliance philosophy" underpinning offline deployment.
-
-*(For detailed execution instructions, see [Workflow Guide](WORKFLOW_GUIDE.md) and [Divergence Walkthrough](DIVERGENCE_WALKTHROUGH.md).)*
+- [Constitutional Architecture & Drift Rules](docs/constitution/architecture.md)
+- [Optimization Capability Details](docs/capabilities/optimization.md)
+- [Runtime Replay Capability Details](docs/capabilities/runtime_replay.md)
+- [Strategy Evaluation Capability Details](docs/capabilities/strategy_evaluation.md)

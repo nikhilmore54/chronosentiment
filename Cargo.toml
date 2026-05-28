@@ -4,6 +4,6 @@ members = [
     "infrastructure/optimization",
     "infrastructure/observatory/api",
     "financial/ese",
-    "financial/strategies",
+    "financial/strategies", "financial/core",
 ]
 resolver = "2"

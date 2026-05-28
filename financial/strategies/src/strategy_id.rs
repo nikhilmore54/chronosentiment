@@ -4,7 +4,7 @@
 //! consolidation. It defines the outcome vocabulary and a non-routing canonical
 //! parser prototype, but it does not route or replace legacy parsers yet.
 
-use crate::ga::{strategy_to_id, Strategy};
+use crate::domain::*;
 use serde::{Deserialize, Serialize};
 
 pub const CANONICAL_PARSER_SOURCE: &str = "core/src/strategy_id.rs::parse_strategy_id";
@@ -240,7 +240,7 @@ fn parse_legacy_underscore_strategy(serialized_id: &str) -> Result<Strategy, Str
         exec_aggression: 50,
         latency_bias: 10,
         fill_threshold: 50,
-        lineage: 0,
+        
     })
 }
 
@@ -285,7 +285,7 @@ fn parse_strategy_id_inner(serialized_id: &str) -> Result<Strategy, StrategyIdEr
         exec_aggression: 50,
         latency_bias: 10,
         fill_threshold: 50,
-        lineage: 0,
+        
     })
 }
 
