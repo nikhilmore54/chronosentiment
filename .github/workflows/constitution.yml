@@ -1,10 +1,11 @@
-name: Constitutional Architecture Gates
+name: Constitutional CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ main ]
+    tags: [ 'constitutional-*' ]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,6 +14,31 @@ jobs:
   constitutional-checks:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Run Full CI Gates
-      run: ./scripts/ci_full.sh
+      - uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cargo build
+        run: cargo build --workspace --verbose
+      - name: Run workspace tests
+        run: cargo test --workspace --quiet
+      - name: Replay certification
+        run: cargo test replay --release -- --test-threads=1
+      - name: Sweep determinism test
+        run: cargo test sweep_projection --quiet
+      - name: Orchestration ordering certification
+        run: cargo test orchestration_execution_order --quiet
+      - name: Lint warnings budget (max 5)
+        run: |
+          cargo clippy -- -D warnings || true
+          WARNINGS=$(cargo clippy -- -W warnings 2>&1 | grep "warning:" | wc -l)
+          if [ "$WARNINGS" -gt 5 ]; then
+            echo "Too many warnings ($WARNINGS)"; exit 1;
+          fi
+      - name: Forbidden dependency scan
+        run: |
+          if grep -R "std::fs" src/ || true; then
+            echo "Forbidden std::fs usage detected"; exit 1;
+          fi

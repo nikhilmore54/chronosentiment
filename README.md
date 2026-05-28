@@ -12,6 +12,8 @@ ChronoSentiment is a highly constrained, deterministic market replay and evaluat
 
 ## Constitutional Architecture
 
+![Architecture Snapshot](file:///Users/nikhil/.gemini/antigravity/brain/473fd097-4bb0-4e4a-8d92-e67ab4ba9e18/architecture_snapshot_1779950072920.png)
+
 ChronoSentiment enforces a rigid 4-layer acyclic topology, ensuring that financial domain vocabulary never leaks into mathematical search algorithms, and simulation mechanics never leak into strategy evaluation:
 
 1. **`infrastructure/optimization`**: A mathematically pure evolutionary search engine (GA). It maintains absolute seed determinism and operates entirely blind to financial semantics (no knowledge of assets, regimes, or PnL).

@@ -2,6 +2,8 @@
 
 **Executive Summary for QFTH & Deep-Tech Evaluators**
 
+![Architecture Snapshot](file:///Users/nikhil/.gemini/antigravity/brain/473fd097-4bb0-4e4a-8d92-e67ab4ba9e18/architecture_snapshot_1779950072920.png)
+
 ## 1. The Hidden Infrastructure Problem
 Most financial simulation systems suffer from a critical flaw: **silent semantic drift**. As quantitative strategies evolve, the underlying causal simulation that evaluates them often degrades. Systems fall victim to chronology corruption, replay inconsistency, optimizer contamination, and non-deterministic evaluation. 
 
