@@ -1,5 +1,7 @@
 # ChronoSentiment Architecture Pitch
 
+![Architecture Snapshot](file:///Users/nikhil/.gemini/antigravity/brain/473fd097-4bb0-4e4a-8d92-e67ab4ba9e18/architecture_snapshot_1779950072920.png)
+
 ## 1. The Core Philosophy
 ChronoSentiment is fundamentally designed to decouple mathematical optimization from domain causality. Traditional trading systems intertwine search algorithms directly with market evaluation, leading to **silent semantic drift**: a scenario where changes in a strategy's edge cannot be distinguished from structural changes in the simulation's event loop. 
 
