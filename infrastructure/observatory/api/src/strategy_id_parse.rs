@@ -1,6 +1,6 @@
 //! API compatibility parsing for strategy IDs.
 
-use chronosentiment_core::{parse_strategy_id_with_compatibility, AdmissibilityResult, Strategy};
+use chronosentiment_strategies::{parse_strategy_id_with_compatibility, AdmissibilityResult, Strategy};
 
 /// Returns `(genome, optional scenario key)` for inspect/compare.
 pub fn parse_strategy_id_full(id: &str) -> Result<(Strategy, Option<String>), String> {

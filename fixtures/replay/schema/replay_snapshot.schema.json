@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReplaySnapshot",
+  "description": "Semantic snapshot and deterministic hashes defining the canonical outputs of a golden replay fixture (.expected.json).",
+  "type": "object",
+  "properties": {
+    "replay_hash": { "type": "string" },
+    "signal_hash": { "type": "string" },
+    "evaluation_hash": { "type": "string" },
+    "classification": { "type": "string" },
+    "score": { "type": "number" }
+  },
+  "required": [
+    "replay_hash",
+    "signal_hash",
+    "evaluation_hash",
+    "classification",
+    "score"
+  ]
+}

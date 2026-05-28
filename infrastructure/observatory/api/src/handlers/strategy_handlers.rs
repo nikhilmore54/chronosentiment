@@ -87,7 +87,7 @@ pub async fn compare_strategies_handler(
     Json(request): Json<CompareStrategiesRequest>,
 ) -> Result<Json<CompareStrategiesResponse>, ApiError> {
     println!("Request received: compare_strategies");
-    let strategies: Vec<chronosentiment_core::Strategy> = request
+    let strategies: Vec<crate::dto::Strategy> = request
         .strategies
         .into_iter()
         .map(|w| w.strategy_config)
@@ -406,7 +406,7 @@ pub async fn run_ga_handler(
 
 pub async fn get_global_ranking_handler(
     State(service): State<EvaluationService>,
-) -> Result<Json<Vec<crate::dto::StrategyEvaluationDto>>, ApiError> {
+) -> Result<Json<Vec<crate::dto::CandidateEvaluationDto>>, ApiError> {
     println!("Request received: get_global_ranking");
     let ranking = service.get_global_ranking()?;
     Ok(Json(ranking))

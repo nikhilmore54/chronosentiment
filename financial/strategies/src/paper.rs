@@ -1,5 +1,5 @@
-use crate::ga::{AlphaConsensus, SignalType, TradeRecommendation, RecommendationStatus, AlphaPorosity};
-use crate::market_adapter::Candle;
+use crate::domain::*;
+use chronosentiment_core::market_adapter::Candle;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
