@@ -1,0 +1,31 @@
+name: Semantic Lint
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.rs'
+      - '**/*.py'
+      - '**/*.toml'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - '**/*.rs'
+      - '**/*.py'
+      - '**/*.toml'
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Run semantic lint (warning mode)
+        run: python scripts/semantic_lint.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

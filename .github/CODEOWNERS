@@ -1,0 +1,5 @@
+# CODEOWNERS
+# Constitutional documents – owned by primary maintainer
+AUTHORITY_MAP.md @nikhil
+/docs/constitution/* @nikhil
+# Other files can be reviewed by the team later
