@@ -127,7 +127,8 @@ def read_symbol_candles(path: Path) -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
     df["datetime"] = pd.to_datetime(df["ts"], unit="s", utc=True)
-    df = df.set_index("datetime").sort_index()
+    df = df.set_index("datetime")
+    df = df[~df.index.duplicated(keep="first")].sort_index()
     df = df.rename(
         columns={
             "open": "Open",
@@ -170,9 +171,16 @@ def download_ticker_with_stderr(
             stderr_all.write(buf.getvalue())
             if df is not None and not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = list(df.columns.get_level_values(0))
+                    df.columns = [str(c[0]) if isinstance(c, tuple) else str(c)
+                                  for c in df.columns]
                 else:
-                    df.columns = list(df.columns)
+                    df.columns = [str(c) for c in df.columns]
+                # Materialize flat structure and normalize tz to UTC
+                df = df.copy()
+                if df.index.tz is None:
+                    df.index = df.index.tz_localize("UTC")
+                else:
+                    df.index = df.index.tz_convert("UTC")
                 df = df.dropna()
                 df = df[~df.index.duplicated(keep="first")]
                 return df.sort_index(), stderr_all.getvalue()
@@ -297,7 +305,7 @@ def incremental_update_cohort(
     cohort_file: Path,
     batch_id: int,
     interval: str = "5m",
-    max_workers: int = 15,
+    max_workers: int = 1,
     root: Path = CANDLE_ROOT,
 ) -> Path:
     import concurrent.futures
@@ -321,10 +329,21 @@ def incremental_update_cohort(
     def _update_one(sym: str) -> tuple[str, int, list[int], int]:
         # Fetch just 1d to capture the latest bars with minimal bandwidth
         df_new, stderr = download_ticker_with_stderr(sym, interval, period="1d")
-        
+
+        # Normalize df_new index to UTC so concat with tz-aware df_old doesn't fail
+        if not df_new.empty:
+            if df_new.index.tz is None:
+                df_new.index = df_new.index.tz_localize("UTC")
+            else:
+                df_new.index = df_new.index.tz_convert("UTC")
+            df_new = df_new[~df_new.index.duplicated(keep="first")].sort_index()
+
         path = symbol_path(batch_dir, sym)
         if path.exists():
             df_old = read_symbol_candles(path)
+            # Ensure df_old index is also UTC (defensive)
+            if not df_old.empty and df_old.index.tz is None:
+                df_old.index = df_old.index.tz_localize("UTC")
             if not df_old.empty and not df_new.empty:
                 df = pd.concat([df_old, df_new])
                 df = df[~df.index.duplicated(keep="last")].sort_index()
