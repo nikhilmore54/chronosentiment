@@ -3,6 +3,7 @@ import RunGA from './components/RunGA';
 import StrategyInspector from './components/StrategyInspector';
 import CompareStrategies from './components/CompareStrategies';
 import GlobalRanking from './components/GlobalRanking';
+import { apiUrl } from './services/api';
 
 const TABS = [
   { id: 'run-ga',             label: 'Run GA',            icon: '⚡' },
@@ -60,7 +61,7 @@ function useSystemStatus() {
     // Fallback: GET /health for legacy field mapping.
     // Both fail gracefully — UI renders null fields as '—'.
     const tryObservatory = () =>
-      fetch('http://localhost:8000/observatory')
+      fetch(apiUrl('/observatory'))
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(d => {
           setStatus({
@@ -80,7 +81,7 @@ function useSystemStatus() {
         });
 
     const tryHealth = () =>
-      fetch('http://localhost:8000/health')
+      fetch(apiUrl('/health'))
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(d => {
           // Legacy /health field mapping — best-effort projection only.
@@ -316,7 +317,7 @@ export default function App() {
       {/* Footer */}
       <footer className="cs-footer">
         <span>ChronoSentiment · NSE Execution Intelligence · v2026</span>
-        <span style={{ color: 'var(--t2)' }}>{sysStatus.cohort}</span>
+        <span style={{ color: 'var(--t2)' }}>{sysStatus.cohort_id ?? ''}</span>
       </footer>
     </div>
   );

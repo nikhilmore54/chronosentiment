@@ -262,6 +262,31 @@ pub struct InspectStrategyResponse {
     pub event_sequence: Vec<EventWrapper>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct GlobalRankingRow {
+    pub strategy_id: String,
+    pub execution_fitness: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ga_fitness: Option<f64>,
+    pub avg: f64,
+    pub std: f64,
+    pub classification: String,
+    pub rank: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GlobalRankingResponse {
+    pub rankings: Vec<GlobalRankingRow>,
+    pub total: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StrategyStoreResponse {
+    pub strategies: Vec<CandidateEvaluationDto>,
+    pub store_version: String,
+    pub total: usize,
+}
+
 #[derive(Debug, Serialize)]
 pub struct RunGaResponse {
     pub results: Vec<CandidateEvaluationDto>,

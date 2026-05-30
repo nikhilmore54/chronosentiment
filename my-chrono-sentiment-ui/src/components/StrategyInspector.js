@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import StrategyColumn from './StrategyColumn';
 import ComparisonPanels from './ComparisonPanels';
+import { apiUrl } from '../services/api';
 
 function normalizeTraceEvent(raw) {
   if (!raw || typeof raw !== 'object') return raw;
@@ -10,16 +11,28 @@ function normalizeTraceEvent(raw) {
 
 // ARTIFACT-009: normalizeNarrativeBlock — field-name bridge between backend snake_case
 // and the camelCase shape expected by NarrativeBlock.js / StrategyColumn.js.
+// Handles both canonical decision_trace.schema.json fields (block_id, sequence_id,
+// parent_block_id, block_type, divergence_score) and legacy inspect_strategy response fields.
 // Sunset condition: backend emits camelCase narrative_blocks[] natively, or a
 // canonical JS SDK handles the mapping. Registered: 2026-05-25.
 function normalizeNarrativeBlock(block) {
   if (!block || typeof block !== 'object') return block;
+  // timestamp_ns is the canonical field name per event.schema.json (chrono:schema:event:v1).
+  // Fall back to legacy `timestamp` field for backward compatibility (ARTIFACT-009 bridge).
+  const rawTs = block.timestamp_ns ?? block.timestamp ?? null;
   return {
+    // Canonical: decision_trace.schema.json uses `sequence_id`; legacy uses `id`
+    id:             block.sequence_id ?? block.id ?? null,
+    // Canonical: decision_trace.schema.json uses `parent_block_id` (UUID) or
+    // event.schema.json uses `parent_sequence_id` (integer); legacy uses `parentId`
+    parentId:       block.parent_sequence_id ?? block.parentId ?? null,
     group:          block.group,
     narrative:      block.narrative,
-    id:             block.sequence_id ?? block.id ?? null,
-    parentId:       block.parent_sequence_id ?? block.parentId ?? null,
-    timestamp:      block.timestamp ?? null,
+    // Canonical: decision_trace.schema.json uses `block_type`
+    blockType:      block.block_type ?? block.blockType ?? null,
+    // Canonical: decision_trace.schema.json uses `divergence_score`
+    divergenceScore: block.divergence_score ?? block.divergenceScore ?? null,
+    timestamp_ns:   rawTs,
     isKeyEvent:     block.is_key_event    ?? block.isKeyEvent    ?? false,
     keyEventMarker: block.key_event_marker ?? block.keyEventMarker ?? null,
   };
@@ -101,7 +114,7 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
     isFirst ? setError(null) : setError2(null);
     setSelectedSeqId(null);
     try {
-      const response = await fetch('http://localhost:8000/inspect_strategy', {
+      const response = await fetch(apiUrl('/inspect_strategy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ strategy_id: currentStrategyId, seed: Number(currentSeed) }),
@@ -187,13 +200,20 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
   const minSeqId = useMemo(() => inspectionResult?.execution_trace?.length > 0 ? Math.min(...inspectionResult.execution_trace.map(e => e.sequence_id)) : 0, [inspectionResult?.execution_trace]);
   const maxAvailableSeqId = useMemo(() => inspectionResult?.execution_trace?.length > 0 ? Math.max(...inspectionResult.execution_trace.map(e => e.sequence_id)) : 0, [inspectionResult?.execution_trace]);
 
+  // getGroupColorClass — maps canonical group enum values (decision_trace.schema.json)
+  // to CSS modifier classes. Handles both canonical uppercase (INTENT, QUEUE, EXECUTION,
+  // SETTLEMENT, GOVERNANCE) and legacy mixed-case values for backward compatibility.
   const getGroupColorClass = (group) => {
-    switch (group) {
-      case 'Intent':           return 'intent';
-      case 'Queue Entry':      return 'queue';
-      case 'Queue Progression':return 'queue';
-      case 'Execution':        return 'execution';
-      default:                 return 'other';
+    if (!group) return 'other';
+    switch (group.toUpperCase()) {
+      case 'INTENT':      return 'intent';
+      case 'QUEUE':       return 'queue';
+      case 'QUEUE ENTRY': return 'queue';
+      case 'QUEUE PROGRESSION': return 'queue';
+      case 'EXECUTION':   return 'execution';
+      case 'SETTLEMENT':  return 'execution';
+      case 'GOVERNANCE':  return 'other';
+      default:            return 'other';
     }
   };
 
@@ -327,7 +347,9 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+          {/* Strategy 1 */}
+          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--tm)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Strategy 1</div>
           <div className="cs-field">
             <label className="cs-label" htmlFor="strategy_id">Strategy ID</label>
             <input type="text" id="strategy_id" className="cs-input" style={{ background: 'var(--card)', border: '1px solid var(--b)' }} value={strategyId} onChange={e => setStrategyId(e.target.value)} onBlur={() => handleInspectStrategy(1)} />
@@ -338,13 +360,42 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
           </div>
         </div>
 
-        <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0', marginBottom: '20px' }} onClick={() => { handleInspectStrategy(1); if (strategyId2) handleInspectStrategy(2); }} disabled={loading || loading2}>
+        {/* Strategy 2 — dual-mode */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px', paddingTop: '16px', borderTop: '1px solid var(--b)' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--tm)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Strategy 2 <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+          <div className="cs-field">
+            <label className="cs-label" htmlFor="strategy_id2">Strategy ID</label>
+            <input type="text" id="strategy_id2" className="cs-input" style={{ background: 'var(--card)', border: '1px solid var(--b)' }} value={strategyId2} onChange={e => setStrategyId2(e.target.value)} onBlur={() => { if (strategyId2) handleInspectStrategy(2); }} placeholder="Leave blank for single mode" />
+          </div>
+          <div className="cs-field">
+            <label className="cs-label" htmlFor="seed_inspect2">Seed</label>
+            <input type="number" id="seed_inspect2" className="cs-input" style={{ background: 'var(--card)', border: '1px solid var(--b)' }} value={seed2} onChange={e => setSeed2(Number(e.target.value))} onBlur={() => { if (strategyId2) handleInspectStrategy(2); }} />
+          </div>
+        </div>
+
+        <button className="cs-btn cs-btn-primary" style={{ width: '100%', padding: '10px 0', marginBottom: '12px' }} onClick={() => { handleInspectStrategy(1); if (strategyId2) handleInspectStrategy(2); }} disabled={loading || loading2}>
           {(loading || loading2) ? 'Inspecting...' : 'Reconstruct trace'}
         </button>
+
+        {/* Show raw events toggle */}
+        <label className="cs-checkbox-label" style={{ marginBottom: '20px' }}>
+          <input
+            type="checkbox"
+            className="cs-checkbox"
+            checked={showRawEvents}
+            onChange={e => setShowRawEvents(e.target.checked)}
+          />
+          Show raw events
+        </label>
 
         {error && (
           <div style={{ padding: '12px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
             {error}
+          </div>
+        )}
+        {error2 && (
+          <div style={{ padding: '12px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)', marginTop: '8px' }}>
+            S2: {error2}
           </div>
         )}
       </aside>
@@ -481,6 +532,24 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
               />
             )}
           </div>
+
+          {/* ComparisonPanels — dual-mode execution comparison surface */}
+          {isDualMode && (
+            <ComparisonPanels
+              isDualMode={isDualMode}
+              allNarrativeBlocks1={allNarrativeBlocks1}
+              allNarrativeBlocks2={allNarrativeBlocks2}
+              strategyId={strategyId}
+              strategyId2={strategyId2}
+              executionSummary1={executionSummary1}
+              executionSummary2={executionSummary2}
+              finalVerdict={finalVerdict}
+              confidenceLevel={confidenceLevel}
+              confidenceColorClass={confidenceColorClass}
+              confidenceReason={confidenceReason}
+              divergenceStatements={divergenceStatements}
+            />
+          )}
         </div>
       )}
       </main>

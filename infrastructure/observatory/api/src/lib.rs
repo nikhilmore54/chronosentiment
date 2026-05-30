@@ -1,5 +1,7 @@
 pub mod dto;
 pub mod errors;
+pub mod inspect_projection;
+pub mod scenario;
 pub mod simulate;
 pub mod inspector;
 pub mod timeline;
@@ -8,6 +10,7 @@ pub mod events;
 pub mod certify;
 pub mod market_adapter;
 pub mod market_data_simulate;
+pub mod signatures;
 
 pub use errors::ApiError;
 

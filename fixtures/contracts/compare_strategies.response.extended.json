@@ -1,0 +1,43 @@
+{
+  "ranking": [
+    {
+      "strategy_id": "strat_200_5_4_2",
+      "execution_fitness": 0.910000,
+      "ga_fitness": 88.2,
+      "fill_rate": 0.92,
+      "slippage": 0.0008,
+      "sharpe": 1.65
+    },
+    {
+      "strategy_id": "strat_150_3_3_1",
+      "execution_fitness": 0.780000,
+      "ga_fitness": 74.1,
+      "fill_rate": 0.87,
+      "slippage": 0.0012,
+      "sharpe": 1.21
+    }
+  ],
+  "comparison_summary": {
+    "reason": "Strategy strat_200_5_4_2 achieves superior execution fitness with stronger Sharpe.",
+    "replay_integrity": "CERTIFIED",
+    "timestamp_cohesion": "VALID",
+    "sync_state": "NOMINAL",
+    "governor_action": "APPROVED",
+    "replay_certified": true,
+    "metrics": [
+      {
+        "key": "fill_rate_avg",
+        "expected": 0.85,
+        "observed": 0.895,
+        "diverged": false
+      },
+      {
+        "key": "sharpe_avg",
+        "expected": 1.5,
+        "observed": 1.43,
+        "diverged": false
+      }
+    ]
+  },
+  "seed": 42
+}

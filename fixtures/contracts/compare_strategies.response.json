@@ -1,0 +1,16 @@
+{
+  "ranking": [
+    {
+      "strategy_id": "strat_200_5_4_2",
+      "execution_fitness": 0.910000
+    },
+    {
+      "strategy_id": "strat_150_3_3_1",
+      "execution_fitness": 0.780000
+    }
+  ],
+  "comparison_summary": {
+    "reason": "Strategy strat_200_5_4_2 achieves higher execution fitness."
+  },
+  "seed": 42
+}

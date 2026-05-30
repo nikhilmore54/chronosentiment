@@ -1,0 +1,25 @@
+{
+  "contract_version": "1.0",
+  "contract_doc": "docs/contracts/UI_API_CONTRACT_v1.md",
+  "authority": "UI-facing payload specification",
+  "recommended_response_header": "X-Contract-Version: 1.0",
+  "endpoint_inventory": [
+    { "component": "App", "method": "GET", "path": "/observatory" },
+    { "component": "App", "method": "GET", "path": "/health" },
+    { "component": "RunGA", "method": "GET", "path": "/run_ga" },
+    { "component": "RunGA", "method": "GET", "path": "/signals/latest" },
+    { "component": "RunGA", "method": "GET", "path": "/ga/strategy-store" },
+    { "component": "StrategyInspector", "method": "POST", "path": "/inspect_strategy" },
+    { "component": "CompareStrategies", "method": "POST", "path": "/compare_strategies" },
+    { "component": "GlobalRanking", "method": "GET", "path": "/ga/global-ranking" }
+  ],
+  "fixtures": {
+    "run_ga": "run_ga.response.json",
+    "inspect_strategy": "inspect_strategy.response.json",
+    "compare_strategies_minimal": "compare_strategies.response.json",
+    "compare_strategies_extended": "compare_strategies.response.extended.json",
+    "global_ranking": "global_ranking.response.json",
+    "scenario_registry": "scenario_registry.json",
+    "attestation_record": "attestation_record.example.json"
+  }
+}
