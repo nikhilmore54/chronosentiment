@@ -287,18 +287,11 @@ impl EvaluationService {
         Ok((first.execution_fitness - second.execution_fitness).abs() < f64::EPSILON)
     }
 
-    pub fn run_ga(&self) -> Result<RunGaResponse, ApiError> {
-        let config = GaConfig {
-            population_size: 20,
-            generations: 10,
-            mutation_rate: 0.1,
-            crossover_rate: 0.5,
-            seed: 42,
-        };
+    pub fn run_ga(&self, config: GaConfig) -> Result<RunGaResponse, ApiError> {
         let seed = config.seed;
 
         let evaluator = Self::default_evaluator();
-        let ga_result = run_ga_evolution(config, &evaluator);
+        let ga_result = run_ga_evolution(config.clone(), &evaluator);
 
         let generation_history: Vec<CandidateEvaluationDto> = ga_result
             .generation_history
@@ -331,6 +324,8 @@ impl EvaluationService {
             generation_found: global_best_generation,
             final_generation_best: final_generation_best.clone(),
             final_gen_best: final_generation_best,
+            total_generations: config.generations,
+            seed: config.seed,
         })
     }
 

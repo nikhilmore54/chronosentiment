@@ -351,8 +351,22 @@ class TestLiveApiContractConformance:
         template = load_fixture("compare_strategies.response.json")
         body = {
             "strategies": [
-                {"strategy_config": {"strategy_id": "strat_200_5_4_2"}},
-                {"strategy_config": {"strategy_id": "strat_150_3_3_1"}},
+                {
+                    "strategy_config": {
+                        "queue_threshold": 200,
+                        "base_edge": 5,
+                        "take_profit": 4,
+                        "stop_loss": 2,
+                    }
+                },
+                {
+                    "strategy_config": {
+                        "queue_threshold": 150,
+                        "base_edge": 3,
+                        "take_profit": 3,
+                        "stop_loss": 1,
+                    }
+                },
             ],
             "scenarios": [],
             "seed": 42,

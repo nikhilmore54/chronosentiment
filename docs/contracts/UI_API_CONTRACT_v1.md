@@ -530,8 +530,8 @@ Use this sequence for backend replacement (see project governance docs):
 | 2 | `REACT_APP_API_BASE_URL` in all UI fetch calls | **Done** |
 | 3 | JSON fixtures under `fixtures/contracts/` | **Done** |
 | 4 | Contract tests: Rust/mock response ≡ fixture shape | **Done** |
-| 5 | First real endpoint: `GET /ga/global-ranking` | Pending |
-| 6 | UI verified against mock and Rust with no component changes | Pending |
+| 5 | First real endpoint: `GET /ga/global-ranking` | **Done** (transport E2E — all four workspaces) |
+| 6 | UI verified against mock and Rust with no component changes | **Done** (browser pass — `artifacts/browser_pass6/`, 2026-05-30) |
 
 ---
 

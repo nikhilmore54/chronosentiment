@@ -1,11 +1,11 @@
-use axum::{extract::{State, Path}, Json};
+use axum::{extract::{Path, Query, State}, Json};
 use uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
     dto::{
         CompareStrategiesRequest, CompareStrategiesResponse, EvaluateStrategyRequest,
-        EvaluateStrategyResponse, InspectStrategyRequest, RunGaResponse, TimelineResponse,
+        EvaluateStrategyResponse, InspectStrategyRequest, RunGaQuery, RunGaResponse, TimelineResponse,
         SystemState, TradeInspectorResponse, EventWrapper,
         // Canonical schema types
         CanonicalInspectResponse, CanonicalEventWindow, CanonicalPortfolioState,
@@ -312,7 +312,9 @@ pub async fn inspect_strategy_handler(
             sequence_id: event.sequence_id,
             narrative,
             block_type,
+            parent_sequence_id: event.parent_sequence_id,
             parent_block_id,
+            timestamp_ns: Some(event.timestamp_ns),
             divergence_score: None,
         }
     }).collect();
@@ -418,9 +420,13 @@ pub async fn test_determinism_handler(
 
 pub async fn run_ga_handler(
     State(service): State<EvaluationService>,
+    Query(query): Query<RunGaQuery>,
 ) -> Result<Json<RunGaResponse>, ApiError> {
     println!("RUN_GA_ENDPOINT_HIT");
-    let response = service.run_ga()?;
+    let config = query
+        .to_ga_config()
+        .map_err(ApiError::ValidationError)?;
+    let response = service.run_ga(config)?;
     println!("GA run completed");
     Ok(Json(response))
 }

@@ -120,9 +120,12 @@ const ComparisonPanels = ({
         <div className="cs-alert-body">{confidenceReason}</div>
       </div>
 
-      {/* ── Execution Divergence Analysis ─────────────────────────────────── */}
+      {/* ── ARTIFACT-010: Observational trace comparison (see AUTHORITY_MAP.md) ─ */}
       <div className="cs-card">
-        <div className="cs-card-title">Execution Divergence Analysis</div>
+        <div className="cs-card-title">Observational Trace Comparison</div>
+        <div style={{ fontSize: '10px', color: 'var(--tm)', marginBottom: '12px', lineHeight: 1.5 }}>
+          Client-derived from two certified traces. Comparison aid — not certified divergence authority.
+        </div>
         <div className="cs-gap-8">
           {divergenceStatements.length > 0 ? (
             divergenceStatements.map((d, i) => (
@@ -132,7 +135,7 @@ const ComparisonPanels = ({
             ))
           ) : (
             <div className="cs-alert grn" style={{ marginBottom: 0 }}>
-              <div className="cs-alert-body">No significant execution divergences detected in visible events.</div>
+              <div className="cs-alert-body">No observational divergences detected in visible events.</div>
             </div>
           )}
         </div>
