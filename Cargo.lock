@@ -88,6 +88,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "blake3",
+ "chrono",
  "chronosentiment_core",
  "chronosentiment_optimization",
  "chronosentiment_strategies",
@@ -323,6 +324,7 @@ dependencies = [
 name = "chronosentiment_financial_core"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "chronosentiment_core",
 ]
 

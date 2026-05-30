@@ -1,6 +1,6 @@
 # AUTHORITY_MAP.md
 # ChronoSentiment — Canonical Authority Registry
-# Last updated: 2026-05-26
+# Last updated: 2026-05-30
 # Purpose: Constitutional compression layer for **calibration preservation**.
 #          Single source of truth for semantic ownership and interpretive boundaries.
 #          Every domain has exactly one canonical authority.
@@ -592,17 +592,17 @@ These artifacts support replay governance but do **not** hold semantic authority
 Rust core remains the canonical semantic authority; evidence and tooling constrain
 authority changes without replacing them.
 
-| Path | Classification | Relationship to Authority |
-|------|----------------|---------------------------|
-| `fixtures/strategy_identity/` | Replay evidence corpus | Frozen V-001 strategy identity evidence. Preserves observed parser lineage, provenance, parsed structures, round-trip output, and replay outcome categories. |
-| `fixtures/strategy_identity/differential_report.json` | Generated replay comparison artifact | Produced by the verifier; compares current routed parser outcomes, native canonical rejection, and compatibility translation. Generated evidence only — does not define parser law. |
-| `fixtures/strategy_identity/archive/pre_routing_2026-05-26/differential_report.json` | Pre-routing evidence archive | Immutable snapshot of the final known dual-lineage state before operational routing begins. |
-| `fixtures/strategy_identity/archive/pre_api_routing_2026-05-26/differential_report.json` | Pre-API-routing evidence archive | Snapshot after edge-decay routing and before API compatibility routing. |
-| `scripts/verify_strategy_identity_fixtures.py` | Verification tooling | Executes fixture validation and differential comparison. Python tooling is non-authoritative and replaceable; it verifies evidence, it does not define strategy identity semantics. |
-| `docs/governance/V001_ROUTING_EQUIVALENCE_SCOPE.md` | Migration contract | Declares expected admissibility, interpretation, round-trip, replay classification, and historical artifact visibility deltas before routing. |
-| `docs/governance/V001_EDGE_DECAY_ROUTING_DELTA.md` | Post-routing delta record | Documents the first routing step: edge-decay moved from `divergent_semantics` to canonical/API meaning for 19-field IDs while historical underscore admissibility remained unchanged. |
-| `docs/governance/V001_API_ADMISSIBILITY_CONTRACT.md` | API routing contract | Selects `normalized_compatibility`: underscore IDs are historically visible, non-canonical, replay-addressable through compatibility translation, and excluded from future canonical serialization. |
-| `docs/governance/V001_API_ROUTING_DELTA.md` | Post-routing delta record | Documents API routing through `parse_strategy_id_with_compatibility`; historical underscore IDs move to `accepted_normalized` while remaining non-canonical source evidence. |
+| Path | Role | Relationship to Authority |
+|------|------|---------------------------|
+| `fixtures/strategy_identity/` | Optional historical parser evidence corpus (JSONL fixtures) | Frozen V-001 strategy identity evidence. Preserves observed parser lineage, provenance, parsed structures, round‑trip output, and replay outcome categories. |
+| `fixtures/strategy_identity/differential_report.json` | Primary retained V‑001 evidence artifact | Produced by the verifier; compares current routed parser outcomes, native canonical rejection, and compatibility translation. Generated evidence only — does not define parser law. |
+| `fixtures/strategy_identity/archive/pre_routing_2026-05-26/differential_report.json` | Historical lineage evidence | Immutable snapshot of the final known dual‑lineage state before operational routing begins. |
+| `fixtures/strategy_identity/archive/pre_api_routing_2026-05-26/differential_report.json` | Historical lineage evidence | Snapshot after edge‑decay routing and before API compatibility routing. |
+| `scripts/verify_strategy_identity_fixtures.py` | Verification tooling | Executes fixture validation and differential comparison. Python tooling is non‑authoritative and replaceable; it verifies evidence, it does not define strategy identity semantics. |
+| `docs/governance/V001_ROUTING_EQUIVALENCE_SCOPE.md` | Migration contract | Declares expected admissibility, interpretation, round‑trip, replay classification, and historical artifact visibility deltas before routing. |
+| `docs/governance/V001_EDGE_DECAY_ROUTING_DELTA.md` | Post‑routing delta record | Documents the first routing step: edge‑decay moved from `divergent_semantics` to canonical/API meaning for 19‑field IDs while historical underscore admissibility remained unchanged. |
+| `docs/governance/V001_API_ADMISSIBILITY_CONTRACT.md` | API routing contract | Selects `normalized_compatibility`: underscore IDs are historically visible, non‑canonical, replay‑addressable through compatibility translation, and excluded from future canonical serialization. |
+| `docs/governance/V001_API_ROUTING_DELTA.md` | Post‑routing delta record | Documents API routing through `parse_strategy_id_with_compatibility`; historical underscore IDs move to `accepted_normalized` while remaining non‑canonical source evidence. |
 | `docs/governance/V001_REPLAY_COHORT_ADJUDICATION.md` | Replay cohort adjudication record | Records the attempted replay cohort comparison against `replay-governance-baseline-v1`; ratification is blocked by an incomplete `replay_equiv` archive, so no stability promotion is granted. |
 | `docs/governance/REPLAY_ARCHIVE_RESTORATION_CONTRACT.md` | Replay evidence restoration contract | Defines the minimum certifiable replay substrate: baseline/current cohort pair, manifests, aligned timestamps, Layer 1 barriers, computable hashes, and persisted comparator reports. |
 | `docs/governance/REPLAY_ARCHIVE_RESTORATION_PLAN.md` | Operational replay restoration plan | Freezes V-001 semantic surfaces and enumerates the batch `003` archive obligations required before another ratification attempt. |
@@ -703,6 +703,52 @@ authority changes without replacing them.
 - [ ] Do **not** delete — preserve for reference and potential future canonicalization
 - [ ] Mark duplicated scoring formulas as downstream consumers (see RESEARCH / NON-AUTHORITATIVE SURFACES)
 - [ ] Update this `AUTHORITY_MAP.md` to reflect final dispositions
+
+---
+
+## UI PROJECTION SURFACES (POST PASS 6 CERTIFICATION)
+
+**Contract reference:** `docs/contracts/UI_API_CONTRACT_v1.md` §6 invariant 3  
+**Certification:** Pass 6 certified (transport + browser E2E, 2026-05-30)
+
+### ARTIFACT-010 — `compareNarrativeBlocks()` (Inspect dual-mode)
+
+| Attribute | Value |
+|-----------|-------|
+| **Classification** | Observational Projection |
+| **Authority class** | Observational — not Governance, not Interpretive canon |
+| **Source** | Two backend-certified `narrative_blocks[]` arrays from separate `POST /inspect_strategy` responses |
+| **Scope** | Inspect Strategy dual-mode only (`StrategyInspector.js` → `ComparisonPanels.js`) |
+| **Mechanism** | Index-aligned pairwise diff on existing certified fields (`group`, `narrative`, `sequence_id`, `parent_sequence_id`) |
+| **Authority status** | **Non-canonical.** Output is a client-derived comparison aid for visualization |
+| **Consumers** | UI rendering only — not consumed by certification, attestation, ranking, or governance workflows |
+| **Presentation** | Labeled *Observational Trace Comparison (client-derived from two certified traces)* |
+| **Law One posture** | Explicit v1 contract exception — documented in UI API Contract §6; does not synthesize narrative text |
+| **Sunset condition** | Migrate backend-side when divergence taxonomy becomes authoritative (e.g. `DIVERGENCE_MARKER` blocks with backend-computed `divergence_score`, or `divergence_analysis[]` on compare/inspect envelopes) |
+
+**Rule:** Treat ARTIFACT-010 output as observational residue — useful for operator comparison, not replay meaning. Do not feed its divergence types or messages into any authoritative surface without a scoped escalation tranche.
+
+### ARTIFACT-011 — `getExecutionSummary()` (Inspect dual-mode commentary)
+
+| Attribute | Value |
+|-----------|-------|
+| **Classification** | Observational Projection |
+| **Source** | Backend-certified `narrative_blocks[]` (canonical group enum) |
+| **Scope** | Inspect dual-mode execution summary + verdict commentary |
+| **Authority status** | Non-canonical commentary derived from certified blocks |
+| **Sunset condition** | Backend emits `execution_summary` in `CanonicalInspectResponse` |
+
+### `divergenceBadge()` — Run GA fitness alignment commentary
+
+| Attribute | Value |
+|-----------|-------|
+| **Classification** | Observational Commentary |
+| **Source** | Backend `ga_fitness` and `execution_fitness` on `global_best` (certified evaluation fields) |
+| **Scope** | Run GA execution verdict badge only (`RunGA.js`) |
+| **Mechanism** | Client compares normalized GA fitness to execution fitness; emits Overfit / Hidden Gem / Aligned |
+| **Authority status** | **Non-canonical.** Visual commentary only — not consumed by certification, attestation, ranking, or governance |
+| **Presentation** | Badge + subtitle *Observational GA alignment (client-derived — not certified classification)* |
+| **Sunset condition** | Backend emits explicit strategy classification on GA result envelope |
 
 ---
 

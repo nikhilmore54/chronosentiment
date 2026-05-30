@@ -60,9 +60,9 @@ const NarrativeBlock = ({
           <span style={{ color: 'var(--tm)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: '10px' }}>
             seq:{block.id}
           </span>
-          {block.timestamp != null && (
+          {block.timestamp_ns != null && (
             <span style={{ color: 'var(--tm)', fontWeight: 400, fontFamily: 'var(--mono)', fontSize: '10px', marginLeft: 'auto' }}>
-              t:{block.timestamp}
+              t:{block.timestamp_ns}
             </span>
           )}
         </div>

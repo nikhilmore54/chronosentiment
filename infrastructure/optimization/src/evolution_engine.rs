@@ -32,6 +32,7 @@ pub struct GaConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Candidate {
     pub queue_threshold: u64,
     pub base_edge: u64,

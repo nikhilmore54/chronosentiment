@@ -1,0 +1,31 @@
+{
+  "contract_version": "1.0",
+  "contract_doc": "docs/contracts/SCENARIO_DOMAIN_CONTRACT_v1.md",
+  "domains": [
+    {
+      "id": "deterministic_demo",
+      "domain_class": "CERTIFIED_FIXTURE",
+      "substrate_source": {
+        "kind": "fixture",
+        "reference": "deterministic_demo_v1",
+        "version": "v1"
+      },
+      "evaluation_eligible": true
+    },
+    {
+      "id": "deterministic_demo_execution",
+      "domain_class": "CERTIFIED_FIXTURE",
+      "substrate_source": {
+        "kind": "fixture",
+        "reference": "deterministic_demo_v1_execution_path",
+        "version": "v1"
+      },
+      "evaluation_eligible": true
+    }
+  ],
+  "aggregation_v1": {
+    "reducer": "robust_min_execution_fitness",
+    "module": "ScenarioAggregator",
+    "note": "Policy isolated from ScenarioRegistry per SCENARIO_DOMAIN_CONTRACT_v1.md"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "1.0",
+  "contract_doc": "docs/contracts/REPLAY_ATTESTATION_CONTRACT_v1.md",
+  "scenario_id": "deterministic_demo_execution",
+  "substrate_reference": "deterministic_demo_v1_execution_path",
+  "event_count": 42,
+  "expected_event_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "result_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "attestation_status": "RESULT_ATTESTED",
+  "attestation_timestamp": "2026-05-29T12:00:00Z",
+  "engine_mode": "REAL",
+  "note": "Placeholder digests — live values produced by evaluate_strategy_across_domains()"
+}

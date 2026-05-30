@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub use chronosentiment_optimization::Candidate as Strategy;
+pub use chronosentiment_optimization::{Candidate as Strategy, GaConfig};
 
 /// API-layer evaluation DTO. Defined locally so we can add `Serialize`, `PartialEq`,
 /// and extra fields (`ga_fitness`, `execution_fitness`, `total_trades`) that the
@@ -96,7 +96,11 @@ pub struct NarrativeBlock {
     pub narrative: String,
     pub block_type: NarrativeBlockType,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_sequence_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_block_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp_ns: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub divergence_score: Option<f64>,
 }
@@ -262,6 +266,31 @@ pub struct InspectStrategyResponse {
     pub event_sequence: Vec<EventWrapper>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct GlobalRankingRow {
+    pub strategy_id: String,
+    pub execution_fitness: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ga_fitness: Option<f64>,
+    pub avg: f64,
+    pub std: f64,
+    pub classification: String,
+    pub rank: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GlobalRankingResponse {
+    pub rankings: Vec<GlobalRankingRow>,
+    pub total: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StrategyStoreResponse {
+    pub strategies: Vec<CandidateEvaluationDto>,
+    pub store_version: String,
+    pub total: usize,
+}
+
 #[derive(Debug, Serialize)]
 pub struct RunGaResponse {
     pub results: Vec<CandidateEvaluationDto>,
@@ -272,12 +301,62 @@ pub struct RunGaResponse {
     pub generation_found: usize,
     pub final_generation_best: CandidateEvaluationDto,
     pub final_gen_best: CandidateEvaluationDto,
+    pub total_generations: usize,
+    pub seed: u64,
+}
+
+/// Optional query parameters for `GET /run_ga` (UI contract §6.1).
+#[derive(Debug, Deserialize)]
+pub struct RunGaQuery {
+    #[serde(default = "default_ga_population")]
+    pub population_size: usize,
+    #[serde(default = "default_ga_generations")]
+    pub generations: usize,
+    #[serde(default = "default_ga_mutation_rate")]
+    pub mutation_rate: f64,
+    #[serde(default = "default_ga_seed")]
+    pub seed: u64,
+}
+
+fn default_ga_population() -> usize {
+    20
+}
+fn default_ga_generations() -> usize {
+    10
+}
+fn default_ga_mutation_rate() -> f64 {
+    0.1
+}
+fn default_ga_seed() -> u64 {
+    42
+}
+
+impl RunGaQuery {
+    pub fn to_ga_config(&self) -> Result<GaConfig, String> {
+        if self.population_size == 0 || self.population_size > 500 {
+            return Err("population_size must be between 1 and 500".to_string());
+        }
+        if self.generations == 0 || self.generations > 200 {
+            return Err("generations must be between 1 and 200".to_string());
+        }
+        if !(0.0..=1.0).contains(&self.mutation_rate) {
+            return Err("mutation_rate must be between 0.0 and 1.0".to_string());
+        }
+        Ok(GaConfig {
+            population_size: self.population_size,
+            generations: self.generations,
+            mutation_rate: self.mutation_rate,
+            crossover_rate: 0.5,
+            seed: self.seed,
+        })
+    }
 }
 
 impl From<chronosentiment_optimization::GaResult> for RunGaResponse {
     fn from(res: chronosentiment_optimization::GaResult) -> Self {
         let global_best: CandidateEvaluationDto = res.global_best.clone().into();
         let history: Vec<CandidateEvaluationDto> = res.generation_history.into_iter().map(Into::into).collect();
+        let total_generations = history.len();
         Self {
             results: vec![global_best.clone()],
             generation_history: history,
@@ -287,6 +366,8 @@ impl From<chronosentiment_optimization::GaResult> for RunGaResponse {
             generation_found: 0,
             final_generation_best: global_best.clone(),
             final_gen_best: global_best.clone(),
+            total_generations,
+            seed: 42,
         }
     }
 }
