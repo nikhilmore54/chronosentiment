@@ -128,7 +128,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'run-ga':
-        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} />;
+        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} observatoryStatus={sysStatus} />;
       case 'inspect-strategy':
         return (
           <StrategyInspector
@@ -149,7 +149,7 @@ export default function App() {
       case 'global-ranking':
         return <GlobalRanking />;
       default:
-        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} />;
+        return <RunGA setSelectedStrategyForInspection={handleSetSelectedStrategyForInspection} observatoryStatus={sysStatus} />;
     }
   };
 

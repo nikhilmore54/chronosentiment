@@ -54,9 +54,10 @@ function normalizeInspectResponse(data) {
 // getOrderId() was its sole dependent — removed with it.
 // Backend emits certified narrative_blocks[] via POST /inspect_strategy.
 
-// ARTIFACT-010: compareNarrativeBlocks — frontend divergence analysis between two
-// backend-certified narrative_blocks[] arrays. Sunset condition: backend emits
-// divergence_analysis[] in CanonicalInspectResponse. Registered: 2026-05-25.
+// ARTIFACT-010: compareNarrativeBlocks — observational projection (v1 contract exception).
+// Pairwise diff of two backend-certified narrative_blocks[] arrays. Non-authoritative;
+// see AUTHORITY_MAP.md § UI PROJECTION SURFACES. Sunset: backend DIVERGENCE_MARKER blocks
+// or divergence_analysis[] when taxonomy becomes authoritative.
 const compareNarrativeBlocks = (b1, b2) => {
   const divergenceStatements = [];
   const maxLength = Math.max(b1.length, b2.length);
@@ -74,16 +75,39 @@ const compareNarrativeBlocks = (b1, b2) => {
   return divergenceStatements;
 };
 
-// ARTIFACT-011: getExecutionSummary — frontend execution summary derived from
-// backend narrative_blocks[]. Sunset condition: backend emits execution_summary
-// object in CanonicalInspectResponse. Registered: 2026-05-25.
-const getExecutionSummary = (narrativeBlocks) => ({
-  totalSteps: narrativeBlocks.length,
-  partialFills: narrativeBlocks.filter(b => b.group === 'Execution' && b.narrative.includes('partially filled')).length || 0,
-  queueProgressions: narrativeBlocks.filter(b => b.group === 'Queue Progression').length || 0,
-  hasQueueProgression: narrativeBlocks.some(b => b.group === 'Queue Progression'),
-  totalFills: narrativeBlocks.filter(b => b.group === 'Execution' && b.narrative.includes('fully executed')).length || 0,
-});
+// ARTIFACT-011: getExecutionSummary — observational summary derived from backend
+// narrative_blocks[]. Uses canonical NarrativeGroup values (INTENT, QUEUE, EXECUTION, …)
+// with legacy mixed-case aliases. Sunset: backend emits execution_summary in inspect response.
+const narrativeGroupKey = (group) => {
+  if (!group) return '';
+  const upper = String(group).toUpperCase();
+  if (upper === 'INTENT') return 'INTENT';
+  if (upper === 'QUEUE' || upper.includes('QUEUE')) return 'QUEUE';
+  if (upper === 'EXECUTION' || upper === 'SETTLEMENT') return 'EXECUTION';
+  if (upper === 'GOVERNANCE') return 'GOVERNANCE';
+  return upper;
+};
+
+const getExecutionSummary = (narrativeBlocks) => {
+  const blocks = Array.isArray(narrativeBlocks) ? narrativeBlocks : [];
+  const isPartialFill = (b) =>
+    narrativeGroupKey(b?.group) === 'EXECUTION' &&
+    /partial/i.test(b?.narrative ?? '');
+  const isFullFill = (b) =>
+    narrativeGroupKey(b?.group) === 'EXECUTION' &&
+    /fully executed|full execution/i.test(b?.narrative ?? '');
+  const isQueueProgression = (b) =>
+    narrativeGroupKey(b?.group) === 'QUEUE' &&
+    /queue position advancing|order entered execution queue|queue progression/i.test(b?.narrative ?? '');
+
+  return {
+    totalSteps: blocks.length,
+    partialFills: blocks.filter(isPartialFill).length,
+    queueProgressions: blocks.filter(isQueueProgression).length,
+    hasQueueProgression: blocks.some(isQueueProgression),
+    totalFills: blocks.filter(isFullFill).length,
+  };
+};
 
 const CONFIDENCE_LEVELS = { HIGH: 'High Confidence', MEDIUM: 'Medium Confidence', LOW: 'Low Confidence' };
 
@@ -423,8 +447,17 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
 
         {/* State: Error */}
         {(error || error2) && !loading && !loading2 && (
-          <div style={{ padding: '16px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)', marginBottom: '16px' }}>
-            {error || error2}
+          <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {error && (
+              <div style={{ padding: '16px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+                {error}
+              </div>
+            )}
+            {error2 && (
+              <div style={{ padding: '16px', background: 'var(--rdim)', border: '1px solid var(--bred)', borderRadius: 'var(--r8)', color: 'var(--red)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+                S2: {error2}
+              </div>
+            )}
           </div>
         )}
 
@@ -466,11 +499,11 @@ const handleInspectStrategy = useCallback(async (strategyNum) => {
               </div>
             </div>
 
-            {/* Divergence accumulation summary — only in dual mode */}
+            {/* ARTIFACT-010 accumulation strip — observational, replay-window filtered */}
             {isDualMode && (
               <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '10px', color: 'var(--tm)', fontWeight: 500 }}>
-                  Divergences at Seq {currentMaxSeqId}:
+                  Observational divergences at Seq {currentMaxSeqId}:
                 </span>
                 {visibleDivergences.length === 0 ? (
                   <span style={{ fontSize: '10px', color: 'var(--grn)', fontFamily: 'var(--mono)', fontWeight: 600 }}>none detected</span>

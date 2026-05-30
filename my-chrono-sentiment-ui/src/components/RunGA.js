@@ -16,6 +16,8 @@ function resolveGaFitness(entry) {
   return undefined;
 }
 
+// Observational commentary (Run GA): compares normalized ga_fitness vs execution_fitness.
+// Non-authoritative — see AUTHORITY_MAP.md § divergenceBadge. Sunset: backend classification field.
 function divergenceBadge(entry) {
   const ga   = resolveGaFitness(entry);
   const exec = (entry && typeof entry.execution_fitness === 'number') ? entry.execution_fitness : undefined;
@@ -109,9 +111,16 @@ function normalizeGaResult(raw) {
   return { ...raw, generation_history: processedHistory, global_best: globalBest, final_generation_best: finalGenerationBest, global_best_generation: peakGeneration };
 }
 
-const RunGA = ({ setSelectedStrategyForInspection }) => {
-  const [populationSize, setPopulationSize] = useState(50);
-  const [generations, setGenerations]       = useState(20);
+function fmtLatency(ns) {
+  if (ns === null || ns === undefined) return '—';
+  if (ns < 1000) return `${ns}ns`;
+  if (ns < 1_000_000) return `${(ns / 1000).toFixed(1)}µs`;
+  return `${(ns / 1_000_000).toFixed(1)}ms`;
+}
+
+const RunGA = ({ setSelectedStrategyForInspection, observatoryStatus }) => {
+  const [populationSize, setPopulationSize] = useState(20);
+  const [generations, setGenerations]       = useState(10);
   const [mutationRate, setMutationRate]     = useState(0.1);
   const [seed, setSeed]                     = useState(42);
   const [gaResult, setGaResult]             = useState(null);
@@ -159,7 +168,13 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
     setGaResult(null);
     setSignalsSnapshot(null);
     try {
-      const response = await fetch(apiUrl('/run_ga'));
+      const params = new URLSearchParams({
+        population_size: String(Number(populationSize)),
+        generations: String(Number(generations)),
+        mutation_rate: String(Number(mutationRate)),
+        seed: String(Number(seed)),
+      });
+      const response = await fetch(apiUrl(`/run_ga?${params.toString()}`));
       if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Failed to run GA'); }
       const data       = await response.json();
       const normalized = normalizeGaResult(data);
@@ -182,7 +197,9 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
       {/* ─── LEFT: Editorial Sidebar (Parameters) ─── */}
       <aside style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Parameters</h2>
-        
+        <p style={{ fontSize: '11px', color: 'var(--tm)', lineHeight: 1.5, marginBottom: '16px' }}>
+          Sent to the backend on execute. Results reflect these values.
+        </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
           <div className="cs-field">
             <label className="cs-label" htmlFor="population_size">Population</label>
@@ -278,36 +295,68 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
           </div>
         )}
 
-        {/* State: Pre-Execution Live Environment Block */}
+        {/* State: Pre-Execution — observatory-backed operational snapshot */}
         {!gaResult && !loading && (
-          <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '24px' }}>Environment</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Integrity</div>
-                <div style={{ fontSize: '24px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>100.0%</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>No timeline gaps detected</div>
+          observatoryStatus?.online ? (
+            <div style={{ padding: '32px', background: 'var(--card)', border: '1px solid var(--b)' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '8px' }}>Observatory</h2>
+              <p style={{ fontSize: '11px', color: 'var(--tm)', marginBottom: '24px' }}>
+                Live operational state from <code style={{ fontFamily: 'var(--mono)' }}>GET /observatory</code>
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Phase</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {observatoryStatus.system_phase ?? '—'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Cohort</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {observatoryStatus.cohort_id ?? '—'}
+                    {observatoryStatus.active_cohort_size != null && (
+                      <span style={{ color: 'var(--tm)', fontWeight: 400 }}> ({observatoryStatus.active_cohort_size})</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Queue depth</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {observatoryStatus.queue_depth ?? '—'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Fill latency</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {fmtLatency(observatoryStatus.fill_latency_ns)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Sync ratio</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {observatoryStatus.sync_ratio != null ? observatoryStatus.sync_ratio.toFixed(2) : '—'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Throttle</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--t1)', fontFamily: 'var(--mono)' }}>
+                    {observatoryStatus.throttle_state ?? '—'}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Bounds</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>0 → 12,400</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Ready for deterministic replay</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Dispersion</div>
-                <div style={{ fontSize: '24px', fontWeight: 500, color: 'var(--t1)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>1.00x</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>Governor state: NOMINAL</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--tm)', marginBottom: '8px' }}>Network</div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--grn)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ACTIVE</div>
-                <div style={{ fontSize: '11px', color: 'var(--t2)' }}>All subsystems nominal</div>
+              <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
+                Execute baseline to run GA with the sidebar parameters.
               </div>
             </div>
-            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--b)', fontSize: '12px', color: 'var(--tm)' }}>
-              Awaiting execution mandate...
+          ) : (
+            <div className="cs-empty" style={{ padding: '48px 32px', background: 'var(--card)', border: '1px solid var(--b)', borderRadius: 'var(--r10)', textAlign: 'center' }}>
+              <div className="cs-empty-icon">◎</div>
+              <div className="cs-empty-title">Observatory unavailable</div>
+              <div style={{ fontSize: '12px', color: 'var(--tm)', marginTop: '8px', lineHeight: 1.6 }}>
+                Connect the backend to view operational state. No synthetic metrics are shown.
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* State: Execution Complete */}
@@ -317,21 +366,46 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
             {/* Zone 1: The Verdict */}
             <section style={{ marginBottom: '80px' }}>
               <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--t1)', marginBottom: '16px' }}>Execution verdict</h2>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '4px', flexWrap: 'wrap' }}>
                 <div style={{ fontSize: '48px', fontWeight: 600, color: 'var(--t1)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   {safeDisplay(gaResult.global_best?.execution_fitness, 6)}
                 </div>
-                {divergenceBadge(gaResult.global_best) && (
-                  <span className={`cs-badge ${divergenceBadge(gaResult.global_best).cls}`}>
-                    {divergenceBadge(gaResult.global_best).label}
-                  </span>
-                )}
+                {(() => {
+                  const badge = divergenceBadge(gaResult.global_best);
+                  if (!badge || badge.label === '—') return null;
+                  return (
+                    <span
+                      className={`cs-badge ${badge.cls}`}
+                      title="Observational commentary: client-derived GA vs execution fitness alignment"
+                    >
+                      {badge.label}
+                    </span>
+                  );
+                })()}
               </div>
-              <div style={{ display: 'flex', gap: '32px', color: 'var(--t2)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--tm)', marginBottom: '8px' }}>
+                Observational GA alignment (client-derived — not certified classification)
+              </div>
+              <div style={{ display: 'flex', gap: '32px', color: 'var(--t2)', fontSize: '12px', fontFamily: 'var(--mono)', flexWrap: 'wrap', marginBottom: '16px' }}>
+                <span>Strategy: {gaResult.global_best?.strategy_id ?? 'N/A'}</span>
                 <span>Certified Execution Fitness</span>
                 <span>Search Gen: {resolvePeakGeneration(gaResult) ?? 'N/A'}</span>
                 <span>Avg PnL: {safeDisplay(gaResult.global_best?.avg, 4)}</span>
+                <span>Seed: {gaResult.seed ?? seed}</span>
               </div>
+              {gaResult.global_best?.strategy_id && setSelectedStrategyForInspection && (
+                <button
+                  type="button"
+                  className="cs-btn cs-btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '12px' }}
+                  onClick={() => setSelectedStrategyForInspection(
+                    gaResult.global_best.strategy_id,
+                    gaResult.seed ?? Number(seed),
+                  )}
+                >
+                  Inspect winning strategy →
+                </button>
+              )}
             </section>
 
             {/* Zone 2: Signals Topology */}
