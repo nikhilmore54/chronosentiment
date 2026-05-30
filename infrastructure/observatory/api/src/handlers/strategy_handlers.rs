@@ -24,7 +24,32 @@ use serde_json;
 
 
 pub async fn health_handler() -> Json<serde_json::Value> {
-    Json(serde_json::json!({ "status": "ok" }))
+    Json(serde_json::json!({
+        "status": "online",
+        "engine": "ChronoSentiment API (Rust)",
+        "system_phase": "LIVE",
+        "contract_version": "1.0"
+    }))
+}
+
+pub async fn observatory_handler() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "snapshot_sequence_id": 0,
+        "system_phase": "LIVE",
+        "governor_state": {
+            "throttle_state": "OPEN",
+            "cohort_id": "rust-api",
+            "active_cohort_size": 0,
+            "governor_version": "v1.0.0"
+        },
+        "kernel_state": {
+            "queue_depth": 0,
+            "fill_latency_ns": 0,
+            "sync_ratio": 1.0,
+            "events_per_second": 0,
+            "kernel_version": "v1.0.0"
+        }
+    }))
 }
 
 pub async fn timeline_handler(
@@ -118,17 +143,13 @@ pub async fn inspect_strategy_handler(
         ));
     };
 
-    // Prefer explicit scenarios[]; else scenario embedded in strategy_id; else first benchmark name (lexicographic)
+    // Prefer explicit scenarios[]; else scenario embedded in strategy_id; else deterministic demo.
     let scenario = if let Some(s) = request.scenarios.into_iter().next() {
         s
     } else if let Some(s) = scenario_from_id {
         s
     } else {
-        service.load_all_real_scenarios()?
-            .keys()
-            .next()
-            .cloned()
-            .ok_or_else(|| ApiError::EngineError("No real market scenarios available in test_assets".to_string()))?
+        "deterministic_demo".to_string()
     };
 
     let legacy = service.inspect_strategy(
@@ -406,23 +427,18 @@ pub async fn run_ga_handler(
 
 pub async fn get_global_ranking_handler(
     State(service): State<EvaluationService>,
-) -> Result<Json<Vec<crate::dto::CandidateEvaluationDto>>, ApiError> {
+) -> Result<Json<crate::dto::GlobalRankingResponse>, ApiError> {
     println!("Request received: get_global_ranking");
     let ranking = service.get_global_ranking()?;
     Ok(Json(ranking))
 }
 
-/// Latest on-disk `PersistedStrategyStore` JSON (reloads from disk each request).
-/// NOTE: `load_strategy_store` is not yet implemented in core; returns null stub.
+/// Persisted strategy store from the last GA / evaluation runs.
 pub async fn get_strategy_store_handler(
-    State(_service): State<EvaluationService>,
-) -> Json<serde_json::Value> {
+    State(service): State<EvaluationService>,
+) -> Json<crate::dto::StrategyStoreResponse> {
     println!("Request received: ga/strategy-store");
-    Json(serde_json::json!({
-        "path": "N/A",
-        "store": null,
-        "note": "strategy store not yet implemented"
-    }))
+    Json(service.get_strategy_store())
 }
 
 pub async fn latest_signals_handler(

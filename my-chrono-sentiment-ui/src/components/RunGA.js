@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../services/api';
 
 function safeDisplay(value, digits = 2) {
   if (value === undefined || value === null || Number.isNaN(value)) return 'N/A';
@@ -138,7 +139,7 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
     setStoreLoading(true);
     setStoreError(null);
     try {
-      const response = await fetch('http://localhost:8000/ga/strategy-store');
+      const response = await fetch(apiUrl('/ga/strategy-store'));
       if (!response.ok) { const text = await response.text(); throw new Error(text || 'Failed to load persisted strategy store'); }
       const data = await response.json();
       setPersistedStorePayload(data);
@@ -158,11 +159,11 @@ const RunGA = ({ setSelectedStrategyForInspection }) => {
     setGaResult(null);
     setSignalsSnapshot(null);
     try {
-      const response = await fetch('http://localhost:8000/run_ga');
+      const response = await fetch(apiUrl('/run_ga'));
       if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Failed to run GA'); }
       const data       = await response.json();
       const normalized = normalizeGaResult(data);
-      const signalsResp = await fetch('http://localhost:8000/signals/latest');
+      const signalsResp = await fetch(apiUrl('/signals/latest'));
       if (!signalsResp.ok) { const errorData = await signalsResp.json(); throw new Error(errorData.message || 'Failed to fetch latest signals'); }
       const signalsData = await signalsResp.json();
       setGaResult(normalized);

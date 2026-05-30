@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../services/api';
 
 function safeDisplay(value, digits = 2) {
   if (value === undefined || value === null) return 'N/A';
@@ -33,10 +34,10 @@ const GlobalRanking = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8000/ga/global-ranking');
+      const response = await fetch(apiUrl('/ga/global-ranking'));
       if (!response.ok) throw new Error('Failed to fetch global ranking');
       const data = await response.json();
-      setRanking(data);
+      setRanking(Array.isArray(data) ? data : (data.rankings ?? data.ranking ?? []));
     } catch (err) {
       setError(err.message);
     } finally {

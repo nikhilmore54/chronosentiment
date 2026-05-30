@@ -6,6 +6,15 @@
 //!
 //! Constitutional authority: Constitutional Law One — every certified
 //! value must be traceable to a backend-computed signature.
+//!
+//! ## Attestation vs metadata (Phase D)
+//! `compute_replay_signature` is a **METADATA_SIGNATURE** — not event attestation.
+//! Event-grounded digests use `compute_event_stream_hash` per
+//! `docs/contracts/REPLAY_ATTESTATION_CONTRACT_v1.md`.
+
+use std::collections::BTreeMap;
+
+use chronosentiment_core::SimEvent;
 
 use crate::dto::{CanonicalEvent, NarrativeBlock, SourceLayer};
 
@@ -31,6 +40,9 @@ pub fn compute_event_signature(
 
 /// Compute the replay_signature for a replay response.
 ///
+/// **METADATA_SIGNATURE** — NOT event attestation. Input is session metadata only.
+/// For event-grounded certification use `compute_event_stream_hash`.
+///
 /// Input: `session_id || strategy_id || requested_sequence_id || certification_state || event_count`
 /// Output: BLAKE3 hex digest (64 hex chars)
 pub fn compute_replay_signature(
@@ -44,6 +56,79 @@ pub fn compute_replay_signature(
         "{}:{}:{}:{}:{}",
         session_id, strategy_id, requested_sequence_id, certification_state, event_count
     );
+    blake3::hash(input.as_bytes()).to_hex().to_string()
+}
+
+/// Canonical event stream hash for domain attestation (Phase D).
+///
+/// See `REPLAY_ATTESTATION_CONTRACT_v1.md` §6.1.
+pub fn compute_event_stream_hash(
+    events: &[SimEvent],
+    substrate_reference: &str,
+    engine_mode: &str,
+) -> String {
+    let mut ordered: Vec<&SimEvent> = events.iter().collect();
+    ordered.sort_by_key(|event| event.sequence_id());
+
+    let header = format!(
+        "event_stream_v1:{}:{}:{}\n",
+        events.len(),
+        substrate_reference,
+        engine_mode
+    );
+    let body = ordered
+        .iter()
+        .map(|event| serde_json::to_string(event).unwrap_or_default())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    blake3::hash(format!("{header}{body}").as_bytes())
+        .to_hex()
+        .to_string()
+}
+
+/// Canonical scenario result hash for domain attestation (Phase D).
+///
+/// See `REPLAY_ATTESTATION_CONTRACT_v1.md` §6.2.
+pub fn compute_scenario_result_hash(
+    scenario_id: &str,
+    domain_class: &str,
+    engine_mode: &str,
+    fitness: f64,
+    execution_fitness: f64,
+    avg_pnl: f64,
+    std_dev: f64,
+    max_drawdown: f64,
+    trade_count: usize,
+) -> String {
+    let payload = BTreeMap::from([
+        ("avg_pnl", serde_json::json!(avg_pnl)),
+        ("domain_class", serde_json::json!(domain_class)),
+        ("engine_mode", serde_json::json!(engine_mode)),
+        ("execution_fitness", serde_json::json!(execution_fitness)),
+        ("fitness", serde_json::json!(fitness)),
+        ("max_drawdown", serde_json::json!(max_drawdown)),
+        ("scenario_id", serde_json::json!(scenario_id)),
+        ("std_dev", serde_json::json!(std_dev)),
+        ("trade_count", serde_json::json!(trade_count)),
+    ]);
+    let canonical = serde_json::to_string(&payload).unwrap_or_default();
+    blake3::hash(format!("result_v1:{canonical}").as_bytes())
+        .to_hex()
+        .to_string()
+}
+
+/// Canonical aggregation hash (Phase D Level 4).
+///
+/// `domain_results` MUST be sorted by `scenario_id` ascending.
+/// See `REPLAY_ATTESTATION_CONTRACT_v1.md` §6.3.
+pub fn compute_aggregate_hash(reducer_id: &str, domain_results: &[(&str, &str)]) -> String {
+    let pairs = domain_results
+        .iter()
+        .map(|(scenario_id, result_hash)| format!("{scenario_id}:{result_hash}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let input = format!("aggregate_v1:{reducer_id}:{pairs}");
     blake3::hash(input.as_bytes()).to_hex().to_string()
 }
 
@@ -162,5 +247,69 @@ mod tests {
         let sig2 = compute_trace_signature(&id, 42, "strat_100_200_50_30", "BUY", "STRONG_BUY");
         assert_eq!(sig1, sig2);
         assert_eq!(sig1.len(), 64);
+    }
+
+    #[test]
+    fn test_event_stream_hash_is_deterministic() {
+        use chronosentiment_core::{MarketEventType, Side, SimEvent};
+        let events = vec![SimEvent::MarketEvent {
+            sequence_id: 1,
+            parent_sequence_id: None,
+            subtype: MarketEventType::Trade,
+            price: 100,
+            quantity: 10,
+            side: Some(Side::Buy),
+            timestamp: 1,
+        }];
+        let h1 = compute_event_stream_hash(&events, "deterministic_demo_v1", "REAL");
+        let h2 = compute_event_stream_hash(&events, "deterministic_demo_v1", "REAL");
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 64);
+    }
+
+    #[test]
+    fn test_replay_signature_differs_from_event_stream_hash() {
+        use chronosentiment_core::{MarketEventType, Side, SimEvent};
+        let id = Uuid::new_v4();
+        let events = vec![SimEvent::MarketEvent {
+            sequence_id: 1,
+            parent_sequence_id: None,
+            subtype: MarketEventType::Trade,
+            price: 100,
+            quantity: 10,
+            side: Some(Side::Buy),
+            timestamp: 1,
+        }];
+        let metadata_sig = compute_replay_signature(&id, "strat_1", 42, "CERTIFIED", 1);
+        let event_hash = compute_event_stream_hash(&events, "deterministic_demo_v1", "REAL");
+        assert_ne!(metadata_sig, event_hash);
+    }
+
+    #[test]
+    fn test_aggregate_hash_is_deterministic() {
+        let pairs = [
+            ("deterministic_demo", "abc123"),
+            ("deterministic_demo_execution", "def456"),
+        ];
+        let h1 = compute_aggregate_hash("robust_min_execution_fitness", &pairs);
+        let h2 = compute_aggregate_hash("robust_min_execution_fitness", &pairs);
+        assert_eq!(h1, h2);
+        assert_eq!(h1.len(), 64);
+    }
+
+    #[test]
+    fn test_aggregate_hash_changes_when_result_hash_changes() {
+        let base = [
+            ("deterministic_demo", "abc123"),
+            ("deterministic_demo_execution", "def456"),
+        ];
+        let mutated = [
+            ("deterministic_demo", "abc123"),
+            ("deterministic_demo_execution", "000000"),
+        ];
+        assert_ne!(
+            compute_aggregate_hash("robust_min_execution_fitness", &base),
+            compute_aggregate_hash("robust_min_execution_fitness", &mutated)
+        );
     }
 }

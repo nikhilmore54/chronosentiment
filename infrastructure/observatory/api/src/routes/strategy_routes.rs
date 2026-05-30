@@ -1,13 +1,14 @@
 use axum::{routing::{get, post}, Router};
 
 use crate::{
-    handlers::strategy_handlers::{compare_strategies_handler, evaluate_strategy_handler, inspect_strategy_handler, test_determinism_handler, run_ga_handler, timeline_handler, events_handler, replay_handler, order_inspection_handler, health_handler, latest_signals_handler, trade_suggestions_handler, replay_suggestions_handler, get_strategy_store_handler},
+    handlers::strategy_handlers::{compare_strategies_handler, evaluate_strategy_handler, inspect_strategy_handler, test_determinism_handler, run_ga_handler, timeline_handler, events_handler, replay_handler, order_inspection_handler, health_handler, observatory_handler, latest_signals_handler, trade_suggestions_handler, replay_suggestions_handler, get_strategy_store_handler},
     services::evaluation_service::EvaluationService,
 };
 
 pub fn strategy_routes() -> Router<EvaluationService> {
     Router::new()
         .route("/health", get(health_handler))
+        .route("/observatory", get(observatory_handler))
         .route("/evaluate_strategy", post(evaluate_strategy_handler))
         .route("/compare_strategies", post(compare_strategies_handler))
         .route("/inspect_strategy", post(inspect_strategy_handler))

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { parseStrategyParamsFromId } from '../utils/strategyId';
+import { apiUrl } from '../services/api';
 
 const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
   const [strategyIdsInput, setStrategyIdsInput] = useState('');
@@ -43,7 +44,7 @@ const CompareStrategies = ({ setSelectedStrategyForInspection }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/compare_strategies', {
+      const response = await fetch(apiUrl('/compare_strategies'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ strategies: strategiesPayload, scenarios: [], seed: Number(seed) }),

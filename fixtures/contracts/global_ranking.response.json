@@ -1,0 +1,23 @@
+{
+  "rankings": [
+    {
+      "strategy_id": "strat_200_5_4_2",
+      "execution_fitness": 0.910000,
+      "ga_fitness": 88.2,
+      "avg": 0.0412,
+      "std": 0.0183,
+      "classification": "ALPHA",
+      "rank": 1
+    },
+    {
+      "strategy_id": "strat_150_3_3_1",
+      "execution_fitness": 0.780000,
+      "ga_fitness": 74.1,
+      "avg": 0.0298,
+      "std": 0.0221,
+      "classification": "BETA",
+      "rank": 2
+    }
+  ],
+  "total": 2
+}

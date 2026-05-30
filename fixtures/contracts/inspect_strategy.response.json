@@ -1,0 +1,56 @@
+{
+  "strategy_id": "strat_200_5_4_2",
+  "seed": 42,
+  "certification_state": "CERTIFIED",
+  "certification_reason": "All guardrails passed. Execution fitness within bounds.",
+  "narrative_blocks": [
+    {
+      "sequence_id": 1,
+      "parent_sequence_id": null,
+      "group": "INTENT",
+      "block_type": "PRIMARY",
+      "narrative": "Signal threshold crossed. Entry mandate issued.",
+      "timestamp_ns": 1748500000000000000,
+      "is_key_event": true,
+      "key_event_marker": "FILL",
+      "divergence_score": null
+    },
+    {
+      "sequence_id": 2,
+      "parent_sequence_id": 1,
+      "group": "EXECUTION",
+      "block_type": "DERIVED",
+      "narrative": "Order fully executed. Fill latency within bounds.",
+      "timestamp_ns": 1748500001000000000,
+      "is_key_event": false,
+      "key_event_marker": null,
+      "divergence_score": null
+    }
+  ],
+  "execution_trace": [
+    {
+      "sequence_id": 1,
+      "type": "ORDER_PLACED",
+      "timestamp_ns": 1748500000000000000,
+      "payload": {
+        "asset": "RELIANCE.NS",
+        "price": 2450.0,
+        "quantity": 10,
+        "side": "BUY"
+      }
+    },
+    {
+      "sequence_id": 2,
+      "type": "ORDER_FILLED",
+      "timestamp_ns": 1748500000500000000,
+      "payload": {
+        "asset": "RELIANCE.NS",
+        "price": 2451.5,
+        "quantity": 10,
+        "side": "BUY"
+      }
+    }
+  ],
+  "decision_trace": [],
+  "event_sequence": []
+}

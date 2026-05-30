@@ -1,0 +1,25 @@
+{
+  "global_best": {
+    "strategy_id": "strat_200_5_4_2",
+    "execution_fitness": 0.875432,
+    "ga_fitness": 82.5,
+    "avg": 0.0342
+  },
+  "global_best_generation": 12,
+  "final_generation_best": {
+    "generation": 19,
+    "strategy_id": "strat_150_3_3_1",
+    "execution_fitness": 0.861200,
+    "ga_fitness": 79.1
+  },
+  "generation_history": [
+    {
+      "generation": 0,
+      "strategy_id": "strat_100_2_2_1",
+      "execution_fitness": 0.512000,
+      "ga_fitness": 35.2
+    }
+  ],
+  "total_generations": 20,
+  "seed": 42
+}

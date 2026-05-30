@@ -2,8 +2,9 @@ pub use api::dto;
 mod handlers;
 mod routes;
 mod services;
-mod signatures;
 mod strategy_id_parse;
+
+pub use api::signatures;
 
 pub use api::errors;
 
