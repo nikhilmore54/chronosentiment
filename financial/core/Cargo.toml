@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 chronosentiment_core = { version = "0.1.0", path = "../../infrastructure/core" }
+
+[dev-dependencies]
+blake3 = "1"
