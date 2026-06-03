@@ -142,7 +142,7 @@ STRAT_FIXTURE_RESULT="SKIP"
 
 if [ -f "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" ]; then
     STRAT_OUT="$(python3 "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" 2>&1)" || true
-    if echo "${STRAT_OUT}" | grep -q "verified"; then
+    if echo "${STRAT_OUT}" | grep -q "[PASS]"; then
         STRAT_FIXTURE_RESULT="PASS"
         echo "  [PASS] strategy identity fixtures verified"
     else

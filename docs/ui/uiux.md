@@ -1,7 +1,12 @@
 # ChronoSentiment UI/UX Synchronization Status
-**Last Updated:** 2026-05-26  
-**Status:** Phase 2 complete — propagation-aware causal observatory  
+**Last Updated:** 2026-05-29
+**Status:** Phase 3 complete — canonical schema alignment & dual-mode surface
 **Identity:** The frontend is a schema-bound causal replay instrument, not an analytics dashboard.
+
+> **Pass 6 classification:** LOW architectural expansion · HIGH architectural alignment.
+> Pass 6 does not introduce new authority surfaces, new ontology, or new replay semantics.
+> It tightens the coupling between the projection layer and the canonical schema layer,
+> reducing translation ambiguity across the Schema → API → UI → Documentation chain.
 
 ---
 
@@ -48,6 +53,19 @@ The `<= currentMaxSeqId` filter on divergence accumulation preserves causal temp
 
 ### Projection Purity
 The frontend emphasizes backend-certified transition conditions. It does not decide what is dangerous, invalid, or important — it only surfaces what the backend has certified. Display thresholds (e.g. `sync_ratio` color coding) are perceptual gradients only — they do not redefine system truth.
+
+---
+
+## Synchronization Pass Progression
+
+| Pass | Outcome |
+|------|---------|
+| Pass 1 | Remove mock state |
+| Pass 2 | Replay observability |
+| Pass 3 | Canonical observatory telemetry |
+| Pass 4 | Divergence visibility |
+| Pass 5 | Propagation visibility |
+| Pass 6 | Canonical schema convergence |
 
 ---
 
@@ -102,6 +120,20 @@ The frontend emphasizes backend-certified transition conditions. It does not dec
 | 23 | Causal arrow was purely decorative — no transition signal | Transition-aware arrow in `NarrativeBlock`: red for divergent next block, blue for group transition, default otherwise; shows group label and `⚑` flag inline; priority: divergent > group transition > default |
 | 24 | Divergence accumulation not visible at replay position | Added divergence accumulation summary in `StrategyInspector`: `visibleDivergences` filtered by `<= currentMaxSeqId`; `divergenceTypeCounts` per type; inline badge strip in dual mode; replay-position-aware |
 
+### Pass 6 — Canonical Schema Alignment & Dual-Mode Surface
+
+| # | Issue | Resolution |
+|---|-------|------------|
+| 25 | `App.js` footer used `sysStatus.cohort` (non-canonical) | Fixed to `sysStatus.cohort_id` per `observatory_state.schema.json` `governor_state.cohort_id` field |
+| 26 | `ComparisonPanels` imported in `StrategyInspector.js` but never rendered | Added `ComparisonPanels` render after dual-column grid; wired with all required props (`executionSummary1/2`, `finalVerdict`, `confidenceLevel`, `confidenceColorClass`, `confidenceReason`, `divergenceStatements`) |
+| 27 | `StrategyInspector.js` sidebar missing Strategy 2 input fields | Added labeled "Strategy 1" / "Strategy 2 (optional)" sections with ID + Seed inputs; Strategy 2 uses `onBlur` guard (`if (strategyId2)`) to avoid spurious fetches |
+| 28 | `StrategyInspector.js` sidebar missing `showRawEvents` toggle | Added `showRawEvents` checkbox toggle in sidebar below the Reconstruct button |
+| 29 | `StrategyInspector.js` sidebar missing `error2` display for Strategy 2 errors | Added separate `error2` display block below `error` in sidebar |
+| 30 | `normalizeNarrativeBlock()` used `block.timestamp` (legacy field) | Updated to use canonical `timestamp_ns` per `event.schema.json` (`chrono:schema:event:v1`); falls back to `block.timestamp` for backward compatibility (ARTIFACT-009 bridge) |
+| 31 | `NarrativeBlock.js` rendered `block.timestamp` (legacy field) | Updated to render `block.timestamp_ns` (canonical nanosecond field) |
+| 32 | `getGroupColorClass()` only handled legacy mixed-case group names | Updated to use `group.toUpperCase()` matching canonical `decision_trace.schema.json` enum values (`INTENT`, `QUEUE`, `EXECUTION`, `SETTLEMENT`, `GOVERNANCE`); legacy values still handled |
+| 33 | `normalizeNarrativeBlock()` did not map canonical `decision_trace.schema.json` fields | Added `blockType` (from `block_type`), `divergenceScore` (from `divergence_score`) to normalized output |
+
 ---
 
 ## Observability Capability Matrix
@@ -130,13 +162,17 @@ The remaining items are visualization-depth enhancements, not architectural gaps
 - `useSystemStatus()` hook: canonical `observatory_state` schema field mapping; tries `/observatory` then `/health`; null defaults with `online: false` on failure
 - Operational awareness strip: 8 fields from canonical schema (`system_phase`, `throttle_state`, `cohort_id`, `active_cohort_size`, `queue_depth`, `fill_latency_ns`, `sync_ratio`, `events_per_second`, `snapshot_sequence_id`)
 - Nav: `.cs-nav-item` / `.cs-nav-item.active` with left-border accent and emoji icons
-- Rail footer: active `selectedStrategyId` context
+- Rail footer: active `selectedStrategyId` context; `cohort_id` field correctly sourced from `sysStatus.cohort_id`
 
 ### `StrategyInspector.js`
 - Certification badge: reads `certification_state` + `certification_reason` from API response; color-coded; conditionally rendered
 - Replay position context strip: event count, seq range, "Jump to end" button
 - Divergence accumulation summary: `visibleDivergences` filtered by `<= currentMaxSeqId`; type distribution badge strip; dual-mode only
 - Loading skeleton; error block; idle/results state guards tightened
+- Sidebar: labeled "Strategy 1" / "Strategy 2 (optional)" sections with ID + Seed inputs; `showRawEvents` checkbox toggle; `error2` display for Strategy 2 errors
+- `ComparisonPanels` rendered after dual-column grid in dual-mode
+- `normalizeNarrativeBlock()`: canonical `timestamp_ns` field (falls back to `timestamp`); maps `block_type → blockType`, `divergence_score → divergenceScore`
+- `getGroupColorClass()`: handles canonical uppercase group enum values (`INTENT`, `QUEUE`, `EXECUTION`, `SETTLEMENT`, `GOVERNANCE`) and legacy mixed-case values
 
 ### `StrategyColumn.js`
 - `getForwardChildren(blockId)`: filters `eventMap` by `parentId === blockId`
@@ -146,7 +182,7 @@ The remaining items are visualization-depth enhancements, not architectural gaps
 - Empty state: `.cs-empty` pattern
 
 ### `NarrativeBlock.js`
-- `block.timestamp`: right-aligned monospace, conditionally rendered
+- `block.timestamp_ns`: right-aligned monospace, conditionally rendered (canonical nanosecond field per `event.schema.json`)
 - `isKeyEvent`: filled purple badge with `★ KEY` label
 - Divergence type labels: 6-type taxonomy with color-coded bordered badges
 - Transition-aware arrow: color + group label + `⚑` flag based on next block state
@@ -186,6 +222,6 @@ No frontend component may synthesize data that these schemas define as backend-o
 
 | ID | Description | Sunset Condition |
 |----|-------------|-----------------|
-| ARTIFACT-009 | `normalizeNarrativeBlock` — snake_case → camelCase bridge | Backend emits camelCase `narrative_blocks[]` natively |
+| ARTIFACT-009 | `normalizeNarrativeBlock` — snake_case → camelCase bridge; also maps canonical `decision_trace.schema.json` fields (`block_type`, `divergence_score`, `timestamp_ns`) | Backend emits camelCase `narrative_blocks[]` natively |
 | ARTIFACT-010 | `compareNarrativeBlocks` — frontend divergence analysis | Backend emits `divergence_analysis[]` in `CanonicalInspectResponse` |
 | ARTIFACT-011 | `getExecutionSummary` — frontend execution summary from `narrative_blocks[]` | Backend emits `execution_summary` object in `CanonicalInspectResponse` |

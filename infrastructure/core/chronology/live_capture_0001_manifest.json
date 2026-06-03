@@ -2,8 +2,8 @@
     "substrate": "BTCUSDT",
     "interval": "1m",
     "total_klines": 4320,
-    "start_timestamp": 1779249840000,
-    "end_timestamp": 1779508980000,
-    "chronology_hash": "906c9160323afcc59e9adbb72f65101c9047aa449c35d8957d30ad2a951b42f8",
-    "capture_time": "2026-05-23T04:04:02.167581+00:00"
+    "start_timestamp": 1779709740000,
+    "end_timestamp": 1779968880000,
+    "chronology_hash": "897f962baeb742e1b157df4a1413e382e5b096f3340270193dde6f5fbce32663",
+    "capture_time": "2026-05-28T11:48:57.636512+00:00"
 }

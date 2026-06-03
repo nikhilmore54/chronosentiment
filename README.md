@@ -1,4 +1,26 @@
 # ChronoSentiment
+## Repository Philosophy
+
+ChronoSentiment is developed as deterministic financial infrastructure rather than feature‑velocity application software.
+
+The repository prioritizes:
+- deterministic replay equivalence
+- constitutional authority isolation
+- execution‑order certification
+- semantic stability across migrations
+- replay‑certified topology evolution
+- governance‑first infrastructure discipline
+
+Large experimental artifacts, replay corpora, generated binaries, and transient research outputs are intentionally excluded from the canonical repository surface.
+
+All architectural evolution proceeds through:
+1. certification
+2. replay validation
+3. topology freeze
+4. governance review
+5. incremental extraction
+
+The repository is intended to function as reconstructable infrastructure rather than opaque implementation mass.
 
 **Deterministic market replay and evaluation infrastructure for certifiable financial simulation.**
 
