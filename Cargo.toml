@@ -4,6 +4,17 @@ members = [
     "infrastructure/optimization",
     "infrastructure/observatory/api",
     "financial/ese",
-    "financial/strategies", "financial/core",
+    "financial/strategies",
+    "financial/core",
+    "coralys-moga",
+    "coralys-simulation",
+    "coralys-ecology",
+    "coralys-decision",
+    "coralys-recommendation",
+    "coralys-infrastructure",
+    "adapters/ultracrew",
+    "adapters/chronosentiment",
+    "adapters/ultracrew",
+    "adapters/chronosentiment",
 ]
 resolver = "2"

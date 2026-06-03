@@ -297,6 +297,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "chronosentiment_adapter"
+version = "0.1.0"
+dependencies = [
+ "coralys-ecology",
+ "coralys-moga",
+]
+
+[[package]]
 name = "chronosentiment_core"
 version = "0.1.0"
 dependencies = [
@@ -304,6 +312,7 @@ dependencies = [
  "blake3",
  "chrono",
  "clap",
+ "coralys-ecology",
  "csv",
  "futures-util",
  "prettytable-rs",
@@ -335,6 +344,7 @@ dependencies = [
  "blake3",
  "chrono",
  "chronosentiment_core",
+ "coralys-moga",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_xorshift",
@@ -351,6 +361,7 @@ dependencies = [
  "chronosentiment_financial_core",
  "chronosentiment_optimization",
  "clap",
+ "coralys-ecology",
  "cs-ingest",
  "serde",
  "serde_json",
@@ -414,6 +425,36 @@ name = "constant_time_eq"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
+
+[[package]]
+name = "coralys-decision"
+version = "0.1.0"
+
+[[package]]
+name = "coralys-ecology"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "coralys-infrastructure"
+version = "0.1.0"
+
+[[package]]
+name = "coralys-moga"
+version = "0.1.0"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
+name = "coralys-recommendation"
+version = "0.1.0"
+
+[[package]]
+name = "coralys-simulation"
+version = "0.1.0"
 
 [[package]]
 name = "core-foundation"
@@ -2103,9 +2144,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.149"
+version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83fc039473c5595ace860d8c4fafa220ff474b3fc6bfdb4293327f1a37e94d86"
+checksum = "e8014e44b4736ed0538adeecded0fce2a272f22dc9578a7eb6b2d9993c74cfb9"
 dependencies = [
  "itoa",
  "memchr",
@@ -2628,6 +2669,17 @@ name = "typenum"
 version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
+
+[[package]]
+name = "ultracrew"
+version = "0.1.0"
+dependencies = [
+ "coralys-ecology",
+ "coralys-moga",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "unicode-ident"

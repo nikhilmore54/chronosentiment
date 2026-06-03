@@ -1,0 +1,559 @@
+{
+  "manifest_version": "1",
+  "generated_at": "2026-05-29T01:25:07Z",
+  "git_commit_short": "2ba395cf",
+  "git_commit_full": "2ba395cf0260a4e88acb25bf90c0b2aad168ac6d",
+  "git_branch": "governance-hardening",
+  "git_dirty_files": 130,
+  "rust_version": "rustc 1.91.1 (ed61e7d7e 2025-11-07) (Homebrew)",
+  "cargo_version": "cargo 1.91.1 (Homebrew)",
+  "os_name": "Darwin-arm64",
+  "corpus_files": [
+    {
+      "path": "infrastructure/core/chronology/historical/2021_may_19_cascade_4h_1m/btcusdt_1621425600000.jsonl",
+      "sha256": "d44ef90a6e29f20ad6cc9a41b40ed953b60f6ebf8d39686e0cb6206501a3e854",
+      "line_count": 241
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2021_may_19_cascade_4h_tick/btcusdt_1621425600000.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2021_oct_17_quiet_sunday_4h_1m/btcusdt_1634428800000.jsonl",
+      "sha256": "f6be3b80235cc59deaf9549db8957e5f3ed161ebb068bd5aa193a2aaed990614",
+      "line_count": 241
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2021_oct_17_quiet_sunday_4h_tick/btcusdt_1634428800000.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2022_ftx_collapse_4h_1m/btcusdt_1667916000000.jsonl",
+      "sha256": "59cf35b2043bc6f844a1d25f40370d7e6e30b5b5cbf64ff44d614b77ebdc11db",
+      "line_count": 241
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2022_ftx_collapse_4h_tick/btcusdt_1667916000000.jsonl",
+      "sha256": "433b4e3a213d048e3b24a78554aa4493116ec8b1b81e7159f073a22abdfb1593",
+      "line_count": 2880327
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2022_sep_13_cpi_shock_2h_1m/btcusdt_1663070400000.jsonl",
+      "sha256": "423ac4fcfe614cd4b0520a236ef3c35518aab67603c7b2de1b3692bec402c5ef",
+      "line_count": 121
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2022_sep_13_cpi_shock_2h_tick/btcusdt_1663070400000.jsonl",
+      "sha256": "5fdd02565e57d8c67b4319206ee9bf9654368ca4f7a3220196a786f776677678",
+      "line_count": 1242836
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_binance_outage_1h_1m/btcusdt_1679657400000.jsonl",
+      "sha256": "2114db4be683027bfbabd310d4da12d061795ba0378d72d62eebcbdbd029a602",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_binance_outage_1h_tick/btcusdt_1679657400000.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_christmas_drift_1h_1m/btcusdt_1703419200000.jsonl",
+      "sha256": "4b01424ae347285f4fad1c203b8a1172dffbd26ca713f428ef6644ac8d02e756",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_christmas_drift_1h_tick/btcusdt_1703419200000.jsonl",
+      "sha256": "ccb5b22f4ccd763c1300a5d41d937dcea5601d9cf24c50ac790ca4bc87def5c7",
+      "line_count": 35088
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_liquidation_cascade_1h_1m/btcusdt_1692306000000.jsonl",
+      "sha256": "81d657e8073e02594c6c6ee6a9a2ddb8076b73b5ca964c291c51f7b291a69ff1",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2023_liquidation_cascade_1h_tick/btcusdt_1692306000000.jsonl",
+      "sha256": "dfec76d60d8ac7888477924ff07fcab4406c32bd074edb7f384b322a669d9399",
+      "line_count": 317208
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_asia_open_impulse_2h_1m/btcusdt_1709596800000.jsonl",
+      "sha256": "6443bab8ee327fe134883d7f7a9898b14e3dd0231a09b3515e501911982ac9e7",
+      "line_count": 121
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_asia_open_impulse_2h_tick/btcusdt_1709596800000.jsonl",
+      "sha256": "b62b0630b2add657cedf4dc8431bd4c1d5a22b6c538e9a7dc5e5fa6342a2e8d6",
+      "line_count": 215724
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_cpi_shock_1h_1m/btcusdt_1707829200000.jsonl",
+      "sha256": "bfde3f72e8730974db381a4215e462e0ca63f3f6c8a6494803de10984a0dc99a",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_cpi_shock_1h_ontology_1m/btcusd_1707829200000.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_cpi_shock_1h_ontology_tick/btcusd_1707829200000.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_cpi_shock_1h_tick/btcusdt_1707829200000.jsonl",
+      "sha256": "d970abd2669acfc28cfb61046bf7c2d2d3170ab4ddffea899e8cb013212d1e64",
+      "line_count": 110707
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_etf_approval/btcusdt_1704672000000.jsonl",
+      "sha256": "f8dba9ba66e9f5b2757c7e6ec770c4940c6ddcba56d0de9cb71bccd12e1da4cf",
+      "line_count": 1441
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_etf_approval_1h_1m/btcusdt_1704715200000.jsonl",
+      "sha256": "be633c0a1deeee82204f710ef0dca781210c7088e2159b8fd8588d9604c3f6ae",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_etf_approval_1h_tick/btcusdt_1704715200000.jsonl",
+      "sha256": "6dd9aa2b57725d613a93fdac9db38ed0406061f1480a5d26895c5f2763d02846",
+      "line_count": 217523
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_quiet_sunday_4h_1m/btcusdt_1708214400000.jsonl",
+      "sha256": "15d5eaf025beabe4d139ca68b8533f087fce6e1a7cf06d288819f5e3f2fc1c1f",
+      "line_count": 241
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2024_quiet_sunday_4h_tick/btcusdt_1708214400000.jsonl",
+      "sha256": "63bbe586be9584a144fb52af460a81f055d0a1fd19d0489c1993ac0b896017b7",
+      "line_count": 133264
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_downward_drop_5m/aapl_1775568600000.jsonl",
+      "sha256": "8cf9402ae1f936eef68da6e741f99ec7fff29b7280d8cbfd3a57a2ea2435b26e",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_downward_drop_shift_neg_10m_5m/aapl_1775568000000.jsonl",
+      "sha256": "f2b7e764e50a4ec0d9b31998dd18cd0a695c60fc60bc4439552efffc6a9c6c79",
+      "line_count": 59
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_downward_drop_shift_pos_10m_5m/aapl_1775569200000.jsonl",
+      "sha256": "954e8a82f6b50f315a143a49a3d298f2421591485a18b13fdd318fce657240aa",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_downward_drop_shift_pos_20m_5m/aapl_1775569800000.jsonl",
+      "sha256": "c7b694258475451ede94995af5391d2c07a13d47ec8a9f866f255e3ec5c6054f",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_open_auction_1m/aapl_1779454800000.jsonl",
+      "sha256": "30dd3e1a1cc78cb22e4b0ace931a528a4d2f85396e47422fd83d85b784be50d8",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_aapl_overnight_gap_1m/aapl_1778765400000.jsonl",
+      "sha256": "74475e1aa8b8d71305d906e0ab29b9b6e2fd28f307f1b7db92d7345c5ea0317c",
+      "line_count": 2730
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_drop_5m/amd_1779370200000.jsonl",
+      "sha256": "b2e4004d8f9e03ef2106224f3e8c7de7f1fc90e59cb6c6c7d57bbeda152dd642",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_drop_moderate_5m/amd_1779456600000.jsonl",
+      "sha256": "b490878436b9993b5de4febc107d44d594601c23bcc8dd1c61699654c658839c",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_drop_weak_5m/amd_1775568600000.jsonl",
+      "sha256": "47c235309083ebe1db34d0a36141938e3bbd859ba1cb1b3be9a2471253f45175",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_drop_weak_5m/amd_1779123900000.jsonl",
+      "sha256": "dc14e376fd8e8faebff38bd54a55d7a157a3b4509c8d3b30139ee590ada3d1bf",
+      "line_count": 35
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_failed_cont_5m/amd_1777383000000.jsonl",
+      "sha256": "f8513d8c957a26d67c20b771727054d7dbcef16aa2124360e112288ae0962b90",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_failed_cont_shift_neg_10m_5m/amd_1777382400000.jsonl",
+      "sha256": "fee75e71b464a4357d10320259be0ae781bbf80c8e0161acb6621c3173ec9bbe",
+      "line_count": 59
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_failed_cont_shift_pos_10m_5m/amd_1777383600000.jsonl",
+      "sha256": "9d10deb345dcab1bb5f1d0686c5541b3f09e975a7329da520ee30eeee6859c18",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_failed_cont_shift_pos_20m_5m/amd_1777384200000.jsonl",
+      "sha256": "87f1a9a4e58d327b991ab67423495e60853ad205bb05a7af0adeeebf494d1285",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_gap_fade_5m/amd_1778856900000.jsonl",
+      "sha256": "d3d355cf47cf9baa9a5415b35b00b4aa2d6800ed724dcc410e022e0729739d0f",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_open_drive_absorption_5m/amd_1778247000000.jsonl",
+      "sha256": "e5ab29aedab7ef9cd3dca4b87dc8e6ec74de968f4264c90395b407d56c3174b0",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_oscillatory_fragmentation_5m/amd_1779197400000.jsonl",
+      "sha256": "42051cb02ecffc1725aef17275cac13964c0f3e6d666ee0fc7036db51156c410",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_rally_5m/amd_1778161200000.jsonl",
+      "sha256": "6a1b9ae4a72d0911ce966376bf8988fd11997d64e6c28e01191e1e34f82dde34",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_rally_moderate_5m/amd_1778765700000.jsonl",
+      "sha256": "0d025e1d7d49a09df41cd7f581e2b066220a33f03b62ccf54f7ffdd253075075",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_rally_weak_5m/amd_1778510400000.jsonl",
+      "sha256": "450edd0ca3359703c06883105a0bcc100086bcbfaf07b5bc568dbdb7a344a8f2",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_vacuum_5m/amd_1779283800000.jsonl",
+      "sha256": "ea616bf54f6e66d5043203019db714917c7939b660edde3bd605205f6177a869",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_vacuum_shift_neg_10m_5m/amd_1779283200000.jsonl",
+      "sha256": "775677ade2dabf823079cb286ca75bf2fa16ecce0298fadd0fc051b0f32b4d9c",
+      "line_count": 59
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_vacuum_shift_pos_10m_5m/amd_1779284400000.jsonl",
+      "sha256": "61bf5ba371848b0978813bc5c6c8dd9f2c2f6f66dc22afc5719d64f7be166042",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_amd_sync_vacuum_shift_pos_20m_5m/amd_1779285000000.jsonl",
+      "sha256": "8a7a862097cecca59e5a16814742df4d6db8a2d768927f894922b132ba945110",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_crossfeed_state_disagreement_1m/btcusd_1778976000000.jsonl",
+      "sha256": "35ccedd25ed94d02280234d42f89979e744929de5b48e27de3774d3ee5032272",
+      "line_count": 9148
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_crossfeed_state_disagreement_tick/btcusdt_1779510000000.jsonl",
+      "sha256": "1a76add6a748b05b1ee6af66e3927a1d227fe84e94d87228db7f24c818178e40",
+      "line_count": 38128
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_fomc_march/btcusdt_1773792000000.jsonl",
+      "sha256": "86ac8882965c86b8ecdd9d99b872befcdba2789e863001ce1dfd8f759f6b2ff4",
+      "line_count": 1441
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_intraday_impulse_shock_0730_0800_utc_1m/btcusdt_1779521400000.jsonl",
+      "sha256": "81156b67e1ec28eeb1b2a0b7d8943fc6b16898c108fd7ce26ac36a8139486128",
+      "line_count": 31
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_intraday_impulse_shock_0730_0800_utc_tick/btcusdt_1779521400000.jsonl",
+      "sha256": "66e6f8d90adc2e1000fa981e441d54974af4e87accaafb614ef8d3d226efceaa",
+      "line_count": 62714
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_mstr_upward_squeeze_5m/mstr_1776432900000.jsonl",
+      "sha256": "e5d32eeb7a51e25076e7e904fe035fc3e13817be1248bf3982888bd470e91649",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_multi_stage_cascade_transition_1m/btcusdt_1779480000000.jsonl",
+      "sha256": "f5784964549f84d4e63c2ae1796b204fc344a79fa72b25981f09a4762780ff4e",
+      "line_count": 481
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_multi_stage_cascade_transition_tick/btcusdt_1779480000000.jsonl",
+      "sha256": "501066541b471850f11d39a156b26b3cdc9cd3c1e3c5f3735f4178801b7f64f3",
+      "line_count": 264760
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_open_cascade_5m/nvda_1777555800000.jsonl",
+      "sha256": "ec4c71df8566b518fcd8c538066cacf447a2f12cdbbb5c609b99698ae290979d",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_drop_5m/nvda_1779370200000.jsonl",
+      "sha256": "3e83f4c1f313deb40078fa80867f7fab33c26352e015deb4f8a498446f351bf5",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_drop_moderate_5m/nvda_1779456600000.jsonl",
+      "sha256": "0c4a267cbde2e989a0827b977aac53181384be04a77cc46a0973afd9ea5a938a",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_drop_weak_5m/nvda_1775568600000.jsonl",
+      "sha256": "099603cc7d29401458665e42fd7d10bb07663d0a8211a4edcb2ee05f2fcf1936",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_drop_weak_5m/nvda_1779123900000.jsonl",
+      "sha256": "aa2ece0b4e6a928da44094958edf83360c234b89c74f6aa0d3c9918ddfb41168",
+      "line_count": 35
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_failed_cont_5m/nvda_1777383000000.jsonl",
+      "sha256": "db226d5f2509eac86185b02598f22867abfbacbc9e71b714fe61044519ab6add",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_failed_cont_shift_neg_10m_5m/nvda_1777382400000.jsonl",
+      "sha256": "0cdd3a50acb1d2792cbcff4902835bc3dc36cbd1848a86550fdc6925b33c9d9d",
+      "line_count": 59
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_failed_cont_shift_pos_10m_5m/nvda_1777383600000.jsonl",
+      "sha256": "c9f67e7f6583cd1e58f217db909b47c308a2bb215ae7e0000368c21f59a9bb81",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_failed_cont_shift_pos_20m_5m/nvda_1777384200000.jsonl",
+      "sha256": "ed1623914253f9f08472c89b5ada1a17c781c96fed7231d1b409a03fca1b250f",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_gap_fade_5m/nvda_1778856900000.jsonl",
+      "sha256": "d43ad47b5912626455280340ebc44759dc387c7dd89de1ebb2e5f96e86eb5c3d",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_open_drive_absorption_5m/nvda_1778247000000.jsonl",
+      "sha256": "78deed0e2d2eb96329dd2df35875fc9725aa13434823393a3ebe3e55ca5846b2",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_oscillatory_fragmentation_5m/nvda_1779197400000.jsonl",
+      "sha256": "cb7003778eabda78c5a68d15a6feca212f5c632a7063713f81f85eb15c5b9080",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_rally_5m/nvda_1778161200000.jsonl",
+      "sha256": "23fb0ccedfabd80ba413d5e611f38a70a400108f2267bcb89e994ded486c4bfd",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_rally_moderate_5m/nvda_1778765700000.jsonl",
+      "sha256": "51304f80f0d851ce53886fbd53a94bc9285300c797fe1a83530a59fdd010ddae",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_rally_weak_5m/nvda_1778510400000.jsonl",
+      "sha256": "b087061852bc4eb76b65431fb718a23f5fa02162715f174cb1694faf82b8acc4",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_vacuum_5m/nvda_1779283800000.jsonl",
+      "sha256": "5cb2efbfac89fce81645ac17365e59eac2998cf8a2c1b6426f5c34fc80aac9a3",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_vacuum_shift_neg_10m_5m/nvda_1779283200000.jsonl",
+      "sha256": "f1e8b82e068ff2d9005178dc36ac7e6c32b5cca89e60f784146ba3dc006c5753",
+      "line_count": 59
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_vacuum_shift_pos_10m_5m/nvda_1779284400000.jsonl",
+      "sha256": "ca6eb18458fb68c06360740fc68a140dbf27120f53eaeb6c24dd03ae052b72f6",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_nvda_sync_vacuum_shift_pos_20m_5m/nvda_1779285000000.jsonl",
+      "sha256": "d400b0ee6523db41c04033ac5e4712084e3e63383904d38d0850103ea9badb62",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_q1_volatility_expansion/btcusdt_1767225600000.jsonl",
+      "sha256": "d40226b4ecb9c04b13c704487f8d08d509ee0b24e68a112e64fce0f3f45d550d",
+      "line_count": 1441
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_crossfeed_1h_binance_tick/btcusdt_1779285600000.jsonl",
+      "sha256": "fc0ba5320b3fa4d2dc9350e4461959f5d2f4767f5d7b7a9538a5bbf4dadc004c",
+      "line_count": 75561
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_crossfeed_1h_ontology_binance_tick/btcusd_1779285600000.jsonl",
+      "sha256": "0b9ab8b6238be934c81a55bcb584d817eae63592c99a215ddfe8d95cb62c1955",
+      "line_count": 48
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_crossfeed_1h_ontology_yahoo_1m/btcusd_1778976000000.jsonl",
+      "sha256": "b95147b566e006438c6ba176886f5df07af5ac702b69eac4e8dd4b467d3f2992",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_crossfeed_1h_yahoo_1m/btcusd_1778976000000.jsonl",
+      "sha256": "b95147b566e006438c6ba176886f5df07af5ac702b69eac4e8dd4b467d3f2992",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_discontinuity_1h_binance_tick/btcusdt_1779332400000.jsonl",
+      "sha256": "4676cf3a6c45c2c992f3704202c8b1972f9278a16715bf94207d1568b8b73db8",
+      "line_count": 16477
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_discontinuity_1h_ontology_binance_tick/btcusd_1779332400000.jsonl",
+      "sha256": "7d40ef26e1db7f6d7ee5945ce6963c555a20009c774f6bc38ca1dae4fd9059a6",
+      "line_count": 3
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_discontinuity_1h_ontology_yahoo_1m/btcusd_1778976000000.jsonl",
+      "sha256": "16f40396f607f143173a330a88ddf28dfdc6f9420b08639dfdad35ecd97f512f",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_recent_discontinuity_1h_yahoo_1m/btcusd_1778976000000.jsonl",
+      "sha256": "16f40396f607f143173a330a88ddf28dfdc6f9420b08639dfdad35ecd97f512f",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_reliance_open_auction_1m/reliance_1779419700000.jsonl",
+      "sha256": "427aaf2ecfa6860efb0cb89c0c8e2a10d646575dd6901b7d79f76b92cc0177a7",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_reliance_overnight_gap_1m/reliance.ns_1778730300000.jsonl",
+      "sha256": "d00b464d807cc1cdd48538a41557c5972973a81cc53b8674eb7a2566673ba0c3",
+      "line_count": 2625
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_spy_macro_1m/spy_1778765400000.jsonl",
+      "sha256": "52f0af651fd76d9c68b0e38500f159fa144c9a5d5b5a3e1e3af1a5a2897ab6bd",
+      "line_count": 2730
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_spy_macro_shock_1m/spy_1779382380000.jsonl",
+      "sha256": "bd39a10be2f8755e254c2f46c37d64b0b70f6fcda8c84194e3b2ff8bf4f82543",
+      "line_count": 60
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_tsla_downward_drop_5m/tsla_1776951300000.jsonl",
+      "sha256": "79058cf570cbb9869da836459b0e3686966951cf01b996eeddb95fd726a28f59",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_tsla_upward_rally_5m/tsla_1778510400000.jsonl",
+      "sha256": "72cf5acc8517223b4183fedf0ed49c173e842c9c80552d60b7db49b27be85ddd",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/2026_weekend_liquidity_gap/btcusdt_1775260800000.jsonl",
+      "sha256": "d08d4e096758ca9a38d7a55b86e2de895ba42a81e1aa0d5124ca5b0adef65ee3",
+      "line_count": 1441
+    },
+    {
+      "path": "infrastructure/core/chronology/historical/test_btcusd/btcusd_1779285600000.jsonl",
+      "sha256": "81f07c9cc7604a777b870043c8f011e966eefdb61421c35b41a083a85ea07a65",
+      "line_count": 61
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779512759.jsonl",
+      "sha256": "3534a6f2ac8909bfee418d2797362cc9ebf47c0d21fde122f415438f634329ad",
+      "line_count": 13956
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779516360.jsonl",
+      "sha256": "2f2c0fdcd1e26a9cb744c892dc4f43fe886dce1a66b7753e53cdee10bce3ab4f",
+      "line_count": 13945
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779519960.jsonl",
+      "sha256": "41bd242d0eb19ef5fb6d6bcdb4f22ce55e17782fc8f517788ff7b1858cefe360",
+      "line_count": 77258
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779523560.jsonl",
+      "sha256": "44cfcaaac88df11f9fac9e06e5b34823f5f507c854541e7eb2b503e4c1658080",
+      "line_count": 36416
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779527160.jsonl",
+      "sha256": "6ba7819b14a708d859a15f56974060a0b7cece4d763fcec50c6e5f73e3d793f3",
+      "line_count": 15207
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779530760.jsonl",
+      "sha256": "85af6f93aa996188eea05b5c755bc8afd00afc8920515f04ef4bc19f314cd21d",
+      "line_count": 16260
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779534360.jsonl",
+      "sha256": "5bb15687e424619587efc4400e02b4ddd301031fa8b34b32372abd1820978732",
+      "line_count": 14400
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779537960.jsonl",
+      "sha256": "007afbff815a94e4e2d844829dfcfb381488c69de6d86ba177f00ad7b88e8e9e",
+      "line_count": 18942
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779541560.jsonl",
+      "sha256": "9e72a4d0226f1b28eff4131bd26a3af57295370594fdd0b8203f22f601937356",
+      "line_count": 29437
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779545161.jsonl",
+      "sha256": "87045cf2e62303992e276ce78a947d462322aa9bc5348ed8fe41088dbc558fea",
+      "line_count": 33958
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779548761.jsonl",
+      "sha256": "00af7d2a5b0291496185937f4d0127c972948aed5f7268653b9022cfbd6d34bf",
+      "line_count": 25941
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779552361.jsonl",
+      "sha256": "7f300bb933399187befce1c03d8f231f904d26fb3e3e6d61a16ebb79ac14999e",
+      "line_count": 21850
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture/btcusdt_1779555961.jsonl",
+      "sha256": "c196c22c85521d0e0c8b32ef016f18af658e98079c2effe1b2fbc67215c10fc7",
+      "line_count": 9384
+    },
+    {
+      "path": "infrastructure/core/chronology/live_capture_0001.jsonl",
+      "sha256": "897f962baeb742e1b157df4a1413e382e5b096f3340270193dde6f5fbce32663",
+      "line_count": 4320
+    }
+  ],
+  "replay_test_result": "PASS",
+  "replay_test_passed": 13,
+  "replay_test_failed": 0,
+  "chronology_fixture_result": "PASS",
+  "strategy_fixture_result": "FAIL",
+  "binary_hash_sha256": "7b616228ce81fa7aac4a80ae44f4d305c3a5e4bd345914e20581195ec633fd0a",
+  "binary_path": "target/release/chronology_serialize_probe",
+  "double_build_determinism": "SKIP",
+  "certification_ledger_entries": 20,
+  "overall_status": "FAIL",
+  "notes": "CI Deterministic Build ARM64"
+}

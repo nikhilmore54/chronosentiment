@@ -1,0 +1,702 @@
+[
+  {
+    "session": "2025-01-17",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 50.41,
+      "trend_strength": 7.418,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1199,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 77.64831864727972
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 77.14831864727972
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 50.4 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-01-06",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 91.39,
+      "trend_strength": 27.091,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1119,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 120.15997128025413
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 119.65997128025413
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-04-25",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 91.8,
+      "trend_strength": 17.809,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1163,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 124.16018961480985
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 123.66018961480985
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-06-06",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 90.57,
+      "trend_strength": 29.255,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1213,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 86.966854020511
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 86.466854020511
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-05-29",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 36.89,
+      "trend_strength": 6.096,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1220,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 63.555656096751314
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 63.055656096751314
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 36.9 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-05-14",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 49.59,
+      "trend_strength": 7.302,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1135,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 68.87904030293812
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 68.37904030293812
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 49.6 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-05-26",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 29.92,
+      "trend_strength": 8.163,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1240,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 68.57546063930037
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 68.07546063930037
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 29.9 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-04-02",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 43.44,
+      "trend_strength": 16.143,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1234,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 63.60685551004709
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 63.10685551004709
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 43.4 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-01-07",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 83.2,
+      "trend_strength": 4.285,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1246,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 106.55247934308102
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 106.05247934308102
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-03-13",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 24.18,
+      "trend_strength": 9.536,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1193,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 84.0026757130441
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 83.5026757130441
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 24.2 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-01-31",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 62.3,
+      "trend_strength": 13.957,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1208,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 0.9961240310077519,
+      "slippage_bps": 96.32466129981371
+    },
+    "delta": {
+      "fill_rate": -0.003875968992248069,
+      "slippage_bps": 95.82466129981371
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 62.3 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-06-23",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 16.8,
+      "trend_strength": 9.581,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1245,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 71.2861011946595
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 70.7861011946595
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 16.8 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-03-26",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 74.59,
+      "trend_strength": 15.894,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1111,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 101.74964590880991
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 101.24964590880991
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 74.6 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-05-14",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 55.33,
+      "trend_strength": 5.673,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1141,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 94.55215204101994
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 94.05215204101994
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 55.3 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-02-28",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 47.13,
+      "trend_strength": 31.037,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1150,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 80.93420065946343
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 80.43420065946343
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 47.1 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-04-22",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 17.21,
+      "trend_strength": 6.344,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1251,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 61.11894035743629
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 60.61894035743629
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 17.2 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-05-30",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 17.62,
+      "trend_strength": 10.091,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1197,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 0.9954337899543378,
+      "slippage_bps": 54.56128202180581
+    },
+    "delta": {
+      "fill_rate": -0.004566210045662156,
+      "slippage_bps": 54.06128202180581
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 17.6 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-01-10",
+    "symbol": "BANKNIFTY",
+    "environment": {
+      "volatility_percentile": 93.03,
+      "trend_strength": 18.704,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1158,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 133.46912162641502
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 132.96912162641502
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-02-17",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 88.11,
+      "trend_strength": 11.295,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1183,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 106.92437257358345
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 106.42437257358345
+    },
+    "rules_triggered": [
+      "R1: High-volatility environment (Percentile > 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  },
+  {
+    "session": "2025-04-17",
+    "symbol": "NIFTY",
+    "environment": {
+      "volatility_percentile": 64.75,
+      "trend_strength": 37.504,
+      "ecological_position": "N/A"
+    },
+    "replay_response": {
+      "persistence": 1233,
+      "max_occupancy": 1
+    },
+    "perturbation": {
+      "latency_ms": 50,
+      "missed_fill_prob": 0.0
+    },
+    "baseline": {
+      "fill_rate": 1.0,
+      "slippage_bps": 0.5
+    },
+    "outcome": {
+      "fill_rate": 1.0,
+      "slippage_bps": 91.91472535997411
+    },
+    "delta": {
+      "fill_rate": 0.0,
+      "slippage_bps": 91.41472535997411
+    },
+    "rules_triggered": [
+      "R1: Normal-volatility environment (Percentile 64.8 <= 80)",
+      "R2: High-latency perturbation (+50ms applied)",
+      "R3: Historical response surface predicts amplified degradation under R1 + R2"
+    ],
+    "certification": "Environmental amplification confirmed."
+  }
+]

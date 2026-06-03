@@ -1,0 +1,75 @@
+# Session Catalog Summary
+
+Generated from `session_catalog.json` – **22 sessions**.
+
+## Realized Volatility – Top 5 Sessions
+| date | symbol | realized_volatility |
+|---|---|---|
+| 2025-01-06 | BANKNIFTY | 0.0005552006888250827 |
+| 2025-01-13 | BANKNIFTY | 0.0005363674363569546 |
+| 2025-01-10 | BANKNIFTY | 0.0005199219000083003 |
+| 2025-01-06 | NIFTY | 0.0005015088802178555 |
+| 2025-01-08 | BANKNIFTY | 0.00044915597061266947 |
+
+## Realized Volatility – Bottom 5 Sessions
+| date | symbol | realized_volatility |
+|---|---|---|
+| 2025-01-14 | NIFTY | 0.00023980936793406053 |
+| 2025-01-09 | NIFTY | 0.0002561408404928019 |
+| 2025-01-15 | NIFTY | 0.0002922423761649392 |
+| 2025-01-01 | NIFTY | 0.0002985159003436422 |
+| 2025-01-03 | NIFTY | 0.0003037898399481932 |
+
+## Trend Strength – Top 5 Sessions
+| date | symbol | trend_strength |
+|---|---|---|
+| 2025-01-02 | NIFTY | 35.25183150183156 |
+| 2025-01-06 | NIFTY | 27.090945384168045 |
+| 2025-01-06 | BANKNIFTY | 26.094564571459433 |
+| 2025-01-14 | BANKNIFTY | 21.97449057033338 |
+| 2025-01-03 | BANKNIFTY | 20.659880317418867 |
+
+## Trend Strength – Bottom 5 Sessions
+| date | symbol | trend_strength |
+|---|---|---|
+| 2025-01-07 | NIFTY | 1.3833297782905476 |
+| 2025-01-15 | BANKNIFTY | 1.945280136090892 |
+| 2025-01-15 | NIFTY | 2.5362373660959774 |
+| 2025-01-07 | BANKNIFTY | 4.28487480003916 |
+| 2025-01-14 | NIFTY | 4.775027596821738 |
+
+## Gap Percentage – Largest Positive Gaps (Top 5)
+| date | symbol | gap_pct |
+|---|---|---|
+| 2025-01-14 | BANKNIFTY | 0.45015046638336026 |
+| 2025-01-14 | NIFTY | 0.3343626969036833 |
+| 2025-01-06 | NIFTY | 0.23197020443806235 |
+| 2025-01-08 | NIFTY | 0.21967030462638287 |
+| 2025-01-07 | NIFTY | 0.21286860547788752 |
+
+## Gap Percentage – Largest Negative Gaps (Bottom 5)
+| date | symbol | gap_pct |
+|---|---|---|
+| 2025-01-13 | BANKNIFTY | -1.0568924021828767 |
+| 2025-01-13 | NIFTY | -1.032326606890272 |
+| 2025-01-10 | BANKNIFTY | -0.2546783525418334 |
+| 2025-01-09 | BANKNIFTY | -0.24801273774157623 |
+| 2025-01-15 | BANKNIFTY | -0.1060661230735212 |
+
+## Session Range Percentage – Top 5 Sessions
+| date | symbol | session_range_pct |
+|---|---|---|
+| 2025-01-06 | BANKNIFTY | 2.500654531762193 |
+| 2025-01-06 | NIFTY | 2.2376049039749115 |
+| 2025-01-02 | NIFTY | 1.9978556111508279 |
+| 2025-01-10 | BANKNIFTY | 1.723670500642377 |
+| 2025-01-08 | BANKNIFTY | 1.7074105982361203 |
+
+## Net Return Percentage – Top 5 Sessions
+| date | symbol | net_return_pct |
+|---|---|---|
+| 2025-01-06 | BANKNIFTY | 2.0208606872044275 |
+| 2025-01-06 | NIFTY | 1.7308636019595969 |
+| 2025-01-02 | NIFTY | 1.6185931127275817 |
+| 2025-01-10 | BANKNIFTY | 1.3084074332594804 |
+| 2025-01-14 | BANKNIFTY | 1.2797590066898787 |

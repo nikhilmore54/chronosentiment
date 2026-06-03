@@ -1,7 +1,8 @@
-# ChronoSentiment
+# Coralys Platform & ChronoSentiment Adapter
+
 ## Repository Philosophy
 
-ChronoSentiment is developed as deterministic financial infrastructure rather than feature‑velocity application software.
+This repository is the home of **Coralys**, a domain-agnostic AI simulation and optimization platform, and its first domain-specific adapter, **ChronoSentiment**.
 
 The repository prioritizes:
 - deterministic replay equivalence
@@ -11,8 +12,6 @@ The repository prioritizes:
 - replay‑certified topology evolution
 - governance‑first infrastructure discipline
 
-Large experimental artifacts, replay corpora, generated binaries, and transient research outputs are intentionally excluded from the canonical repository surface.
-
 All architectural evolution proceeds through:
 1. certification
 2. replay validation
@@ -20,44 +19,47 @@ All architectural evolution proceeds through:
 4. governance review
 5. incremental extraction
 
-The repository is intended to function as reconstructable infrastructure rather than opaque implementation mass.
-
-**Deterministic market replay and evaluation infrastructure for certifiable financial simulation.**
+**Deterministic simulation, ecological memory, and generic mathematical optimization infrastructure.**
 
 [![Constitutional Architecture Gates](https://github.com/nikhil/ChronoSentiment_MEGA_FINAL/actions/workflows/constitution.yml/badge.svg)](https://github.com/nikhil/ChronoSentiment_MEGA_FINAL/actions/workflows/constitution.yml)
 
 ## Overview
 
-Most financial simulation systems suffer from *silent semantic drift*: identical strategies produce disparate outcomes under structurally inconsistent replay conditions. ChronoSentiment is engineered to solve this hidden infrastructure problem. 
+Most AI simulation systems suffer from *silent semantic drift*: identical strategies produce disparate outcomes under structurally inconsistent replay conditions. 
 
-ChronoSentiment is a highly constrained, deterministic market replay and evaluation infrastructure designed to enforce scientific reproducibility and structural integrity in algorithmic discovery. By establishing strict constitutional isolation between mechanical search and market causality, ChronoSentiment guarantees that optimization remains mathematically pure while evaluation remains completely deterministic.
+**Coralys** is engineered to solve this hidden infrastructure problem. It provides a generic, pure platform comprising Ecological Physics, Optimization Mechanics, and Simulation Contracts.
+
+**ChronoSentiment** is a highly constrained, deterministic market replay and evaluation adapter designed to enforce scientific reproducibility and structural integrity in financial algorithmic discovery. It is built entirely on top of Coralys.
 
 ## Constitutional Architecture
 
-![Architecture Snapshot](file:///Users/nikhil/.gemini/antigravity/brain/473fd097-4bb0-4e4a-8d92-e67ab4ba9e18/architecture_snapshot_1779950072920.png)
+The architecture enforces strict separation between generic platform capabilities and domain-specific adapters:
 
-ChronoSentiment enforces a rigid 4-layer acyclic topology, ensuring that financial domain vocabulary never leaks into mathematical search algorithms, and simulation mechanics never leak into strategy evaluation:
+```text
+Coralys Platform
+├── Ecology Physics (Topology, Memory, Deformation)
+├── Optimization Mechanics (Population Management, Evolution Loop)
+├── Simulation Contracts
+├── Decision Contracts
+└── Recommendation Contracts
 
-1. **`infrastructure/optimization`**: A mathematically pure evolutionary search engine (GA). It maintains absolute seed determinism and operates entirely blind to financial semantics (no knowledge of assets, regimes, or PnL).
-2. **`financial/core`**: The chronological substrate. Enforces market causality, strict monotonic timestamps, deterministic latency execution bounds, and perfectly reproducible event trace hashing.
-3. **`financial/strategies`**: The semantic bridge. Translates pure candidate bytes into domain logic, manages strategy behavior, and guarantees lossless semantic projections.
-4. **`infrastructure/observatory/api`**: External observability, tracking, and serialization.
+Adapters
+├── ChronoSentiment (Finance Adapter)
+└── UltraCrew (Upcoming Workforce Adapter)
+```
 
-*Dependency Law: The pure optimization layer must never import domain logic. Violation of this dependency direction triggers an immediate CI failure.*
+1. **`coralys-moga` / `coralys-ecology`**: The pure domain-agnostic platform crates. They maintain absolute seed determinism and operate entirely blind to financial semantics (no knowledge of assets, regimes, or PnL).
+2. **`adapters/chronosentiment`**: The semantic bridge. Translates pure candidate bytes into financial domain logic, manages strategy behavior, and guarantees lossless semantic projections.
+
+*Dependency Law: Coralys platform crates must NEVER import domain logic from ChronoSentiment or any adapter. Violation of this dependency direction triggers an immediate CI failure.*
 
 ## Adversarial Replay Certification
 
-We don't just test the "happy path." ChronoSentiment relies on an **Adversarial Fixture Philosophy** for verification. 
+We don't just test the "happy path." Coralys and ChronoSentiment rely on an **Adversarial Fixture Philosophy** for verification. 
 
-Using raw, captured market slices and malformed synthetic streams (timestamp collisions, missing ticks, reversed chunks, negative latency), ChronoSentiment forces the simulation through a rigid chronology normalizer. If equivalent inputs fail to converge to an **identical canonical replay hash**, the system blocks the build.
+Using raw, captured market slices and malformed synthetic streams, the system forces the simulation through a rigid chronology normalizer. If equivalent inputs fail to converge to an **identical canonical replay hash**, the system blocks the build.
 
 **Semantic Drift Authorization:** Any change that modifies a canonical replay hash, classification boundary, or sequence trace is considered a constitutional violation unless explicitly documented, authorized, and recertified.
-
-## Core Capabilities
-
-- **Lossless State Snapshots**: Simulate serialize/deserialize roundtripping of active execution bounds to enable distributed, pause-and-resume cluster architectures.
-- **Chunking Invariance**: Replay stability is guaranteed whether data is streamed individually, batched, or completely loaded in-memory.
-- **Certifiable Semantic Equivalence**: Robust testing guarantees that the classification, edge scoring, and regime assignments for a strategy do not drift across execution boundaries.
 
 ## Quick Start (Development)
 

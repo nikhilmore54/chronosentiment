@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
-use crate::topology::TopologyField;
-use crate::cognition::{CognitionGeometry, MemoryState};
+use coralys_ecology::models::TopologyField;
+use coralys_ecology::models::{CognitionGeometry, MemoryState};
+use coralys_ecology::traits::{TopologyModel, MemoryModel};
 
 /// The canonical replay observability artifact.
 /// This strictly captures raw, mechanical deformation, avoiding any explanatory interpretations.
@@ -41,10 +42,10 @@ pub fn generate_occupancy_traces(
         let tick_index = i as u64;
         
         // 1. Topology Deformation
-        let deformation = topology.apply(tick_index, total_ticks);
+        let deformation = topology.transform((tick_index, total_ticks));
         
         // 2. State Ingestion
-        baseline.ingest(price); // Perfect continuity
+        baseline.observe(price); // Perfect continuity
         
         // Deterministic pseudo-random acceptance evaluation for fragmented observation
         let hash_int = tick_index.wrapping_mul(1103515245).wrapping_add(12345);
@@ -52,7 +53,7 @@ pub fn generate_occupancy_traces(
         let is_accepted = normalized <= deformation.acceptance_ratio;
         
         if is_accepted {
-            fragmented.ingest(price);
+            fragmented.observe(price);
         }
         
         // 3. Morphological Evaluation

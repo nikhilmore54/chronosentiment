@@ -5,8 +5,8 @@ use clap::Parser;
 use sha2::{Sha256, Digest};
 use serde::Deserialize;
 
-use chronosentiment_core::topology::TopologyField;
-use chronosentiment_core::cognition::CognitionGeometry;
+use coralys_ecology::models::TopologyField;
+use coralys_ecology::models::CognitionGeometry;
 use chronosentiment_core::morphology::{generate_occupancy_traces, TraceArtifactV1};
 use chronosentiment_core::observatory::{ObservatoryManifestV1, ChronologyBounds, resolve_git_commit_hash};
 use std::time::{SystemTime, UNIX_EPOCH};

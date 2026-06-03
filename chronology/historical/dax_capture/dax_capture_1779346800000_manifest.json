@@ -1,0 +1,9 @@
+{
+  "substrate": "^GDAXI",
+  "capture_start": 1779346800000,
+  "capture_end": 1780068540000,
+  "total_ticks": 3562,
+  "chronology_hash": "de8d68019ba2be5106bb10bde10c81187b748f7eb8fa7b470a9d28fc4441a6c8",
+  "gaps": [],
+  "provenance": "Yahoo Finance via yfinance"
+}

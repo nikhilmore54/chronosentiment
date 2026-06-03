@@ -1,0 +1,34 @@
+{
+  "session_id": "NSE_2026_06_02",
+  "capture_date": "2026-06-02",
+  "capture_start_utc": "2026-06-02T04:34:33.962241Z",
+  "capture_end_utc": "2026-06-02T05:35:01.158099Z",
+  "script_version": "1.1.0",
+  "provider": "Yahoo Finance",
+  "symbols": {
+    "NIFTY": {
+      "provider_symbol": "^NSEI",
+      "raw_json_path": "live_capture/2026-06-02/raw/NIFTY.json",
+      "raw_json_sha256": "7cca8704636ae231eb283f9ed57a3450103e5ed240c2a6fb2dcdd6b1226ad7ba",
+      "canonical_1m_path": "live_capture/2026-06-02/canonical/NIFTY_1m.csv",
+      "canonical_1m_sha256": "197ff2f4c6f492f067ddf7dffcb2ca6eee9e871818650b03df9cd6b3e26b0bb5",
+      "derived_5m_path": "live_capture/2026-06-02/derived/NIFTY_5m.csv",
+      "derived_5m_sha256": "4f802eea651e7d9fbafa2974b3ef57a55df128867ba69e9d113ef21445e420e2",
+      "retrieval_method": "yfinance",
+      "capture_timestamp_utc": "2026-06-02T05:35:01.034554Z",
+      "script_version": "1.1.0"
+    },
+    "BANKNIFTY": {
+      "provider_symbol": "^NSEBANK",
+      "raw_json_path": "live_capture/2026-06-02/raw/BANKNIFTY.json",
+      "raw_json_sha256": "9a1b587708e745c1b2cdfddf64f5794b43d1e96f8265488a10eb95fba7cf0e68",
+      "canonical_1m_path": "live_capture/2026-06-02/canonical/BANKNIFTY_1m.csv",
+      "canonical_1m_sha256": "f8c030ab975f7ce6ac900290f0da5fb8c3f9fa43746cbf26a9f0170e766a3509",
+      "derived_5m_path": "live_capture/2026-06-02/derived/BANKNIFTY_5m.csv",
+      "derived_5m_sha256": "68943b119ea3f0d4d730b06a2315a0acc1a27f5e2d730b466332b213b4afe4f3",
+      "retrieval_method": "yfinance",
+      "capture_timestamp_utc": "2026-06-02T05:35:01.158077Z",
+      "script_version": "1.1.0"
+    }
+  }
+}
