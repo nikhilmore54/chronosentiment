@@ -40,7 +40,7 @@ This document serves as the formal closure of Phase 2. It demarcates the mechani
    Categorical ecological membership does not reliably determine next-session intensity (volatility or range). While a signal existed in Q1, it failed to replicate in Q2.
 
 3. **Independent Run-Length Memory**
-   While run-duration within Ecology A appeared to predict future volatility decay, a control regression revealed this was primarily a selection artifact. The duration effect loses significance when controlling for current-session volatility.
+   While run-duration within Ecology A appeared to predict future volatility decay, a control regression revealed this was primarily a selection artifact. The duration effect loses significance when controlling for current-session volatility. No evidence that the ecological geometry contains independent predictive information for future returns or future intensity beyond current market state.
 
 4. **Gap Significance**
    `gap_pct` does not structurally define the ecologies and does not predict transitions between them. It is orthogonal to both the geometry and its dynamics.
