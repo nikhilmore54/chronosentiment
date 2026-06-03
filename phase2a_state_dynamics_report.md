@@ -76,7 +76,27 @@ For Ecology A, **the longer the run, the quieter the next day becomes.** The mar
 
 ---
 
-## 3. Descriptive Survival Analysis
+## 3. Duration Control Test (Selection vs Memory)
+
+> Does run length still matter after controlling for current volatility?
+
+We observed that `run_length(t)` correlates with `volatility(t+1)` in Ecology A. To determine whether this is genuine dynamical memory or simply a selection artifact (long runs naturally have lower current volatility, which persists), we ran a control regression:
+
+```text
+vol(t+1) ~ vol(t) + ecology_t + run_length_t
+```
+
+### OLS Regression Results (Pooled Ecology A)
+- `vol_t` coefficient: **p = 0.002** (highly significant)
+- `run_length_t` coefficient: **p = 0.191** (not significant)
+- `log(run_length_t)` coefficient: **p = 0.079** (marginal)
+
+### Interpretation
+The duration effect is primarily a **selection artifact**. Once you control for current volatility, run length adds virtually no predictive information. Long quiet periods cause additional quietness mainly because they *are* quiet. The market is not "counting days"; it is simply maintaining its current low-intensity state.
+
+---
+
+## 4. Descriptive Survival Analysis
 
 > How do the survival curves of the two ecologies differ?
 
@@ -97,10 +117,14 @@ The survival geometries are fundamentally different. Ecology B experiences a mas
 
 ---
 
-## Conclusion & Success Criteria
+## Conclusion
 
-We established:
-1. **Ecological state governs future market intensity, but it requires duration.** State(t) is weak; [State(t) + Duration(t)] is strong.
-2. **The geometry describes a dynamical system.** The market possesses a persistent low-energy baseline attractor (Ecology A) that progressively cools the market, and transient high-energy excursions (Ecology B) that decay rapidly.
+We found strong evidence that the ecological partition contains asymmetric persistence structure.
 
-The ecological geometry has successfully moved from **classification** to **dynamics**.
+Ecology A behaves as a long-lived baseline state, while Ecology B behaves as a transient excursion state.
+
+Direct state-based prediction of next-session intensity did not replicate across quarters.
+
+However, run duration within Ecology A exhibits a small but statistically detectable relationship with future volatility, suggesting a possible duration-dependent dynamical effect. The subsequent duration control test revealed that this effect is largely driven by current volatility (a selection effect) rather than genuine independent market memory, as `run_length` loses significance when controlling for `vol_t`.
+
+The stable geometry discovered in Phase 2 successfully categorizes market intensity states and their distinct survival profiles, but it does not inherently offer straightforward predictive mechanics.
