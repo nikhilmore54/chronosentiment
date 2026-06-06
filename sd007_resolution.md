@@ -1,11 +1,11 @@
-# SD-007 Resolution — Discovery Failure Root Cause: Operator Incapacity
+# SD-007 Interim Report — Discovery Failure Root Cause Investigation
 
-**Defect ID:** SD-007  
-**Status:** CLOSED  
-**Sprint:** 3.9  
-**Classification:** RC-1 Confirmed — Mutation Operator Incapacity  
-**Evidence artifact:** `services/ultracrew_server/hc_distribution_report.md`  
-**Canonical run:** seed=61, 5000 generations, instance n050w4  
+**Defect ID:** SD-007
+**Status:** OPEN — mechanism not yet isolated
+**Sprint:** 3.9
+**Classification:** RC-1 Strongly Indicated; RC-2 Remains Plausible
+**Evidence artifact:** `services/ultracrew_server/hc_distribution_report.md`
+**Canonical run:** seed=61, 5000 generations, instance n050w4
 
 ---
 
@@ -85,26 +85,39 @@ Applying the frozen classification table from `sd007_sprint39_charter.md`:
 | Criterion | Result |
 |-----------|--------|
 | HC_Total shows no downward trend (slope ≈ 0 or positive) | **CONFIRMED** — Δ mean = +12,749 (positive) |
-| \|ρ(Oi, HC_Total)\| < 0.1 for all i=1..5 | Not measured (RC-1 confirmed; RC-2 probe not required) |
+| \|ρ(Oi, HC_Total)\| < 0.1 for all i=1..5 | Not yet measured |
 | Median HC_Total at gen=0 > 50 AND HC_Total at gen=5000 ≈ gen=0 | Partial — gen=0 snapshot empty; floor stable at 33k–34k |
-| Evaluator source confirms sentinel return for HC_Total > 0 | Not required (RC-1 confirmed) |
+| Evaluator source confirms sentinel return for HC_Total > 0 | Not required (RC-4 falsified in Sprint 3.8) |
 
-**SD-007 Classification: RC-1 Confirmed — Mutation Operator Incapacity**
+**SD-007 Classification: RC-1 Strongly Indicated; RC-2 Remains Plausible**
 
-The mutation operators (`UltraCrewMutator`) are structurally incapable of reducing HC_Total toward zero on the INRC-II n050w4 instance. The mean HC_Total increases monotonically over 5000 generations, and the minimum HC_Total floor stabilises at 33,000–34,000 (33–34 actual violations). The operators are not exploring the feasible region — they are converging to a proxy-optimal but deeply infeasible basin.
+The HC_Total trajectory probe confirms that the search dynamics diverge from feasibility over 5000 generations. However, the probe measures the **archive/population trajectory** — it cannot isolate whether the failure is in the mutation operator itself (RC-1) or in the selection/proxy geometry that removes HC-improving offspring before they can accumulate (RC-2/RC-3 interaction).
+
+Three hypotheses remain compatible with the observed trajectory:
+
+| Hypothesis | Description | Compatible with data? |
+|------------|-------------|----------------------|
+| **A (RC-1)** | Operator structurally incapable of reducing HC | Yes |
+| **B (RC-2)** | Operator capable, but selection removes HC-improving offspring | Yes |
+| **C (RC-1+RC-2)** | Operator occasionally improves HC, but O3 rewards dominate and drive population away | Yes |
+
+The HC distribution probe cannot distinguish A/B/C because it only measures outcomes after selection, not offspring before selection.
 
 ---
 
-## Causal Chain
+## Causal Chain (Partial — Mechanism Not Yet Isolated)
 
 ```
 UltraCrewMutator (single-point shift/swap/reassign)
     ↓
-Cannot satisfy multiple simultaneously-violated HC constraints
+[UNKNOWN: does operator reduce HC in offspring before selection?]
     ↓
 HC_Total floor: 33,000–34,000 (33–34 violations, penalty-weighted)
     ↓
 Mean HC_Total increases over 5000 gens (search diverges from feasibility)
+    ↓
+[UNKNOWN: is divergence driven by operator incapacity (RC-1)
+          or by O3 selection pressure removing HC-improving offspring (RC-2)?]
     ↓
 Evaluator never returns feasible=true
     ↓
@@ -113,41 +126,74 @@ SD-005: Discovery Failure (0 feasible genomes in 5000 gens)
 0% feasible archive
 ```
 
+The causal chain is confirmed from the HC_Total floor onward. The mechanism upstream of the floor — whether it is operator incapacity or selection pressure — is not yet isolated.
+
 ---
 
 ## Root Cause Analysis
 
-### RC-1: Operator Incapacity (CONFIRMED)
+### RC-1: Operator Incapacity (Strongly Indicated — Not Yet Isolated)
 
 `UltraCrewMutator` applies single-point mutations (shift assignment, swap, reassign). The INRC-II n050w4 instance has 50 nurses, 4 weeks, and a dense constraint graph. The HC constraints (H1: shift coverage, H2: max shifts/week, H3: no double-shift per day) require coordinated multi-constraint satisfaction. A single-point mutation that fixes one HC violation typically introduces another.
 
-Evidence: Mean HC_Total increases from 41,205 to 53,954 over 5000 generations. The search is not making progress toward feasibility — it is diverging.
+Evidence: Mean HC_Total increases from 41,205 to 53,954 over 5000 generations. The search is not making progress toward feasibility — it is diverging. However, this trajectory is measured after selection. It does not prove the operator cannot produce HC-improving offspring — only that such offspring do not survive in the archive.
 
-### RC-2: Proxy Misalignment (Not Measured — RC-1 Sufficient)
+**Required probe to confirm RC-1:** Measure `P(child_HC < parent_HC)` over raw offspring before selection. If near zero, RC-1 is confirmed. If offspring frequently reduce HC but disappear after selection, RC-2 is implicated.
 
-The proxy objectives (O1–O5) may be orthogonal to HC_Total reduction. However, since RC-1 is confirmed with strong evidence (positive Δ mean HC_Total), RC-2 is a contributing factor rather than the primary cause. Even with perfectly aligned proxies, single-point operators cannot satisfy 33+ simultaneously-violated constraints.
+### RC-2: Proxy Misalignment (Plausible — Not Measured)
+
+Sprint 3.7 confirmed that O3 (HC_Successions proxy) actively rewards behavior that worsens external quality. The same mechanism may be removing HC-improving offspring from the archive before they can accumulate. If offspring occasionally reduce HC_Total but are dominated by O3-superior infeasible genomes, the population will drift away from feasibility even if the operator is capable.
+
+Evidence: O3 pressure confirmed in SD-006. HC_Total trajectory diverges from feasibility. These two findings are compatible with RC-2 as the primary mechanism.
+
+**Required probe to confirm RC-2:** Measure ρ(O3, HC_Total) across archive members. If strongly negative (O3 improvement correlates with HC_Total increase), RC-2 is confirmed.
 
 ### RC-3: Initialization Depth (Partial — gen=0 snapshot empty)
 
-The gen=0 archive snapshot was empty (archive not yet populated at gen=0 census). However, the baseline genome has `HC_Coverage=19, HC_Skills=1, HC_ForbiddenSucc=16` (from console output: 19000+1000+16000 penalty-weighted), totalling 36 actual violations. This is consistent with the observed floor of 33–34 violations. Initialization is deep but not the primary cause — the operators cannot reduce violations regardless of starting point.
+The gen=0 archive snapshot was empty (archive not yet populated at gen=0 census). However, the baseline genome has `HC_Coverage=19, HC_Skills=1, HC_ForbiddenSucc=16` (from console output: 19000+1000+16000 penalty-weighted), totalling 36 actual violations. This is consistent with the observed floor of 33–34 violations. Initialization depth is a contributing factor but not independently sufficient to explain the divergence.
 
-### RC-4: Evaluator Anomaly (Not Confirmed)
+### RC-4: Evaluator Anomaly (Falsified)
 
 The `best_proxy=-1.00` observation from Sprint 3.8 is consistent with `hard=1` (minimum possible violation count), not a sentinel. The evaluator correctly sets `feasible = hard == 0` with no short-circuit. RC-4 is falsified.
 
 ---
 
-## Recommended Fix
+## Required Next Step — ΔHC Offspring Probe
 
-The primary fix is to replace or augment `UltraCrewMutator` with a **repair operator** or **constraint-guided mutation**:
+To isolate RC-1 from RC-2, the following probe must be added to `inrc_archive_forensics.rs`:
 
-1. **Repair operator**: After each mutation, apply a greedy repair pass that fixes the most-violated HC constraint (e.g., reassign nurses to cover uncovered shifts, remove double-shifts). This converts infeasible offspring into feasible ones without requiring the search to cross the feasibility boundary by chance.
+```rust
+// For each offspring, before archive.add():
+let parent_hc = score_inrc_official(&parent.genome, ...).hc_total();
+let child_hc  = score_inrc_official(&child_genome, ...).hc_total();
+let delta_hc  = child_hc as i64 - parent_hc as i64;
+// Record: (generation, parent_hc, child_hc, delta_hc, was_inserted)
+```
 
-2. **Feasibility-directed initialization**: Generate the initial population using a constructive heuristic that satisfies HC constraints by construction (e.g., round-robin shift assignment respecting coverage requirements). This reduces the initialization depth from 33–36 violations to 0.
+Aggregate over all offspring across 5000 generations:
+- `P(delta_hc < 0)` = probability that a mutation reduces HC_Total
+- `P(delta_hc < 0 AND was_inserted)` = probability that an HC-improving offspring survives selection
 
-3. **Constraint-guided mutation**: Add a mutation operator that specifically targets the most-violated HC constraint (e.g., if HC_Coverage is highest, preferentially assign nurses to uncovered shifts). This provides a gradient signal toward feasibility.
+**Classification:**
 
-4. **Penalty weight adjustment**: Increase the penalty weight for HC violations in the proxy objectives so that NSGA-II selection pressure drives the population toward feasibility rather than away from it.
+| Observation | Classification |
+|-------------|----------------|
+| `P(delta_hc < 0) ≈ 0` | RC-1 CONFIRMED — operator cannot reduce HC |
+| `P(delta_hc < 0) > 0.1` AND `P(delta_hc < 0 AND was_inserted) ≈ 0` | RC-2 CONFIRMED — selection removes HC-improving offspring |
+| Both probabilities > 0 | RC-1 + RC-2 interaction |
+
+---
+
+## Confidence Assessment
+
+| Claim | Confidence |
+|-------|------------|
+| SD-005 Discovery Failure | Very High |
+| Search dynamics diverge from feasibility | Very High |
+| Archive not responsible for feasibility failure | High |
+| O3 proxy misalignment exists (SD-006) | Very High |
+| Mutation operator incapacity is the sole root cause (RC-1) | Medium |
+| SD-007 fully closed | No — ΔHC offspring probe required |
 
 ---
 
@@ -158,9 +204,9 @@ The primary fix is to replace or augment `UltraCrewMutator` with a **repair oper
 | SD-003 | Champion Retention Error: best external champion not in final archive | CLOSED (Sprint 3.6) |
 | SD-005 | 0% feasible solutions in archive after 5000 generations | CLOSED (Sprint 3.8) |
 | SD-006 | O3 proxy pressure causes champion eviction | CLOSED (Sprint 3.7) |
-| SD-007 | Discovery Failure: mutation operators cannot reach feasible region | CLOSED (Sprint 3.9) |
+| **SD-007** | Discovery Failure: mechanism not yet isolated (RC-1 vs RC-2) | **OPEN** |
 
-All scientific debt items are now CLOSED. The system requires a repair operator or constraint-guided mutation to produce feasible schedules on INRC-II n050w4.
+SD-007 remains open. The HC_Total trajectory probe confirms search divergence from feasibility but cannot isolate the mechanism. The ΔHC offspring probe (Sprint 3.10) is required to distinguish operator incapacity (RC-1) from selection pressure removing HC-improving offspring (RC-2).
 
 ---
 
@@ -170,4 +216,4 @@ All scientific debt items are now CLOSED. The system requires a repair operator 
 |--------|-------------|
 | `67db87c0` | `sd005_resolution.md` (SD-005 CLOSED, SD-007 OPENED) |
 | `fc8e20f7` | `sd007_sprint39_charter.md` + instrumentation audit in `sd005_resolution.md` |
-| *(pending)* | HC_Total distribution probe + `sd007_resolution.md` |
+| `24d9a587` | HC_Total distribution probe + `sd007_resolution.md` (interim, SD-007 OPEN) |
