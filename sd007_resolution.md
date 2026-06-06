@@ -59,10 +59,14 @@ Run: seed=61, 5000 gens. Every offspring scored before `archive.add()`.
 | HC-worsening AND admitted | 664 |
 | P(child_hc < parent_hc) | 0.2876 |
 | P(admitted \| improving) | 0.2316 (23.16%) |
+| P(admitted \| worsening) | 0.2568 (25.68%) |
 | Mean ΔHC per offspring | +600.2 (penalty-weighted) |
 
 **Critical observation:** 76.84% of HC-improving offspring are rejected by the archive.
-The archive admits 2× more HC-worsening offspring (664) than HC-improving offspring (333).
+The raw counts (664 worsening admitted vs 333 improving admitted) suggest a 2× ratio,
+but the conditional admission rates are much closer: 23.16% vs 25.68%. The archive does
+not explicitly prefer worsening offspring — it evaluates orthogonal objectives and HC
+improvement is simply not rewarded. This is a subtler mechanism than anti-feasibility bias.
 
 ---
 
@@ -89,12 +93,14 @@ improving moves. This is a weak form of RC-1 (operator bias, not incapacity).
 ### RC-2 (Proxy Misalignment / Selection Suppression) — STRONGLY INDICATED
 
 **Evidence:** Of 1,438 HC-improving offspring, only 333 (23.16%) were admitted.
-The archive rejected 76.84% of all HC-improving offspring. Meanwhile, 664 HC-worsening
-offspring were admitted — 2× the rate of HC-improving admissions.
+The archive rejected 76.84% of all HC-improving offspring. The conditional admission
+rates are 23.16% (improving) vs 25.68% (worsening) — close in absolute terms, but
+the gap is directionally consistent: HC improvement is not rewarded by the archive.
 
-This is the signature of a selection system that is structurally hostile to
-HC-improving moves. The proxy objectives (O1–O5) are not aligned with HC reduction
-as a path to feasibility.
+The proxy objectives (O1–O5) are not aligned with HC reduction as a path to
+feasibility. The archive evaluates orthogonal objectives; HC-improving offspring
+that worsen O3 (coverage ratio) are dominated and evicted regardless of their
+HC progress.
 
 **Connection to SD-006:** The gen-69 domination event (Sprint 3.10 run) shows:
 - Victim official_total = 44,910; Dominator official_total = 60,755
@@ -120,10 +126,11 @@ but is not the primary cause.
 
 | Hypothesis | Confidence | Evidence |
 |---|---|---|
-| RC-1 sole cause (operator incapable) | **Falsified** | P(improving) = 28.76% |
-| RC-2 sole cause (selection hostile) | Low-Medium | P(admitted\|improving) = 23.16% but mean ΔHC still positive |
-| RC-1 + RC-2 interaction | **High** | Both mechanisms active; worsening bias + selection suppression |
-| Mutation step-size asymmetry | **High** | Mean ΔHC = +600 despite 28.76% improving rate implies worsening steps are larger |
+| RC-1 Operator Incapacity (strong form) | **Falsified** | P(improving) = 28.76% — operator CAN reduce HC |
+| RC-1 Operator Bias (weak form) | **Confirmed** | 51.72% worsening, mean ΔHC = +600; systematic positive drift |
+| RC-2 Proxy Misalignment | **Strongly Indicated** | P(admit\|improving) = 23.16% vs P(admit\|worsening) = 25.68% |
+| Mutation step-size asymmetry | **Unresolved** | E[ΔHC\|improving] and E[ΔHC\|worsening] not yet measured |
+| O3 as dominant attractor | **Unresolved** | Gen-69 event: +15,845 penalty traded for 330 O3 units |
 | RC-3 partial contributor | Medium | HC floor = 33k; initialization is deep |
 | RC-4 | **Falsified** | Code audit |
 
@@ -151,20 +158,22 @@ Discovery Failure
 
 ### Proved
 
-1. Mutation operator CAN reduce HC_Total (P = 28.76%). RC-1 strong form is false.
-2. 76.84% of HC-improving offspring are rejected by archive selection.
-3. Archive admits 2× more HC-worsening than HC-improving offspring.
-4. Mean ΔHC = +600 — net drift away from feasibility despite improving moves existing.
-5. RC-1 + RC-2 interaction is the correct classification under the frozen table.
+1. Mutation operator CAN reduce HC_Total (P = 28.76%). **RC-1 Operator Incapacity falsified.**
+2. Operator has systematic positive drift: 51.72% worsening, mean ΔHC = +600. **RC-1 Operator Bias confirmed.**
+3. 76.84% of HC-improving offspring are rejected by archive selection.
+4. Conditional admission rates: P(admit|improving) = 23.16% vs P(admit|worsening) = 25.68%.
+5. Archive does not explicitly prefer worsening offspring; it evaluates orthogonal objectives.
 
 ### Not Yet Proved
 
-1. **Magnitude asymmetry:** Are improving moves small (ΔHC = −1000) while worsening
-   moves are large (ΔHC = +3000)? Or are they comparable in magnitude?
-2. **Rejection mechanism:** Are HC-improving offspring rejected because they are
-   dominated on O3 specifically (SD-006 connection), or because they are weak
-   across all proxy objectives?
-3. **Counterfactual:** If selection were neutral (random admission), would HC
+1. **Magnitude asymmetry:** E[ΔHC | improving] and E[ΔHC | worsening] are not measured.
+   Positive mean ΔHC = +600 could arise from many small improvements + few huge regressions,
+   or from slightly more regressions than improvements, or from selection feedback loops.
+2. **Rejection mechanism:** Are HC-improving offspring rejected because they worsen O3
+   specifically (Sub-B), or because they are weak across all proxy objectives (Sub-A)?
+3. **O3 attractor magnitude:** The gen-69 event (ΔOfficialTotal = +15,845 for ΔO3 = −330)
+   suggests O3 may act as a dominant attractor, not merely another objective.
+4. **Counterfactual:** If selection were neutral (random admission), would HC
    accumulate toward feasibility?
 
 ---
@@ -203,7 +212,14 @@ This would separate Sub-A from Sub-B and either close SD-007 or open SD-008
 | SD-003 | CLOSED | Champion Retention Error — O3 proxy domination (Sprint 3.6/3.7) |
 | SD-005 | CLOSED | Discovery Failure — evaluator never returned feasible=true (Sprint 3.8) |
 | SD-006 | CLOSED | O3 proxy pressure evicts best-ever champions (Sprint 3.7) |
-| SD-007 | OPEN   | Discovery Failure root cause — RC-1+RC-2 interaction; magnitude asymmetry unresolved |
+| SD-007 | OPEN   | Discovery Failure root cause — Operator Bias confirmed; O3 attractor mechanism unresolved |
+
+**Defensible conclusion (Sprint 3.10):**
+
+> Discovery Failure is not caused by inability to generate HC-improving offspring.
+> Discovery Failure arises because HC-improving offspring fail to accumulate,
+> through some combination of operator positive drift and archive selection pressure
+> that does not reward HC reduction.
 
 ---
 
