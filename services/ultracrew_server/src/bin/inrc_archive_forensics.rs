@@ -112,6 +112,62 @@ type CensusSample = (u64, usize, usize, usize, usize);
 // sum_hc/count = mean_hc; median requires sorting so we store raw sum for mean only.
 type HcDistSample = (u64, usize, usize, u64, usize, usize, usize, usize, usize, usize, usize);
 
+// Sprint 3.10: ΔHC offspring probe accumulators (accumulated across all generations)
+// Measures P(child_hc < parent_hc) before selection — isolates RC-1 from RC-2.
+struct DeltaHcProbe {
+    total_offspring: u64,
+    hc_improving: u64,          // child_hc < parent_hc
+    hc_neutral: u64,            // child_hc == parent_hc
+    hc_worsening: u64,          // child_hc > parent_hc
+    hc_improving_inserted: u64, // child_hc < parent_hc AND was_inserted
+    hc_worsening_inserted: u64, // child_hc > parent_hc AND was_inserted
+    delta_sum: i64,             // sum of (child_hc - parent_hc) for mean delta
+}
+
+impl DeltaHcProbe {
+    fn new() -> Self {
+        Self {
+            total_offspring: 0,
+            hc_improving: 0,
+            hc_neutral: 0,
+            hc_worsening: 0,
+            hc_improving_inserted: 0,
+            hc_worsening_inserted: 0,
+            delta_sum: 0,
+        }
+    }
+
+    fn record(&mut self, parent_hc: usize, child_hc: usize, was_inserted: bool) {
+        self.total_offspring += 1;
+        let delta = child_hc as i64 - parent_hc as i64;
+        self.delta_sum += delta;
+        if delta < 0 {
+            self.hc_improving += 1;
+            if was_inserted { self.hc_improving_inserted += 1; }
+        } else if delta == 0 {
+            self.hc_neutral += 1;
+        } else {
+            self.hc_worsening += 1;
+            if was_inserted { self.hc_worsening_inserted += 1; }
+        }
+    }
+
+    fn p_improving(&self) -> f64 {
+        if self.total_offspring == 0 { return 0.0; }
+        self.hc_improving as f64 / self.total_offspring as f64
+    }
+
+    fn p_improving_inserted(&self) -> f64 {
+        if self.hc_improving == 0 { return 0.0; }
+        self.hc_improving_inserted as f64 / self.hc_improving as f64
+    }
+
+    fn mean_delta(&self) -> f64 {
+        if self.total_offspring == 0 { return 0.0; }
+        self.delta_sum as f64 / self.total_offspring as f64
+    }
+}
+
 /// Compute crowding distance for a specific solution (by uid) within the archive.
 /// Uses the same normalised Euclidean neighbour distance as the parent selector.
 /// Returns f64::INFINITY for boundary solutions; 0.0 if uid not found or archive < 2.
@@ -252,6 +308,8 @@ fn main() {
     let mut hc_dist_timeline: Vec<HcDistSample> = Vec::new();
     // Sprint 3.9: gen=0 initialization snapshot — HC_Total of all initial archive members
     let mut init_hc_values: Vec<usize> = Vec::new();
+    // Sprint 3.10: ΔHC offspring probe — accumulated across all generations
+    let mut delta_hc_probe = DeltaHcProbe::new();
 
     // ── Seed with baseline ─────────────────────────────────────────────────────
     let baseline_genome =
@@ -393,6 +451,15 @@ fn main() {
                 .map(|s| s.fitness.clone())
         });
 
+        // ── Sprint 3.10: ΔHC offspring probe — score parent BEFORE archive.add() ──
+        // parent_hc is computed here (before admission) so it reflects the pre-selection state.
+        // child_hc comes from child_score (already computed above).
+        let parent_score = score_inrc_official(&parent.genome, &scenario, &inrc_optimizer);
+        let parent_hc = parent_score.hc_coverage + parent_score.hc_skills
+            + parent_score.hc_one_shift_per_day + parent_score.hc_forbidden_successions;
+        let child_hc_for_probe = child_score.hc_coverage + child_score.hc_skills
+            + child_score.hc_one_shift_per_day + child_score.hc_forbidden_successions;
+
         // ── Archive admission ──────────────────────────────────────────────────
         let old_uids: Vec<u64> = engine.archive.solutions.iter().map(|s| s.uid).collect();
         let was_inserted = engine.archive.add(ParetoSolution {
@@ -434,6 +501,9 @@ fn main() {
             best_ever_genome_hash = Some(child_uid);
             best_ever_tracker_uid = Some(tracker_uid);
         }
+
+        // ── Sprint 3.10: Record ΔHC probe entry (fires after was_inserted is known) ──
+        delta_hc_probe.record(parent_hc, child_hc_for_probe, was_inserted);
 
         // ── Full-coverage archive membership tracking ──────────────────────────
         // Register EVERY archive insertion in archive_members map.
@@ -1134,6 +1204,128 @@ fn main() {
         let mut report_file = File::create(report_path).unwrap();
         report_file.write_all(report.as_bytes()).unwrap();
         println!("\nWrote {} ({} bytes)", report_path, report.len());
+    }
+
+    // ── Sprint 3.10: Write delta_hc_report.md ─────────────────────────────────
+    // Classification table (frozen — sd007_resolution.md):
+    //   P(delta_hc < 0) ≈ 0                                    → RC-1 CONFIRMED
+    //   P(delta_hc < 0) > 0.1 AND P(improving AND inserted) ≈ 0 → RC-2 CONFIRMED
+    //   Both probabilities > 0                                   → RC-1 + RC-2 interaction
+    {
+        let p_imp = delta_hc_probe.p_improving();
+        let p_imp_ins = delta_hc_probe.p_improving_inserted();
+        let mean_d = delta_hc_probe.mean_delta();
+
+        let classification = if p_imp < 0.01 {
+            "**RC-1 CONFIRMED** — Mutation operator is incapable of reducing HC_Total. \
+             P(child_hc < parent_hc) ≈ 0 across all evaluated offspring. \
+             The operator cannot navigate toward feasibility regardless of selection pressure."
+        } else if p_imp >= 0.10 && p_imp_ins < 0.01 {
+            "**RC-2 CONFIRMED** — Mutation operator CAN reduce HC_Total (P > 0.10), \
+             but HC-improving offspring are almost never admitted to the archive. \
+             Selection/proxy pressure is suppressing feasibility-directed progress."
+        } else if p_imp >= 0.01 && p_imp < 0.10 {
+            "**RC-1 PARTIAL + RC-2 PLAUSIBLE** — Mutation operator rarely reduces HC_Total \
+             (P < 0.10), and the few improving offspring that exist may also face selection \
+             pressure. Both RC-1 and RC-2 contribute."
+        } else {
+            "**RC-1 + RC-2 INTERACTION** — Both P(improving) and P(improving AND inserted) \
+             are non-trivial. Operator has some capacity but selection further suppresses it."
+        };
+
+        let mut report = String::new();
+        report.push_str("# ΔHC Offspring Probe Report — SD-007 Root Cause Isolation\n\n");
+        report.push_str("**Sprint:** 3.10  \n");
+        report.push_str(&format!("**Seed:** {}  \n", seed));
+        report.push_str("**Instance:** n050w4  \n");
+        report.push_str(&format!("**Generations:** {}  \n", max_generations));
+        report.push_str("**Probe:** ΔHC = child_hc − parent_hc, measured BEFORE archive.add()  \n");
+        report.push_str("**Scope:** All evaluated offspring (not just archive-admitted ones)  \n\n");
+        report.push_str("---\n\n");
+
+        // Section 1: Raw counts
+        report.push_str("## 1. Raw Offspring Counts\n\n");
+        report.push_str("| Category | Count | % of Total |\n|---|---|---|\n");
+        let total = delta_hc_probe.total_offspring.max(1);
+        report.push_str(&format!("| Total offspring evaluated | {} | 100.0% |\n", delta_hc_probe.total_offspring));
+        report.push_str(&format!("| HC-improving (child_hc < parent_hc) | {} | {:.2}% |\n",
+            delta_hc_probe.hc_improving,
+            delta_hc_probe.hc_improving as f64 / total as f64 * 100.0));
+        report.push_str(&format!("| HC-neutral (child_hc == parent_hc) | {} | {:.2}% |\n",
+            delta_hc_probe.hc_neutral,
+            delta_hc_probe.hc_neutral as f64 / total as f64 * 100.0));
+        report.push_str(&format!("| HC-worsening (child_hc > parent_hc) | {} | {:.2}% |\n",
+            delta_hc_probe.hc_worsening,
+            delta_hc_probe.hc_worsening as f64 / total as f64 * 100.0));
+        report.push_str("\n**Archive admission breakdown:**\n\n");
+        report.push_str("| Category | Count |\n|---|---|\n");
+        report.push_str(&format!("| HC-improving AND admitted | {} |\n", delta_hc_probe.hc_improving_inserted));
+        report.push_str(&format!("| HC-worsening AND admitted | {} |\n", delta_hc_probe.hc_worsening_inserted));
+        report.push_str("\n");
+
+        // Section 2: Key probabilities
+        report.push_str("## 2. Key Probabilities\n\n");
+        report.push_str("| Probability | Value | Interpretation |\n|---|---|---|\n");
+        report.push_str(&format!(
+            "| P(child_hc < parent_hc) | {:.6} ({:.4}%) | Probability mutation reduces HC_Total |\n",
+            p_imp, p_imp * 100.0));
+        report.push_str(&format!(
+            "| P(admitted \\| improving) | {:.6} ({:.4}%) | Of HC-improving offspring, fraction admitted |\n",
+            p_imp_ins, p_imp_ins * 100.0));
+        report.push_str(&format!(
+            "| Mean ΔHC per offspring | {:.4} | Positive = operator drifts away from feasibility |\n",
+            mean_d));
+        report.push_str("\n");
+
+        // Section 3: RC-1 vs RC-2 classification
+        report.push_str("## 3. Root Cause Classification\n\n");
+        report.push_str("**Frozen classification table (sd007_resolution.md):**\n\n");
+        report.push_str("| Condition | Classification |\n|---|---|\n");
+        report.push_str("| P(delta_hc < 0) ≈ 0 | RC-1 CONFIRMED (operator incapacity) |\n");
+        report.push_str("| P(delta_hc < 0) > 0.1 AND P(improving AND inserted) ≈ 0 | RC-2 CONFIRMED (selection suppression) |\n");
+        report.push_str("| Both probabilities > 0 | RC-1 + RC-2 interaction |\n\n");
+        report.push_str(&format!("**Observed:** P(improving) = {:.6}, P(admitted | improving) = {:.6}  \n\n", p_imp, p_imp_ins));
+        report.push_str(&format!("{}\n\n", classification));
+
+        // Section 4: Mean ΔHC interpretation
+        report.push_str("## 4. Mean ΔHC Interpretation\n\n");
+        report.push_str(&format!("Mean ΔHC = {:.4} (penalty-weighted units; divide by 1000 for actual violation count delta)  \n\n", mean_d));
+        if mean_d > 0.0 {
+            report.push_str(&format!(
+                "Mean ΔHC is **positive** ({:.4}): on average, each mutation step moves the offspring \
+                 **away** from feasibility. The search is diverging from the feasibility boundary. \
+                 This is consistent with RC-1 (operator incapacity) and/or RC-2 (selection pressure \
+                 favouring HC-worsening offspring that improve other proxy objectives).\n\n",
+                mean_d));
+        } else if mean_d < -1.0 {
+            report.push_str(&format!(
+                "Mean ΔHC is **negative** ({:.4}): on average, each mutation step moves the offspring \
+                 **toward** feasibility. Operator has directional capacity. If feasibility is still \
+                 not reached, RC-2 (selection suppression) is the primary cause.\n\n",
+                mean_d));
+        } else {
+            report.push_str(&format!(
+                "Mean ΔHC ≈ 0 ({:.4}): mutations are HC-neutral on average. \
+                 The operator neither improves nor worsens HC systematically.\n\n",
+                mean_d));
+        }
+
+        let report_path = "delta_hc_report.md";
+        let mut report_file = File::create(report_path).unwrap();
+        report_file.write_all(report.as_bytes()).unwrap();
+        println!("Wrote {} ({} bytes)", report_path, report.len());
+
+        // Console echo of key numbers
+        println!("\n=== Sprint 3.10: ΔHC Offspring Probe ===");
+        println!("Total offspring evaluated    : {}", delta_hc_probe.total_offspring);
+        println!("HC-improving                 : {} ({:.4}%)", delta_hc_probe.hc_improving, p_imp * 100.0);
+        println!("HC-neutral                   : {}", delta_hc_probe.hc_neutral);
+        println!("HC-worsening                 : {}", delta_hc_probe.hc_worsening);
+        println!("HC-improving AND admitted    : {}", delta_hc_probe.hc_improving_inserted);
+        println!("P(child_hc < parent_hc)      : {:.6}", p_imp);
+        println!("P(admitted | improving)      : {:.6}", p_imp_ins);
+        println!("Mean ΔHC                     : {:.4}", mean_d);
+        println!("Classification               : {}", if p_imp < 0.01 { "RC-1 CONFIRMED" } else if p_imp >= 0.10 && p_imp_ins < 0.01 { "RC-2 CONFIRMED" } else { "RC-1+RC-2 INTERACTION" });
     }
 
     // ── Console summary ────────────────────────────────────────────────────────
