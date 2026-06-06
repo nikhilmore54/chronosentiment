@@ -184,6 +184,39 @@ mutation, or feasibility-directed initialization).
 
 ---
 
+## Instrumentation Scope Audit (Sprint 3.9 Pre-flight)
+
+**Question:** Does `feasible_discovered_count` cover all evaluated offspring, or only archive-admitted offspring?
+
+**Finding: PASS — count scope = all evaluated offspring.**
+
+Code path in [`inrc_archive_forensics.rs`](services/ultracrew_server/src/bin/inrc_archive_forensics.rs:444):
+
+```rust
+// 1. Archive admission decision
+let was_inserted = engine.archive.add(ParetoSolution { ... });  // line 390
+
+// 2. Feasibility recording — fires BEFORE was_inserted is consulted as a gate
+// Comment: "Fires for every feasible child, whether or not it was admitted."
+if child_score.feasible {                                        // line 444
+    // was_inserted only used INSIDE to set admitted_at, not to gate entry
+    feasible_lifecycles.insert(child_uid, FeasibleLifecycle { ... });
+}
+```
+
+The `if child_score.feasible` guard at line 444 fires on `child_score`, which is the evaluation result of `child_genome` computed before `engine.archive.add()`. The `was_inserted` flag is only consulted inside the block to populate `admitted_at: if was_inserted { Some(g) } else { None }` — it does not gate the feasibility recording itself.
+
+**Consequence:** `feasible_discovered_count = 0` means no evaluated offspring ever returned `feasible=true` across 5000 generations × all offspring. This is not an admission-bias artifact. The Discovery Failure classification is **confirmed valid**.
+
+**Model resolution:**
+
+| Model | Status |
+|-------|--------|
+| Model A: Search finds feasible → Archive destroys them | **Falsified** — archive never received a feasible genome |
+| Model B: Search never finds feasible solutions | **Confirmed** — count scope verified over all evaluated offspring |
+
+---
+
 ## Commits
 
 | Commit | Description |
