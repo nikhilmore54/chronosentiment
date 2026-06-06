@@ -90,6 +90,24 @@ struct DominationEvent {
     victim_crowding_prev_gen: f64,      // crowding distance at end of (eviction_gen - 1)
 }
 
+// ── Sprint 3.8: Feasible genome chain-of-custody ──────────────────────────────
+// Mirrors ChampionTracker discipline: one record per feasible genome discovered,
+// with full lifecycle from discovery → admission → eviction.
+struct FeasibleLifecycle {
+    genome_hash: u64,
+    discovered_at: u64,
+    admitted_at: Option<u64>,
+    evicted_at: Option<u64>,
+    exit_reason: Option<ExitReason>,
+    dominator_hash: Option<u64>,  // genome_hash of the dominator that evicted this genome (if Dominated)
+    hc_total: usize,              // sum of all HC violation counts at discovery
+    official_total: f64,          // official_total at discovery
+    proxy: Vec<f64>,              // proxy objective vector at discovery
+}
+
+// Census sample: (generation, feasible_count, near_feasible_5, near_feasible_10, infeasible_count)
+type CensusSample = (u64, usize, usize, usize, usize);
+
 /// Compute crowding distance for a specific solution (by uid) within the archive.
 /// Uses the same normalised Euclidean neighbour distance as the parent selector.
 /// Returns f64::INFINITY for boundary solutions; 0.0 if uid not found or archive < 2.
@@ -209,6 +227,23 @@ fn main() {
     let mut best_ever_tracker_uid: Option<u64> = None;
     let mut best_ever_eviction_gen: u64 = 0;
     let mut domination_event: Option<DominationEvent> = None;
+
+    // ── Sprint 3.8: Feasible lifecycle tracking ────────────────────────────────
+    // HashMap<genome_hash, FeasibleLifecycle> — keyed by genome hash for deduplication.
+    // A feasible genome may be discovered, evicted, and rediscovered across 5000 gens;
+    // the map ensures only one lifecycle record per unique genome hash.
+    // If a genome is rediscovered after eviction, the existing record is updated
+    // (admitted_at reset, evicted_at/exit_reason cleared) to reflect the latest admission.
+    //
+    // feasible_archive_members: genome_hash → genome_hash (identity map) for genomes
+    // currently in the archive, used to detect evictions.
+    //
+    // Frozen definitions (from sd005_sprint38_charter.md):
+    //   first feasible = earliest discovered_at
+    //   best feasible  = lowest official_total
+    let mut feasible_lifecycles: HashMap<u64, FeasibleLifecycle> = HashMap::new();
+    let mut feasible_archive_members: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut census_timeline: Vec<CensusSample> = Vec::new();
 
     // ── Seed with baseline ─────────────────────────────────────────────────────
     let baseline_genome =
@@ -402,6 +437,44 @@ fn main() {
             total_insertions += 1;
         }
 
+        // ── Sprint 3.8: Record feasible genome discovery ───────────────────────
+        // Fires for every feasible child, whether or not it was admitted.
+        // HashMap deduplication: if genome_hash already exists (rediscovery after eviction),
+        // update admitted_at and clear eviction fields rather than creating a duplicate.
+        if child_score.feasible {
+            let hc = child_score.hc_coverage
+                + child_score.hc_skills
+                + child_score.hc_one_shift_per_day
+                + child_score.hc_forbidden_successions;
+            if let Some(existing) = feasible_lifecycles.get_mut(&child_uid) {
+                // Rediscovery: update admission fields if newly admitted
+                if was_inserted {
+                    existing.admitted_at = Some(g);
+                    existing.evicted_at = None;
+                    existing.exit_reason = None;
+                    existing.dominator_hash = None;
+                    feasible_archive_members.insert(child_uid);
+                }
+            } else {
+                // First discovery
+                let lc = FeasibleLifecycle {
+                    genome_hash: child_uid,
+                    discovered_at: g,
+                    admitted_at: if was_inserted { Some(g) } else { None },
+                    evicted_at: None,
+                    exit_reason: None,
+                    dominator_hash: None,
+                    hc_total: hc,
+                    official_total: child_score.official_total,
+                    proxy: child_fitness.clone(),
+                };
+                feasible_lifecycles.insert(child_uid, lc);
+                if was_inserted {
+                    feasible_archive_members.insert(child_uid);
+                }
+            }
+        }
+
         // ── Notify evictions using full-coverage map ───────────────────────────
         // Detect any archive member evicted this generation.
         // If the evicted member was a best-ever champion (has Some(tracker_uid)),
@@ -415,7 +488,7 @@ fn main() {
                     ExitReason::Unknown
                 };
                 if let Some(&(Some(t_uid), _ext)) = archive_members.get(old_uid) {
-                    champion_tracker.notify_eviction(t_uid, g, reason);
+                    champion_tracker.notify_eviction(t_uid, g, reason.clone());
                     tracked_evictions += 1;
 
                     // ── Sprint 3.7: Fire DominationEvent for best-ever champion ─
@@ -456,9 +529,42 @@ fn main() {
                         }
                     }
                 }
+                // ── Sprint 3.8: Record feasible genome eviction ───────────────
+                if feasible_archive_members.contains(old_uid) {
+                    if let Some(lc) = feasible_lifecycles.get_mut(old_uid) {
+                        lc.evicted_at = Some(g);
+                        lc.exit_reason = Some(reason);
+                        // Record dominator identity for Retention Failure causal chain
+                        if was_inserted {
+                            lc.dominator_hash = Some(child_uid);
+                        }
+                    }
+                    feasible_archive_members.remove(old_uid);
+                }
+
                 // Remove from membership map — this genome is no longer in the archive
                 archive_members.remove(old_uid);
             }
+        }
+
+        // ── Sprint 3.8: Census sampling every 100 generations ─────────────────
+        // Full-archive feasibility scoring is O(archive_size) per gen — sample
+        // every 100 gens to keep the 5000-gen run tractable.
+        if g % 100 == 0 || g == max_generations {
+            let mut feasible_n = 0usize;
+            let mut near5 = 0usize;
+            let mut near10 = 0usize;
+            let mut infeasible_n = 0usize;
+            for sol in &engine.archive.solutions {
+                let sc = score_inrc_official(&sol.genome, &scenario, &inrc_optimizer);
+                let hc = sc.hc_coverage + sc.hc_skills
+                    + sc.hc_one_shift_per_day + sc.hc_forbidden_successions;
+                if sc.feasible        { feasible_n  += 1; }
+                else if hc <= 5      { near5       += 1; }
+                else if hc <= 10     { near10      += 1; }
+                else                 { infeasible_n += 1; }
+            }
+            census_timeline.push((g, feasible_n, near5, near10, infeasible_n));
         }
 
         // ── Sprint 3.7: Update best-ever crowding + genome cache each generation ─
@@ -696,6 +802,185 @@ fn main() {
         println!("    - Best-ever champion was never evicted (still in archive at end)");
         println!("    - best_ever_proxy_before was None at eviction time (champion not in archive before add())");
         println!("    - best_ever_genome_cache was None (champion not seen in archive at prev gen end)");
+    }
+
+    // ── Sprint 3.8: Write feasible_lineage_report.md ──────────────────────────
+    {
+        let obj_names = ["O1 (HC_Coverage)", "O2 (HC_Skills)", "O3 (HC_Successions)", "O4 (SoftTotal)", "O5 (HC_Violations)"];
+
+        // Frozen definitions (sd005_sprint38_charter.md):
+        //   first feasible = earliest discovered_at
+        //   best feasible  = lowest official_total
+        let first_feasible: Option<&FeasibleLifecycle> = feasible_lifecycles.values()
+            .min_by_key(|lc| lc.discovered_at);
+        let best_feasible: Option<&FeasibleLifecycle> = feasible_lifecycles.values()
+            .min_by(|a, b| a.official_total.partial_cmp(&b.official_total).unwrap());
+
+        let fmt_exit = |lc: &FeasibleLifecycle| -> &'static str {
+            match lc.exit_reason {
+                Some(ExitReason::Dominated)      => "Dominated",
+                Some(ExitReason::Crowding)       => "Crowding",
+                Some(ExitReason::ArchiveLimit)   => "ArchiveLimit",
+                Some(ExitReason::Unknown)        => "Unknown",
+                Some(ExitReason::NeverAdmitted)  => "NeverAdmitted",
+                None => if lc.evicted_at.is_none() && lc.admitted_at.is_some() {
+                    "Still in archive"
+                } else if lc.admitted_at.is_none() {
+                    "Never admitted"
+                } else {
+                    "None"
+                },
+            }
+        };
+
+        let fmt_lifetime = |lc: &FeasibleLifecycle| -> String {
+            match (lc.admitted_at, lc.evicted_at) {
+                (Some(a), Some(e)) => format!("{}", e.saturating_sub(a)),
+                (Some(a), None)    => format!("{} (still in archive)", max_generations.saturating_sub(a)),
+                (None, _)          => "N/A (never admitted)".to_string(),
+            }
+        };
+
+        let mut report = String::new();
+        report.push_str("# Feasible Lineage Report — SD-005 Causal Dependency Investigation\n\n");
+        report.push_str("**Sprint:** 3.8  \n");
+        report.push_str(&format!("**Seed:** {}  \n", seed));
+        report.push_str("**Instance:** n050w4  \n");
+        report.push_str("**Observer:** `inrc_official_total`  \n");
+        report.push_str(&format!("**Generations:** {}  \n", max_generations));
+        report.push_str(&format!("**Total feasible genomes discovered:** {}  \n\n", feasible_lifecycles.len()));
+        report.push_str("---\n\n");
+
+        // ── Section 1: First Feasible Genome ──────────────────────────────────
+        report.push_str("## 1. First Feasible Genome\n\n");
+        if let Some(lc) = first_feasible {
+            report.push_str("| Field | Value |\n|---|---|\n");
+            report.push_str(&format!("| Genome hash | {} |\n", lc.genome_hash));
+            report.push_str(&format!("| Discovered at generation | {} |\n", lc.discovered_at));
+            report.push_str(&format!("| HC_Total at discovery | {} |\n", lc.hc_total));
+            report.push_str(&format!("| OfficialTotal at discovery | {:.0} |\n", lc.official_total));
+            report.push_str(&format!("| Archive admitted? | {} |\n", lc.admitted_at.is_some()));
+            match lc.admitted_at {
+                Some(a) => report.push_str(&format!("| Admitted at generation | {} |\n", a)),
+                None    => report.push_str("| Admitted at generation | N/A |\n"),
+            }
+            report.push_str(&format!("| Archive lifetime (gens) | {} |\n", fmt_lifetime(lc)));
+            match lc.evicted_at {
+                Some(e) => report.push_str(&format!("| Evicted at generation | {} |\n", e)),
+                None    => report.push_str("| Evicted at generation | N/A |\n"),
+            }
+            report.push_str(&format!("| Exit reason | {} |\n", fmt_exit(lc)));
+            match lc.dominator_hash {
+                Some(dh) => report.push_str(&format!("| Dominator genome hash | {} |\n", dh)),
+                None     => report.push_str("| Dominator genome hash | N/A |\n"),
+            }
+            report.push_str("\n**Proxy objective vector at discovery:**\n\n");
+            report.push_str("| Objective | Value |\n|---|---|\n");
+            for (i, name) in obj_names.iter().enumerate() {
+                if i < lc.proxy.len() {
+                    report.push_str(&format!("| {} | {:.0} |\n", name, lc.proxy[i]));
+                }
+            }
+            report.push_str("\n");
+        } else {
+            report.push_str(&format!(
+                "**No feasible genome was ever discovered.**\n\n\
+                 Classification: **Discovery Failure** — the evaluator never returned `feasible=true` \
+                 in {} generations.\n\n",
+                max_generations
+            ));
+        }
+
+        // ── Section 2: Best Feasible Genome ───────────────────────────────────
+        report.push_str("## 2. Best Feasible Genome\n\n");
+        if let (Some(first), Some(best)) = (first_feasible, best_feasible) {
+            if best.genome_hash == first.genome_hash {
+                report.push_str("Same as Section 1 (only one feasible genome discovered, or first == best by official_total).\n\n");
+            } else {
+                report.push_str("| Field | Value |\n|---|---|\n");
+                report.push_str(&format!("| Genome hash | {} |\n", best.genome_hash));
+                report.push_str(&format!("| Discovered at generation | {} |\n", best.discovered_at));
+                report.push_str(&format!("| OfficialTotal at discovery | {:.0} |\n", best.official_total));
+                report.push_str(&format!("| Archive lifetime (gens) | {} |\n", fmt_lifetime(best)));
+                report.push_str(&format!("| Exit reason | {} |\n", fmt_exit(best)));
+                match best.dominator_hash {
+                    Some(dh) => report.push_str(&format!("| Dominator genome hash | {} |\n", dh)),
+                    None     => report.push_str("| Dominator genome hash | N/A |\n"),
+                }
+                report.push_str("\n");
+            }
+        } else if first_feasible.is_none() {
+            report.push_str("No feasible genome discovered — see Section 1.\n\n");
+        }
+
+        // ── Section 3: Feasibility Census Timeline ─────────────────────────────
+        report.push_str("## 3. Feasibility Census Timeline\n\n");
+        report.push_str("Sampled every 100 generations. `near_feasible_5` = HC_Total ≤ 5; `near_feasible_10` = HC_Total ≤ 10.\n\n");
+        report.push_str("| Generation | feasible_count | near_feasible_5 | near_feasible_10 | infeasible_count |\n");
+        report.push_str("|---|---|---|---|---|\n");
+        for &(cgen, f, n5, n10, inf) in &census_timeline {
+            report.push_str(&format!("| {} | {} | {} | {} | {} |\n", cgen, f, n5, n10, inf));
+        }
+        report.push_str("\n");
+
+        // ── Section 4: SD-005 Classification ──────────────────────────────────
+        report.push_str("## 4. SD-005 Classification\n\n");
+        report.push_str("Applying frozen classification table from `sd005_sprint38_charter.md`.\n\n");
+
+        let total_feasible      = feasible_lifecycles.len();
+        let total_admitted      = feasible_lifecycles.values().filter(|lc| lc.admitted_at.is_some()).count();
+        let total_evicted       = feasible_lifecycles.values().filter(|lc| lc.evicted_at.is_some()).count();
+        let still_in_archive    = feasible_archive_members.len();
+        let dominated_evictions = feasible_lifecycles.values()
+            .filter(|lc| matches!(lc.exit_reason, Some(ExitReason::Dominated)))
+            .count();
+
+        report.push_str("| Metric | Count |\n|---|---|\n");
+        report.push_str(&format!("| Total feasible genomes discovered | {} |\n", total_feasible));
+        report.push_str(&format!("| Admitted to archive | {} |\n", total_admitted));
+        report.push_str(&format!("| Evicted from archive | {} |\n", total_evicted));
+        report.push_str(&format!("| Evicted by Dominated | {} |\n", dominated_evictions));
+        report.push_str(&format!("| Still in archive at gen {} | {} |\n\n", max_generations, still_in_archive));
+
+        let classification = if total_feasible == 0 {
+            "**Discovery Failure** — No feasible genome was ever produced by the evaluator. \
+             The O3 mechanism is not implicated; the root cause is upstream of the archive \
+             (evaluator landscape, mutation operators, or constraint structure).".to_string()
+        } else if total_admitted == 0 {
+            "**Admission Failure** — Feasible genomes were produced but never admitted to the archive. \
+             The Pareto archive rejected all feasible candidates at the admission boundary.".to_string()
+        } else if total_evicted > 0 && still_in_archive == 0 {
+            "**Retention Failure** — Feasible genomes were admitted then evicted. \
+             The archive admitted feasibility but could not retain it under selection pressure.".to_string()
+        } else if still_in_archive > 0 {
+            "**SD-005 Falsified** — Feasible solutions persist in the archive at the final generation.".to_string()
+        } else {
+            "**Representation Failure** — Feasible solutions survive but the archive remains ~0% feasible.".to_string()
+        };
+
+        report.push_str(&format!("### Classification\n\n{}\n\n", classification));
+
+        if total_evicted > 0 && dominated_evictions > 0 {
+            report.push_str("### Causal Chain Evidence\n\n");
+            report.push_str("At least one feasible genome was evicted by Pareto domination. \
+                             Combined with SD-006 (O3 pressure causes champion eviction), \
+                             this is consistent with the unified causal chain:\n\n");
+            report.push_str("```\n");
+            report.push_str("O3 pressure\n    ↓\nProxy domination\n    ↓\n");
+            report.push_str("Champion eviction (SD-006, CLOSED)\n    ↓\n");
+            report.push_str("Feasible genome eviction (SD-005)\n    ↓\n0% feasible archive\n");
+            report.push_str("```\n\n");
+            report.push_str("See `gen283_domination_report.md` for the canonical SD-006 domination event.\n\n");
+        }
+
+        let report_path = "feasible_lineage_report.md";
+        let mut report_file = File::create(report_path).unwrap();
+        report_file.write_all(report.as_bytes()).unwrap();
+        println!("\nWrote {} ({} bytes)", report_path, report.len());
+        println!("Feasible genomes discovered : {}", total_feasible);
+        println!("Feasible genomes admitted   : {}", total_admitted);
+        println!("Feasible genomes evicted    : {}", total_evicted);
+        println!("Still in archive            : {}", still_in_archive);
     }
 
     // ── Console summary ────────────────────────────────────────────────────────
