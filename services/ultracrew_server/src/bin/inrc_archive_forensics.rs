@@ -108,6 +108,10 @@ struct FeasibleLifecycle {
 // Census sample: (generation, feasible_count, near_feasible_5, near_feasible_10, infeasible_count)
 type CensusSample = (u64, usize, usize, usize, usize);
 
+// HC distribution sample: (generation, min_hc, max_hc, sum_hc, count, hc0, hc_le5, hc_le10, hc_le20, hc_le50, hc_gt50)
+// sum_hc/count = mean_hc; median requires sorting so we store raw sum for mean only.
+type HcDistSample = (u64, usize, usize, u64, usize, usize, usize, usize, usize, usize, usize);
+
 /// Compute crowding distance for a specific solution (by uid) within the archive.
 /// Uses the same normalised Euclidean neighbour distance as the parent selector.
 /// Returns f64::INFINITY for boundary solutions; 0.0 if uid not found or archive < 2.
@@ -244,6 +248,10 @@ fn main() {
     let mut feasible_lifecycles: HashMap<u64, FeasibleLifecycle> = HashMap::new();
     let mut feasible_archive_members: std::collections::HashSet<u64> = std::collections::HashSet::new();
     let mut census_timeline: Vec<CensusSample> = Vec::new();
+    // Sprint 3.9: HC_Total distribution timeline — sampled every 100 gens (same cadence as census)
+    let mut hc_dist_timeline: Vec<HcDistSample> = Vec::new();
+    // Sprint 3.9: gen=0 initialization snapshot — HC_Total of all initial archive members
+    let mut init_hc_values: Vec<usize> = Vec::new();
 
     // ── Seed with baseline ─────────────────────────────────────────────────────
     let baseline_genome =
@@ -547,7 +555,7 @@ fn main() {
             }
         }
 
-        // ── Sprint 3.8: Census sampling every 100 generations ─────────────────
+        // ── Sprint 3.8/3.9: Census + HC distribution sampling every 100 generations ──
         // Full-archive feasibility scoring is O(archive_size) per gen — sample
         // every 100 gens to keep the 5000-gen run tractable.
         if g % 100 == 0 || g == max_generations {
@@ -555,6 +563,17 @@ fn main() {
             let mut near5 = 0usize;
             let mut near10 = 0usize;
             let mut infeasible_n = 0usize;
+            // Sprint 3.9: HC distribution accumulators
+            let mut hc_min = usize::MAX;
+            let mut hc_max = 0usize;
+            let mut hc_sum = 0u64;
+            let mut hc_count = 0usize;
+            let mut hc0 = 0usize;
+            let mut hc_le5 = 0usize;
+            let mut hc_le10 = 0usize;
+            let mut hc_le20 = 0usize;
+            let mut hc_le50 = 0usize;
+            let mut hc_gt50 = 0usize;
             for sol in &engine.archive.solutions {
                 let sc = score_inrc_official(&sol.genome, &scenario, &inrc_optimizer);
                 let hc = sc.hc_coverage + sc.hc_skills
@@ -563,8 +582,31 @@ fn main() {
                 else if hc <= 5      { near5       += 1; }
                 else if hc <= 10     { near10      += 1; }
                 else                 { infeasible_n += 1; }
+                // HC distribution
+                if hc < hc_min { hc_min = hc; }
+                if hc > hc_max { hc_max = hc; }
+                hc_sum += hc as u64;
+                hc_count += 1;
+                if hc == 0       { hc0     += 1; }
+                else if hc <= 5  { hc_le5  += 1; }
+                else if hc <= 10 { hc_le10 += 1; }
+                else if hc <= 20 { hc_le20 += 1; }
+                else if hc <= 50 { hc_le50 += 1; }
+                else             { hc_gt50 += 1; }
             }
             census_timeline.push((g, feasible_n, near5, near10, infeasible_n));
+            let safe_min = if hc_count == 0 { 0 } else { hc_min };
+            hc_dist_timeline.push((g, safe_min, hc_max, hc_sum, hc_count,
+                                   hc0, hc_le5, hc_le10, hc_le20, hc_le50, hc_gt50));
+            // Sprint 3.9: Capture gen=0 initialization snapshot (first census point)
+            if g == 0 {
+                for sol in &engine.archive.solutions {
+                    let sc = score_inrc_official(&sol.genome, &scenario, &inrc_optimizer);
+                    let hc = sc.hc_coverage + sc.hc_skills
+                        + sc.hc_one_shift_per_day + sc.hc_forbidden_successions;
+                    init_hc_values.push(hc);
+                }
+            }
         }
 
         // ── Sprint 3.7: Update best-ever crowding + genome cache each generation ─
@@ -981,6 +1023,117 @@ fn main() {
         println!("Feasible genomes admitted   : {}", total_admitted);
         println!("Feasible genomes evicted    : {}", total_evicted);
         println!("Still in archive            : {}", still_in_archive);
+    }
+
+    // ── Sprint 3.9: Write hc_distribution_report.md ───────────────────────────
+    {
+        let mut report = String::new();
+        report.push_str("# HC_Total Distribution Report — SD-007 Constraint Landscape Probe\n\n");
+        report.push_str("**Sprint:** 3.9  \n");
+        report.push_str(&format!("**Seed:** {}  \n", seed));
+        report.push_str("**Instance:** n050w4  \n");
+        report.push_str(&format!("**Generations:** {}  \n", max_generations));
+        report.push_str("**Probe:** HC_Total = hc_coverage + hc_skills + hc_one_shift_per_day + hc_forbidden_successions  \n\n");
+        report.push_str("---\n\n");
+
+        // Section 1: Initialization snapshot (gen=0)
+        report.push_str("## 1. Initialization Snapshot (gen=0)\n\n");
+        if init_hc_values.is_empty() {
+            report.push_str("*No gen=0 archive members recorded (archive empty at gen=0 census).*\n\n");
+        } else {
+            let n = init_hc_values.len();
+            let sum: usize = init_hc_values.iter().sum();
+            let mean = sum as f64 / n as f64;
+            let mut sorted = init_hc_values.clone();
+            sorted.sort_unstable();
+            let median = if n % 2 == 0 {
+                (sorted[n/2 - 1] + sorted[n/2]) as f64 / 2.0
+            } else {
+                sorted[n/2] as f64
+            };
+            let min_hc = sorted[0];
+            let max_hc = sorted[n - 1];
+            report.push_str("| Metric | Value |\n|---|---|\n");
+            report.push_str(&format!("| Archive members at gen=0 | {} |\n", n));
+            report.push_str(&format!("| Min HC_Total | {} |\n", min_hc));
+            report.push_str(&format!("| Max HC_Total | {} |\n", max_hc));
+            report.push_str(&format!("| Mean HC_Total | {:.2} |\n", mean));
+            report.push_str(&format!("| Median HC_Total | {:.1} |\n", median));
+            report.push_str("\n**RC-3 Assessment (Initialization Depth):**  \n");
+            if median > 50.0 {
+                report.push_str(&format!("Median HC_Total = {:.1} > 50 → RC-3 candidate confirmed (deep initialization).\n\n", median));
+            } else if median > 20.0 {
+                report.push_str(&format!("Median HC_Total = {:.1} (moderate initialization depth; RC-3 possible).\n\n", median));
+            } else {
+                report.push_str(&format!("Median HC_Total = {:.1} ≤ 20 → RC-3 not primary cause (initialization is shallow).\n\n", median));
+            }
+        }
+
+        // Section 2: HC_Total trajectory across 5000 generations
+        report.push_str("## 2. HC_Total Trajectory (every 100 generations)\n\n");
+        report.push_str("| Gen | Min | Max | Mean | HC=0 | HC≤5 | HC≤10 | HC≤20 | HC≤50 | HC>50 |\n");
+        report.push_str("|---|---|---|---|---|---|---|---|---|---|\n");
+        for &(cgen, min_hc, max_hc, hc_sum, hc_count, hc0, hc_le5, hc_le10, hc_le20, hc_le50, hc_gt50) in &hc_dist_timeline {
+            let mean_hc = if hc_count > 0 { hc_sum as f64 / hc_count as f64 } else { 0.0 };
+            report.push_str(&format!(
+                "| {} | {} | {} | {:.1} | {} | {} | {} | {} | {} | {} |\n",
+                cgen, min_hc, max_hc, mean_hc, hc0, hc_le5, hc_le10, hc_le20, hc_le50, hc_gt50
+            ));
+        }
+        report.push_str("\n");
+
+        // Section 3: RC-1 assessment (operator incapacity — is HC_Total decreasing?)
+        report.push_str("## 3. RC-1 Assessment — Operator Incapacity\n\n");
+        if hc_dist_timeline.len() >= 2 {
+            let first = &hc_dist_timeline[0];
+            let last = &hc_dist_timeline[hc_dist_timeline.len() - 1];
+            let first_mean = if first.4 > 0 { first.3 as f64 / first.4 as f64 } else { 0.0 };
+            let last_mean = if last.4 > 0 { last.3 as f64 / last.4 as f64 } else { 0.0 };
+            let delta = last_mean - first_mean;
+            report.push_str(&format!("Mean HC_Total at gen={}: {:.2}  \n", first.0, first_mean));
+            report.push_str(&format!("Mean HC_Total at gen={}: {:.2}  \n", last.0, last_mean));
+            report.push_str(&format!("Δ mean HC_Total (last − first): {:.2}  \n\n", delta));
+            if delta >= -1.0 {
+                report.push_str("**RC-1 CONFIRMED:** Mean HC_Total shows no downward trend (Δ ≈ 0 or positive). \
+                                  Mutation operators are not reducing HC violations over 5000 generations. \
+                                  Operator incapacity is the primary root cause.\n\n");
+            } else if delta < -10.0 {
+                report.push_str("**RC-1 FALSIFIED:** Mean HC_Total shows clear downward trend. \
+                                  Operators are making progress; stochastic factors or proxy misalignment \
+                                  may be preventing feasibility crossing.\n\n");
+            } else {
+                report.push_str(&format!("**RC-1 PARTIAL:** Mean HC_Total decreased by {:.2} over {} generations. \
+                                  Progress is slow — operators may be weakly capable but insufficient \
+                                  for the n050w4 constraint landscape.\n\n", delta.abs(), max_generations));
+            }
+        } else {
+            report.push_str("*Insufficient data points for trajectory analysis.*\n\n");
+        }
+
+        // Section 4: Summary and classification
+        report.push_str("## 4. Summary\n\n");
+        let first_mean = hc_dist_timeline.first()
+            .map(|s| if s.4 > 0 { s.3 as f64 / s.4 as f64 } else { 0.0 })
+            .unwrap_or(0.0);
+        let last_min = hc_dist_timeline.last().map(|s| s.1).unwrap_or(0);
+        let last_max = hc_dist_timeline.last().map(|s| s.2).unwrap_or(0);
+        let last_mean = hc_dist_timeline.last()
+            .map(|s| if s.4 > 0 { s.3 as f64 / s.4 as f64 } else { 0.0 })
+            .unwrap_or(0.0);
+        report.push_str("| Metric | Value |\n|---|---|\n");
+        report.push_str(&format!("| Mean HC_Total at gen=0 | {:.2} |\n", first_mean));
+        report.push_str(&format!("| Mean HC_Total at gen={} | {:.2} |\n", max_generations, last_mean));
+        report.push_str(&format!("| Min HC_Total at gen={} | {} |\n", max_generations, last_min));
+        report.push_str(&format!("| Max HC_Total at gen={} | {} |\n", max_generations, last_max));
+        report.push_str(&format!("| HC=0 (feasible) at gen={} | {} |\n",
+            max_generations,
+            hc_dist_timeline.last().map(|s| s.5).unwrap_or(0)));
+        report.push_str("\n");
+
+        let report_path = "hc_distribution_report.md";
+        let mut report_file = File::create(report_path).unwrap();
+        report_file.write_all(report.as_bytes()).unwrap();
+        println!("\nWrote {} ({} bytes)", report_path, report.len());
     }
 
     // ── Console summary ────────────────────────────────────────────────────────
