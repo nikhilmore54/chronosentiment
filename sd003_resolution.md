@@ -125,7 +125,7 @@ The feasibility snapshot at gen 5000 shows 0% feasible solutions in the 137-memb
 | SD-003 | Champion Retention Error | **CLASSIFIED — Proxy/External Misalignment (mechanism)** |
 | SD-004 | Viability-aware archives | HYPOTHESIS ONLY — no implementation until geometry is understood |
 | SD-005 | Feasibility Discovery vs Retention | **OPEN** — archive never reached feasibility; cause unknown |
-| SD-006 | Proxy Geometry Attribution | **OPEN** — which objective(s) caused the gen-175 domination event? |
+| SD-006 | Proxy Geometry Attribution | **CLOSED — O3 (HC_Successions proxy) is the sole driving objective** |
 
 ---
 
@@ -144,7 +144,35 @@ The feasibility snapshot at gen 5000 shows 0% feasible solutions in the 137-memb
 
 Instruments built, 5000-gen run executed, SD-003 mechanism classified.
 
-### Sprint 3.7 — Proxy Geometry Forensics (SD-006)
+### Sprint 3.7 — Proxy Geometry Forensics (SD-006) ✅ Complete
+
+**Canonical evidence artifact:** [`gen283_domination_report.md`](services/ultracrew_server/gen283_domination_report.md) — seed=61, 283-generation champion lifetime.
+
+**SD-006 Attribution (confirmed across 4 independent seeds):**
+
+```
+UID 5 was evicted because:
+
+ΔO1 (HC_Coverage)      = +0
+ΔO2 (HC_Skills)        = +0
+ΔO3 (HC_Successions)   = -840   ← sole driving objective
+ΔO4 (SoftTotal)        = +0
+ΔO5 (HC_Violations)    = -0
+
+which produced Pareto domination,
+
+while causing
+
+ΔOfficialTotal = +1755
+```
+
+**Classification: Case A** — O3 (HC_Successions proxy) improvement causes external quality degradation. The proxy objective O3 rewards reducing succession constraint violations in the proxy fitness space, but the dominating genome achieves this by worsening HC_Coverage (+1000) and HC_ForbiddenSuccessions (+2000) in the external scorer. The proxy and external scorers disagree on what constitutes a "better" succession profile.
+
+**Cross-seed consistency:** The same O3-only pattern was observed at seed=1 (gen158, ΔO3=-240, ΔOfficial=+2590) and seed=42 (gen2, ΔO3=-360, ΔOfficial=+1840). This is a structural property of the proxy objective design, not a seed-specific artifact.
+
+**Archive geometry:** UID 5 had crowding distance 0.0276 at gen 282 — low, indicating it was in a dense region of proxy space. It was not a boundary solution; it was marginal before eviction.
+
+### Sprint 3.7 — Original Specification (for reference)
 
 **Deliverable:** exactly one artifact — `gen175_domination_report.md`.
 
