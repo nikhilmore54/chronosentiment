@@ -50,6 +50,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use rand::distributions::{WeightedIndex, Distribution};
 
 // ── Frozen constants ───────────────────────────────────────────────────────────
@@ -76,6 +78,7 @@ struct ExtMetrics {
 }
 
 struct DominationEvent {
+    eviction_gen: u64,
     victim_genome_hash: u64,
     victim_tracker_uid: u64,
     dominator_genome_hash: u64,
@@ -83,8 +86,8 @@ struct DominationEvent {
     dominator_proxy: Vec<f64>,
     victim_external: ExtMetrics,
     dominator_external: ExtMetrics,
-    victim_front_rank_gen174: usize,  // always 0 in a Pareto archive (all members non-dominated)
-    victim_crowding_gen174: f64,
+    victim_front_rank_prev_gen: usize,  // always 0 in a Pareto archive (all members non-dominated)
+    victim_crowding_prev_gen: f64,      // crowding distance at end of (eviction_gen - 1)
 }
 
 /// Compute crowding distance for a specific solution (by uid) within the archive.
@@ -134,12 +137,22 @@ fn main() {
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
         .unwrap_or(5000);
+    let seed: u64 = args.iter()
+        .position(|a| a == "--seed")
+        .and_then(|i| args.get(i + 1))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(42);
+
+    // Single seeded RNG — makes every run fully reproducible given the same seed.
+    // Use --seed <N> to reproduce a specific run. Default seed=42.
+    let mut rng = StdRng::seed_from_u64(seed);
 
     println!("=== inrc_archive_forensics ===");
     println!("Instance    : {}", INSTANCE);
     println!("Observer    : {}", OBSERVER_ID);
     println!("Formula     : hc_coverage + hc_skills + hc_one_shift_per_day + hc_forbidden_successions + soft_total");
     println!("Generations : {}", max_generations);
+    println!("Seed        : {}", seed);
     println!();
 
     // ── Load scenario ──────────────────────────────────────────────────────────
@@ -187,10 +200,14 @@ fn main() {
     let mut total_evictions: u64 = 0;
     let mut tracked_evictions: u64 = 0;
 
-    // ── Sprint 3.7: Targeted gen-175 domination event reconstruction ──────────
-    let mut uid4_genome_hash: Option<u64> = None;
-    let mut uid4_genome_cache: Option<ScheduleGenome> = None;
-    let mut uid4_crowding_gen174: f64 = 0.0;
+    // ── Sprint 3.7: Best-ever champion domination event reconstruction ─────────
+    // Seed-agnostic: fires when the best-ever champion (whatever tracker UID it has)
+    // is evicted from the archive. Does not fire more than once.
+    let mut best_ever_genome_hash: Option<u64> = None;
+    let mut best_ever_genome_cache: Option<ScheduleGenome> = None;
+    let mut best_ever_crowding_prev_gen: f64 = 0.0;
+    let mut best_ever_tracker_uid: Option<u64> = None;
+    let mut best_ever_eviction_gen: u64 = 0;
     let mut domination_event: Option<DominationEvent> = None;
 
     // ── Seed with baseline ─────────────────────────────────────────────────────
@@ -284,14 +301,12 @@ fn main() {
             let total_w: f64 = weights.iter().sum();
             for w in weights.iter_mut() { *w /= total_w; }
             let dist_sampler = WeightedIndex::new(&weights).unwrap();
-            let mut rng = rand::thread_rng();
             dist_sampler.sample(&mut rng)
         };
 
         let parent = engine.archive.solutions[idx].clone();
 
         // ── Generate offspring (5 initial + 20 SA neighbours) ─────────────────
-        let mut rng = rand::thread_rng();
         let calc_energy = |f: &[f64]| f.iter().map(|v| v.powi(2)).sum::<f64>().sqrt();
 
         let mut best_cand: (ScheduleGenome, Vec<f64>) = {
@@ -326,17 +341,14 @@ fn main() {
         // ── Canonical external score via shared module ─────────────────────────
         let child_score = score_inrc_official(&child_genome, &scenario, &inrc_optimizer);
 
-        // ── Sprint 3.7: Capture victim proxy before potential eviction ─────────
+        // ── Sprint 3.7: Capture best-ever proxy before potential eviction ───────
         // Must happen before engine.archive.add() so the victim is still present.
-        let uid4_proxy_before: Option<Vec<f64>> = if g == 175 {
-            uid4_genome_hash.and_then(|h| {
-                engine.archive.solutions.iter()
-                    .find(|s| s.uid == h)
-                    .map(|s| s.fitness.clone())
-            })
-        } else {
-            None
-        };
+        // Runs every generation (cheap: just a find + clone if present).
+        let best_ever_proxy_before: Option<Vec<f64>> = best_ever_genome_hash.and_then(|h| {
+            engine.archive.solutions.iter()
+                .find(|s| s.uid == h)
+                .map(|s| s.fitness.clone())
+        });
 
         // ── Archive admission ──────────────────────────────────────────────────
         let old_uids: Vec<u64> = engine.archive.solutions.iter().map(|s| s.uid).collect();
@@ -373,9 +385,11 @@ fn main() {
             best_external_ever = child_score.official_total;
         }
 
-        // ── Sprint 3.7: Record genome hash for tracker UID 4 ──────────────────
-        if is_new_record && tracker_uid == 4 {
-            uid4_genome_hash = Some(child_uid);
+        // ── Sprint 3.7: Track best-ever champion genome hash ──────────────────
+        // Updated every time a new best-ever is found (is_new_record=true).
+        if is_new_record {
+            best_ever_genome_hash = Some(child_uid);
+            best_ever_tracker_uid = Some(tracker_uid);
         }
 
         // ── Full-coverage archive membership tracking ──────────────────────────
@@ -404,12 +418,16 @@ fn main() {
                     champion_tracker.notify_eviction(t_uid, g, reason);
                     tracked_evictions += 1;
 
-                    // ── Sprint 3.7: Fire DominationEvent for UID-4 at gen 175 ──
-                    if g == 175 && t_uid == 4 {
-                        if let Some(ref v_proxy) = uid4_proxy_before {
-                            if let Some(ref v_genome) = uid4_genome_cache {
+                    // ── Sprint 3.7: Fire DominationEvent for best-ever champion ─
+                    // Fires once when the current best-ever champion is evicted.
+                    // Seed-agnostic: uses best_ever_tracker_uid, not hardcoded UID 4.
+                    if Some(t_uid) == best_ever_tracker_uid && domination_event.is_none() {
+                        best_ever_eviction_gen = g;
+                        if let Some(ref v_proxy) = best_ever_proxy_before {
+                            if let Some(ref v_genome) = best_ever_genome_cache {
                                 let v_ext = score_inrc_official(v_genome, &scenario, &inrc_optimizer);
                                 domination_event = Some(DominationEvent {
+                                    eviction_gen: g,
                                     victim_genome_hash: *old_uid,
                                     victim_tracker_uid: t_uid,
                                     dominator_genome_hash: child_uid,
@@ -431,8 +449,8 @@ fn main() {
                                         soft_total: child_score.soft_total,
                                         official_total: child_score.official_total,
                                     },
-                                    victim_front_rank_gen174: 0,
-                                    victim_crowding_gen174: uid4_crowding_gen174,
+                                    victim_front_rank_prev_gen: 0,
+                                    victim_crowding_prev_gen: best_ever_crowding_prev_gen,
                                 });
                             }
                         }
@@ -443,15 +461,14 @@ fn main() {
             }
         }
 
-        // ── Sprint 3.7: Capture gen-174 archive rank for UID-4 ────────────────
-        // Computed at END of gen 174 so the archive state is post-insertion.
-        // Front rank is always 0 in a Pareto archive (all members non-dominated by definition).
-        if g == 174 {
-            if let Some(h) = uid4_genome_hash {
-                uid4_crowding_gen174 = crowding_distance_for(&engine.archive.solutions, h);
-                if let Some(sol) = engine.archive.solutions.iter().find(|s| s.uid == h) {
-                    uid4_genome_cache = Some(sol.genome.clone());
-                }
+        // ── Sprint 3.7: Update best-ever crowding + genome cache each generation ─
+        // Computed at END of each generation (post-insertion archive state).
+        // Stored as "prev gen" value — used if the champion is evicted next generation.
+        // Front rank is always 0 in a Pareto archive (all members non-dominated).
+        if let Some(h) = best_ever_genome_hash {
+            best_ever_crowding_prev_gen = crowding_distance_for(&engine.archive.solutions, h);
+            if let Some(sol) = engine.archive.solutions.iter().find(|s| s.uid == h) {
+                best_ever_genome_cache = Some(sol.genome.clone());
             }
         }
 
@@ -504,7 +521,7 @@ fn main() {
     feas_file.write_all(feasibility_jsonl.as_bytes()).unwrap();
     println!("Wrote feasibility_snapshot.jsonl ({} bytes)", feasibility_jsonl.len());
 
-    // ── Sprint 3.7: Write gen175_domination_report.md ─────────────────────────
+    // ── Sprint 3.7: Write gen{N}_domination_report.md ─────────────────────────
     if let Some(ref ev) = domination_event {
         let obj_names = ["O1 (HC_Coverage)", "O2 (HC_Skills)", "O3 (HC_Successions)", "O4 (SoftTotal)", "O5 (HC_Violations)"];
 
@@ -516,15 +533,16 @@ fn main() {
         let dominance_holds = all_leq && any_lt;
 
         let mut report = String::new();
-        report.push_str("# Gen-175 Domination Report — SD-006 Proxy Geometry Attribution\n\n");
+        report.push_str(&format!("# Gen-{} Domination Report — SD-006 Proxy Geometry Attribution\n\n", ev.eviction_gen));
         report.push_str("**Sprint:** 3.7  \n");
+        report.push_str(&format!("**Seed:** {}  \n", seed));
         report.push_str("**Instance:** n050w4  \n");
         report.push_str("**Observer:** `inrc_official_total`  \n");
-        report.push_str("**Event:** Archive eviction of best-ever champion at generation 175  \n\n");
+        report.push_str(&format!("**Event:** Archive eviction of best-ever champion at generation {}  \n\n", ev.eviction_gen));
         report.push_str("---\n\n");
 
         // Section 1: Victim
-        report.push_str("## 1. Victim — Tracker UID 4\n\n");
+        report.push_str(&format!("## 1. Victim — Tracker UID {}\n\n", ev.victim_tracker_uid));
         report.push_str("| Field | Value |\n|---|---|\n");
         report.push_str(&format!("| Genome hash | {} |\n", ev.victim_genome_hash));
         report.push_str(&format!("| Tracker UID | {} |\n", ev.victim_tracker_uid));
@@ -603,24 +621,26 @@ fn main() {
         report.push_str(&format!("\n**Domination holds: {}**\n\n", if dominance_holds { "YES" } else { "NO — INSTRUMENTATION ERROR" }));
 
         // Section 6: Archive rank before eviction
-        report.push_str("## 6. Archive Rank Before Eviction (Gen 174)\n\n");
+        let prev_gen = ev.eviction_gen.saturating_sub(1);
+        report.push_str(&format!("## 6. Archive Rank Before Eviction (Gen {})\n\n", prev_gen));
         report.push_str("All members of a Pareto archive are non-dominated by definition (Front 0).\n");
         report.push_str("Crowding distance measures isolation within the front.\n\n");
         report.push_str("| Field | Value |\n|---|---|\n");
-        report.push_str(&format!("| Pareto Front Rank | {} |\n", ev.victim_front_rank_gen174));
-        let crowding_str = if ev.victim_crowding_gen174.is_infinite() {
+        report.push_str(&format!("| Pareto Front Rank | {} |\n", ev.victim_front_rank_prev_gen));
+        let crowding_str = if ev.victim_crowding_prev_gen.is_infinite() {
             "∞ (boundary solution)".to_string()
         } else {
-            format!("{:.4}", ev.victim_crowding_gen174)
+            format!("{:.4}", ev.victim_crowding_prev_gen)
         };
         report.push_str(&format!("| Crowding Distance | {} |\n", crowding_str));
         report.push_str("\n");
-        if ev.victim_crowding_gen174.is_infinite() {
-            report.push_str("UID 4 was a **boundary solution** at gen 174 — it occupied an extreme position in at least one proxy objective dimension. This indicates it was NOT marginal before eviction; it was a structurally important archive member.\n\n");
-        } else if ev.victim_crowding_gen174 > 1.0 {
-            report.push_str("UID 4 had **high crowding distance** at gen 174 — it was well-isolated in proxy space, indicating it was NOT marginal before eviction.\n\n");
+        let uid_label = format!("UID {}", ev.victim_tracker_uid);
+        if ev.victim_crowding_prev_gen.is_infinite() {
+            report.push_str(&format!("{} was a **boundary solution** at gen {} — it occupied an extreme position in at least one proxy objective dimension. This indicates it was NOT marginal before eviction; it was a structurally important archive member.\n\n", uid_label, prev_gen));
+        } else if ev.victim_crowding_prev_gen > 1.0 {
+            report.push_str(&format!("{} had **high crowding distance** at gen {} — it was well-isolated in proxy space, indicating it was NOT marginal before eviction.\n\n", uid_label, prev_gen));
         } else {
-            report.push_str("UID 4 had **low crowding distance** at gen 174 — it was in a dense region of proxy space, suggesting it may have been marginal before eviction.\n\n");
+            report.push_str(&format!("{} had **low crowding distance** at gen {} — it was in a dense region of proxy space, suggesting it may have been marginal before eviction.\n\n", uid_label, prev_gen));
         }
 
         // Attribution summary
@@ -636,7 +656,8 @@ fn main() {
             report.push_str("**WARNING**: No single objective shows a clear improvement. Domination may be marginal (Case D).\n\n");
         } else {
             report.push_str(&format!(
-                "UID 4 was evicted because improving **{}** was considered worth sacrificing **{:+.0} points** of official quality.\n\n",
+                "UID {} was evicted because improving **{}** was considered worth sacrificing **{:+.0} points** of official quality.\n\n",
+                ev.victim_tracker_uid,
                 driving_objs.join(", "),
                 delta_official
             ));
@@ -649,13 +670,13 @@ fn main() {
         report.push_str(&format!("\nwhich produced Pareto domination,\n\nwhile causing\n\nΔOfficialTotal = {:+.0}\n", delta_official));
         report.push_str("```\n");
 
-        let report_path = "gen175_domination_report.md";
-        let mut report_file = File::create(report_path).unwrap();
+        let report_path = format!("gen{}_domination_report.md", ev.eviction_gen);
+        let mut report_file = File::create(&report_path).unwrap();
         report_file.write_all(report.as_bytes()).unwrap();
-        println!("\nWrote {} ({} bytes)", report_path, report.len());
+        println!("\nWrote {} ({} bytes)", &report_path, report.len());
 
         // Console echo of key numbers
-        println!("\n=== Sprint 3.7: Gen-175 Domination Event ===");
+        println!("\n=== Sprint 3.7: Gen-{} Domination Event ===", ev.eviction_gen);
         println!("Victim  UID-4 official_total : {:.0}", ev.victim_external.official_total);
         println!("Dominator official_total     : {:.0}", ev.dominator_external.official_total);
         println!("ΔOfficialTotal               : {:+.0}", ev.dominator_external.official_total - ev.victim_external.official_total);
@@ -666,9 +687,15 @@ fn main() {
         }
     } else {
         println!("\n[Sprint 3.7] WARNING: DominationEvent was NOT fired.");
-        println!("  uid4_genome_hash set: {}", uid4_genome_hash.is_some());
-        println!("  uid4_genome_cache set: {}", uid4_genome_cache.is_some());
-        println!("  Check that --gens >= 176 and seed=42.");
+        println!("  best_ever_genome_hash set : {}", best_ever_genome_hash.is_some());
+        println!("  best_ever_genome_cache set: {}", best_ever_genome_cache.is_some());
+        println!("  best_ever_tracker_uid     : {:?}", best_ever_tracker_uid);
+        println!("  best_ever_eviction_gen    : {}", best_ever_eviction_gen);
+        println!("  Possible causes:");
+        println!("    - No champion retention error in this run (best_ever == best_final)");
+        println!("    - Best-ever champion was never evicted (still in archive at end)");
+        println!("    - best_ever_proxy_before was None at eviction time (champion not in archive before add())");
+        println!("    - best_ever_genome_cache was None (champion not seen in archive at prev gen end)");
     }
 
     // ── Console summary ────────────────────────────────────────────────────────
