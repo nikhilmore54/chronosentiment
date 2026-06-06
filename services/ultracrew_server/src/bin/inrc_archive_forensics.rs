@@ -168,6 +168,100 @@ impl DeltaHcProbe {
     }
 }
 
+// Sprint 3.11: Rejection attribution probe — for every HC-improving offspring that is
+// rejected, record delta_hc magnitude and delta_o3 (proxy O3 = HC_Successions, index 2).
+// Separates Sub-A (step-size asymmetry) from Sub-B (O3 proxy pressure).
+//
+// delta_hc is stored as a positive integer (magnitude of improvement, i.e. parent_hc - child_hc).
+// delta_o3 is stored as signed (child_o3 - parent_o3): positive = child worsened O3.
+struct RejectedImprovingProbe {
+    total_rejected_improving: u64,
+    // ΔHC magnitude distribution (improving = child_hc < parent_hc, so delta_hc > 0)
+    delta_hc_sum: u64,           // sum of (parent_hc - child_hc) for mean
+    delta_hc_le10: u64,          // |ΔHC| ≤ 10 (small improvement)
+    delta_hc_le100: u64,         // 10 < |ΔHC| ≤ 100
+    delta_hc_le1000: u64,        // 100 < |ΔHC| ≤ 1000
+    delta_hc_gt1000: u64,        // |ΔHC| > 1000 (large improvement)
+    // ΔO3 direction (proxy O3 = child_fitness[2], HC_Successions)
+    o3_worsened: u64,            // child_o3 > parent_o3 (child worsened O3 proxy)
+    o3_improved: u64,            // child_o3 < parent_o3 (child improved O3 proxy)
+    o3_neutral: u64,             // child_o3 == parent_o3
+    // Joint: HC-improving AND O3-worsening AND rejected (Sub-B signal)
+    hc_improving_o3_worsening_rejected: u64,
+    // Joint: HC-improving AND O3-improving AND rejected (Sub-A signal)
+    hc_improving_o3_improving_rejected: u64,
+    // E[ΔHC | improving AND rejected] vs E[ΔHC | improving AND admitted] (step-size asymmetry)
+    admitted_improving_delta_hc_sum: u64,
+    admitted_improving_count: u64,
+}
+
+impl RejectedImprovingProbe {
+    fn new() -> Self {
+        Self {
+            total_rejected_improving: 0,
+            delta_hc_sum: 0,
+            delta_hc_le10: 0,
+            delta_hc_le100: 0,
+            delta_hc_le1000: 0,
+            delta_hc_gt1000: 0,
+            o3_worsened: 0,
+            o3_improved: 0,
+            o3_neutral: 0,
+            hc_improving_o3_worsening_rejected: 0,
+            hc_improving_o3_improving_rejected: 0,
+            admitted_improving_delta_hc_sum: 0,
+            admitted_improving_count: 0,
+        }
+    }
+
+    // parent_o3 and child_o3 are the raw proxy O3 values (child_fitness[2] / parent_fitness[2]).
+    // Lower is better (HC_Successions proxy is minimised).
+    fn record(&mut self, parent_hc: usize, child_hc: usize,
+              parent_o3: f64, child_o3: f64, was_inserted: bool) {
+        if child_hc >= parent_hc { return; } // only fires for HC-improving offspring
+        let delta_hc = parent_hc - child_hc; // positive magnitude
+        if was_inserted {
+            // Admitted improving: track for step-size comparison
+            self.admitted_improving_delta_hc_sum += delta_hc as u64;
+            self.admitted_improving_count += 1;
+            return;
+        }
+        // Rejected improving
+        self.total_rejected_improving += 1;
+        self.delta_hc_sum += delta_hc as u64;
+        if delta_hc <= 10        { self.delta_hc_le10   += 1; }
+        else if delta_hc <= 100  { self.delta_hc_le100  += 1; }
+        else if delta_hc <= 1000 { self.delta_hc_le1000 += 1; }
+        else                     { self.delta_hc_gt1000 += 1; }
+        // O3 direction (lower = better, so child_o3 > parent_o3 means child worsened O3)
+        let o3_delta = child_o3 - parent_o3;
+        if o3_delta > 0.5 {
+            self.o3_worsened += 1;
+            self.hc_improving_o3_worsening_rejected += 1;
+        } else if o3_delta < -0.5 {
+            self.o3_improved += 1;
+            self.hc_improving_o3_improving_rejected += 1;
+        } else {
+            self.o3_neutral += 1;
+        }
+    }
+
+    fn mean_delta_hc_rejected(&self) -> f64 {
+        if self.total_rejected_improving == 0 { return 0.0; }
+        self.delta_hc_sum as f64 / self.total_rejected_improving as f64
+    }
+
+    fn mean_delta_hc_admitted(&self) -> f64 {
+        if self.admitted_improving_count == 0 { return 0.0; }
+        self.admitted_improving_delta_hc_sum as f64 / self.admitted_improving_count as f64
+    }
+
+    fn p_o3_worsened_given_rejected(&self) -> f64 {
+        if self.total_rejected_improving == 0 { return 0.0; }
+        self.o3_worsened as f64 / self.total_rejected_improving as f64
+    }
+}
+
 /// Compute crowding distance for a specific solution (by uid) within the archive.
 /// Uses the same normalised Euclidean neighbour distance as the parent selector.
 /// Returns f64::INFINITY for boundary solutions; 0.0 if uid not found or archive < 2.
@@ -310,6 +404,8 @@ fn main() {
     let mut init_hc_values: Vec<usize> = Vec::new();
     // Sprint 3.10: ΔHC offspring probe — accumulated across all generations
     let mut delta_hc_probe = DeltaHcProbe::new();
+    // Sprint 3.11: Rejection attribution probe — fires for every HC-improving offspring
+    let mut rejected_improving_probe = RejectedImprovingProbe::new();
 
     // ── Seed with baseline ─────────────────────────────────────────────────────
     let baseline_genome =
@@ -504,6 +600,18 @@ fn main() {
 
         // ── Sprint 3.10: Record ΔHC probe entry (fires after was_inserted is known) ──
         delta_hc_probe.record(parent_hc, child_hc_for_probe, was_inserted);
+
+        // ── Sprint 3.11: Rejection attribution probe ──────────────────────────────
+        // Fires for every HC-improving offspring (child_hc < parent_hc).
+        // parent_o3 = parent.fitness[2] (proxy O3 = HC_Successions, already in archive).
+        // child_o3  = child_fitness[2]  (proxy O3 of the offspring).
+        let parent_o3_for_probe = if parent.fitness.len() > 2 { parent.fitness[2] } else { 0.0 };
+        let child_o3_for_probe  = if child_fitness.len() > 2  { child_fitness[2]  } else { 0.0 };
+        rejected_improving_probe.record(
+            parent_hc, child_hc_for_probe,
+            parent_o3_for_probe, child_o3_for_probe,
+            was_inserted,
+        );
 
         // ── Full-coverage archive membership tracking ──────────────────────────
         // Register EVERY archive insertion in archive_members map.
@@ -1326,6 +1434,177 @@ fn main() {
         println!("P(admitted | improving)      : {:.6}", p_imp_ins);
         println!("Mean ΔHC                     : {:.4}", mean_d);
         println!("Classification               : {}", if p_imp < 0.01 { "RC-1 CONFIRMED" } else if p_imp >= 0.10 && p_imp_ins < 0.01 { "RC-2 CONFIRMED" } else { "RC-1+RC-2 INTERACTION" });
+    }
+
+    // ── Sprint 3.11: Write rejection_attribution_report.md ────────────────────
+    // Separates Sub-A (step-size asymmetry) from Sub-B (O3 proxy pressure).
+    // Fires for every HC-improving offspring that was rejected by the archive.
+    {
+        let p = &rejected_improving_probe;
+        let total_rej = p.total_rejected_improving.max(1);
+        let total_imp = p.total_rejected_improving + p.admitted_improving_count;
+
+        let mean_rej = p.mean_delta_hc_rejected();
+        let mean_adm = p.mean_delta_hc_admitted();
+        let p_o3_worsened = p.p_o3_worsened_given_rejected();
+
+        // Sub-A signal: admitted improving have much larger ΔHC than rejected improving
+        // (rejected improvements are tiny — too small to survive selection)
+        let sub_a_signal = mean_adm > 0.0 && mean_rej > 0.0 && mean_adm > mean_rej * 2.0;
+        // Sub-B signal: majority of rejected improving offspring also worsened O3
+        let sub_b_signal = p_o3_worsened > 0.5;
+
+        let classification = match (sub_a_signal, sub_b_signal) {
+            (true,  true)  => "**Sub-A + Sub-B BOTH ACTIVE** — Rejected improvements are smaller than admitted ones (step-size asymmetry) AND the majority also worsen O3 (proxy pressure). Both mechanisms suppress HC-improving offspring.",
+            (true,  false) => "**Sub-A DOMINANT (step-size asymmetry)** — Rejected HC-improving offspring have significantly smaller ΔHC than admitted ones. The operator produces improvements, but they are too small to survive Pareto selection. O3 pressure is not the primary gate.",
+            (false, true)  => "**Sub-B DOMINANT (O3 proxy pressure)** — The majority of rejected HC-improving offspring also worsen O3. The archive preferentially rejects offspring that trade O3 for HC improvement. O3 acts as an attractor preventing HC accumulation.",
+            (false, false) => "**INCONCLUSIVE** — Neither Sub-A nor Sub-B signal is dominant. Rejection may be driven by other proxy objectives (O1, O2, O4) or by archive capacity effects. Further decomposition required.",
+        };
+
+        let mut report = String::new();
+        report.push_str("# Rejection Attribution Report — SD-007 Sub-Hypothesis Isolation\n\n");
+        report.push_str("**Sprint:** 3.11  \n");
+        report.push_str(&format!("**Seed:** {}  \n", seed));
+        report.push_str("**Instance:** n050w4  \n");
+        report.push_str(&format!("**Generations:** {}  \n", max_generations));
+        report.push_str("**Probe:** For every HC-improving offspring (child_hc < parent_hc), record ΔHC magnitude and ΔO3 direction  \n");
+        report.push_str("**Scope:** All evaluated offspring before archive.add()  \n\n");
+        report.push_str("---\n\n");
+
+        // Section 1: Raw counts
+        report.push_str("## 1. Raw Counts — HC-Improving Offspring\n\n");
+        report.push_str("| Category | Count |\n|---|---|\n");
+        report.push_str(&format!("| Total HC-improving offspring | {} |\n", total_imp));
+        report.push_str(&format!("| HC-improving AND admitted | {} |\n", p.admitted_improving_count));
+        report.push_str(&format!("| HC-improving AND rejected | {} |\n", p.total_rejected_improving));
+        report.push_str("\n**ΔHC magnitude distribution (rejected improving only):**\n\n");
+        report.push_str("| Bucket | Count | % of rejected improving |\n|---|---|---|\n");
+        report.push_str(&format!("| |ΔHC| ≤ 10 (tiny improvement) | {} | {:.2}% |\n",
+            p.delta_hc_le10, p.delta_hc_le10 as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!("| 10 < |ΔHC| ≤ 100 (small improvement) | {} | {:.2}% |\n",
+            p.delta_hc_le100, p.delta_hc_le100 as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!("| 100 < |ΔHC| ≤ 1000 (medium improvement) | {} | {:.2}% |\n",
+            p.delta_hc_le1000, p.delta_hc_le1000 as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!("| |ΔHC| > 1000 (large improvement) | {} | {:.2}% |\n",
+            p.delta_hc_gt1000, p.delta_hc_gt1000 as f64 / total_rej as f64 * 100.0));
+        report.push_str("\n**ΔO3 direction (rejected improving only):**\n\n");
+        report.push_str("| O3 Direction | Count | % of rejected improving |\n|---|---|---|\n");
+        report.push_str(&format!("| O3 worsened (child_o3 > parent_o3) | {} | {:.2}% |\n",
+            p.o3_worsened, p.o3_worsened as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!("| O3 improved (child_o3 < parent_o3) | {} | {:.2}% |\n",
+            p.o3_improved, p.o3_improved as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!("| O3 neutral (|Δo3| ≤ 0.5) | {} | {:.2}% |\n",
+            p.o3_neutral, p.o3_neutral as f64 / total_rej as f64 * 100.0));
+        report.push_str("\n");
+
+        // Section 2: Key probabilities
+        report.push_str("## 2. Key Probabilities\n\n");
+        report.push_str("| Probability | Value | Interpretation |\n|---|---|---|\n");
+        report.push_str(&format!(
+            "| P(O3 worsened \\| rejected improving) | {:.4} ({:.2}%) | Sub-B signal: O3 pressure gates HC-improving offspring |\n",
+            p_o3_worsened, p_o3_worsened * 100.0));
+        report.push_str(&format!(
+            "| E[ΔHC \\| improving AND rejected] | {:.2} | Mean HC improvement magnitude for rejected offspring |\n",
+            mean_rej));
+        report.push_str(&format!(
+            "| E[ΔHC \\| improving AND admitted] | {:.2} | Mean HC improvement magnitude for admitted offspring |\n",
+            mean_adm));
+        let ratio = if mean_rej > 0.0 { mean_adm / mean_rej } else { 0.0 };
+        report.push_str(&format!(
+            "| E[ΔHC admitted] / E[ΔHC rejected] | {:.2}× | Sub-A signal: >2× means admitted improvements are much larger |\n",
+            ratio));
+        report.push_str("\n**Joint counts:**\n\n");
+        report.push_str("| Joint Event | Count | % of rejected improving |\n|---|---|---|\n");
+        report.push_str(&format!(
+            "| HC-improving AND O3-worsening AND rejected (Sub-B) | {} | {:.2}% |\n",
+            p.hc_improving_o3_worsening_rejected,
+            p.hc_improving_o3_worsening_rejected as f64 / total_rej as f64 * 100.0));
+        report.push_str(&format!(
+            "| HC-improving AND O3-improving AND rejected (Sub-A) | {} | {:.2}% |\n",
+            p.hc_improving_o3_improving_rejected,
+            p.hc_improving_o3_improving_rejected as f64 / total_rej as f64 * 100.0));
+        report.push_str("\n");
+
+        // Section 3: Sub-A vs Sub-B classification
+        report.push_str("## 3. Sub-A vs Sub-B Classification\n\n");
+        report.push_str("**Sub-A (step-size asymmetry):** Admitted HC-improving offspring have significantly larger ΔHC than rejected ones.  \n");
+        report.push_str("Signal: E[ΔHC | admitted] > 2× E[ΔHC | rejected]  \n\n");
+        report.push_str("**Sub-B (O3 proxy pressure):** Majority of rejected HC-improving offspring also worsen O3.  \n");
+        report.push_str("Signal: P(O3 worsened | rejected improving) > 0.5  \n\n");
+        report.push_str("| Sub-hypothesis | Signal Threshold | Observed | Active? |\n|---|---|---|---|\n");
+        report.push_str(&format!(
+            "| Sub-A (step-size asymmetry) | E[ΔHC admitted] > 2× E[ΔHC rejected] | {:.2}× | {} |\n",
+            ratio, if sub_a_signal { "✓ YES" } else { "✗ NO" }));
+        report.push_str(&format!(
+            "| Sub-B (O3 proxy pressure) | P(O3 worsened \\| rejected) > 0.5 | {:.4} | {} |\n",
+            p_o3_worsened, if sub_b_signal { "✓ YES" } else { "✗ NO" }));
+        report.push_str("\n");
+        report.push_str(&format!("### Classification\n\n{}\n\n", classification));
+
+        // Section 4: Interpretation and next steps
+        report.push_str("## 4. Interpretation and Scientific Debt\n\n");
+        report.push_str("### Context\n\n");
+        report.push_str("From Sprint 3.10 (sd007_resolution.md, commit deac7d18):\n\n");
+        report.push_str("- P(child_hc < parent_hc) = 28.76% — RC-1 Operator Incapacity FALSIFIED\n");
+        report.push_str("- P(admit | improving) = 23.16% vs P(admit | worsening) = 25.68% — conditional rates close\n");
+        report.push_str("- Mean ΔHC = +600.2 — operator has positive HC drift (RC-1 Operator Bias CONFIRMED)\n");
+        report.push_str("- Defensible conclusion: HC-improving offspring exist but do not accumulate\n\n");
+        report.push_str("### Sprint 3.11 Adds\n\n");
+        report.push_str("This probe isolates the mechanism preventing accumulation:\n\n");
+        if sub_b_signal {
+            report.push_str(&format!(
+                "- **Sub-B active:** {:.2}% of rejected HC-improving offspring also worsened O3. \
+                 The archive is not neutral with respect to the HC/O3 trade-off — it preferentially \
+                 rejects offspring that improve HC at the cost of O3. This is consistent with the \
+                 gen-69 O3 attractor event (+15,845 HC penalty traded for 330 O3 units).\n\n",
+                p_o3_worsened * 100.0));
+        } else {
+            report.push_str(&format!(
+                "- **Sub-B not dominant:** Only {:.2}% of rejected HC-improving offspring worsened O3. \
+                 O3 proxy pressure alone does not explain rejection. Other proxy objectives or \
+                 archive capacity effects may be responsible.\n\n",
+                p_o3_worsened * 100.0));
+        }
+        if sub_a_signal {
+            report.push_str(&format!(
+                "- **Sub-A active:** Admitted improvements are {:.2}× larger than rejected ones \
+                 (E[ΔHC admitted]={:.2} vs E[ΔHC rejected]={:.2}). The operator produces \
+                 improvements of varying magnitude; only large improvements survive Pareto selection. \
+                 Small improvements are dominated away.\n\n",
+                ratio, mean_adm, mean_rej));
+        } else {
+            report.push_str(&format!(
+                "- **Sub-A not dominant:** Admitted and rejected improvements are similar in magnitude \
+                 (ratio={:.2}×). Step-size asymmetry is not the primary gate.\n\n",
+                ratio));
+        }
+        report.push_str("### Remaining Scientific Debt\n\n");
+        report.push_str("- E[ΔHC | improving AND worsening-O3 AND rejected] vs E[ΔHC | improving AND improving-O3 AND rejected] — joint magnitude not yet measured\n");
+        report.push_str("- Which proxy objectives (O1, O2, O4) gate the remaining rejected improving offspring\n");
+        report.push_str("- Whether the O3 attractor is a structural property of the n050w4 constraint landscape or an artifact of the proxy formulation\n");
+        report.push_str("- Operator redesign: targeted HC-reduction moves (e.g. shift-swap within constraint families) to test RC-1 Operator Bias directly\n\n");
+
+        let report_path = "rejection_attribution_report.md";
+        let mut report_file = File::create(report_path).unwrap();
+        report_file.write_all(report.as_bytes()).unwrap();
+        println!("\nWrote {} ({} bytes)", report_path, report.len());
+
+        // Console echo of key numbers
+        println!("\n=== Sprint 3.11: Rejection Attribution Probe ===");
+        println!("HC-improving offspring total  : {}", total_imp);
+        println!("  Admitted                    : {}", p.admitted_improving_count);
+        println!("  Rejected                    : {}", p.total_rejected_improving);
+        println!("E[ΔHC | rejected improving]  : {:.2}", mean_rej);
+        println!("E[ΔHC | admitted improving]  : {:.2}", mean_adm);
+        println!("Ratio (admitted/rejected)     : {:.2}x", ratio);
+        println!("P(O3 worsened | rej imp)      : {:.4} ({:.2}%)", p_o3_worsened, p_o3_worsened * 100.0);
+        println!("Sub-A active (step-size)      : {}", sub_a_signal);
+        println!("Sub-B active (O3 pressure)    : {}", sub_b_signal);
+        println!("ΔHC buckets (rejected):");
+        println!("  |ΔHC| ≤ 10                 : {}", p.delta_hc_le10);
+        println!("  10 < |ΔHC| ≤ 100           : {}", p.delta_hc_le100);
+        println!("  100 < |ΔHC| ≤ 1000         : {}", p.delta_hc_le1000);
+        println!("  |ΔHC| > 1000               : {}", p.delta_hc_gt1000);
     }
 
     // ── Console summary ────────────────────────────────────────────────────────
