@@ -387,20 +387,39 @@ impl CrossoverOperator<CvrpCandidate> for CvrpCrossoverRoutePreserving {
 }
 
 fn get_routes(candidate: &CvrpCandidate, instance: &crate::CvrpInstance) -> Vec<Vec<usize>> {
+    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let outcome = evaluator.evaluate(candidate);
     let mut routes = Vec::new();
-    let mut current_route = Vec::new();
-    let mut current_load = 0;
-    for &cust_idx in &candidate.permutation {
-        let customer = &instance.customers[cust_idx];
-        if current_load + customer.demand > instance.capacity {
-            routes.push(current_route.clone());
-            current_route = Vec::new();
-            current_load = 0;
+    
+    if outcome.eval.routes.is_empty() {
+        // Fallback to greedy
+        let mut current_route = Vec::new();
+        let mut current_load = 0;
+        for &cust_idx in &candidate.permutation {
+            let customer = &instance.customers[cust_idx];
+            if current_load + customer.demand > instance.capacity {
+                routes.push(current_route.clone());
+                current_route = Vec::new();
+                current_load = 0;
+            }
+            current_route.push(cust_idx);
+            current_load += customer.demand;
         }
-        current_route.push(cust_idx);
-        current_load += customer.demand;
+        if !current_route.is_empty() {
+            routes.push(current_route);
+        }
+    } else {
+        // Map node IDs back to indices in instance.customers
+        for r in outcome.eval.routes {
+            let mut route_indices = Vec::with_capacity(r.len());
+            for node_id in r {
+                if let Some(idx) = instance.customers.iter().position(|c| c.id == node_id) {
+                    route_indices.push(idx);
+                }
+            }
+            routes.push(route_indices);
+        }
     }
-    if !current_route.is_empty() { routes.push(current_route); }
     routes
 }
 

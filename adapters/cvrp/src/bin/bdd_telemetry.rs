@@ -6,7 +6,7 @@ use rand::Rng;
 use serde::Deserialize;
 use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, ImprovementOperator, GenomeFactory};
 use cvrp::{CvrpInstance, CvrpClusteredGenomeFactory, DistanceMetric};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossover, CvrpLocalSearch};
+use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossoverRoutePreserving, CvrpLocalSearch};
 
 #[derive(Debug, Deserialize, Clone)]
 struct InstanceMetadata {
@@ -94,7 +94,7 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
 
     let evaluator = CvrpEvaluator { instance: instance.clone() };
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
-    let crossover = CvrpCrossover;
+    let crossover = CvrpCrossoverRoutePreserving { instance: instance.clone() };
     let factory = CvrpClusteredGenomeFactory { instance: instance.clone() };
     let local_search = CvrpLocalSearch { instance: instance.clone() };
 
