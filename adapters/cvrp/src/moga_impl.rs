@@ -1,4 +1,5 @@
 use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, Evaluated, ImprovementOperator};
+use coralys_moga::{ConstraintChecker, RepairHeuristic};
 
 use coralys_core::Outcome;
 use rand::Rng;
@@ -697,6 +698,169 @@ impl MutationOperator<CvrpCandidate> for CvrpRouteAwareMutator {
         candidate.last_mutation_op = Some(op_name.to_string());
         candidate.last_mutation_radius = Some(if i > j { i - j } else { j - i });
         candidate.route_boundary_changes = Some(0); // Explicitly 0 by construction
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CvrpViolation {
+    VehicleLimitExceeded { actual: usize, limit: usize },
+}
+
+pub struct CvrpConstraintChecker {
+    pub instance: crate::CvrpInstance,
+}
+
+impl ConstraintChecker<CvrpCandidate> for CvrpConstraintChecker {
+    type Violation = CvrpViolation;
+
+    fn check_violations(&self, candidate: &CvrpCandidate) -> Vec<Self::Violation> {
+        let limit = self.instance.max_vehicles.unwrap_or(999);
+        
+        let mut actual = 0;
+        let mut current_load = 0;
+        for &cust_idx in &candidate.permutation {
+            let customer = &self.instance.customers[cust_idx];
+            if current_load + customer.demand > self.instance.capacity {
+                actual += 1;
+                current_load = 0;
+            }
+            current_load += customer.demand;
+        }
+        if current_load > 0 {
+            actual += 1;
+        }
+
+        let mut violations = Vec::new();
+        if actual > limit {
+            violations.push(CvrpViolation::VehicleLimitExceeded { actual, limit });
+        }
+        violations
+    }
+}
+
+pub struct VehicleLimitRepairHeuristic {
+    pub instance: crate::CvrpInstance,
+}
+
+impl RepairHeuristic<CvrpCandidate, CvrpViolation> for VehicleLimitRepairHeuristic {
+    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
+        match violation {
+            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+                let mut routes = Vec::new();
+                let mut current_route = Vec::new();
+                let mut current_load = 0;
+                for &cust_idx in &candidate.permutation {
+                    let customer = &self.instance.customers[cust_idx];
+                    if current_load + customer.demand > self.instance.capacity {
+                        routes.push((current_route.clone(), current_load));
+                        current_route = Vec::new();
+                        current_load = 0;
+                    }
+                    current_route.push(cust_idx);
+                    current_load += customer.demand;
+                }
+                if !current_route.is_empty() {
+                    routes.push((current_route, current_load));
+                }
+
+                if routes.len() <= *limit {
+                    return false;
+                }
+
+                // Find the route with the smallest load
+                let mut min_idx = 0;
+                let mut min_load = 999999;
+                for (idx, (_, load)) in routes.iter().enumerate() {
+                    if *load < min_load {
+                        min_load = *load;
+                        min_idx = idx;
+                    }
+                }
+
+                let (small_route, _) = routes.remove(min_idx);
+                let mut success = true;
+                for cust in small_route {
+                    let demand = self.instance.customers[cust].demand;
+                    let mut found = false;
+                    for (r_idx, (r, load)) in routes.iter_mut().enumerate() {
+                        if *load + demand <= self.instance.capacity {
+                            r.push(cust);
+                            *load += demand;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if !found {
+                        success = false;
+                        break;
+                    }
+                }
+
+                if success {
+                    let mut new_perm = Vec::with_capacity(candidate.permutation.len());
+                    for (r, _) in routes {
+                        new_perm.extend(r);
+                    }
+                    candidate.permutation = new_perm;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
+pub struct BinPackingRepairHeuristic {
+    pub instance: crate::CvrpInstance,
+}
+
+impl RepairHeuristic<CvrpCandidate, CvrpViolation> for BinPackingRepairHeuristic {
+    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
+        match violation {
+            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+                let mut customers_with_demands: Vec<(usize, i32)> = candidate.permutation.iter().map(|&idx| {
+                    (idx, self.instance.customers[idx].demand)
+                }).collect();
+
+                // Sort customers in descending order of demand for Best-Fit Decreasing
+                customers_with_demands.sort_by(|a, b| b.1.cmp(&a.1));
+
+                let mut bins: Vec<(Vec<usize>, i32)> = Vec::new();
+                let capacity = self.instance.capacity;
+
+                for (idx, demand) in customers_with_demands {
+                    let mut best_bin_idx: Option<usize> = None;
+                    let mut min_remaining = capacity + 1;
+
+                    for (b_idx, (_, load)) in bins.iter().enumerate() {
+                        let remaining = capacity - load;
+                        if remaining >= demand && remaining < min_remaining {
+                            min_remaining = remaining;
+                            best_bin_idx = Some(b_idx);
+                        }
+                    }
+
+                    if let Some(b_idx) = best_bin_idx {
+                        bins[b_idx].0.push(idx);
+                        bins[b_idx].1 += demand;
+                    } else {
+                        bins.push((vec![idx], demand));
+                    }
+                }
+
+                if bins.len() <= *limit {
+                    let mut new_perm = Vec::with_capacity(candidate.permutation.len());
+                    for (b_custs, _) in bins {
+                        new_perm.extend(b_custs);
+                    }
+                    candidate.permutation = new_perm;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
     }
 }
 

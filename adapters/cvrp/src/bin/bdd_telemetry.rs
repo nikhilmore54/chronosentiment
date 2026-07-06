@@ -5,8 +5,9 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use serde::Deserialize;
 use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, ImprovementOperator, GenomeFactory};
+use coralys_moga::FeasibilityRepairFramework;
 use cvrp::{CvrpInstance, CvrpClusteredGenomeFactory, DistanceMetric};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossoverRoutePreserving, CvrpLocalSearch};
+use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossoverRoutePreserving, CvrpLocalSearch, CvrpConstraintChecker, VehicleLimitRepairHeuristic, BinPackingRepairHeuristic};
 
 #[derive(Debug, Deserialize, Clone)]
 struct InstanceMetadata {
@@ -97,6 +98,10 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
     let crossover = CvrpCrossoverRoutePreserving { instance: instance.clone() };
     let factory = CvrpClusteredGenomeFactory { instance: instance.clone() };
     let local_search = CvrpLocalSearch { instance: instance.clone() };
+    let mut repair_framework = FeasibilityRepairFramework::new(5);
+    repair_framework.add_checker(Box::new(CvrpConstraintChecker { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(VehicleLimitRepairHeuristic { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(BinPackingRepairHeuristic { instance: instance.clone() }));
 
     let mut rng = StdRng::seed_from_u64(42);
     let pop_size = 200;
@@ -200,6 +205,9 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
 
             // Local Search
             local_search.improve(&mut child);
+
+            // Feasibility Repair Framework
+            repair_framework.improve(&mut child);
 
             next_gen.push(child);
         }
