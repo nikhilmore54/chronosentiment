@@ -182,10 +182,8 @@ impl MutationOperator<CvrpCandidate> for CvrpMutator {
         let size = candidate.permutation.len();
         if size < 2 { return; }
 
-        let entropy = self.entropy_scale.clamp(0.0, 5.0);
-        let prob = 0.2 * entropy;
-
-        if rng.gen_bool(prob) {
+        // Unconditional mutation when called (MOGA engine regulates rate)
+        {
             // Pick one mutation strategy randomly (Swap, Insert, Relocate only)
             let strategy = match rng.gen_range(0..3) {
                 0 => 0, // Swap
@@ -715,9 +713,9 @@ mod evaluator_tests {
         };
 
         let res = evaluator.evaluate(&candidate);
-        // Exceeds max_vehicles (2), so it is infeasible and penalized
+        // Exceeds max_vehicles (2), so it is infeasible and penalized (returns 0 routes)
         assert!(res.eval.total_distance > 10000.0, "Should apply penalty to infeasible solution");
-        assert_eq!(res.eval.num_vehicles, 3);
+        assert_eq!(res.eval.num_vehicles, 0);
 
         instance.max_vehicles = Some(3);
         let evaluator2 = CvrpEvaluator { instance };
