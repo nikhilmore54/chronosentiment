@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from './config/api';
 
 interface Contract {
   id: string;
@@ -27,7 +28,7 @@ export const Constraints = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:3000/api/scenario')
+    fetch(`/api/scenario`)
       .then(res => res.json())
       .then(d => {
         setData(d);

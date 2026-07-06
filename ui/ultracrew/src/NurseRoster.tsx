@@ -12,9 +12,9 @@ interface NurseRosterProps {
 
 export const NurseRoster: React.FC<NurseRosterProps> = ({ nurses }) => {
   return (
-    <div className="card">
-      <h2>Nurse Roster</h2>
-      <div className="nurse-list">
+    <div className="card" style={{ overflow: 'hidden' }}>
+      <h2 style={{ background: 'var(--bg-panel)', zIndex: 10, margin: 0, padding: '0.5rem 0' }}>Nurse Roster</h2>
+      <div className="nurse-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
         {nurses.map(nurse => (
           <div key={nurse.id} className="nurse-item">
             <div className="nurse-info">

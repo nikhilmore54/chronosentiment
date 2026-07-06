@@ -14,7 +14,11 @@ members = [
     "coralys-infrastructure",
     "adapters/ultracrew",
     "adapters/chronosentiment",
-    "adapters/ultracrew",
-    "adapters/chronosentiment",
+    "adapters/cvrp", "coralys-v2",
+    "coralys-core",
+    "coralys-matching",
+    "adapters/roadef",
+    "services/ultracrew_server",
+    "services/cvrp_server",
 ]
 resolver = "2"

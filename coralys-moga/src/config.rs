@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct EvolutionConfig {
     pub population_size: usize,
     pub mutation_rate: f64,
@@ -6,6 +6,7 @@ pub struct EvolutionConfig {
     pub elite_count: usize,
     pub generation_limit: usize,
     pub seed: Option<u64>,
+    pub tournament_size: Option<usize>,
 }
 
 impl Default for EvolutionConfig {
@@ -17,6 +18,23 @@ impl Default for EvolutionConfig {
             elite_count: 10,
             generation_limit: 100,
             seed: None,
+            tournament_size: None,
         }
     }
 }
+impl EvolutionConfig {
+    /// Demo configuration with deterministic seed and recommended parameters
+    pub fn demo() -> Self {
+        Self {
+            population_size: 100,
+            mutation_rate: 1.0,
+            crossover_rate: 0.8,
+            elite_count: 2,
+            generation_limit: 100,
+            seed: Some(42),
+            tournament_size: Some(3),
+        }
+    }
+}
+
+

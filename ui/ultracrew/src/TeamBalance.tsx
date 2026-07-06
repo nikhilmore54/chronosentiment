@@ -10,9 +10,10 @@ export interface NurseBalance {
 interface TeamBalanceProps {
   balances: NurseBalance[];
   simulationState?: SimulationState | null;
+  balanceScore?: number;
 }
 
-export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationState }) => {
+export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationState, balanceScore = 92 }) => {
   const [selectedNurse, setSelectedNurse] = useState<NurseBalance | null>(null);
   const [showFull, setShowFull] = useState(false);
 
@@ -44,7 +45,7 @@ export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationSt
           </div>
           <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1 }}>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Balance Score</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--accent-color)' }}>92</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--accent-color)' }}>{balanceScore}</div>
           </div>
         </div>
       </div>

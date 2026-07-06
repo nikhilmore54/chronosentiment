@@ -1,4 +1,5 @@
 import React from 'react';
+import './ScheduleGrid.css';
 import type { Nurse } from './NurseRoster';
 
 interface ScheduleGridProps {
@@ -6,38 +7,55 @@ interface ScheduleGridProps {
   schedule: Record<string, string[]>;
   dates?: Date[];
   todayIndex?: number;
+  activeHighlightCell?: { nurseId: string; dayIndex: number } | null;
+  changedAssignments?: Record<string, boolean[]>;
 }
 
-export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, dates = [], todayIndex = 14 }) => {
+export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ 
+  nurses, 
+  schedule, 
+  dates = [], 
+  todayIndex = 14,
+  activeHighlightCell = null,
+  changedAssignments = {}
+}) => {
   const [selectedShiftInfo, setSelectedShiftInfo] = React.useState<{nurse: string, type: string, action: string} | null>(null);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+  // Scroll horizontally to focus on the current week column on mount
+  React.useEffect(() => {
+    if (wrapperRef.current) {
+      const colWidth = 80; // width defined in CSS gridTemplateColumns
+      const offset = 100 + todayIndex * colWidth; // 100px for the fixed nurse column
+      // Center the current week column in view if possible
+      const scrollPos = Math.max(0, offset - wrapperRef.current.clientWidth / 2 + colWidth / 2);
+      wrapperRef.current.scrollLeft = scrollPos;
+    }
+  }, [todayIndex, dates.length]);
 
   return (
     <div className="card" style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Weekly Schedule</h2>
-        <div style={{ display: 'flex', gap: '2rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-          <span>← Immutable Past</span>
-          <span style={{ color: 'var(--accent-color)' }}>Today</span>
-          <span>Future Recovery Window →</span>
-        </div>
-      </div>
-      <div className="schedule-grid" style={{ marginTop: '1rem' }}>
+      <div className="schedule-grid-outer" style={{ overflowY: 'auto', maxHeight: '400px' }}>
+        <div className="schedule-grid-wrapper" ref={wrapperRef} style={{ overflowX: 'auto' }}>
+          <div className="schedule-grid" style={{ 
+            marginTop: '1rem',
+            gridTemplateColumns: `100px repeat(${dates.length}, 80px)`
+          }}>
         <div className="grid-cell grid-header sticky-nurse" style={{ minWidth: '100px' }}>Nurse</div>
         {dates.map((date, idx) => {
           const isPast = idx < todayIndex;
           const isToday = idx === todayIndex;
           return (
-            <div key={idx} className="grid-cell grid-header" style={{ 
+            <div key={idx} className={`grid-cell grid-header ${isToday ? 'today-highlight' : ''}`} style={{ 
               minWidth: '80px', 
               backgroundColor: isPast ? 'var(--panel-bg)' : 'inherit',
-              borderLeft: isToday ? '3px solid var(--accent-color)' : 'none',
               opacity: isPast ? 0.7 : 1
             }}>
               <div style={{ fontSize: '0.75rem', color: isToday ? 'var(--accent-color)' : 'var(--text-muted)', fontWeight: isToday ? 'bold' : 'normal' }}>
-                 {isToday ? 'TODAY' : isPast ? 'PAST' : date.toLocaleDateString('en-US', { weekday: 'short' })}
+                 {date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
               </div>
-              <div>
-                 {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <div style={{ fontSize: '0.8rem', marginTop: '2px', fontWeight: isToday ? 'bold' : 'normal', color: isToday ? 'var(--accent-color)' : 'inherit' }}>
+                 {date.getDate()} {date.toLocaleDateString('en-US', { month: 'short' })}
               </div>
             </div>
           );
@@ -45,6 +63,7 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, da
         
         {nurses.map(nurse => {
           const assignments = schedule[nurse.id] || Array(dates.length || 7).fill('');
+          const changedRow = changedAssignments[nurse.id] || [];
           return (
             <React.Fragment key={nurse.id}>
               <div className="grid-cell nurse-row-header sticky-nurse" style={{ minWidth: '100px' }}>{nurse.id}</div>
@@ -70,6 +89,8 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, da
 
                 const isPast = idx < todayIndex;
                 const isToday = idx === todayIndex;
+                const isHighlighted = activeHighlightCell?.nurseId === nurse.id && activeHighlightCell?.dayIndex === idx;
+                const isChanged = changedRow[idx] || false;
 
                 let shiftClass = '';
                 let shiftName = '';
@@ -84,39 +105,30 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, da
                   shiftName = 'Night';
                 }
 
+                let specialClass = '';
+                if (isSick) specialClass = 'sick-chip';
+                else if (isNew) specialClass = 'new-chip';
+                else if (isRecovered) specialClass = 'recovered-chip';
+                else if (isReturned) specialClass = 'returned-chip';
+
                 return (
-                  <div key={idx} className="grid-cell" style={{ 
+                  <div key={idx} className={`grid-cell ${isToday ? 'today-highlight' : ''} ${isHighlighted ? 'cell-flash' : ''}`} style={{ 
                     minWidth: '80px',
                     backgroundColor: isPast ? 'var(--panel-bg)' : 'inherit',
-                    borderLeft: isToday ? '3px solid var(--accent-color)' : 'none'
+                    borderLeft: isToday ? '2px solid var(--accent-color)' : 'none',
+                    borderRight: isToday ? '2px solid var(--accent-color)' : 'none',
+                    transition: 'all 0.3s ease-out'
                   }}>
                     {shift && (
                       <span 
-                        className={`shift-chip ${shiftClass}`}
-                        style={{
-                          ...(isPast ? { filter: 'grayscale(100%)', opacity: 0.5, cursor: 'not-allowed' } : {}),
-                          ...(isSick ? { 
-                            opacity: 0.5, 
-                            textDecoration: 'line-through', 
-                            backgroundColor: 'var(--panel-bg)', 
-                            color: 'var(--text-muted)',
-                            border: '1px dashed var(--text-muted)' 
-                          } : isNew ? {
-                            boxShadow: '0 0 10px rgba(52, 211, 153, 0.6)',
-                            border: '2px solid var(--success-color)'
-                          } : isRecovered ? {
-                            backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                            border: '2px solid var(--accent-color)',
-                            color: 'var(--text-main)',
-                            fontWeight: 600
-                          } : isReturned ? {
-                            opacity: 0.6,
-                            backgroundColor: 'transparent',
-                            border: '1px dashed var(--success-color)',
-                            color: 'var(--success-color)'
-                          } : {})
-                        }}
-                        title={isSick ? 'Shift missed due to sick leave' : isNew ? 'Shift dynamically reassigned for coverage' : isRecovered ? 'Assigned to restore workload balance after earlier absence.' : isReturned ? 'Removed because this employee covered additional work previously.' : ''}
+                        className={`shift-chip ${shiftClass} ${specialClass} ${isChanged ? 'changed-pulse' : ''}`}
+                        title={
+                          isSick ? 'Unscheduled due to medical leave.' 
+                          : isNew ? 'Shift dynamically reassigned to cover sickness.' 
+                          : isRecovered ? 'Assigned to restore workload balance after earlier absence.' 
+                          : isReturned ? 'Removed because this employee covered additional work previously.' 
+                          : 'Standard assigned shift.'
+                        }
                         onClick={() => {
                           if (isRecovered) {
                             setSelectedShiftInfo({ nurse: nurse.id, type: 'Recovered', action: `Assigned ${shiftName || shift} shift to restore workload balance.` });
@@ -125,32 +137,14 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, da
                           }
                         }}
                         style={{
-                          ...(isPast ? { filter: 'grayscale(100%)', opacity: 0.5, cursor: 'not-allowed' } : {}),
-                          ...(isSick ? { 
-                            opacity: 0.5, 
-                            textDecoration: 'line-through', 
-                            backgroundColor: 'var(--panel-bg)', 
-                            color: 'var(--text-muted)',
-                            border: '1px dashed var(--text-muted)' 
-                          } : isNew ? {
-                            boxShadow: '0 0 10px rgba(52, 211, 153, 0.6)',
-                            border: '2px solid var(--success-color)'
-                          } : isRecovered ? {
-                            backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                            border: '2px solid var(--accent-color)',
-                            color: 'var(--text-main)',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          } : isReturned ? {
-                            opacity: 0.6,
-                            backgroundColor: 'transparent',
-                            border: '1px dashed var(--success-color)',
-                            color: 'var(--success-color)',
-                            cursor: 'pointer'
-                          } : {})
+                          ...(isPast ? { filter: 'grayscale(100%)', opacity: 0.5, cursor: 'not-allowed' } : {})
                         }}
                       >
-                        {isRecovered ? 'Recovered' : isReturned ? 'Time Returned' : (shiftName || shift)}
+                        {isSick ? 'SICK' 
+                         : isNew ? `NEW: ${shift.substring(0, 1)}` 
+                         : isRecovered ? `REC` 
+                         : isReturned ? `RET` 
+                         : (shiftName || shift)}
                       </span>
                     )}
                   </div>
@@ -159,6 +153,8 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({ nurses, schedule, da
             </React.Fragment>
           );
         })}
+      </div>
+        </div>
       </div>
 
       {selectedShiftInfo && (

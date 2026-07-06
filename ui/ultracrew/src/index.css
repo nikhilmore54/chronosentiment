@@ -50,6 +50,9 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .sidebar {
@@ -62,7 +65,7 @@ body {
 
 .main-view {
   flex: 1;
-  padding: 2rem;
+  padding: 0;
   overflow-y: auto;
 }
 
@@ -73,6 +76,8 @@ body {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .card h2 {
@@ -170,3 +175,71 @@ body {
 .shift-chip.early { background-color: #3b82f6; }
 .shift-chip.late { background-color: #8b5cf6; }
 .shift-chip.night { background-color: #1e1b4b; color: #a5b4fc; border: 1px solid #4338ca; }
+
+/* Sprint 2 Custom Styles */
+@keyframes flash-highlight {
+  0% { background-color: rgba(234, 179, 8, 0.4); box-shadow: inset 0 0 12px rgba(234, 179, 8, 0.8); }
+  100% { background-color: transparent; box-shadow: none; }
+}
+
+@keyframes pulse-assignment {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); box-shadow: 0 0 15px currentColor; }
+  100% { transform: scale(1); }
+}
+
+.cell-flash {
+  animation: flash-highlight 2s ease-out;
+  border: 2px solid #eab308 !important;
+  z-index: 5;
+}
+
+.changed-pulse {
+  animation: pulse-assignment 1.2s ease-in-out;
+}
+
+.shift-chip {
+  transition: all 0.2s ease-in-out;
+  cursor: help;
+}
+
+.shift-chip:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Operational Shift Prefixes Styling */
+.shift-chip.sick-chip {
+  background-color: var(--danger-color) !important;
+  text-decoration: line-through;
+  opacity: 0.85;
+  border: 1px solid #fca5a5;
+}
+
+.shift-chip.new-chip {
+  background-color: #15803d !important;
+  border: 2px solid var(--success-color);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.shift-chip.recovered-chip {
+  background-color: #0369a1 !important;
+  border: 2px solid var(--accent-color);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.shift-chip.returned-chip {
+  background-color: #334155 !important;
+  border: 1px dashed var(--text-muted);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.grid-cell.today-highlight {
+  background-color: rgba(37, 99, 235, 0.15) !important;
+  border-left: 2px solid var(--accent-color) !important;
+  border-right: 2px solid var(--accent-color) !important;
+  font-weight: bold;
+}
+

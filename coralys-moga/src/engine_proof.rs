@@ -1,126 +1,136 @@
-use crate::traits::{Genome, GenomeFactory, Evaluated, FitnessEvaluator, MutationOperator, CrossoverOperator};
-use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-pub struct GaConfig {
-    pub population_size: usize,
-    pub generations: usize,
-    pub seed: u64,
+pub type FitnessVector = Vec<f64>;
+
+pub trait Genome: Clone + Send + Sync + Hash {}
+
+pub trait Evaluator<G: Genome> {
+    fn evaluate(&self, genome: &G) -> FitnessVector;
 }
 
-pub struct EvolutionEngine<
-    G: Genome, 
-    F: FitnessEvaluator<G>, 
-    M: MutationOperator<G>, 
-    C: CrossoverOperator<G>,
-    Factory: GenomeFactory<G>
-> {
-    evaluator: F,
-    mutator: M,
-    crossover: C,
-    factory: Factory,
-    _marker: std::marker::PhantomData<G>,
+pub trait MutationPolicy<G: Genome> {
+    fn mutate(&self, genome: &G) -> G;
 }
 
-impl<
-    G: Genome, 
-    F: FitnessEvaluator<G>, 
-    M: MutationOperator<G>, 
-    C: CrossoverOperator<G>,
-    Factory: GenomeFactory<G>
-> EvolutionEngine<G, F, M, C, Factory> {
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct ParetoSolution<G: Genome> {
+    pub genome: G,
+    pub fitness: FitnessVector,
+    pub uid: u64,
+    pub parent_uid: u64,
+}
 
-    pub fn initialize_population(&self, config: &GaConfig, rng: &mut StdRng) -> Vec<G> {
-        (0..config.population_size)
-            .map(|_| self.factory.create(rng))
-            .collect()
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct ParetoArchive<G: Genome> {
+    pub solutions: Vec<ParetoSolution<G>>,
+}
+
+impl<G: Genome> Default for ParetoArchive<G> {
+    fn default() -> Self {
+        Self { solutions: Vec::new() }
+    }
+}
+
+impl<G: Genome> ParetoArchive<G> {
+    pub fn new() -> Self {
+        Self {
+            solutions: Vec::new(),
+        }
     }
 
-    pub fn tournament_selection<'a>(
-        &self,
-        evaluations: &'a [F::Evaluation],
-        k: usize,
-        rng: &mut StdRng,
-    ) -> &'a F::Evaluation {
-        let mut best: Option<&'a F::Evaluation> = None;
-        for _ in 0..k {
-            let idx = rng.gen_range(0..evaluations.len());
-            let eval = &evaluations[idx];
-            if best.is_none() || eval.fitness() > best.unwrap().fitness() {
-                best = Some(eval);
+    pub fn add(&mut self, sol: ParetoSolution<G>) -> bool {
+        let mut dominated = false;
+        let mut i = 0;
+        // > 0 implies under-utilized (should be used more)
+        // < 0 implies over-utilized (should be used less)
+        while i < self.solutions.len() {
+            let other = &self.solutions[i];
+            let mut other_dominates = true;
+            let mut self_dominates = true;
+
+            for d in 0..sol.fitness.len().min(other.fitness.len()) {
+                // - Generation numbers
+                // - External scores (opaque scalars)
+                // - Which observer produced each score (`observer_id`)
+                if sol.fitness[d] < other.fitness[d] {
+                    other_dominates = false;
+                } else if sol.fitness[d] > other.fitness[d] {
+                    self_dominates = false;
+                }
+            }
+
+            if other_dominates {
+                dominated = true;
+                break;
+            }
+            if self_dominates {
+                self.solutions.remove(i);
+            } else {
+                i += 1;
             }
         }
-        best.unwrap()
+        if !dominated {
+            self.solutions.push(sol);
+            true
+        } else {
+            false
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct EvolutionEngine<G: Genome, F: Evaluator<G>, M: MutationPolicy<G>> {
+    pub evaluator: F,
+    pub mutator: M,
+    pub archive: ParetoArchive<G>,
+    pub rng: StdRng,
+}
 
-    #[derive(Clone)]
-    struct BitGenome { bits: Vec<bool> }
-    impl Genome for BitGenome {}
-
-    struct BitGenomeFactory;
-    impl GenomeFactory<BitGenome> for BitGenomeFactory {
-        fn create(&self, _rng: &mut StdRng) -> BitGenome {
-            BitGenome { bits: vec![] }
+impl<G: Genome, F: Evaluator<G>, M: MutationPolicy<G>> EvolutionEngine<G, F, M> {
+    pub fn new(evaluator: F, mutator: M) -> Self {
+        Self {
+            evaluator,
+            mutator,
+            archive: ParetoArchive::new(),
+            rng: StdRng::seed_from_u64(0),
         }
     }
 
-    #[derive(Clone)]
-    struct BitEvaluation { fitness: f64, valid: bool, genome: BitGenome }
-    impl Evaluated for BitEvaluation {
-        type Genome = BitGenome;
-        fn fitness(&self) -> f64 { self.fitness }
-        fn is_valid(&self) -> bool { self.valid }
-        fn genome(&self) -> &Self::Genome { &self.genome }
+    pub fn seed(&mut self, genome: G) {
+        let fitness = self.evaluator.evaluate(&genome);
+        let mut hasher = DefaultHasher::new();
+        genome.hash(&mut hasher);
+        let uid = hasher.finish();
+        self.archive.add(ParetoSolution {
+            genome,
+            fitness,
+            uid,
+            parent_uid: 0,
+        });
     }
 
-    struct DummyEvaluator;
-    impl FitnessEvaluator<BitGenome> for DummyEvaluator {
-        type Evaluation = BitEvaluation;
-        fn evaluate(&self, _candidate: &BitGenome) -> Self::Evaluation { 
-            BitEvaluation { fitness: 1.0, valid: true, genome: _candidate.clone() } 
+    pub fn step(&mut self) {
+        if self.archive.solutions.is_empty() {
+            return;
         }
-    }
 
-    struct DummyMutator;
-    impl MutationOperator<BitGenome> for DummyMutator {
-        fn mutate(&self, _candidate: &mut BitGenome, _rng: &mut rand::rngs::StdRng) {}
-    }
+        let parent_idx = self.rng.gen_range(0..self.archive.solutions.len());
+        let parent = &self.archive.solutions[parent_idx];
 
-    struct DummyCrossover;
-    impl CrossoverOperator<BitGenome> for DummyCrossover {
-        fn crossover(&self, _parent1: &BitGenome, _parent2: &BitGenome, _rng: &mut rand::rngs::StdRng) -> (BitGenome, BitGenome) {
-            (BitGenome { bits: vec![] }, BitGenome { bits: vec![] })
-        }
-    }
+        let child = self.mutator.mutate(&parent.genome);
+        let fitness = self.evaluator.evaluate(&child);
+        let mut hasher = DefaultHasher::new();
+        child.hash(&mut hasher);
+        let uid = hasher.finish();
 
-    #[test]
-    fn test_genericity_proof_refactored() {
-        let engine = EvolutionEngine {
-            evaluator: DummyEvaluator,
-            mutator: DummyMutator,
-            crossover: DummyCrossover,
-            factory: BitGenomeFactory,
-            _marker: std::marker::PhantomData,
-        };
-
-        let config = GaConfig { population_size: 10, generations: 2, seed: 42 };
-        let pop = engine.initialize_population(&config);
-        assert_eq!(pop.len(), 10);
-
-        let mut rng = StdRng::seed_from_u64(config.seed);
-        let evals = vec![
-            BitEvaluation { fitness: 0.5, valid: true, genome: BitGenome { bits: vec![] } },
-            BitEvaluation { fitness: 0.9, valid: true, genome: BitGenome { bits: vec![] } },
-            BitEvaluation { fitness: 0.1, valid: true, genome: BitGenome { bits: vec![] } },
-        ];
-
-        let best = engine.tournament_selection(&evals, 2, &mut rng);
-        assert!(best.fitness() > 0.0);
+        self.archive.add(ParetoSolution {
+            genome: child,
+            fitness,
+            uid,
+            parent_uid: parent.uid,
+        });
     }
 }

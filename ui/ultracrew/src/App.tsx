@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { NurseRoster } from './NurseRoster';
-import type { Nurse } from './NurseRoster';
+import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from './config/api';
+
 import { ScheduleGrid } from './ScheduleGrid';
 import { TeamBalance } from './TeamBalance';
 import type { NurseBalance } from './TeamBalance';
@@ -8,7 +8,8 @@ import { Dashboard } from './Dashboard';
 import { Simulator } from './Simulator';
 import { Landing } from './Landing';
 import { Constraints } from './Constraints';
-
+import { DatasetSolver } from './DatasetSolver';
+import type { Nurse } from './NurseRoster';
 export interface SimulationState {
   affected_nurse: string;
   missed_shifts: number;
@@ -21,77 +22,150 @@ export interface SimulationState {
 
 function App() {
   const [showDemo, setShowDemo] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'constraints'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'constraints' | 'scheduler'>('dashboard');
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [schedule, setSchedule] = useState<Record<string, string[]>>({});
   const [authenticSchedule, setAuthenticSchedule] = useState<Record<string, string[]>>({});
   const [balances, setBalances] = useState<NurseBalance[]>([]);
+  const [baselineBalances, setBaselineBalances] = useState<NurseBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [dates, setDates] = useState<Date[]>([]);
   
   const [simulationState, setSimulationState] = useState<SimulationState | null>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [baselineDashboardData, setBaselineDashboardData] = useState<any>(null);
+  const [demoStep, setDemoStep] = useState<'baseline' | 'optimization' | 'recovery'>('baseline');
+  const [loadingProgress, setLoadingProgress] = useState(false);
+  const [activeHighlightCell, setActiveHighlightCell] = useState<{ nurseId: string; dayIndex: number } | null>(null);
+  const [changedAssignments, setChangedAssignments] = useState<Record<string, boolean[]>>({});
   
+  const hasAutoScrolledRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!loading && scheduleContainerRef.current && !hasAutoScrolledRef.current) {
+      const container = scheduleContainerRef.current;
+      const columnWidth = 80; // per day column width
+      const todayPos = todayIndex * columnWidth + columnWidth / 2;
+      const scrollPos = Math.max(0, todayPos - container.clientWidth / 2);
+      container.scrollTo({ left: scrollPos, behavior: 'smooth' });
+      hasAutoScrolledRef.current = true;
+    }
+  }, [loading, dates]);
+
   const scheduleContainerRef = React.useRef<HTMLDivElement>(null);
   
   const todayIndex = 14; // Mock Today (Wednesday Week 3)
 
+  const computeChangedAssignments = (oldSched: Record<string, string[]>, newSched: Record<string, string[]>) => {
+    const result: Record<string, boolean[]> = {};
+    Object.keys(newSched).forEach(nurseId => {
+      const oldRow = oldSched[nurseId] || [];
+      const newRow = newSched[nurseId] || [];
+      result[nurseId] = newRow.map((shift, idx) => shift !== (oldRow[idx] || ''));
+    });
+    return result;
+  };
+
   useEffect(() => {
-    fetch('http://127.0.0.1:3000/api/scenario')
+    fetch(`/api/nurses`)
       .then(res => res.json())
       .then(data => {
-        // Parse nurses from INRC Scenario
-        const parsedNurses: Nurse[] = data.nurses.map((n: any) => ({
+        const parsedNurses = data.nurses.map((n: any) => ({
           id: n.id,
           contract: n.contract,
           skills: n.skills,
         }));
         setNurses(parsedNurses);
+        return fetch(`/api/state`);
+      })
+      .then(res => res.json())
+      .then(stateData => {
+        setSchedule(stateData.schedule);
+        setAuthenticSchedule(stateData.schedule);
+        setBalances(stateData.balances);
+        setBaselineBalances(stateData.balances);
+        setDashboardData(stateData.dashboard);
+        setBaselineDashboardData(stateData.dashboard);
         
-        const nurses = data.nurses.slice(0, 15);
-        setNurses(nurses);
-
-        // Generate 56 days (8 weeks) starting from next Monday
+        const sched = stateData.schedule as Record<string, string[]>;
+        const scheduleLength = Object.values(sched)[0]?.length || 28;
         const startDate = new Date('2026-06-01T00:00:00'); // Mock Monday
-        const scheduleDates = Array.from({ length: 56 }).map((_, i) => {
+        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
           const d = new Date(startDate);
           d.setDate(d.getDate() + i);
           return d;
         });
         setDates(scheduleDates);
-
-        const mockSchedule: Record<string, string[]> = {};
-        nurses.forEach((nurse: Nurse, index: number) => {
-          const shiftTypes = ['E', 'L', 'N', ''];
-          const pattern = [];
-          for (let i = 0; i < 56; i++) {
-            if (nurse.id === 'HN_0') {
-              const base = ['E', 'E', 'E', '', 'L', '', ''];
-              pattern.push(base[i % 7]);
-            } else {
-              if (i % 7 === (index % 7) || i % 7 === ((index + 1) % 7)) {
-                pattern.push('');
-              } else {
-                pattern.push(shiftTypes[(index + i) % 3]);
-              }
-            }
-          }
-          mockSchedule[nurse.id] = pattern;
-        });
-        setSchedule(mockSchedule);
-        setAuthenticSchedule(mockSchedule);
-        
-        return fetch('http://127.0.0.1:3000/api/balance');
-      })
-      .then(res => res.json())
-      .then(data => {
-        setBalances(data);
         setLoading(false);
       })
       .catch(err => {
-        console.error("Failed to load scenario:", err);
+        console.error("Failed to load scenario state:", err);
         setLoading(false);
       });
   }, [showDemo]);
+
+  const handleAlertClick = (employeeId: string, dayIndex: number) => {
+    if (scheduleContainerRef.current) {
+      scheduleContainerRef.current.scrollTo({
+        left: Math.max(0, (dayIndex - 2) * 80),
+        behavior: 'smooth'
+      });
+    }
+    const gridEl = document.querySelector('.schedule-grid');
+    if (gridEl) {
+      gridEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setActiveHighlightCell({ nurseId: employeeId, dayIndex });
+    setTimeout(() => {
+      setActiveHighlightCell(null);
+    }, 2000);
+  };
+
+  const handleResetDemo = () => {
+    fetch(`/api/simulations/reset`, { method: 'POST' })
+      .then(res => res.json())
+      .then(stateData => {
+        setSchedule(stateData.schedule);
+        setAuthenticSchedule(stateData.schedule);
+        setBalances(stateData.balances);
+        setBaselineBalances(stateData.balances);
+        setDashboardData(stateData.dashboard);
+        setBaselineDashboardData(stateData.dashboard);
+        setSimulationState(null);
+        setChangedAssignments({});
+        setDemoStep('baseline');
+        setActiveHighlightCell(null);
+      })
+      .catch(err => {
+        console.error("Failed to reset server state:", err);
+        setSchedule(authenticSchedule);
+        setBalances(baselineBalances);
+        setDashboardData(baselineDashboardData);
+        setSimulationState(null);
+        setChangedAssignments({});
+        setDemoStep('baseline');
+        setActiveHighlightCell(null);
+      });
+  };
+
+  const handleExportCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    const dayHeaders = Array.from({ length: dates.length }).map((_, idx) => `Day ${idx + 1}`).join(",");
+    csvContent += `Nurse,${dayHeaders}\n`;
+    
+    Object.entries(schedule).forEach(([nurseId, assignments]) => {
+      const row = [nurseId, ...assignments].join(",");
+      csvContent += `${row}\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `ultracrew_roster_export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (!showDemo) {
     return <Landing onStartDemo={() => setShowDemo(true)} />;
@@ -130,192 +204,251 @@ function App() {
           >
             Constraints
           </button>
+          <button 
+            onClick={() => setCurrentTab('scheduler')}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: currentTab === 'scheduler' ? 'var(--accent-color)' : 'var(--text-muted)', 
+              fontWeight: currentTab === 'scheduler' ? 600 : 400,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              padding: '0.5rem'
+            }}
+          >
+            Dataset Solver
+          </button>
         </nav>
       </header>
       
       <div className="content">
-        <aside className="sidebar">
-          {loading ? <p>Loading Roster...</p> : <NurseRoster nurses={nurses} />}
-        </aside>
-        
-        <main className="main-view">
-          {currentTab === 'constraints' ? (
-            <Constraints />
-          ) : (
-            loading ? <p>Loading Schedule...</p> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <Dashboard simulationState={simulationState} />
-              
-              <div style={{ 
-                position: 'relative', 
-                border: simulationState ? '2px dashed var(--accent-color)' : 'none', 
-                borderRadius: '12px',
-                padding: simulationState ? '2px' : '0'
-              }}>
-                {simulationState && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    padding: '0.75rem 1.5rem',
-                    borderTopLeftRadius: '10px',
-                    borderTopRightRadius: '10px',
-                    borderBottom: '1px solid var(--accent-color)',
-                    color: 'var(--accent-color)'
-                  }}>
-                    <span style={{ fontWeight: 600, letterSpacing: '0.05em' }}>⚠️ SIMULATION MODE</span>
-                    <button 
-                      onClick={() => {
-                        setSchedule(authenticSchedule);
-                        setSimulationState(null);
-                      }}
-                      style={{
-                        backgroundColor: 'transparent',
-                        color: 'var(--accent-color)',
-                        border: '1px solid var(--accent-color)',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      Reset to Authentic
-                    </button>
-                  </div>
-                )}
-                <div ref={scheduleContainerRef} style={{ overflowX: 'auto', paddingBottom: '1rem', scrollBehavior: 'smooth' }}>
-                  <ScheduleGrid nurses={nurses} schedule={schedule} dates={dates} todayIndex={todayIndex} />
-                </div>
-              </div>
-
-              <TeamBalance 
-                balances={balances} 
-                simulationState={simulationState} 
-              />
-
-              <Simulator 
-                nurses={nurses} 
-                schedule={authenticSchedule} 
-                simulationState={simulationState}
-                todayIndex={todayIndex}
-                onJumpToRecovery={() => {
+  <main className="main-view">
+    {currentTab === 'scheduler' ? (
+      <DatasetSolver />
+    ) : currentTab === 'constraints' ? (
+      <Constraints />
+    ) : (
+      <>
+        {/* Executive Dashboard */}
+        <Dashboard
+          data={dashboardData}
+          baselineData={baselineDashboardData}
+          simulationState={simulationState}
+          demoStep={demoStep}
+          onAlertClick={handleAlertClick}
+        />
+        {/* Decision Workspace */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <TeamBalance
+            balances={balances}
+            simulationState={simulationState}
+            balanceScore={dashboardData?.roster_health?.balance_score ?? 100}
+          />
+          <Simulator
+            nurses={nurses}
+            schedule={authenticSchedule}
+            simulationState={simulationState}
+            todayIndex={todayIndex}
+            onJumpToRecovery={() => {
+              if (scheduleContainerRef.current) {
+                scheduleContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
                   if (scheduleContainerRef.current) {
-                    scheduleContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    setTimeout(() => {
-                      if (scheduleContainerRef.current) {
-                        scheduleContainerRef.current.scrollTo({
-                          left: (todayIndex + 7) * 80, // Scroll past Week 1
-                          behavior: 'smooth'
-                        });
-                      }
-                    }, 300);
+                    scheduleContainerRef.current.scrollTo({
+                      left: (todayIndex + 7) * 80,
+                      behavior: 'smooth'
+                    });
                   }
-                }}
-                onMarkSick={(nurseId, sickDays) => {
-                  const newSchedule = JSON.parse(JSON.stringify(authenticSchedule));
-                  const sickShifts = newSchedule[nurseId];
-                  const sickNurse = nurses.find(n => n.id === nurseId);
-                  
-                  let newCountTotal = 0;
-                  let missedTotal = 0;
-                  
-                  // Track who covered how many shifts
-                  const creditors: Record<string, number> = {};
-                  
-                  sickShifts.forEach((shift: string, dayIndex: number) => {
-                    // Rule 1 & 2: Immutable past. Sickness can only apply >= todayIndex
-                    if (shift && sickNurse && sickDays.has(dayIndex) && dayIndex >= todayIndex) {
-                      newSchedule[nurseId][dayIndex] = `SICK-${shift}`;
-                      missedTotal++;
-                      // 1. Priority: Exact designation (Primary Skill)
-                      let pool = nurses.filter(n => 
-                        n.id !== nurseId && 
-                        !newSchedule[n.id][dayIndex] &&
-                        n.skills[0] === sickNurse.skills[0]
-                      );
+                }, 300);
+              }
+            }}
+            onMarkSick={(nurseId, sickDays) => {
+              setLoadingProgress(true);
+              setDemoStep('optimization');
 
-                      // 2. Fallback: Any overlapping skill
-                      if (pool.length === 0) {
-                        pool = nurses.filter(n => 
-                          n.id !== nurseId && 
-                          !newSchedule[n.id][dayIndex] &&
-                          n.skills.some(skill => sickNurse.skills.includes(skill))
-                        );
-                      }
+              const fetchPromise = fetch(`/api/simulations/sick-leave`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  employee_id: nurseId,
+                  sick_days: Array.from(sickDays)
+                })
+              }).then(res => {
+                if (!res.ok) throw new Error('Simulation API request failed.');
+                return res.json();
+              });
 
-                      if (pool.length > 0) {
-                        const replacement = pool[Math.floor(Math.random() * pool.length)];
-                        newSchedule[replacement.id][dayIndex] = `NEW-${shift}`;
-                        newCountTotal++;
-                        creditors[replacement.id] = (creditors[replacement.id] || 0) + 1;
-                      }
-                    }
-                  });
+              const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
 
-                  // --- WORKLOAD RECOVERY LOGIC (Weeks 2-8) ---
-                  let maxRecoveryDay = todayIndex;
-                  
-                  // For each shift owed to a creditor, try to swap a future shift
-                  Object.entries(creditors).forEach(([creditorId, shiftsOwed]) => {
-                    let remainingToShed = shiftsOwed;
-                    // Rule 3: Recovery can only use future available shifts (after sickness week)
-                    const recoveryStart = todayIndex + 7;
-                    for (let dayIndex = recoveryStart; dayIndex < 56 && remainingToShed > 0; dayIndex++) {
-                      // If the creditor is working, and the sick nurse is off
-                      const creditorShift = newSchedule[creditorId][dayIndex];
-                      const sickNurseShift = newSchedule[nurseId][dayIndex];
-                      
-                      // Check if it's a regular shift (not already swapped/empty)
-                      if (creditorShift && !creditorShift.includes('-') && !sickNurseShift) {
-                        // Swap them!
-                        newSchedule[nurseId][dayIndex] = `RECOVERED-${creditorShift}`;
-                        newSchedule[creditorId][dayIndex] = `RETURNED-${creditorShift}`;
-                        remainingToShed--;
-                        if (dayIndex > maxRecoveryDay) {
-                          maxRecoveryDay = dayIndex;
-                        }
-                      }
-                    }
-                  });
-
-                  // Calculate metrics
-                  const weeksToRecover = maxRecoveryDay > todayIndex ? Math.ceil((maxRecoveryDay - (todayIndex + 7)) / 7) + 1 : 0;
-                  
-                  const balance_changes: Record<string, { previous: number, current: number }> = {};
-                  balances.forEach(b => {
-                    const shifts = newSchedule[b.nurse_id] || [];
-                    const sickCount = shifts.filter((s: string) => s.startsWith('SICK-')).length;
-                    const recoveredCount = shifts.filter((s: string) => s.startsWith('RECOVERED-')).length;
-                    const newCount = shifts.filter((s: string) => s.startsWith('NEW-')).length;
-                    const returnedCount = shifts.filter((s: string) => s.startsWith('RETURNED-')).length;
-                    
-                    const delta = -sickCount + recoveredCount + newCount - returnedCount;
-                    if (delta !== 0) {
-                      balance_changes[b.nurse_id] = {
-                        previous: b.balance,
-                        current: b.balance + delta
-                      };
-                    }
-                  });
-
-                  setSchedule(newSchedule);
-                  setSimulationState({
-                    affected_nurse: nurseId,
-                    missed_shifts: missedTotal,
-                    recovered_shifts: newCountTotal,
-                    recovery_eta: weeksToRecover,
-                    creditors,
-                    balance_changes,
-                    coverage_impact: 'None'
-                  });
-                }} 
-              />
+              Promise.all([fetchPromise, minDelayPromise])
+                .then(([data]) => {
+                  const diffs = computeChangedAssignments(authenticSchedule, data.schedule);
+                  setSchedule(data.schedule);
+                  setBalances(data.balances);
+                  setDashboardData(data.dashboard);
+                  setSimulationState(data.recovery_plan);
+                  setChangedAssignments(diffs);
+                  setLoadingProgress(false);
+                  setDemoStep('recovery');
+                })
+                .catch(err => {
+                  console.error('Simulation error:', err);
+                  setLoadingProgress(false);
+                  setDemoStep('baseline');
+                });
+            }}
+          />
+        </div>
+        {/* Active Workforce Roster */}
+        <div
+          className="roster-section"
+          ref={scheduleContainerRef}
+          style={{ overflowX: 'auto', overflowY: 'hidden' }}
+        >
+          <div style={{
+            position: 'relative',
+            border: simulationState ? '2px dashed var(--accent-color)' : '1px solid var(--border-color)',
+            borderRadius: '12px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'var(--panel-bg)',
+              padding: '0.75rem 1.5rem',
+              borderBottom: simulationState ? '2px dashed var(--accent-color)' : '1px solid var(--border-color)'
+            }}>
+              <span style={{ fontWeight: 600, letterSpacing: '0.05em', color: simulationState ? 'var(--accent-color)' : 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {simulationState ? '⚠️ SIMULATION ACTIVE: RECOVERY DETECTED' : '📋 ACTIVE WORKFORCE ROSTER'}
+              </span>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={handleExportCSV}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'var(--accent-color)',
+                    border: '1px solid var(--accent-color)',
+                    padding: '0.4rem 1rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)'; }}
+                  onMouseOut={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleResetDemo}
+                  style={{
+                    backgroundColor: simulationState ? 'var(--accent-color)' : 'transparent',
+                    color: simulationState ? 'white' : 'var(--text-muted)',
+                    border: simulationState ? 'none' : '1px solid var(--border-color)',
+                    padding: '0.4rem 1rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => { if (!simulationState) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'; }}
+                  onMouseOut={e => { if (!simulationState) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  Reset Demo
+                </button>
+              </div>
             </div>
-            )
-          )}
-        </main>
+            <ScheduleGrid
+              nurses={nurses}
+              schedule={schedule}
+              dates={dates}
+              todayIndex={todayIndex}
+              activeHighlightCell={activeHighlightCell}
+              changedAssignments={changedAssignments}
+            />
+          </div>
+        </div>
+      </>
+    )}
+  </main>
+</div>
+      <OptimizationLoader active={loadingProgress} />
+    </div>
+  );
+}
+
+
+
+function OptimizationLoader({ active }: { active: boolean }) {
+  const [stageIndex, setStageIndex] = useState(0);
+  const stages = [
+    "Analyzing schedule and coverage...",
+    "Finding qualified replacements...",
+    "Balancing workloads...",
+    "Validating union contract constraints...",
+    "Finalizing recovery schedule..."
+  ];
+
+  useEffect(() => {
+    if (!active) {
+      setStageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setStageIndex(prev => (prev < stages.length - 1 ? prev + 1 : prev));
+    }, 600);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      backdropFilter: 'blur(4px)'
+    }}>
+      <div style={{
+        backgroundColor: 'var(--panel-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '16px',
+        padding: '3rem',
+        maxWidth: '500px',
+        width: '90%',
+        textAlign: 'center',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid rgba(56, 189, 248, 0.2)',
+          borderTopColor: 'var(--accent-color)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 2rem auto'
+        }} />
+        <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', fontSize: '1.25rem' }}>Running MOGA Scheduler</h3>
+        <p style={{ margin: 0, color: 'var(--accent-color)', fontWeight: 600, minHeight: '24px' }}>
+          {stages[stageIndex]}
+        </p>
       </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

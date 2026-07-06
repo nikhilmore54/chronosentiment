@@ -13,7 +13,7 @@ interface SimulatorProps {
 
 export const Simulator = ({ 
   nurses, 
-  schedule, 
+  schedule: _schedule, 
   onMarkSick, 
   simulationState, 
   todayIndex = 14, 
@@ -23,7 +23,6 @@ export const Simulator = ({
   
   // Default select the first 3 days starting from today
   const [sickDays, setSickDays] = useState<Set<number>>(new Set([todayIndex, todayIndex + 1, todayIndex + 2]));
-  const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
