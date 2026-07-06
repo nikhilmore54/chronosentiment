@@ -1,0 +1,190 @@
+{
+  "seed": 100,
+  "total_generations": 1000,
+  "diagnostics": {
+    "EcologyLockIn": {
+      "confidence": 0.287477047534202,
+      "severity": 0.287477047534202,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "gini_coefficient",
+          "value": 0.1068784428698697
+        },
+        {
+          "name": "best_target_delta",
+          "value": 0.0
+        }
+      ]
+    },
+    "AccumulationFailure": {
+      "confidence": 1.0,
+      "severity": 0.7755102040816326,
+      "evidence_count": 49,
+      "supporting_metrics": [
+        {
+          "name": "rejection_rate",
+          "value": 0.7755102040816326
+        },
+        {
+          "name": "target_improving_count",
+          "value": 49.0
+        },
+        {
+          "name": "rejected_target_improving_count",
+          "value": 38.0
+        }
+      ]
+    },
+    "TradeoffBasin": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "correlation_x_y",
+          "value": 0.0
+        },
+        {
+          "name": "tradeoff_probability_y_given_x",
+          "value": 0.0
+        }
+      ]
+    },
+    "ProxySuppression": {
+      "confidence": 0.6578947368421052,
+      "severity": 0.3462603878116343,
+      "evidence_count": 38,
+      "supporting_metrics": [
+        {
+          "name": "suppression_ratio",
+          "value": 0.5263157894736842
+        },
+        {
+          "name": "rejected_target_improving_count",
+          "value": 38.0
+        },
+        {
+          "name": "degraded_proxy_count",
+          "value": 20.0
+        }
+      ]
+    },
+    "Attractor": {
+      "confidence": 1.0,
+      "severity": 0.45393857886582784,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "correlation_obj_0",
+          "value": -0.04133108587325996
+        },
+        {
+          "name": "correlation_obj_1",
+          "value": 0.0
+        },
+        {
+          "name": "correlation_obj_2",
+          "value": 0.0
+        },
+        {
+          "name": "correlation_obj_3",
+          "value": -0.04760068531034518
+        },
+        {
+          "name": "correlation_obj_4",
+          "value": 0.45393857886582784
+        },
+        {
+          "name": "correlation_obj_5",
+          "value": 0.18982001884899402
+        },
+        {
+          "name": "attractor_index",
+          "value": 4.0
+        },
+        {
+          "name": "max_correlation",
+          "value": 0.45393857886582784
+        }
+      ]
+    }
+  },
+  "memory_ecology": {
+    "novel_signatures_discovered": 8,
+    "novelty_ratio": 0.0028178936245156746,
+    "persistence_ratio": 1.0,
+    "rediscovery_ratio": 0.0007044734061289186,
+    "extinction_ratio": 0.0,
+    "active_memory_size": 4336
+  },
+  "recommendation": {
+    "generated_at_generation": 1000,
+    "recommendations": [
+      {
+        "action": "Reserve archive slots for target-improving solutions",
+        "rationale": "Target-improving candidate solutions are being rejected at a high rate. Reserving dedicated archive capacity prevents proxy objectives from dominating selection.",
+        "confidence": 0.9468788982493846,
+        "evidence": [
+          "accumulation_failure mean confidence = 0.9469",
+          "accumulation_failure mean severity = 0.6793",
+          "latest rejection_rate = 0.7755",
+          "latest target_improving_count = 49.0000",
+          "latest rejected_target_improving_count = 38.0000"
+        ]
+      },
+      {
+        "action": "Reduce archive admission strictness",
+        "rationale": "Allowing solutions with minor proxy degradation to be admitted temporarily gives target-improving solutions time to accumulate and mutate.",
+        "confidence": 0.9468788982493846,
+        "evidence": [
+          "accumulation_failure mean confidence = 0.9469",
+          "accumulation_failure mean severity = 0.6793",
+          "latest rejection_rate = 0.7755",
+          "latest target_improving_count = 49.0000",
+          "latest rejected_target_improving_count = 38.0000"
+        ]
+      },
+      {
+        "action": "Reduce selection pressure / preference weight for attractor objective (Index 4)",
+        "rationale": "Objective Index 4 is dominating the Pareto archive geometry and pulling search towards it. Restricting its dominance allows search to progress along other axes.",
+        "confidence": 0.7699990054733645,
+        "evidence": [
+          "attractor mean confidence = 0.7700",
+          "latest correlation_obj_0 = -0.0413",
+          "latest correlation_obj_1 = 0.0000",
+          "latest correlation_obj_2 = 0.0000",
+          "latest correlation_obj_3 = -0.0476",
+          "latest correlation_obj_4 = 0.4539",
+          "latest correlation_obj_5 = 0.1898",
+          "latest attractor_index = 4.0000",
+          "latest max_correlation = 0.4539"
+        ]
+      },
+      {
+        "action": "Increase mutation scale / reweighting",
+        "rationale": "Introduce random search perturbations to break out of the attractor basin.",
+        "confidence": 0.7699990054733645,
+        "evidence": [
+          "attractor mean confidence = 0.7700",
+          "latest correlation_obj_0 = -0.0413",
+          "latest correlation_obj_1 = 0.0000",
+          "latest correlation_obj_2 = 0.0000",
+          "latest correlation_obj_3 = -0.0476",
+          "latest correlation_obj_4 = 0.4539",
+          "latest correlation_obj_5 = 0.1898",
+          "latest attractor_index = 4.0000",
+          "latest max_correlation = 0.4539"
+        ]
+      }
+    ]
+  },
+  "decision": {
+    "action": "Reserve archive slots for target-improving solutions",
+    "confidence": 0.9468788982493846,
+    "rationales": [
+      "Target-improving candidate solutions are being rejected at a high rate. Reserving dedicated archive capacity prevents proxy objectives from dominating selection.",
+      "Evidence: accumulation_failure mean confidence = 0.9469; accumulation_failure mean severity = 0.6793; latest rejection_rate = 0.7755; latest target_improving_count = 49.0000; latest rejected_target_improving_count = 38.0000"
+    ]
+  }
+}

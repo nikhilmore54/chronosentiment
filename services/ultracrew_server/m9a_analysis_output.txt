@@ -1,0 +1,57 @@
+Loaded 90 runs across 3 instances.
+
+Analyzing instance n080w8...
+
+Average operator transitions per run: 0.00
+
+Regime Durations by Operator:
+  SA_Mutate: median 10000.0 gens, max 10000 gens
+
+=== State Discovery (Durations) ===
+Novelty Suppression Periods (<0.01): Count = 30, Median Duration = 9999.0 gens, Max = 9999.0
+Major Improvement Intervals (delta > 275.0): Count = 1, Median Interval = 5540.0 gens, Max = 5540.0
+
+=== Recovery Window Analysis ===
+
+=== Opportunity Table (Window = 200 gens) ===
+State           | Count   | Imp Rate   | Median Delta | Max Delta 
+-----------------------------------------------------------------
+RC Only (No NR) | 0       | N/A        | N/A          | N/A       
+RC + NR         | 0       | N/A        | N/A          | N/A       
+
+Analyzing instance n030w4...
+
+Average operator transitions per run: 0.00
+
+Regime Durations by Operator:
+  SA_Mutate: median 10000.0 gens, max 10000 gens
+
+=== State Discovery (Durations) ===
+Novelty Suppression Periods (<0.01): Count = 30, Median Duration = 9999.0 gens, Max = 9999.0
+Major Improvement Intervals (delta > 775.0): Count = 5, Median Interval = 2777.0 gens, Max = 5476.0
+
+=== Recovery Window Analysis ===
+
+=== Opportunity Table (Window = 200 gens) ===
+State           | Count   | Imp Rate   | Median Delta | Max Delta 
+-----------------------------------------------------------------
+RC Only (No NR) | 0       | N/A        | N/A          | N/A       
+RC + NR         | 0       | N/A        | N/A          | N/A       
+
+Analyzing instance n050w4...
+
+Average operator transitions per run: 0.00
+
+Regime Durations by Operator:
+  SA_Mutate: median 10000.0 gens, max 10000 gens
+
+=== State Discovery (Durations) ===
+Novelty Suppression Periods (<0.01): Count = 30, Median Duration = 9999.0 gens, Max = 9999.0
+
+=== Recovery Window Analysis ===
+
+=== Opportunity Table (Window = 200 gens) ===
+State           | Count   | Imp Rate   | Median Delta | Max Delta 
+-----------------------------------------------------------------
+RC Only (No NR) | 0       | N/A        | N/A          | N/A       
+RC + NR         | 0       | N/A        | N/A          | N/A       

@@ -1,0 +1,23 @@
+[package]
+name = "roadef"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.102"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+coralys-ecology = { path = "../../coralys-ecology" }
+coralys-moga = { path = "../../coralys-moga" }
+rand = "0.8"
+coralys-core = { path = "../../coralys-core" }
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+
+[[bin]]
+name = "tiny_solver"
+path = "src/bin/tiny_solver.rs"
+
+[[bin]]
+name = "m25_benchmark"
+path = "src/bin/m25_benchmark.rs"

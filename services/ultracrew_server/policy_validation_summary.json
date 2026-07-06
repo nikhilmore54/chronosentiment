@@ -1,0 +1,11 @@
+{
+  "action_frequency": {
+    "Reserve archive slots for target-improving solutions": 5
+  },
+  "average_confidence": 0.902273220733365,
+  "confidence_by_action": {
+    "Reserve archive slots for target-improving solutions": 0.902273220733365
+  },
+  "highest_confidence_action": "Reserve archive slots for target-improving solutions",
+  "total_runs": 5
+}

@@ -1,0 +1,19 @@
+Pearson Correlation with Productivity (Admissions/Selections)
+Quality: -0.0897
+Novelty: 0.2186
+Age: 0.3080
+Avg SA Gain: 0.2738
+Novelty x Age: 0.3551
+Basin Yield: 0.6749
+
+Decile Analysis (Bucket by Quality)
+Decile 1: Parents=311, Admissions=386, Total Yield=199470.0
+Decile 2: Parents=312, Admissions=374, Total Yield=194550.0
+Decile 3: Parents=327, Admissions=308, Total Yield=128460.0
+Decile 4: Parents=308, Admissions=399, Total Yield=137700.0
+Decile 5: Parents=315, Admissions=378, Total Yield=134910.0
+Decile 6: Parents=311, Admissions=335, Total Yield=112920.0
+Decile 7: Parents=317, Admissions=402, Total Yield=132510.0
+Decile 8: Parents=328, Admissions=376, Total Yield=117870.0
+Decile 9: Parents=333, Admissions=334, Total Yield=91470.0
+Decile 10: Parents=332, Admissions=453, Total Yield=137400.0

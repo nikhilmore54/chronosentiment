@@ -1,0 +1,76 @@
+--- services/ultracrew_server/src/main.rs
++++ services/ultracrew_server/src/main.rs
+@@ -10,3 +10,4 @@
+ use ultracrew::inrc::models::InrcScenario;
+ use std::path::PathBuf;
++use std::sync::{Arc, Mutex};
++use axum::extract::State;
++
++mod simulation;
++use simulation::*;
+ 
+-#[derive(Serialize)]
+-struct StatusResponse {
+-    status: String,
+-}
+-
+-#[derive(Serialize)]
+-struct NurseBalance {
+-    nurse_id: String,
+-    balance: i32,
+-    explanation: Vec<String>,
+-}
+-
+-#[derive(Serialize)]
+-struct Coverage {
+-    covered: i32,
+-    understaffed: i32,
+-    critical: i32,
+-}
+-
+-#[derive(Serialize)]
+-struct Alert {
+-    employee: String,
+-    severity: String,
+-    message: String,
+-}
+-
+-#[derive(Serialize)]
+-struct Dashboard {
+-    coverage: Coverage,
+-    alerts: Vec<Alert>,
+-    recommendations: Vec<String>,
+-}
+-
+-#[derive(Deserialize)]
+-struct SickLeaveRequest {
+-    employee_id: String,
+-    week: i32,
+-    missed: i32,
+-}
+-
+-#[derive(Serialize)]
+-struct TraditionalSim {
+-    missed_assignments: i32,
+-    recovered_assignments: i32,
+-}
+-
+-#[derive(Serialize)]
+-struct UltraCrewSim {
+-    missed_assignments: i32,
+-    recovered_assignments: i32,
+-    recovery_weeks: i32,
+-}
+-
+-#[derive(Serialize)]
+-struct SickLeaveResponse {
+-    traditional: TraditionalSim,
+-    ultracrew: UltraCrewSim,
+-}
+-
+-async fn health_check() -> Json<StatusResponse> {
+-    Json(StatusResponse {
+-        status: "ok".to_string(),
+-    })
+-}
+-

@@ -1,0 +1,8 @@
+[package]
+name = "coralys-matching"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+coralys-core = { path = "../coralys-core" }
+serde = { version = "1.0", features = ["derive"] }

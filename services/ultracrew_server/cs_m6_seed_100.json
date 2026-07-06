@@ -1,0 +1,45 @@
+{
+  "seed": 100,
+  "total_generations": 1000,
+  "global_best_fitness": 1.0,
+  "detector_applicability_matrix": {
+    "EcologyLockIn": {
+      "confidence": 1.0,
+      "severity": 1.0,
+      "applicable": true,
+      "note": "Search-universal: measures diversity collapse"
+    },
+    "AccumulationFailure": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "applicable": true,
+      "note": "Search-universal: measures rejection of improving candidates"
+    },
+    "TradeoffBasin": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "applicable": false,
+      "note": "Multi-objective specific: requires >=2 objectives"
+    },
+    "ProxySuppression": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "applicable": false,
+      "note": "Multi-objective specific: requires distinct target vs proxy objectives"
+    },
+    "AttractorDetector": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "applicable": false,
+      "note": "Multi-objective specific: cross-objective correlation collapses to 1 dimension"
+    }
+  },
+  "recommendation_count": 2,
+  "policy_action": "Increase mutation entropy / scaling",
+  "policy_confidence": 1.0,
+  "policy_rationales": [
+    "Archive diversity has collapsed and target score progress is stagnant. Increasing mutation entropy triggers high-entropy search diversification.",
+    "Evidence: lock_in mean confidence = 1.0000; latest gini_coefficient = 0.0000; latest best_target_delta = 0.0000"
+  ],
+  "changes_outside_adapter": "NONE — ecology/recommendation/policy unmodified"
+}

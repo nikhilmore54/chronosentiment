@@ -1,0 +1,56 @@
+[package]
+name = "ultracrew_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+coralys-moga = { path = "../../coralys-moga" }
+coralys-ecology = { path = "../../coralys-ecology" }
+coralys-recommendation = { path = "../../coralys-recommendation" }
+coralys-policy = { path = "../../coralys-policy" }
+coralys-core = { path = "../../coralys-core" }
+chronosentiment_adapter = { path = "../../adapters/chronosentiment" }
+chronosentiment_optimization = { path = "../../infrastructure/optimization" }
+axum = "0.8.9"
+rand = "0.8.5"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+tokio = { version = "1.52.3", features = ["full"] }
+tower-http = { version = "0.6.11", features = ["cors"] }
+ultracrew = { version = "0.1.0", path = "../../adapters/ultracrew" }
+tower = { version = "0.5", features = ["util"] }
+uuid = { version = "1", features = ["v4"] }
+
+
+[[bin]]
+name = "acceptance_test"
+path = "src/bin/acceptance_test.rs"
+
+[[bin]]
+name = "m8g_ultracrew_validation"
+path = "src/bin/m8g_ultracrew_validation.rs"
+
+[[bin]]
+name = "m8g_cs_validation"
+path = "src/bin/m8g_cs_validation.rs"
+
+[[bin]]
+name = "m9a_search_observatory"
+path = "src/bin/m9a_search_observatory.rs"
+
+[[bin]]
+name = "inrc_archive_forensics"
+path = "src/bin/inrc_archive_forensics.rs"
+
+[[bin]]
+name = "ecology_validation"
+path = "src/bin/ecology_validation.rs"
+
+[[bin]]
+name = "policy_seed_runner"
+path = "src/bin/policy_seed_runner.rs"
+
+[[bin]]
+name = "cs_governance_validation"
+path = "src/bin/cs_governance_validation.rs"
+
