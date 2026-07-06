@@ -24,7 +24,7 @@ pub use traits::{
     MutationOperator, SelectionStrategy, ImprovementOperator, NoOpImprovement, LocalSearchOperator,
     ObservedTransitionMetric, RegionIdentifier,
 };
-pub use repair::{ConstraintChecker, RepairHeuristic, FeasibilityRepairFramework};
+pub use repair::{ConstraintChecker, RepairHeuristic, FeasibilityRepairFramework, RepairStats};
 
 #[cfg(test)]
 mod tests {

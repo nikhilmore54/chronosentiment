@@ -713,6 +713,10 @@ pub struct CvrpConstraintChecker {
 impl ConstraintChecker<CvrpCandidate> for CvrpConstraintChecker {
     type Violation = CvrpViolation;
 
+    fn name(&self) -> &'static str {
+        "CvrpConstraintChecker"
+    }
+
     fn check_violations(&self, candidate: &CvrpCandidate) -> Vec<Self::Violation> {
         let limit = self.instance.max_vehicles.unwrap_or(999);
         
@@ -743,6 +747,10 @@ pub struct VehicleLimitRepairHeuristic {
 }
 
 impl RepairHeuristic<CvrpCandidate, CvrpViolation> for VehicleLimitRepairHeuristic {
+    fn name(&self) -> &'static str {
+        "VehicleLimitRepairHeuristic"
+    }
+
     fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
         match violation {
             CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
@@ -816,6 +824,10 @@ pub struct BinPackingRepairHeuristic {
 }
 
 impl RepairHeuristic<CvrpCandidate, CvrpViolation> for BinPackingRepairHeuristic {
+    fn name(&self) -> &'static str {
+        "BinPackingRepairHeuristic"
+    }
+
     fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
         match violation {
             CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
