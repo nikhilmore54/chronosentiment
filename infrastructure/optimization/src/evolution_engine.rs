@@ -348,9 +348,11 @@ pub fn coralys_run_ga_evolution(
         elite_count: 10,
         generation_limit: config.generations,
         seed: Some(config.seed),
+        tournament_size: None,
     };
 
-    let result = engine.run_ga_evolution(coralys_config);
+    let result = engine.run_ga_evolution(coralys_config)
+        .expect("EvolutionEngine failed");
 
     GaResult {
         global_best: result.global_best,

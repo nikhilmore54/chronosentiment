@@ -11,6 +11,7 @@ fn test_level1_determinism() {
         mutation_rate: 0.1,
         crossover_rate: 0.7,
         elite_count: 5,
+        tournament_size: None,
         seed: Some(42), // Fixed seed across all runs
     };
 

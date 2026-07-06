@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use ultracrew::inrc::parser::{parse_scenario, parse_history, parse_week_data};
 use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
 use ultracrew::ecology::WorkforceEcology;
-use coralys_moga::engine::InrcGenome;
+use ultracrew::inrc::optimization::InrcGenome;
 use std::sync::Arc;
-use coralys_moga::FitnessEvaluator;
+use coralys_moga::traits::FitnessEvaluator;
 
 #[test]
 fn test_debug_s2_penalties() {

@@ -4,83 +4,7 @@ use ultracrew::ecology::WorkforceEcology;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
-
-fn max_bipartite_matching(
-    nurses: &[usize], 
-    nurse_skills: &HashMap<usize, Vec<String>>,
-    demands: &[(String, usize)] // skill -> required count
-) -> (usize, HashMap<usize, String>) {
-    // 1. Create a flow network
-    // Source = 0
-    // Sink = 1
-    // Nurses = 2 to 2+n-1
-    // Demands = (2+n) to (2+n)+m-1. Each demand node represents a single unit of demand!
-    // Wait, since demands can be > 1, we can just split demands into multiple nodes, 
-    // each requiring 1 unit, to make it a simple bipartite matching.
-    
-    let mut demand_nodes = Vec::new();
-    for (skill, count) in demands {
-        for _ in 0..*count {
-            demand_nodes.push(skill.clone());
-        }
-    }
-    
-    let num_nurses = nurses.len();
-    let num_demands = demand_nodes.len();
-    
-    let mut adj: Vec<Vec<usize>> = vec![Vec::new(); num_nurses];
-    for (i, n) in nurses.iter().enumerate() {
-        if let Some(skills) = nurse_skills.get(n) {
-            for (j, req_skill) in demand_nodes.iter().enumerate() {
-                if skills.contains(req_skill) {
-                    adj[i].push(j);
-                }
-            }
-        }
-    }
-    
-    // Hopcroft-Karp or simple augmenting paths
-    let mut match_nurse = vec![None; num_nurses];
-    let mut match_demand = vec![None; num_demands];
-    
-    let mut assignments = 0;
-    
-    for i in 0..num_nurses {
-        let mut visited = vec![false; num_demands];
-        if dfs(i, &adj, &mut match_nurse, &mut match_demand, &mut visited) {
-            assignments += 1;
-        }
-    }
-    
-    let mut final_assignment = HashMap::new();
-    for (i, d) in match_nurse.into_iter().enumerate() {
-        if let Some(demand_idx) = d {
-            final_assignment.insert(nurses[i], demand_nodes[demand_idx].clone());
-        }
-    }
-    
-    (assignments, final_assignment)
-}
-
-fn dfs(
-    u: usize, 
-    adj: &Vec<Vec<usize>>, 
-    match_nurse: &mut Vec<Option<usize>>, 
-    match_demand: &mut Vec<Option<usize>>, 
-    visited: &mut Vec<bool>
-) -> bool {
-    for &v in &adj[u] {
-        if !visited[v] {
-            visited[v] = true;
-            if match_demand[v].is_none() || dfs(match_demand[v].unwrap(), adj, match_nurse, match_demand, visited) {
-                match_nurse[u] = Some(v);
-                match_demand[v] = Some(u);
-                return true;
-            }
-        }
-    }
-    false
-}
+use coralys_matching::AssignmentSolver;
 
 #[test]
 fn test_coverage_parity() {
@@ -126,28 +50,45 @@ fn test_coverage_parity() {
                         "Thu" => &req.thursday, "Fri" => &req.friday, "Sat" => &req.saturday, "Sun" => &req.sunday,
                         _ => unreachable!(),
                     };
-                    if req_level.optimal > 0 {
-                        demands.push((req.skill.clone(), req_level.optimal));
+                    let target = std::cmp::max(req_level.minimum, req_level.optimal);
+                    if target > 0 {
+                        demands.push((req.skill.clone(), target));
                     }
                 }
             }
             
-            let mut nurse_skills = HashMap::new();
-            for &n in &available_nurses {
-                nurse_skills.insert(n, optimizer.context.scenario.nurses[n].skills.clone());
+            let workers: Vec<(usize, Vec<String>)> = available_nurses.iter()
+                .map(|&n| (n, optimizer.context.scenario.nurses[n].skills.clone()))
+                .collect();
+            let solver_demands: Vec<(String, usize)> = demands.iter()
+                .map(|(s, c)| (s.clone(), *c))
+                .collect();
+            let matching = coralys_matching::BipartiteMatchingSolver.assign(&workers, &solver_demands);
+
+            let mut fulfilled_map = HashMap::new();
+            for (_, skill) in &matching.assignments {
+                *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
             }
-            
-            let (matched, _) = max_bipartite_matching(&available_nurses, &nurse_skills, &demands);
-            
-            let total_optimal: usize = demands.iter().map(|(_, c)| c).sum();
-            if matched < total_optimal {
-                let p = (total_optimal - matched) * 30;
-                total_optimal_penalty += p;
-                println!("Day {} Shift {}: Opt {}, Matched {}, Penalty +{}", d, shift_name, total_optimal, matched, p);
+
+            for req in &optimizer.context.week_data.requirements {
+                if req.shift_type == *shift_name {
+                    let req_level = match day_name {
+                        "Mon" => &req.monday, "Tue" => &req.tuesday, "Wed" => &req.wednesday,
+                        "Thu" => &req.thursday, "Fri" => &req.friday, "Sat" => &req.saturday, "Sun" => &req.sunday,
+                        _ => unreachable!(),
+                    };
+                    let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
+                    if fulfilled >= req_level.minimum && fulfilled < req_level.optimal {
+                        let p = (req_level.optimal - fulfilled) * 30;
+                        total_optimal_penalty += p;
+                        println!("Day {} Shift {}: Skill {} Opt {}, Matched {}, Penalty +{}", d, shift_name, req.skill, req_level.optimal, fulfilled, p);
+                    }
+                }
             }
         }
     }
     
     println!("Maximum Bipartite Matching Penalty: {}", total_optimal_penalty);
+
     assert_eq!(total_optimal_penalty, 360, "Bipartite matching should yield 360 penalty!");
 }

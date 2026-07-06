@@ -9,11 +9,16 @@ use rand::rngs::StdRng;
 
 fn generate_sequential_scenario(week: usize, ecology: WorkforceEcology, rng: &mut StdRng) -> Arc<ScheduleContext> {
     let mut workers = Vec::new();
-    let all_skills = vec![Skill::Forklift, Skill::GeneralLabor, Skill::Supervisor, Skill::FirstAid];
+    let all_skills = vec![
+        Skill::new("Forklift"),
+        Skill::new("GeneralLabor"),
+        Skill::new("Supervisor"),
+        Skill::new("FirstAid"),
+    ];
     for i in 0..20 {
         workers.push(Worker {
             id: i as u64,
-            skills: vec![all_skills[i % 4], all_skills[(i + 1) % 4]],
+            skills: vec![all_skills[i % 4].clone(), all_skills[(i + 1) % 4].clone()],
         });
     }
 
@@ -23,7 +28,7 @@ fn generate_sequential_scenario(week: usize, ecology: WorkforceEcology, rng: &mu
             id: (week * 1000 + i) as u64,
             start_hour: rng.gen_range(0..160) as u64,
             duration_hours: 8,
-            required_skill: all_skills[rng.gen_range(0..4)],
+            required_skill: all_skills[rng.gen_range(0..4)].clone(),
         });
     }
 
@@ -31,6 +36,9 @@ fn generate_sequential_scenario(week: usize, ecology: WorkforceEcology, rng: &mu
         workers: Arc::new(workers),
         shifts: Arc::new(shifts),
         ecology,
+        rng_seed: 0,
+        observatory: Arc::new(std::sync::Mutex::new(ultracrew::optimization::Observatory::new())),
+        locked_assignments: None,
     })
 }
 
@@ -48,6 +56,7 @@ fn run_4_weeks(enable_memory: bool, base_seed: u64) -> (f64, f64) {
         crossover_rate: 0.7,
         elite_count: 5,
         seed: Some(base_seed),
+        ..Default::default()
     };
 
     for week in 0..4 {

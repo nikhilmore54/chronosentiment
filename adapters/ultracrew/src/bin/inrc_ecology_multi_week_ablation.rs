@@ -312,7 +312,7 @@ fn run_ablation(seed: u64, alpha: f64) -> RunMetrics {
         let engine = EvolutionEngine::new(evaluator.clone(), mutator, crossover, factory);
         let result = engine.run_ga_evolution(config);
         
-        let best = result.global_best;
+        let best = result.expect("Evolution engine failed").global_best;
         
         cum_score += best.soft_report.total_penalty;
         let hc = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;

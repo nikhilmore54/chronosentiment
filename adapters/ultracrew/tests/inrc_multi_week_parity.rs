@@ -97,12 +97,12 @@ fn test_inrc_multi_week_parity() {
         }
         
         let his_arg = if w == 0 {
-            PathBuf::from("/Users/nikhil/.gemini/antigravity/brain/98bf099f-ccfe-46d1-a83f-6bcce5b3fb15/scratch/DynamicNurseScheduler/datasets/n030w4/H0-n030w4-0.txt")
+            base_dir.join("H0-n030w4-0.txt")
         } else {
             out_his_path.clone()
         };
         
-        let wd_arg = PathBuf::from(format!("/Users/nikhil/.gemini/antigravity/brain/98bf099f-ccfe-46d1-a83f-6bcce5b3fb15/scratch/DynamicNurseScheduler/datasets/n030w4/WD-n030w4-{}.txt", w));
+        let wd_arg = base_dir.join(format!("WD-n030w4-{}.txt", w));
 
         let output = Command::new("java")
             .arg("-jar").arg(&validator_jar)

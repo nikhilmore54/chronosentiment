@@ -1,6 +1,9 @@
 pub mod traits;
+pub mod recommender;
 
 pub use traits::{Explainer, Ranker};
+pub use recommender::{InterventionRecommendation, RecommendationReport, EcologyRecommender};
+
 
 #[cfg(test)]
 mod tests {

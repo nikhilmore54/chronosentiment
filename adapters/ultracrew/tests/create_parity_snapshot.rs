@@ -32,7 +32,7 @@ fn test_create_parity_snapshot() {
         ..Default::default()
     };
 
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = &result.global_best;
 
     println!("Days Off: {}", best.soft_report.day_off_penalty);
@@ -42,7 +42,7 @@ fn test_create_parity_snapshot() {
     println!("Coverage: {}", best.soft_report.optimal_coverage_penalty);
 
     std::fs::write(
-        base_dir.join("frozen_genome.json"),
+        base_dir.join("new_frozen_genome.json"),
         serde_json::to_string(&best.genome.bits).unwrap(),
     ).unwrap();
 }

@@ -38,7 +38,7 @@ fn test_f2c_bronze_feasibility() {
     };
     
     println!("Starting F.2C Feasibility Test on n030w4");
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     
     // Print the Feasibility Dashboard for each generation
     for (gen, eval) in result.generation_history.iter().enumerate() {

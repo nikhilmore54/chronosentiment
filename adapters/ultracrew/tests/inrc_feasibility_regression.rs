@@ -38,7 +38,7 @@ fn test_inrc_feasibility_regression() {
     };
     
     // Just run and verify the best is feasible
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     
     let best = &result.global_best;
     println!("Best Feasibility: Fit={} | Cov={} Skills={} OneShift={} Succ={}", 

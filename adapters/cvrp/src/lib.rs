@@ -328,6 +328,7 @@ impl Outcome for CvrpEvaluation {
 
 // We will implement coralys-moga traits in a separate module.
 pub mod moga_impl;
+pub mod analysis;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CvrpState {

@@ -1,18 +1,21 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Skill {
-    Forklift,
-    GeneralLabor,
-    Supervisor,
-    FirstAid,
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Skill(pub String);
+
+impl Skill {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Skill(s.into())
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Worker {
     pub id: u64,
     pub skills: Vec<Skill>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Shift {
     pub id: u64,
     pub start_hour: u64, // simplified time: hour of the week (0..168)

@@ -23,6 +23,7 @@ pub trait Action: Send + Sync + 'static {}
 pub mod telemetry;
 pub mod memory;
 pub mod models;
+pub mod analysis;
 
 pub use models::{Violation, MatchingResult, EvaluationResult, StateReference, DecisionProposal, DecisionLineage};
 

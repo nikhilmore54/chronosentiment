@@ -18,6 +18,7 @@ fn test_level2_seed_robustness() {
             crossover_rate: 0.7,
             elite_count: 5,
             seed: Some(seed), 
+            ..Default::default()
         };
 
         let result = run_optimization(context.clone(), config);

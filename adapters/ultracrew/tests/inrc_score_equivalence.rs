@@ -36,7 +36,7 @@ fn test_inrc_score_equivalence() {
         ..Default::default()
     };
 
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = &result.global_best;
 
     let out_path = base_dir.join("sol-n030w4-equiv.txt");
@@ -50,9 +50,9 @@ fn test_inrc_score_equivalence() {
         .arg("--sce")
         .arg(base_dir.join("Sc-n030w4-tmp.txt"))
         .arg("--his")
-        .arg("/Users/nikhil/.gemini/antigravity/brain/98bf099f-ccfe-46d1-a83f-6bcce5b3fb15/scratch/DynamicNurseScheduler/datasets/n030w4/H0-n030w4-0.txt")
+        .arg(base_dir.join("H0-n030w4-0.txt"))
         .arg("--weeks")
-        .arg("/Users/nikhil/.gemini/antigravity/brain/98bf099f-ccfe-46d1-a83f-6bcce5b3fb15/scratch/DynamicNurseScheduler/datasets/n030w4/WD-n030w4-0.txt")
+        .arg(base_dir.join("WD-n030w4-0.txt"))
         .arg("--sols")
         .arg(&out_path)
         .output()
@@ -94,5 +94,5 @@ fn test_inrc_score_equivalence() {
     assert_eq!(best.soft_report.preferences_penalty, val_preferences, "Preferences mismatch!");
     assert_eq!(best.soft_report.weekend_penalty, val_weekends, "Complete weekends mismatch!");
     // assert_eq!(best.soft_report.work_streak_penalty, val_consecutive, "Consecutive mismatch!");
-    // assert_eq!(best.soft_report.optimal_coverage_penalty, val_optimal, "Optimal coverage mismatch!");
+    assert_eq!(best.soft_report.optimal_coverage_penalty, val_optimal, "Optimal coverage mismatch!");
 }

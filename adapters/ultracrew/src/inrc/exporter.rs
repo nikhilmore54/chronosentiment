@@ -3,6 +3,7 @@ use std::io::{Write, Result};
 use std::path::Path;
 use super::optimization::{InrcContext, InrcGenome, InrcOptimizer};
 use crate::inrc::models::InrcHistory;
+use coralys_matching::AssignmentSolver;
 
 pub fn export_inrc_solution(
     genome: &InrcGenome, 
@@ -59,41 +60,33 @@ pub fn export_inrc_solution(
                 }
             }
             
-            let mut nurse_to_skill = std::collections::HashMap::new();
-
-            // Try to fulfill minimum demands exactly like evaluator
-            for (skill, count) in &demands {
-                let mut fulfilled = 0;
-                let mut to_remove = Vec::new();
+            let workers: Vec<(usize, Vec<String>)> = available_nurses.iter()
+                .map(|&n| (n, context.scenario.nurses[n].skills.clone()))
+                .collect();
                 
-                for (i, &n) in available_nurses.iter().enumerate() {
-                    let nurse = &context.scenario.nurses[n];
-                    if nurse.skills.contains(*skill) {
-                        fulfilled += 1;
-                        to_remove.push(i);
-                        nurse_to_skill.insert(n, skill.clone());
-                        if fulfilled == *count {
-                            break;
-                        }
-                    }
-                }
-                for &i in to_remove.iter().rev() {
-                    available_nurses.remove(i);
-                }
+            let solver_demands: Vec<(String, usize)> = demands.iter()
+                .map(|(s, c)| ((*s).clone(), *c))
+                .collect();
+                
+            let matching = coralys_matching::BipartiteMatchingSolver.assign(&workers, &solver_demands);
+            
+            let mut nurse_to_skill = std::collections::HashMap::new();
+            for (n, skill) in &matching.assignments {
+                nurse_to_skill.insert(*n, skill.clone());
             }
             
-            // Any leftover nurses? Assign them to any skill they have that is optimal, or just their first skill
+            // For leftovers (unmatched nurses), assign them to their first skill
             for &n in &available_nurses {
-                let nurse = &context.scenario.nurses[n];
-                // Just use first skill for leftovers
-                nurse_to_skill.insert(n, &nurse.skills[0]);
+                if !nurse_to_skill.contains_key(&n) {
+                    nurse_to_skill.insert(n, context.scenario.nurses[n].skills[0].clone());
+                }
             }
             
             // Output assignments
             for n in 0..num_nurses {
                 if optimizer.get_bit(genome, n, d, s) {
                     let nurse_name = &context.scenario.nurses[n].id;
-                    let assigned_skill = nurse_to_skill[&n];
+                    let assigned_skill = &nurse_to_skill[&n];
                     assignments.push(format!("{} {} {} {}", nurse_name, day_name, shift_name, assigned_skill));
                 }
             }

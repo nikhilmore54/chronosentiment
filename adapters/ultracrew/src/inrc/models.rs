@@ -126,3 +126,48 @@ pub struct InrcShiftOffRequest {
     pub shift_type: String,
     pub day: String,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum InrcConstraintId {
+    Hc1MinimumCoverage,
+    Hc2SkillRequirements,
+    Hc3ForbiddenShiftSuccession,
+    Hc4SingleAssignmentPerDay,
+    S1TotalAssignments,
+    S2ConsecutiveWorkingDays,
+    S3ConsecutiveDaysOff,
+    S4ConsecutiveShiftTypes,
+    S5Preferences,
+    S6CompleteWeekends,
+    S7MaxWorkingWeekends,
+    S8OptimalCoverage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObjectiveWeights {
+    pub hard_constraint_violation: i32,
+    pub consecutive_working_days: i32,
+    pub consecutive_days_off: i32,
+    pub consecutive_shift_days: i32,
+    pub preferences: i32,
+    pub complete_weekends: i32,
+    pub max_working_weekends: i32,
+    pub assignments: i32,
+    pub optimal_coverage: i32,
+}
+
+impl Default for ObjectiveWeights {
+    fn default() -> Self {
+        Self {
+            hard_constraint_violation: 1000,
+            consecutive_working_days: 30,
+            consecutive_days_off: 30,
+            consecutive_shift_days: 15,
+            preferences: 10,
+            complete_weekends: 30,
+            max_working_weekends: 30,
+            assignments: 20,
+            optimal_coverage: 30,
+        }
+    }
+}

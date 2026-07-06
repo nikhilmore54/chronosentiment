@@ -13,6 +13,7 @@ pub struct InrcContext {
     pub num_nurses: usize,
     pub num_days: usize, // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
+    pub weights: super::models::ObjectiveWeights,
 }
 
 impl InrcContext {
@@ -20,6 +21,7 @@ impl InrcContext {
         let num_nurses = scenario.nurses.len();
         let num_days = 7;
         let shift_types: Vec<String> = scenario.shift_types.iter().map(|s| s.id.clone()).collect();
+        let weights = super::models::ObjectiveWeights::default();
         
         Self {
             scenario: Arc::new(scenario),
@@ -29,6 +31,7 @@ impl InrcContext {
             num_nurses,
             num_days,
             shift_types,
+            weights,
         }
     }
 }
@@ -65,6 +68,7 @@ pub struct InrcEvaluation {
     pub hc_one_shift_per_day: usize,
     pub hc_forbidden_successions: usize,
     pub soft_report: SoftConstraintReport,
+    pub platform_result: coralys_core::EvaluationResult,
 }
 
 impl Evaluated for InrcEvaluation {

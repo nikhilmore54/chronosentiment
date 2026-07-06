@@ -233,7 +233,7 @@ fn run_state_only_single_week(seed: u64) -> (i32, usize) {
     };
 
     let engine = EvolutionEngine::new(optimizer.clone(), optimizer.clone(), optimizer.clone(), optimizer.clone());
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = result.global_best;
     let hc = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;
     (best.soft_report.total_penalty, hc)
@@ -298,7 +298,7 @@ fn run_alpha_single_week(seed: u64, alpha: f64) -> (i32, usize) {
     // The real endpoint equivalence is verified by running the binary
     // with alpha=0.0 and comparing CSV output to STATE_ONLY.
     let engine = EvolutionEngine::new(evaluator.clone(), evaluator.clone(), evaluator.clone(), evaluator.clone());
-    let result = engine.run_ga_evolution(config);
+    let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = result.global_best;
     let hc = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;
     (best.soft_report.total_penalty, hc)

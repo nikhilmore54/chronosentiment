@@ -1,7 +1,9 @@
 pub mod ecology;
+pub mod config;
 pub mod models;
 pub mod optimization;
 pub mod inrc;
+pub mod workforce;
 
 pub mod helpers {
     use super::ecology::WorkforceEcology;
@@ -18,13 +20,18 @@ pub mod helpers {
         pre_fatigue_workers: usize,
     ) -> Arc<ScheduleContext> {
         let mut workers = Vec::new();
-        let all_skills = vec![Skill::Forklift, Skill::GeneralLabor, Skill::Supervisor, Skill::FirstAid];
+        let all_skills = vec![
+            Skill::new("Forklift"),
+            Skill::new("GeneralLabor"),
+            Skill::new("Supervisor"),
+            Skill::new("FirstAid"),
+        ];
         for i in 0..num_workers {
             workers.push(Worker {
                 id: i as u64,
                 skills: vec![
-                    all_skills[i % all_skills.len()],
-                    all_skills[(i + 1) % all_skills.len()],
+                    all_skills[i % all_skills.len()].clone(),
+                    all_skills[(i + 1) % all_skills.len()].clone(),
                 ],
             });
         }
@@ -36,7 +43,7 @@ pub mod helpers {
                 id: i as u64,
                 start_hour: start as u64,
                 duration_hours: 8,
-                required_skill: all_skills[i % all_skills.len()],
+                required_skill: all_skills[i % all_skills.len()].clone(),
             });
         }
 
@@ -50,6 +57,9 @@ pub mod helpers {
             workers: Arc::new(workers),
             shifts: Arc::new(shifts),
             ecology,
+            rng_seed: 0,
+            observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
+            locked_assignments: None,
         })
     }
 
@@ -57,12 +67,25 @@ pub mod helpers {
         context: Arc<ScheduleContext>,
         config: EvolutionConfig,
     ) -> GaResult<ScheduleEvaluation> {
-        let factory = ScheduleOptimizer { context: context.clone() };
-        let mutator = ScheduleOptimizer { context: context.clone() };
-        let crossover = ScheduleOptimizer { context: context.clone() };
-        let evaluator = ScheduleOptimizer { context: context.clone() };
+        let factory = ScheduleOptimizer::new(context.clone());
+        let mutator = ScheduleOptimizer::new(context.clone());
+        let crossover = ScheduleOptimizer::new(context.clone());
+        let evaluator = ScheduleOptimizer::new(context.clone());
 
         let engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
+        // Temporary compatibility shim.
+        // EvolutionEngine now returns Result to surface configuration validation errors.
+        // For the demo/pilot we unwrap here because configs are generated internally.
+        // TODO: Propagate this Result through the UltraCrew API when production‑ready.
         engine.run_ga_evolution(config)
+            .expect("Invalid EvolutionConfig – engine failed")
     }
 }
+
+
+pub mod pipeline;
+pub mod decision_intelligence;
+pub mod schedule_solution;
+pub mod public_contracts;
+pub mod constraint_engine;
+pub mod recommendation;
