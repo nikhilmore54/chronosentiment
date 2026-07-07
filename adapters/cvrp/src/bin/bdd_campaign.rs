@@ -124,7 +124,7 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
     
     let evaluator = CvrpEvaluator { instance: instance.clone() };
     let mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
-    let crossover = CvrpCrossover;
+    let crossover = cvrp::moga_impl::CvrpCrossoverRoutePreserving { instance: instance.clone() };
     let factory = cvrp::CvrpClusteredGenomeFactory { instance: instance.clone() };
     
     // Feasibility Repair Framework
