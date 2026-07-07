@@ -559,7 +559,7 @@ pub fn solve_auto_config(
     let evaluator = moga_impl::CvrpEvaluator { instance: instance.clone() };
     let mutator = moga_impl::CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
     let crossover = moga_impl::CvrpCrossover;
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let factory = CvrpClusteredGenomeFactory { instance: instance.clone() };
     let local_search = moga_impl::CvrpLocalSearch { instance: instance.clone() };
 
     let mut repair_framework = coralys_moga::FeasibilityRepairFramework::new(10);
