@@ -170,6 +170,16 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
             next_gen.push(evals[i].eval.candidate.clone());
         }
 
+        // Statistics counters
+        let mut crossover_attempts = 0;
+        let mut crossover_improvements = 0;
+        let mut mutation_attempts = std::collections::HashMap::new();
+        let mut mutation_accepts = std::collections::HashMap::new();
+        let mut repair_attempts = 0;
+        let mut repair_successes = 0;
+        let mut ls_attempts = 0;
+        let mut ls_improvements = 0;
+
         // Generate rest
         while next_gen.len() < pop_size {
             // Tournament selection
@@ -192,28 +202,84 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
             }
             let parent2 = &evals[best_idx2].eval.candidate;
 
+            let parent1_fit = evals[best_idx1].eval.total_distance;
+            let parent2_fit = evals[best_idx2].eval.total_distance;
+            let avg_parent_fit = (parent1_fit + parent2_fit) / 2.0;
+
             // Crossover
             let (mut child, _) = if rng.r#gen::<f64>() < 0.8 {
-                crossover.crossover(parent1, parent2, &mut rng)
+                crossover_attempts += 1;
+                let (c1, c2) = crossover.crossover(parent1, parent2, &mut rng);
+                let c1_fit = evaluator.evaluate(&c1).eval.total_distance;
+                if c1_fit < avg_parent_fit {
+                    crossover_improvements += 1;
+                }
+                (c1, c2)
             } else {
                 (parent1.clone(), parent2.clone())
             };
 
             // Mutation
             if rng.r#gen::<f64>() < 0.2 {
+                let pre_mut_fit = evaluator.evaluate(&child).eval.total_distance;
                 mutator.mutate(&mut child, &mut rng);
+                let op = child.last_mutation_op.clone().unwrap_or("Unknown".to_string());
+                *mutation_attempts.entry(op.clone()).or_insert(0) += 1;
+                let post_mut_fit = evaluator.evaluate(&child).eval.total_distance;
+                if post_mut_fit < pre_mut_fit {
+                    *mutation_accepts.entry(op).or_insert(0) += 1;
+                }
             }
 
             // Local Search
+            let pre_ls_fit = evaluator.evaluate(&child).eval.total_distance;
+            ls_attempts += 1;
             local_search.improve(&mut child);
+            let post_ls_fit = evaluator.evaluate(&child).eval.total_distance;
+            if post_ls_fit < pre_ls_fit {
+                ls_improvements += 1;
+            }
 
             // Feasibility Repair Framework
+            let checker = cvrp::moga_impl::CvrpConstraintChecker { instance: instance.clone() };
+            use coralys_moga::ConstraintChecker;
+            let was_feasible = checker.check_violations(&child).is_empty();
+            repair_attempts += 1;
             repair_framework.improve(&mut child);
+            let is_feasible = checker.check_violations(&child).is_empty();
+            if !was_feasible && is_feasible {
+                repair_successes += 1;
+            }
 
             next_gen.push(child);
         }
 
         population = next_gen;
+
+        // At the last generation, print cumulative statistics
+        if generation == generation_limit {
+            println!("\n--- OPERATOR STATISTICS SUMMARY ---");
+            println!("Crossover attempts: {}, improved offspring: {} (rate: {:.2}%)", 
+                crossover_attempts, crossover_improvements, 
+                (crossover_improvements as f64 / crossover_attempts.max(1) as f64) * 100.0
+            );
+            println!("Mutation operators statistics:");
+            for (op, attempts) in &mutation_attempts {
+                let accepts = mutation_accepts.get(op).cloned().unwrap_or(0);
+                println!("  - {}: attempts: {}, accepted: {} (rate: {:.2}%)", 
+                    op, attempts, accepts, (accepts as f64 / *attempts as f64) * 100.0
+                );
+            }
+            println!("Repair attempts: {}, successes: {} (rate: {:.2}%)", 
+                repair_attempts, repair_successes, 
+                (repair_successes as f64 / repair_attempts.max(1) as f64) * 100.0
+            );
+            println!("Local Search attempts: {}, improved: {} (rate: {:.2}%)", 
+                ls_attempts, ls_improvements, 
+                (ls_improvements as f64 / ls_attempts.max(1) as f64) * 100.0
+            );
+            println!("========================================================\n");
+        }
     }
 }
 
