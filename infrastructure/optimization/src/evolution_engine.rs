@@ -349,6 +349,7 @@ pub fn coralys_run_ga_evolution(
         generation_limit: config.generations,
         seed: Some(config.seed),
         tournament_size: None,
+        ..Default::default()
     };
 
     let result = engine.run_ga_evolution(coralys_config)

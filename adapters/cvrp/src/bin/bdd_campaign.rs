@@ -132,11 +132,13 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
     let checker = cvrp::moga_impl::CvrpConstraintChecker { instance: instance.clone() };
     let limit_heuristic = cvrp::moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() };
     let bp_heuristic = cvrp::moga_impl::BinPackingRepairHeuristic { instance: instance.clone() };
+    let spatial_bp_heuristic = cvrp::moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() };
     
     let mut repair_framework = FeasibilityRepairFramework::new(10);
     repair_framework.add_checker(Box::new(checker));
     repair_framework.add_heuristic(Box::new(limit_heuristic));
     repair_framework.add_heuristic(Box::new(bp_heuristic));
+    repair_framework.add_heuristic(Box::new(spatial_bp_heuristic));
     
     let repair_stats = repair_framework.stats.clone();
     

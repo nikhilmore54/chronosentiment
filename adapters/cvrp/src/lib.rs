@@ -562,12 +562,19 @@ pub fn solve_auto_config(
     let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
     let local_search = moga_impl::CvrpLocalSearch { instance: instance.clone() };
 
+    let mut repair_framework = coralys_moga::FeasibilityRepairFramework::new(10);
+    repair_framework.add_checker(Box::new(moga_impl::CvrpConstraintChecker { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(moga_impl::BinPackingRepairHeuristic { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() }));
+
     let engine = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator)
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(local_search)
+        .with_improvement(repair_framework)
+        .add_processor(local_search)
         .build()
         .map_err(|e| format!("Engine build error: {}", e))?;
 

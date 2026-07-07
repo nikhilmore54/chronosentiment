@@ -102,6 +102,7 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
     repair_framework.add_checker(Box::new(CvrpConstraintChecker { instance: instance.clone() }));
     repair_framework.add_heuristic(Box::new(VehicleLimitRepairHeuristic { instance: instance.clone() }));
     repair_framework.add_heuristic(Box::new(BinPackingRepairHeuristic { instance: instance.clone() }));
+    repair_framework.add_heuristic(Box::new(cvrp::moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() }));
 
     let mut rng = StdRng::seed_from_u64(42);
     let pop_size = 200;

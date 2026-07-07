@@ -876,6 +876,82 @@ impl RepairHeuristic<CvrpCandidate, CvrpViolation> for BinPackingRepairHeuristic
     }
 }
 
+pub struct SpatialBinPackingRepairHeuristic {
+    pub instance: crate::CvrpInstance,
+}
+
+impl RepairHeuristic<CvrpCandidate, CvrpViolation> for SpatialBinPackingRepairHeuristic {
+    fn name(&self) -> &'static str {
+        "SpatialBinPackingRepairHeuristic"
+    }
+
+    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
+        match violation {
+            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+                let mut customers_with_demands: Vec<(usize, i32)> = candidate.permutation.iter().map(|&idx| {
+                    (idx, self.instance.customers[idx].demand)
+                }).collect();
+
+                // Sort descending by demand
+                customers_with_demands.sort_by(|a, b| b.1.cmp(&a.1));
+
+                let mut bins: Vec<(Vec<usize>, i32)> = Vec::new();
+                let capacity = self.instance.capacity;
+
+                for (idx, demand) in customers_with_demands {
+                    let customer = &self.instance.customers[idx];
+                    let mut best_bin_idx: Option<usize> = None;
+                    let mut min_score = f64::INFINITY;
+
+                    for (b_idx, (b_custs, load)) in bins.iter().enumerate() {
+                        let remaining = capacity - load;
+                        if remaining >= demand {
+                            // Compute spatial distance to nearest customer in this bin
+                            let mut min_dist = f64::INFINITY;
+                            for &other_idx in b_custs {
+                                let other = &self.instance.customers[other_idx];
+                                let d = self.instance.distance(customer, other);
+                                if d < min_dist { min_dist = d; }
+                            }
+                            if min_dist == f64::INFINITY {
+                                min_dist = self.instance.distance(&self.instance.depot, customer);
+                            }
+
+                            // Combined score: Distance + 50.0 * Capacity_Slack
+                            let slack = remaining as f64 / capacity as f64;
+                            let score = min_dist + 50.0 * slack; 
+
+                            if score < min_score {
+                                min_score = score;
+                                best_bin_idx = Some(b_idx);
+                            }
+                        }
+                    }
+
+                    if let Some(b_idx) = best_bin_idx {
+                        bins[b_idx].0.push(idx);
+                        bins[b_idx].1 += demand;
+                    } else {
+                        bins.push((vec![idx], demand));
+                    }
+                }
+
+                if bins.len() <= *limit {
+                    let mut new_perm = Vec::with_capacity(candidate.permutation.len());
+                    for (b_custs, _) in bins {
+                        new_perm.extend(b_custs);
+                    }
+                    candidate.permutation = new_perm;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod evaluator_tests {
     use super::*;
