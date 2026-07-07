@@ -474,20 +474,20 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
             }
         }
 
-        let get_total_distance = |routes: &Vec<Vec<usize>>| -> f64 {
-            let mut total = 0.0;
-            for route in routes {
-                if route.is_empty() { continue; }
-                let mut last_node = &self.instance.depot;
-                for &cust_idx in route {
-                    let customer = &self.instance.customers[cust_idx];
-                    total += self.instance.distance(last_node, customer);
-                    last_node = customer;
-                }
-                total += self.instance.distance(last_node, &self.instance.depot);
+        let get_route_distance = |route: &[usize]| -> f64 {
+            if route.is_empty() { return 0.0; }
+            let mut r_dist = 0.0;
+            let mut last_node = &self.instance.depot;
+            for &cust_idx in route {
+                let customer = &self.instance.customers[cust_idx];
+                r_dist += self.instance.distance(last_node, customer);
+                last_node = customer;
             }
-            total
+            r_dist += self.instance.distance(last_node, &self.instance.depot);
+            r_dist
         };
+
+        let mut route_distances: Vec<f64> = routes.iter().map(|r| get_route_distance(r)).collect();
 
         let n = self.instance.customers.len();
         let mut min_dists = vec![f64::MAX; n];
@@ -503,7 +503,7 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
             }
         }
 
-        let mut current_best = get_total_distance(&routes);
+        let mut current_best = route_distances.iter().sum::<f64>();
         let mut improving = true;
         while improving {
             improving = false;
@@ -517,12 +517,14 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                     // Exhaustive 2-opt within the route
                     for i in 0..len {
                         for j in (i+1)..len {
-                            let mut test_routes = routes.clone();
-                            test_routes[r][i..=j].reverse();
-                            let dist = get_total_distance(&test_routes);
-                            if dist < current_best {
-                                current_best = dist;
-                                routes = test_routes;
+                            let mut test_route = routes[r].clone();
+                            test_route[i..=j].reverse();
+                            let new_r_dist = get_route_distance(&test_route);
+                            let new_total = current_best - route_distances[r] + new_r_dist;
+                            if new_total < current_best {
+                                current_best = new_total;
+                                route_distances[r] = new_r_dist;
+                                routes[r] = test_route;
                                 improving = true;
                                 break 'outer;
                             }
@@ -532,12 +534,14 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                     // Exhaustive Swap within the route
                     for i in 0..len {
                         for j in (i+1)..len {
-                            let mut test_routes = routes.clone();
-                            test_routes[r].swap(i, j);
-                            let dist = get_total_distance(&test_routes);
-                            if dist < current_best {
-                                current_best = dist;
-                                routes = test_routes;
+                            let mut test_route = routes[r].clone();
+                            test_route.swap(i, j);
+                            let new_r_dist = get_route_distance(&test_route);
+                            let new_total = current_best - route_distances[r] + new_r_dist;
+                            if new_total < current_best {
+                                current_best = new_total;
+                                route_distances[r] = new_r_dist;
+                                routes[r] = test_route;
                                 improving = true;
                                 break 'outer;
                             }
@@ -548,14 +552,16 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                     for i in 0..len {
                         for j in 0..len {
                             if i == j { continue; }
-                            let mut test_routes = routes.clone();
-                            let val = test_routes[r].remove(i);
+                            let mut test_route = routes[r].clone();
+                            let val = test_route.remove(i);
                             let insert_pos = if j > i { j - 1 } else { j };
-                            test_routes[r].insert(insert_pos, val);
-                            let dist = get_total_distance(&test_routes);
-                            if dist < current_best {
-                                current_best = dist;
-                                routes = test_routes;
+                            test_route.insert(insert_pos, val);
+                            let new_r_dist = get_route_distance(&test_route);
+                            let new_total = current_best - route_distances[r] + new_r_dist;
+                            if new_total < current_best {
+                                current_best = new_total;
+                                route_distances[r] = new_r_dist;
+                                routes[r] = test_route;
                                 improving = true;
                                 break 'outer;
                             }
@@ -595,13 +601,19 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
 
                             let len2 = routes[r2].len();
                             for j in 0..=len2 {
-                                let mut test_routes = routes.clone();
-                                let val = test_routes[r1].remove(i);
-                                test_routes[r2].insert(j, val);
-                                let dist = get_total_distance(&test_routes);
-                                if dist < current_best {
-                                    current_best = dist;
-                                    routes = test_routes;
+                                let mut test_route1 = routes[r1].clone();
+                                let mut test_route2 = routes[r2].clone();
+                                let val = test_route1.remove(i);
+                                test_route2.insert(j, val);
+                                let new_r_dist1 = get_route_distance(&test_route1);
+                                let new_r_dist2 = get_route_distance(&test_route2);
+                                let new_total = current_best - route_distances[r1] - route_distances[r2] + new_r_dist1 + new_r_dist2;
+                                if new_total < current_best {
+                                    current_best = new_total;
+                                    route_distances[r1] = new_r_dist1;
+                                    route_distances[r2] = new_r_dist2;
+                                    routes[r1] = test_route1;
+                                    routes[r2] = test_route2;
                                     improving = true;
                                     break 'outer;
                                 }
@@ -643,13 +655,19 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                                     continue;
                                 }
 
-                                let mut test_routes = routes.clone();
-                                test_routes[r1][i] = c2;
-                                test_routes[r2][j] = c1;
-                                let dist = get_total_distance(&test_routes);
-                                if dist < current_best {
-                                    current_best = dist;
-                                    routes = test_routes;
+                                let mut test_route1 = routes[r1].clone();
+                                let mut test_route2 = routes[r2].clone();
+                                test_route1[i] = c2;
+                                test_route2[j] = c1;
+                                let new_r_dist1 = get_route_distance(&test_route1);
+                                let new_r_dist2 = get_route_distance(&test_route2);
+                                let new_total = current_best - route_distances[r1] - route_distances[r2] + new_r_dist1 + new_r_dist2;
+                                if new_total < current_best {
+                                    current_best = new_total;
+                                    route_distances[r1] = new_r_dist1;
+                                    route_distances[r2] = new_r_dist2;
+                                    routes[r1] = test_route1;
+                                    routes[r2] = test_route2;
                                     improving = true;
                                     break 'outer;
                                 }
