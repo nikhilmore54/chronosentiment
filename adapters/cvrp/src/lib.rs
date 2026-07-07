@@ -287,12 +287,24 @@ impl GenomeFactory<CvrpCandidate> for CvrpClusteredGenomeFactory {
             perm.shuffle(rng);
         }
 
-        CvrpCandidate {
+        let mut candidate = CvrpCandidate {
             permutation: perm,
             last_mutation_op: None,
             last_mutation_radius: None,
             route_boundary_changes: None,
-        }
+        };
+
+        // Run feasibility repair on initialization to start GA search from feasible bounds
+        let mut repair_framework = coralys_moga::FeasibilityRepairFramework::new(15);
+        repair_framework.add_checker(Box::new(moga_impl::CvrpConstraintChecker { instance: self.instance.clone() }));
+        repair_framework.add_heuristic(Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: self.instance.clone() }));
+        repair_framework.add_heuristic(Box::new(moga_impl::BinPackingRepairHeuristic { instance: self.instance.clone() }));
+        repair_framework.add_heuristic(Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: self.instance.clone() }));
+
+        use coralys_moga::traits::ImprovementOperator;
+        repair_framework.improve(&mut candidate);
+
+        candidate
     }
 }
 
