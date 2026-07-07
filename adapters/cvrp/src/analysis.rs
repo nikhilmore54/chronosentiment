@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use coralys_core::analysis::{InstanceFeatures, DifficultyAssessment, ConfigurationPolicy, InstanceAnalyzer};
+use coralys_core::analysis::{InstanceFeatures, DifficultyAssessment, ConfigurationPolicy, InstanceAnalyzer, EvidenceLevel};
 use crate::{CvrpInstance, Node, DistanceMetric};
 
 #[derive(Debug, Clone)]
@@ -14,6 +14,7 @@ pub struct CvrpInstanceFeatures {
     pub min_demand: i32,
     pub max_demand: i32,
     pub demand_variance: f64,
+    pub coefficient_of_variation: f64,
     
     // Capacity
     pub packing_density: f64,
@@ -29,9 +30,11 @@ pub struct CvrpInstanceFeatures {
     pub customer_density: f64,
     pub depot_centrality: f64,
     pub clustering_estimate: f64,
+    pub spatial_dispersion: f64,
     
     // Constraints
     pub constraint_tightness: f64,
+    pub vehicle_tightness: f64,
     pub expected_feasibility_difficulty: &'static str,
 }
 
@@ -77,6 +80,8 @@ pub struct CvrpConfigurationPolicy {
     pub repair_intensity: usize,
     pub diversity_preservation: bool,
     pub route_preserving_crossover: bool,
+    pub evidence_level: EvidenceLevel,
+    pub confidence_rationale: Vec<String>,
     pub rationale: Vec<String>,
 }
 
@@ -115,6 +120,11 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
             variance_sum += (cust.demand as f64 - avg_demand).powi(2);
         }
         let demand_variance = variance_sum / customer_count as f64;
+        let coefficient_of_variation = if avg_demand > 0.0 {
+            demand_variance.sqrt() / avg_demand
+        } else {
+            0.0
+        };
         
         // Capacity metrics
         let theoretical_min_vehicles = (total_demand as f64 / capacity as f64).ceil() as usize;
@@ -155,12 +165,13 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
         }
         let avg_nn_distance = nn_sum / customer_count as f64;
         
-        // Depot Centrality
+        // Depot Centrality & Spatial Dispersion
         let mut depot_dist_sum = 0.0;
         for cust in &instance.customers {
             depot_dist_sum += instance.distance(&instance.depot, cust);
         }
         let avg_depot_dist = depot_dist_sum / customer_count as f64;
+        let spatial_dispersion = avg_depot_dist;
         let bbox_diagonal = (bbox_width.powi(2) + bbox_height.powi(2)).sqrt();
         let depot_centrality = if bbox_diagonal > 0.0 {
             1.0 - (avg_depot_dist / bbox_diagonal)
@@ -193,6 +204,11 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
         
         // Constraint tightness
         let constraint_tightness = packing_density;
+        let vehicle_tightness = if vehicle_limit > 0 {
+            theoretical_min_vehicles as f64 / vehicle_limit as f64
+        } else {
+            1.0
+        };
         let expected_feasibility_difficulty = if constraint_tightness > 0.98 {
             "Extreme"
         } else if constraint_tightness > 0.92 {
@@ -210,6 +226,7 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
             min_demand,
             max_demand,
             demand_variance,
+            coefficient_of_variation,
             packing_density,
             theoretical_min_vehicles,
             vehicle_slack,
@@ -221,7 +238,9 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
             customer_density,
             depot_centrality,
             clustering_estimate,
+            spatial_dispersion,
             constraint_tightness,
+            vehicle_tightness,
             expected_feasibility_difficulty,
         };
         
@@ -284,6 +303,9 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
         let mut repair_intensity = 10;
         let mut diversity_preservation = true;
         let mut route_preserving_crossover = true;
+        
+        let mut evidence_level = EvidenceLevel::Medium;
+        let mut confidence_rationale = Vec::new();
         let mut rationale = Vec::new();
         
         // Rules
@@ -292,14 +314,19 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
                 population_size = 300;
                 generation_limit = 100;
                 rationale.push("Large instance detected. Increase exploration budget.".to_string());
+                evidence_level = EvidenceLevel::High;
+                confidence_rationale.push("Large-scale behavior rules are heavily verified by benchmark results.".to_string());
             }
             CvrpSizeDifficulty::Large => {
                 population_size = 200;
                 generation_limit = 50;
                 rationale.push("Medium-large scale. Boost population size and generations.".to_string());
+                evidence_level = EvidenceLevel::High;
+                confidence_rationale.push("High confidence rule for mid-to-large capacity bounds.".to_string());
             }
             _ => {
                 rationale.push("Small/Medium scale. Keep standard evolutionary budget.".to_string());
+                confidence_rationale.push("Moderate instance structure fits canonical defaults.".to_string());
             }
         }
         
@@ -309,6 +336,8 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
                 local_search_intensity = 15;
                 mutation_rate = 0.3;
                 rationale.push("Packing density exceeds 98%. Aggressive repair is recommended.".to_string());
+                evidence_level = EvidenceLevel::High;
+                confidence_rationale.push("Tight packing constraint requires verified repair heuristics.".to_string());
             }
             CvrpPackingDifficulty::Tight => {
                 repair_intensity = 20;
@@ -334,6 +363,8 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
             repair_intensity,
             diversity_preservation,
             route_preserving_crossover,
+            evidence_level,
+            confidence_rationale,
             rationale,
         };
         
@@ -365,11 +396,18 @@ pub fn generate_analysis_report(
     out.push(format!("  Repair Intensity: {}", policy.repair_intensity));
     out.push(format!("  Local Search: {}", policy.local_search_intensity));
     out.push(format!("  Diversity Strategy: {}", if policy.diversity_preservation { "Active" } else { "Standard" }));
+    out.push(format!("  Evidence Level: {}", policy.evidence_level));
     out.push("".to_string());
     out.push("Engineering Rationale".to_string());
     out.push("".to_string());
     for r in &policy.rationale {
         out.push(format!("  - {}", r));
+    }
+    out.push("".to_string());
+    out.push("Confidence Reasoning".to_string());
+    out.push("".to_string());
+    for cr in &policy.confidence_rationale {
+        out.push(format!("  - {}", cr));
     }
     out.join("\n")
 }

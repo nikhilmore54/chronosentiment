@@ -519,6 +519,63 @@ fn translate_evaluation(
     }
 }
 
+pub fn solve_auto_config(
+    instance: &CvrpInstance,
+    auto_config: bool,
+) -> Result<(CvrpEvaluation, String), String> {
+    use coralys_core::analysis::InstanceAnalyzer;
+    use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
+
+    let (config, report) = if auto_config {
+        let analyzer = analysis::CvrpInstanceAnalyzer;
+        let (features, difficulty, policy) = analyzer.analyze(instance)?;
+        let report = analysis::generate_analysis_report(&features, &difficulty, &policy);
+        
+        let config = EvolutionConfig {
+            population_size: policy.population_size,
+            elite_count: policy.population_size / 10,
+            generation_limit: policy.generation_limit,
+            mutation_rate: policy.mutation_rate,
+            crossover_rate: policy.crossover_rate,
+            seed: Some(42),
+            tournament_size: Some(5),
+            ..Default::default()
+        };
+        (config, report)
+    } else {
+        let config = EvolutionConfig {
+            population_size: 100,
+            elite_count: 10,
+            generation_limit: 30,
+            mutation_rate: 0.2,
+            crossover_rate: 0.8,
+            seed: Some(42),
+            tournament_size: Some(5),
+            ..Default::default()
+        };
+        (config, "Manual baseline configuration used.".to_string())
+    };
+
+    let evaluator = moga_impl::CvrpEvaluator { instance: instance.clone() };
+    let mutator = moga_impl::CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
+    let crossover = moga_impl::CvrpCrossover;
+    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let local_search = moga_impl::CvrpLocalSearch { instance: instance.clone() };
+
+    let engine = EvolutionEngineBuilder::new()
+        .with_evaluator(evaluator)
+        .with_mutator(mutator)
+        .with_crossover(crossover)
+        .with_factory(factory)
+        .with_improvement(local_search)
+        .build()
+        .map_err(|e| format!("Engine build error: {}", e))?;
+
+    let res = engine.run_ga_evolution(config).map_err(|e| format!("Evolution error: {}", e))?;
+    Ok((res.global_best.eval, report))
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -598,6 +655,18 @@ mod tests {
         let result = engine.run_ga_evolution(config).unwrap();
         let best_dist = result.global_best.eval.total_distance_integer;
         assert_eq!(best_dist, 784.0, "Regression: CVRP A-n32-k5 Best distance is {}, expected 784.0", best_dist);
-    }
+     }
+
+     #[test]
+     fn test_solve_auto_config() {
+         let mut instance = CvrpInstance::a_n32_k5();
+         instance.distance_metric = DistanceMetric::TspLibEuc2D;
+         
+         let (eval, report) = solve_auto_config(&instance, true).unwrap();
+         assert!(eval.total_distance > 0.0);
+         assert!(report.contains("Instance Analysis"));
+         assert!(report.contains("Recommended Configuration"));
+         assert!(report.contains("Engineering Rationale"));
+     }
 }
 
