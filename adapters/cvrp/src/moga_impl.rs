@@ -489,6 +489,20 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
             total
         };
 
+        let n = self.instance.customers.len();
+        let mut min_dists = vec![f64::MAX; n];
+        for i in 0..n {
+            let cust_i = &self.instance.customers[i];
+            for j in 0..n {
+                if i != j {
+                    let d = self.instance.distance(cust_i, &self.instance.customers[j]);
+                    if d < min_dists[i] {
+                        min_dists[i] = d;
+                    }
+                }
+            }
+        }
+
         let mut current_best = get_total_distance(&routes);
         let mut improving = true;
         while improving {
@@ -556,6 +570,21 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                         let len1 = routes[r1].len();
                         for i in 0..len1 {
                             let cust_idx = routes[r1][i];
+                            
+                            // Spatial pruning
+                            if !routes[r2].is_empty() {
+                                let limit_dist = min_dists[cust_idx] * 4.0;
+                                let mut is_close = false;
+                                for &other_idx in &routes[r2] {
+                                    let d = self.instance.distance(&self.instance.customers[cust_idx], &self.instance.customers[other_idx]);
+                                    if d <= limit_dist {
+                                        is_close = true;
+                                        break;
+                                    }
+                                }
+                                if !is_close { continue; }
+                            }
+
                             let demand = self.instance.customers[cust_idx].demand;
 
                             // Check capacity constraint on target route
@@ -590,8 +619,21 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                         let load2: i32 = routes[r2].iter().map(|&idx| self.instance.customers[idx].demand).sum();
 
                         for i in 0..len1 {
+                            let c1 = routes[r1][i];
+                            
+                            // Spatial pruning for swap partner
+                            let limit_dist1 = min_dists[c1] * 4.0;
+                            let mut is_close = false;
+                            for &other_idx in &routes[r2] {
+                                let d = self.instance.distance(&self.instance.customers[c1], &self.instance.customers[other_idx]);
+                                if d <= limit_dist1 {
+                                    is_close = true;
+                                    break;
+                                }
+                            }
+                            if !is_close { continue; }
+
                             for j in 0..len2 {
-                                let c1 = routes[r1][i];
                                 let c2 = routes[r2][j];
                                 let d1 = self.instance.customers[c1].demand;
                                 let d2 = self.instance.customers[c2].demand;
