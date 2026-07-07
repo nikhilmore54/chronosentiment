@@ -185,12 +185,8 @@ impl MutationOperator<CvrpCandidate> for CvrpMutator {
 
         // Unconditional mutation when called (MOGA engine regulates rate)
         {
-            // Pick one mutation strategy randomly (Swap, Insert, Relocate only)
-            let strategy = match rng.gen_range(0..3) {
-                0 => 0, // Swap
-                1 => 1, // Insert
-                _ => 4, // Relocate
-            };
+            // Pick one mutation strategy randomly (Swap, Insert, Inversion, Block, or Relocate)
+            let strategy = rng.gen_range(0..5);
             let mut i = rng.gen_range(0..size);
             
             let cust_i = candidate.permutation[i];
