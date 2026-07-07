@@ -248,7 +248,26 @@ impl<
         let mut total_evaluations = 0;
 
         // Configuration validation removed for now.
-        for _gen in 0..config.generation_limit {
+        let mut _gen = 0;
+        let mut stddev = 0.0;
+        let policy = config.termination_policy.clone().unwrap_or(crate::termination::TerminationPolicy::FixedGenerations(config.generation_limit));
+
+        loop {
+            // Check termination policy
+            let elapsed = start.elapsed();
+            let avg_fitness = if history.is_empty() { 0.0 } else { average_history.last().copied().unwrap_or(0.0) };
+            let term_state = crate::termination::TerminationState {
+                generation: _gen,
+                elapsed_time: elapsed,
+                best_fitness: global_best.as_ref().map(|g| g.fitness()).unwrap_or(0.0),
+                average_fitness: avg_fitness,
+                fitness_stddev: stddev,
+                stagnation_generations: stagnation_counter,
+            };
+            if policy.should_terminate(&term_state) {
+                break;
+            }
+
             // Instrument only for generation 98
             let instrument = _gen == 98;
             // Capture previous global best for logging later
@@ -265,6 +284,7 @@ impl<
 
             if evals.is_empty() {
                 population = self.initialize_population(&config, &mut rng);
+                _gen += 1;
                 continue;
             }
 
@@ -332,7 +352,7 @@ impl<
                     })
                     .sum::<f64>() / evals.len() as f64
             };
-            let stddev = variance.sqrt();
+            stddev = variance.sqrt();
 
             total_evaluations += evals.len();
             let initial_best = history.first().map(|e: &F::Evaluation| e.fitness()).unwrap_or(gen_best.fitness());
@@ -479,6 +499,7 @@ impl<
             }
             // Log generation statistics
             // Generation summary log removed
+            _gen += 1;
         }
 
         let best = global_best.unwrap_or_else(|| {

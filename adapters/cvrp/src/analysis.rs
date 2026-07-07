@@ -294,65 +294,110 @@ impl InstanceAnalyzer<CvrpInstance> for CvrpInstanceAnalyzer {
             label,
         };
         
-        // Configuration Policy
-        let mut population_size = 100;
-        let mut generation_limit = 30;
-        let mut mutation_rate = 0.2;
-        let mut crossover_rate = 0.8;
-        let mut local_search_intensity = 5;
-        let mut repair_intensity = 10;
-        let mut diversity_preservation = true;
-        let mut route_preserving_crossover = true;
+        // Construct target features HashMap
+        let mut target_features = HashMap::new();
+        target_features.insert("customer_count".to_string(), customer_count as f64);
+        target_features.insert("packing_density".to_string(), packing_density);
+        target_features.insert("clustering_estimate".to_string(), clustering_estimate);
+        target_features.insert("depot_centrality".to_string(), depot_centrality);
+        target_features.insert("avg_nn_distance".to_string(), avg_nn_distance);
+        target_features.insert("constraint_tightness".to_string(), constraint_tightness);
         
-        let mut evidence_level = EvidenceLevel::Medium;
-        let mut confidence_rationale = Vec::new();
-        let mut rationale = Vec::new();
+        // Load Observatory Database
+        let db_path = "/Users/nikhil/.gemini/antigravity/brain/262ffe5d-aed4-43c6-a002-28b6911113bc/scratch/observatory_db.json";
+        let db = coralys_core::analysis::ObservatoryDatabase::load_from_file(db_path).unwrap_or_default();
         
-        // Rules
-        match size_difficulty {
-            CvrpSizeDifficulty::Huge => {
-                population_size = 300;
-                generation_limit = 100;
-                rationale.push("Large instance detected. Increase exploration budget.".to_string());
-                evidence_level = EvidenceLevel::High;
-                confidence_rationale.push("Large-scale behavior rules are heavily verified by benchmark results.".to_string());
-            }
-            CvrpSizeDifficulty::Large => {
-                population_size = 200;
-                generation_limit = 50;
-                rationale.push("Medium-large scale. Boost population size and generations.".to_string());
-                evidence_level = EvidenceLevel::High;
-                confidence_rationale.push("High confidence rule for mid-to-large capacity bounds.".to_string());
-            }
-            _ => {
-                rationale.push("Small/Medium scale. Keep standard evolutionary budget.".to_string());
-                confidence_rationale.push("Moderate instance structure fits canonical defaults.".to_string());
-            }
-        }
-        
-        match packing_difficulty {
-            CvrpPackingDifficulty::Extreme => {
-                repair_intensity = 30;
-                local_search_intensity = 15;
-                mutation_rate = 0.3;
-                rationale.push("Packing density exceeds 98%. Aggressive repair is recommended.".to_string());
-                evidence_level = EvidenceLevel::High;
-                confidence_rationale.push("Tight packing constraint requires verified repair heuristics.".to_string());
-            }
-            CvrpPackingDifficulty::Tight => {
-                repair_intensity = 20;
-                local_search_intensity = 10;
-                rationale.push("Tight packing capacity. Increase local search and repair intensity.".to_string());
-            }
-            _ => {}
-        }
-        
-        if clustering_estimate < 0.4 {
-            route_preserving_crossover = true;
-            rationale.push("Spatial clustering detected. Route-preserving crossover is recommended.".to_string());
+        let (population_size, generation_limit, mutation_rate, crossover_rate, local_search_intensity, repair_intensity, diversity_preservation, route_preserving_crossover, evidence_level, confidence_rationale, rationale) = 
+        if let Some((best_config, ev_level, mut rationales)) = db.best_config_for(&target_features, 0.85) {
+            let mut main_rationale = vec!["Recommendation emerged from accumulated historical database evidence.".to_string()];
+            main_rationale.append(&mut rationales);
+            (
+                best_config.population_size,
+                best_config.generation_limit,
+                best_config.mutation_rate,
+                best_config.crossover_rate,
+                best_config.local_search_intensity,
+                best_config.repair_intensity,
+                best_config.diversity_preservation,
+                best_config.route_preserving_crossover,
+                ev_level,
+                vec!["Database match has verified this configuration on identical or near-identical instances.".to_string()],
+                main_rationale,
+            )
         } else {
-            rationale.push("Uniform spatial distribution. Rely on standard crossover.".to_string());
-        }
+            // Configuration Policy Default fallback rules
+            let mut population_size = 100;
+            let mut generation_limit = 30;
+            let mut mutation_rate = 0.2;
+            let crossover_rate = 0.8;
+            let mut local_search_intensity = 5;
+            let mut repair_intensity = 10;
+            let diversity_preservation = true;
+            let mut route_preserving_crossover = true;
+            
+            let mut evidence_level = EvidenceLevel::Medium;
+            let mut confidence_rationale = Vec::new();
+            let mut rationale = Vec::new();
+            
+            // Rules
+            match size_difficulty {
+                CvrpSizeDifficulty::Huge => {
+                    population_size = 300;
+                    generation_limit = 100;
+                    rationale.push("Large instance detected. Increase exploration budget.".to_string());
+                    evidence_level = EvidenceLevel::High;
+                    confidence_rationale.push("Large-scale behavior rules are heavily verified by benchmark results.".to_string());
+                }
+                CvrpSizeDifficulty::Large => {
+                    population_size = 200;
+                    generation_limit = 50;
+                    rationale.push("Medium-large scale. Boost population size and generations.".to_string());
+                    evidence_level = EvidenceLevel::High;
+                    confidence_rationale.push("High confidence rule for mid-to-large capacity bounds.".to_string());
+                }
+                _ => {
+                    rationale.push("Small/Medium scale. Keep standard evolutionary budget.".to_string());
+                    confidence_rationale.push("Moderate instance structure fits canonical defaults.".to_string());
+                }
+            }
+            
+            match packing_difficulty {
+                CvrpPackingDifficulty::Extreme => {
+                    repair_intensity = 30;
+                    local_search_intensity = 15;
+                    mutation_rate = 0.3;
+                    rationale.push("Packing density exceeds 98%. Aggressive repair is recommended.".to_string());
+                    evidence_level = EvidenceLevel::High;
+                    confidence_rationale.push("Tight packing constraint requires verified repair heuristics.".to_string());
+                }
+                CvrpPackingDifficulty::Tight => {
+                    repair_intensity = 20;
+                    local_search_intensity = 10;
+                    rationale.push("Tight packing capacity. Increase local search and repair intensity.".to_string());
+                }
+                _ => {}
+            }
+            
+            if clustering_estimate < 0.4 {
+                route_preserving_crossover = true;
+                rationale.push("Spatial clustering detected. Route-preserving crossover is recommended.".to_string());
+            } else {
+                rationale.push("Uniform spatial distribution. Rely on standard crossover.".to_string());
+            }
+            (
+                population_size,
+                generation_limit,
+                mutation_rate,
+                crossover_rate,
+                local_search_intensity,
+                repair_intensity,
+                diversity_preservation,
+                route_preserving_crossover,
+                evidence_level,
+                confidence_rationale,
+                rationale,
+            )
+        };
         
         let policy = CvrpConfigurationPolicy {
             population_size,

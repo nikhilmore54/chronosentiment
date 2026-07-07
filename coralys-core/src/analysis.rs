@@ -130,3 +130,60 @@ impl SimilarityAnalyzer {
         SimilarityScore { score, metrics }
     }
 }
+
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct ObservatoryDatabase {
+    pub runs: Vec<BenchmarkRun>,
+    pub features_cache: HashMap<String, HashMap<String, f64>>,
+}
+
+impl ObservatoryDatabase {
+    pub fn load_from_file(path: &str) -> Result<Self, String> {
+        if !std::path::Path::new(path).exists() {
+            return Ok(Self::default());
+        }
+        let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&data).map_err(|e| e.to_string())
+    }
+
+    pub fn save_to_file(&self, path: &str) -> Result<(), String> {
+        let dir = std::path::Path::new(path).parent();
+        if let Some(parent) = dir {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let data = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
+        std::fs::write(path, data).map_err(|e| e.to_string())
+    }
+
+    pub fn record_run(&mut self, run: BenchmarkRun, features: HashMap<String, f64>) {
+        self.features_cache.insert(run.instance_name.clone(), features);
+        self.runs.push(run);
+    }
+
+    pub fn best_config_for(
+        &self,
+        target_features: &HashMap<String, f64>,
+        similarity_threshold: f64,
+    ) -> Option<(BenchmarkConfiguration, EvidenceLevel, Vec<String>)> {
+        let mut best_run: Option<&BenchmarkRun> = None;
+        let mut highest_similarity = 0.0;
+
+        for run in &self.runs {
+            if let Some(cached_feats) = self.features_cache.get(&run.instance_name) {
+                let score = SimilarityAnalyzer::compute_similarity(target_features, cached_feats);
+                if score.score >= similarity_threshold && score.score > highest_similarity {
+                    highest_similarity = score.score;
+                    best_run = Some(run);
+                }
+            }
+        }
+
+        best_run.map(|run| {
+            let rationale = vec![
+                format!("Found historically similar instance '{}' (Similarity: {:.2}%)", run.instance_name, highest_similarity * 100.0),
+                format!("Historical run yielded objective value {:.2} in {:.2}s (Feasible: {})", run.metrics.final_objective, run.metrics.runtime_sec, run.metrics.feasibility),
+            ];
+            (run.configuration.clone(), EvidenceLevel::Verified, rationale)
+        })
+    }
+}

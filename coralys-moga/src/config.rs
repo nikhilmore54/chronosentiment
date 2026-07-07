@@ -7,6 +7,7 @@ pub struct EvolutionConfig {
     pub generation_limit: usize,
     pub seed: Option<u64>,
     pub tournament_size: Option<usize>,
+    pub termination_policy: Option<crate::termination::TerminationPolicy>,
 }
 
 impl Default for EvolutionConfig {
@@ -19,6 +20,7 @@ impl Default for EvolutionConfig {
             generation_limit: 100,
             seed: None,
             tournament_size: None,
+            termination_policy: None,
         }
     }
 }
@@ -33,6 +35,7 @@ impl EvolutionConfig {
             generation_limit: 100,
             seed: Some(42),
             tournament_size: Some(3),
+            termination_policy: None,
         }
     }
 }

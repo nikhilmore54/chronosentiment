@@ -8,6 +8,7 @@ pub mod state;
 pub mod traits;
 pub mod metrics;
 pub mod repair;
+pub mod termination;
 
 pub mod observatory;
 
@@ -17,6 +18,7 @@ pub use benchmark_framework::{MogaBenchmarkReport, SolutionQuality, ExecutionMet
 
 pub use config::EvolutionConfig;
 pub use engine::{MogaOutcomeWrapper, MogaReasoningEngine, PluginFitnessEvaluator, EvolutionEngineBuilder};
+pub use termination::{TerminationPolicy, TerminationState};
 pub use state::{EliteArchive, EvolutionState, GenerationResult, Organism, Population};
 pub use observatory::{PipelineObserver, ProcessingEvent, ProcessingMetricsCollector};
 pub use traits::{

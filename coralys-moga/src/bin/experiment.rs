@@ -66,6 +66,7 @@ fn main() {
         crossover_rate: 0.9,
         seed,
         tournament_size: Some(3),
+        termination_policy: None,
     };
     println!("=== Deterministic Seed Verification ===");
     for i in 0..3 {

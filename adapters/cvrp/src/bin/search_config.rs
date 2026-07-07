@@ -74,6 +74,7 @@ fn main() {
                                 crossover_rate: cross_rate,
                                 seed: Some(42),
                                 tournament_size: Some(tourney),
+                                ..Default::default()
                             };
 
                             // Opt 1: Control + Basic Crossover

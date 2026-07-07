@@ -83,6 +83,7 @@ pub fn run_dummy_benchmark() {
         crossover_rate: 0.9,
         seed: Some(12345),
         tournament_size: Some(3),
+        termination_policy: None,
     };
     match engine.run_ga_evolution(config) {
         Ok(result) => {
