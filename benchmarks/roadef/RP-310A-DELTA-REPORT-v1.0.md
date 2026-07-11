@@ -181,14 +181,58 @@ quality or feasibility rate.
 >
 > Evidence: Evaluator-level speedup (2.10×) vs campaign-level speedup (1.37×) on setA-10.
 
+### O-013 — Engineering optimization can change the behavioural class of benchmark instances without modifying the search algorithm
+
+> Reducing evaluator cost — without any change to the EvolutionEngine, mutation
+> operators, crossover operators, or population parameters — caused setA-19 to
+> transition from Infeasible to valid. This demonstrates that engineering
+> improvements to the evaluation layer can improve optimization capability even
+> when the search algorithm itself is unchanged. The mechanism is that cheaper
+> evaluation allows more evolutionary progress within a fixed wall-clock budget,
+> enabling the optimizer to reach feasible regions it previously could not explore.
+>
+> Evidence: setA-19 (6000 demands, 1998 links): baseline valid=false → Campaign v4 valid=true (obj=241.99, 2 generations).
+
 ---
 
-## 7. RP-310 Work Package Status
+## 7. M20 Roadmap
+
+```
+M20
+├── RP-310A  Redundant Dijkstra elimination      ✅ COMPLETE (commit 42038b1e)
+├── RP-310B  ECMP propagation optimisation       ← NEXT
+└── RP-310C  Campaign validation & constitutional close
+```
+
+M21 (RP-301 topology-aware initialization) begins only after M20 closes, ensuring
+maximum evaluator throughput before algorithmic research begins.
+
+### RP-310 Work Package Status
 
 | Work Package | Scope | Status | Outcome |
 |---|---|---|---|
 | RP-310A | Dijkstra reuse via per-time-slot cache | ✅ Complete | 1.2–1.5× ms/gen improvement, 0 regressions, setA-19 newly feasible |
-| RP-310B | ECMP propagation optimisation | 🔲 Pending | Motivated by O-010, O-012 |
+| RP-310B | ECMP propagation optimisation | 🔲 Pending | Motivated by O-010, O-012; target: `route_ecmp()` (70–80% of routing time) |
+| RP-310C | Campaign validation & constitutional close | 🔲 Pending | Rerun benchmark after RP-310B; assess ≥2× on setA-10 |
+
+### RP-310B Engineering Plan
+
+**Hypothesis:** Reducing ECMP propagation cost will further decrease evaluator cost
+while preserving E-001.
+
+**Phase 1 — Profile `route_ecmp()` internally:**
+Measure sub-components: queue operations, edge traversal, flow accumulation,
+split calculation, memory allocation. Produce an ECMP Performance Model analogous
+to the Evaluator Performance Model from M20 Phase 1.
+
+**Phase 2 — Identify redundancy:**
+Look for repeated graph traversals, repeated allocations, repeated hash lookups,
+recomputation of split ratios, unnecessary vector clearing, copying.
+Measure before optimizing.
+
+**Phase 3 — Optimize dominant component only:**
+Same discipline as RP-310A: one hypothesis, one implementation, E-001 validation,
+campaign benchmark.
 
 ---
 
