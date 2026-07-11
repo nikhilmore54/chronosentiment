@@ -1,8 +1,121 @@
 use crate::models::{Network, TrafficMatrix, Scenario, Solution};
 use crate::graph::Digraph;
-use crate::ecmp::expand_sr_path;
+use crate::ecmp::{expand_sr_path, backward_dijkstra, route_ecmp, DijkstraResult};
 use crate::path::SrPathBit;
 use std::collections::{HashMap, HashSet};
+use std::time::Instant;
+
+// ---------------------------------------------------------------------------
+// M20 Phase 1 — Evaluator Performance Model instrumentation
+// M20 Phase 2 — Cache statistics and routing sub-stage timers
+// Passive: records nanoseconds per stage, no logic changes to evaluate_solution().
+// ---------------------------------------------------------------------------
+
+/// Accumulated timing counters for one call to `evaluate_solution_timed()` or
+/// `evaluate_solution_cached()`.
+/// All fields are nanoseconds measured with `std::time::Instant` (monotonic).
+#[derive(Debug, Default, Clone)]
+pub struct EvalTimings {
+    /// Segment-count constraint check (O(srpaths)).
+    pub segment_check_ns: u64,
+    /// Budget-cost check including SrPathBit construction and dist() calls
+    /// (O(demands × time_slots)).
+    pub budget_check_ns: u64,
+    /// SR-path expansion via backward Dijkstra + ECMP flow routing
+    /// (O(demands × dijkstra_runs)); the dominant cost.
+    pub routing_ns: u64,
+    /// Objective computation: saturation, MLU, Jain, inv-load-cost (O(links)).
+    pub objective_ns: u64,
+    /// Number of time slots processed (early-exit reduces this).
+    pub time_slots_processed: u32,
+    /// Number of demands routed across all time slots.
+    pub demand_route_calls: u64,
+    /// Number of Dijkstra invocations requested (= segments routed).
+    pub dijkstra_calls: u64,
+
+    // --- M20 Phase 2: routing sub-stage timers ---
+    /// Time spent inside `backward_dijkstra()` only (subset of routing_ns).
+    pub dijkstra_ns: u64,
+    /// Time spent inside `route_ecmp()` only (subset of routing_ns).
+    pub ecmp_ns: u64,
+
+    // --- M20 Phase 2: cache statistics (only populated by evaluate_solution_cached) ---
+    /// Dijkstra results served from cache (no recomputation).
+    pub dijkstra_cache_hits: u64,
+    /// Dijkstra results computed and inserted into cache.
+    pub dijkstra_cache_misses: u64,
+}
+
+impl EvalTimings {
+    pub fn total_ns(&self) -> u64 {
+        self.segment_check_ns
+            + self.budget_check_ns
+            + self.routing_ns
+            + self.objective_ns
+    }
+
+    /// Cache hit rate: fraction of Dijkstra requests served from cache.
+    /// Returns 0.0 if no cache was used.
+    pub fn cache_hit_rate(&self) -> f64 {
+        let total = self.dijkstra_cache_hits + self.dijkstra_cache_misses;
+        if total == 0 { 0.0 } else { self.dijkstra_cache_hits as f64 / total as f64 }
+    }
+
+    /// Fraction of routing time spent in backward_dijkstra specifically.
+    /// Returns 0.0 if routing_ns == 0.
+    pub fn dijkstra_fraction(&self) -> f64 {
+        if self.routing_ns == 0 { 0.0 } else { self.dijkstra_ns as f64 / self.routing_ns as f64 }
+    }
+
+    /// Print a human-readable Performance Model table to stderr.
+    pub fn print_report(&self, label: &str) {
+        let total = self.total_ns().max(1) as f64;
+        eprintln!("=== Evaluator Performance Model: {} ===", label);
+        eprintln!(
+            "  {:30}  {:>10}  {:>6}",
+            "Stage", "µs", "%"
+        );
+        eprintln!("  {}", "-".repeat(52));
+        let stages = [
+            ("segment_check",  self.segment_check_ns),
+            ("budget_check",   self.budget_check_ns),
+            ("routing",        self.routing_ns),
+            ("  ↳ dijkstra",   self.dijkstra_ns),
+            ("  ↳ ecmp",       self.ecmp_ns),
+            ("objective",      self.objective_ns),
+        ];
+        for (name, ns) in &stages {
+            eprintln!(
+                "  {:30}  {:>10.1}  {:>5.1}%",
+                name,
+                *ns as f64 / 1_000.0,
+                *ns as f64 / total * 100.0
+            );
+        }
+        eprintln!("  {}", "-".repeat(52));
+        eprintln!(
+            "  {:30}  {:>10.1}",
+            "TOTAL",
+            total / 1_000.0
+        );
+        eprintln!(
+            "  time_slots_processed: {}  demand_route_calls: {}  dijkstra_calls: {}",
+            self.time_slots_processed,
+            self.demand_route_calls,
+            self.dijkstra_calls
+        );
+        if self.dijkstra_cache_hits + self.dijkstra_cache_misses > 0 {
+            eprintln!(
+                "  cache_hits: {}  cache_misses: {}  hit_rate: {:.1}%  dijkstra_fraction: {:.1}%",
+                self.dijkstra_cache_hits,
+                self.dijkstra_cache_misses,
+                self.cache_hit_rate() * 100.0,
+                self.dijkstra_fraction() * 100.0,
+            );
+        }
+        eprintln!();
+    }
+}
 
 pub struct RoadefEvaluator {
     pub graph: Digraph,
@@ -121,6 +234,297 @@ impl RoadefEvaluator {
             jain_index,
             inv_load_cost,
         })
+    }
+
+    /// Instrumented variant of `evaluate_solution()`.
+    /// Identical logic; wraps each stage with `Instant::now()` to populate
+    /// `EvalTimings`. The unmodified `evaluate_solution()` is unchanged.
+    pub fn evaluate_solution_timed(&self, solution: &Solution) -> (EvaluationResult, EvalTimings) {
+        let mut t = EvalTimings::default();
+
+        // --- Stage 1: segment check ---
+        let t0 = Instant::now();
+        if self.scenario.max_segments >= 0 {
+            for path in &solution.srpaths {
+                if path.w.len() + 1 > self.scenario.max_segments as usize {
+                    t.segment_check_ns += t0.elapsed().as_nanos() as u64;
+                    return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+                }
+            }
+        }
+        t.segment_check_ns += t0.elapsed().as_nanos() as u64;
+
+        let mut total_obj = 0.0;
+        let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+        for ts in 0..self.tm.num_time_slots {
+            // --- Stage 2: budget check ---
+            let t1 = Instant::now();
+            let mut budget_cost = 0;
+            let mut curr_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let d_id_u64 = d_id as u64;
+                let mut bitpath = SrPathBit::new_uninitialized();
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    bitpath = SrPathBit::new_explicit(demand.s, demand.t, &srpath.w);
+                }
+                if ts > 0 {
+                    let uninit = SrPathBit::new_uninitialized();
+                    let prev_bitpath = prev_paths.get(&d_id_u64).unwrap_or(&uninit);
+                    budget_cost += bitpath.dist(prev_bitpath);
+                }
+                curr_paths.insert(d_id_u64, bitpath);
+            }
+            if ts > 0 {
+                let budget_val = self.scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                if budget_cost > budget_val {
+                    t.budget_check_ns += t1.elapsed().as_nanos() as u64;
+                    t.time_slots_processed += ts as u32;
+                    return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+                }
+            }
+            prev_paths = curr_paths;
+            t.budget_check_ns += t1.elapsed().as_nanos() as u64;
+
+            // --- Stage 3: routing (expand_sr_path / Dijkstra) ---
+            let t2 = Instant::now();
+            let mut arc_flows: HashMap<u64, f64> = HashMap::new();
+            let mut disabled_arcs = HashSet::new();
+            if let Some(intervention) = self.scenario.interventions.iter().find(|i| i.t == ts) {
+                for &link_id in &intervention.links {
+                    disabled_arcs.insert(link_id);
+                }
+            }
+            for arc in &self.graph.arcs {
+                arc_flows.insert(arc.id, 0.0);
+            }
+
+            let mut routing_ok = true;
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let flow = demand.v[ts];
+                if flow <= 0.0 { continue; }
+                let mut waypoints: &[u64] = &[];
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    waypoints = &srpath.w;
+                }
+                // Count Dijkstra calls: 1 per segment (waypoints.len() + 1)
+                t.dijkstra_calls += (waypoints.len() as u64) + 1;
+                t.demand_route_calls += 1;
+                let ok = expand_sr_path(
+                    &self.graph, demand.s, demand.t, waypoints,
+                    &disabled_arcs, flow, &mut arc_flows,
+                );
+                if !ok {
+                    routing_ok = false;
+                    break;
+                }
+            }
+            t.routing_ns += t2.elapsed().as_nanos() as u64;
+
+            if !routing_ok {
+                t.time_slots_processed += ts as u32 + 1;
+                return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+            }
+
+            // --- Stage 4: objective computation ---
+            let t3 = Instant::now();
+            let mut mlu = 0.0f64;
+            let mut inv_load_cost = 0.0f64;
+            for arc in &self.graph.arcs {
+                let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
+                let capacity = arc.capacity;
+                let sat = if capacity > 0.0 { flow / capacity } else { f64::INFINITY };
+                if sat > mlu { mlu = sat; }
+                if sat > 0.0 {
+                    if sat >= 1.0 {
+                        inv_load_cost += f64::INFINITY;
+                    } else {
+                        let f_sat = sat as f32;
+                        inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
+                    }
+                }
+            }
+            total_obj += mlu + inv_load_cost;
+            t.objective_ns += t3.elapsed().as_nanos() as u64;
+        }
+
+        t.time_slots_processed = self.tm.num_time_slots as u32;
+        (EvaluationResult { valid: true, obj: total_obj }, t)
+    }
+
+    /// M20 Phase 2 — Cached evaluator.
+    ///
+    /// Semantically identical to `evaluate_solution()`. Caches `DijkstraResult`
+    /// per `(target_node, time_slot)` within a single evaluation call, eliminating
+    /// redundant shortest-path computation for demands sharing the same destination.
+    ///
+    /// Cache key validity: `disabled_arcs` is determined solely by
+    /// `self.scenario.interventions` (scenario data, immutable, genome-independent),
+    /// so the result for `(target_node, time_slot)` is identical for all demands
+    /// in that time slot. See RP-310-DESIGN-SPEC-v1.0.md §4.1.
+    ///
+    /// Returns `(EvaluationResult, EvalTimings)` with cache statistics populated.
+    pub fn evaluate_solution_cached(&self, solution: &Solution) -> (EvaluationResult, EvalTimings) {
+        let mut t = EvalTimings::default();
+
+        // --- Stage 1: segment check ---
+        let t0 = Instant::now();
+        if self.scenario.max_segments >= 0 {
+            for path in &solution.srpaths {
+                if path.w.len() + 1 > self.scenario.max_segments as usize {
+                    t.segment_check_ns += t0.elapsed().as_nanos() as u64;
+                    return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+                }
+            }
+        }
+        t.segment_check_ns += t0.elapsed().as_nanos() as u64;
+
+        let mut total_obj = 0.0;
+        let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+        for ts in 0..self.tm.num_time_slots {
+            // --- Stage 2: budget check (unchanged from reference evaluator) ---
+            let t1 = Instant::now();
+            let mut budget_cost = 0;
+            let mut curr_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let d_id_u64 = d_id as u64;
+                let mut bitpath = SrPathBit::new_uninitialized();
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    bitpath = SrPathBit::new_explicit(demand.s, demand.t, &srpath.w);
+                }
+                if ts > 0 {
+                    let uninit = SrPathBit::new_uninitialized();
+                    let prev_bitpath = prev_paths.get(&d_id_u64).unwrap_or(&uninit);
+                    budget_cost += bitpath.dist(prev_bitpath);
+                }
+                curr_paths.insert(d_id_u64, bitpath);
+            }
+            if ts > 0 {
+                let budget_val = self.scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                if budget_cost > budget_val {
+                    t.budget_check_ns += t1.elapsed().as_nanos() as u64;
+                    t.time_slots_processed += ts as u32;
+                    return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+                }
+            }
+            prev_paths = curr_paths;
+            t.budget_check_ns += t1.elapsed().as_nanos() as u64;
+
+            // --- Stage 3: routing with per-time-slot Dijkstra cache ---
+            //
+            // Cache key: target_node (u64).
+            // disabled_arcs is scenario-only, fixed for this time slot.
+            // One cache per time slot; dropped at end of loop iteration.
+            let t2 = Instant::now();
+
+            let mut disabled_arcs: HashSet<u64> = HashSet::new();
+            if let Some(intervention) = self.scenario.interventions.iter().find(|i| i.t == ts) {
+                for &link_id in &intervention.links {
+                    disabled_arcs.insert(link_id);
+                }
+            }
+
+            // Per-time-slot Dijkstra cache: target_node → DijkstraResult
+            let mut dijkstra_cache: HashMap<u64, DijkstraResult> = HashMap::new();
+
+            let mut arc_flows: HashMap<u64, f64> = HashMap::new();
+            for arc in &self.graph.arcs {
+                arc_flows.insert(arc.id, 0.0);
+            }
+
+            let mut routing_ok = true;
+
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let flow = demand.v[ts];
+                if flow <= 0.0 { continue; }
+
+                let mut waypoints: &[u64] = &[];
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    waypoints = &srpath.w;
+                }
+
+                t.demand_route_calls += 1;
+
+                // Build the segment list: [source, wp0, wp1, ..., target]
+                // Route each consecutive pair using cached Dijkstra.
+                let mut segment_nodes: Vec<u64> = Vec::with_capacity(waypoints.len() + 2);
+                segment_nodes.push(demand.s);
+                segment_nodes.extend_from_slice(waypoints);
+                segment_nodes.push(demand.t);
+
+                let mut demand_ok = true;
+                for i in 0..segment_nodes.len() - 1 {
+                    let seg_src = segment_nodes[i];
+                    let seg_tgt = segment_nodes[i + 1];
+                    if seg_src == seg_tgt { continue; }
+
+                    t.dijkstra_calls += 1;
+
+                    // Cache lookup
+                    if !dijkstra_cache.contains_key(&seg_tgt) {
+                        // Cache miss: run Dijkstra and store result
+                        t.dijkstra_cache_misses += 1;
+                        let td = Instant::now();
+                        let result = backward_dijkstra(&self.graph, seg_tgt, &disabled_arcs);
+                        t.dijkstra_ns += td.elapsed().as_nanos() as u64;
+                        dijkstra_cache.insert(seg_tgt, result);
+                    } else {
+                        t.dijkstra_cache_hits += 1;
+                    }
+
+                    let dijkstra_result = dijkstra_cache.get(&seg_tgt).unwrap();
+
+                    // ECMP flow routing using cached result
+                    let te = Instant::now();
+                    let ok = route_ecmp(&self.graph, dijkstra_result, seg_src, seg_tgt, flow, &mut arc_flows);
+                    t.ecmp_ns += te.elapsed().as_nanos() as u64;
+
+                    if !ok {
+                        demand_ok = false;
+                        break;
+                    }
+                }
+
+                if !demand_ok {
+                    routing_ok = false;
+                    break;
+                }
+            }
+
+            t.routing_ns += t2.elapsed().as_nanos() as u64;
+
+            if !routing_ok {
+                t.time_slots_processed += ts as u32 + 1;
+                return (EvaluationResult { valid: false, obj: f64::INFINITY }, t);
+            }
+
+            // --- Stage 4: objective computation (identical to reference) ---
+            let t3 = Instant::now();
+            let mut mlu = 0.0f64;
+            let mut inv_load_cost = 0.0f64;
+            for arc in &self.graph.arcs {
+                let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
+                let capacity = arc.capacity;
+                let sat = if capacity > 0.0 { flow / capacity } else { f64::INFINITY };
+                if sat > mlu { mlu = sat; }
+                if sat > 0.0 {
+                    if sat >= 1.0 {
+                        inv_load_cost += f64::INFINITY;
+                    } else {
+                        let f_sat = sat as f32;
+                        inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
+                    }
+                }
+            }
+            total_obj += mlu + inv_load_cost;
+            t.objective_ns += t3.elapsed().as_nanos() as u64;
+        }
+
+        t.time_slots_processed = self.tm.num_time_slots as u32;
+        (EvaluationResult { valid: true, obj: total_obj }, t)
     }
 
     pub fn evaluate_solution(&self, solution: &Solution) -> EvaluationResult {

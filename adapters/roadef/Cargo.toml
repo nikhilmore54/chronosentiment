@@ -21,3 +21,19 @@ path = "src/bin/tiny_solver.rs"
 [[bin]]
 name = "m25_benchmark"
 path = "src/bin/m25_benchmark.rs"
+
+[[bin]]
+name = "campaign"
+path = "src/bin/campaign.rs"
+
+[[bin]]
+name = "campaign_engine"
+path = "src/bin/campaign_engine.rs"
+
+[[bin]]
+name = "eval_profiler"
+path = "src/bin/eval_profiler.rs"
+
+[[bin]]
+name = "e001_dual_path"
+path = "src/bin/e001_dual_path.rs"
