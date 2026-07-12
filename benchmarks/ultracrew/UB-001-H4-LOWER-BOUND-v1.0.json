@@ -1,0 +1,55 @@
+{
+  "benchmark": "UB-001-v1.0",
+  "run_date": "2026-07-13",
+  "hypothesis": "H4-analytical-lower-bound",
+  "note": "Greedy min-hours-first assignment, HC1 only, no HC2/HC3/rest",
+  "workers": 20,
+  "total_shifts": 332,
+  "skill_demand": {
+    "Nurse": {
+      "shifts": 208,
+      "hours": 1664
+    },
+    "SeniorNurse": {
+      "shifts": 76,
+      "hours": 608
+    },
+    "ICU": {
+      "shifts": 48,
+      "hours": 384
+    }
+  },
+  "greedy_result": {
+    "hours_per_worker": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136
+    ],
+    "mean_hours": 132.8,
+    "variance": 15.36,
+    "sc1_penalty": 153.6,
+    "implied_max_fitness": 9846.4
+  },
+  "ga_result": {
+    "best_fitness": 9918.4,
+    "residual_sc1_plus_sc2": 81.60000000000036
+  },
+  "gap": -71.99999999999963
+}
