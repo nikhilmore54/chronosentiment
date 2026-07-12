@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from './config/api';
+
 
 import { ScheduleGrid } from './ScheduleGrid';
 import { TeamBalance } from './TeamBalance';
@@ -8,7 +8,7 @@ import { Dashboard } from './Dashboard';
 import { Simulator } from './Simulator';
 import { Landing } from './Landing';
 import { Constraints } from './Constraints';
-import { DatasetSolver } from './DatasetSolver';
+import { PlannerWorkflow } from './workflow/PlannerWorkflow';
 import type { Nurse } from './NurseRoster';
 export interface SimulationState {
   affected_nurse: string;
@@ -216,7 +216,7 @@ function App() {
               padding: '0.5rem'
             }}
           >
-            Dataset Solver
+            Import &amp; Schedule
           </button>
         </nav>
       </header>
@@ -224,7 +224,7 @@ function App() {
       <div className="content">
   <main className="main-view">
     {currentTab === 'scheduler' ? (
-      <DatasetSolver />
+      <PlannerWorkflow />
     ) : currentTab === 'constraints' ? (
       <Constraints />
     ) : (
