@@ -188,11 +188,12 @@ This bridges research and product:
 
 1. Wire `GenerateSchedule` to the real Coralys MOGA pipeline with customer-imported staff and selected rules
 2. Improve initialization, repair operators, local search, planner-aware objectives
-3. Introduce Demo Mode / Planner Mode toggle (synthetic vs. real)
-4. Improve constraint satisfaction: zero hard violations on generated output
-5. Add "Publish" step between Review and Export (lock, version, distribute)
+3. Improve constraint satisfaction: zero hard violations on generated output
+4. Add "Publish" step between Review and Export (lock, version, distribute)
 
 UI changes only when needed to expose new optimization capability.
+
+The synthetic fallback remains as an internal safety net. It does not become a permanent UX concept. If the backend is unavailable, show "Backend unavailable — run demo" rather than a persistent Demo Mode toggle. From Sprint 2 onward, Planner Mode is simply the product.
 
 **What Sprint 2 does not include:**
 
