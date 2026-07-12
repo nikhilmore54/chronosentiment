@@ -167,17 +167,28 @@ impl ScheduleOptimizer {
 impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
     fn create(&self, rng: &mut StdRng) -> ScheduleGenome {
         let mut assignments = HashMap::new();
-        for shift in self.context.shifts.iter() {
+        // H2: track per-worker assigned shifts during init so constraint_aware_pick()
+        // can enforce HC2 (no overlap) and HC3/rest (≥8h gap) before the GA starts.
+        let mut worker_assigned: HashMap<u64, Vec<Shift>> = HashMap::new();
+
+        // Sort shifts by start_hour so earlier shifts are visible to constraint_aware_pick()
+        // when later shifts are being assigned — gives a stable, deterministic view.
+        let mut sorted_shifts: Vec<&Shift> = self.context.shifts.iter().collect();
+        sorted_shifts.sort_by_key(|s| s.start_hour);
+
+        for shift in sorted_shifts {
             let worker_id = if let Some(ref locked) = self.context.locked_assignments {
                 if let Some(&w_id) = locked.get(&shift.id) {
-                    // Locked assignment — honour it regardless of skill
+                    // Locked assignment — honour it regardless of constraints
                     w_id
                 } else {
-                    self.skill_aware_pick(shift, rng)
+                    self.constraint_aware_pick(shift, &worker_assigned, rng)
                 }
             } else {
-                self.skill_aware_pick(shift, rng)
+                self.constraint_aware_pick(shift, &worker_assigned, rng)
             };
+            // Record this assignment so subsequent shifts see it
+            worker_assigned.entry(worker_id).or_default().push(shift.clone());
             assignments.insert(shift.id, worker_id);
         }
         ScheduleGenome { assignments }
@@ -185,9 +196,56 @@ impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
 }
 
 impl ScheduleOptimizer {
+    /// H2: Constraint-aware worker selection during population initialisation.
+    ///
+    /// Filters the skill-qualified pool down to workers who:
+    ///   - are not already assigned to an overlapping shift (HC2)
+    ///   - have at least 8 hours of rest before AND after `shift` relative to every
+    ///     already-assigned shift (HC3 / rest-gap rule)
+    ///
+    /// Falls back to `skill_aware_pick()` when no constraint-clean candidate exists,
+    /// preserving HC1=0 while accepting residual HC2/HC3 only when the schedule is
+    /// genuinely over-constrained (more shifts than can be cleanly covered).
+    fn constraint_aware_pick(
+        &self,
+        shift: &Shift,
+        worker_assigned: &HashMap<u64, Vec<Shift>>,
+        rng: &mut StdRng,
+    ) -> u64 {
+        let shift_end = shift.start_hour + shift.duration_hours;
+
+        let clean: Vec<u64> = self.context.workers.iter()
+            .filter(|w| w.skills.contains(&shift.required_skill))
+            .filter(|w| {
+                match worker_assigned.get(&w.id) {
+                    // Worker has no assignments yet — always constraint-clean
+                    None => true,
+                    Some(assigned) => assigned.iter().all(|a| {
+                        let a_end = a.start_hour + a.duration_hours;
+                        // HC2: shifts must not overlap
+                        let no_overlap = shift.start_hour >= a_end || a.start_hour >= shift_end;
+                        // HC3/rest: at least 8h gap in both directions
+                        let rest_ok = shift.start_hour >= a_end + 8
+                            || a.start_hour >= shift_end + 8;
+                        no_overlap && rest_ok
+                    }),
+                }
+            })
+            .map(|w| w.id)
+            .collect();
+
+        if !clean.is_empty() {
+            clean[rng.gen_range(0..clean.len())]
+        } else {
+            // Fallback: skill-only (preserves HC1=0, may introduce HC2/HC3 when
+            // the schedule is over-constrained for the available workforce)
+            self.skill_aware_pick(shift, rng)
+        }
+    }
+
     /// Pick a worker who possesses the required skill for this shift.
     /// Falls back to a random worker only if no qualified worker exists (prevents panic).
-    fn skill_aware_pick(&self, shift: &crate::models::Shift, rng: &mut StdRng) -> u64 {
+    fn skill_aware_pick(&self, shift: &Shift, rng: &mut StdRng) -> u64 {
         let qualified: Vec<u64> = self.context.workers.iter()
             .filter(|w| w.skills.contains(&shift.required_skill))
             .map(|w| w.id)
