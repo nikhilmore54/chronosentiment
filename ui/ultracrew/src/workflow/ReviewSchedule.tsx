@@ -154,7 +154,7 @@ export const ReviewSchedule: React.FC<{
   schedule: Record<string, string[]>;
   result: ScheduleResult;
   onScheduleChange: (s: Record<string, string[]>) => void;
-  onNext: () => void;
+  onNext: (editCount: number) => void;
   onBack: () => void;
 }> = ({ staff, schedule, result, onScheduleChange, onNext, onBack }) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
@@ -327,7 +327,7 @@ export const ReviewSchedule: React.FC<{
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <button onClick={onBack} style={ghostBtnStyle}>← Back</button>
-        <button onClick={onNext} style={primaryBtnStyle}>Next: Export →</button>
+        <button onClick={() => onNext(editCount)} style={primaryBtnStyle}>Next: Export →</button>
       </div>
 
       {explainTarget && (

@@ -14,9 +14,10 @@ export const ExportRoster: React.FC<{
   staff: StaffMember[];
   schedule: Record<string, string[]>;
   result: ScheduleResult;
+  manualEditCount: number;
   onBack: () => void;
   onStartOver: () => void;
-}> = ({ staff, schedule, result, onBack, onStartOver }) => {
+}> = ({ staff, schedule, result, manualEditCount, onBack, onStartOver }) => {
   const [exported, setExported] = useState(false);
 
   const handleExcel = () => {
@@ -28,6 +29,12 @@ export const ExportRoster: React.FC<{
   const totalShifts = Object.values(schedule).flat().filter(s => s !== '').length;
   const totalSlots = staff.length * 28;
   const coveragePct = totalSlots > 0 ? Math.round((totalShifts / totalSlots) * 100) : 0;
+
+  // Planner Acceptance Score: fraction of assignments not manually edited
+  const pas = totalShifts > 0
+    ? Math.round(((totalShifts - manualEditCount) / totalShifts) * 1000) / 10
+    : 100;
+  const pasColor = pas >= 95 ? '#22c55e' : pas >= 80 ? '#f59e0b' : '#ef4444';
 
   const shiftCounts: Record<string, number> = { Early: 0, Late: 0, Night: 0 };
   Object.values(schedule).flat().forEach(s => {
@@ -43,6 +50,36 @@ export const ExportRoster: React.FC<{
         </p>
       </div>
 
+      {/* ── Planner Acceptance Score ─────────────────────────────────────── */}
+      <div style={{
+        backgroundColor: `${pasColor}10`,
+        border: `1px solid ${pasColor}50`,
+        borderRadius: '10px',
+        padding: '1.25rem 1.5rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2rem',
+        flexWrap: 'wrap',
+      }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.2rem' }}>
+            Planner Acceptance Score
+          </div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: pasColor, lineHeight: 1 }}>
+            {pas.toFixed(1)}%
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <span>Generated assignments: <strong style={{ color: 'var(--text-main)' }}>{totalShifts}</strong></span>
+          <span>Manual edits: <strong style={{ color: manualEditCount > 0 ? '#f59e0b' : 'var(--success-color)' }}>{manualEditCount}</strong></span>
+          <span>Accepted without change: <strong style={{ color: pasColor }}>{totalShifts - manualEditCount}</strong></span>
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', textAlign: 'right' }}>
+          {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95%)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}
+        </div>
+      </div>
+
+      {/* ── Schedule stats ───────────────────────────────────────────────── */}
       <div style={{
         backgroundColor: cr?.hard_violations === 0 ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
         border: `1px solid ${cr?.hard_violations === 0 ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)'}`,

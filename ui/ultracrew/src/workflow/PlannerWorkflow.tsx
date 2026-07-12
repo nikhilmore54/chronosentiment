@@ -17,6 +17,7 @@ export const PlannerWorkflow: React.FC = () => {
   const [rulePayload, setRulePayload] = useState<object>({});
   const [scheduleResult, setScheduleResult] = useState<ScheduleResult | null>(null);
   const [editableSchedule, setEditableSchedule] = useState<Record<string, string[]>>({});
+  const [manualEditCount, setManualEditCount] = useState(0);
 
   const goTo = (n: number) => {
     setStep(n);
@@ -35,6 +36,7 @@ export const PlannerWorkflow: React.FC = () => {
     setRulePayload({});
     setScheduleResult(null);
     setEditableSchedule({});
+    setManualEditCount(0);
   };
 
   return (
@@ -82,7 +84,7 @@ export const PlannerWorkflow: React.FC = () => {
             schedule={editableSchedule}
             result={scheduleResult}
             onScheduleChange={setEditableSchedule}
-            onNext={() => goTo(5)}
+            onNext={(editCount) => { setManualEditCount(editCount); goTo(5); }}
             onBack={() => goTo(3)}
           />
         )}
@@ -92,6 +94,7 @@ export const PlannerWorkflow: React.FC = () => {
             staff={staff}
             schedule={editableSchedule}
             result={scheduleResult}
+            manualEditCount={manualEditCount}
             onBack={() => goTo(4)}
             onStartOver={handleStartOver}
           />
