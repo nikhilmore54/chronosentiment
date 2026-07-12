@@ -147,11 +147,11 @@ The synthetic fallback is currently invisible to the planner. Sprint 2 should ma
 
 ## Sprint 2 Definition
 
-**Milestone name:** Planner-Quality Schedule Generation
+**Milestone name:** Coralys Integration
 
-**Objective:** Make the Generate step produce a schedule of sufficiently high quality that the planner trusts it as a starting point and needs only minor manual adjustments.
+**Objective:** Replace the synthetic scheduler with the real Coralys MOGA pipeline and establish the PAS measurement infrastructure.
 
-"Publishable" is a business decision that varies by organisation. What matters for UltraCrew is that the generated schedule earns planner trust. That shifts the Definition of Done from absolute outcomes to measurable planner value.
+Sprint 2 is complete when the workflow is driven by the real optimizer and PAS can be measured. It does not claim planner-quality scheduling — that is Sprint 3.
 
 **Definition of Done:**
 
