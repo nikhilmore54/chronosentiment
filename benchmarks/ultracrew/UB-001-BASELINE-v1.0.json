@@ -1,0 +1,84 @@
+{
+  "benchmark": "UB-001-v1.0",
+  "run_date": "2026-07-12",
+  "optimizer_commit": "44b29cec",
+  "hypothesis": "H1-skill-aware-initialization",
+  "note": "4 weekly runs, 50 gens each, debug binary",
+  "config": {
+    "workers": 20,
+    "total_shifts": 332,
+    "weeks": 4,
+    "generation_limit": 50
+  },
+  "aggregate": {
+    "hc1_violations": 0,
+    "hc2_violations": 0,
+    "hc3_violations": 0,
+    "rest_violations": 0,
+    "all_weeks_valid": true,
+    "pas_estimate": 100.0,
+    "total_runtime_ms": 5906
+  },
+  "weeks": [
+    {
+      "week": 1,
+      "shifts": 83,
+      "hc1": 0,
+      "hc2": 0,
+      "hc3": 0,
+      "rest": 0,
+      "is_valid": true,
+      "best_fitness": 9790.4,
+      "runtime_ms": 1466,
+      "gen0_best": 2554.4000000000005,
+      "gen0_avg": -4716.279999999992,
+      "gen49_best": 9790.4,
+      "gen49_avg": 9341.720000000016
+    },
+    {
+      "week": 2,
+      "shifts": 83,
+      "hc1": 0,
+      "hc2": 0,
+      "hc3": 0,
+      "rest": 0,
+      "is_valid": true,
+      "best_fitness": 9790.4,
+      "runtime_ms": 1466,
+      "gen0_best": 1462.3999999999996,
+      "gen0_avg": -5361.119999999991,
+      "gen49_best": 9790.4,
+      "gen49_avg": 9476.520000000015
+    },
+    {
+      "week": 3,
+      "shifts": 83,
+      "hc1": 0,
+      "hc2": 0,
+      "hc3": 0,
+      "rest": 0,
+      "is_valid": true,
+      "best_fitness": 9790.4,
+      "runtime_ms": 1502,
+      "gen0_best": 1010.3999999999996,
+      "gen0_avg": -5126.799999999989,
+      "gen49_best": 9790.4,
+      "gen49_avg": 9406.760000000015
+    },
+    {
+      "week": 4,
+      "shifts": 83,
+      "hc1": 0,
+      "hc2": 0,
+      "hc3": 0,
+      "rest": 0,
+      "is_valid": true,
+      "best_fitness": 9854.4,
+      "runtime_ms": 1472,
+      "gen0_best": 2654.3999999999996,
+      "gen0_avg": -5190.839999999992,
+      "gen49_best": 9854.4,
+      "gen49_avg": 9620.840000000015
+    }
+  ]
+}
