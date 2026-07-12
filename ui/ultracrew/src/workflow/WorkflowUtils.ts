@@ -53,17 +53,63 @@ export function buildImportSummary(staff: StaffMember[]): ImportSummary {
 
 // ─── API payload builder ──────────────────────────────────────────────────────
 
-export function buildSchedulePayload(staff: StaffMember[], rulePayload: object) {
-  const workers = staff.map((s, i) => ({ id: i + 1, skills: s.skills }));
-  const shifts = staff.flatMap((s, wi) =>
-    Array.from({ length: 28 }, (_, d) => ({
-      id: wi * 28 + d + 1,
-      start_hour: 8,
-      duration_hours: 8,
-      required_skill: s.skills[0] || 'Nurse',
-    }))
-  );
-  return { workers, shifts, ...rulePayload };
+// ─── Weekly shift model ───────────────────────────────────────────────────────
+// The backend constraint engine uses a weekly model: start_hour must be 0–167.
+// We generate one shift slot per shift type per day of the week (5 working days).
+// The optimizer assigns workers to these weekly slots.
+// The 28-day grid is reconstructed by repeating the weekly assignment 4 times.
+//
+// Shift types within a day:
+//   Early: start_hour = day*24 + 6  (06:00–14:00)
+//   Late:  start_hour = day*24 + 14 (14:00–22:00)
+//   Night: start_hour = day*24 + 22 (22:00–06:00 next day, capped at 167)
+//
+// We generate 3 shift slots per working day × 5 days = 15 slots per skill type.
+// Each slot can be assigned to any worker with the matching skill.
+
+const WEEKLY_SHIFT_SLOTS: Array<{ dayOfWeek: number; startHour: number; label: string }> = [
+  { dayOfWeek: 0, startHour: 6,   label: 'Early' },
+  { dayOfWeek: 0, startHour: 14,  label: 'Late'  },
+  { dayOfWeek: 1, startHour: 30,  label: 'Early' }, // 24+6
+  { dayOfWeek: 1, startHour: 38,  label: 'Late'  }, // 24+14
+  { dayOfWeek: 2, startHour: 54,  label: 'Early' }, // 48+6
+  { dayOfWeek: 2, startHour: 62,  label: 'Late'  }, // 48+14
+  { dayOfWeek: 3, startHour: 78,  label: 'Early' }, // 72+6
+  { dayOfWeek: 3, startHour: 86,  label: 'Late'  }, // 72+14
+  { dayOfWeek: 4, startHour: 102, label: 'Early' }, // 96+6
+  { dayOfWeek: 4, startHour: 110, label: 'Late'  }, // 96+14
+];
+
+export function buildSchedulePayload(staff: StaffMember[], _rulePayload: object) {
+  const workers = staff.map((s, i) => ({
+    id: i + 1,
+    skills: s.skills.length > 0 ? s.skills : ['Nurse'],
+  }));
+
+  // Collect all unique skills across staff
+  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+
+  // Generate shift slots: one per (slot, skill) combination
+  const shifts: Array<{ id: number; start_hour: number; duration_hours: number; required_skill: string }> = [];
+  let shiftId = 1;
+  for (const skill of allSkills) {
+    for (const slot of WEEKLY_SHIFT_SLOTS) {
+      shifts.push({
+        id: shiftId++,
+        start_hour: slot.startHour,
+        duration_hours: 8,
+        required_skill: skill,
+      });
+    }
+  }
+
+  return {
+    workers,
+    shifts,
+    historical_workloads: null,
+    rng_seed: null,
+    generation_limit: 200,
+  };
 }
 
 // ─── Schedule builders ────────────────────────────────────────────────────────
@@ -72,15 +118,54 @@ export function buildEditableSchedule(
   staff: StaffMember[],
   apiSchedule: Record<string, number>
 ): Record<string, string[]> {
+  // apiSchedule: shift_id (string) → worker_id (number, 1-indexed)
+  // Shift IDs were generated in buildSchedulePayload:
+  //   for each skill, for each WEEKLY_SHIFT_SLOTS entry → shiftId++
+  //
+  // We reconstruct the shiftId → {dayOfWeek, label} mapping,
+  // then expand the weekly pattern into a 28-day grid (4 weeks).
+
+  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+
+  // Rebuild shiftId → {dayOfWeek, label, skill} map
+  const shiftMeta: Record<number, { dayOfWeek: number; label: string; skill: string }> = {};
+  let shiftId = 1;
+  for (const skill of allSkills) {
+    for (const slot of WEEKLY_SHIFT_SLOTS) {
+      shiftMeta[shiftId++] = { dayOfWeek: slot.dayOfWeek, label: slot.label, skill };
+    }
+  }
+
+  // Initialize result: staffId → 28 empty strings
   const result: Record<string, string[]> = {};
-  staff.forEach((s, i) => {
-    result[s.id] = Array.from({ length: 28 }, (_, d) => {
-      const shiftId = String(i * 28 + d + 1);
-      const assigned = apiSchedule[shiftId];
-      if (assigned === undefined || assigned === 0) return '';
-      return SHIFT_CYCLE[d % 7];
-    });
+  staff.forEach(s => { result[s.id] = Array(28).fill(''); });
+
+  // Build worker assignment map: workerId → Set of (dayOfWeek, label) assigned
+  // Then expand across 4 weeks
+  const workerWeeklySlots: Record<number, Array<{ dayOfWeek: number; label: string }>> = {};
+  Object.entries(apiSchedule).forEach(([shiftIdStr, workerId]) => {
+    const sid = Number(shiftIdStr);
+    const meta = shiftMeta[sid];
+    if (!meta) return;
+    if (!workerWeeklySlots[workerId]) workerWeeklySlots[workerId] = [];
+    workerWeeklySlots[workerId].push({ dayOfWeek: meta.dayOfWeek, label: meta.label });
   });
+
+  // Expand weekly pattern into 28 days (4 weeks × 7 days)
+  Object.entries(workerWeeklySlots).forEach(([workerIdStr, slots]) => {
+    const workerId = Number(workerIdStr);
+    const assignedStaff = staff[workerId - 1]; // 1-indexed
+    if (!assignedStaff) return;
+    for (let week = 0; week < 4; week++) {
+      for (const slot of slots) {
+        const dayIdx = week * 7 + slot.dayOfWeek;
+        if (dayIdx < 28) {
+          result[assignedStaff.id][dayIdx] = slot.label;
+        }
+      }
+    }
+  });
+
   return result;
 }
 
