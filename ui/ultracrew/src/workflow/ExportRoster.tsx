@@ -15,9 +15,10 @@ export const ExportRoster: React.FC<{
   schedule: Record<string, string[]>;
   result: ScheduleResult;
   manualEditCount: number;
+  editDistribution: Record<string, number>;
   onBack: () => void;
   onStartOver: () => void;
-}> = ({ staff, schedule, result, manualEditCount, onBack, onStartOver }) => {
+}> = ({ staff, schedule, result, manualEditCount, editDistribution, onBack, onStartOver }) => {
   const [exported, setExported] = useState(false);
 
   const handleExcel = () => {
@@ -78,6 +79,36 @@ export const ExportRoster: React.FC<{
           {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95%)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}
         </div>
       </div>
+
+      {/* ── Edit Distribution ────────────────────────────────────────────── */}
+      {manualEditCount > 0 && (
+        <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem 1.25rem' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+            Edit Distribution — why the planner changed assignments
+          </div>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {[
+              { key: 'shift_swap',     label: 'Shift swaps',     hint: 'Changed from one shift type to another' },
+              { key: 'coverage_fix',   label: 'Coverage fixes',  hint: 'Filled an empty slot' },
+              { key: 'removal',        label: 'Removals',        hint: 'Removed an assignment' },
+              { key: 'weekend_change', label: 'Weekend changes', hint: 'Any edit on a weekend day' },
+            ].map(({ key, label, hint }) => {
+              const count = editDistribution[key] ?? 0;
+              const pct = manualEditCount > 0 ? Math.round((count / manualEditCount) * 100) : 0;
+              return (
+                <div key={key} title={hint} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: '110px' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: count > 0 ? '#f59e0b' : 'var(--text-muted)' }}>{count}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{pct}% of edits</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Dominant edit type guides Sprint 3 optimizer priority.
+          </div>
+        </div>
+      )}
 
       {/* ── Schedule stats ───────────────────────────────────────────────── */}
       <div style={{

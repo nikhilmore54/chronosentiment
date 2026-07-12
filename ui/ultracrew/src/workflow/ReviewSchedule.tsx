@@ -154,12 +154,18 @@ export const ReviewSchedule: React.FC<{
   schedule: Record<string, string[]>;
   result: ScheduleResult;
   onScheduleChange: (s: Record<string, string[]>) => void;
-  onNext: (editCount: number) => void;
+  onNext: (editCount: number, editDistribution: Record<string, number>) => void;
   onBack: () => void;
 }> = ({ staff, schedule, result, onScheduleChange, onNext, onBack }) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
   const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string } | null>(null);
   const [editCount, setEditCount] = useState(0);
+  const [editDist, setEditDist] = useState<Record<string, number>>({
+    shift_swap: 0,       // changed from one shift type to another
+    coverage_fix: 0,     // changed from empty to a shift (filling a gap)
+    removal: 0,          // changed from a shift to empty (removing assignment)
+    weekend_change: 0,   // any edit on a weekend day (Sat=5, Sun=6 mod 7)
+  });
 
   const startDate = new Date('2026-07-14');
   const days = Array.from({ length: 28 }, (_, i) => {
@@ -169,10 +175,24 @@ export const ReviewSchedule: React.FC<{
   });
 
   const handleShiftPick = (nurseId: string, dayIdx: number, shift: string) => {
+    const prev = (schedule[nurseId] || [])[dayIdx] ?? '';
     const next = { ...schedule, [nurseId]: [...(schedule[nurseId] || [])] };
     next[nurseId][dayIdx] = shift;
     onScheduleChange(next);
     setEditCount(c => c + 1);
+
+    // Classify the edit
+    setEditDist(d => {
+      const updated = { ...d };
+      const dayOfWeek = days[dayIdx]?.getDay() ?? 0; // 0=Sun, 6=Sat
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      if (isWeekend) updated.weekend_change = (updated.weekend_change ?? 0) + 1;
+      if (prev === '' && shift !== '') updated.coverage_fix = (updated.coverage_fix ?? 0) + 1;
+      else if (prev !== '' && shift === '') updated.removal = (updated.removal ?? 0) + 1;
+      else if (prev !== '' && shift !== '' && prev !== shift) updated.shift_swap = (updated.shift_swap ?? 0) + 1;
+      return updated;
+    });
+
     setActiveCell(null);
   };
 
@@ -327,7 +347,7 @@ export const ReviewSchedule: React.FC<{
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <button onClick={onBack} style={ghostBtnStyle}>← Back</button>
-        <button onClick={() => onNext(editCount)} style={primaryBtnStyle}>Next: Export →</button>
+        <button onClick={() => onNext(editCount, editDist)} style={primaryBtnStyle}>Next: Export →</button>
       </div>
 
       {explainTarget && (
