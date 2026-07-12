@@ -29,14 +29,32 @@ impl WorkforceEcology {
         }
     }
 
+    /// Returns normalized historical fatigue in [0.0, 1.0].
+    ///
+    /// Fatigue is defined as the worker's mean weekly hours over the recent
+    /// history window, normalized against a fixed reference of 40h/week
+    /// (standard full-time contract). This produces an absolute, workforce-wide
+    /// comparable signal:
+    ///
+    ///   0.0 = no historical workload
+    ///   0.5 = worker averaged 20h/week (half-time)
+    ///   1.0 = worker averaged 40h/week (full-time) or above
+    ///
+    /// Using a fixed reference (not running_max) ensures that two workers with
+    /// different absolute loads are distinguished correctly. A worker averaging
+    /// 20h/week is less fatigued than one averaging 40h/week, regardless of
+    /// their individual history peaks.
+    ///
+    /// SC2 = fatigue * assigned_hours * 2.0 then contributes 0–80 fitness units
+    /// per worker per week, comparable in magnitude to SC1 = variance * 10.0.
     pub fn get_historical_fatigue(&self, worker_id: u64) -> f64 {
+        const REFERENCE_HOURS: f64 = 40.0; // standard full-time weekly hours
         if let Some(mem) = self.worker_history.get(&worker_id) {
             if mem.buffer.is_empty() {
                 return 0.0;
             }
-            // Simple moving average of historical hours in the buffer
-            let sum: f64 = mem.buffer.iter().sum();
-            sum / mem.buffer.len() as f64
+            let mean: f64 = mem.buffer.iter().sum::<f64>() / mem.buffer.len() as f64;
+            (mean / REFERENCE_HOURS).clamp(0.0, 1.0)
         } else {
             0.0
         }
