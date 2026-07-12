@@ -1,0 +1,35 @@
+{
+  "benchmark": "UB-001-v1.0",
+  "run_date": "2026-07-13",
+  "hypothesis": "H5-R0: Week 3 SC decomposition",
+  "week": 3,
+  "runs": 5,
+  "generations": 50,
+  "results": [
+    {
+      "fitness": 9918.4,
+      "sc1": 81.6,
+      "sc2": 0.0
+    },
+    {
+      "fitness": 9854.4,
+      "sc1": 145.59999999999994,
+      "sc2": 0.0
+    },
+    {
+      "fitness": 9790.4,
+      "sc1": 209.59999999999994,
+      "sc2": 0.0
+    },
+    {
+      "fitness": 9854.4,
+      "sc1": 145.59999999999994,
+      "sc2": 0.0
+    },
+    {
+      "fitness": 9918.4,
+      "sc1": 81.6,
+      "sc2": 0.0
+    }
+  ]
+}
