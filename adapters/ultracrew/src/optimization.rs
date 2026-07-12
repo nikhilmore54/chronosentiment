@@ -5,7 +5,7 @@ use crate::models::{Shift, Worker};
 use coralys_moga::traits::{CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -47,6 +47,9 @@ pub struct GenerationTelemetry {
     pub fairness_penalty: f64,
     pub workload_penalty: f64,
     pub elapsed_time_ms: u128,
+    /// H3a diversity probe: number of distinct genomes in this generation's population.
+    /// A value < population_size indicates duplicate genomes (premature convergence).
+    pub unique_genomes: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,7 +73,9 @@ impl Observatory {
             current_generation_evals: Vec::new(),
             reports: Vec::new(),
             current_generation_index: 0,
-            population_size: 50,
+            // Must match EvolutionConfig::default().population_size (100).
+            // The server overrides this via start_run() when population_size is known.
+            population_size: 100,
         }
     }
 
@@ -99,6 +104,21 @@ impl Observatory {
             let avg_fitness = sum_fitness / self.current_generation_evals.len() as f64;
             let elapsed = self.start_time.elapsed().as_millis();
 
+            // H3a diversity probe: count distinct genomes by canonical assignment fingerprint.
+            // Each genome is represented as a sorted Vec<(shift_id, worker_id)> so the hash
+            // is order-independent and stable across HashMap iteration order.
+            let unique_genomes = {
+                let mut seen: HashSet<Vec<(u64, u64)>> = HashSet::new();
+                for e in &self.current_generation_evals {
+                    let mut key: Vec<(u64, u64)> = e.schedule.assignments.iter()
+                        .map(|(&sid, &wid)| (sid, wid))
+                        .collect();
+                    key.sort_unstable();
+                    seen.insert(key);
+                }
+                seen.len()
+            };
+
             self.reports.push(GenerationTelemetry {
                 generation: gen,
                 best_fitness: best_eval.fitness,
@@ -108,6 +128,7 @@ impl Observatory {
                 fairness_penalty: best_eval.fairness_penalty,
                 workload_penalty: best_eval.fatigue_penalty,
                 elapsed_time_ms: elapsed,
+                unique_genomes,
             });
 
             self.current_generation_evals.clear();
