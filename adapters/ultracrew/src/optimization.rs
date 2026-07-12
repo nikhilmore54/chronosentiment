@@ -183,6 +183,69 @@ impl ScheduleOptimizer {
         genome.assignments.insert(shift1.id, w2);
         genome.assignments.insert(shift2.id, w1);
     }
+
+    /// H3c-1: Workload-balanced swap — neighborhood operator targeting SC1 (fairness variance).
+    ///
+    /// Identifies the most overloaded and most underloaded workers in the current genome,
+    /// then attempts to move one shift from the overloaded worker to the underloaded worker.
+    /// The move is accepted only if the underloaded worker has the required skill (HC1 safe)
+    /// and the shift is not locked. Falls back to mutate_random_reassignment if no valid
+    /// move exists (e.g. skill mismatch, all shifts locked).
+    ///
+    /// Mechanism: directly reduces variance(worker_hours), which is the SC1 penalty
+    /// (fitness -= variance * 10.0). The plateau at 9918.4 has residual SC1+SC2 ≈ 81.6;
+    /// this operator targets that gap.
+    pub fn mutate_workload_balanced_swap(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
+        // Compute hours per worker from current genome
+        let mut worker_hours: HashMap<u64, u64> = HashMap::new();
+        for worker in self.context.workers.iter() {
+            worker_hours.insert(worker.id, 0);
+        }
+        for shift in self.context.shifts.iter() {
+            if let Some(&wid) = genome.assignments.get(&shift.id) {
+                *worker_hours.entry(wid).or_insert(0) += shift.duration_hours;
+            }
+        }
+
+        // Find most overloaded and most underloaded workers
+        let max_worker = worker_hours.iter().max_by_key(|(_, &h)| h).map(|(&id, _)| id);
+        let min_worker = worker_hours.iter().min_by_key(|(_, &h)| h).map(|(&id, _)| id);
+
+        let (overloaded, underloaded) = match (max_worker, min_worker) {
+            (Some(o), Some(u)) if o != u => (o, u),
+            _ => {
+                // All workers have equal hours — fall back
+                self.mutate_random_reassignment(genome, mutable_shifts, rng);
+                return;
+            }
+        };
+
+        // Collect mutable shifts currently assigned to the overloaded worker
+        let overloaded_shifts: Vec<&Shift> = mutable_shifts.iter()
+            .copied()
+            .filter(|s| genome.assignments.get(&s.id).copied() == Some(overloaded))
+            .collect();
+
+        if overloaded_shifts.is_empty() {
+            self.mutate_random_reassignment(genome, mutable_shifts, rng);
+            return;
+        }
+
+        // Pick a random shift from the overloaded worker and try to give it to the underloaded worker
+        let candidate = overloaded_shifts[rng.gen_range(0..overloaded_shifts.len())];
+        let underloaded_worker = self.context.workers.iter().find(|w| w.id == underloaded);
+
+        if let Some(uw) = underloaded_worker {
+            if uw.skills.contains(&candidate.required_skill) {
+                // Valid move: skill-compatible, reduces variance
+                genome.assignments.insert(candidate.id, underloaded);
+                return;
+            }
+        }
+
+        // Skill mismatch — fall back to random reassignment
+        self.mutate_random_reassignment(genome, mutable_shifts, rng);
+    }
 }
 
 impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
@@ -298,6 +361,8 @@ impl MutationOperator<ScheduleGenome> for ScheduleOptimizer {
         let strategies: &[fn(&ScheduleOptimizer, &mut ScheduleGenome, &[&Shift], &mut StdRng)] = &[
             ScheduleOptimizer::mutate_random_reassignment,
             ScheduleOptimizer::mutate_swap,
+            // H3c-1: workload-balanced swap — targets SC1 fairness variance directly
+            ScheduleOptimizer::mutate_workload_balanced_swap,
         ];
 
         let strategy_fn = strategies[rng.gen_range(0..strategies.len())];
