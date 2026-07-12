@@ -1,0 +1,63 @@
+{
+  "id": "UB-001",
+  "version": "1.0",
+  "description": "UltraCrew canonical benchmark — 20 nurses, 28 days, 3 skills, 3 shift types, mixed contracts",
+  "frozen": "2026-07-12",
+  "staff": [
+    {"id": "N01", "name": "Alice Brennan",   "contract": "FullTime",  "skills": ["Nurse", "ICU"]},
+    {"id": "N02", "name": "Ben Okafor",      "contract": "FullTime",  "skills": ["Nurse"]},
+    {"id": "N03", "name": "Clara Mehta",     "contract": "FullTime",  "skills": ["SeniorNurse", "ICU"]},
+    {"id": "N04", "name": "David Lim",       "contract": "FullTime",  "skills": ["Nurse"]},
+    {"id": "N05", "name": "Elena Rossi",     "contract": "FullTime",  "skills": ["SeniorNurse"]},
+    {"id": "N06", "name": "Femi Adeyemi",    "contract": "FullTime",  "skills": ["Nurse", "ICU"]},
+    {"id": "N07", "name": "Grace Tanaka",    "contract": "FullTime",  "skills": ["Nurse"]},
+    {"id": "N08", "name": "Hassan Ali",      "contract": "FullTime",  "skills": ["SeniorNurse"]},
+    {"id": "N09", "name": "Ingrid Svensson", "contract": "PartTime",  "skills": ["Nurse"]},
+    {"id": "N10", "name": "James Obi",       "contract": "PartTime",  "skills": ["Nurse"]},
+    {"id": "N11", "name": "Keiko Yamamoto",  "contract": "FullTime",  "skills": ["Nurse", "ICU"]},
+    {"id": "N12", "name": "Lena Fischer",    "contract": "FullTime",  "skills": ["SeniorNurse"]},
+    {"id": "N13", "name": "Marco Bianchi",   "contract": "FullTime",  "skills": ["Nurse"]},
+    {"id": "N14", "name": "Nadia Kowalski",  "contract": "PartTime",  "skills": ["Nurse"]},
+    {"id": "N15", "name": "Omar Hassan",     "contract": "FullTime",  "skills": ["Nurse", "ICU"]},
+    {"id": "N16", "name": "Priya Sharma",    "contract": "FullTime",  "skills": ["SeniorNurse", "ICU"]},
+    {"id": "N17", "name": "Quinn Murphy",    "contract": "PartTime",  "skills": ["Nurse"]},
+    {"id": "N18", "name": "Rania Khalil",    "contract": "FullTime",  "skills": ["Nurse"]},
+    {"id": "N19", "name": "Stefan Novak",    "contract": "FullTime",  "skills": ["SeniorNurse"]},
+    {"id": "N20", "name": "Tanya Williams",  "contract": "FullTime",  "skills": ["Nurse", "ICU"]}
+  ],
+  "contracts": {
+    "FullTime":  {"min_shifts_per_week": 4, "max_shifts_per_week": 5, "max_consecutive_working_days": 5, "min_rest_hours_between_shifts": 11},
+    "PartTime":  {"min_shifts_per_week": 2, "max_shifts_per_week": 3, "max_consecutive_working_days": 4, "min_rest_hours_between_shifts": 11}
+  },
+  "shift_types": {
+    "Morning": {"start_hour": 7,  "duration_hours": 8},
+    "Evening": {"start_hour": 15, "duration_hours": 8},
+    "Night":   {"start_hour": 23, "duration_hours": 8}
+  },
+  "coverage_requirements": {
+    "weekday": {"Morning": {"Nurse": 3, "SeniorNurse": 1, "ICU": 1}, "Evening": {"Nurse": 3, "SeniorNurse": 1, "ICU": 1}, "Night": {"Nurse": 2, "SeniorNurse": 1, "ICU": 0}},
+    "weekend": {"Morning": {"Nurse": 2, "SeniorNurse": 1, "ICU": 1}, "Evening": {"Nurse": 2, "SeniorNurse": 1, "ICU": 0}, "Night": {"Nurse": 2, "SeniorNurse": 0, "ICU": 0}}
+  },
+  "leave_requests": [
+    {"staff_id": "N03", "days": [4, 5, 6]},
+    {"staff_id": "N07", "days": [10, 11]},
+    {"staff_id": "N14", "days": [18, 19, 20, 21]},
+    {"staff_id": "N19", "days": [25, 26, 27]}
+  ],
+  "preferences": [
+    {"staff_id": "N09", "prefer_no_night": true},
+    {"staff_id": "N10", "prefer_no_night": true},
+    {"staff_id": "N17", "prefer_morning": true},
+    {"staff_id": "N01", "prefer_no_weekend": true},
+    {"staff_id": "N05", "prefer_no_weekend": true}
+  ],
+  "planning_horizon_days": 28,
+  "expected_total_assignments": 420,
+  "target_metrics": {
+    "PAS": 95.0,
+    "hard_violations": 0,
+    "rest_violations": 0,
+    "coverage_pct": 100.0,
+    "runtime_seconds_max": 5.0
+  }
+}
