@@ -147,9 +147,11 @@ The synthetic fallback is currently invisible to the planner. Sprint 2 should ma
 
 ## Sprint 2 Definition
 
-**Milestone name:** Publishable Schedule Generation
+**Milestone name:** Planner-Quality Schedule Generation
 
-**Objective:** Make the Generate step produce a schedule a planner can confidently publish with only minor manual adjustments.
+**Objective:** Make the Generate step produce a schedule of sufficiently high quality that the planner trusts it as a starting point and needs only minor manual adjustments.
+
+"Publishable" is a business decision that varies by organisation. What matters for UltraCrew is that the generated schedule earns planner trust. That shifts the Definition of Done from absolute outcomes to measurable planner value.
 
 **Definition of Done:**
 
@@ -158,16 +160,39 @@ The synthetic fallback is currently invisible to the planner. Sprint 2 should ma
 | Hard constraint violations | 0 |
 | Coverage | 100% of required shifts covered |
 | Manual edits required | < 5% of assignments |
-| Time to first publishable roster | < 5 minutes from import |
-| Planner acceptance | Planner can publish without rebuilding |
+| Generation time | Acceptable for interactive planning |
+| Explanation available | Yes — per assignment |
+| Planner Acceptance Score | ≥ 95% |
 
-**Key work:**
+### Planner Acceptance Score
+
+Track automatically after every schedule generation:
+
+```
+Generated assignments: N
+Manual edits:          M
+Acceptance:            (N - M) / N × 100%
+Hard violations:       0
+Soft violations:       K
+Coverage:              100%
+```
+
+This is the primary product KPI from Sprint 2 onward. Every Coralys improvement is evaluated by asking: **did the Planner Acceptance Score improve?** Not "did the objective improve by 2.7%?"
+
+This bridges research and product:
+- Platform improves optimization
+- Benchmark Lab measures algorithmic progress
+- UltraCrew measures planner acceptance
+
+### Engineering priority (Sprint 2 is primarily optimization, not UI)
 
 1. Wire `GenerateSchedule` to the real Coralys MOGA pipeline with customer-imported staff and selected rules
-2. Introduce Demo Mode / Planner Mode toggle (synthetic vs. real)
-3. Improve constraint satisfaction: zero hard violations on generated output
-4. Re-optimize after manual edits (partial re-solve on changed cells)
+2. Improve initialization, repair operators, local search, planner-aware objectives
+3. Introduce Demo Mode / Planner Mode toggle (synthetic vs. real)
+4. Improve constraint satisfaction: zero hard violations on generated output
 5. Add "Publish" step between Review and Export (lock, version, distribute)
+
+UI changes only when needed to expose new optimization capability.
 
 **What Sprint 2 does not include:**
 
