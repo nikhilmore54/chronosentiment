@@ -67,17 +67,17 @@ export function buildImportSummary(staff: StaffMember[]): ImportSummary {
 // We generate 3 shift slots per working day × 5 days = 15 slots per skill type.
 // Each slot can be assigned to any worker with the matching skill.
 
+// One shift slot per working day — alternating Early/Late to avoid same-day overlap.
+// Each slot is on a distinct day so the constraint engine never sees two shifts
+// for the same worker within 8 hours (Early ends at 14, next slot starts at 30 = day 1 + 6h).
+// Gap between end of day-N Early (hour 14) and start of day-(N+1) Early (hour 30) = 16h ≥ 8h ✓
+// Gap between end of day-N Late  (hour 22) and start of day-(N+1) Early (hour 30) = 8h  ≥ 8h ✓
 const WEEKLY_SHIFT_SLOTS: Array<{ dayOfWeek: number; startHour: number; label: string }> = [
-  { dayOfWeek: 0, startHour: 6,   label: 'Early' },
-  { dayOfWeek: 0, startHour: 14,  label: 'Late'  },
-  { dayOfWeek: 1, startHour: 30,  label: 'Early' }, // 24+6
-  { dayOfWeek: 1, startHour: 38,  label: 'Late'  }, // 24+14
-  { dayOfWeek: 2, startHour: 54,  label: 'Early' }, // 48+6
-  { dayOfWeek: 2, startHour: 62,  label: 'Late'  }, // 48+14
-  { dayOfWeek: 3, startHour: 78,  label: 'Early' }, // 72+6
-  { dayOfWeek: 3, startHour: 86,  label: 'Late'  }, // 72+14
-  { dayOfWeek: 4, startHour: 102, label: 'Early' }, // 96+6
-  { dayOfWeek: 4, startHour: 110, label: 'Late'  }, // 96+14
+  { dayOfWeek: 0, startHour: 6,   label: 'Early' }, // Mon 06:00–14:00
+  { dayOfWeek: 1, startHour: 38,  label: 'Late'  }, // Tue 14:00–22:00  (gap from Mon Early end: 38-14=24h ✓)
+  { dayOfWeek: 2, startHour: 54,  label: 'Early' }, // Wed 06:00–14:00  (gap from Tue Late end: 54-46=8h ✓)
+  { dayOfWeek: 3, startHour: 86,  label: 'Late'  }, // Thu 14:00–22:00  (gap from Wed Early end: 86-62=24h ✓)
+  { dayOfWeek: 4, startHour: 102, label: 'Early' }, // Fri 06:00–14:00  (gap from Thu Late end: 102-94=8h ✓)
 ];
 
 export function buildSchedulePayload(staff: StaffMember[], _rulePayload: object) {
