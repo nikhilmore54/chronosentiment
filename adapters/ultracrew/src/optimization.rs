@@ -140,8 +140,9 @@ impl ScheduleOptimizer {
 
     pub fn mutate_random_reassignment(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
         let shift = mutable_shifts[rng.gen_range(0..mutable_shifts.len())];
-        let worker = &self.context.workers[rng.gen_range(0..self.context.workers.len())];
-        genome.assignments.insert(shift.id, worker.id);
+        // Use skill-aware pick so mutations don't reintroduce HC1 violations
+        let worker_id = self.skill_aware_pick(shift, rng);
+        genome.assignments.insert(shift.id, worker_id);
     }
 
     pub fn mutate_swap(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
@@ -169,16 +170,34 @@ impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
         for shift in self.context.shifts.iter() {
             let worker_id = if let Some(ref locked) = self.context.locked_assignments {
                 if let Some(&w_id) = locked.get(&shift.id) {
+                    // Locked assignment — honour it regardless of skill
                     w_id
                 } else {
-                    self.context.workers[rng.gen_range(0..self.context.workers.len())].id
+                    self.skill_aware_pick(shift, rng)
                 }
             } else {
-                self.context.workers[rng.gen_range(0..self.context.workers.len())].id
+                self.skill_aware_pick(shift, rng)
             };
             assignments.insert(shift.id, worker_id);
         }
         ScheduleGenome { assignments }
+    }
+}
+
+impl ScheduleOptimizer {
+    /// Pick a worker who possesses the required skill for this shift.
+    /// Falls back to a random worker only if no qualified worker exists (prevents panic).
+    fn skill_aware_pick(&self, shift: &crate::models::Shift, rng: &mut StdRng) -> u64 {
+        let qualified: Vec<u64> = self.context.workers.iter()
+            .filter(|w| w.skills.contains(&shift.required_skill))
+            .map(|w| w.id)
+            .collect();
+        if qualified.is_empty() {
+            // No qualified worker — fall back to random (HC1 violation will be penalised)
+            self.context.workers[rng.gen_range(0..self.context.workers.len())].id
+        } else {
+            qualified[rng.gen_range(0..qualified.len())]
+        }
     }
 }
 
