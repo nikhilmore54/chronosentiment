@@ -4,6 +4,7 @@ pub mod loader;
 pub mod graph;
 pub mod ecmp;
 pub mod path;
+pub mod moga_impl;
 
 use coralys_core::{
     DecisionPlugin, DecisionProposal, EvaluationResult, Violation,
@@ -12,7 +13,6 @@ use coralys_core::{
 use uuid::Uuid;
 use chrono::Utc;
 use std::sync::Mutex;
-use serde_json::Value;
 use crate::models::Solution;
 use crate::evaluator::RoadefEvaluator;
 

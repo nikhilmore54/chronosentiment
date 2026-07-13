@@ -1,0 +1,24 @@
+{
+  "average_distance": 926.3300000000017,
+  "best_distance": 914.0,
+  "bks": 914.0,
+  "config": {
+    "crossover_rate": 0.8,
+    "elite_count": 20,
+    "generation_limit": 150,
+    "mutation_rate": 0.2,
+    "population_size": 200,
+    "seed": 42,
+    "tournament_size": 5
+  },
+  "evaluations": 30000,
+  "feasible": true,
+  "gap_to_bks_pct": 0.0,
+  "generations": 150,
+  "instance": "A-n46-k7",
+  "median_distance": 914.0,
+  "runtime_ms": 6292,
+  "stagnation_generation": 142,
+  "std_dev": 31.26933162061512,
+  "worst_distance": 1128.0
+}

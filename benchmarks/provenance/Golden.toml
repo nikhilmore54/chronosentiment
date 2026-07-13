@@ -1,0 +1,62 @@
+# Provenance Registry — Golden family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "Golden"
+full_name           = "Golden et al. (1998)"
+instance_count      = 20
+customer_range      = "240–483"
+in_campaign_scope   = false
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+
+[publication]
+authors             = "Golden, B., Wasil, E., Kelly, J., Chao, I-M."
+title               = "The Impact of Metaheuristics on Solving the Vehicle Routing Problem: Algorithms, Problem Sets, and Computational Results"
+year                = 1998
+book                = "Fleet Management and Logistics"
+editors             = "Crainic, T.G., Laporte, G."
+publisher           = "Kluwer, Boston"
+pages               = "33–56"
+notes               = "20 large-scale instances (240–483 customers). Designed to stress-test metaheuristics. All instances exceed the current Coralys campaign scope of ≤200 customers."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "CVRPLIB catalog lookup"
+value_type          = "Float (best known — improved over original 1998 values by subsequent algorithms)"
+notes               = "BKS values sourced from CVRPLIB catalog. Registry metadata verified against catalog. All 20 instances are excluded from current campaign scope."
+
+[verification]
+status              = "Verified (registry metadata only)"
+method              = "CVRPLIB catalog cross-check for registry metadata; no execution qualification performed"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md) — excluded from run"
+qualification_level = "Excluded"
+open_items          = [
+    "All 20 instances exceed MAX_CUSTOMERS=200 — excluded from current campaign scope",
+    "Fleet semantics not investigated (out of scope)"
+]
+notes               = "Golden family is registered for completeness and future campaign scope expansion. All instances have >200 customers and are skipped by the current campaign runner. Registry metadata (vehicle counts, BKS) verified against CVRPLIB catalog. No execution qualification has been performed."

@@ -1,0 +1,44 @@
+# Fleet Semantics Registry — Li family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "Li"
+full_name   = "Li et al. (2005)"
+
+[constraint]
+type        = "Unknown"
+description = "Fleet semantics for Li family have not been investigated. All instances are outside current campaign scope."
+formal      = "Unknown — requires review of Li et al. 2005"
+
+[source]
+primary     = "Li et al. 2005 (original publication)"
+
+[publication]
+authors     = "Li, F., Golden, B., Wasil, E."
+title       = "Very Large-Scale Vehicle Routing: New Test Problems, Algorithms, and Results"
+year        = 2005
+journal     = "Computers and Operations Research"
+volume      = "32"
+number      = "5"
+pages       = "1165–1179"
+doi         = "10.1016/j.cor.2003.10.002"
+
+[notes]
+derivation  = """
+Li et al. (2005) extends the Golden benchmark set with very large-scale instances.
+All 12 instances exceed MAX_CUSTOMERS=200 and are excluded from the current campaign scope.
+Fleet semantics have not been investigated.
+"""
+campaign_observation = "Not applicable — all Li instances excluded from campaign scope (>200 customers)."
+
+[verification]
+status      = "Unknown"
+confidence  = "None"
+method      = "Not investigated — out of scope"
+date        = "2026-07"
+open_items  = [
+    "Fleet semantics not investigated — all instances out of campaign scope",
+    "Requires review of Li et al. 2005 original paper when scope expands"
+]
+notes       = "Li family is excluded from current campaign scope. Fleet semantics are Unknown — no investigation has been performed. This is the lowest-confidence fleet semantics entry in the registry."

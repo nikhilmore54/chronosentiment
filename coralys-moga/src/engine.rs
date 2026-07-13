@@ -294,11 +294,12 @@ impl<
                     .unwrap_or(Ordering::Equal)
             });
             if instrument {
-                // After sorting
-                let first = evals.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
-                let second = evals.get(1).map(|e| e.fitness()).unwrap_or(f64::NAN);
-                let last = evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
-                eprintln!("[INSTR] Sorted fitnesses: first={}, second={}, last={}", first, second, last);
+                // After sorting — show distance (100000 - fitness) for readability
+                let fit_to_dist = |f: f64| 100000.0 - f;
+                let first = evals.first().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                let second = evals.get(1).map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                let last = evals.last().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                eprintln!("[INSTR] Sorted distances: best={:.1}, second={:.1}, worst={:.1}", first, second, last);
             }
             // Top fitness after sort log removed
             // Bottom fitness after sort log removed
@@ -320,16 +321,16 @@ impl<
             }
 
             if instrument {
+                let fit_to_dist = |f: f64| 100000.0 - f;
                 let new_global = if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
                     Some(gen_best.clone())
                 } else { global_best.clone() };
-                let prev_fit = prev_global_best.as_ref().map(|g| g.fitness()).unwrap_or(0.0);
-                let pop_best = evals[0].fitness();
-                let new_fit = new_global.as_ref().map(|g| g.fitness()).unwrap_or(0.0);
-                eprintln!("[INSTR] Prev Global Best: {}", prev_fit);
-                eprintln!("[INSTR] Current Population Best: {}", pop_best);
-                eprintln!("[INSTR] New Stored Global Best: {}", new_fit);
-                eprintln!("[INSTR] Stored Global Best: {}", new_fit);
+                let prev_dist = prev_global_best.as_ref().map(|g| fit_to_dist(g.fitness())).unwrap_or(f64::NAN);
+                let pop_best_dist = fit_to_dist(evals[0].fitness());
+                let new_dist = new_global.as_ref().map(|g| fit_to_dist(g.fitness())).unwrap_or(f64::NAN);
+                eprintln!("[INSTR] Prev Global Best dist: {:.1}", prev_dist);
+                eprintln!("[INSTR] Current Population Best dist: {:.1}", pop_best_dist);
+                eprintln!("[INSTR] New Global Best dist: {:.1}", new_dist);
                 global_best = new_global;
             } else {
                 if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
@@ -383,19 +384,20 @@ impl<
             // Preserve the top elite individuals as defined by config.elite_count.
             elite_preserved = config.elite_count;
             if instrument {
+                let fit_to_dist = |f: f64| 100000.0 - f;
                 let elite_slice = &evals[0..config.elite_count];
-                let elite_first = elite_slice.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
-                let elite_last = elite_slice.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
-                eprintln!("[INSTR] Elite count: {}", config.elite_count);
-                eprintln!("[INSTR] Elite first fitness: {}", elite_first);
-                eprintln!("[INSTR] Elite last fitness: {}", elite_last);
-                // Compare elite[0] with population[0] (post-sort)
-                let elite_fitness = elite_slice[0].fitness();
-                let pop_fitness = evals[0].fitness();
-                let fitness_eq = (elite_fitness - pop_fitness).abs() < f64::EPSILON;
-                eprintln!("[INSTR] Elite[0] fitness: {}", elite_fitness);
-                eprintln!("[INSTR] Population[0] fitness: {}", pop_fitness);
-                eprintln!("[INSTR] Elite fitness matches population: {}", fitness_eq);
+                let elite_best_dist = elite_slice.first().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                let elite_worst_dist = elite_slice.last().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                let pop_best_dist = fit_to_dist(evals[0].fitness());
+                let pop_worst_dist = fit_to_dist(evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN));
+                // Count unique distances in elite to detect homogeneity
+                let unique_elite = elite_slice.iter()
+                    .map(|e| (e.fitness() * 10000.0).round() as i64)
+                    .collect::<std::collections::HashSet<_>>().len();
+                eprintln!("[INSTR] Elite count: {} | unique: {} | best dist: {:.1} | worst dist: {:.1}",
+                    config.elite_count, unique_elite, elite_best_dist, elite_worst_dist);
+                eprintln!("[INSTR] Population best dist: {:.1} | worst dist: {:.1}",
+                    pop_best_dist, pop_worst_dist);
             }
             let mut unique_elites = Vec::with_capacity(config.elite_count);
             let mut seen_fitness = std::collections::HashSet::new();

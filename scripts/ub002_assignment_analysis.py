@@ -85,10 +85,27 @@ def call_api(payload):
 
 
 def count_group_shifts(schedule, group_ids):
-    """Count total shifts assigned to workers in group_ids."""
+    """Count total shifts assigned to workers in group_ids.
+
+    schedule may be:
+      - a dict {shift_id: worker_id} (API returns this format)
+      - a list of dicts [{worker_id: int, ...}]
+      - a list of strings ["worker_id:shift_id"]
+    """
     count = 0
-    for assignment in schedule:
-        worker_id = assignment.get("worker_id") or assignment.get("staff_id")
+    items = schedule.values() if isinstance(schedule, dict) else schedule
+    for item in items:
+        if isinstance(item, dict):
+            worker_id = item.get("worker_id") or item.get("staff_id")
+        elif isinstance(item, (int, float)):
+            worker_id = int(item)
+        elif isinstance(item, str):
+            try:
+                worker_id = int(item.split(":")[0])
+            except (ValueError, IndexError):
+                worker_id = None
+        else:
+            worker_id = None
         if worker_id in group_ids:
             count += 1
     return count

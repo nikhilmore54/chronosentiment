@@ -1,0 +1,95 @@
+# Provenance Registry — CMT family (Christofides, Mingozzi, Toth)
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "CMT"
+full_name           = "Christofides-Mingozzi-Toth (CMT)"
+instance_count      = 14
+customer_range      = "50–199"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+notes               = "Vehicle counts are NOT embedded in the .vrp files. They are sourced from the CVRPLIB catalog and stored in the Coralys registry. This is a known structural property of CMT instances."
+
+[publication]
+authors             = "Christofides, N., Mingozzi, A., Toth, P."
+title               = "The Vehicle Routing Problem"
+year                = 1979
+book                = "Combinatorial Optimization"
+editors             = "Christofides, N., Mingozzi, A., Toth, P., Sandi, C."
+publisher           = "Wiley, Chichester"
+pages               = "315–338"
+notes               = "Original 1979 paper established the benchmark instances. BKS values in the original paper are heuristic results, not proven optima. Current CVRPLIB catalog BKS values reflect improvements found by subsequent algorithms over 40+ years."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective. Objective equivalence with Coralys confirmed: both minimize total route distance only."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+notes               = "Integer rounding confirmed. Coralys uses nint() rounding consistent with TSPLIB. The 'fp=' field in campaign logs records fractional vs integer BKS discrepancy per instance."
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "CVRPLIB catalog lookup (not from .vrp COMMENT field)"
+value_type          = "Integer (best known — improved over original 1979 values)"
+notes               = """
+CRITICAL PROVENANCE NOTE (P4):
+The BKS values in the Coralys registry are sourced from the CVRPLIB catalog,
+which reflects the current best-known solutions found by modern algorithms.
+These values are significantly better than the original 1979 heuristic results.
+
+Campaign v1.5 observed negative gaps of up to -32.65% (CMT13) and -10.54% (CMT9)
+relative to registry BKS values. These negative gaps are under investigation (P4).
+
+Working hypotheses:
+  1. Fleet semantics mismatch: Coralys may be using more vehicles than the
+     benchmark vehicle count, producing shorter routes at the cost of more vehicles.
+  2. BKS provenance: registry values may differ from the values used by the
+     original comparison papers.
+  3. Distance rounding: float vs integer objective representation.
+
+These hypotheses require Stage B verification (route count, capacity, customer coverage)
+before any negative gap can be interpreted as a genuine improvement.
+"""
+
+[verification]
+status              = "Under Investigation"
+method              = "CVRPLIB catalog cross-check completed; Stage B certificates pending"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Under Investigation"
+open_items          = [
+    "P4 — BKS provenance: cross-check registry values against CVRPLIB.org and OR-Library",
+    "P5 — fleet semantics: confirm ATMOST vs EXACT from Christofides et al. 1979",
+    "Stage B — collect route-count certificates for all 14 CMT instances",
+    "Negative-gap root cause: CMT13 (-32.65%), CMT9 (-10.54%), CMT7 (-8.54%), CMT10 (-6.51%), CMT6 (-6.20%), CMT14 (-5.35%), CMT8 (-5.19%)"
+]
+notes               = """
+CMT family is the highest-priority provenance investigation target.
+Seven instances show negative gaps ranging from -5.19% to -32.65%.
+The CMT13 gap of -32.65% is the largest negative gap in the entire campaign corpus
+and is almost certainly explained by a fleet semantics or BKS provenance issue
+rather than a genuine optimizer improvement of that magnitude.
+
+Vehicle counts are stored in the Coralys registry (not in .vrp files) and were
+cross-checked against the CVRPLIB catalog in 2026-07. Per-instance counts:
+CMT1=5, CMT2=10, CMT3=8, CMT4=12, CMT5=17, CMT6=6, CMT7=11, CMT8=9,
+CMT9=14, CMT10=18, CMT11=11, CMT12=10, CMT13=11, CMT14=10.
+"""

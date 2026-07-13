@@ -1,0 +1,39 @@
+# Fleet Semantics Registry — Augerat B-family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "B"
+full_name   = "Augerat B-family"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Augerat, P., Belenguer, J.M., Benavent, E., Corbéran, A., Naddef, D., Rinaldi, G."
+title       = "Computational Results with a Branch and Cut Code for the Capacitated Vehicle Routing Problem"
+year        = 1995
+institution = "IMAG, Grenoble, France"
+report_number = "RR949-M"
+
+[notes]
+derivation  = """
+Same interpretation as A-family. Vehicle count in COMMENT field ('No of trucks: N')
+is an upper bound. Standard CVRP formulation: minimize distance subject to at most K vehicles.
+Using fewer vehicles is permitted and does not invalidate the solution.
+"""
+campaign_observation = "Campaign v1.5: no instances with routes_used < K were flagged as problematic. MedGap=0.00%, consistent with ATMOST semantics."
+
+[verification]
+status      = "Hypothesis"
+confidence  = "High"
+method      = "Literature consensus; CVRPLIB catalog interpretation; campaign observation"
+date        = "2026-07"
+open_items  = ["P5 — confirm ATMOST interpretation from Augerat et al. 1995 original paper"]
+notes       = "ATMOST is the standard CVRP interpretation for Augerat families. Same basis as A-family."

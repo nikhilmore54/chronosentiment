@@ -1,0 +1,86 @@
+# Fleet Semantics Registry — Taillard (Tai) family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "Tai"
+full_name   = "Taillard (1993)"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits. This is a hypothesis — pending P5 verification."
+formal      = "routes_used ≤ K (hypothesis)"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Taillard, E."
+title       = "Parallel Iterative Search Methods for Vehicle Routing Problems"
+year        = 1993
+journal     = "Networks"
+volume      = "23"
+number      = "8"
+pages       = "661–673"
+doi         = "10.1002/net.3230230804"
+
+[notes]
+derivation  = """
+Taillard (1993) uses a parallel iterative search approach for CVRP. The paper
+defines instances with a maximum fleet size K. The standard interpretation in
+the CVRP literature is ATMOST(K) — the optimizer may use fewer vehicles.
+
+However, the Taillard paper predates the widespread adoption of the ATMOST convention
+and may have used a fixed fleet formulation. This requires verification from the
+original paper.
+
+Vehicle counts are NOT embedded in the .vrp files. They are sourced from the CVRPLIB
+catalog and stored in the Coralys registry. Per-instance counts differ within size groups:
+  Tai75a=10, Tai75b=9, Tai75c=10, Tai75d=9
+  Tai100a=11, Tai100b=11, Tai100c=11, Tai100d=11
+  Tai150a=12, Tai150b=12, Tai150c=12, Tai150d=12
+  Tai385=24
+"""
+campaign_observation = """
+Campaign v1.5 observed negative gaps in 5 of 13 Tai instances:
+  Tai75d:  -7.61% (best=1354, BKS=1468.73)
+  Tai100a: -2.06% (best=2097, BKS=2141.07)
+  Tai75b:  -2.05% (best=1379, BKS=1407.89)
+  Tai100b: -0.29% (best=1935, BKS=1940.55)
+  Tai75a:  -0.21% (best=1615, BKS=1618.36)
+
+The FCS module assigned ATMOST(K) as a hypothesis for Tai family.
+All instances where routes_used ≤ K produced FCS outcome=VALID.
+
+If the actual semantics are EXACT(K) and routes_used ≠ K, the gaps are NOT COMPARABLE.
+If the actual semantics are ATMOST(K) and routes_used > K, the gaps are also NOT COMPARABLE.
+Stage B certificates required to determine routes_used for all affected instances.
+
+The Tai75d gap of -7.61% is particularly notable — a 7.6% improvement over the
+current CVRPLIB BKS would require extraordinary evidence to accept as genuine.
+"""
+
+[verification]
+status      = "Hypothesis"
+confidence  = "Medium"
+method      = "Literature consensus; CVRPLIB catalog interpretation; pending paper review"
+date        = "2026-07"
+open_items  = [
+    "P5 — confirm ATMOST vs EXACT from Taillard 1993 original paper",
+    "Stage B — collect routes_used for all 13 Tai instances",
+    "Priority instances: Tai75d, Tai100a, Tai75b, Tai100b, Tai75a (negative gaps observed)",
+    "Tai150 fleet semantics require confirmation (not in negative-gap list but unverified)",
+    "Tai385 — excluded from campaign scope (>200 customers)"
+]
+notes       = """
+Taillard fleet semantics are the second-highest priority P5 investigation item after CMT.
+The confidence is Medium (vs High for Augerat families) because:
+  1. Five instances show negative gaps — more than any other non-CMT family
+  2. The Taillard 1993 paper predates widespread ATMOST convention adoption
+  3. The per-instance vehicle count variation within size groups is unusual and
+     may indicate a more complex fleet constraint structure
+
+Resolution of this question is required before Tai family gaps can be reported
+as qualified comparisons.
+"""

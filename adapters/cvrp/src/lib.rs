@@ -1,6 +1,9 @@
 use coralys_core::{Solution, Outcome};
 use serde::{Deserialize, Serialize};
 
+/// Qualification subsystem — GOV-008 / GOV-009
+pub mod qualification;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasinTransition {
     pub parent_routes: Vec<Vec<usize>>,
@@ -96,6 +99,8 @@ pub struct Node {
 pub enum DistanceMetric {
     TspLibEuc2D,
     EuclideanFloat,
+    /// TSPLIB EXPLICIT matrix — distances stored in CvrpInstance.explicit_matrix
+    ExplicitMatrix,
 }
 
 fn default_distance_metric() -> DistanceMetric {
@@ -130,6 +135,11 @@ pub struct CvrpInstance {
     #[serde(default = "default_distance_metric")]
     pub distance_metric: DistanceMetric,
     pub max_vehicles: Option<usize>,
+    /// Explicit distance matrix for TSPLIB EXPLICIT instances.
+    /// Indexed by node id (1-based): matrix[i][j] = distance from node i to node j.
+    /// Only populated when distance_metric == ExplicitMatrix.
+    #[serde(default)]
+    pub explicit_matrix: Vec<Vec<f64>>,
 }
 
 impl CvrpInstance {
@@ -187,6 +197,85 @@ impl CvrpInstance {
             customers,
             distance_metric: DistanceMetric::EuclideanFloat,
             max_vehicles: Some(5),
+            explicit_matrix: vec![],
+        }
+    }
+
+    
+
+    /// CVRPLIB A-n46-k7: 45 customers, 7 vehicles, capacity=100, BKS=914 (TspLibEuc2D)
+    /// Source: https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/instance/18
+    /// Verified: total demand=603, max capacity=7×100=700, feasible.
+    pub fn a_n46_k7() -> Self {
+        // (id, x, y, demand) — node 1 is depot (demand=0)
+        let coords: Vec<(usize, f64, f64, i32)> = vec![
+            (1,  75.0, 55.0,  0),  // Depot
+            (2,   7.0, 75.0, 12),
+            (3,  77.0,  1.0, 26),
+            (4,  51.0, 25.0,  1),
+            (5,  81.0, 25.0, 20),
+            (6,  59.0, 37.0,  2),
+            (7,  93.0, 45.0, 13),
+            (8,  43.0, 21.0, 20),
+            (9,  35.0, 53.0,  7),
+            (10, 77.0, 63.0, 10),
+            (11, 37.0, 13.0, 15),
+            (12, 37.0, 51.0,  7),
+            (13, 27.0, 31.0, 24),
+            (14, 95.0, 31.0, 10),
+            (15, 87.0, 43.0, 12),
+            (16, 23.0, 65.0, 23),
+            (17,  9.0, 51.0, 13),
+            (18, 73.0, 81.0, 19),
+            (19,  3.0,  1.0,  9),
+            (20, 41.0, 61.0, 12),
+            (21, 29.0, 81.0,  6),
+            (22, 51.0, 95.0,  9),
+            (23, 49.0, 25.0, 22),
+            (24, 81.0, 53.0, 18),
+            (25,  7.0, 51.0, 19),
+            (26, 21.0,  5.0, 20),
+            (27, 91.0, 35.0, 24),
+            (28, 17.0, 81.0, 10),
+            (29, 61.0, 69.0,  4),
+            (30, 27.0, 97.0, 20),
+            (31, 83.0, 23.0, 15),
+            (32, 21.0, 93.0, 13),
+            (33, 59.0, 31.0, 12),
+            (34, 27.0, 53.0,  3),
+            (35,  9.0, 91.0,  7),
+            (36, 11.0, 27.0, 18),
+            (37, 59.0, 41.0,  3),
+            (38, 67.0,  1.0, 23),
+            (39, 77.0, 39.0,  1),
+            (40, 47.0, 29.0, 17),
+            (41,  3.0, 89.0, 13),
+            (42, 33.0, 87.0,  6),
+            (43, 17.0, 45.0, 22),
+            (44, 91.0, 41.0, 20),
+            (45, 23.0,  3.0, 21),
+            (46, 97.0, 61.0,  2),
+        ];
+
+        let mut depot = Node { id: 0, x: 0.0, y: 0.0, demand: 0 };
+        let mut customers = Vec::new();
+
+        for (id, x, y, demand) in coords {
+            let node = Node { id, x, y, demand };
+            if id == 1 {
+                depot = node;
+            } else {
+                customers.push(node);
+            }
+        }
+
+        Self {
+            capacity: 100,
+            depot,
+            customers,
+            distance_metric: DistanceMetric::EuclideanFloat,
+            max_vehicles: Some(7),
+            explicit_matrix: vec![],
         }
     }
 
@@ -194,6 +283,18 @@ impl CvrpInstance {
         match self.distance_metric {
             DistanceMetric::TspLibEuc2D => TspLibEuc2DCalculator.distance(a, b),
             DistanceMetric::EuclideanFloat => EuclideanFloatCalculator.distance(a, b),
+            DistanceMetric::ExplicitMatrix => {
+                let i = a.id;
+                let j = b.id;
+                if i < self.explicit_matrix.len() && j < self.explicit_matrix[i].len() {
+                    self.explicit_matrix[i][j]
+                } else if j < self.explicit_matrix.len() && i < self.explicit_matrix[j].len() {
+                    // Symmetric fallback
+                    self.explicit_matrix[j][i]
+                } else {
+                    0.0
+                }
+            }
         }
     }
 
@@ -211,12 +312,14 @@ impl CvrpInstance {
                 total += match metric {
                     DistanceMetric::TspLibEuc2D => TspLibEuc2DCalculator.distance(last_node, customer),
                     DistanceMetric::EuclideanFloat => EuclideanFloatCalculator.distance(last_node, customer),
+                    DistanceMetric::ExplicitMatrix => self.distance(last_node, customer),
                 };
                 last_node = customer;
             }
             total += match metric {
                 DistanceMetric::TspLibEuc2D => TspLibEuc2DCalculator.distance(last_node, &self.depot),
                 DistanceMetric::EuclideanFloat => EuclideanFloatCalculator.distance(last_node, &self.depot),
+                DistanceMetric::ExplicitMatrix => self.distance(last_node, &self.depot),
             };
         }
         total

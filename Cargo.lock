@@ -364,17 +364,8 @@ dependencies = [
 name = "chronosentiment_adapter"
 version = "0.1.0"
 dependencies = [
- "chrono",
- "chronosentiment_core",
- "chronosentiment_financial_core",
- "chronosentiment_optimization",
- "chronosentiment_strategies",
- "coralys-core",
  "coralys-ecology",
  "coralys-moga",
- "serde",
- "serde_json",
- "uuid",
 ]
 
 [[package]]

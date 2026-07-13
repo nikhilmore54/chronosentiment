@@ -6,7 +6,7 @@ use chrono::Utc;
 use serde::{Serialize, Deserialize};
 
 use cvrp::{CvrpInstance, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpMutator, CvrpCrossover, CvrpLocalSearch, CvrpEvaluator};
+use cvrp::moga_impl::{CvrpMutator, CvrpCrossoverRoutePreserving, CvrpLocalSearch, CvrpEvaluator};
 use coralys_moga::{
     EvolutionConfig, EvolutionEngineBuilder, ProcessingMetricsCollector, MogaBenchmarkReport,
     SolutionQuality, ExecutionMetrics, EngineMetrics, ConvergenceMetrics,
@@ -43,14 +43,14 @@ fn main() {
     instance.distance_metric = cvrp::DistanceMetric::TspLibEuc2D;
     let evaluator = CvrpEvaluator { instance: instance.clone() };
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
-    let crossover = CvrpCrossover;
+    let crossover = CvrpCrossoverRoutePreserving { instance: instance.clone() };
     let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
     let local_search = CvrpLocalSearch { instance: instance.clone() };
 
     let evo_config = EvolutionConfig {
         population_size: 200,
         elite_count: 20,
-        generation_limit: 50,
+        generation_limit: 150,
         mutation_rate: 0.2,
         crossover_rate: 0.8,
         seed: Some(42),
@@ -211,6 +211,139 @@ fn main() {
     fs::write(&md_report_path, &md_report).expect("Failed to write report Markdown file");
 
     println!("{}", md_report);
+
+    // ── A-n46-k7 Baseline Run ──────────────────────────────────────────────────
+    // Identical optimizer configuration. BKS=914 (TspLibEuc2D), 45 customers, 7 vehicles.
+    // Source: https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/instance/18
+    println!("=== A-n46-k7 Baseline (identical config) ===\n");
+    const BKS_A_N46_K7: f64 = 914.0;
+
+    let mut instance_46 = CvrpInstance::a_n46_k7();
+    instance_46.distance_metric = cvrp::DistanceMetric::TspLibEuc2D;
+    let evaluator_46 = CvrpEvaluator { instance: instance_46.clone() };
+    let mutator_46 = CvrpMutator::new(instance_46.clone(), cvrp::RadiusPolicy::Control);
+    let crossover_46 = CvrpCrossoverRoutePreserving { instance: instance_46.clone() };
+    let factory_46 = CvrpGenomeFactory { num_customers: instance_46.customers.len() };
+    let local_search_46 = CvrpLocalSearch { instance: instance_46.clone() };
+
+    let engine_46 = EvolutionEngineBuilder::new()
+        .with_evaluator(evaluator_46)
+        .with_mutator(mutator_46)
+        .with_crossover(crossover_46)
+        .with_factory(factory_46)
+        .with_improvement(local_search_46)
+        .enable_metrics()
+        .build()
+        .expect("Failed to build EvolutionEngine for A-n46-k7");
+
+    let start_46 = Instant::now();
+    let ga_res_46 = engine_46.run_ga_evolution(evo_config.clone())
+        .expect("GA execution failed for A-n46-k7");
+    let runtime_46 = start_46.elapsed();
+
+    let m46 = engine_46.metrics_snapshot().expect("metrics should be enabled");
+    let best_46 = 100000.0 - m46.best_fitness;
+    let avg_46  = 100000.0 - m46.average_fitness;
+    let worst_46 = 100000.0 - m46.worst_fitness;
+    let gap_46 = (best_46 - BKS_A_N46_K7) / BKS_A_N46_K7 * 100.0;
+
+    let mut sorted_46 = ga_res_46.final_fitnesses.clone();
+    sorted_46.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let median_46 = if sorted_46.len() % 2 == 0 {
+        let mid = sorted_46.len() / 2;
+        (sorted_46[mid - 1] + sorted_46[mid]) / 2.0
+    } else {
+        sorted_46[sorted_46.len() / 2]
+    };
+    let median_dist_46 = 100000.0 - median_46;
+
+    let best_eval_46 = &ga_res_46.global_best.eval;
+    let feasible_46 = best_eval_46.total_distance_integer < 99000.0;
+
+    let num_proc_46 = engine_46.processor_count();
+    let mut proc_stats_46 = String::new();
+    for i in 0..num_proc_46 {
+        if let Some(pm) = m46.processors.get(&i) {
+            let time_ms = pm.total_runtime.as_secs_f64() * 1000.0;
+            let avg_ms = if pm.invocation_count > 0 { time_ms / pm.invocation_count as f64 } else { 0.0 };
+            proc_stats_46.push_str(&format!(
+                "| Processor #{} | {} | {:.4} ms | {:.2} ms |\n",
+                i, pm.invocation_count, avg_ms, time_ms
+            ));
+        }
+    }
+
+    println!(
+        r#"| Metric | Value |
+| :--- | :--- |
+| **Instance** | A-n46-k7 |
+| **BKS (TspLibEuc2D)** | {bks:.2} |
+| **Best Distance** | {best:.4} |
+| **Average Distance** | {avg:.4} |
+| **Worst Distance** | {worst:.4} |
+| **Median Distance** | {median:.4} |
+| **Std Dev** | {stddev:.4} |
+| **Gap to BKS** | {gap:.2}% |
+| **Feasible** | {feasible} |
+| **Runtime** | {runtime} ms |
+| **Evaluations** | {evals} |
+| **Generations** | {gens} |
+| **Stagnation Gen** | {stagnation} |
+| **Population** | {pop} |
+| **Elite** | {elite} |
+| **Seed** | 42 |
+
+## Processor Statistics (A-n46-k7)
+| Processor | Invocations | Average Runtime | Total Runtime |
+| :--- | :--- | :--- | :--- |
+{proc_stats}
+"#,
+        bks = BKS_A_N46_K7,
+        best = best_46,
+        avg = avg_46,
+        worst = worst_46,
+        median = median_dist_46,
+        stddev = m46.fitness_stddev,
+        gap = gap_46,
+        feasible = if feasible_46 { "YES" } else { "NO (INFEASIBLE)" },
+        runtime = runtime_46.as_millis(),
+        evals = m46.evaluation_count,
+        gens = m46.generation + 1,
+        stagnation = m46.stagnation_generations,
+        pop = evo_config.population_size,
+        elite = evo_config.elite_count,
+        proc_stats = proc_stats_46,
+    );
+
+    // Save A-n46-k7 baseline to benchmarks/history
+    let baseline_46_path = format!("{}/a_n46_k7_baseline.json", BENCHMARK_DIR);
+    let baseline_46_json = serde_json::json!({
+        "instance": "A-n46-k7",
+        "bks": BKS_A_N46_K7,
+        "best_distance": best_46,
+        "average_distance": avg_46,
+        "worst_distance": worst_46,
+        "median_distance": median_dist_46,
+        "std_dev": m46.fitness_stddev,
+        "gap_to_bks_pct": gap_46,
+        "feasible": feasible_46,
+        "runtime_ms": runtime_46.as_millis(),
+        "evaluations": m46.evaluation_count,
+        "generations": m46.generation + 1,
+        "stagnation_generation": m46.stagnation_generations,
+        "config": {
+            "population_size": evo_config.population_size,
+            "elite_count": evo_config.elite_count,
+            "generation_limit": evo_config.generation_limit,
+            "mutation_rate": evo_config.mutation_rate,
+            "crossover_rate": evo_config.crossover_rate,
+            "seed": 42,
+            "tournament_size": 5
+        }
+    });
+    fs::write(&baseline_46_path, serde_json::to_string_pretty(&baseline_46_json).unwrap())
+        .expect("Failed to write A-n46-k7 baseline JSON");
+    println!("A-n46-k7 baseline saved to {}", baseline_46_path);
 }
 
 fn get_next_milestone_number() -> usize {
@@ -312,7 +445,7 @@ fn generate_markdown_report(
 
 ## Notes
 - Evolved using Benchmark-Driven Development protocols.
-- Stopping criteria: 50 generations.
+- Stopping criteria: 150 generations.
 - Random seed: 42.
 "#,
         milestone = report.milestone,

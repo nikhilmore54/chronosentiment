@@ -1,0 +1,81 @@
+# Fleet Semantics Registry — CMT family (Christofides, Mingozzi, Toth)
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "CMT"
+full_name   = "Christofides-Mingozzi-Toth (CMT)"
+
+[constraint]
+type        = "Unspecified"
+description = "Fleet semantics for CMT family are not definitively established. Current assignment is Unspecified pending P5 verification."
+formal      = "Unknown — requires verification against Christofides et al. 1979"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Christofides, N., Mingozzi, A., Toth, P."
+title       = "The Vehicle Routing Problem"
+year        = 1979
+book        = "Combinatorial Optimization"
+editors     = "Christofides, N., Mingozzi, A., Toth, P., Sandi, C."
+publisher   = "Wiley, Chichester"
+pages       = "315–338"
+
+[notes]
+derivation  = """
+The CMT family is the highest-priority fleet semantics investigation target.
+
+The original 1979 paper defines vehicle routing problems with a fixed fleet.
+The question is whether the vehicle count K represents:
+  (a) ATMOST(K): optimizer may use fewer vehicles — standard modern CVRP interpretation
+  (b) EXACT(K): optimizer must use exactly K vehicles — possible for 1979 formulation
+
+This distinction is critical because:
+  - If ATMOST(K): Coralys using routes_used > K would be a constraint violation
+  - If EXACT(K): Coralys using routes_used ≠ K would be a constraint violation
+  - Either mismatch would explain the observed negative gaps
+
+The CMT instances do NOT embed vehicle count in the .vrp files. Vehicle counts
+are stored in the Coralys registry (sourced from CVRPLIB catalog):
+  CMT1=5, CMT2=10, CMT3=8, CMT4=12, CMT5=17, CMT6=6, CMT7=11, CMT8=9,
+  CMT9=14, CMT10=18, CMT11=11, CMT12=10, CMT13=11, CMT14=10.
+"""
+campaign_observation = """
+Campaign v1.5 observed negative gaps in 7 of 14 CMT instances (up to -32.65% for CMT13).
+The FCS module assigned ATMOST(K) as a hypothesis for CMT family.
+All instances where routes_used ≤ K produced FCS outcome=VALID.
+
+The CMT13 gap of -32.65% (best=1038, BKS=1541.14) is almost certainly explained
+by a fleet semantics or BKS provenance issue rather than a genuine optimizer improvement.
+A 32% improvement over the current CVRPLIB BKS would be an extraordinary result
+requiring extraordinary evidence.
+
+If routes_used > K for CMT13, the gap is NOT COMPARABLE and must be documented as such.
+"""
+
+[verification]
+status      = "Unspecified"
+confidence  = "Low"
+method      = "Pending — requires review of Christofides et al. 1979 original paper"
+date        = "2026-07"
+open_items  = [
+    "P5 — CRITICAL: confirm ATMOST vs EXACT from Christofides et al. 1979",
+    "Stage B — collect routes_used for all 14 CMT instances",
+    "If routes_used > K for any instance: reclassify gap as NOT COMPARABLE",
+    "If routes_used ≤ K for all instances: escalate BKS provenance investigation (P4)"
+]
+notes       = """
+CMT fleet semantics are the highest-priority P5 investigation item.
+The 1979 paper predates the modern ATMOST convention and may have used EXACT semantics.
+Resolution of this question will determine whether the observed negative gaps are:
+  (a) Constraint violations (routes_used > K with EXACT semantics)
+  (b) Fleet semantics mismatches (routes_used > K with ATMOST semantics, but K is wrong)
+  (c) BKS provenance issues (registry BKS values are outdated)
+  (d) Genuine optimizer improvements (unlikely at -32.65% magnitude)
+
+Until P5 is resolved, CMT fleet semantics remain Unspecified and CMT gap measurements
+must be reported as Under Investigation, not as qualified comparisons.
+"""

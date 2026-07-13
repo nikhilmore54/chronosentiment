@@ -1,0 +1,68 @@
+# Provenance Registry — Augerat P-family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "P"
+full_name           = "Augerat P-family"
+instance_count      = 24
+customer_range      = "16–101"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+
+[publication]
+authors             = "Augerat, P., Belenguer, J.M., Benavent, E., Corbéran, A., Naddef, D., Rinaldi, G."
+title               = "Computational Results with a Branch and Cut Code for the Capacitated Vehicle Routing Problem"
+year                = 1995
+institution         = "IMAG, Grenoble, France"
+report_number       = "RR949-M"
+notes               = "P-family shares the same publication as A, B, and E families. Distributed via CVRPLIB."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "COMMENT field in .vrp file ('Optimal value: N')"
+value_type          = "Integer (optimal or best known)"
+notes               = "BKS values extracted from COMMENT field of each instance file. CVRPLIB catalog is the authoritative current source."
+
+[instance_exceptions]
+"P-n55-k8" = """
+Suspect instance. Campaign v1.5 observed gap = -2.04% (best found = 576, registry BKS = 588).
+This is the only P-family instance with a negative gap. Root cause under investigation.
+Working hypotheses: fleet semantics mismatch (routes_used > 8), or BKS provenance discrepancy.
+Stage B certificate required before this gap can be interpreted.
+"""
+
+[verification]
+status              = "Verified (with one suspect instance)"
+method              = "Cross-checked against CVRPLIB catalog; vehicle count and BKS from COMMENT field"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Provisionally Qualified"
+open_items          = [
+    "P5 — fleet semantics (ATMOST vs EXACT) pending external confirmation",
+    "P-n55-k8 — negative gap (-2.04%) requires Stage B certificate (route count, capacity, customer coverage)"
+]
+notes               = "P-family shows no systematic negative gaps. MedGap=0.00%, NearOpt%≈100%. One instance (P-n55-k8) produced a negative gap of -2.04% and is flagged for Stage B investigation. BKS provenance confirmed from CVRPLIB current catalog for all other instances. Fleet semantics hypothesis: ATMOST(K). Pending Stage B route-count certificates."

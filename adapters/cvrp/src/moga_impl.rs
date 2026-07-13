@@ -443,9 +443,9 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
         let evaluator = CvrpEvaluator { instance: self.instance.clone() };
         let outcome = evaluator.evaluate(candidate);
         let mut routes = Vec::new();
-        
+
         if outcome.eval.routes.is_empty() {
-            // Infeasible under k_limit! Fallback to greedy packing split to at least optimize something
+            // Infeasible under k_limit! Fallback to greedy packing split
             let mut current_route = Vec::new();
             let mut current_load = 0;
             for &cust_idx in &candidate.permutation {
@@ -473,6 +473,15 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                 routes.push(route_indices);
             }
         }
+
+        // Helper: get node reference by index in route (-1 or >= len = depot)
+        let get_node = |route: &[usize], pos: isize| -> &crate::Node {
+            if pos < 0 || pos as usize >= route.len() {
+                &self.instance.depot
+            } else {
+                &self.instance.customers[route[pos as usize]]
+            }
+        };
 
         let get_route_distance = |route: &[usize]| -> f64 {
             if route.is_empty() { return 0.0; }
@@ -509,46 +518,66 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
             improving = false;
 
             'outer: {
-                // 1. Intra-route improvements
+                // 1. Intra-route improvements using O(1) delta evaluation
                 for r in 0..routes.len() {
                     let len = routes[r].len();
                     if len < 2 { continue; }
 
-                    // Exhaustive 2-opt within the route
+                    // 2-opt: reverse segment [i..=j]
+                    // Old edges: d(i-1,i) + d(j,j+1); New edges: d(i-1,j) + d(i,j+1)
                     for i in 0..len {
                         for j in (i+1)..len {
-                            let mut test_route = routes[r].clone();
-                            test_route[i..=j].reverse();
-                            let new_r_dist = get_route_distance(&test_route);
-                            let new_total = current_best - route_distances[r] + new_r_dist;
-                            if new_total < current_best {
-                                current_best = new_total;
-                                route_distances[r] = new_r_dist;
-                                routes[r] = test_route;
+                            let d_old = self.instance.distance(get_node(&routes[r], i as isize - 1), get_node(&routes[r], i as isize))
+                                      + self.instance.distance(get_node(&routes[r], j as isize), get_node(&routes[r], j as isize + 1));
+                            let d_new = self.instance.distance(get_node(&routes[r], i as isize - 1), get_node(&routes[r], j as isize))
+                                      + self.instance.distance(get_node(&routes[r], i as isize), get_node(&routes[r], j as isize + 1));
+                            let delta = d_new - d_old;
+                            if delta < -1e-9 {
+                                routes[r][i..=j].reverse();
+                                route_distances[r] += delta;
+                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
                         }
                     }
 
-                    // Exhaustive Swap within the route
+                    // Intra-swap: swap positions i and j using O(1) delta evaluation
                     for i in 0..len {
                         for j in (i+1)..len {
-                            let mut test_route = routes[r].clone();
-                            test_route.swap(i, j);
-                            let new_r_dist = get_route_distance(&test_route);
-                            let new_total = current_best - route_distances[r] + new_r_dist;
-                            if new_total < current_best {
-                                current_best = new_total;
-                                route_distances[r] = new_r_dist;
-                                routes[r] = test_route;
+                            let delta = if j == i + 1 {
+                                // Adjacent: only outer edges change (middle edge d(i,j) is symmetric)
+                                let d_old = self.instance.distance(get_node(&routes[r], i as isize - 1), get_node(&routes[r], i as isize))
+                                          + self.instance.distance(get_node(&routes[r], j as isize), get_node(&routes[r], j as isize + 1));
+                                let d_new = self.instance.distance(get_node(&routes[r], i as isize - 1), get_node(&routes[r], j as isize))
+                                          + self.instance.distance(get_node(&routes[r], i as isize), get_node(&routes[r], j as isize + 1));
+                                d_new - d_old
+                            } else {
+                                // Non-adjacent: 4 edges change
+                                let d_old = self.instance.distance(get_node(&routes[r], i as isize - 1), get_node(&routes[r], i as isize))
+                                          + self.instance.distance(get_node(&routes[r], i as isize), get_node(&routes[r], i as isize + 1))
+                                          + self.instance.distance(get_node(&routes[r], j as isize - 1), get_node(&routes[r], j as isize))
+                                          + self.instance.distance(get_node(&routes[r], j as isize), get_node(&routes[r], j as isize + 1));
+                                // After swap: node at i becomes routes[r][j], node at j becomes routes[r][i]
+                                let node_i = get_node(&routes[r], i as isize);
+                                let node_j = get_node(&routes[r], j as isize);
+                                let d_new = self.instance.distance(get_node(&routes[r], i as isize - 1), node_j)
+                                          + self.instance.distance(node_j, get_node(&routes[r], i as isize + 1))
+                                          + self.instance.distance(get_node(&routes[r], j as isize - 1), node_i)
+                                          + self.instance.distance(node_i, get_node(&routes[r], j as isize + 1));
+                                d_new - d_old
+                            };
+                            if delta < -1e-9 {
+                                routes[r].swap(i, j);
+                                route_distances[r] += delta;
+                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
                         }
                     }
 
-                    // Exhaustive Relocate within the route
+                    // Intra-relocate: remove node at i, insert at position j (clone-based, safe)
                     for i in 0..len {
                         for j in 0..len {
                             if i == j { continue; }
@@ -557,16 +586,17 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                             let insert_pos = if j > i { j - 1 } else { j };
                             test_route.insert(insert_pos, val);
                             let new_r_dist = get_route_distance(&test_route);
-                            let new_total = current_best - route_distances[r] + new_r_dist;
-                            if new_total < current_best {
-                                current_best = new_total;
-                                route_distances[r] = new_r_dist;
+                            let delta = new_r_dist - route_distances[r];
+                            if delta < -1e-9 {
                                 routes[r] = test_route;
+                                route_distances[r] = new_r_dist;
+                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
                         }
                     }
+                
                 }
 
                 // 2. Inter-route Relocate (move a customer from route A to route B)
@@ -576,7 +606,7 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                         let len1 = routes[r1].len();
                         for i in 0..len1 {
                             let cust_idx = routes[r1][i];
-                            
+
                             // Spatial pruning
                             if !routes[r2].is_empty() {
                                 let limit_dist = min_dists[cust_idx] * 4.0;
@@ -599,21 +629,29 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                                 continue;
                             }
 
+                            // O(1) delta for removing cust_idx from r1 at position i
+                            let node_prev1 = get_node(&routes[r1], i as isize - 1);
+                            let node_ci = &self.instance.customers[cust_idx];
+                            let node_next1 = get_node(&routes[r1], i as isize + 1);
+                            let removal_delta_r1 = self.instance.distance(node_prev1, node_next1)
+                                                 - self.instance.distance(node_prev1, node_ci)
+                                                 - self.instance.distance(node_ci, node_next1);
+
                             let len2 = routes[r2].len();
                             for j in 0..=len2 {
-                                let mut test_route1 = routes[r1].clone();
-                                let mut test_route2 = routes[r2].clone();
-                                let val = test_route1.remove(i);
-                                test_route2.insert(j, val);
-                                let new_r_dist1 = get_route_distance(&test_route1);
-                                let new_r_dist2 = get_route_distance(&test_route2);
-                                let new_total = current_best - route_distances[r1] - route_distances[r2] + new_r_dist1 + new_r_dist2;
-                                if new_total < current_best {
-                                    current_best = new_total;
-                                    route_distances[r1] = new_r_dist1;
-                                    route_distances[r2] = new_r_dist2;
-                                    routes[r1] = test_route1;
-                                    routes[r2] = test_route2;
+                                // O(1) delta for inserting cust_idx at position j in r2
+                                let node_prev2 = if j == 0 { &self.instance.depot } else { &self.instance.customers[routes[r2][j - 1]] };
+                                let node_next2 = if j == len2 { &self.instance.depot } else { &self.instance.customers[routes[r2][j]] };
+                                let insertion_delta_r2 = self.instance.distance(node_prev2, node_ci)
+                                                       + self.instance.distance(node_ci, node_next2)
+                                                       - self.instance.distance(node_prev2, node_next2);
+                                let delta = removal_delta_r1 + insertion_delta_r2;
+                                if delta < -1e-9 {
+                                    let val = routes[r1].remove(i);
+                                    routes[r2].insert(j, val);
+                                    route_distances[r1] += removal_delta_r1;
+                                    route_distances[r2] += insertion_delta_r2;
+                                    current_best += delta;
                                     improving = true;
                                     break 'outer;
                                 }
@@ -632,7 +670,7 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
 
                         for i in 0..len1 {
                             let c1 = routes[r1][i];
-                            
+
                             // Spatial pruning for swap partner
                             let limit_dist1 = min_dists[c1] * 4.0;
                             let mut is_close = false;
@@ -655,19 +693,24 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                                     continue;
                                 }
 
-                                let mut test_route1 = routes[r1].clone();
-                                let mut test_route2 = routes[r2].clone();
-                                test_route1[i] = c2;
-                                test_route2[j] = c1;
-                                let new_r_dist1 = get_route_distance(&test_route1);
-                                let new_r_dist2 = get_route_distance(&test_route2);
-                                let new_total = current_best - route_distances[r1] - route_distances[r2] + new_r_dist1 + new_r_dist2;
-                                if new_total < current_best {
-                                    current_best = new_total;
-                                    route_distances[r1] = new_r_dist1;
-                                    route_distances[r2] = new_r_dist2;
-                                    routes[r1] = test_route1;
-                                    routes[r2] = test_route2;
+                                // O(1) delta for swapping c1 (r1[i]) with c2 (r2[j])
+                                let node_c1 = &self.instance.customers[c1];
+                                let node_c2 = &self.instance.customers[c2];
+                                let old_r1 = self.instance.distance(get_node(&routes[r1], i as isize - 1), node_c1)
+                                           + self.instance.distance(node_c1, get_node(&routes[r1], i as isize + 1));
+                                let old_r2 = self.instance.distance(get_node(&routes[r2], j as isize - 1), node_c2)
+                                           + self.instance.distance(node_c2, get_node(&routes[r2], j as isize + 1));
+                                let new_r1 = self.instance.distance(get_node(&routes[r1], i as isize - 1), node_c2)
+                                           + self.instance.distance(node_c2, get_node(&routes[r1], i as isize + 1));
+                                let new_r2 = self.instance.distance(get_node(&routes[r2], j as isize - 1), node_c1)
+                                           + self.instance.distance(node_c1, get_node(&routes[r2], j as isize + 1));
+                                let delta = (new_r1 + new_r2) - (old_r1 + old_r2);
+                                if delta < -1e-9 {
+                                    routes[r1][i] = c2;
+                                    routes[r2][j] = c1;
+                                    route_distances[r1] += new_r1 - old_r1;
+                                    route_distances[r2] += new_r2 - old_r2;
+                                    current_best += delta;
                                     improving = true;
                                     break 'outer;
                                 }

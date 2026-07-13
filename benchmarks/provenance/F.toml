@@ -1,0 +1,60 @@
+# Provenance Registry — Fisher F-family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "F"
+full_name           = "Fisher F-family"
+instance_count      = 3
+customer_range      = "33–134"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+
+[publication]
+authors             = "Fisher, M.L."
+title               = "Optimal Solution of Vehicle Routing Problems Using Minimum K-Trees"
+year                = 1994
+journal             = "Operations Research"
+volume              = "42"
+number              = "4"
+pages               = "626–642"
+doi                 = "10.1287/opre.42.4.626"
+notes               = "Three instances: F-n45-k4, F-n72-k4, F-n135-k7. Widely used in CVRP literature. Instances distributed via CVRPLIB."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+
+[bks]
+source              = "CVRPLIB catalog (current) / COMMENT field"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "COMMENT field in .vrp file ('Optimal value: N')"
+value_type          = "Integer (optimal or best known)"
+notes               = "BKS values extracted from COMMENT field of each instance file. CVRPLIB catalog is the authoritative current source."
+
+[verification]
+status              = "Verified"
+method              = "Cross-checked against CVRPLIB catalog; vehicle count and BKS from COMMENT field"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Provisionally Qualified"
+open_items          = ["P5 — fleet semantics (ATMOST vs EXACT) pending external confirmation"]
+notes               = "F-family (3 instances) shows no systematic negative gaps. BKS provenance confirmed from CVRPLIB current catalog. Fleet semantics hypothesis: ATMOST(K). Pending Stage B route-count certificates."

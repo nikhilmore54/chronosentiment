@@ -231,15 +231,6 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
                 }
             }
 
-            // Local Search
-            let pre_ls_fit = evaluator.evaluate(&child).eval.total_distance;
-            ls_attempts += 1;
-            local_search.improve(&mut child);
-            let post_ls_fit = evaluator.evaluate(&child).eval.total_distance;
-            if post_ls_fit < pre_ls_fit {
-                ls_improvements += 1;
-            }
-
             // Feasibility Repair Framework
             let checker = cvrp::moga_impl::CvrpConstraintChecker { instance: instance.clone() };
             use coralys_moga::ConstraintChecker;
@@ -249,6 +240,15 @@ fn run_telemetry(name: &str, metadata: &InstanceMetadata) {
             let is_feasible = checker.check_violations(&child).is_empty();
             if !was_feasible && is_feasible {
                 repair_successes += 1;
+            }
+
+            // Local Search
+            let pre_ls_fit = evaluator.evaluate(&child).eval.total_distance;
+            ls_attempts += 1;
+            local_search.improve(&mut child);
+            let post_ls_fit = evaluator.evaluate(&child).eval.total_distance;
+            if post_ls_fit < pre_ls_fit {
+                ls_improvements += 1;
             }
 
             next_gen.push(child);

@@ -1,0 +1,66 @@
+# Provenance Registry — Augerat E-family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "E"
+full_name           = "Augerat E-family"
+instance_count      = 13
+customer_range      = "13–101"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+
+[publication]
+authors             = "Augerat, P., Belenguer, J.M., Benavent, E., Corbéran, A., Naddef, D., Rinaldi, G."
+title               = "Computational Results with a Branch and Cut Code for the Capacitated Vehicle Routing Problem"
+year                = 1995
+institution         = "IMAG, Grenoble, France"
+report_number       = "RR949-M"
+notes               = "E-family shares the same publication as A and B families. Two instances (E-n13-k4, E-n31-k7) use EXPLICIT distance matrices rather than EUC_2D — see distance_exceptions below."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D (majority)"
+description         = "Most E-family instances use 2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+exceptions          = ["E-n13-k4 uses EXPLICIT LOWER_ROW distance matrix", "E-n31-k7 uses EXPLICIT LOWER_ROW distance matrix"]
+
+[rounding]
+rule                = "TSPLIB integer rounding (EUC_2D instances)"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention for EUC_2D instances"
+verified            = true
+exceptions          = "E-n13-k4 and E-n31-k7 use pre-computed integer distance matrices (EXPLICIT format). No rounding applied — distances are read directly from the matrix."
+
+[distance_exceptions]
+"E-n13-k4"  = "EXPLICIT LOWER_ROW integer distance matrix. ExplicitMatrix support added to Coralys in v1.1."
+"E-n31-k7"  = "EXPLICIT LOWER_ROW integer distance matrix. ExplicitMatrix support added to Coralys in v1.1."
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "COMMENT field in .vrp file ('Optimal value: N')"
+value_type          = "Integer (optimal or best known)"
+notes               = "BKS values extracted from COMMENT field of each instance file. CVRPLIB catalog is the authoritative current source."
+
+[verification]
+status              = "Verified"
+method              = "Cross-checked against CVRPLIB catalog; vehicle count and BKS from COMMENT field"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Provisionally Qualified"
+open_items          = [
+    "P5 — fleet semantics (ATMOST vs EXACT) pending external confirmation",
+    "E-n13-k4 and E-n31-k7 — EXPLICIT matrix instances require validation run under ExplicitMatrix capability (added v1.1)"
+]
+notes               = "E-family shows no systematic negative gaps. MedGap=0.00%, Solved%≈100%. BKS provenance confirmed from CVRPLIB current catalog. Fleet semantics hypothesis: ATMOST(K). Two EXPLICIT-matrix instances are partially verified — new capability, requires dedicated validation run."

@@ -1,0 +1,403 @@
+{
+  "entries": [
+    {
+      "milestone": "milestone-001",
+      "timestamp": "2026-07-06T04:58:09.400922+00:00",
+      "best_distance": 797.4512901189883,
+      "gap_to_bks": 1.7157257804831956,
+      "runtime_ms": 81283
+    },
+    {
+      "milestone": "milestone-002",
+      "timestamp": "2026-07-06T05:16:53.127690+00:00",
+      "best_distance": 797.4512901189883,
+      "gap_to_bks": 1.7157257804831956,
+      "runtime_ms": 81286
+    },
+    {
+      "milestone": "milestone-003",
+      "timestamp": "2026-07-06T05:21:35.281517+00:00",
+      "best_distance": 797.4512901189883,
+      "gap_to_bks": 1.7157257804831956,
+      "runtime_ms": 80539
+    },
+    {
+      "milestone": "milestone-004",
+      "timestamp": "2026-07-06T05:38:31.737620+00:00",
+      "best_distance": 787.0818888551148,
+      "gap_to_bks": 0.3930980682544404,
+      "runtime_ms": 46871
+    },
+    {
+      "milestone": "milestone-005",
+      "timestamp": "2026-07-06T05:46:16.761668+00:00",
+      "best_distance": 787.0818888551148,
+      "gap_to_bks": 0.3930980682544404,
+      "runtime_ms": 19872
+    },
+    {
+      "milestone": "milestone-006",
+      "timestamp": "2026-07-06T10:05:34.214886+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 21898
+    },
+    {
+      "milestone": "milestone-007",
+      "timestamp": "2026-07-07T10:04:57.092154+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 3373
+    },
+    {
+      "milestone": "milestone-008",
+      "timestamp": "2026-07-07T10:25:16.367610+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 1786
+    },
+    {
+      "milestone": "milestone-009",
+      "timestamp": "2026-07-07T10:41:33.168554+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2578
+    },
+    {
+      "milestone": "milestone-010",
+      "timestamp": "2026-07-07T10:50:39.946262+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 1820
+    },
+    {
+      "milestone": "milestone-011",
+      "timestamp": "2026-07-07T10:52:34.765036+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 3640
+    },
+    {
+      "milestone": "milestone-012",
+      "timestamp": "2026-07-07T11:09:15.953242+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2832
+    },
+    {
+      "milestone": "milestone-013",
+      "timestamp": "2026-07-07T11:17:09.860790+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2328
+    },
+    {
+      "milestone": "milestone-014",
+      "timestamp": "2026-07-07T11:18:14.542570+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 3241
+    },
+    {
+      "milestone": "milestone-015",
+      "timestamp": "2026-07-07T11:29:55.115397+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2500
+    },
+    {
+      "milestone": "milestone-016",
+      "timestamp": "2026-07-07T11:38:25.066169+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2183
+    },
+    {
+      "milestone": "milestone-017",
+      "timestamp": "2026-07-07T11:38:27.791959+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2396
+    },
+    {
+      "milestone": "milestone-018",
+      "timestamp": "2026-07-07T11:38:30.441419+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2330
+    },
+    {
+      "milestone": "milestone-019",
+      "timestamp": "2026-07-07T11:38:32.930694+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2160
+    },
+    {
+      "milestone": "milestone-020",
+      "timestamp": "2026-07-07T11:38:35.365276+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2113
+    },
+    {
+      "milestone": "milestone-021",
+      "timestamp": "2026-07-07T11:51:59.022919+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2294
+    },
+    {
+      "milestone": "milestone-022",
+      "timestamp": "2026-07-08T02:52:05.793107+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2204
+    },
+    {
+      "milestone": "milestone-023",
+      "timestamp": "2026-07-08T02:53:08.636799+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2121
+    },
+    {
+      "milestone": "milestone-024",
+      "timestamp": "2026-07-08T02:53:15.651478+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2201
+    },
+    {
+      "milestone": "milestone-025",
+      "timestamp": "2026-07-08T02:53:22.841205+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2206
+    },
+    {
+      "milestone": "milestone-026",
+      "timestamp": "2026-07-08T02:53:30.025109+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2200
+    },
+    {
+      "milestone": "milestone-027",
+      "timestamp": "2026-07-08T02:53:37.154269+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2140
+    },
+    {
+      "milestone": "milestone-028",
+      "timestamp": "2026-07-08T03:01:08.083348+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 4549
+    },
+    {
+      "milestone": "milestone-029",
+      "timestamp": "2026-07-08T03:01:17.486561+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2642
+    },
+    {
+      "milestone": "milestone-030",
+      "timestamp": "2026-07-08T03:01:26.042985+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2608
+    },
+    {
+      "milestone": "milestone-031",
+      "timestamp": "2026-07-08T03:01:34.553264+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2640
+    },
+    {
+      "milestone": "milestone-032",
+      "timestamp": "2026-07-08T03:01:42.990459+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2592
+    },
+    {
+      "milestone": "milestone-033",
+      "timestamp": "2026-07-08T03:01:51.547876+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2639
+    },
+    {
+      "milestone": "milestone-034",
+      "timestamp": "2026-07-08T03:02:00.109102+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2633
+    },
+    {
+      "milestone": "milestone-035",
+      "timestamp": "2026-07-08T03:02:08.912926+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2650
+    },
+    {
+      "milestone": "milestone-036",
+      "timestamp": "2026-07-08T03:02:17.509804+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2662
+    },
+    {
+      "milestone": "milestone-037",
+      "timestamp": "2026-07-08T03:02:27.061394+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2841
+    },
+    {
+      "milestone": "milestone-038",
+      "timestamp": "2026-07-08T03:02:35.571416+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2584
+    },
+    {
+      "milestone": "milestone-039",
+      "timestamp": "2026-07-08T03:02:44.136353+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2802
+    },
+    {
+      "milestone": "milestone-040",
+      "timestamp": "2026-07-08T03:02:52.895662+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2638
+    },
+    {
+      "milestone": "milestone-041",
+      "timestamp": "2026-07-08T03:03:01.815844+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2613
+    },
+    {
+      "milestone": "milestone-042",
+      "timestamp": "2026-07-08T03:03:11.265744+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 3366
+    },
+    {
+      "milestone": "milestone-043",
+      "timestamp": "2026-07-08T03:03:20.465782+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2902
+    },
+    {
+      "milestone": "milestone-044",
+      "timestamp": "2026-07-08T03:03:29.079855+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2650
+    },
+    {
+      "milestone": "milestone-045",
+      "timestamp": "2026-07-08T03:03:37.578757+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2591
+    },
+    {
+      "milestone": "milestone-046",
+      "timestamp": "2026-07-08T03:03:46.084416+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2690
+    },
+    {
+      "milestone": "milestone-047",
+      "timestamp": "2026-07-08T03:03:54.643843+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2652
+    },
+    {
+      "milestone": "milestone-048",
+      "timestamp": "2026-07-08T03:04:03.272910+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2597
+    },
+    {
+      "milestone": "milestone-049",
+      "timestamp": "2026-07-08T03:04:11.756050+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2650
+    },
+    {
+      "milestone": "milestone-050",
+      "timestamp": "2026-07-08T03:04:20.404447+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2597
+    },
+    {
+      "milestone": "milestone-051",
+      "timestamp": "2026-07-08T03:04:28.826145+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2639
+    },
+    {
+      "milestone": "milestone-052",
+      "timestamp": "2026-07-08T03:04:37.360112+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2632
+    },
+    {
+      "milestone": "milestone-053",
+      "timestamp": "2026-07-08T03:04:46.184222+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2686
+    },
+    {
+      "milestone": "milestone-054",
+      "timestamp": "2026-07-08T03:04:54.800033+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2768
+    },
+    {
+      "milestone": "milestone-055",
+      "timestamp": "2026-07-08T03:05:03.468087+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2668
+    },
+    {
+      "milestone": "milestone-056",
+      "timestamp": "2026-07-08T03:05:12.373685+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2827
+    },
+    {
+      "milestone": "milestone-057",
+      "timestamp": "2026-07-08T03:05:21.315446+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2912
+    }
+  ]
+}
