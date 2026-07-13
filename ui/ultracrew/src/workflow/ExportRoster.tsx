@@ -16,9 +16,10 @@ export const ExportRoster: React.FC<{
   result: ScheduleResult;
   manualEditCount: number;
   editDistribution: Record<string, number>;
+  originalAssignmentCount: number;
   onBack: () => void;
   onStartOver: () => void;
-}> = ({ staff, schedule, result, manualEditCount, editDistribution, onBack, onStartOver }) => {
+}> = ({ staff, schedule, result, manualEditCount, editDistribution, originalAssignmentCount, onBack, onStartOver }) => {
   const [exported, setExported] = useState(false);
 
   const handleExcel = () => {
@@ -31,9 +32,12 @@ export const ExportRoster: React.FC<{
   const totalSlots = staff.length * 28;
   const coveragePct = totalSlots > 0 ? Math.round((totalShifts / totalSlots) * 100) : 0;
 
-  // Planner Acceptance Score: fraction of assignments not manually edited
-  const pas = totalShifts > 0
-    ? Math.round(((totalShifts - manualEditCount) / totalShifts) * 1000) / 10
+  // Planner Acceptance Score: fraction of optimizer-generated assignments accepted without change.
+  // Denominator is originalAssignmentCount (set at generation time), not totalShifts (which
+  // changes as the planner edits). This prevents a sparse schedule from inflating PAS.
+  const pasDenominator = originalAssignmentCount > 0 ? originalAssignmentCount : totalShifts;
+  const pas = pasDenominator > 0
+    ? Math.round(((pasDenominator - manualEditCount) / pasDenominator) * 1000) / 10
     : 100;
   const pasColor = pas >= 95 ? '#22c55e' : pas >= 80 ? '#f59e0b' : '#ef4444';
 
@@ -71,9 +75,9 @@ export const ExportRoster: React.FC<{
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          <span>Generated assignments: <strong style={{ color: 'var(--text-main)' }}>{totalShifts}</strong></span>
+          <span>Generated assignments: <strong style={{ color: 'var(--text-main)' }}>{pasDenominator}</strong></span>
           <span>Manual edits: <strong style={{ color: manualEditCount > 0 ? '#f59e0b' : 'var(--success-color)' }}>{manualEditCount}</strong></span>
-          <span>Accepted without change: <strong style={{ color: pasColor }}>{totalShifts - manualEditCount}</strong></span>
+          <span>Accepted without change: <strong style={{ color: pasColor }}>{pasDenominator - manualEditCount}</strong></span>
         </div>
         <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', textAlign: 'right' }}>
           {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95%)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}

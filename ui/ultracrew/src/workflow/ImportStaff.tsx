@@ -56,7 +56,7 @@ export const ImportStaff: React.FC<{
           setErrors([]);
           onStaffChange(parsed);
         }} style={accentGhostBtnStyle}>
-          Load Sample (8 staff)
+          Load Sample (20 staff)
         </button>
 
         {staff.length > 0 && (

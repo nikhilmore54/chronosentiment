@@ -70,30 +70,67 @@ const ExplainModal: React.FC<{
   const dateStr = dt.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
 
-  const reasons: string[] = [];
+  const cr = result.constraint_report;
+  const metrics = result.metrics ?? {};
+  const fitness = metrics.fitness ?? metrics.score ?? null;
+  const sc1 = metrics.fairness_penalty ?? null;
+  const sc2 = metrics.fatigue_penalty ?? null;
+
+  // ── Assignment reasoning ──────────────────────────────────────────────────
+  const reasons: Array<{ icon: string; text: string; color?: string }> = [];
+
   if (shift) {
-    reasons.push(`${shift} shift assigned to meet coverage requirements for ${dateStr}.`);
+    // Shift type and coverage
+    const shiftHours: Record<string, string> = { Early: '06:00–14:00', Late: '14:00–22:00', Night: '22:00–06:00' };
+    reasons.push({ icon: '📋', text: `${shift} shift (${shiftHours[shift] ?? '8h'}) assigned on ${dateStr} to satisfy coverage requirements.` });
+
+    // Contract eligibility
     if (member) {
-      reasons.push(`${member.id} holds a "${member.contract}" contract — eligible for this shift type.`);
-      reasons.push(`Skill match: ${member.skills.join(', ')}.`);
+      const contractNote = member.contract === 'Night'
+        ? `"${member.contract}" contract — eligible for night rotations.`
+        : `"${member.contract}" contract — eligible for day and evening shifts.`;
+      reasons.push({ icon: '📄', text: `${member.id}: ${contractNote}` });
+      reasons.push({ icon: '🎓', text: `Skill match: ${member.skills.join(', ')}.` });
     }
+
+    // Weekend flag
     reasons.push(isWeekend
-      ? 'Weekend assignment — counted against the maximum working weekends limit.'
-      : 'Weekday assignment — does not consume weekend allocation.');
-    const cr = result.constraint_report;
+      ? { icon: '📅', text: 'Weekend assignment — counts against the maximum working weekends limit.', color: '#f59e0b' }
+      : { icon: '📅', text: 'Weekday assignment — does not consume weekend allocation.' });
+
+    // Fatigue signal (SC2)
+    if (sc2 !== null) {
+      const sc2Level = sc2 < 400 ? 'low' : sc2 < 800 ? 'moderate' : 'elevated';
+      const sc2Color = sc2 < 400 ? 'var(--success-color)' : sc2 < 800 ? '#f59e0b' : '#ef4444';
+      reasons.push({ icon: '⚡', text: `Team fatigue load is ${sc2Level} (SC2 = ${sc2.toFixed(0)}). ${sc2Level === 'elevated' ? 'High-workload workers are being assigned fewer shifts.' : 'Workload is well-distributed.'}`, color: sc2Color });
+    }
+
+    // Fairness signal (SC1)
+    if (sc1 !== null) {
+      const sc1Good = sc1 < 100;
+      reasons.push({ icon: '⚖️', text: `Fairness penalty SC1 = ${sc1.toFixed(1)}. ${sc1Good ? 'Hours are distributed equitably across the team.' : 'Some imbalance in hours distribution — optimizer is working to reduce this.'}`, color: sc1Good ? 'var(--success-color)' : '#f59e0b' });
+    }
+
+    // Hard constraint status
     if (cr) {
       reasons.push(cr.hard_violations === 0
-        ? 'Schedule has zero hard constraint violations at time of generation.'
-        : `Note: schedule has ${cr.hard_violations} hard violation(s) — consider re-generating.`);
+        ? { icon: '✓', text: 'Schedule has zero hard constraint violations.', color: 'var(--success-color)' }
+        : { icon: '⚠', text: `Schedule has ${cr.hard_violations} hard violation(s) — consider re-generating.`, color: '#ef4444' });
     }
   } else {
-    reasons.push(`Rest day on ${dateStr}.`);
-    if (member) reasons.push(`Ensures minimum consecutive days off for ${member.id}.`);
-    reasons.push('Prevents fatigue accumulation and maintains legal rest requirements.');
-    if (isWeekend) reasons.push('Weekend rest — does not consume weekend allocation.');
+    // Rest day reasoning
+    reasons.push({ icon: '😴', text: `Rest day on ${dateStr}.` });
+    if (member) reasons.push({ icon: '📄', text: `Ensures minimum consecutive days off for ${member.id} per contract rules.` });
+    reasons.push({ icon: '⚡', text: 'Prevents fatigue accumulation and maintains legal rest requirements.' });
+    if (isWeekend) reasons.push({ icon: '📅', text: 'Weekend rest — does not consume weekend allocation.' });
+    if (sc2 !== null && sc2 > 800) {
+      reasons.push({ icon: '⚡', text: `Team fatigue load is elevated (SC2 = ${sc2.toFixed(0)}). Rest days are being prioritised for high-workload workers.`, color: '#f59e0b' });
+    }
   }
 
-  const cr = result.constraint_report;
+  // ── Satisfied constraints ─────────────────────────────────────────────────
+  const satisfied = cr?.satisfied_constraints ?? [];
+  const violated = cr?.violated_constraints ?? [];
 
   return (
     <div
@@ -101,9 +138,10 @@ const ExplainModal: React.FC<{
       onClick={onClose}
     >
       <div
-        style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '2rem', maxWidth: '480px', width: '90%', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}
+        style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '2rem', maxWidth: '520px', width: '92%', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '85vh', overflowY: 'auto' }}
         onClick={e => e.stopPropagation()}
       >
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.1rem', color: shift ? SHIFT_COLORS[shift] : 'var(--text-muted)' }}>
@@ -114,20 +152,22 @@ const ExplainModal: React.FC<{
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        {/* Assignment reasoning */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Why this assignment?</div>
           {reasons.map((r, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.6rem', fontSize: '0.88rem', color: 'var(--text-main)' }}>
-              <span style={{ color: 'var(--accent-color)', flexShrink: 0 }}>→</span>
-              <span>{r}</span>
+            <div key={i} style={{ display: 'flex', gap: '0.6rem', fontSize: '0.87rem', color: r.color ?? 'var(--text-main)', alignItems: 'flex-start' }}>
+              <span style={{ flexShrink: 0, width: '1.2rem', textAlign: 'center' }}>{r.icon}</span>
+              <span>{r.text}</span>
             </div>
           ))}
         </div>
 
+        {/* Schedule health */}
         {cr && (
-          <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-color)', marginBottom: '1rem' }}>
             <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>Schedule health</div>
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
               <div>
                 <span style={{ color: cr.hard_violations === 0 ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: 700 }}>{cr.hard_violations}</span>
                 <span style={{ color: 'var(--text-muted)' }}> hard violations</span>
@@ -136,9 +176,37 @@ const ExplainModal: React.FC<{
                 <span style={{ color: '#f59e0b', fontWeight: 700 }}>{cr.soft_violations}</span>
                 <span style={{ color: 'var(--text-muted)' }}> soft violations</span>
               </div>
+              {fitness !== null && (
+                <div>
+                  <span style={{ color: 'var(--accent-color)', fontWeight: 700 }}>{fitness.toFixed(1)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}> fitness</span>
+                </div>
+              )}
               <div>
                 <span style={{ color: cr.is_valid ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: 700 }}>{cr.is_valid ? '✓ Valid' : '✗ Invalid'}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Constraint detail */}
+        {(satisfied.length > 0 || violated.length > 0) && (
+          <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>Constraints</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {violated.map((c, i) => (
+                <div key={`v${i}`} style={{ fontSize: '0.82rem', color: '#ef4444', display: 'flex', gap: '0.4rem' }}>
+                  <span>✗</span><span>{c}</span>
+                </div>
+              ))}
+              {satisfied.slice(0, 4).map((c, i) => (
+                <div key={`s${i}`} style={{ fontSize: '0.82rem', color: 'var(--success-color)', display: 'flex', gap: '0.4rem' }}>
+                  <span>✓</span><span>{c}</span>
+                </div>
+              ))}
+              {satisfied.length > 4 && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>+{satisfied.length - 4} more satisfied</div>
+              )}
             </div>
           </div>
         )}

@@ -90,13 +90,27 @@ export const SHIFT_COLORS: Record<string, string> = {
 };
 
 // ─── Sample CSV for onboarding ────────────────────────────────────────────────
+// 20-person realistic hospital roster: mixed contracts, multi-skill workers,
+// realistic skill distribution (4 HeadNurse, 12 Nurse, 4 Nurse+HeadNurse).
 
 export const SAMPLE_CSV = `id,contract,skills
-Alice,FullTime,HeadNurse
-Bob,FullTime,Nurse
-Carol,PartTime,Nurse
-Dave,FullTime,HeadNurse
-Eve,PartTime,Nurse
-Frank,FullTime,Nurse
-Grace,PartTime,HeadNurse
-Henry,FullTime,Nurse`;
+Sarah_Chen,FullTime,HeadNurse;Nurse
+Marcus_Webb,FullTime,Nurse
+Priya_Nair,FullTime,HeadNurse;Nurse
+James_Okafor,FullTime,Nurse
+Elena_Vasquez,FullTime,Nurse
+Tom_Lindqvist,PartTime,Nurse
+Aisha_Diallo,FullTime,HeadNurse
+Ravi_Sharma,FullTime,Nurse
+Fatima_Al-Hassan,PartTime,Nurse
+Daniel_Park,FullTime,Nurse
+Ingrid_Sorensen,Night,Nurse
+Carlos_Mendez,FullTime,Nurse
+Yuki_Tanaka,PartTime,HeadNurse;Nurse
+Kwame_Asante,FullTime,Nurse
+Lena_Hoffmann,FullTime,Nurse
+Amara_Osei,Night,Nurse
+Patrick_Brennan,FullTime,HeadNurse
+Nadia_Petrov,PartTime,Nurse
+Soren_Andersen,FullTime,Nurse
+Mei_Lin_Zhou,FullTime,Nurse`;
