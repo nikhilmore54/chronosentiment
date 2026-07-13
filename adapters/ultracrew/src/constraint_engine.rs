@@ -235,12 +235,14 @@ pub fn validate_context(context: &ScheduleContext) -> Result<(), Box<dyn Error>>
         }
     }
     // Ensure shift IDs are unique and start hour sanity.
+    // Horizon is derived from the dataset (max start_hour + 1); only start_hour is checked.
+    let horizon: u64 = context.shifts.iter().map(|s| s.start_hour).max().unwrap_or(0) + 1;
     let mut shift_ids = HashSet::new();
     for s in context.shifts.iter() {
         if !shift_ids.insert(s.id) {
             return Err(format!("Duplicate shift id {}", s.id).into());
         }
-        if s.start_hour >= 168 {
+        if s.start_hour >= horizon {
             return Err(format!("Shift {} start hour out of range", s.id).into());
         }
     }

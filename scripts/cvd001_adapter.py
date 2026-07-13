@@ -384,16 +384,17 @@ def stage7_build_payload(workers: list[dict],
     api_shifts = [
         {
             "id":             s["id"],
-            "start_hour":     s["start_hour"],
-            "duration_hours": s["duration_hours"],
+            "start_hour":     int(round(s["start_hour"])),    # API requires u64
+            "duration_hours": max(1, int(round(s["duration_hours"]))),  # API requires u64; min 1h
             "required_skill": s["required_skill"],
         }
         for s in shifts
     ]
-    api_workloads = [
-        {"worker_id": wl["worker_id"], "hours": wl["hours"]}
+    # API expects historical_workloads as a map: {"<worker_id>": [hours]}
+    api_workloads = {
+        str(wl["worker_id"]): [wl["hours"]]
         for wl in workloads
-    ]
+    }
 
     payload = {
         "workers":             api_workers,
