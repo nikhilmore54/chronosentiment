@@ -34,13 +34,35 @@ def load_ub002():
         return json.load(f)
 
 
-def build_payload(ub, week_index, seed):
-    week = ub["weeks"][week_index]
+SHIFT_TYPES = [("Morning", 7, 8), ("Evening", 15, 8), ("Night", 23, 8)]
+
+
+def build_shifts(ub):
+    """Build a week's shift list from coverage_requirements (same shifts every week)."""
+    shifts = []
+    sid = 1
+    for day in range(7):
+        dt = "weekend" if day in [5, 6] else "weekday"
+        cov = ub["coverage_requirements"][dt]
+        for sn, sh, dur in SHIFT_TYPES:
+            for skill, cnt in cov[sn].items():
+                for _ in range(cnt):
+                    shifts.append({
+                        "id": sid,
+                        "start_hour": day * 24 + sh,
+                        "duration_hours": dur,
+                        "required_skill": skill,
+                    })
+                    sid += 1
+    return shifts
+
+
+def build_payload(ub, seed):
+    workers = [{"id": i + 1, "skills": s["skills"]} for i, s in enumerate(ub["staff"])]
+    shifts = build_shifts(ub)
     return {
-        "staff": ub["staff"],
-        "shifts": week["shifts"],
-        "coverage_requirements": ub["coverage_requirements"],
-        "constraints": ub["constraints"],
+        "workers": workers,
+        "shifts": shifts,
         "historical_workloads": ub.get("historical_workloads"),
         "rng_seed": seed,
         "generation_limit": GENERATION_LIMIT,
@@ -66,9 +88,9 @@ def extract_metrics(response):
         "fitness": metrics.get("fitness", 0.0),
         "sc1": metrics.get("fairness_penalty", 0.0),
         "sc2": metrics.get("fatigue_penalty", 0.0),
-        "hc1": cr.get("skill_violations", 0),
-        "hc2": cr.get("coverage_violations", 0),
-        "hc3": cr.get("hours_violations", 0),
+        "hc1": cr.get("hc1_violations", cr.get("skill_violations", 0)),
+        "hc2": cr.get("hc2_violations", cr.get("coverage_violations", 0)),
+        "hc3": cr.get("hc3_violations", cr.get("hours_violations", 0)),
         "rest": cr.get("rest_violations", 0),
     }
 
@@ -81,7 +103,7 @@ def main():
 
     results = []
     for seed in SEEDS:
-        payload = build_payload(ub, WEEK_INDEX, seed)
+        payload = build_payload(ub, seed)
         t0 = time.time()
         try:
             response = call_api(payload)
