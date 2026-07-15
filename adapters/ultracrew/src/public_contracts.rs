@@ -5,6 +5,21 @@ use crate::models::{Worker, Shift};
 use crate::optimization::ScheduleContext;
 use crate::ecology::WorkforceEcology;
 
+/// Domain-independent optimization context supplied by the adapter.
+/// Contains no domain-specific concepts (flights, nurses, trains).
+/// Sits between Coralys (Optimization Engine) and the Solution Engine.
+/// All fields are optional so existing callers remain fully compatible.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Scenario {
+    /// Total planning horizon in hours (e.g. 744.0 for a 31-day month).
+    /// Used for reporting and future horizon-aware constraints.
+    pub planning_horizon_hours: Option<f64>,
+    /// Maximum credited hours per worker over the planning horizon.
+    /// None means no per-worker upper bound is specified by the dataset;
+    /// the engine falls back to DEFAULT_WEEKLY_MAX_HOURS.
+    pub max_hours_per_worker: Option<f64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScheduleRequest {
     pub workers: Vec<Worker>,
@@ -12,6 +27,10 @@ pub struct ScheduleRequest {
     pub historical_workloads: Option<HashMap<u64, Vec<f64>>>,
     pub rng_seed: Option<u64>,
     pub generation_limit: Option<usize>,
+    /// Optional domain-independent scenario contract supplied by the adapter.
+    /// When present, the engine uses scenario fields to contextualise constraints.
+    /// When absent, engine defaults apply (backward-compatible).
+    pub scenario: Option<Scenario>,
 }
 
 impl ScheduleRequest {
@@ -31,6 +50,7 @@ impl ScheduleRequest {
             rng_seed: self.rng_seed.unwrap_or(0),
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: None,
+            scenario: self.scenario.clone(),
         })
     }
 }
@@ -73,6 +93,7 @@ impl RescheduleRequest {
             rng_seed: self.request.rng_seed.unwrap_or(0),
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: Some(locked_assignments),
+            scenario: self.request.scenario.clone(),
         })
     }
 }
@@ -82,4 +103,3 @@ pub struct ValidateRequest {
     pub request: ScheduleRequest,
     pub assignments: HashMap<u64, u64>,
 }
-

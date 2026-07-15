@@ -144,6 +144,11 @@ pub struct ScheduleContext {
     pub rng_seed: u64,
     pub observatory: Arc<std::sync::Mutex<Observatory>>,
     pub locked_assignments: Option<HashMap<u64, u64>>,
+    /// Optional domain-independent scenario contract from the adapter.
+    /// When present, the constraint engine uses scenario fields to contextualise
+    /// constraints (e.g. HC3 threshold from scenario.max_hours_per_worker).
+    /// When absent, engine defaults apply (backward-compatible).
+    pub scenario: Option<crate::public_contracts::Scenario>,
 }
 
 #[derive(Clone)]

@@ -396,19 +396,35 @@ def stage7_build_payload(workers: list[dict],
         for wl in workloads
     }
 
-    payload = {
-        "workers":             api_workers,
-        "shifts":              api_shifts,
-        "historical_workloads": api_workloads,
-        "rng_seed":            RNG_SEED,
-        "generation_limit":    GENERATION_LIMIT,
+    # Scenario: domain-independent optimization context (Option A).
+    # planning_horizon_hours = 744.0 (31 days × 24h) — derived from dataset structure.
+    # max_hours_per_worker = null — no authoritative per-worker bound found in instance
+    # data files (credit_constrains.csv contains per-base aggregate targets only;
+    # creditedHours is descriptive reference data from solution_0, not a constraint).
+    # Engine falls back to DEFAULT_WEEKLY_MAX_HOURS (40h) when max_hours_per_worker
+    # is null, preserving Run 1 behaviour exactly. This demonstrates backward
+    # compatibility and validates the Scenario contract without inventing a value.
+    scenario = {
+        "planning_horizon_hours": 744.0,   # 31 days × 24h
+        "max_hours_per_worker":   None,    # Option A: no per-worker bound in dataset
     }
 
-    print(f"  Payload workers:   {len(api_workers)}")
-    print(f"  Payload shifts:    {len(api_shifts)}")
-    print(f"  Payload workloads: {len(api_workloads)}")
-    print(f"  rng_seed:          {RNG_SEED}")
-    print(f"  generation_limit:  {GENERATION_LIMIT}")
+    payload = {
+        "workers":              api_workers,
+        "shifts":               api_shifts,
+        "historical_workloads": api_workloads,
+        "rng_seed":             RNG_SEED,
+        "generation_limit":     GENERATION_LIMIT,
+        "scenario":             scenario,
+    }
+
+    print(f"  Payload workers:              {len(api_workers)}")
+    print(f"  Payload shifts:               {len(api_shifts)}")
+    print(f"  Payload workloads:            {len(api_workloads)}")
+    print(f"  rng_seed:                     {RNG_SEED}")
+    print(f"  generation_limit:             {GENERATION_LIMIT}")
+    print(f"  scenario.planning_horizon_h:  {scenario['planning_horizon_hours']}")
+    print(f"  scenario.max_hours_per_worker:{scenario['max_hours_per_worker']} (engine default 40h applies)")
 
     return payload
 

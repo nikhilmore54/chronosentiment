@@ -69,8 +69,15 @@ impl ConstraintEngine {
             let hours = *worker_hours.get(&worker.id).unwrap_or(&0);
             hours_list.push(hours as f64);
 
-            // HC3: Max Hours (40)
-            if hours > 40 {
+            // HC3: Max Hours — threshold from scenario.max_hours_per_worker if supplied,
+            // otherwise falls back to DEFAULT_WEEKLY_MAX_HOURS (40h) for backward compatibility.
+            const DEFAULT_WEEKLY_MAX_HOURS: u64 = 40;
+            let hc3_limit = self.context.scenario
+                .as_ref()
+                .and_then(|s| s.max_hours_per_worker)
+                .map(|h| h as u64)
+                .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
+            if hours > hc3_limit {
                 fitness -= 500.0;
                 hc3_violations += 1;
             }

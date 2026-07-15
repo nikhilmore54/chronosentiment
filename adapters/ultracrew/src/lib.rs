@@ -60,6 +60,7 @@ pub mod helpers {
             rng_seed: 0,
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: None,
+            scenario: None,
         })
     }
 

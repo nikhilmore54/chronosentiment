@@ -1529,6 +1529,7 @@ mod server_endpoints_tests {
             historical_workloads: None,
             rng_seed: None,
             generation_limit: None,
+            scenario: None,
         };
         
         let response = app
@@ -1561,6 +1562,7 @@ mod server_endpoints_tests {
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
+            scenario: None,
         };
         
         let response = app
@@ -1601,6 +1603,7 @@ mod server_endpoints_tests {
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
+            scenario: None,
         };
         
         let mut assignments = std::collections::HashMap::new();
@@ -1651,6 +1654,7 @@ mod server_endpoints_tests {
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
+            scenario: None,
         };
         
         let mut existing_assignments = std::collections::HashMap::new();
