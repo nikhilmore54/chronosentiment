@@ -60,11 +60,11 @@ Stopping rule triggered. Proceed under Option C (documented working hypothesis).
 
 | Artifact | Status | Evidence Level | Provenance | Notes |
 |---|---|---|---|---|
-| Benchmark evaluator source code | ⚠ Not found in local artifacts | E1 | Unknown | Not in instance1/; not in b8b2a9c2; external search pending |
-| README.pdf | ⚠ Not found in local artifacts | E2 | Unknown | Not on local filesystem; external search pending |
-| GERAD technical reports (G-2010-xx) | 🔍 Pending | E2 | https://www.gerad.ca/en/papers | Search S1 pending |
-| ROADEF 2010 challenge documentation | 🔍 Pending | E2 | http://www.roadef.org/challenge/2010/ | Search S2 pending |
-| Authors' public repositories | 🔍 Pending | E2 | Polytechnique Montréal / GERAD | Search S3 pending |
+| Benchmark evaluator source code | ⚠ Not located in searches completed so far (S0–S3) | E1 | Unknown | Not in local artifacts; not in G-2014-22 supplementary material; not on authors' publicly indexed GERAD pages; S4–S5 pending |
+| README.pdf | 🔍 Not yet located | E2 | Unknown | Not present locally; S4 will determine whether an official README exists publicly |
+| GERAD technical reports | ✅ Searched – G-2014-22 recovered | E2 | https://www.gerad.ca/en/papers/G-2014-22 | G-2014-22 confirmed as authoritative source; G1422-DataSets.zip is official supplementary material (F17) |
+| ROADEF 2010 challenge documentation | ✅ Searched – no CVD-001 evidence | E2 | http://www.roadef.org/challenge/ | No ROADEF challenge matching CVD-001 found (S2) |
+| Authors' public repositories | ✅ Searched – no evaluator located | E2 | GERAD researcher pages; later publications | Quesnel GERAD page confirmed; provenance reinforced (F16/F17); no evaluator on publicly indexed pages (S3) |
 | Author correspondence | ⏸ Not attempted | E2 | — | Pending S1–S4 |
 | credit_constraints.cpp | ✅ Found — analyzed | E3 | Committed b8b2a9c2 | Generator analyzed; parser and credit-generation semantics documented (F9, F12, F13) |
 | crew_availability_constraints.cpp | ✅ Found — analyzed | E3 | Committed b8b2a9c2 | Generator analyzed; duty-count semantics documented (F10, F11) |
@@ -114,7 +114,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | Q1 | Is HC3 a hard feasibility constraint or a soft penalty? | E3–E4 | Low — generator code does not contain evaluator logic |
 | Q2 | Are per-base credit caps (credit_constrains.csv) enforced as hard constraints during optimization? | E3 (F5) | Low — generator produces caps but enforcement semantics unknown |
 | Q3 | How are credited hours accumulated across a bid period — is the formula `max(paid_minutes, 480) + deadhead_minutes × 2`? | E4 (creditedHours values) | Medium — formula consistent with observed values but not confirmed from evaluator |
-| Q4 | Does a benchmark evaluator implementation exist publicly? | E2 search evidence (S1) | — no evaluator located in published supplementary material of G-2014-22 |
+| Q4 | Does a benchmark evaluator implementation exist publicly? | E2 search evidence (S1–S3) | — no publicly released benchmark evaluator has been located in searches completed so far (S1–S3) |
 | Q5 | What is the intended planning horizon for HC3 (weekly / monthly / bid-period)? | E6 (hypothesis) | Low |
 | Q6 | Does the briefing/debriefing credit subtraction in credit_constraints.cpp (F13) mean the evaluator adds 1h per duty to credited hours, or is it only used for cap generation? | E3 (F13) | Low — code subtracts from cap generation only; evaluator behavior unknown |
 
@@ -124,7 +124,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 
 | Threat | Impact |
 |---|---|
-| The original evaluator source may no longer be publicly available | Limits evidence to E3–E4; forces Option C. **Mitigation:** Official dataset provenance has now been established through GERAD Technical Report G-2014-22 (F17), reducing uncertainty about the authenticity of the dataset-generation artifacts even though evaluator semantics remain unavailable. |
+| The benchmark evaluator may never have been publicly released, or may no longer be publicly available | Limits evidence to E3–E4; forces Option C. **Mitigation:** Official dataset provenance has now been established through GERAD Technical Report G-2014-22 (F17), reducing uncertainty about the authenticity of the dataset-generation artifacts even though evaluator semantics remain unavailable. |
 | Dataset generators describe instance construction, not necessarily evaluator semantics | Generator behavior should not be treated as proof of runtime evaluation rules |
 | Reference solution (solution_0) may encode assumptions not documented elsewhere | E5 evidence may be misleading without E1–E2 context |
 | Public archives may have changed since the original benchmark release (2010) | Search results may be incomplete |
@@ -154,17 +154,20 @@ Targets:
 - Louis-Martin Rousseau (Polytechnique Montréal / CIRRELT)
 - Guy Desaulniers (Polytechnique Montréal / GERAD)
 
-Platforms: GitHub, institutional pages, ResearchGate, Google Scholar  
-Looking for: Evaluator source, problem statement, supplementary code  
-Status: 🔍 Pending
+Platforms: GitHub, institutional pages, ResearchGate, Google Scholar
+Looking for: Evaluator source, problem statement, supplementary code
+Status: ✅ Complete — see Search Execution Log (S3)
 
 ### S4 — General Web Search
 
 Queries:
-- "ROADEF 2010 crew scheduling evaluator"
-- "CVD-001 benchmark evaluator source"
-- "challenge-roadef-2010 crew scheduling"
-- "Quesnel Rousseau Desaulniers 2010 crew scheduling"
+- "G1422-DataSets evaluator"
+- "G1422-DataSets README"
+- "airline crew scheduling benchmark evaluator source"
+- "Frédéric Quesnel G1422 evaluator"
+- "Kasirzadeh Saddoune Soumis crew scheduling dataset evaluator"
+- "CVD001 evaluator"
+Note: ROADEF 2010 queries removed — S2 established no ROADEF connection to CVD-001.
 
 Status: 🔍 Pending
 
@@ -279,10 +282,9 @@ Result:
   Located GERAD Technical Report G-2014-22, "Airline crew scheduling: Models, algorithms,
   and data sets" (Kasirzadeh, Saddoune, Soumis). The report distributes G1422-DataSets.zip
   as official supplementary material, confirming the provenance of the locally analyzed
-  generator source files (F16 upgraded to E2). No evaluator source code, checker, scoring
-  executable, or README describing evaluation semantics was found in the published
-  supplementary material accompanying G-2014-22. The report was later published in EURO
-  Journal on Transportation and Logistics (2017).
+  generator source files (F16 upgraded to E2). No evaluator source code or scoring software
+  was located in the published supplementary material accompanying G-2014-22. The report
+  was later published in EURO Journal on Transportation and Logistics (2017).
 
   Observation (not established fact): The published journal article acknowledges "Frédéric
   Quesnel for his help in preparing the data sets and generators" and references the GENCOL
@@ -334,19 +336,71 @@ Follow-up required: Proceed with S3 (authors' institutional repositories) and S4
 
 ---
 
+### S3 — Authors' Institutional Repositories
+
+```
+Search ID: S3
+Date: 2026-07-16
+Target: GERAD researcher pages for Frédéric Quesnel, François Soumis, Guy Desaulniers;
+  publication pages for Atoosa Kasirzadeh, Mohammed Saddoune, François Soumis (G-2014-22
+  authors) examined through G-2014-22 and later publications; related GERAD publications
+  (G-2016-47, G-2019-25, Transportation Science 2019, 2025 windowing paper); GitHub
+Queries used: Independent web search by project owner (Polytechnique Montréal site
+  CAPTCHA-blocked automated access; GERAD researcher pages accessible)
+Artifacts examined:
+  - GERAD researcher page: Frédéric Quesnel (https://www.gerad.ca/en/people/frederic-quesnel)
+    Confirms: PhD at Polytechnique Montréal; research in airline crew scheduling;
+    collaboration with François Soumis and Guy Desaulniers; current affiliation UQAM/GERAD.
+  - GERAD Technical Report G-2014-22 (independently re-confirmed): title, authors,
+    publication, revised version, Additional Material: G1422-DataSets.zip
+  - Later publications by same research group: G-2016-47, G-2019-25, Transportation
+    Science 2019, 2025 windowing paper — crew pairing, rostering, personalized scheduling,
+    machine learning for crew scheduling, GENCOL-based optimization
+  - GitHub: no official GitHub repository for the benchmark dataset or evaluator was
+    located during the search (absence from search results does not establish nonexistence)
+Result:
+  Frédéric Quesnel's GERAD researcher page confirmed: he is the same researcher who
+  authored the dataset generators (consistent with F16). G-2014-22 independently
+  re-confirmed with G1422-DataSets.zip as supplementary material (consistent with F17).
+  Research lineage confirmed through multiple later publications. No evaluator source
+  code, scoring executable, benchmark checker, or additional benchmark documentation
+  beyond the published dataset package was located on the authors' publicly indexed
+  GERAD pages or in any GitHub repository located during the search.
+
+  Observation (not established fact): GERAD Technical Report G-2025-24 (a 2025 paper
+  referencing the same dataset) explicitly states: "Data availability: download directly
+  from G-2014-22" and "Code availability: GENCOL is proprietary; code unavailable; log
+  files available on request." This confirms that the optimization code used in later
+  GERAD work is proprietary, but does not establish that the benchmark evaluator is
+  proprietary or that it is contained within GENCOL.
+
+Evidence obtained: None new (positive findings reinforce F16/F17; negative finding
+  on evaluator consistent with S1 conclusion)
+Evidence level: E2 (confirmatory for provenance); N/A for evaluator
+Conclusion: ⚠ No evaluator source code or scoring software was located on the authors'
+  publicly indexed GERAD pages or in the supplementary material accompanying G-2014-22.
+  Confidence: High for positive findings (provenance, research lineage); moderate for
+  negative finding (absence from searched public resources does not establish universal
+  absence).
+Follow-up required: Proceed with S4 (broad web search) and S5 (author correspondence)
+  if S4 does not locate evaluator.
+```
+
+---
+
 ## Stopping Rule Status
 
 The stopping rule triggers when all of the following are complete:
 - [x] S1: GERAD archive searched — ✅ E2 provenance recovered (G-2014-22); no E1 evaluator located
 - [x] S2: ROADEF challenge pages searched — ❌ No ROADEF evidence matching CVD-001
-- [ ] S3: Authors' public repositories searched
+- [x] S3: Authors' public repositories searched — ⚠ Provenance confirmed; no evaluator located on publicly indexed pages
 - [ ] S4: General web search completed
 - [ ] S5: Direct author contact attempted (if practical)
 
-**Current status: 2/5 complete. Key finding:** Current evidence identifies CVD-001 as a dataset distributed through GERAD Technical Report G-2014-22. No evidence was found that it formed part of the public ROADEF challenge benchmark series.
+**Current status: 3/5 complete. No E1 evidence recovered so far. Key finding:** Current evidence identifies CVD-001 as a dataset distributed through GERAD Technical Report G-2014-22. No evidence was found that it formed part of the public ROADEF challenge benchmark series. No publicly released evaluator source code or scoring software has been located on the authors' publicly indexed pages or in the published supplementary material examined during S1–S3.
 
 ---
 
 ## Next Action
 
-Execute S3 (authors' institutional repositories: Frédéric Quesnel, Louis-Martin Rousseau, Guy Desaulniers at Polytechnique Montréal / GERAD / CIRRELT) and S4 (general web search for the dataset package and any associated evaluator). Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
+Execute S4 (general web search for the dataset package and any associated evaluator: queries such as "G1422-DataSets evaluator", "airline crew scheduling benchmark evaluator source", "Kasirzadeh Saddoune Soumis evaluator code"). If S4 does not locate an evaluator, proceed to S5 (author correspondence). Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
