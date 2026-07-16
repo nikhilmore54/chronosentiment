@@ -172,10 +172,54 @@ Note: ROADEF 2010 queries removed — S2 established no ROADEF connection to CVD
 
 Status: ✅ Complete — see Search Execution Log (S4)
 
+### S4b — Systematic Semantic Evidence Review (SSER)
+
+**Objective:** Reconstruct evaluator semantics from the complete scientific literature surrounding G-2014-22. This is a Systematic Literature Review (SLR), not a general web search. The question is not "Can we find the evaluator?" but "Can we reconstruct the evaluator semantics from the entire scientific record surrounding this benchmark?"
+
+**Work Packages:**
+
+WP1 — Publication Corpus Construction: build the complete literature corpus from GERAD, CIRRELT, Polytechnique Montréal, Google Scholar, Scopus, Web of Science, DBLP, TRID, ResearchGate, ProQuest theses, and institutional repositories. Authors: Kasirzadeh, Saddoune, Soumis, Quesnel, Desaulniers, Rousseau. Classify into technical reports, journal papers, conference papers, PhD/MSc theses, book chapters. Output: master bibliography.
+
+WP2 — Semantic Evidence Extraction: every publication read with a fixed protocol (Evidence Extraction Form below). Every paper scored identically to make the review reproducible.
+
+WP3 — Semantic Provenance Reconstruction: track where each semantic first appeared. For each semantic (HC1, HC2, HC3, credit formula, duty legality, etc.) record earliest source and later sources. Reconstruct the benchmark's genealogy.
+
+WP4 — Evidence Synthesis: answer Q1–Q6 using the whole corpus simultaneously, not one paper in isolation.
+
+**Thesis audit scope:** every thesis connected to GENCOL, airline crew scheduling, Polytechnique Montréal, GERAD, or CIRRELT, approximately 2005–2025. Theses frequently contain appendices with complete formulations, legality rules, pseudocode, and evaluation methodology absent from journal articles.
+
+**Search vocabulary (broader than "evaluator"):** legality checker, roster validation, crew legality, rule engine, bidline evaluation, schedule verification, credit accounting, credit calculation, workload balancing, feasibility checking, pairing legality, duty legality, airline crew credit, monthly bidline, crew cost calculation.
+
+**Evidence Extraction Form (applied to every publication):**
+
+```
+Publication:
+Uses CVD-001?          Yes / No
+Defines HC3?           Quote / No
+Defines workload?      Quote / No
+Defines credited hours? Quote / No
+Defines legality?      Quote / No
+Defines credit formula? Quote / No
+Defines objective?     Quote / No
+Defines evaluator?     Quote / No
+Mentions checker?      Quote / No
+Mentions GENCOL?       Quote / No
+Mentions AD OPT?       Quote / No
+Evidence Level:        E1 / E2 / E3 / E4 / E5 / E6
+Confidence:            High / Medium / Low
+New semantic discovered? Yes / No
+```
+
+**Semantic Drift Analysis:** track whether semantics changed over time. If HC3 was described differently in 2010, 2014, 2017, and 2025, record the evolution. Terminology drift is itself evidence about benchmark interpretation.
+
+**Deliverable:** S4b semantic evidence table (see Search Execution Log S4b) recording, for each paper: whether it uses CVD-001, how HC3 is described, whether a credit formula is given, whether an evaluator is mentioned, and whether any new semantic evidence is present. Semantic provenance table recording earliest source for each semantic.
+
+Status: 🔍 Pending
+
 ### S5 — Author Correspondence
 
-Action: Draft email to benchmark authors requesting evaluator source or problem statement  
-Trigger: After S1–S4 complete without finding E1/E2 evidence  
+Action: Draft email to benchmark authors requesting evaluator source or problem statement. Scope: artifact request only — ask whether a distributable artifact (evaluator, checker, specification) exists, not for informal semantic interpretations. Any semantic claims from correspondence require independent corroboration from E1/E2 sources.
+Trigger: After S1–S4b complete without finding E1/E2 evidence  
 Status: ⏸ Pending
 
 ---
