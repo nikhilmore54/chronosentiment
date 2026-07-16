@@ -58,43 +58,43 @@ Stopping rule triggered. Proceed under Option C (documented working hypothesis).
 
 ## Evidence Catalogue
 
-| Artifact | Status | Evidence Level | Location / Notes |
-|---|---|---|---|
-| Benchmark evaluator source code | ⚠ Not found in local artifacts | E1 | Not in instance1/; not in benchmark source files (b8b2a9c2); external search pending |
-| README.pdf | ⚠ Not found in local artifacts | E2 | Not on local filesystem; not in instance1/; external search pending |
-| GERAD technical reports (G-2010-xx) | 🔍 Pending | E2 | https://www.gerad.ca/en/papers |
-| ROADEF 2010 challenge documentation | 🔍 Pending | E2 | http://www.roadef.org/challenge/2010/ |
-| Authors' public repositories | 🔍 Pending | E2 | Quesnel, Rousseau, Desaulniers — Polytechnique Montréal / GERAD |
-| Author correspondence | ⏸ Not attempted | E2 | Pending Searches S1–S4 |
-| credit_constraints.cpp | ✅ Found | E3 | data/cvd001/credit_constraints.cpp (b8b2a9c2) |
-| crew_availability_constraints.cpp | ✅ Found | E3 | data/cvd001/crew_availability_constraints.cpp (b8b2a9c2) |
-| EmployeeLegPreferences.cpp | ✅ Found | E3 | data/cvd001/EmployeeLegPreferences.cpp (b8b2a9c2) |
-| preferredVacations.cpp | ✅ Found | E3 | data/cvd001/preferredVacations.cpp (b8b2a9c2) |
-| params.txt | ✅ Found | E3 | data/cvd001/params.txt (b8b2a9c2) |
-| credit_constrains.csv | ✅ Found | E4 | data/cvd001/instance1/credit_constrains.csv — per-base caps: BASE1=326.9h, BASE2=1279.4h, BASE3=383.3h |
-| crew_avail_const.csv | ✅ Found | E4 | data/cvd001/instance1/crew_avail_const.csv |
-| creditedHours (binary) | ✅ Found | E4 | data/cvd001/instance1/creditedHours — binary executable; content not yet parsed |
-| day_1.csv … day_31.csv | ✅ Found | E4 | data/cvd001/instance1/day_*.csv — 31 daily flight leg files |
-| listOfBases.csv | ✅ Found | E4 | data/cvd001/instance1/listOfBases.csv |
-| solution_0 (reference solution) | ✅ Found | E5 | data/cvd001/instance1/solution_0 — reference solution from benchmark authors |
-| initialSolution.in | ✅ Found | E5 | data/cvd001/instance1/initialSolution.in |
+| Artifact | Status | Evidence Level | Provenance | Notes |
+|---|---|---|---|---|
+| Benchmark evaluator source code | ⚠ Not found in local artifacts | E1 | Unknown | Not in instance1/; not in b8b2a9c2; external search pending |
+| README.pdf | ⚠ Not found in local artifacts | E2 | Unknown | Not on local filesystem; external search pending |
+| GERAD technical reports (G-2010-xx) | 🔍 Pending | E2 | https://www.gerad.ca/en/papers | Search S1 pending |
+| ROADEF 2010 challenge documentation | 🔍 Pending | E2 | http://www.roadef.org/challenge/2010/ | Search S2 pending |
+| Authors' public repositories | 🔍 Pending | E2 | Polytechnique Montréal / GERAD | Search S3 pending |
+| Author correspondence | ⏸ Not attempted | E2 | — | Pending S1–S4 |
+| credit_constraints.cpp | ✅ Found | E3 | Committed b8b2a9c2 | data/cvd001/credit_constraints.cpp |
+| crew_availability_constraints.cpp | ✅ Found | E3 | Committed b8b2a9c2 | data/cvd001/crew_availability_constraints.cpp |
+| EmployeeLegPreferences.cpp | ✅ Found | E3 | Committed b8b2a9c2 | data/cvd001/EmployeeLegPreferences.cpp |
+| preferredVacations.cpp | ✅ Found | E3 | Committed b8b2a9c2 | data/cvd001/preferredVacations.cpp |
+| params.txt | ✅ Found | E3 | Committed b8b2a9c2 | data/cvd001/params.txt |
+| credit_constrains.csv | ✅ Found | E4 | Committed b8b2a9c2 | Per-base caps: BASE1=326.9h, BASE2=1279.4h, BASE3=383.3h |
+| crew_avail_const.csv | ✅ Found | E4 | Committed b8b2a9c2 | data/cvd001/instance1/crew_avail_const.csv |
+| creditedHours | ✅ Found | E4 | Committed b8b2a9c2 | Workload values successfully extracted for analysis; underlying file format not yet formally documented |
+| day_1.csv … day_31.csv | ✅ Found | E4 | Committed b8b2a9c2 | 31 daily flight leg files |
+| listOfBases.csv | ✅ Found | E4 | Committed b8b2a9c2 | data/cvd001/instance1/listOfBases.csv |
+| solution_0 (reference solution) | ✅ Found | E5 | Committed b8b2a9c2 | Reference solution from benchmark authors |
+| initialSolution.in | ✅ Found | E5 | Committed b8b2a9c2 | data/cvd001/instance1/initialSolution.in |
 
 ---
 
 ## Established Facts
 
-These facts have passed the evidence threshold and are distinguished from hypotheses.
+These facts have passed the evidence threshold and are distinguished from hypotheses. Later documents may cite by ID (e.g. F3) rather than repeating the full statement.
 
-| Fact | Source | Evidence Level | Confidence |
-|---|---|---|---|
-| CVD-001 has 33 crew members | instance1/ CSV files | E4 | High |
-| CVD-001 has 1013 active flight legs over 31 days | instance1/ CSV files | E4 | High |
-| credit_constrains.csv contains per-base aggregate caps | credit_constrains.csv | E4 | High |
-| Caps are BASE1=326.9h, BASE2=1279.4h, BASE3=383.3h | credit_constrains.csv | E4 | High |
-| credit_constraints.cpp generates credit_constrains.csv from a reference solution with 3% slack | credit_constraints.cpp | E3 | High |
-| 33/33 workers exceed 40h from historical workloads alone | scripts/hc3_audit.py | E4 | High |
-| Historical workload range: 23.7h–84.9h, mean 68.75h | scripts/hc3_audit.py | E4 | High |
-| Total assigned flight hours (Run 1): 1878.50h | scripts/hc3_audit.py | E4 | High |
+| ID | Fact | Source | Evidence Level | Confidence |
+|---|---|---|---|---|
+| F1 | CVD-001 has 33 crew members | instance1/ CSV files | E4 | High |
+| F2 | CVD-001 has 1013 active flight legs over 31 days | instance1/ CSV files | E4 | High |
+| F3 | credit_constrains.csv contains per-base aggregate caps | credit_constrains.csv | E4 | High |
+| F4 | Caps are BASE1=326.9h, BASE2=1279.4h, BASE3=383.3h | credit_constrains.csv | E4 | High |
+| F5 | credit_constraints.cpp generates credit_constrains.csv from a reference solution with 3% slack | credit_constraints.cpp | E3 | High |
+| F6 | 33/33 workers exceed 40h from historical workloads alone | scripts/hc3_audit.py | E4 | High |
+| F7 | Historical workload range: 23.7h–84.9h, mean 68.75h | scripts/hc3_audit.py | E4 | High |
+| F8 | Total assigned flight hours (Run 1): 1878.50h | scripts/hc3_audit.py | E4 | High |
 
 ---
 
@@ -107,6 +107,18 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | Q3 | How are credited hours accumulated across a bid period? | E4 | Medium |
 | Q4 | Does a benchmark evaluator implementation exist publicly? | None | — |
 | Q5 | What is the intended planning horizon for HC3 (weekly / monthly / bid-period)? | E6 (hypothesis) | Low |
+
+---
+
+## Threats to Validity
+
+| Threat | Impact |
+|---|---|
+| The original evaluator source may no longer be publicly available | Limits evidence to E3–E4; forces Option C |
+| Dataset generation code may not reflect runtime evaluation | E3 evidence may not accurately represent benchmark semantics |
+| Reference solution (solution_0) may encode assumptions not documented elsewhere | E5 evidence may be misleading without E1–E2 context |
+| Public archives may have changed since the original benchmark release (2010) | Search results may be incomplete |
+| creditedHours file format is not formally documented | E4 workload values may be misinterpreted |
 
 ---
 
@@ -156,7 +168,20 @@ Status: ⏸ Pending
 
 ## Search Execution Log
 
-*(Populated as searches are executed)*
+*(Populated as searches are executed. Each entry follows the template below.)*
+
+```
+Search ID:
+Date:
+Target:
+Queries used:
+Artifacts examined:
+Results:
+Evidence obtained:
+Evidence level:
+Conclusion:
+Follow-up required:
+```
 
 ---
 
@@ -175,4 +200,4 @@ The stopping rule triggers when all of the following are complete:
 
 ## Next Action
 
-Execute S1 (GERAD archive) and S2 (ROADEF 2010 challenge page). Record results in the Search Execution Log above. Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
+Execute S1 (GERAD archive) and S2 (ROADEF 2010 challenge page). Record results in the Search Execution Log above using the template. Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
