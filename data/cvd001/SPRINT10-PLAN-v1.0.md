@@ -71,6 +71,14 @@ Sprint 9 established that the available evidence is at level E3–E4 for HC3 and
 
 ---
 
+## Research Integrity Principle
+
+> Coralys will not modify platform behavior, product behavior, benchmark interpretations, or research conclusions solely to improve agreement with a benchmark unless the underlying benchmark semantics are supported by evidence at the appropriate level of the Evidence Hierarchy. When authoritative evidence is unavailable, assumptions shall be explicitly documented, assigned an evidence level and confidence, and clearly distinguished from verified benchmark behavior.
+
+This principle prohibits "tweaking until it matches" without supporting evidence. It formalizes the methodology established during Sprint 9 and governs all benchmark reproduction work in Sprint 10.
+
+---
+
 ## Stopping Rule
 
 Sprint 10 will not spend unlimited effort searching for unavailable benchmark artifacts.
@@ -102,9 +110,9 @@ The stopping rule is triggered when all of the following have been attempted: GE
 
 ---
 
-## Milestone 2 — Benchmark Semantic Classification
+## Milestone 2 — Benchmark Semantic Reconstruction
 
-**Objective:** Classify every benchmark semantic that cannot already be established from the published dataset or implementation evidence.
+**Objective:** Reconstruct and classify every benchmark semantic that cannot already be established from the published dataset or implementation evidence. Reconstruction precedes classification: semantics are first inferred from the available evidence according to the Evidence Hierarchy, then classified by enforcement category with an associated evidence level and confidence.
 
 This is evidence-driven, not exhaustive. HC1, HC2, rest handling, and most adapter semantics are already understood from the Sprint 9 implementation. The focus is on unresolved semantics only.
 
