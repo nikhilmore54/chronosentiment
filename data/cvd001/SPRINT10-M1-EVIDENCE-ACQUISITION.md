@@ -60,8 +60,8 @@ Stopping rule triggered. Proceed under Option C (documented working hypothesis).
 
 | Artifact | Status | Evidence Level | Provenance | Notes |
 |---|---|---|---|---|
-| Benchmark evaluator source code | ⚠ Not located in searches completed so far (S0–S3) | E1 | Unknown | Not in local artifacts; not in G-2014-22 supplementary material; not on authors' publicly indexed GERAD pages; S4–S5 pending |
-| README.pdf | 🔍 Not yet located | E2 | Unknown | Not present locally; S4 will determine whether an official README exists publicly |
+| Benchmark evaluator source code | ⚠ Not located in searches completed so far (S0–S4) | E1 | Unknown | Not in local artifacts; not in G-2014-22 supplementary material; not on authors' publicly indexed GERAD pages; not in general web search (S4); S5 pending |
+| README.pdf | ❌ No official standalone README or benchmark specification located in public searches S0–S4 | E2 | Unknown | Specifically searched in S4; all sources point to G-2014-22 as the sole documentation |
 | GERAD technical reports | ✅ Searched – G-2014-22 recovered | E2 | https://www.gerad.ca/en/papers/G-2014-22 | G-2014-22 confirmed as authoritative source; G1422-DataSets.zip is official supplementary material (F17) |
 | ROADEF 2010 challenge documentation | ✅ Searched – no CVD-001 evidence | E2 | http://www.roadef.org/challenge/ | No ROADEF challenge matching CVD-001 found (S2) |
 | Authors' public repositories | ✅ Searched – no evaluator located | E2 | GERAD researcher pages; later publications | Quesnel GERAD page confirmed; provenance reinforced (F16/F17); no evaluator on publicly indexed pages (S3) |
@@ -104,6 +104,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | F15 | All locally available benchmark C++ sources are dataset generation utilities; no evaluator implementation is present locally. | S0 analysis | E3 | High |
 | F16 | The dataset-generation utilities (`credit_constraints.cpp`, `crew_availability_constraints.cpp`, `EmployeeLegPreferences.cpp`, `preferredVacations.cpp`) originate from the official `G1422-DataSets.zip` supplementary package, authored by Frédéric Quesnel (with Atoosa Kasirzadeh for `preferredVacations.cpp`). This establishes their provenance as official dataset-generation artifacts rather than third-party reconstructions. | DATASET-INVENTORY-v1.0.md; file headers; confirmed by G-2014-22 Additional Material | E2 | High |
 | F17 | GERAD Technical Report G-2014-22 (*Airline crew scheduling: Models, algorithms, and data sets*, Kasirzadeh, Saddoune, Soumis) officially distributes `G1422-DataSets.zip` as supplementary material. This establishes the authoritative publication source and provenance of the dataset package analyzed in Sprint 10. | https://www.gerad.ca/en/papers/G-2014-22 | E2 | High |
+| F18 | No publicly released benchmark evaluator, benchmark checker, standalone specification, or README has been located after systematic searches of the official publication, supplementary material, institutional repositories, publication mirrors, authors' publicly indexed pages, and general web resources (S1–S4). | S1–S4 | E2 | Moderately High |
 
 ---
 
@@ -114,7 +115,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | Q1 | Is HC3 a hard feasibility constraint or a soft penalty? | E3–E4 | Low — generator code does not contain evaluator logic |
 | Q2 | Are per-base credit caps (credit_constrains.csv) enforced as hard constraints during optimization? | E3 (F5) | Low — generator produces caps but enforcement semantics unknown |
 | Q3 | How are credited hours accumulated across a bid period — is the formula `max(paid_minutes, 480) + deadhead_minutes × 2`? | E4 (creditedHours values) | Medium — formula consistent with observed values but not confirmed from evaluator |
-| Q4 | Does a benchmark evaluator implementation exist publicly? | E2 search evidence (S1–S3) | — no publicly released benchmark evaluator has been located in searches completed so far (S1–S3) |
+| Q4 | Does a benchmark evaluator implementation exist publicly? | E2 search evidence (S1–S4) | Moderately High — no publicly released benchmark evaluator has been located in searches completed so far (S1–S4); all authoritative sources converge on G-2014-22 and G1422-DataSets.zip; S5 pending |
 | Q5 | What is the intended planning horizon for HC3 (weekly / monthly / bid-period)? | E6 (hypothesis) | Low |
 | Q6 | Does the briefing/debriefing credit subtraction in credit_constraints.cpp (F13) mean the evaluator adds 1h per duty to credited hours, or is it only used for cap generation? | E3 (F13) | Low — code subtracts from cap generation only; evaluator behavior unknown |
 
@@ -169,7 +170,7 @@ Queries:
 - "CVD001 evaluator"
 Note: ROADEF 2010 queries removed — S2 established no ROADEF connection to CVD-001.
 
-Status: 🔍 Pending
+Status: ✅ Complete — see Search Execution Log (S4)
 
 ### S5 — Author Correspondence
 
@@ -388,19 +389,69 @@ Follow-up required: Proceed with S4 (broad web search) and S5 (author correspond
 
 ---
 
+### S4 — General Web Search
+
+```
+Search ID: S4
+Date: 2026-07-16
+Target: General web search (Google Scholar, publication mirrors, repositories)
+Queries used:
+  S4.1 (evaluator source): G1422-DataSets evaluator; airline crew scheduling benchmark
+    evaluator; Kasirzadeh Saddoune Soumis evaluator; CVD001 evaluator
+  S4.2 (README/specification): G1422-DataSets README; airline crew scheduling benchmark
+    specification
+  S4.3 (mirrors/archives): G1422-DataSets mirror; PolyPublie; ResearchGate; DBLP
+  S4.4 (independent reproductions): later publications citing evaluator semantics
+Artifacts examined:
+  - GERAD G-2014-22 (re-confirmed via multiple mirrors)
+  - PolyPublie mirror of G-2014-22
+  - EURO Journal on Transportation and Logistics (2017) via ScienceDirect
+  - University of Edinburgh Research Explorer (independently confirmed G-2014-22 and
+    acknowledgement: "AD OPT supplied the data and GENCOL library; Frédéric Quesnel
+    prepared the datasets and generators")
+  - ResearchGate metadata
+  - RePEC metadata
+  - TRID (Transportation Research International Documentation)
+  - DBLP metadata
+  - Later publications referencing the dataset (crew pairing, rostering, ML for scheduling)
+Result:
+  No benchmark evaluator, benchmark checker, scoring executable, README, or additional
+  benchmark specification was located in any of the four sub-searches.
+
+  All authoritative sources converge on G-2014-22 and the supplementary package
+  G1422-DataSets.zip as the publicly distributed research artifact. Later publications
+  reuse the dataset as experimental input but do not reference or distribute an evaluator.
+
+  Observation (not established fact): All publicly located research examined during S4
+  cites G-2014-22 and G1422-DataSets.zip as the dataset source. No publicly distributed
+  evaluator or independent benchmark framework was identified in the publications or
+  repositories examined. This observation does not establish that an evaluator never
+  existed; it establishes only that none has been publicly distributed or located.
+
+Evidence obtained: None new (E1 not found; no E2 documentation beyond G-2014-22)
+Evidence level: E2 (negative search evidence)
+Conclusion: ⚠ No publicly released benchmark evaluator or standalone benchmark
+  specification located after general web search (S4.1–S4.4). All public evidence
+  converges on G-2014-22 as the primary authoritative documentation currently available.
+  Absence from general web search does not establish universal unavailability.
+Follow-up required: Proceed with S5 (author correspondence) as the final search step.
+```
+
+---
+
 ## Stopping Rule Status
 
 The stopping rule triggers when all of the following are complete:
 - [x] S1: GERAD archive searched — ✅ E2 provenance recovered (G-2014-22); no E1 evaluator located
 - [x] S2: ROADEF challenge pages searched — ❌ No ROADEF evidence matching CVD-001
 - [x] S3: Authors' public repositories searched — ⚠ Provenance confirmed; no evaluator located on publicly indexed pages
-- [ ] S4: General web search completed
+- [x] S4: General web search completed — ⚠ No evaluator or standalone specification located; all sources converge on G-2014-22
 - [ ] S5: Direct author contact attempted (if practical)
 
-**Current status: 3/5 complete. No E1 evidence recovered so far. Key finding:** Current evidence identifies CVD-001 as a dataset distributed through GERAD Technical Report G-2014-22. No evidence was found that it formed part of the public ROADEF challenge benchmark series. No publicly released evaluator source code or scoring software has been located on the authors' publicly indexed pages or in the published supplementary material examined during S1–S3.
+**Current status: 4/5 complete. No E1 evidence recovered so far. Key finding:** Current evidence identifies CVD-001 as a dataset distributed through GERAD Technical Report G-2014-22. No evidence was found that it formed part of the public ROADEF challenge benchmark series. No publicly released evaluator source code or scoring software has been located in searches S0–S4. All public evidence located during S1–S4 converges on G-2014-22 as the primary authoritative documentation currently available.
 
 ---
 
 ## Next Action
 
-Execute S4 (general web search for the dataset package and any associated evaluator: queries such as "G1422-DataSets evaluator", "airline crew scheduling benchmark evaluator source", "Kasirzadeh Saddoune Soumis evaluator code"). If S4 does not locate an evaluator, proceed to S5 (author correspondence). Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
+Execute S5 (author correspondence): draft email to benchmark authors (Kasirzadeh, Saddoune, Soumis; cc Quesnel) requesting evaluator source or problem statement. S5 is the final search step. **If S5 does not recover an evaluator or additional official benchmark documentation beyond G-2014-22, Milestone 1 will conclude under Outcome B** (E2 documentation established; E1 evaluator not recovered despite exhaustive public search). Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
