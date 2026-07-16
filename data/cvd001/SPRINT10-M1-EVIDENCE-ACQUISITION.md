@@ -102,7 +102,8 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | F13 | During cap generation, `credit_constraints.cpp` increments a briefing-credit accumulator by one unit per detected duty and subtracts the accumulated value from the reference solution total when computing base credit caps. Code comments describe this as briefing/debriefing credit. The evaluator's runtime treatment of this adjustment is unknown. | credit_constraints.cpp L361–466 | E3 | High (observation); Low (interpretation) |
 | F14 | `EmployeeLegPreferences.cpp` generates the employee-leg preference dataset (`PreferredAirLegs.csv`) by randomly assigning a percentage of base legs to each employee while excluding deadheads. This documents dataset generation; evaluator enforcement of SC4 remains unknown. | EmployeeLegPreferences.cpp | E3 | High |
 | F15 | All locally available benchmark C++ sources are dataset generation utilities; no evaluator implementation is present locally. | S0 analysis | E3 | High |
-| F16 | The dataset-generation utilities originate from the GERAD dataset package (`G1422-DataSets.zip`) and are authored by Frédéric Quesnel (with Atoosa Kasirzadeh for `preferredVacations.cpp`), establishing their provenance as official dataset-generation artifacts rather than third-party reconstructions. | DATASET-INVENTORY-v1.0.md; file headers | E3 | High |
+| F16 | The dataset-generation utilities (`credit_constraints.cpp`, `crew_availability_constraints.cpp`, `EmployeeLegPreferences.cpp`, `preferredVacations.cpp`) originate from the official `G1422-DataSets.zip` supplementary package, authored by Frédéric Quesnel (with Atoosa Kasirzadeh for `preferredVacations.cpp`). This establishes their provenance as official dataset-generation artifacts rather than third-party reconstructions. | DATASET-INVENTORY-v1.0.md; file headers; confirmed by G-2014-22 Additional Material | E2 | High |
+| F17 | GERAD Technical Report G-2014-22 (*Airline crew scheduling: Models, algorithms, and data sets*, Kasirzadeh, Saddoune, Soumis) officially distributes `G1422-DataSets.zip` as supplementary material. This establishes the authoritative publication source and provenance of the dataset package analyzed in Sprint 10. | https://www.gerad.ca/en/papers/G-2014-22 | E2 | High |
 
 ---
 
@@ -113,7 +114,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 | Q1 | Is HC3 a hard feasibility constraint or a soft penalty? | E3–E4 | Low — generator code does not contain evaluator logic |
 | Q2 | Are per-base credit caps (credit_constrains.csv) enforced as hard constraints during optimization? | E3 (F5) | Low — generator produces caps but enforcement semantics unknown |
 | Q3 | How are credited hours accumulated across a bid period — is the formula `max(paid_minutes, 480) + deadhead_minutes × 2`? | E4 (creditedHours values) | Medium — formula consistent with observed values but not confirmed from evaluator |
-| Q4 | Does a benchmark evaluator implementation exist publicly? | None | — |
+| Q4 | Does a benchmark evaluator implementation exist publicly? | E2 search evidence (S1) | — no evaluator located in published supplementary material of G-2014-22 |
 | Q5 | What is the intended planning horizon for HC3 (weekly / monthly / bid-period)? | E6 (hypothesis) | Low |
 | Q6 | Does the briefing/debriefing credit subtraction in credit_constraints.cpp (F13) mean the evaluator adds 1h per duty to credited hours, or is it only used for cap generation? | E3 (F13) | Low — code subtracts from cap generation only; evaluator behavior unknown |
 
@@ -123,7 +124,7 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 
 | Threat | Impact |
 |---|---|
-| The original evaluator source may no longer be publicly available | Limits evidence to E3–E4; forces Option C |
+| The original evaluator source may no longer be publicly available | Limits evidence to E3–E4; forces Option C. **Mitigation:** Official dataset provenance has now been established through GERAD Technical Report G-2014-22 (F17), reducing uncertainty about the authenticity of the dataset-generation artifacts even though evaluator semantics remain unavailable. |
 | Dataset generators describe instance construction, not necessarily evaluator semantics | Generator behavior should not be treated as proof of runtime evaluation rules |
 | Reference solution (solution_0) may encode assumptions not documented elsewhere | E5 evidence may be misleading without E1–E2 context |
 | Public archives may have changed since the original benchmark release (2010) | Search results may be incomplete |
@@ -135,16 +136,16 @@ These facts have passed the evidence threshold and are distinguished from hypoth
 
 ### S1 — GERAD Archive
 
-Target: https://www.gerad.ca/en/papers  
-Query: "ROADEF 2010" OR "crew scheduling" OR "G-2010" OR "Quesnel"  
-Looking for: Technical report with evaluator description or problem statement  
-Status: 🔍 Pending
+Target: https://www.gerad.ca/en/papers
+Query: "ROADEF 2010" OR "crew scheduling" OR "G-2010" OR "Quesnel"
+Looking for: Technical report with evaluator description or problem statement
+Status: ✅ Complete — see Search Execution Log (S1)
 
 ### S2 — ROADEF 2010 Challenge Page
 
-Target: http://www.roadef.org/challenge/2010/  
-Looking for: Problem statement PDF, evaluator download, supplementary materials  
-Status: 🔍 Pending
+Target: http://www.roadef.org/challenge/2010/
+Looking for: Problem statement PDF, evaluator download, supplementary materials
+Status: ✅ Complete — see Search Execution Log (S2)
 
 ### S3 — Authors' Public Repositories
 
@@ -257,19 +258,95 @@ Follow-up required: Proceed with S1 (GERAD archive) and S2 (ROADEF 2010 challeng
 
 ---
 
+### S1 — GERAD Archive Search
+
+```
+Search ID: S1
+Date: 2026-07-16
+Target: https://www.gerad.ca/en/papers (Cahiers du GERAD)
+Queries used:
+  - "Quesnel crew scheduling" → No results
+  - Note: GERAD Cahiers search is JavaScript-driven; URL parameters do not filter results.
+    Confirmed working by observing result count change from 3247 to 0 on first successful query.
+  - Direct URL attempt: https://www.gerad.ca/en/papers/G-1422 → 404 Not Found
+  - Provenance identified via user-supplied reference: GERAD G-2014-22
+    https://www.gerad.ca/en/papers/G-2014-22
+Artifacts examined:
+  - GERAD Cahiers du GERAD search interface (3247 total papers indexed)
+  - GERAD Technical Report G-2014-22: "Airline crew scheduling: Models, algorithms, and data sets"
+    (Kasirzadeh, Saddoune, Soumis) — Additional Material: G1422-DataSets.zip
+Result:
+  Located GERAD Technical Report G-2014-22, "Airline crew scheduling: Models, algorithms,
+  and data sets" (Kasirzadeh, Saddoune, Soumis). The report distributes G1422-DataSets.zip
+  as official supplementary material, confirming the provenance of the locally analyzed
+  generator source files (F16 upgraded to E2). No evaluator source code, checker, scoring
+  executable, or README describing evaluation semantics was found in the published
+  supplementary material accompanying G-2014-22. The report was later published in EURO
+  Journal on Transportation and Logistics (2017).
+
+  Observation (not established fact): The published journal article acknowledges "Frédéric
+  Quesnel for his help in preparing the data sets and generators" and references the GENCOL
+  software library as having been provided to the research team. GENCOL is the optimization
+  framework used in the experiments; it is not the benchmark evaluator. This observation
+  suggests some experimental tooling was not publicly released, but does not establish that
+  the evaluator is absent or that it is contained within GENCOL.
+
+Evidence obtained: F17 (E2) — dataset provenance confirmed via G-2014-22; F16 upgraded to E2
+Evidence level: E2
+Conclusion: ✅ Dataset provenance established (E2). No evaluator source code or scoring
+  software found in the published supplementary material of G-2014-22. Evaluator has not
+  yet been located; absence from supplementary material does not establish universal
+  unavailability.
+Follow-up required: Proceed with S2 (ROADEF challenge pages) and S3 (authors' repositories).
+```
+
+---
+
+### S2 — ROADEF Challenge Page Search
+
+```
+Search ID: S2
+Date: 2026-07-16
+Target: http://www.roadef.org/challenge/ (all years)
+Queries used: Browsed challenge years 2007, 2009, 2010 via roadef.org challenge navigation
+Artifacts examined:
+  - ROADEF/EURO Challenge 2010: "A Large-Scale Energy Management Problem" (EDF)
+  - ROADEF Challenge 2009: "Disruption Management for Commercial Aviation" (Amadeus)
+  - ROADEF Challenge 2007: "Technicians and Interventions Scheduling for Telecommunications"
+    (France Télécom R&D)
+Result:
+  No evidence was found that CVD-001 formed part of the public ROADEF challenge benchmark
+  series. The ROADEF challenges examined (2007, 2009, 2010) cover energy management,
+  disruption management, and telecom scheduling — none match the airline crew scheduling
+  structure of CVD-001 (33 crew, 3 bases, 31-day horizon, instance1–instance7).
+  The currently established provenance (F17) identifies CVD-001 as a dataset distributed
+  through GERAD Technical Report G-2014-22, not a ROADEF challenge benchmark.
+  Note: The original S2 search plan assumed a ROADEF 2010 connection; this assumption
+  was not supported by the evidence. The search was nonetheless completed as planned.
+
+Evidence obtained: None (E1 or E2 not found); negative finding consistent with F17 provenance
+Evidence level: N/A
+Conclusion: ❌ No ROADEF challenge materials matching CVD-001 found. Consistent with
+  G-2014-22 provenance (F17). E1/E2 evidence for the evaluator must be sought through
+  authors' institutional pages and general web search (S3, S4).
+Follow-up required: Proceed with S3 (authors' institutional repositories) and S4 (web search).
+```
+
+---
+
 ## Stopping Rule Status
 
 The stopping rule triggers when all of the following are complete:
-- [ ] S1: GERAD archive searched
-- [ ] S2: ROADEF 2010 materials searched
+- [x] S1: GERAD archive searched — ✅ E2 provenance recovered (G-2014-22); no E1 evaluator located
+- [x] S2: ROADEF challenge pages searched — ❌ No ROADEF evidence matching CVD-001
 - [ ] S3: Authors' public repositories searched
 - [ ] S4: General web search completed
 - [ ] S5: Direct author contact attempted (if practical)
 
-**Current status: 0/5 complete.**
+**Current status: 2/5 complete. Key finding:** Current evidence identifies CVD-001 as a dataset distributed through GERAD Technical Report G-2014-22. No evidence was found that it formed part of the public ROADEF challenge benchmark series.
 
 ---
 
 ## Next Action
 
-Execute S1 (GERAD archive) and S2 (ROADEF 2010 challenge page). Record results in the Search Execution Log above using the template. Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
+Execute S3 (authors' institutional repositories: Frédéric Quesnel, Louis-Martin Rousseau, Guy Desaulniers at Polytechnique Montréal / GERAD / CIRRELT) and S4 (general web search for the dataset package and any associated evaluator). Do not modify Coralys code until Milestone 1 is complete or the stopping rule is triggered.
