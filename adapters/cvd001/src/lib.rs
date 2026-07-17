@@ -34,7 +34,9 @@ pub mod workload;
 pub mod objective;
 pub mod hc3;
 pub mod evaluator;
+pub mod framework_adapter;
 
 // Convenience re-exports for the most common use case
 pub use types::{FlightLeg, Duty, CrewMember, Solution, ConstraintViolation, EvaluationResult};
 pub use evaluator::evaluate;
+pub use framework_adapter::Cvd001FrameworkAdapter;

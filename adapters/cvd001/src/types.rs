@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 /// A single flight leg within a duty.
 ///
 /// # Fields
@@ -7,7 +9,7 @@
 ///
 /// # Caller responsibility
 /// `credit >= 0.0`, `duration >= 0.0`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightLeg {
     pub id: u32,
     /// c_f — credited minutes for this leg.
@@ -26,7 +28,7 @@ pub struct FlightLeg {
 ///
 /// # Caller responsibility
 /// `credit >= 0.0`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Duty {
     pub id: u32,
     /// c_t — duty-level credited minutes (authoritative; pre-computed by loader).
@@ -45,7 +47,7 @@ pub struct Duty {
 ///
 /// # Caller responsibility
 /// `min_workload <= max_workload`. `target_workload >= 0.0`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrewMember {
     pub id: u32,
     /// W^min_n — contractual minimum (soft enforcement via Δ_n).
@@ -60,7 +62,7 @@ pub struct CrewMember {
 /// A complete solution: the full crew roster for one scheduling period.
 ///
 /// `crew` is indexed 0..N-1. The evaluator treats this as the complete input.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Solution {
     pub crew: Vec<CrewMember>,
 }
