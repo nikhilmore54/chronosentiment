@@ -7,14 +7,28 @@
 
 ---
 
+## 0. Scope of Claims
+
+This report makes three distinct classes of statements.
+
+**Implementation findings** describe current Coralys behaviour. These are verified from source code and result artifacts.
+
+**Empirical findings** describe observations obtained by executing Coralys on CVD-001. These are derived from the result artifact and are independent of benchmark intent.
+
+**Benchmark findings** describe semantics recovered from authoritative benchmark evidence (E1–E4). These are explicitly labelled with their evidence level and confidence.
+
+No benchmark behaviour is inferred solely from Coralys implementation. No Coralys implementation decision is treated as evidence of benchmark semantics. Where benchmark semantics remain unresolved, uncertainty is stated explicitly.
+
+---
+
 ## 1. Evaluation Objectives
 
 Per the CVD-001 Evaluation Protocol, Milestone 4 must answer:
 
-1. What does HC3 measure, and why are there 32 violations?
+1. What does Coralys currently compute for HC3, and what was observed when run on CVD-001?
 2. What explains the credited-hours discrepancy (57h reported vs dataset total)?
 3. What is the worker-by-worker workload coverage?
-4. Classify every discrepancy as adapter gap, product gap, or platform limitation.
+4. Classify every discrepancy as adapter gap, product gap, platform limitation, or benchmark semantic uncertainty.
 
 ---
 
@@ -36,11 +50,20 @@ if hours > 40 {
 
 The threshold is a hardcoded constant of 40 hours with no reference to the planning horizon.
 
-### 2.2 Why 32 violations occur
+### 2.2 Observed Result (empirical — no benchmark interpretation)
 
-CVD-001 Instance 1 spans **31 days (744 hours)**. The MOGA correctly assigns all 1013 shifts across 33 workers. Total assigned shift-hours = **1878.50h** (fractional flight durations, not uniform 2h). Mean per-worker assignment = **56.92h** — well above the 40h threshold.
+| Observation | Value | Source |
+|---|---|---|
+| Planning horizon | 31 days | Dataset (E4) |
+| Total assigned duration | 1878.50h | Result artifact |
+| Workers | 33 | Result artifact |
+| Mean assigned duration per worker | 56.92h | Result artifact |
+| HC3 threshold (Coralys implementation) | 40 hours | Coralys implementation |
+| Observed HC3 violations | 32 | Result artifact |
 
-The HC3 constraint was designed for a **7-day weekly scheduling horizon**. Applied to a 31-day dataset, it fires for every worker whose cumulative assignment exceeds 40h. With a mean of 56.92h and a minimum of 38.63h, 32 of 33 workers exceed the threshold. This is structurally unavoidable given the dataset size and the fixed constant.
+The current Coralys implementation evaluates HC3 using a fixed threshold of 40 hours accumulated across the entire scheduling horizon. Because CVD-001 spans 31 days, this implementation produces 32 HC3 violations. The rationale for selecting a 40-hour threshold predates this benchmark evaluation and is independent of any recovered CVD-001 evidence.
+
+These observations follow directly from the Coralys implementation and result artifact. They do not establish that the benchmark intended the same constraint or the same threshold.
 
 ### 2.3 Worker-hour distribution (from result artifact)
 
@@ -58,7 +81,7 @@ Statistics computed directly from `CVD-001-INSTANCE1-RESULT-v1.0.json` cross-ref
 
 The distribution is continuous (fractional flight durations), not regular quanta. The single non-violating worker is at 38.63h — just below the 40h threshold.
 
-### 2.4 Classification
+### 2.4 Implementation Assessment
 
 | Layer | Assessment | Evidence Status |
 |---|---|---|
@@ -66,7 +89,7 @@ The distribution is continuous (fractional flight durations), not regular quanta
 | Product | HC3 assumes a fixed 40-hour maximum independent of planning horizon. The constraint engine has no concept of a `Scenario` (planning period, contractual limits, domain rules). This is a product assumption, not a platform constraint. | Verified (implementation) |
 | Platform | No limitation identified. The MOGA engine optimises correctly given the constraint definition it receives. | Verified (implementation) |
 
-**Root cause: product assumption (implementation verified; benchmark semantics unresolved).** Coralys currently evaluates HC3 as a fixed 40-hour threshold applied to accumulated shift duration. This behavior is an implementation choice within the current UltraCrew product. Following Sprint 10 S4b, peer-reviewed literature establishes that CVD-001 belongs to the monthly crew rostering family, making it unlikely that a fixed weekly threshold accurately reproduces benchmark semantics. The intended benchmark semantics remain unresolved pending Milestone 2.
+**Root cause: product assumption (implementation verified; benchmark semantics unresolved).** Coralys currently evaluates HC3 as a fixed 40-hour threshold applied to accumulated shift duration. This behavior is an implementation choice within the current UltraCrew product. Following Sprint 10 S4b, peer-reviewed literature establishes that CVD-001 belongs to the monthly crew rostering family, indicating that the current Coralys interpretation has not yet been demonstrated to reproduce the benchmark semantics. The intended benchmark semantics remain unresolved pending Milestone 2.
 
 | Statement | Evidence Status |
 |---|---|
@@ -205,17 +228,17 @@ The correct measure of schedule coverage is derived directly from the result art
 
 ---
 
-## 6b. Coralys vs Benchmark — Two-Column Comparison
+## 6b. Coralys vs Benchmark — Three-Column Comparison
 
-| Topic | Coralys (Verified) | Benchmark (Evidence Status) |
-|---|---|---|
-| HC3 | Fixed 40h threshold on accumulated shift duration | Unknown — unresolved |
-| Planning horizon | Not modeled (no Scenario concept) | Monthly planning established (E2, Verified) |
-| Workload resource | `duration_hours` (physical flying time) | `creditedHours` (contractual paid workload, E2, Verified) |
-| Base caps | Not modeled | Present in dataset; enforcement semantics unknown (Inferred) |
-| Scenario concept | Absent | Unknown whether benchmark exposes equivalent concept |
-| Objective function | Coralys fitness (10000 − penalties) | Unknown — benchmark objective unresolved |
-| Credit accumulation formula | `duration_hours` sum | Unknown — formula unresolved |
+| Topic | Coralys (Verified) | Benchmark (Evidence Status) | Evidence |
+|---|---|---|---|
+| HC3 | Fixed 40h threshold on accumulated shift duration | Unknown — unresolved | — |
+| Planning horizon | Not modeled (no Scenario concept) | Monthly planning established | E2 |
+| Workload resource | `duration_hours` (physical flying time) | `creditedHours` (contractual paid workload) | E2 |
+| Base caps | Not modeled | Present in dataset; enforcement semantics unknown | E3/E4 |
+| Scenario concept | Absent | Unknown whether benchmark exposes equivalent concept | — |
+| Objective function | Coralys fitness (10000 − penalties) | Unknown — benchmark objective unresolved | — |
+| Credit accumulation formula | `duration_hours` sum | Unknown — formula unresolved | — |
 
 ---
 
@@ -247,11 +270,11 @@ The structured evaluation has:
 
 **No Coralys platform limitation has been identified in this evaluation.**
 
-The CVD-001 pipeline is validated end-to-end. Architectural modifications are deferred until Milestone 2 establishes benchmark HC3 semantics.
+The CVD-001 pipeline is validated end-to-end. Architectural modifications are deferred until Milestone 2 establishes benchmark HC3 semantics. This report intentionally evaluates the Coralys implementation without asserting equivalence to the original benchmark where supporting evidence is unavailable.
 
 ---
 
-## 8. Sprint 10 Reassessment (after S4b, 2026-07-16)
+## 8. Semantic Reconciliation (after S4b, 2026-07-16)
 
 ### New Evidence
 
