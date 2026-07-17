@@ -18,6 +18,7 @@ members = [
     "adapters/cvd001",
     "coralys-v2",
     "coralys-core",
+    "coralys-eval",
     "coralys-matching",
     "adapters/roadef",
     "services/ultracrew_server",
