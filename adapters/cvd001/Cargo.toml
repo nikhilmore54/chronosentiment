@@ -1,0 +1,9 @@
+[package]
+name = "cvd001"
+version = "0.1.0"
+edition = "2021"
+description = "CVD-001 benchmark reference evaluator — airline crew scheduling (GERAD G-2014-22)"
+
+[dependencies]
+
+[dev-dependencies]
