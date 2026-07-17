@@ -201,18 +201,23 @@ Sprint 10 has answered most semantic questions. What remains are largely **mathe
 
 ## Scientific Stopping Rule
 
-Sprint 10 stops because:
+Sprint 10 closes when public evidence has been exhausted and the remaining unknowns are explicitly documented.
 
+**Completed (required for closure):**
 - ✅ Dataset provenance recovered
 - ✅ Literature lineage recovered
 - ✅ Planning semantics recovered
 - ✅ Resource semantics recovered
 - ✅ Workload semantics recovered
 - ✅ Objective characterized
+- ✅ Remaining unknowns explicitly documented with recoverability assessment
+
+**Optional post-sprint activity:**
+- Author correspondence (S5) — if successful, new evidence shall be treated as a future revision of this matrix (v1.1+) and recorded as ER-010 or later. S5 does not block Sprint 10 closure.
 
 Remaining unknowns are limited to mathematical implementation details. Further general literature search is unlikely to increase E2 evidence. Remaining recovery requires the evaluator, author correspondence, or unpublished material.
 
-Sprint 10 stopped because the marginal scientific value of continued general search became low — not because the search was abandoned.
+Sprint 10 stopped because the marginal scientific value of continued general search became low — not because the search was abandoned. Research should not depend on external events outside its control.
 
 ---
 
