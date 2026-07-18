@@ -41,6 +41,7 @@
 
 pub mod domain;
 pub mod legality;
+pub mod optimization;
 pub mod planner;
 
 // ── Top-level re-exports ──────────────────────────────────────────────────────
