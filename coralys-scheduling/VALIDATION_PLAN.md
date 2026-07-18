@@ -335,6 +335,47 @@ documentation.
 
 ---
 
+## Living Benchmark Dashboard
+
+Rather than producing only isolated reports, M6 maintains a versioned
+benchmark table that tracks key metrics across versions.  This creates a
+continuous performance history and makes regressions immediately visible.
+
+| Version | Scenario | Objective | Runtime (ms) | Violations | Recovery % | Notes |
+|---------|----------|----------:|-------------:|-----------:|-----------:|-------|
+| M6.2 | S1 | — | — | — | N/A | Baseline |
+| M6.3 | S1 | — | — | — | N/A | Local search enabled |
+| M6.4 | S4 | — | — | — | N/A | Scalability run |
+| M6.5 | D2 | — | — | — | — | Recovery evaluation |
+
+The table is updated after each sub-milestone and committed alongside the
+corresponding evidence artifact.  Columns are populated as measurements become
+available; `—` indicates not yet measured.
+
+---
+## Decision Log
+
+Whenever M6 produces evidence that changes the direction of the project, the
+decision is recorded here explicitly.  This creates traceability not just from
+evidence to claims, but from **evidence to engineering decisions**.
+
+| Decision ID | Evidence | Decision | Rationale |
+|-------------|----------|----------|-----------|
+| — | — | — | Populated as M6 evidence is collected |
+
+Example entries (illustrative):
+
+| Decision ID | Evidence | Decision | Rationale |
+|-------------|----------|----------|-----------|
+| DEC-001 | EV-M6.3-004 | Keep hill climbing | Converges reliably with acceptable runtime |
+| DEC-002 | EV-M6.5-002 | Recalibrate `RobustnessScore` | Weak correlation observed |
+| DEC-003 | EV-M6.4-006 | Defer 1000-flight target | Memory growth exceeds expectations |
+
+Over time this becomes a historical record explaining why the architecture
+evolved the way it did.
+
+---
+
 ## Evidence Registry
 
 Each validation artifact produced during M6 is recorded with the following
