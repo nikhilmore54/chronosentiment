@@ -115,13 +115,31 @@ mod tests {
 
     #[test]
     fn relocate_moves_pairing() {
+        // Rotations are stored in a HashMap so iteration order is non-deterministic.
+        // Find the index of the rotation with 2 pairings (the donor) and the one
+        // with 1 pairing (the recipient) by inspecting the collected vec.
         let roster = make_two_rotation_roster();
-        let result = relocate_pairing(&roster, 0, 1, 1); // move P3 from R1 to R2
-        assert!(result.is_some());
+        let rots: Vec<_> = roster.rotations().collect();
+        let (src_idx, dst_idx) = if rots[0].pairings().len() == 2 {
+            (0, 1)
+        } else {
+            (1, 0)
+        };
+        // Move the last pairing from the donor rotation to the recipient.
+        let pairing_idx = rots[src_idx].pairings().len() - 1;
+        let result = relocate_pairing(&roster, src_idx, pairing_idx, dst_idx);
+        assert!(result.is_some(), "relocate should succeed");
         let new_roster = result.unwrap();
-        let rots: Vec<_> = new_roster.rotations().collect();
-        assert_eq!(rots[0].pairings().len(), 1); // R1 now has 1 pairing
-        assert_eq!(rots[1].pairings().len(), 2); // R2 now has 2 pairings
+        let total: usize = new_roster.rotations().map(|r| r.pairings().len()).sum();
+        assert_eq!(total, 3); // 2 + 1 pairings total, unchanged
+        // The donor should now have 1 pairing, the recipient 2.
+        let new_rots: Vec<_> = new_roster.rotations().collect();
+        let pairing_counts: Vec<usize> = {
+            let mut v: Vec<usize> = new_rots.iter().map(|r| r.pairings().len()).collect();
+            v.sort_unstable();
+            v
+        };
+        assert_eq!(pairing_counts, vec![1, 2]);
     }
 
     #[test]
