@@ -54,4 +54,6 @@ pub use domain::{
     Roster, RosterError, RosterId, Rotation, RotationError, RotationId,
 };
 
-pub use legality::{LegalityChecker, LegalityRule, LegalityViolation};
+pub use legality::{
+    EntityRef, LegalityChecker, LegalityRule, LegalityViolation, ViolationSeverity,
+};

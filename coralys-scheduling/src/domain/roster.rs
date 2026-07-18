@@ -1,8 +1,9 @@
 //! Roster — the complete crew schedule for a planning period.
 //!
 //! A [`Roster`] is the top-level aggregate of the scheduling domain.  It
-//! collects all [`Rotation`]s (one per crew member) and the full set of
-//! [`FlightLeg`]s that must be covered for a given planning period.
+//! collects all [`Rotation`]s (one per crew member), the full set of
+//! [`FlightLeg`]s that must be covered, and the [`CrewMember`] records that
+//! the legality layer uses for qualification and base-return checks.
 //!
 //! This module defines **structure only**.  Coverage checks (every leg must
 //! be assigned to exactly the required crew complement), legality checks, and
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
-use super::crew::CrewId;
+use super::crew::{CrewId, CrewMember};
 use super::flight::{FlightLeg, FlightLegId};
 use super::rotation::Rotation;
 
@@ -78,11 +79,13 @@ impl PlanningPeriod {
 /// A `Roster` holds:
 /// - The set of [`FlightLeg`]s that must be covered (indexed by [`FlightLegId`]).
 /// - One [`Rotation`] per crew member (indexed by [`CrewId`]).
+/// - [`CrewMember`] records for qualification and base-return checks.
 /// - The [`PlanningPeriod`] this roster covers.
 ///
 /// # Invariants (enforced at construction)
 /// - No duplicate leg IDs.
 /// - No duplicate crew IDs (at most one rotation per crew member).
+/// - No duplicate crew member records.
 ///
 /// Coverage and legality invariants (every leg covered, no over-assignment,
 /// etc.) are **not** enforced here — they belong to the legality layer
@@ -97,6 +100,8 @@ pub struct Roster {
     legs: HashMap<FlightLegId, FlightLeg>,
     /// One rotation per crew member, keyed by crew ID.
     rotations: HashMap<CrewId, Rotation>,
+    /// Crew member records, keyed by crew ID.
+    crew_members: HashMap<CrewId, CrewMember>,
 }
 
 impl Roster {
@@ -107,11 +112,29 @@ impl Roster {
     /// - `legs` contains duplicate [`FlightLegId`]s.
     /// - `rotations` contains duplicate [`CrewId`]s (two rotations for the
     ///   same crew member).
+    /// - `crew_members` contains duplicate [`CrewId`]s.
     pub fn new(
         id: RosterId,
         period: PlanningPeriod,
         legs: Vec<FlightLeg>,
         rotations: Vec<Rotation>,
+    ) -> Result<Self, RosterError> {
+        Self::with_crew(id, period, legs, rotations, vec![])
+    }
+
+    /// Construct a new [`Roster`] with crew member records.
+    ///
+    /// This is the primary constructor for rosters that need qualification
+    /// and base-return checks (Layer 2).
+    ///
+    /// # Errors
+    /// Returns [`RosterError`] if any of the uniqueness invariants are violated.
+    pub fn with_crew(
+        id: RosterId,
+        period: PlanningPeriod,
+        legs: Vec<FlightLeg>,
+        rotations: Vec<Rotation>,
+        crew_members: Vec<CrewMember>,
     ) -> Result<Self, RosterError> {
         // Index legs, checking for duplicates.
         let mut leg_map: HashMap<FlightLegId, FlightLeg> = HashMap::new();
@@ -133,11 +156,23 @@ impl Roster {
             rotation_map.insert(rotation.crew_id.clone(), rotation);
         }
 
+        // Index crew members, checking for duplicates.
+        let mut crew_map: HashMap<CrewId, CrewMember> = HashMap::new();
+        for member in crew_members {
+            if crew_map.contains_key(&member.id) {
+                return Err(RosterError::DuplicateCrewMember {
+                    crew_id: member.id,
+                });
+            }
+            crew_map.insert(member.id.clone(), member);
+        }
+
         Ok(Self {
             id,
             period,
             legs: leg_map,
             rotations: rotation_map,
+            crew_members: crew_map,
         })
     }
 
@@ -180,6 +215,27 @@ impl Roster {
         self.rotations.keys()
     }
 
+    // ── Crew member accessors ─────────────────────────────────────────────────
+
+    /// Look up a crew member record by ID.
+    ///
+    /// Returns `None` if no record exists for this crew member.  The legality
+    /// layer treats a missing record as a warning (data may be incomplete
+    /// during planning).
+    pub fn crew_member(&self, crew_id: &CrewId) -> Option<&CrewMember> {
+        self.crew_members.get(crew_id)
+    }
+
+    /// All crew member records in this roster.
+    pub fn crew_members(&self) -> impl Iterator<Item = &CrewMember> {
+        self.crew_members.values()
+    }
+
+    /// Number of crew member records in this roster.
+    pub fn crew_member_count(&self) -> usize {
+        self.crew_members.len()
+    }
+
     // ── Aggregate metrics ─────────────────────────────────────────────────────
 
     /// Total number of flight legs across all rotations.
@@ -203,6 +259,10 @@ pub enum RosterError {
     /// Two rotations are assigned to the same crew member.
     #[error("crew member {crew_id} has more than one rotation")]
     DuplicateCrewRotation { crew_id: CrewId },
+
+    /// Two crew member records share the same [`CrewId`].
+    #[error("duplicate crew member record: {crew_id}")]
+    DuplicateCrewMember { crew_id: CrewId },
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -210,7 +270,7 @@ pub enum RosterError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::crew::CrewId;
+    use crate::domain::crew::{CrewId, CrewMember, CrewRole, Qualification};
     use crate::domain::duty::{Duty, DutyId};
     use crate::domain::flight::{AircraftType, AirportCode, FlightNumber};
     use crate::domain::pairing::{Pairing, PairingId};
@@ -244,6 +304,16 @@ mod tests {
         .unwrap()
     }
 
+    fn make_crew_member(id: &str) -> CrewMember {
+        CrewMember::new(
+            CrewId::new(id),
+            format!("Crew {id}"),
+            CrewRole::Captain,
+            vec![Qualification::new(AircraftType::new("B738"))],
+            AirportCode::new("LHR"),
+        )
+    }
+
     fn sample_period() -> PlanningPeriod {
         PlanningPeriod::new(
             Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap(),
@@ -253,15 +323,10 @@ mod tests {
 
     #[test]
     fn empty_roster_is_valid() {
-        let roster = Roster::new(
-            RosterId::new("R1"),
-            sample_period(),
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let roster = Roster::new(RosterId::new("R1"), sample_period(), vec![], vec![]).unwrap();
         assert_eq!(roster.leg_count(), 0);
         assert_eq!(roster.crew_count(), 0);
+        assert_eq!(roster.crew_member_count(), 0);
     }
 
     #[test]
@@ -277,10 +342,25 @@ mod tests {
     }
 
     #[test]
+    fn roster_with_crew_members() {
+        let crew = vec![make_crew_member("C1"), make_crew_member("C2")];
+        let roster = Roster::with_crew(
+            RosterId::new("R1"),
+            sample_period(),
+            vec![],
+            vec![],
+            crew,
+        )
+        .unwrap();
+        assert_eq!(roster.crew_member_count(), 2);
+        assert!(roster.crew_member(&CrewId::new("C1")).is_some());
+        assert!(roster.crew_member(&CrewId::new("C99")).is_none());
+    }
+
+    #[test]
     fn leg_lookup_by_id() {
         let legs = vec![make_leg("L1", "LHR", "CDG", 8, 10)];
-        let roster =
-            Roster::new(RosterId::new("R1"), sample_period(), legs, vec![]).unwrap();
+        let roster = Roster::new(RosterId::new("R1"), sample_period(), legs, vec![]).unwrap();
         assert!(roster.leg(&FlightLegId::new("L1")).is_some());
         assert!(roster.leg(&FlightLegId::new("MISSING")).is_none());
     }
@@ -313,6 +393,20 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_crew_members() {
+        let crew = vec![make_crew_member("C1"), make_crew_member("C1")];
+        let err = Roster::with_crew(
+            RosterId::new("R1"),
+            sample_period(),
+            vec![],
+            vec![],
+            crew,
+        )
+        .unwrap_err();
+        assert!(matches!(err, RosterError::DuplicateCrewMember { .. }));
+    }
+
+    #[test]
     fn planning_period_contains() {
         let period = sample_period();
         let inside = Utc.with_ymd_and_hms(2026, 7, 15, 12, 0, 0).unwrap();
@@ -328,8 +422,15 @@ mod tests {
             make_leg("L2", "CDG", "LHR", 14, 16),
         ];
         let rotations = vec![make_rotation("C1")];
-        let roster =
-            Roster::new(RosterId::new("R1"), sample_period(), legs, rotations).unwrap();
+        let crew = vec![make_crew_member("C1")];
+        let roster = Roster::with_crew(
+            RosterId::new("R1"),
+            sample_period(),
+            legs,
+            rotations,
+            crew,
+        )
+        .unwrap();
         let json = serde_json::to_string(&roster).unwrap();
         let restored: Roster = serde_json::from_str(&json).unwrap();
         assert_eq!(roster, restored);

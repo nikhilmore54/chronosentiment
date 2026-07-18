@@ -25,6 +25,7 @@ pub mod rotation;
 // ── Convenience re-exports ────────────────────────────────────────────────────
 
 pub use crew::{CrewId, CrewMember, CrewRole, Qualification};
+// RosterError now has DuplicateCrewMember variant — re-export is unchanged
 pub use duty::{Duty, DutyError, DutyId};
 pub use flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
 pub use pairing::{Pairing, PairingError, PairingId};
