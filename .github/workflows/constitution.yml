@@ -42,3 +42,5 @@ jobs:
           if grep -R "std::fs" src/ || true; then
             echo "Forbidden std::fs usage detected"; exit 1;
           fi
+      - name: M6.1 Architectural invariant gate
+        run: python3 scripts/check_arch_invariants.py
