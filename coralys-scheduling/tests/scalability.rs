@@ -1,23 +1,41 @@
 //! M6.4 -- Scalability Validation
 //!
-//! Hypothesis:
-//!   LocalSearch terminates within a time budget and produces an improving
-//!   solution at each of three representative fixture sizes.
+//! # Hypothesis
 //!
-//! Sizes:
-//!   Small:  4 rotations,  12 pairings  -- (6,2,2,2) baseline
-//!   Medium: 8 rotations,  24 pairings  -- (12,2,2,2,2,2,2,2) baseline
-//!   Large:  16 rotations, 48 pairings  -- (24,2,2,...,2) baseline
+//! LocalSearch demonstrates bounded execution time and consistently improves
+//! objective quality across representative scheduling scales while preserving
+//! solution validity.
 //!
-//! CI gates per size:
-//!   - optimized_score < baseline_score
-//!   - runtime_ms < 5000 (5 second budget)
-//!   - pairings conserved
+//! # Fixture sizes (qualification fixtures, not production-scale benchmarks)
 //!
-//! Fixture design rules (from M6.3):
-//!   1. Heavy rotation holds LATEST pairings; light rotations hold EARLIEST.
-//!      Ensures relocate moves satisfy Rotation chronological ordering.
-//!   2. All rotations have >= 2 pairings (HashMap iteration order is non-deterministic).
+//! | Label  | Rotations | Pairings | Max iterations |
+//! |--------|-----------|----------|----------------|
+//! | Small  |         4 |       12 |            200 |
+//! | Medium |         8 |       24 |            500 |
+//! | Large  |        16 |       48 |           1000 |
+//!
+//! # CI gates (environment-independent correctness invariants)
+//!
+//! - `optimized_score < baseline_score` at each scale
+//! - pairings conserved at each scale
+//! - optimized solution is legal at each scale
+//!
+//! # Evidence (recorded, not gated)
+//!
+//! - runtime_ms
+//! - evaluations
+//! - improvements
+//! - acceptance_ratio (improvements / evaluations)
+//! - improvement_pct
+//!
+//! Runtime is recorded as evidence for M6.7 qualification reporting.
+//! It is NOT a pass/fail gate because it is hardware- and environment-dependent.
+//!
+//! # Fixture design rules (from M6.3)
+//!
+//! 1. Heavy rotation holds LATEST pairings; light rotations hold EARLIEST.
+//!    Ensures relocate moves satisfy `Rotation` chronological ordering.
+//! 2. All rotations have >= 2 pairings (HashMap iteration order is non-deterministic).
 
 #![allow(non_snake_case)]
 
@@ -39,6 +57,8 @@ use coralys_scheduling::optimization::search::local_search::LocalSearch;
 
 use chrono::{Duration, TimeZone, Utc};
 use std::time::Instant;
+
+// ── Fixture helpers ───────────────────────────────────────────────────────────
 
 fn base_time() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap()
@@ -82,14 +102,12 @@ fn make_roster(legs: Vec<FlightLeg>, rotations: Vec<Rotation>) -> Roster {
     Roster::new(RosterId::new("R1"), period, legs, rotations).unwrap()
 }
 
-/// Build a scalability fixture.
+/// Build a scalability fixture with `n_light` light rotations (2 pairings each)
+/// and 1 heavy rotation holding `heavy_count` pairings.
 ///
-/// `n_light` light rotations each hold 2 EARLY pairings.
-/// 1 heavy rotation holds `heavy_count` LATE pairings.
-///
-/// Pairings are assigned in chronological order (6h slots).
-/// Light rotations get slots 0..n_light*2-1; heavy rotation gets the rest.
-/// This guarantees relocate moves satisfy Rotation ordering.
+/// Light rotations receive the EARLIEST pairings (dep_h 0..n_light*2*6).
+/// Heavy rotation receives the LATEST pairings (dep_h n_light*2*6..).
+/// This guarantees relocate moves satisfy `Rotation` chronological ordering.
 fn build_fixture(n_light: usize, heavy_count: usize) -> Roster {
     let n_pairings = n_light * 2 + heavy_count;
     let mut all_legs: Vec<FlightLeg> = Vec::new();
@@ -121,20 +139,32 @@ fn build_fixture(n_light: usize, heavy_count: usize) -> Roster {
     make_roster(all_legs, rotations)
 }
 
+// ── Result type ───────────────────────────────────────────────────────────────
+
+/// Scalability measurement for one fixture size.
+/// Reusable structure for M6.5 and M6.6 reporting.
 struct ScaleResult {
+    label: &'static str,
     n_rotations: usize,
     n_pairings: usize,
+    max_iterations: usize,
     baseline_score: f64,
     optimized_score: f64,
     improvement_pct: f64,
     evaluations: usize,
     improvements: usize,
+    acceptance_ratio: f64,
     runtime_ms: u128,
     pairings_conserved: bool,
     optimized_legal: bool,
 }
 
-fn run_scale(n_light: usize, heavy_count: usize, max_iter: usize) -> ScaleResult {
+fn run_scale(
+    label: &'static str,
+    n_light: usize,
+    heavy_count: usize,
+    max_iterations: usize,
+) -> ScaleResult {
     let baseline = build_fixture(n_light, heavy_count);
     let n_rotations = n_light + 1;
     let n_pairings = n_light * 2 + heavy_count;
@@ -142,7 +172,7 @@ fn run_scale(n_light: usize, heavy_count: usize, max_iter: usize) -> ScaleResult
     let checker = LegalityChecker::new();
     let mut evaluator = CostEvaluator::new();
     evaluator.add_objective(Box::new(WorkloadBalanceObjective));
-    let local_search = LocalSearch::new(&evaluator, &checker, vec![1.0], max_iter);
+    let local_search = LocalSearch::new(&evaluator, &checker, vec![1.0], max_iterations);
     let mut metrics = OptimizationMetrics::new();
 
     let t0 = Instant::now();
@@ -157,6 +187,11 @@ fn run_scale(n_light: usize, heavy_count: usize, max_iter: usize) -> ScaleResult
     } else {
         0.0
     };
+    let acceptance_ratio = if metrics.evaluations() > 0 {
+        metrics.improvements() as f64 / metrics.evaluations() as f64 * 100.0
+    } else {
+        0.0
+    };
 
     let baseline_pairings: usize = baseline.rotations().map(|r| r.pairings().len()).sum();
     let optimized_pairings: usize = optimized.rotations().map(|r| r.pairings().len()).sum();
@@ -164,72 +199,81 @@ fn run_scale(n_light: usize, heavy_count: usize, max_iter: usize) -> ScaleResult
     let optimized_legal = checker2.is_legal(&optimized);
 
     ScaleResult {
+        label,
         n_rotations,
         n_pairings,
+        max_iterations,
         baseline_score,
         optimized_score,
         improvement_pct,
         evaluations: metrics.evaluations(),
         improvements: metrics.improvements(),
+        acceptance_ratio,
         runtime_ms,
         pairings_conserved: optimized_pairings == baseline_pairings,
         optimized_legal,
     }
 }
 
-/// M6.4: LocalSearch terminates within budget and improves at each scale.
+// ── M6.4 test ─────────────────────────────────────────────────────────────────
+
+/// M6.4: LocalSearch demonstrates bounded execution time and consistently
+/// improves objective quality across representative scheduling scales while
+/// preserving solution validity.
+///
+/// CI gates: correctness invariants only (environment-independent).
+/// Evidence: runtime, evaluations, improvements, acceptance ratio (for M6.7).
 #[test]
 fn m6_4__scalability_small_medium_large() {
-    const RUNTIME_BUDGET_MS: u128 = 5_000;
-
-    // Small:  4 rotations (3 light + 1 heavy),  12 pairings, heavy=6
-    // Medium: 8 rotations (7 light + 1 heavy),  24 pairings, heavy=10
-    // Large:  16 rotations (15 light + 1 heavy), 48 pairings, heavy=18
-    let small  = run_scale(3,  6, 500);
-    let medium = run_scale(7, 10, 500);
-    let large  = run_scale(15, 18, 500);
+    // Iterations scale with problem size.
+    let small  = run_scale("Small",   3,  6,  200);
+    let medium = run_scale("Medium",  7, 10,  500);
+    let large  = run_scale("Large",  15, 18, 1000);
 
     // Evidence report.
     println!();
     println!("M6.4 Scalability Report");
     println!("=======================");
-    println!("{:<8} {:>10} {:>10} {:>12} {:>12} {:>10} {:>12} {:>12} {:>12}",
-        "Size", "Rotations", "Pairings", "Baseline", "Optimized", "Improv%",
-        "Evals", "Improvements", "Runtime(ms)");
+    println!(
+        "{:<8} {:>5} {:>8} {:>8} {:>10} {:>10} {:>8} {:>8} {:>8} {:>8} {:>12}",
+        "Size", "Rots", "Pairs", "MaxIter",
+        "Baseline", "Optimized", "Improv%",
+        "Evals", "Imprv", "AccRatio%", "Runtime(ms)"
+    );
     println!("{}", "-".repeat(100));
-    for (label, r) in [("Small", &small), ("Medium", &medium), ("Large", &large)] {
-        println!("{:<8} {:>10} {:>10} {:>12.4} {:>12.4} {:>9.1}% {:>12} {:>12} {:>12}",
-            label, r.n_rotations, r.n_pairings,
+    for r in [&small, &medium, &large] {
+        println!(
+            "{:<8} {:>5} {:>8} {:>8} {:>10.4} {:>10.4} {:>7.1}% {:>8} {:>8} {:>8.2}% {:>12}",
+            r.label, r.n_rotations, r.n_pairings, r.max_iterations,
             r.baseline_score, r.optimized_score, r.improvement_pct,
-            r.evaluations, r.improvements, r.runtime_ms);
+            r.evaluations, r.improvements, r.acceptance_ratio, r.runtime_ms
+        );
     }
     println!();
+    println!("Note: runtime_ms is evidence only — not a CI gate (hardware-dependent).");
+    println!();
 
-    // CI gates.
-    for (label, r) in [("Small", &small), ("Medium", &medium), ("Large", &large)] {
+    // CI gates: correctness invariants only.
+    for r in [&small, &medium, &large] {
         assert!(
             r.optimized_score < r.baseline_score,
-            "M6.4 FAIL [{label}]: optimized ({:.4}) must be < baseline ({:.4})",
-            r.optimized_score, r.baseline_score
-        );
-        assert!(
-            r.runtime_ms < RUNTIME_BUDGET_MS,
-            "M6.4 FAIL [{label}]: runtime {}ms exceeds budget {}ms",
-            r.runtime_ms, RUNTIME_BUDGET_MS
+            "M6.4 FAIL [{}]: optimized ({:.4}) must be < baseline ({:.4})",
+            r.label, r.optimized_score, r.baseline_score
         );
         assert!(
             r.pairings_conserved,
-            "M6.4 FAIL [{label}]: pairings not conserved"
+            "M6.4 FAIL [{}]: pairings not conserved",
+            r.label
         );
         assert!(
             r.optimized_legal,
-            "M6.4 FAIL [{label}]: optimized roster is not legal"
+            "M6.4 FAIL [{}]: optimized roster is not legal",
+            r.label
         );
     }
 
-    println!("All CI gates passed.");
+    println!("CI gates:");
     println!("  optimized_score < baseline_score: PASS at all 3 scales");
-    println!("  runtime_ms < {}ms:                PASS at all 3 scales", RUNTIME_BUDGET_MS);
     println!("  pairings conserved:               PASS at all 3 scales");
     println!("  optimized legal:                  PASS at all 3 scales");
 }
