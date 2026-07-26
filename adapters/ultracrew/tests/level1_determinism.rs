@@ -13,6 +13,7 @@ fn test_level1_determinism() {
         elite_count: 5,
         tournament_size: None,
         seed: Some(42), // Fixed seed across all runs
+        termination_policy: None,
     };
 
     let context = generate_scenario(20, 50, 6);

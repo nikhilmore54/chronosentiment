@@ -4,6 +4,17 @@
 
 ---
 
+> ⚠️ **SUPERSEDED DOCUMENT**
+>
+> This document (PRD v3.3) has been superseded and is retained for historical reference only.
+>
+> - **Authoritative commercial definition:** [`docs/CHRONOSENTIMENT_PRD_V1.md`](CHRONOSENTIMENT_PRD_V1.md)
+> - **Technical concept narrative extracted to:** [`docs/CHRONOSENTIMENT_PRODUCT_CONCEPT.md`](CHRONOSENTIMENT_PRODUCT_CONCEPT.md)
+>
+> Do not use this document for product planning, engineering, or commercial decisions. Refer to PRD v1.0.
+
+---
+
 ## 1. Context and Intent
 
 Over the past decade, the trading ecosystem has matured in two distinct directions. Strategy development has become increasingly sophisticated, supported by advanced backtesting tools, richer datasets, and improved analytical techniques. At the same time, execution infrastructure—brokers, exchanges, and routing systems—has evolved to deliver speed, reliability, and scale.

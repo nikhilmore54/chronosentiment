@@ -1,0 +1,377 @@
+{
+  "report_type": "UltraCrew Schedule Report",
+  "schema_version": "1.0",
+  "generated": "2026-07-22T22:52:00+05:30",
+  "scenario": {
+    "name": "SunAir Demo",
+    "planning_horizon_hours": 168,
+    "total_workers": 20,
+    "total_shifts": 42,
+    "rng_seed": 42,
+    "generation_limit": 500
+  },
+  "kpis": {
+    "coverage_pct": 100.0,
+    "shifts_assigned": 42,
+    "shifts_total": 42,
+    "hard_violations": 0,
+    "rest_violations": 0,
+    "fitness_score": 8649.6,
+    "fairness_penalty": 697.6,
+    "fatigue_penalty": 652.8,
+    "workload_balance": {
+      "mean_hours_per_worker": 16.8,
+      "min_hours_per_worker": 8,
+      "max_hours_per_worker": 32
+    }
+  },
+  "skill_coverage": {
+    "CabinCrew": {
+      "shifts_required": 14,
+      "shifts_covered": 14,
+      "coverage_pct": 100.0
+    },
+    "Captain": {
+      "shifts_required": 14,
+      "shifts_covered": 14,
+      "coverage_pct": 100.0
+    },
+    "FirstOfficer": {
+      "shifts_required": 14,
+      "shifts_covered": 14,
+      "coverage_pct": 100.0
+    }
+  },
+  "worker_summary": [
+    {
+      "worker_id": 1,
+      "skills": [
+        "Captain"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 2,
+      "skills": [
+        "Captain"
+      ],
+      "shifts_assigned": 4,
+      "total_hours": 32
+    },
+    {
+      "worker_id": 3,
+      "skills": [
+        "Captain"
+      ],
+      "shifts_assigned": 4,
+      "total_hours": 32
+    },
+    {
+      "worker_id": 4,
+      "skills": [
+        "Captain"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 5,
+      "skills": [
+        "FirstOfficer"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 6,
+      "skills": [
+        "FirstOfficer"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 7,
+      "skills": [
+        "FirstOfficer"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 8,
+      "skills": [
+        "FirstOfficer"
+      ],
+      "shifts_assigned": 2,
+      "total_hours": 16
+    },
+    {
+      "worker_id": 9,
+      "skills": [
+        "FirstOfficer"
+      ],
+      "shifts_assigned": 3,
+      "total_hours": 24
+    },
+    {
+      "worker_id": 10,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 2,
+      "total_hours": 16
+    },
+    {
+      "worker_id": 11,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 2,
+      "total_hours": 16
+    },
+    {
+      "worker_id": 12,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 13,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 14,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 15,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 16,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 17,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 18,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    },
+    {
+      "worker_id": 19,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 2,
+      "total_hours": 16
+    },
+    {
+      "worker_id": 20,
+      "skills": [
+        "CabinCrew"
+      ],
+      "shifts_assigned": 1,
+      "total_hours": 8
+    }
+  ],
+  "assignments": [
+    {
+      "shift_id": 1,
+      "worker_id": 3
+    },
+    {
+      "shift_id": 2,
+      "worker_id": 2
+    },
+    {
+      "shift_id": 3,
+      "worker_id": 1
+    },
+    {
+      "shift_id": 4,
+      "worker_id": 2
+    },
+    {
+      "shift_id": 5,
+      "worker_id": 1
+    },
+    {
+      "shift_id": 6,
+      "worker_id": 4
+    },
+    {
+      "shift_id": 7,
+      "worker_id": 2
+    },
+    {
+      "shift_id": 8,
+      "worker_id": 7
+    },
+    {
+      "shift_id": 9,
+      "worker_id": 6
+    },
+    {
+      "shift_id": 10,
+      "worker_id": 9
+    },
+    {
+      "shift_id": 11,
+      "worker_id": 7
+    },
+    {
+      "shift_id": 12,
+      "worker_id": 6
+    },
+    {
+      "shift_id": 13,
+      "worker_id": 8
+    },
+    {
+      "shift_id": 14,
+      "worker_id": 5
+    },
+    {
+      "shift_id": 15,
+      "worker_id": 13
+    },
+    {
+      "shift_id": 16,
+      "worker_id": 16
+    },
+    {
+      "shift_id": 17,
+      "worker_id": 10
+    },
+    {
+      "shift_id": 18,
+      "worker_id": 20
+    },
+    {
+      "shift_id": 19,
+      "worker_id": 12
+    },
+    {
+      "shift_id": 20,
+      "worker_id": 11
+    },
+    {
+      "shift_id": 21,
+      "worker_id": 18
+    },
+    {
+      "shift_id": 22,
+      "worker_id": 3
+    },
+    {
+      "shift_id": 23,
+      "worker_id": 4
+    },
+    {
+      "shift_id": 24,
+      "worker_id": 3
+    },
+    {
+      "shift_id": 25,
+      "worker_id": 2
+    },
+    {
+      "shift_id": 26,
+      "worker_id": 3
+    },
+    {
+      "shift_id": 27,
+      "worker_id": 4
+    },
+    {
+      "shift_id": 28,
+      "worker_id": 1
+    },
+    {
+      "shift_id": 29,
+      "worker_id": 6
+    },
+    {
+      "shift_id": 30,
+      "worker_id": 8
+    },
+    {
+      "shift_id": 31,
+      "worker_id": 9
+    },
+    {
+      "shift_id": 32,
+      "worker_id": 5
+    },
+    {
+      "shift_id": 33,
+      "worker_id": 7
+    },
+    {
+      "shift_id": 34,
+      "worker_id": 5
+    },
+    {
+      "shift_id": 35,
+      "worker_id": 9
+    },
+    {
+      "shift_id": 36,
+      "worker_id": 10
+    },
+    {
+      "shift_id": 37,
+      "worker_id": 19
+    },
+    {
+      "shift_id": 38,
+      "worker_id": 15
+    },
+    {
+      "shift_id": 39,
+      "worker_id": 11
+    },
+    {
+      "shift_id": 40,
+      "worker_id": 19
+    },
+    {
+      "shift_id": 41,
+      "worker_id": 14
+    },
+    {
+      "shift_id": 42,
+      "worker_id": 17
+    }
+  ]
+}

@@ -66,27 +66,9 @@ pub struct Alert {
     pub message: String,
 }
 
-#[derive(Serialize, Clone)]
-pub struct ViolationDetail {
-    pub nurse_id: String,
-    pub day: usize,
-    pub constraint: String,
-    pub actual: usize,
-    pub required: usize,
-}
-
-#[derive(Serialize, Clone)]
-pub struct ValidationReport {
-    pub max_consecutive_work_violations: usize,
-    pub min_consecutive_work_violations: usize,
-    pub min_days_off_violations: usize,
-    pub max_days_off_violations: usize,
-    pub forbidden_successions: usize,
-    
-    pub coverage_achieved: f64,
-    pub is_legal: bool,
-    pub details: Vec<ViolationDetail>,
-}
+// ViolationDetail and ValidationReport have been moved to the UltraCrew Solution Adapter.
+// Re-exported here for backward compatibility with existing server code.
+pub use ultracrew::inrc::types::{ViolationDetail, ValidationReport};
 
 #[derive(Serialize, Clone)]
 pub struct WorkloadAudit {

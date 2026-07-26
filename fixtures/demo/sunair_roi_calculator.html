@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UltraCrew — ROI Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1321 100%);
+      border-bottom: 1px solid #2d3748;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+    header .subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .badge {
+      background: #1e3a5f; border: 1px solid #3b82f6;
+      color: #93c5fd; font-size: 11px; padding: 4px 10px;
+      border-radius: 20px; font-weight: 600;
+    }
+
+    /* ── Layout ── */
+    main {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 28px;
+      padding: 28px 32px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+    /* ── Panels ── */
+    .panel {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .panel-title {
+      font-size: 13px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    /* ── Input groups ── */
+    .input-group { margin-bottom: 18px; }
+    .input-group label {
+      display: block;
+      font-size: 12px; font-weight: 600; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .input-row { display: flex; align-items: center; gap: 10px; }
+    .input-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: #2d3748;
+      border-radius: 2px;
+      outline: none;
+    }
+    .input-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      border: 2px solid #1a1f2e;
+    }
+    .input-row input[type="number"] {
+      width: 90px;
+      background: #0f1117;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      padding: 6px 10px;
+      text-align: right;
+    }
+    .input-row input[type="number"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .input-hint { font-size: 11px; color: #475569; margin-top: 4px; }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #2d3748;
+      margin: 20px 0;
+    }
+    .section-label {
+      font-size: 11px; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    /* ── Results panel ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .result-card {
+      background: #0f1117;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .result-card::before {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 10px 10px 0 0;
+    }
+    .result-card.green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+    .result-card.blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .result-card.amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .result-card.purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .result-card.teal::before   { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+    .result-card.red::before    { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+    .result-label {
+      font-size: 11px; font-weight: 600; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .result-value {
+      font-size: 26px; font-weight: 800; line-height: 1;
+    }
+    .result-card.green  .result-value { color: #34d399; }
+    .result-card.blue   .result-value { color: #60a5fa; }
+    .result-card.amber  .result-value { color: #fbbf24; }
+    .result-card.purple .result-value { color: #a78bfa; }
+    .result-card.teal   .result-value { color: #2dd4bf; }
+    .result-card.red    .result-value { color: #f87171; }
+    .result-sub { font-size: 11px; color: #475569; margin-top: 4px; }
+
+    /* ── Payback bar ── */
+    .payback-section { margin-top: 20px; }
+    .payback-label {
+      font-size: 12px; font-weight: 600; color: #64748b;
+      margin-bottom: 8px;
+    }
+    .payback-bar-bg {
+      height: 10px; background: #1e293b; border-radius: 5px; overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .payback-bar {
+      height: 100%; border-radius: 5px;
+      background: linear-gradient(90deg, #10b981, #3b82f6);
+      transition: width 0.4s ease;
+    }
+    .payback-months {
+      font-size: 28px; font-weight: 800; color: #34d399;
+      margin-bottom: 4px;
+    }
+    .payback-note { font-size: 11px; color: #475569; }
+
+    /* ── Breakdown table ── */
+    .breakdown-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+      margin-top: 20px;
+    }
+    .breakdown-table th {
+      background: #0f1117; color: #64748b;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 8px 12px; text-align: left;
+      border-bottom: 1px solid #2d3748;
+    }
+    .breakdown-table td {
+      padding: 9px 12px; color: #cbd5e1;
+      border-bottom: 1px solid #1e293b;
+    }
+    .breakdown-table tr:last-child td { border-bottom: none; }
+    .breakdown-table .positive { color: #34d399; font-weight: 700; }
+    .breakdown-table .negative { color: #f87171; font-weight: 700; }
+    .breakdown-table .total-row td {
+      background: #1e293b; font-weight: 700; color: #f1f5f9;
+      border-top: 1px solid #2d3748;
+    }
+
+    /* ── Assumptions note ── */
+    .assumptions {
+      margin-top: 20px;
+      background: #0f1117;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .assumptions strong { color: #64748b; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 24px;
+      font-size: 11px; color: #334155;
+      border-top: 1px solid #1e293b; margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">U</div>
+    <div>
+      <h1>UltraCrew — ROI Calculator</h1>
+      <div class="subtitle">Quantify scheduling savings for your airline</div>
+    </div>
+  </div>
+  <div class="badge">P-001 · S1-09 · CFO Edition</div>
+</header>
+
+<main>
+
+  <!-- ── Left: Inputs ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Your Airline Parameters</div>
+
+      <div class="section-label">Workforce</div>
+
+      <div class="input-group">
+        <label>Crew members scheduled per week</label>
+        <div class="input-row">
+          <input type="range" id="crewCount" min="10" max="500" value="20" oninput="sync('crewCount','crewCountNum');calc()">
+          <input type="number" id="crewCountNum" min="10" max="500" value="20" oninput="sync('crewCountNum','crewCount');calc()">
+        </div>
+        <div class="input-hint">SunAir demo: 20 crew members</div>
+      </div>
+
+      <div class="input-group">
+        <label>Scheduling cycles per year</label>
+        <div class="input-row">
+          <input type="range" id="cyclesPerYear" min="12" max="52" value="52" oninput="sync('cyclesPerYear','cyclesPerYearNum');calc()">
+          <input type="number" id="cyclesPerYearNum" min="12" max="52" value="52" oninput="sync('cyclesPerYearNum','cyclesPerYear');calc()">
+        </div>
+        <div class="input-hint">Weekly = 52, bi-weekly = 26, monthly = 12</div>
+      </div>
+
+      <hr class="section-divider">
+      <div class="section-label">Current Scheduling Cost</div>
+
+      <div class="input-group">
+        <label>Hours spent scheduling per cycle</label>
+        <div class="input-row">
+          <input type="range" id="hoursPerCycle" min="1" max="40" value="6" oninput="sync('hoursPerCycle','hoursPerCycleNum');calc()">
+          <input type="number" id="hoursPerCycleNum" min="1" max="40" value="6" oninput="sync('hoursPerCycleNum','hoursPerCycle');calc()">
+        </div>
+        <div class="input-hint">Typical range: 4–8 hours for a 20-person crew</div>
+      </div>
+
+      <div class="input-group">
+        <label>Scheduler hourly cost (USD)</label>
+        <div class="input-row">
+          <input type="range" id="schedulerRate" min="20" max="150" value="60" oninput="sync('schedulerRate','schedulerRateNum');calc()">
+          <input type="number" id="schedulerRateNum" min="20" max="150" value="60" oninput="sync('schedulerRateNum','schedulerRate');calc()">
+        </div>
+        <div class="input-hint">Fully-loaded cost including benefits</div>
+      </div>
+
+      <hr class="section-divider">
+      <div class="section-label">Compliance & Overtime Risk</div>
+
+      <div class="input-group">
+        <label>Compliance incidents per year (current)</label>
+        <div class="input-row">
+          <input type="range" id="complianceIncidents" min="0" max="50" value="4" oninput="sync('complianceIncidents','complianceIncidentsNum');calc()">
+          <input type="number" id="complianceIncidentsNum" min="0" max="50" value="4" oninput="sync('complianceIncidentsNum','complianceIncidents');calc()">
+        </div>
+        <div class="input-hint">Rest violations, skill mismatches, double-bookings</div>
+      </div>
+
+      <div class="input-group">
+        <label>Average cost per compliance incident (USD)</label>
+        <div class="input-row">
+          <input type="range" id="incidentCost" min="500" max="50000" step="500" value="5000" oninput="sync('incidentCost','incidentCostNum');calc()">
+          <input type="number" id="incidentCostNum" min="500" max="50000" step="500" value="5000" oninput="sync('incidentCostNum','incidentCost');calc()">
+        </div>
+        <div class="input-hint">Regulatory fines, delay compensation, re-scheduling cost</div>
+      </div>
+
+      <div class="input-group">
+        <label>Overtime premium cost per year (USD)</label>
+        <div class="input-row">
+          <input type="range" id="overtimeCost" min="0" max="200000" step="1000" value="20000" oninput="sync('overtimeCost','overtimeCostNum');calc()">
+          <input type="number" id="overtimeCostNum" min="0" max="200000" step="1000" value="20000" oninput="sync('overtimeCostNum','overtimeCost');calc()">
+        </div>
+        <div class="input-hint">Unplanned overtime from suboptimal scheduling</div>
+      </div>
+
+      <hr class="section-divider">
+      <div class="section-label">UltraCrew Pricing</div>
+
+      <div class="input-group">
+        <label>Annual licence cost (USD)</label>
+        <div class="input-row">
+          <input type="range" id="licenceCost" min="5000" max="200000" step="1000" value="24000" oninput="sync('licenceCost','licenceCostNum');calc()">
+          <input type="number" id="licenceCostNum" min="5000" max="200000" step="1000" value="24000" oninput="sync('licenceCostNum','licenceCost');calc()">
+        </div>
+        <div class="input-hint">Contact sales for a quote based on crew size</div>
+      </div>
+
+      <div class="input-group">
+        <label>One-time integration cost (USD)</label>
+        <div class="input-row">
+          <input type="range" id="integrationCost" min="0" max="50000" step="500" value="5000" oninput="sync('integrationCost','integrationCostNum');calc()">
+          <input type="number" id="integrationCostNum" min="0" max="50000" step="500" value="5000" oninput="sync('integrationCostNum','integrationCost');calc()">
+        </div>
+        <div class="input-hint">Data migration, API setup, training</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Right: Results ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Annual ROI Summary</div>
+
+      <div class="results-grid">
+        <div class="result-card green">
+          <div class="result-label">Annual Savings</div>
+          <div class="result-value" id="annualSavings">—</div>
+          <div class="result-sub">Labour + compliance + overtime</div>
+        </div>
+        <div class="result-card blue">
+          <div class="result-label">Annual Cost</div>
+          <div class="result-value" id="annualCost">—</div>
+          <div class="result-sub">Licence + amortised integration</div>
+        </div>
+        <div class="result-card teal">
+          <div class="result-label">Net Annual Benefit</div>
+          <div class="result-value" id="netBenefit">—</div>
+          <div class="result-sub">Savings minus total cost</div>
+        </div>
+        <div class="result-card purple">
+          <div class="result-label">3-Year NPV</div>
+          <div class="result-value" id="npv3yr">—</div>
+          <div class="result-sub">At 10% discount rate</div>
+        </div>
+        <div class="result-card amber">
+          <div class="result-label">ROI</div>
+          <div class="result-value" id="roiPct">—</div>
+          <div class="result-sub">Return on investment (year 1)</div>
+        </div>
+        <div class="result-card green">
+          <div class="result-label">Hours Saved / Year</div>
+          <div class="result-value" id="hoursSaved">—</div>
+          <div class="result-sub">Scheduling labour reclaimed</div>
+        </div>
+      </div>
+
+      <!-- Payback period -->
+      <div class="payback-section">
+        <div class="payback-label">Payback Period</div>
+        <div class="payback-months" id="paybackMonths">—</div>
+        <div class="payback-bar-bg">
+          <div class="payback-bar" id="paybackBar" style="width:0%"></div>
+        </div>
+        <div class="payback-note" id="paybackNote">—</div>
+      </div>
+
+      <!-- Breakdown table -->
+      <table class="breakdown-table">
+        <thead>
+          <tr>
+            <th>Cost / Saving Item</th>
+            <th>Annual Amount</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+
+      <!-- Assumptions -->
+      <div class="assumptions">
+        <strong>Assumptions:</strong>
+        UltraCrew eliminates 90% of manual scheduling labour (10% retained for review and edge cases).
+        Compliance incidents are reduced by 95% (hard violations and rest violations are guaranteed zero by the optimizer).
+        Overtime is reduced by 40% through the fairness objective distributing hours more evenly.
+        3-year NPV uses a 10% annual discount rate.
+        Integration cost is amortised over 3 years.
+        All figures are estimates; actual savings depend on your specific operating environment.
+      </div>
+    </div>
+
+    <!-- SunAir benchmark card -->
+    <div class="panel" style="margin-top:20px">
+      <div class="panel-title">SunAir Demo Benchmark</div>
+      <p style="font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:14px">
+        The canonical SunAir demo (20 crew, 42 shifts, 7-day horizon) achieved the following results
+        in a single optimizer run on 2026-07-22:
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#34d399">100%</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Shift Coverage</div>
+        </div>
+        <div style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#f87171">0</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Violations</div>
+        </div>
+        <div style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#60a5fa">11.3s</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">Runtime</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#475569;margin-top:12px">
+        Seed 42 · 500 generations · Coralys multi-objective genetic algorithm
+      </p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  UltraCrew ROI Calculator — P-001 Stream 1 · S1-09 · 2026-07-22
+  &nbsp;·&nbsp; Figures are illustrative estimates. Contact sales for a tailored analysis.
+</footer>
+
+<script>
+// ── Sync slider ↔ number input ────────────────────────────────────────────────
+function sync(sourceId, targetId) {
+  document.getElementById(targetId).value = document.getElementById(sourceId).value;
+}
+
+function fmt(n) {
+  if (Math.abs(n) >= 1000000) return "$" + (n / 1000000).toFixed(2) + "M";
+  if (Math.abs(n) >= 1000)    return "$" + Math.round(n).toLocaleString();
+  return "$" + Math.round(n).toLocaleString();
+}
+
+function fmtSigned(n) {
+  const s = fmt(Math.abs(n));
+  return n >= 0 ? "+" + s : "−" + s;
+}
+
+// ── Main calculation ──────────────────────────────────────────────────────────
+function calc() {
+  const get = id => parseFloat(document.getElementById(id).value) || 0;
+
+  const crewCount          = get("crewCount");
+  const cyclesPerYear      = get("cyclesPerYear");
+  const hoursPerCycle      = get("hoursPerCycle");
+  const schedulerRate      = get("schedulerRate");
+  const complianceIncidents= get("complianceIncidents");
+  const incidentCost       = get("incidentCost");
+  const overtimeCost       = get("overtimeCost");
+  const licenceCost        = get("licenceCost");
+  const integrationCost    = get("integrationCost");
+
+  // ── Savings ──
+  const labourSavingPct    = 0.90;
+  const complianceSavingPct= 0.95;
+  const overtimeSavingPct  = 0.40;
+
+  const currentLabourCost  = hoursPerCycle * cyclesPerYear * schedulerRate;
+  const labourSaving       = currentLabourCost * labourSavingPct;
+  const complianceSaving   = complianceIncidents * incidentCost * complianceSavingPct;
+  const overtimeSaving     = overtimeCost * overtimeSavingPct;
+  const totalSaving        = labourSaving + complianceSaving + overtimeSaving;
+
+  const hoursSaved         = hoursPerCycle * cyclesPerYear * labourSavingPct;
+
+  // ── Costs ──
+  const integrationAmort   = integrationCost / 3;  // amortised over 3 years
+  const totalAnnualCost    = licenceCost + integrationAmort;
+
+  // ── Net ──
+  const netBenefit         = totalSaving - totalAnnualCost;
+  const roiPct             = totalAnnualCost > 0
+    ? ((netBenefit / totalAnnualCost) * 100)
+    : 0;
+
+  // ── Payback (months) ──
+  const totalInvestment    = licenceCost + integrationCost;
+  const monthlyBenefit     = totalSaving / 12;
+  const paybackMonths      = monthlyBenefit > 0
+    ? Math.ceil(totalInvestment / monthlyBenefit)
+    : 999;
+
+  // ── 3-year NPV (10% discount) ──
+  const r = 0.10;
+  let npv = -integrationCost;
+  for (let yr = 1; yr <= 3; yr++) {
+    npv += (totalSaving - licenceCost) / Math.pow(1 + r, yr);
+  }
+
+  // ── Update DOM ──
+  document.getElementById("annualSavings").textContent  = fmt(totalSaving);
+  document.getElementById("annualCost").textContent     = fmt(totalAnnualCost);
+  document.getElementById("netBenefit").textContent     = fmt(netBenefit);
+  document.getElementById("npv3yr").textContent         = fmt(npv);
+  document.getElementById("roiPct").textContent         = Math.round(roiPct) + "%";
+  document.getElementById("hoursSaved").textContent     = Math.round(hoursSaved) + " h";
+
+  // Payback
+  const pmEl = document.getElementById("paybackMonths");
+  const pbEl = document.getElementById("paybackBar");
+  const pnEl = document.getElementById("paybackNote");
+
+  if (paybackMonths >= 999) {
+    pmEl.textContent = "N/A";
+    pbEl.style.width = "0%";
+    pnEl.textContent = "Savings do not exceed costs with current inputs.";
+  } else if (paybackMonths <= 1) {
+    pmEl.textContent = "< 1 month";
+    pbEl.style.width = "100%";
+    pnEl.textContent = "Exceptional ROI — investment recovered in under one month.";
+  } else {
+    pmEl.textContent = paybackMonths + (paybackMonths === 1 ? " month" : " months");
+    const pct = Math.min(100, Math.round((36 - paybackMonths) / 36 * 100));
+    pbEl.style.width = Math.max(5, pct) + "%";
+    const note = paybackMonths <= 3
+      ? "Excellent — payback within one quarter."
+      : paybackMonths <= 6
+      ? "Strong — payback within half a year."
+      : paybackMonths <= 12
+      ? "Good — payback within the first year."
+      : paybackMonths <= 24
+      ? "Acceptable — payback within two years."
+      : "Extended payback period — review licence and integration costs.";
+    pnEl.textContent = note;
+  }
+
+  // Breakdown table
+  const rows = [
+    ["Current scheduling labour cost",    currentLabourCost,  "Current cost"],
+    ["Labour saving (90% reduction)",      labourSaving,       "Saving"],
+    ["Compliance incident saving (95%)",   complianceSaving,   "Saving"],
+    ["Overtime reduction saving (40%)",    overtimeSaving,     "Saving"],
+    ["UltraCrew annual licence",          -licenceCost,        "Cost"],
+    ["Integration (amortised over 3 yr)", -integrationAmort,   "Cost"],
+    ["Net annual benefit",                 netBenefit,         "Net"],
+  ];
+
+  const tbody = document.getElementById("breakdownBody");
+  tbody.innerHTML = "";
+  rows.forEach(([label, amount, type], i) => {
+    const isTotal = i === rows.length - 1;
+    const cls = isTotal ? "total-row" : "";
+    const valCls = amount >= 0 ? "positive" : "negative";
+    const sign = amount >= 0 ? "+" : "−";
+    tbody.insertAdjacentHTML("beforeend", `
+      <tr class="${cls}">
+        <td>${label}</td>
+        <td class="${valCls}">${sign}${fmt(Math.abs(amount)).replace("$","$")}</td>
+        <td style="color:#64748b;font-size:11px">${type}</td>
+      </tr>
+    `);
+  });
+}
+
+// ── Initial calculation ───────────────────────────────────────────────────────
+calc();
+</script>
+</body>
+</html>

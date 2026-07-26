@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Coralys Platform — Interactive Code Map</title>
+<style>
+:root{--bg:#0d1117;--sf:#161b22;--sf2:#21262d;--bd:#30363d;--tx:#e6edf3;--mu:#8b949e;--ac:#58a6ff;--gr:#3fb950;--or:#d29922;--pu:#bc8cff;--re:#f85149;--te:#39d353;--pi:#f778ba;--ye:#e3b341}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap;z-index:100}
+header h1{font-size:15px;font-weight:700;color:var(--ac);white-space:nowrap}
+.sub{font-size:11px;color:var(--mu)}
+#search{background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:6px 12px;color:var(--tx);font-size:13px;width:210px;outline:none;transition:border-color .2s;margin-left:auto}
+#search:focus{border-color:var(--ac)}
+#search::placeholder{color:var(--mu)}
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+.lp{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;padding:3px 9px;border-radius:12px;border:1.5px solid transparent;transition:all .15s;user-select:none}
+.lp:hover{border-color:var(--bd);background:var(--sf2)}
+.lp.on{border-color:currentColor;color:var(--tx)}
+.ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.layout{display:flex;flex:1;overflow:hidden}
+#sidebar{width:230px;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;flex-shrink:0}
+#sidebar::-webkit-scrollbar{width:4px}
+#sidebar::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.sgh{padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;border-bottom:1px solid var(--bd);transition:background .15s}
+.sgh:hover{background:var(--sf2)}
+.sgh .ch{font-size:9px;transition:transform .2s}
+.sgh.cl .ch{transform:rotate(-90deg)}
+.sgb.cl{display:none}
+.si{padding:5px 12px 5px 22px;font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--mu);transition:all .15s;border-left:2px solid transparent}
+.si:hover{background:var(--sf2);color:var(--tx)}
+.si.on{background:rgba(88,166,255,.08);color:var(--ac);border-left-color:var(--ac)}
+.si .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+#wrap{flex:1;position:relative;overflow:hidden;background:var(--bg);background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.04) 1px,transparent 0);background-size:28px 28px}
+#canvas{position:absolute;top:0;left:0;transform-origin:0 0;cursor:grab}
+#canvas.grabbing{cursor:grabbing}
+.zc{position:absolute;bottom:18px;right:18px;display:flex;flex-direction:column;gap:4px;z-index:50}
+.zb{width:30px;height:30px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;user-select:none}
+.zb:hover{background:var(--sf2)}
+.zlbl{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:3px 6px;font-size:10px;color:var(--mu);text-align:center}
+#minimap{position:absolute;bottom:18px;left:18px;width:150px;height:90px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;overflow:hidden;z-index:50}
+#mm{width:100%;height:100%}
+.node{position:absolute;border-radius:8px;border:1.5px solid;cursor:pointer;transition:box-shadow .2s,transform .15s;user-select:none;min-width:138px}
+.node:hover{box-shadow:0 0 0 2px rgba(88,166,255,.4),0 8px 24px rgba(0,0,0,.5);transform:translateY(-1px);z-index:10!important}
+.node.sel{box-shadow:0 0 0 2.5px var(--ac),0 8px 24px rgba(0,0,0,.6);z-index:20!important}
+.node.dim{opacity:.2}
+.nh{padding:8px 10px 5px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:6px}
+.nico{font-size:13px;flex-shrink:0}
+.ntitle{font-size:11.5px;font-weight:700;line-height:1.3;flex:1}
+.nbadge{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:700;white-space:nowrap;margin-left:auto}
+.nb{padding:5px 10px 8px;font-size:10px;color:var(--mu);line-height:1.5}
+.nfiles{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.nf{background:rgba(255,255,255,.06);border-radius:3px;padding:1px 5px;font-size:9px;font-family:monospace;color:var(--mu)}
+#esvg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible}
+.edge{fill:none;stroke-width:1.5;opacity:.35;transition:opacity .2s}
+.edge.hi{opacity:.9;stroke-width:2.5}
+.edge.dim{opacity:.06}
+#dp{position:absolute;top:14px;right:14px;width:270px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:14px;z-index:60;display:none;box-shadow:0 8px 32px rgba(0,0,0,.6);max-height:calc(100vh - 100px);overflow-y:auto}
+#dp.vis{display:block}
+#dp::-webkit-scrollbar{width:4px}
+#dp::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.dpc{float:right;background:none;border:none;color:var(--mu);cursor:pointer;font-size:15px;line-height:1;padding:0}
+.dpc:hover{color:var(--tx)}
+.dpt{font-size:13px;font-weight:700;margin-bottom:3px}
+.dpcat{font-size:10px;color:var(--mu);margin-bottom:10px}
+.dpsl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin-bottom:4px;margin-top:10px}
+.dpd{font-size:11.5px;line-height:1.6;color:var(--mu)}
+.dpf{font-size:10.5px;font-family:monospace;color:var(--ac);padding:2px 6px;background:rgba(88,166,255,.07);border-radius:3px;margin-bottom:2px;word-break:break-all;display:block}
+.dpde{font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--bd);color:var(--mu);display:inline-block;margin:2px 2px 0 0;cursor:pointer}
+.dpde:hover{border-color:var(--ac);color:var(--ac)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:7px 14px;font-size:12px;color:var(--tx);z-index:200;transition:transform .3s;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>&#x2B21; Coralys Platform &#8212; Code Map</h1>
+    <div class="sub">Interactive architecture explorer &middot; drag &middot; scroll &middot; click nodes</div>
+  </div>
+  <div class="legend" id="legend"></div>
+  <input id="search" type="text" placeholder="Search nodes..." autocomplete="off"/>
+</header>
+<div class="layout">
+  <div id="sidebar"></div>
+  <div id="wrap">
+    <div id="canvas">
+      <svg id="esvg"></svg>
+    </div>
+    <div class="zc">
+      <div class="zb" id="zi">+</div>
+      <div class="zlbl" id="zlbl">100%</div>
+      <div class="zb" id="zo">&#8722;</div>
+      <div class="zb" id="zf" title="Fit to screen" style="font-size:11px">&#8861;</div>
+    </div>
+    <div id="minimap"><canvas id="mm"></canvas></div>
+    <div id="dp">
+      <button class="dpc" id="dpc">&#x2715;</button>
+      <div class="dpt" id="dp-title"></div>
+      <div class="dpcat" id="dp-cat"></div>
+      <div class="dpsl">Description</div>
+      <div class="dpd" id="dp-desc"></div>
+      <div id="dp-files-wrap">
+        <div class="dpsl">Key Files</div>
+        <div id="dp-files"></div>
+      </div>
+      <div id="dp-deps-wrap">
+        <div class="dpsl">Dependencies</div>
+        <div id="dp-deps"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+var CATS={
+  platform:{label:'Platform Crates',color:'#58a6ff',icon:'&#x2B21;'},
+  adapter: {label:'Adapters',       color:'#3fb950',icon:'&#9881;'},
+  app:     {label:'Apps / UI',      color:'#f778ba',icon:'&#128421;'},
+  service: {label:'Services',       color:'#39d353',icon:'&#128268;'},
+  docs:    {label:'Documentation',  color:'#d29922',icon:'&#128196;'},
+  research:{label:'Research',       color:'#bc8cff',icon:'&#128300;'},
+  bench:   {label:'Benchmarks',     color:'#e3b341',icon:'&#9989;'},
+  shared:  {label:'Shared / Infra', color:'#f85149',icon:'&#127959;'}
+};
+
+var NODES=[
+  // Platform Crates
+  {id:'coralys-core',cat:'platform',badge:'CORE',label:'coralys-core',sub:'Domain models & primitives',
+   desc:'Central domain models shared across all crates. Provides decision lineage, proposals, evaluation results, matching results, state references, violations, memory, telemetry, and analysis.',
+   files:['src/lib.rs','src/analysis.rs','src/memory.rs','src/telemetry.rs','models/decision_lineage.rs','models/decision_proposal.rs','models/evaluation_result.rs','models/matching_result.rs','models/violation.rs'],
+   deps:[],x:520,y:60},
+
+  {id:'coralys-ecology',cat:'platform',badge:'ECO',label:'coralys-ecology',sub:'Population ecology & diversity',
+   desc:'Population-level search ecology. Tracks diversity, diagnostics, progress signals, and trait interfaces for multi-objective optimisation.',
+   files:['src/lib.rs','src/diagnostics.rs','src/models.rs','src/progress.rs','src/state.rs','src/traits.rs'],
+   deps:['coralys-core'],x:260,y:60},
+
+  {id:'coralys-moga',cat:'platform',badge:'MOGA',label:'coralys-moga',sub:'Multi-objective genetic algorithm',
+   desc:'Core MOGA engine: evolutionary loop, repair operators, termination criteria, observatory hooks, ecology integration, benchmark framework, and engine proof harness.',
+   files:['src/engine.rs','src/engine_proof.rs','src/config.rs','src/repair.rs','src/state.rs','src/termination.rs','src/observatory.rs','src/traits.rs','src/benchmark.rs','src/ecology/','src/metrics/'],
+   deps:['coralys-core','coralys-ecology'],x:390,y:200},
+
+  {id:'coralys-matching',cat:'platform',badge:'MATCH',label:'coralys-matching',sub:'Bipartite matching primitives',
+   desc:'Bipartite matching primitives used across scheduling and assignment problems. Lightweight crate consumed by UltraCrew and Airline adapters.',
+   files:['src/lib.rs'],
+   deps:['coralys-core'],x:700,y:200},
+
+  {id:'coralys-decision',cat:'platform',badge:'DEC',label:'coralys-decision',sub:'Decision intelligence & lineage',
+   desc:'Decision intelligence layer: lineage tracking, explainability, audit trails, policy bridging, and scoring for AI-generated decisions in regulated industries.',
+   files:['src/lib.rs','src/engine.rs','src/explainability.rs','src/lineage.rs','src/models.rs','src/policy_bridge.rs','src/scoring.rs'],
+   deps:['coralys-core','coralys-matching'],x:840,y:60},
+
+  {id:'coralys-planning',cat:'platform',badge:'PLAN',label:'coralys-planning',sub:'Horizon planning & scheduling',
+   desc:'Planning horizon management and multi-week scheduling primitives. Constraint management, horizon-based scheduling, and optimisation wrappers.',
+   files:['src/lib.rs','src/constraints.rs','src/horizon.rs','src/optimizer.rs','src/schedule.rs'],
+   deps:['coralys-core','coralys-moga'],x:520,y:340},
+
+  {id:'coralys-policy',cat:'platform',badge:'POL',label:'coralys-policy',sub:'Policy engine & rules',
+   desc:'Policy engine for rule definition, validation, and enforcement. Bridges to coralys-decision for compliant scheduling in regulated domains.',
+   files:['src/lib.rs','src/engine.rs','src/rules.rs','src/validator.rs'],
+   deps:['coralys-core'],x:700,y:340},
+
+  {id:'coralys-recommendation',cat:'platform',badge:'RECO',label:'coralys-recommendation',sub:'Recommendation engine',
+   desc:'Recommendation generation with filtering, ranking, and scoring. Used by ChronoSentiment for investment signal ranking and UltraCrew for schedule suggestions.',
+   files:['src/lib.rs','src/engine.rs','src/filters.rs','src/ranker.rs','src/scorer.rs'],
+   deps:['coralys-core','coralys-decision'],x:840,y:200},
+
+  {id:'coralys-simulation',cat:'platform',badge:'SIM',label:'coralys-simulation',sub:'Scenario simulation engine',
+   desc:'Simulation harness for scenario testing, disruption modelling, and what-if analysis. Drives stress-testing of schedules and investment strategies.',
+   files:['src/lib.rs','src/engine.rs','src/events.rs','src/scenarios.rs','src/state.rs'],
+   deps:['coralys-core','coralys-moga','coralys-planning'],x:390,y:340},
+
+  {id:'coralys-eval',cat:'platform',badge:'EVAL',label:'coralys-eval',sub:'Evaluation & benchmarking',
+   desc:'Evaluation framework: benchmark runners, metrics computation, reporter, and scenario evaluation. Drives INRC-II and CVRP validation campaigns.',
+   files:['src/lib.rs','src/benchmark.rs','src/metrics.rs','src/reporter.rs','src/runner.rs','src/scenarios.rs'],
+   deps:['coralys-core','coralys-moga'],x:260,y:340},
+
+  {id:'coralys-infrastructure',cat:'platform',badge:'INFRA',label:'coralys-infrastructure',sub:'Shared infrastructure',
+   desc:'Shared infrastructure: logging, telemetry, configuration, audit, and persistence utilities consumed by all platform crates.',
+   files:['src/lib.rs','src/audit.rs','src/config.rs','src/persistence.rs','src/telemetry.rs'],
+   deps:['coralys-core'],x:130,y:200},
+
+  {id:'coralys-v2',cat:'platform',badge:'V2',label:'coralys-v2',sub:'Next-gen API & engine',
+   desc:'Next-generation Coralys API surface and engine. Consolidates v1 primitives into a unified interface. Experimental refactor.',
+   files:['src/lib.rs','src/api.rs','src/config.rs','src/engine.rs','src/models.rs'],
+   deps:['coralys-core','coralys-moga','coralys-ecology'],x:130,y:340},
+
+  // Adapters
+  {id:'adapter-ultracrew',cat:'adapter',badge:'UC',label:'UltraCrew Adapter',sub:'Workforce scheduling (INRC)',
+   desc:'Workforce scheduling adapter. INRC benchmark integration, constraint engine, ecology adapter, decision intelligence, pipeline orchestration, bipartite matching, and strict validator. Benchmark-validated on INRC-II M22/M23a series.',
+   files:['src/constraint_engine.rs','src/decision_intelligence.rs','src/ecology.rs','src/pipeline.rs','src/recommendation.rs','src/schedule_solution.rs','src/strict_validator.rs','src/inrc/','src/workforce/','src/config/'],
+   deps:['coralys-core','coralys-moga','coralys-ecology','coralys-matching','coralys-planning','coralys-policy'],
+   x:60,y:540},
+
+  {id:'adapter-airline',cat:'adapter',badge:'ACI',label:'Airline Crew Adapter',sub:'Crew pairing & rostering',
+   desc:'Airline Crew Intelligence adapter. Domain models for crew, duty, flight, pairing, roster, rotation. Legality checks (FDP, duty time, minimum rest, qualification, base return). Resilience and disruption handling.',
+   files:['src/domain/crew.rs','src/domain/duty.rs','src/domain/flight.rs','src/domain/pairing.rs','src/domain/roster.rs','src/legality/fdp.rs','src/legality/duty_time.rs','src/legality/minimum_rest.rs','src/resilience/disruption.rs'],
+   deps:['coralys-core','coralys-moga','coralys-ecology','coralys-policy','coralys-simulation'],
+   x:280,y:540},
+
+  {id:'adapter-chronosentiment',cat:'adapter',badge:'CS',label:'ChronoSentiment Adapter',sub:'Investment signal adapter',
+   desc:'ChronoSentiment investment reasoning adapter. Connects platform primitives to financial signal generation and decision intelligence for investment management.',
+   files:['src/lib.rs'],
+   deps:['coralys-core','coralys-decision','coralys-recommendation'],
+   x:500,y:540},
+
+  {id:'adapter-cvrp',cat:'adapter',badge:'CVRP',label:'CVRP Adapter',sub:'Vehicle routing benchmark',
+   desc:'Capacitated Vehicle Routing Problem adapter. Benchmark campaigns, BDD validation, ecology integration, MOGA implementation, and qualification framework.',
+   files:['src/lib.rs','src/analysis.rs','src/moga_impl.rs','src/qualification/','src/bin/bdd_benchmark.rs','src/bin/campaign.rs'],
+   deps:['coralys-core','coralys-moga','coralys-ecology','coralys-eval'],
+   x:720,y:540},
+
+  {id:'adapter-roadef',cat:'adapter',badge:'ROADEF',label:'ROADEF Adapter',sub:'ROADEF 2026 challenge',
+   desc:'ROADEF 2026 challenge adapter. Graph-based routing, ECMP, path optimisation, passive learner, shadow advisory, active pilot, and campaign engine.',
+   files:['src/adapter.rs','src/ecmp.rs','src/evaluator.rs','src/graph.rs','src/loader.rs','src/models.rs','src/moga_impl.rs','src/path.rs','src/bin/'],
+   deps:['coralys-core','coralys-moga','coralys-ecology','coralys-eval'],
+   x:940,y:540},
+
+  {id:'adapter-cvd001',cat:'adapter',badge:'CVD',label:'CVD001 Adapter',sub:'Crew vehicle dispatch',
+   desc:'Crew Vehicle Dispatch adapter. Credit evaluation, HC3 heuristic, objective functions, framework adapter, and workload management.',
+   files:['src/credit.rs','src/evaluator.rs','src/framework_adapter.rs','src/hc3.rs','src/objective.rs','src/types.rs','src/workload.rs'],
+   deps:['coralys-core','coralys-moga','coralys-eval'],
+   x:1160,y:540},
+
+  // Apps / UI
+  {id:'app-chronosentiment',cat:'app',badge:'APP',label:'ChronoSentiment App',sub:'Investment intelligence app',
+   desc:'ChronoSentiment application: API layer, config, pipeline, portfolio management, signal generation, and investment thesis engine.',
+   files:['src/api.rs','src/config.rs','src/pipeline.rs','src/portfolio.rs','src/signals.rs','src/thesis.rs'],
+   deps:['adapter-chronosentiment','coralys-core','coralys-decision','coralys-recommendation'],
+   x:500,y:700},
+
+  {id:'app-ultracrew',cat:'app',badge:'APP',label:'UltraCrew App',sub:'Workforce management app',
+   desc:'UltraCrew application: API layer, config, dashboard, scheduler, and workforce management. Operator-facing interface for crew scheduling.',
+   files:['src/api.rs','src/config.rs','src/dashboard.rs','src/scheduler.rs','src/workforce.rs'],
+   deps:['adapter-ultracrew','coralys-core'],
+   x:280,y:700},
+
+  {id:'app-ui',cat:'app',badge:'UI',label:'ChronoSentiment UI',sub:'React/TS frontend',
+   desc:'React/TypeScript frontend for ChronoSentiment. Trade inspector, timeline view, replay UI, and portfolio dashboard.',
+   files:['my-chrono-sentiment-ui/'],
+   deps:['app-chronosentiment'],
+   x:720,y:700},
+
+  // Services
+  {id:'svc-gateway',cat:'service',badge:'GW',label:'services/gateway',sub:'API gateway & auth',
+   desc:'HTTP API gateway: authentication, middleware, routing, and server bootstrap. Entry point for all external API calls.',
+   files:['src/auth.rs','src/middleware.rs','src/routes.rs','src/server.rs'],
+   deps:['coralys-core','coralys-infrastructure'],
+   x:940,y:700},
+
+  {id:'svc-orchestrator',cat:'service',badge:'ORCH',label:'services/orchestrator',sub:'Workflow orchestration',
+   desc:'Orchestrates multi-step workflows across platform crates. Coordinates scheduling, decision, and recommendation pipelines.',
+   files:['src/coordinator.rs','src/dispatcher.rs','src/scheduler.rs','src/workflow.rs'],
+   deps:['coralys-core','coralys-decision','coralys-recommendation','coralys-planning'],
+   x:1160,y:700},
+
+  // Shared
+  {id:'shared',cat:'shared',badge:'SHARED',label:'shared',sub:'Cross-crate utilities',
+   desc:'Shared types, errors, events, and utilities consumed by all crates. Defines the common vocabulary for the platform.',
+   files:['src/errors.rs','src/events.rs','src/types.rs','src/utils.rs'],
+   deps:[],x:130,y:60},
+
+  // Benchmarks
+  {id:'benchmarks',cat:'bench',badge:'BENCH',label:'benchmarks',sub:'INRC & CVRP benchmarks',
+   desc:'Top-level benchmark harness: INRC-II runner, CVRP metrics, and benchmark runner. Drives validation campaigns.',
+   files:['src/lib.rs','src/inrc.rs','src/metrics.rs','src/runner.rs'],
+   deps:['coralys-moga','coralys-eval','adapter-ultracrew'],
+   x:130,y:460},
+
+  // Documentation
+  {id:'docs-platform',cat:'docs',badge:'DOCS',label:'Platform Docs',sub:'Architecture & traceability',
+   desc:'Core platform documentation: architecture traceability, product traceability, gap register, evidence linkage, API/DB specs, and platform crate responsibilities.',
+   files:['CORALYS_PLATFORM_ARCHITECTURE.md','CORALYS_PLATFORM_STRATEGY.md','platform/CORALYS_ARCHITECTURE_TRACEABILITY.md','platform/CORALYS_PRODUCT_TRACEABILITY.md','platform/CORALYS_GAP_REGISTER.md','PLATFORM_CRATE_RESPONSIBILITIES.md'],
+   deps:[],x:1300,y:60},
+
+  {id:'docs-blueprints',cat:'docs',badge:'BP',label:'Product Blueprints',sub:'UltraCrew & ChronoSentiment',
+   desc:'Product blueprints for UltraCrew (UC-B-001), ChronoSentiment Enterprise (CS-E-B-001), and ChronoSentiment Personal (CS-P-B-001).',
+   files:['blueprints/UC-B-001_UltraCrew_Blueprint_v1.0.md','blueprints/CS-E-B-001_ChronoSentiment_Enterprise_Blueprint_v1.0.md','blueprints/CS-P-B-001_ChronoSentiment_Personal_Blueprint_v1.0.md'],
+   deps:['docs-research'],x:1300,y:200},
+
+  {id:'docs-research',cat:'research',badge:'R&D',label:'Research Docs',sub:'CS-R-001 through CS-R-015A',
+   desc:'Market landscape, competitive analysis, customer problems, regulatory landscape, pricing, data, explainability, investment thesis, and executive summary (CS-R-001 to CS-R-015A).',
+   files:['research/CS-R-001_Market_Landscape.md','research/CS-R-009_AI_Adoption_Investment_Management.md','research/CS-R-015_Investment_Thesis.md','research/CS-R-015A_Executive_Investment_Summary.md'],
+   deps:[],x:1300,y:340},
+
+  {id:'docs-evidence',cat:'docs',badge:'EL',label:'Evidence Ledger',sub:'Phase 1B evidence (EL-001)',
+   desc:'Phase 1B Evidence Ledger (EL-001). Links EV-001 through EV-003 to CS-BP-003 capabilities. Confidence scale A-X. Phase 1B replication report.',
+   files:['EL-001_Phase1B_Evidence_Ledger.md','phase1b_ledger.md','phase1b_replication_report.md'],
+   deps:['docs-research','docs-platform'],x:1300,y:460},
+
+  {id:'docs-governance',cat:'docs',badge:'GOV',label:'Governance & Contracts',sub:'Semantic lint & API contracts',
+   desc:'Semantic lint posture, event taxonomy, governance index, API admissibility contracts, routing deltas, ratification decisions, and replay archive contracts.',
+   files:['governance/governance_index.md','governance/event_taxonomy.md','governance/SEMANTIC_LINT_POSTURE.md','contracts/UI_API_CONTRACT_v1.md','contracts/REPLAY_ATTESTATION_CONTRACT_v1.md'],
+   deps:[],x:1300,y:600},
+
+  {id:'docs-constitution',cat:'docs',badge:'CONST',label:'Constitution',sub:'Authority & sovereignty',
+   desc:'Architectural authority geometry, operational sovereignty, observatory authority, optimization boundary, and semantic realization gates.',
+   files:['constitution/architecture.md','constitution/AUTHORITY_GEOMETRY.md','constitution/OPERATIONAL_SOVEREIGNTY.md','constitution/OBSERVATORY_AUTHORITY.md','constitution/OPTIMIZATION_BOUNDARY.md'],
+   deps:[],x:1300,y:740}
+];
+
+// Edges derived from deps
+var EDGES=[];
+NODES.forEach(function(n){
+  (n.deps||[]).forEach(function(d){
+    EDGES.push({from:n.id,to:d});
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+var scale=1,tx=40,ty=40;
+var selectedId=null;
+var filterCat='all';
+var searchQ='';
+var isDragging=false,dragStartX=0,dragStartY=0,dragStartTx=0,dragStartTy=0;
+var nodeEls={},edgeEls={};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',function(){
+  buildLegend();
+  buildSidebar();
+  buildNodes();
+  buildEdges();
+  applyTransform();
+  setupInteraction();
+  drawMinimap();
+  fitToScreen();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD LEGEND
+// ═══════════════════════════════════════════════════════════════
+function buildLegend(){
+  var el=document.getElementById('legend');
+  Object.keys(CATS).forEach(function(k){
+    var c=CATS[k];
+    var p=document.createElement('div');
+    p.className='lp on';
+    p.dataset.cat=k;
+    p.style.color=c.color;
+    p.innerHTML='<span class="ld" style="background:'+c.color+'"></span>'+c.label;
+    p.addEventListener('click',function(){
+      if(filterCat===k){filterCat='all';p.classList.add('on');}
+      else{
+        filterCat=k;
+        document.querySelectorAll('.lp').forEach(function(x){x.classList.remove('on');});
+        p.classList.add('on');
+      }
+      applyFilters();
+    });
+    el.appendChild(p);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD SIDEBAR
+// ═══════════════════════════════════════════════════════════════
+function buildSidebar(){
+  var sb=document.getElementById('sidebar');
+  var groups={};
+  NODES.forEach(function(n){
+    if(!groups[n.cat])groups[n.cat]=[];
+    groups[n.cat].push(n);
+  });
+  Object.keys(CATS).forEach(function(k){
+    if(!groups[k])return;
+    var c=CATS[k];
+    var sec=document.createElement('div');
+    var head=document.createElement('div');
+    head.className='sgh';
+    head.innerHTML='<span>'+c.icon+' '+c.label+'</span><span class="ch">&#9660;</span>';
+    var body=document.createElement('div');
+    body.className='sgb';
+    groups[k].forEach(function(n){
+      var item=document.createElement('div');
+      item.className='si';
+      item.dataset.id=n.id;
+      item.innerHTML='<span class="dot" style="background:'+c.color+'"></span>'+n.label;
+      item.addEventListener('click',function(){selectNode(n.id);});
+      body.appendChild(item);
+    });
+    head.addEventListener('click',function(){
+      head.classList.toggle('cl');
+      body.classList.toggle('cl');
+    });
+    sec.appendChild(head);
+    sec.appendChild(body);
+    sb.appendChild(sec);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD NODES
+// ═══════════════════════════════════════════════════════════════
+function buildNodes(){
+  var canvas=document.getElementById('canvas');
+  NODES.forEach(function(n){
+    var c=CATS[n.cat];
+    var el=document.createElement('div');
+    el.className='node';
+    el.id='node-'+n.id;
+    el.style.left=n.x+'px';
+    el.style.top=n.y+'px';
+    el.style.borderColor=c.color+'55';
+    el.style.background='linear-gradient(135deg,'+hexAlpha(c.color,0.12)+','+hexAlpha(c.color,0.06)+')';
+    var files3=n.files.slice(0,3).map(function(f){return '<span class="nf">'+f+'</span>';}).join('');
+    el.innerHTML='<div class="nh" style="background:'+hexAlpha(c.color,0.15)+'">'+
+      '<span class="nico">'+c.icon+'</span>'+
+      '<span class="ntitle">'+n.label+'</span>'+
+      '<span class="nbadge" style="background:'+hexAlpha(c.color,0.25)+';color:'+c.color+'">'+n.badge+'</span>'+
+      '</div>'+
+      '<div class="nb">'+n.sub+'<div class="nfiles">'+files3+'</div></div>';
+    el.addEventListener('click',function(e){e.stopPropagation();selectNode(n.id);});
+    canvas.appendChild(el);
+    nodeEls[n.id]=el;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD EDGES
+// ═══════════════════════════════════════════════════════════════
+function buildEdges(){
+  var svg=document.getElementById('esvg');
+  EDGES.forEach(function(e,i){
+    var path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.classList.add('edge');
+    path.id='edge-'+i;
+    path.dataset.from=e.from;
+    path.dataset.to=e.to;
+    var fc=CATS[nodeById(e.from).cat];
+    path.style.stroke=fc.color;
+    svg.appendChild(path);
+    edgeEls[i]=path;
+  });
+  updateEdgePaths();
+}
+
+function nodeById(id){
+  for(var i=0;i<NODES.length;i++)if(NODES[i].id===id)return NODES[i];
+  return null;
+}
+
+function updateEdgePaths(){
+  EDGES.forEach(function(e,i){
+    var fn=nodeById(e.from);
+    var tn=nodeById(e.to);
+    if(!fn||!tn)return;
+    var fel=nodeEls[e.from];
+    var tel=nodeEls[e.to];
+    if(!fel||!tel)return;
+    var fw=fel.offsetWidth||150,fh=fel.offsetHeight||60;
+    var tw=tel.offsetWidth||150,th=tel.offsetHeight||60;
+    var x1=fn.x+fw/2,y1=fn.y+fh/2;
+    var x2=tn.x+tw/2,y2=tn.y+th/2;
+    var cx=(x1+x2)/2;
+    var d='M'+x1+','+y1+' C'+cx+','+y1+' '+cx+','+y2+' '+x2+','+y2;
+    edgeEls[i].setAttribute('d',d);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSFORM
+// ═══════════════════════════════════════════════════════════════
+function applyTransform(){
+  var canvas=document.getElementById('canvas');
+  canvas.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';
+  document.getElementById('zlbl').textContent=Math.round(scale*100)+'%';
+  drawMinimap();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FIT TO SCREEN
+// ═══════════════════════════════════════════════════════════════
+function fitToScreen(){
+  var wrap=document.getElementById('wrap');
+  var ww=wrap.clientWidth,wh=wrap.clientHeight;
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  NODES.forEach(function(n){
+    var el=nodeEls[n.id];
+    var w=el?el.offsetWidth:150,h=el?el.offsetHeight:60;
+    if(n.x<minX)minX=n.x;
+    if(n.y<minY)minY=n.y;
+    if(n.x+w>maxX)maxX=n.x+w;
+    if(n.y+h>maxY)maxY=n.y+h;
+  });
+  var pad=60;
+  var cw=maxX-minX+pad*2,ch=maxY-minY+pad*2;
+  var s=Math.min(ww/cw,wh/ch,1);
+  scale=Math.max(0.2,Math.min(s,1));
+  tx=(ww-cw*scale)/2+pad*scale-minX*scale;
+  ty=(wh-ch*scale)/2+pad*scale-minY*scale;
+  applyTransform();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SELECT NODE
+// ═══════════════════════════════════════════════════════════════
+function selectNode(id){
+  if(selectedId===id){
+    selectedId=null;
+    clearSelection();
+    document.getElementById('dp').classList.remove('vis');
+    return;
+  }
+  selectedId=id;
+  var n=nodeById(id);
+  if(!n)return;
+  // highlight node
+  Object.keys(nodeEls).forEach(function(k){
+    nodeEls[k].classList.remove('sel','dim');
+  });
+  nodeEls[id].classList.add('sel');
+  // find connected
+  var connected={};
+  connected[id]=true;
+  EDGES.forEach(function(e){
+    if(e.from===id)connected[e.to]=true;
+    if(e.to===id)connected[e.from]=true;
+  });
+  Object.keys(nodeEls).forEach(function(k){
+    if(!connected[k])nodeEls[k].classList.add('dim');
+  });
+  // highlight edges
+  Object.keys(edgeEls).forEach(function(i){
+    var e=EDGES[i];
+    edgeEls[i].classList.remove('hi','dim');
+    if(e.from===id||e.to===id)edgeEls[i].classList.add('hi');
+    else edgeEls[i].classList.add('dim');
+  });
+  // sidebar
+  document.querySelectorAll('.si').forEach(function(el){
+    el.classList.toggle('on',el.dataset.id===id);
+  });
+  // detail panel
+  showDetail(n);
+  // scroll node into view
+  scrollToNode(n);
+}
+
+function clearSelection(){
+  selectedId=null;
+  Object.keys(nodeEls).forEach(function(k){nodeEls[k].classList.remove('sel','dim');});
+  Object.keys(edgeEls).forEach(function(i){edgeEls[i].classList.remove('hi','dim');});
+  document.querySelectorAll('.si').forEach(function(el){el.classList.remove('on');});
+}
+
+function scrollToNode(n){
+  var wrap=document.getElementById('wrap');
+  var ww=wrap.clientWidth,wh=wrap.clientHeight;
+  var el=nodeEls[n.id];
+  var w=el?el.offsetWidth:150,h=el?el.offsetHeight:60;
+  var cx=n.x+w/2,cy=n.y+h/2;
+  tx=ww/2-cx*scale;
+  ty=wh/2-cy*scale;
+  applyTransform();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DETAIL PANEL
+// ═══════════════════════════════════════════════════════════════
+function showDetail(n){
+  var c=CATS[n.cat];
+  document.getElementById('dp-title').textContent=n.label;
+  document.getElementById('dp-cat').innerHTML='<span style="color:'+c.color+'">'+c.icon+' '+c.label+'</span> &middot; '+n.badge;
+  document.getElementById('dp-desc').textContent=n.desc;
+  var fwrap=document.getElementById('dp-files-wrap');
+  var flist=document.getElementById('dp-files');
+  flist.innerHTML='';
+  if(n.files&&n.files.length){
+    fwrap.style.display='';
+    n.files.forEach(function(f){
+      var a=document.createElement('span');
+      a.className='dpf';
+      a.textContent=f;
+      flist.appendChild(a);
+    });
+  } else {
+    fwrap.style.display='none';
+  }
+  var dwrap=document.getElementById('dp-deps-wrap');
+  var dlist=document.getElementById('dp-deps');
+  dlist.innerHTML='';
+  if(n.deps&&n.deps.length){
+    dwrap.style.display='';
+    n.deps.forEach(function(d){
+      var btn=document.createElement('span');
+      btn.className='dpde';
+      btn.textContent=d;
+      btn.addEventListener('click',function(){selectNode(d);});
+      dlist.appendChild(btn);
+    });
+  } else {
+    dwrap.style.display='none';
+  }
+  document.getElementById('dp').classList.add('vis');
+}
+
+document.getElementById('dpc').addEventListener('click',function(){
+  document.getElementById('dp').classList.remove('vis');
+  clearSelection();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════════════════════════════
+function applyFilters(){
+  NODES.forEach(function(n){
+    var el=nodeEls[n.id];
+    if(!el)return;
+    var catOk=(filterCat==='all'||n.cat===filterCat);
+    var qOk=matchesFilter(n);
+    el.style.display=(catOk&&qOk)?'':'none';
+  });
+  updateEdgePaths();
+  drawMinimap();
+}
+
+function matchesFilter(n){
+  if(!searchQ)return true;
+  var q=searchQ.toLowerCase();
+  return n.label.toLowerCase().indexOf(q)>=0||
+    n.sub.toLowerCase().indexOf(q)>=0||
+    n.desc.toLowerCase().indexOf(q)>=0||
+    (n.files||[]).some(function(f){return f.toLowerCase().indexOf(q)>=0;});
+}
+
+document.getElementById('search').addEventListener('input',function(){
+  searchQ=this.value;
+  applyFilters();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ZOOM & PAN
+// ═══════════════════════════════════════════════════════════════
+function setupInteraction(){
+  var wrap=document.getElementById('wrap');
+  var canvas=document.getElementById('canvas');
+
+  // wheel zoom
+  wrap.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var rect=wrap.getBoundingClientRect();
+    var mx=e.clientX-rect.left;
+    var my=e.clientY-rect.top;
+    var delta=e.deltaY<0?1.1:0.9;
+    var ns=Math.max(0.15,Math.min(3,scale*delta));
+    tx=mx-(mx-tx)*(ns/scale);
+    ty=my-(my-ty)*(ns/scale);
+    scale=ns;
+    applyTransform();
+  },{passive:false});
+
+  // drag pan
+  wrap.addEventListener('mousedown',function(e){
+    if(e.target.closest('.node')||e.target.closest('#dp'))return;
+    isDragging=true;
+    dragStartX=e.clientX;
+    dragStartY=e.clientY;
+    dragStartTx=tx;
+    dragStartTy=ty;
+    canvas.classList.add('grabbing');
+    canvas.classList.remove('grab');
+  });
+  window.addEventListener('mousemove',function(e){
+    if(!isDragging)return;
+    tx=dragStartTx+(e.clientX-dragStartX);
+    ty=dragStartTy+(e.clientY-dragStartY);
+    applyTransform();
+  });
+  window.addEventListener('mouseup',function(){
+    if(!isDragging)return;
+    isDragging=false;
+    canvas.classList.remove('grabbing');
+    canvas.classList.add('grab');
+  });
+
+  // click on canvas background deselects
+  wrap.addEventListener('click',function(e){
+    if(e.target===wrap||e.target===canvas||e.target===document.getElementById('esvg')){
+      clearSelection();
+      document.getElementById('dp').classList.remove('vis');
+    }
+  });
+
+  // zoom buttons
+  document.getElementById('zi').addEventListener('click',function(){
+    var wrap2=document.getElementById('wrap');
+    var cx=wrap2.clientWidth/2,cy=wrap2.clientHeight/2;
+    var ns=Math.min(3,scale*1.2);
+    tx=cx-(cx-tx)*(ns/scale);
+    ty=cy-(cy-ty)*(ns/scale);
+    scale=ns;
+    applyTransform();
+  });
+  document.getElementById('zo').addEventListener('click',function(){
+    var wrap2=document.getElementById('wrap');
+    var cx=wrap2.clientWidth/2,cy=wrap2.clientHeight/2;
+    var ns=Math.max(0.15,scale*0.8);
+    tx=cx-(cx-tx)*(ns/scale);
+    ty=cy-(cy-ty)*(ns/scale);
+    scale=ns;
+    applyTransform();
+  });
+  document.getElementById('zf').addEventListener('click',fitToScreen);
+
+  // touch support
+  var lastTouchDist=null;
+  wrap.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+      lastTouchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    } else if(e.touches.length===1){
+      isDragging=true;
+      dragStartX=e.touches[0].clientX;
+      dragStartY=e.touches[0].clientY;
+      dragStartTx=tx;dragStartTy=ty;
+    }
+  },{passive:true});
+  wrap.addEventListener('touchmove',function(e){
+    if(e.touches.length===2&&lastTouchDist){
+      var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      var ns=Math.max(0.15,Math.min(3,scale*(d/lastTouchDist)));
+      scale=ns;lastTouchDist=d;
+      applyTransform();
+    } else if(e.touches.length===1&&isDragging){
+      tx=dragStartTx+(e.touches[0].clientX-dragStartX);
+      ty=dragStartTy+(e.touches[0].clientY-dragStartY);
+      applyTransform();
+    }
+  },{passive:true});
+  wrap.addEventListener('touchend',function(){isDragging=false;lastTouchDist=null;});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MINIMAP
+// ═══════════════════════════════════════════════════════════════
+function drawMinimap(){
+  var mm=document.getElementById('mm');
+  var ctx=mm.getContext('2d');
+  var mw=mm.offsetWidth||150,mh=mm.offsetHeight||90;
+  mm.width=mw;mm.height=mh;
+  ctx.clearRect(0,0,mw,mh);
+  // compute bounds
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  NODES.forEach(function(n){
+    var el=nodeEls[n.id];
+    if(el&&el.style.display==='none')return;
+    var w=el?el.offsetWidth:150,h=el?el.offsetHeight:60;
+    if(n.x<minX)minX=n.x;if(n.y<minY)minY=n.y;
+    if(n.x+w>maxX)maxX=n.x+w;if(n.y+h>maxY)maxY=n.y+h;
+  });
+  if(minX===Infinity)return;
+  var pad=20;
+  var bw=maxX-minX+pad*2,bh=maxY-minY+pad*2;
+  var ms=Math.min(mw/bw,mh/bh);
+  var ox=(mw-bw*ms)/2+pad*ms-minX*ms;
+  var oy=(mh-bh*ms)/2+pad*ms-minY*ms;
+  // draw edges
+  EDGES.forEach(function(e){
+    var fn=nodeById(e.from),tn=nodeById(e.to);
+    if(!fn||!tn)return;
+    var fel=nodeEls[e.from],tel=nodeEls[e.to];
+    if(fel&&fel.style.display==='none')return;
+    if(tel&&tel.style.display==='none')return;
+    var fw=fel?fel.offsetWidth:150,fh=fel?fel.offsetHeight:60;
+    var tw=tel?tel.offsetWidth:150,th=tel?tel.offsetHeight:60;
+    ctx.beginPath();
+    ctx.moveTo((fn.x+fw/2)*ms+ox,(fn.y+fh/2)*ms+oy);
+    ctx.lineTo((tn.x+tw/2)*ms+ox,(tn.y+th/2)*ms+oy);
+    ctx.strokeStyle='rgba(255,255,255,0.12)';
+    ctx.lineWidth=0.5;
+    ctx.stroke();
+  });
+  // draw nodes
+  NODES.forEach(function(n){
+    var el=nodeEls[n.id];
+    if(el&&el.style.display==='none')return;
+    var w=el?el.offsetWidth:150,h=el?el.offsetHeight:60;
+    var c=CATS[n.cat];
+    ctx.fillStyle=hexAlpha(c.color,0.7);
+    ctx.fillRect(n.x*ms+ox,n.y*ms+oy,Math.max(w*ms,3),Math.max(h*ms,2));
+  });
+  // viewport rect
+  var wrap=document.getElementById('wrap');
+  var ww=wrap.clientWidth,wh=wrap.clientHeight;
+  var vx=(-tx/scale)*ms+ox,vy=(-ty/scale)*ms+oy;
+  var vw=(ww/scale)*ms,vh=(wh/scale)*ms;
+  ctx.strokeStyle='rgba(88,166,255,0.7)';
+  ctx.lineWidth=1;
+  ctx.strokeRect(vx,vy,vw,vh);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function hexAlpha(hex,a){
+  var r=parseInt(hex.slice(1,3),16);
+  var g=parseInt(hex.slice(3,5),16);
+  var b=parseInt(hex.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2000);
+}
+</script>
+</body>
+</html>

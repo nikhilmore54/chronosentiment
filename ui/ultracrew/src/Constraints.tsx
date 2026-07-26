@@ -26,22 +26,49 @@ interface ScenarioData {
 export const Constraints = () => {
   const [data, setData] = useState<ScenarioData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/scenario`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        return res.json();
+      })
       .then(d => {
         setData(d);
         setLoading(false);
       })
       .catch(err => {
         console.error('Failed to load constraints:', err);
+        setError(err.message ?? 'Unknown error');
         setLoading(false);
       });
   }, []);
 
-  if (loading || !data) {
-    return <p>Loading Constraints...</p>;
+  if (loading) {
+    return <p style={{ color: 'var(--text-muted)', padding: '1.5rem' }}>Loading Constraints...</p>;
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{
+        margin: '1.5rem',
+        padding: '1.25rem 1.5rem',
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        borderRadius: '8px',
+        color: 'var(--text-main)',
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: '#ef4444' }}>⚠ Could not load constraints</div>
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+          {error ?? 'No data returned from server.'}
+        </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          Check that the UltraCrew server is running on port 3001.
+          Start it with: <code style={{ color: 'var(--accent-color)' }}>cargo run -p ultracrew_server</code>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -1,16 +1,16 @@
 # ChronoSentiment — Capability Audit & Product Alignment
 
 **Audit Date:** 2026-07-18
-**Auditor:** Stream C review (source files read: App.js, RunGA.js lines 1–80,
-StrategyInspector.js lines 1–60, services/api.js, config/api.js, package.json)
-**Scope:** `my-chrono-sentiment-ui/` (craco + React 19 + Tailwind)
+**Scope:** `my-chrono-sentiment-ui/` (craco + React 19 + Tailwind v2 compat)
 **Backend contract:** `http://localhost:8000` (configurable via `REACT_APP_API_BASE_URL`)
+**Files read:** App.js, RunGA.js (lines 1–80), StrategyInspector.js (lines 1–60),
+services/api.js, config/api.js, package.json
 
 ---
 
 ## Purpose
 
-This is a strategic capability audit, not a feature inventory.
+Strategic capability audit, not a feature inventory.
 
 For every capability, the classification is one of:
 
@@ -29,8 +29,8 @@ The implementation is significantly more mature than expected.
 Key observations:
 
 1. **Canonical schema contracts exist.** The app maps `observatory_state.schema.json`
-   (chrono:schema:observatory_state:v1) and `decision_trace.schema.json` with explicit
-   field authority comments. This is production-grade discipline.
+   (chrono:schema:observatory_state:v1) and `decision_trace.schema.json` with
+   explicit field authority comments. This is production-grade discipline.
 
 2. **Artifact tracking is in place.** ARTIFACT-001, ARTIFACT-002, ARTIFACT-009,
    ARTIFACT-010 are documented inline with sunset conditions. Legacy code is
@@ -48,9 +48,9 @@ Key observations:
 5. **Cross-workspace strategy selection works.** `selectedStrategyId/Seed` and
    `selectedStrategyId2/Seed2` enable strategy comparison across workspaces.
 
-6. **Signal intelligence is implemented.** `divergenceBadge()`, `buildAssetRollups()`,
-   `topSignalsPerAsset()`, `signalStrength()` are non-trivial analytics functions
-   with documented sunset conditions.
+6. **Signal intelligence is implemented.** `divergenceBadge()`,
+   `buildAssetRollups()`, `topSignalsPerAsset()`, `signalStrength()` are
+   non-trivial analytics functions with documented sunset conditions.
 
 ---
 
@@ -67,17 +67,17 @@ Key observations:
 | Operational Awareness Strip | ✅ Complete | **KEEP** | All kernel + governor fields rendered; null-safe with `—` fallback |
 | Left rail navigation | ✅ Complete | **KEEP** | 216px persistent nav, active workspace breadcrumb, selected strategy context |
 | Cross-workspace strategy selection | ✅ Complete | **KEEP** | Primary + secondary strategy IDs/seeds propagated correctly |
-| craco + React 19 + Tailwind build | ✅ Working | **REFINE** | Tailwind version is `@tailwindcss/postcss7-compat` (v2) — outdated; Tailwind v3/v4 available. PostCSS 7 compat layer is a tech debt item. |
-| No TypeScript | ⚠️ JS only | **REFINE** | `.js` files throughout; no type safety. Not blocking but increases maintenance risk as codebase grows. |
+| craco + React 19 + Tailwind build | ✅ Working | **REFINE** | Tailwind `@tailwindcss/postcss7-compat` (v2) is outdated; PostCSS 7 compat layer is tech debt. Upgrade to Tailwind v3 on next CSS sprint. |
+| No TypeScript | ⚠️ JS only | **REFINE** | `.js` files throughout; no type safety. Not blocking but increases maintenance risk. Migrate new files to `.tsx` incrementally. |
 
 ### Workspaces
 
 | Workspace | Status | Classification | Justification |
 |-----------|--------|----------------|---------------|
-| Run GA (⚡) | ✅ Implemented | **REFINE** | Signal analytics (`divergenceBadge`, `buildAssetRollups`, `topSignalsPerAsset`) are sophisticated. UX refinement needed: unclear how to trigger a GA run, what parameters are exposed, and how results are presented. |
-| Inspect Strategy (🔬) | ✅ Implemented | **REFINE** | Backend-certified narrative blocks consumed correctly. `normalizeNarrativeBlock()` bridges snake_case/camelCase with documented sunset condition. Needs UX audit: is the trace presentation clear to a non-developer? |
-| Compare Strategies (⚖) | ✅ Implemented | **REFINE** | `compareNarrativeBlocks()` (ARTIFACT-010) is observational projection — non-authoritative. Needs backend divergence analysis endpoint to become authoritative. |
-| Global Ranking (📊) | ✅ Implemented | **REFINE** | Exists but not yet read in detail. Needs UX audit. |
+| Run GA (⚡) | ✅ Implemented | **REFINE** | Signal analytics are sophisticated. UX needs audit: how to trigger a run, what parameters are exposed, how results are presented. |
+| Inspect Strategy (🔬) | ✅ Implemented | **REFINE** | Backend-certified narrative blocks consumed correctly. Needs UX audit: is trace presentation clear to a non-developer? |
+| Compare Strategies (⚖) | ✅ Implemented | **REFINE** | `compareNarrativeBlocks()` (ARTIFACT-010) is observational projection — non-authoritative. Needs backend `divergence_analysis[]` endpoint. |
+| Global Ranking (📊) | ✅ Implemented | **REFINE** | Exists; not fully audited. Needs UX review. |
 
 ### Signal Intelligence
 
@@ -93,25 +93,25 @@ Key observations:
 
 | Capability | Status | Classification | Justification |
 |------------|--------|----------------|---------------|
-| `normalizeNarrativeBlock()` — schema bridge | ✅ Implemented | **REFINE** | Correct field mapping. Sunset condition: backend emits camelCase natively. This is a bridge, not a permanent solution. |
+| `normalizeNarrativeBlock()` — schema bridge (ARTIFACT-009) | ✅ Implemented | **REFINE** | Correct field mapping. Sunset condition: backend emits camelCase natively. Bridge, not permanent. |
 | `normalizeTraceEvent()` — payload flattening | ✅ Implemented | **KEEP** | Simple, correct. |
 | `normalizeInspectResponse()` — response normalization | ✅ Implemented | **KEEP** | Handles execution_trace, decision_trace, event_sequence, narrative_blocks. |
-| Backend-certified narrative (Law One) | ✅ Enforced | **KEEP** | UI does not synthesize narrative. This is the correct architecture. |
-| `compareNarrativeBlocks()` (ARTIFACT-010) | ⚠️ Observational | **REPLACE** | Currently a UI projection. Should be replaced by backend `divergence_analysis[]` endpoint when available. |
+| Backend-certified narrative (Law One) | ✅ Enforced | **KEEP** | UI does not synthesize narrative. Correct architecture. |
+| `compareNarrativeBlocks()` (ARTIFACT-010) | ⚠️ Observational | **REPLACE** | UI projection only. Replace with backend `divergence_analysis[]` endpoint. |
 
 ### Missing Capabilities (ADD)
 
 | Capability | Priority | Justification |
 |------------|----------|---------------|
-| Scenario comparison UI | High | Currently only pairwise strategy comparison. Multi-scenario "what if" comparison is the core decision intelligence workflow. |
-| Confidence calibration display | High | `confidence` field exists in signals but no calibration curve or reliability display. |
-| Execution outcome tracking | High | Paper trading engine exists in backend but outcome → recommendation feedback loop is not visible in UI. |
-| Decision provenance panel | High | Coralys provenance capabilities not yet surfaced. Every recommendation should show its evidence chain. |
-| Performance metrics dashboard | Medium | Return, alpha, drawdown, Sharpe, hit rate — none visible in current UI. These are the ground truth for recommendation quality. |
-| Alerts / threshold notifications | Medium | No alerting when phase changes, sync ratio degrades, or queue depth spikes. |
-| Strategy parameter editor | Medium | GA parameters presumably exist but are not exposed in the UI. |
-| Historical replay controls | Medium | `services/ui/` has `ReplayStepper.tsx` and `TimelineViewer.tsx` — these are not integrated into the main UI. |
-| Export / report generation | Low | No way to export a strategy evaluation or comparison as a report. |
+| Integrate `services/ui/` replay components as 5th workspace tab | **High** | `ReplayStepper`, `TimelineViewer`, `TradeInspector`, `EventExplorer` already exist in `services/ui/src/`. Integration work, not new engineering. Largest single opportunity. |
+| Execution outcome tracking panel | **High** | Paper trading engine exists in backend but outcome → recommendation feedback loop is not visible in UI. Return, hit rate, drawdown per strategy. |
+| Decision provenance panel | **High** | Every recommendation should show its evidence chain. Coralys provenance capabilities can provide this once integrated. |
+| Backend `divergence_analysis[]` endpoint | **High** | Replaces ARTIFACT-010. Makes strategy comparison authoritative. |
+| Confidence calibration display | **Medium** | `confidence` field exists in signals but no calibration curve or reliability display. |
+| Performance metrics dashboard | **Medium** | Return, alpha, drawdown, Sharpe, hit rate — none visible in current UI. Ground truth for recommendation quality. |
+| Alerts / threshold notifications | **Medium** | No alerting when phase changes, sync ratio degrades, or queue depth spikes. |
+| Strategy parameter editor | **Medium** | GA parameters presumably exist but are not exposed in the UI. |
+| Export / report generation | **Low** | No way to export a strategy evaluation or comparison as a report. |
 
 ### Obsolete / Remove
 
@@ -126,12 +126,12 @@ Key observations:
 
 | Item | Severity | Action |
 |------|----------|--------|
-| Tailwind v2 (`@tailwindcss/postcss7-compat`) | Medium | Upgrade to Tailwind v3 when next touching CSS. Not blocking. |
+| Tailwind v2 (`@tailwindcss/postcss7-compat`) | Medium | Upgrade to Tailwind v3 on next CSS sprint. Not blocking. |
 | PostCSS 7 compat layer | Medium | Resolved by Tailwind upgrade. |
-| No TypeScript | Low | Not blocking. Consider migrating new files to `.tsx` incrementally. |
+| No TypeScript | Low | Not blocking. Migrate new files to `.tsx` incrementally. |
 | `normalizeNarrativeBlock()` bridge (ARTIFACT-009) | Low | Sunset when backend emits camelCase natively. |
 | `compareNarrativeBlocks()` (ARTIFACT-010) | Medium | Replace with backend `divergence_analysis[]` endpoint. |
-| `services/ui/` replay UI not integrated | Medium | `ReplayStepper`, `TimelineViewer`, `TradeInspector`, `EventExplorer` exist but are isolated. Integration opportunity. |
+| `services/ui/` replay UI not integrated | Medium | Components exist; integration is the remaining work. |
 
 ---
 
@@ -144,42 +144,38 @@ Key observations:
 | Signal analytics implemented | ✅ Verified |
 | Narrative normalization correct | ✅ Verified |
 | Cross-workspace strategy selection works | ✅ Verified |
-| Scenario comparison authoritative | ⚠️ Observational projection only |
+| Scenario comparison authoritative | ⚠️ Observational projection only (ARTIFACT-010) |
 | Confidence calibration visible | ❌ Not implemented |
 | Execution outcome feedback loop visible | ❌ Not implemented |
 | Decision provenance surfaced | ❌ Not implemented |
 | Performance metrics dashboard | ❌ Not implemented |
-| Replay UI integrated | ❌ Isolated in services/ui/ |
+| Replay UI integrated | ❌ Isolated in `services/ui/` |
 
 ---
 
 ## Recommended next actions (priority order)
 
-1. **Integrate `services/ui/` replay components** into the main workspace as a
-   fifth workspace tab ("Replay / Timeline"). The components already exist
-   (`ReplayStepper`, `TimelineViewer`, `TradeInspector`, `EventExplorer`).
-   This is integration work, not new engineering.
+1. **Integrate `services/ui/` replay components** as a fifth workspace tab
+   ("Replay / Timeline"). Components already exist: `ReplayStepper`,
+   `TimelineViewer`, `TradeInspector`, `EventExplorer`. Integration work only.
 
-2. **Add execution outcome tracking panel** to the Inspect Strategy workspace.
+2. **Add execution outcome tracking panel** to Inspect Strategy workspace.
    Show: return, hit rate, drawdown for the inspected strategy. Closes the
    recommendation → outcome feedback loop in the UI.
 
 3. **Add decision provenance panel** to Inspect Strategy. Surface the evidence
-   chain behind each recommendation. Coralys provenance capabilities can provide
-   this once integrated.
+   chain behind each recommendation.
 
 4. **Replace `compareNarrativeBlocks()` (ARTIFACT-010)** with a backend
-   `divergence_analysis[]` endpoint call. This makes comparison authoritative
-   rather than observational.
+   `divergence_analysis[]` endpoint call. Makes comparison authoritative.
 
 5. **Add confidence calibration display** to Run GA and Inspect Strategy.
-   Show reliability of confidence estimates, not just the values.
 
 6. **Upgrade Tailwind** from v2 compat to v3 during next CSS-touching sprint.
 
 ---
 
-## What this audit confirms
+## Overall assessment
 
 The implementation is approximately **75–80% of the way to a production-quality
 research platform**. The core architecture is sound: canonical schemas, backend

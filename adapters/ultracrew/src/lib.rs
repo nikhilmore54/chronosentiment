@@ -85,8 +85,15 @@ pub mod helpers {
 
 
 pub mod pipeline;
+pub mod disruption_recovery;
 pub mod decision_intelligence;
 pub mod schedule_solution;
 pub mod public_contracts;
 pub mod constraint_engine;
 pub mod recommendation;
+pub mod generic_import;
+pub mod generic_export;
+pub mod strict_validator;
+pub mod telemetry;
+pub mod errors;
+pub mod health;

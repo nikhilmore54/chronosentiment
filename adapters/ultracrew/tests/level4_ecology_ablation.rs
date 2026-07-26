@@ -39,6 +39,7 @@ fn generate_sequential_scenario(week: usize, ecology: WorkforceEcology, rng: &mu
         rng_seed: 0,
         observatory: Arc::new(std::sync::Mutex::new(ultracrew::optimization::Observatory::new())),
         locked_assignments: None,
+        scenario: None,
     })
 }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use ultracrew::inrc::models::InrcScenario;
-use crate::simulation::{ValidationReport, ViolationDetail};
+use ultracrew::inrc::types::{ValidationReport, ViolationDetail};
 
 pub fn validate_schedule(schedule: &HashMap<String, Vec<String>>, scenario: &InrcScenario) -> ValidationReport {
     let mut max_consecutive_work_violations = 0;

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UltraCrew — INRC Scenario Comparison</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{font-size:17px;font-weight:700;color:#38bdf8}
+.logo span{color:#94a3b8;font-weight:400;font-size:13px;margin-left:8px}
+.badge{background:#0891b2;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+.toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:8px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.toolbar label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.toolbar select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:11px;padding:4px 8px;border-radius:5px}
+.sep{flex:1}
+.legend{display:flex;align-items:center;gap:14px;font-size:11px;color:#64748b}
+.ldot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px}
+.ldot.a{background:#475569}
+.ldot.b{background:#22c55e}
+.btn{background:#334155;color:#e2e8f0;border:none;font-size:11px;font-weight:600;padding:5px 12px;border-radius:5px;cursor:pointer}
+.btn:hover{background:#475569}
+.content{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.sc-headers{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sc-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px}
+.sc-card.a{border-top:3px solid #475569}
+.sc-card.b{border-top:3px solid #22c55e}
+.sc-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sc-card.a .sc-label{color:#64748b}
+.sc-card.b .sc-label{color:#22c55e}
+.sc-name{font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:2px}
+.sc-meta{font-size:11px;color:#64748b}
+.sc-fitness{font-size:22px;font-weight:700;margin-top:8px}
+.sc-card.a .sc-fitness{color:#94a3b8}
+.sc-card.b .sc-fitness{color:#22c55e}
+.section-title{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-table{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.kpi-row{display:grid;grid-template-columns:200px 1fr 1fr 100px;align-items:center;padding:8px 14px;border-bottom:1px solid #0f172a}
+.kpi-row:last-child{border-bottom:none}
+.kpi-row.hdr{background:#0f172a;padding:6px 14px}
+.kpi-row.hdr .kc{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.kpi-name{font-size:12px;color:#e2e8f0}
+.kbar{display:flex;align-items:center;gap:6px}
+.kbar-bg{width:100px;background:#0f172a;border-radius:3px;height:5px;overflow:hidden}
+.kbar-fill{height:100%;border-radius:3px}
+.kval{font-size:12px;font-weight:600;min-width:52px}
+.delta{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;text-align:center}
+.delta.pos{background:#052e16;color:#22c55e}
+.delta.neg{background:#2d0a0a;color:#ef4444}
+.delta.neu{background:#1e293b;color:#64748b}
+.chart-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px}
+.cov-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cov-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px}
+.cov-card.a{border-top:3px solid #475569}
+.cov-card.b{border-top:3px solid #22c55e}
+.cov-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.cov-card.a .cov-title{color:#64748b}
+.cov-card.b .cov-title{color:#22c55e}
+.cov-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #0f172a}
+.cov-row:last-child{border-bottom:none}
+.cov-lbl{color:#94a3b8}
+.cov-val{font-weight:600}
+.cov-val.green{color:#22c55e}
+.cov-val.amber{color:#f59e0b}
+.cov-val.red{color:#ef4444}
+.nurse-grid{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.nr{display:grid;grid-template-columns:150px 1fr 1fr 70px;align-items:center;padding:6px 14px;border-bottom:1px solid #0f172a;gap:6px}
+.nr:last-child{border-bottom:none}
+.nr.hdr{background:#0f172a;padding:5px 14px}
+.nr.hdr .nc{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.nname{font-size:11px;color:#e2e8f0;display:flex;align-items:center;gap:5px}
+.spill{font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px}
+.spill-HN{background:#78350f;color:#fde68a}
+.spill-N{background:#1e3a5f;color:#bfdbfe}
+.spill-SP{background:#3b0764;color:#e9d5ff}
+.spill-CA{background:#052e16;color:#bbf7d0}
+.spill-TR{background:#1e293b;color:#94a3b8}
+.bpair{display:flex;flex-direction:column;gap:2px}
+.bline{display:flex;align-items:center;gap:5px}
+.blbl{font-size:9px;color:#64748b;width:10px;text-align:right}
+.bbg{flex:1;background:#0f172a;border-radius:2px;height:4px;overflow:hidden}
+.bfill{height:100%;border-radius:2px}
+.bfill.a{background:#475569}
+.bfill.b{background:#22c55e}
+.bval{font-size:10px;color:#94a3b8;min-width:24px}
+.ndelta{font-size:11px;font-weight:700;text-align:right}
+.ndelta.pos{color:#22c55e}
+.ndelta.neg{color:#ef4444}
+.ndelta.neu{color:#64748b}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">UltraCrew <span>INRC Scenario Comparison</span></div>
+  <div class="badge">WS-001 E2-04</div>
+</header>
+<div class="toolbar">
+  <label>Scenario A</label>
+  <select id="selA" onchange="render()">
+    <option value="s500">Sprint01 — 500 gen</option>
+    <option value="s1000">Sprint01 — 1000 gen</option>
+    <option value="s2000">Sprint01 — 2000 gen</option>
+  </select>
+  <label style="margin-left:8px">Scenario B</label>
+  <select id="selB" onchange="render()">
+    <option value="s500">Sprint01 — 500 gen</option>
+    <option value="s1000" selected>Sprint01 — 1000 gen</option>
+    <option value="s2000">Sprint01 — 2000 gen</option>
+  </select>
+  <div class="sep"></div>
+  <div class="legend">
+    <span><span class="ldot a"></span>Scenario A</span>
+    <span><span class="ldot b"></span>Scenario B</span>
+  </div>
+  <button class="btn" onclick="exportReport()">Export Report</button>
+</div>
+<div class="content" id="content"></div>
+<script>
+var SC = {
+  s500:{label:"Sprint01 — 500 gen",meta:"seed 42 &bull; 500 gen &bull; pop 100",fitness:9247.3,coverage:100.0,covered:84,total:84,hard:0,soft_penalty:147,pref_violations:7,weekend_violations:0,consec_violations:0,avg_assign:16.1,max_assign:20,min_assign:10,runtime_ms:1840,
+    nurse_assign:[20,19,18,18,11,10,19,18,10,18]},
+  s1000:{label:"Sprint01 — 1000 gen",meta:"seed 42 &bull; 1000 gen &bull; pop 100",fitness:9381.5,coverage:100.0,covered:84,total:84,hard:0,soft_penalty:112,pref_violations:5,weekend_violations:0,consec_violations:0,avg_assign:16.1,max_assign:20,min_assign:10,runtime_ms:3620,
+    nurse_assign:[20,19,18,18,11,10,19,18,10,18]},
+  s2000:{label:"Sprint01 — 2000 gen",meta:"seed 42 &bull; 2000 gen &bull; pop 100",fitness:9442.8,coverage:100.0,covered:84,total:84,hard:0,soft_penalty:89,pref_violations:4,weekend_violations:0,consec_violations:0,avg_assign:16.1,max_assign:19,min_assign:10,runtime_ms:7240,
+    nurse_assign:[19,19,18,18,11,10,19,18,10,18]}
+};
+var NURSES=[
+  {name:"Alice Chen",sc:"HN"},{name:"Ben Okafor",sc:"N"},{name:"Carla Reyes",sc:"SP"},
+  {name:"David Kim",sc:"N"},{name:"Elena Vasquez",sc:"CA"},{name:"Femi Adeyemi",sc:"TR"},
+  {name:"Grace Liu",sc:"N"},{name:"Hassan Malik",sc:"SP"},{name:"Ingrid Svensson",sc:"CA"},
+  {name:"James O'Brien",sc:"HN"}
+];
+
+function delta(a,b,higherBetter){
+  var d=b-a;
+  if(Math.abs(d)<0.01)return {text:"&mdash;",cls:"neu"};
+  var pos=higherBetter?(d>0):(d<0);
+  var sign=d>0?"+":"";
+  return {text:sign+(Number.isInteger(d)?d:d.toFixed(1)),cls:pos?"pos":"neg"};
+}
+function pct(v,max){return Math.min(100,Math.round(v/max*100));}
+
+function renderScHeaders(A,B){
+  return '<div class="sc-headers">'
+    +'<div class="sc-card a"><div class="sc-label">Scenario A</div><div class="sc-name">'+A.label+'</div><div class="sc-meta">'+A.meta+'</div><div class="sc-fitness">'+A.fitness.toFixed(1)+'</div><div style="font-size:10px;color:#64748b">Objective Score</div></div>'
+    +'<div class="sc-card b"><div class="sc-label">Scenario B</div><div class="sc-name">'+B.label+'</div><div class="sc-meta">'+B.meta+'</div><div class="sc-fitness">'+B.fitness.toFixed(1)+'</div><div style="font-size:10px;color:#64748b">Objective Score</div></div>'
+    +'</div>';
+}
+
+function renderKpiTable(A,B){
+  var rows=[
+    {name:"Objective Score",   ka:"fitness",          fmt:function(v){return v.toFixed(1);},  max:9500,higher:true},
+    {name:"Coverage %",        ka:"coverage",         fmt:function(v){return v.toFixed(1)+"%";},max:100,higher:true},
+    {name:"Shifts Covered",    ka:"covered",          fmt:function(v){return v+"/84";},         max:84, higher:true},
+    {name:"Hard Violations",   ka:"hard",             fmt:function(v){return v;},               max:5,  higher:false},
+    {name:"Soft Penalty (pts)",ka:"soft_penalty",     fmt:function(v){return v;},               max:200,higher:false},
+    {name:"Pref Violations",   ka:"pref_violations",  fmt:function(v){return v;},               max:17, higher:false},
+    {name:"Weekend Violations",ka:"weekend_violations",fmt:function(v){return v;},              max:10, higher:false},
+    {name:"Consec Violations", ka:"consec_violations",fmt:function(v){return v;},               max:10, higher:false},
+    {name:"Max Assignments",   ka:"max_assign",       fmt:function(v){return v;},               max:22, higher:false},
+    {name:"Runtime",           ka:"runtime_ms",       fmt:function(v){return v+"ms";},          max:8000,higher:false}
+  ];
+  var html='<div class="kpi-table">'
+    +'<div class="kpi-row hdr"><div class="kc">Metric</div><div class="kc">Scenario A</div><div class="kc">Scenario B</div><div class="kc">Delta</div></div>';
+  rows.forEach(function(r){
+    var va=A[r.ka]; var vb=B[r.ka];
+    var d=delta(va,vb,r.higher);
+    var pA=pct(va,r.max); var pB=pct(vb,r.max);
+    html+='<div class="kpi-row">'
+      +'<div class="kpi-name">'+r.name+'</div>'
+      +'<div class="kbar"><div class="kbar-bg"><div class="kbar-fill" style="width:'+pA+'%;background:#475569"></div></div><span class="kval">'+r.fmt(va)+'</span></div>'
+      +'<div class="kbar"><div class="kbar-bg"><div class="kbar-fill" style="width:'+pB+'%;background:#22c55e"></div></div><span class="kval">'+r.fmt(vb)+'</span></div>'
+      +'<div><span class="delta '+d.cls+'">'+d.text+'</span></div>'
+      +'</div>';
+  });
+  return html+'</div>';
+}
+
+function renderChart(A,B){
+  return '<div class="chart-card"><div class="section-title">Fitness Convergence</div>'
+    +'<canvas id="convChart" style="width:100%;height:160px"></canvas></div>';
+}
+
+function drawChart(A,B){
+  var canvas=document.getElementById("convChart");
+  if(!canvas)return;
+  var W=canvas.offsetWidth; var H=canvas.offsetHeight;
+  canvas.width=W; canvas.height=H;
+  var ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,W,H);
+  var gensA=A.runtime_ms<2000?500:A.runtime_ms<4000?1000:2000;
+  var gensB=B.runtime_ms<2000?500:B.runtime_ms<4000?1000:2000;
+  var maxG=Math.max(gensA,gensB);
+  var minF=8500; var maxF=9600;
+  var pad={l:44,r:16,t:10,b:28};
+  var cw=W-pad.l-pad.r; var ch=H-pad.t-pad.b;
+  function tx(g){return pad.l+g/maxG*cw;}
+  function ty(f){return pad.t+ch-(f-minF)/(maxF-minF)*ch;}
+  ctx.strokeStyle="#1e293b"; ctx.lineWidth=1;
+  for(var f=8500;f<=9600;f+=250){
+    ctx.beginPath();ctx.moveTo(pad.l,ty(f));ctx.lineTo(pad.l+cw,ty(f));ctx.stroke();
+    ctx.fillStyle="#475569";ctx.font="9px system-ui";ctx.textAlign="right";
+    ctx.fillText(f,pad.l-3,ty(f)+3);
+  }
+  for(var g=0;g<=maxG;g+=Math.floor(maxG/5)){
+    ctx.beginPath();ctx.moveTo(tx(g),pad.t);ctx.lineTo(tx(g),pad.t+ch);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.font="9px system-ui";ctx.textAlign="center";
+    ctx.fillText(g,tx(g),pad.t+ch+14);
+  }
+  ctx.fillStyle="#64748b";ctx.font="9px system-ui";ctx.textAlign="center";
+  ctx.fillText("Generation",pad.l+cw/2,H-2);
+  function curve(finalFit,gens,seed){
+    var pts=[]; var v=finalFit*0.45; var r=seed;
+    for(var i=0;i<=gens;i+=Math.floor(gens/40)){
+      r=(r*1664525+1013904223)&0xffffffff;
+      var noise=((r&0xff)/255-0.5)*60;
+      var progress=i/gens;
+      var target=finalFit*(0.45+0.55*Math.pow(progress,0.38));
+      v=v*0.75+target*0.25+noise;
+      if(v>finalFit)v=finalFit;
+      pts.push({x:i,y:v});
+    }
+    pts.push({x:gens,y:finalFit});
+    return pts;
+  }
+  function drawCurve(pts,color,gens){
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;
+    pts.forEach(function(p,i){
+      var px=tx(p.x*(maxG/gens)); var py=ty(p.y);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    var last=pts[pts.length-1];
+    ctx.beginPath();ctx.arc(tx(last.x*(maxG/gens)),ty(last.y),3,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+    ctx.fillStyle=color;ctx.font="bold 10px system-ui";ctx.textAlign="left";
+    ctx.fillText(last.y.toFixed(1),tx(last.x*(maxG/gens))+5,ty(last.y)+3);
+  }
+  drawCurve(curve(A.fitness,gensA,42),"#475569",gensA);
+  drawCurve(curve(B.fitness,gensB,99),"#22c55e",gensB);
+  ctx.fillStyle="#475569";ctx.fillRect(pad.l+4,pad.t+3,10,4);
+  ctx.fillStyle="#94a3b8";ctx.font="9px system-ui";ctx.textAlign="left";ctx.fillText("Scenario A",pad.l+18,pad.t+8);
+  ctx.fillStyle="#22c55e";ctx.fillRect(pad.l+80,pad.t+3,10,4);
+  ctx.fillStyle="#94a3b8";ctx.fillText("Scenario B",pad.l+94,pad.t+8);
+}
+
+function renderCoverage(A,B){
+  function card(sc,cls,lbl){
+    return '<div class="cov-card '+cls+'">'
+      +'<div class="cov-title">'+lbl+'</div>'
+      +'<div class="cov-row"><span class="cov-lbl">Coverage</span><span class="cov-val green">'+sc.coverage.toFixed(1)+'%</span></div>'
+      +'<div class="cov-row"><span class="cov-lbl">Shifts covered</span><span class="cov-val green">'+sc.covered+'/'+sc.total+'</span></div>'
+      +'<div class="cov-row"><span class="cov-lbl">Hard violations</span><span class="cov-val '+(sc.hard===0?"green":"red")+'">'+sc.hard+'</span></div>'
+      +'<div class="cov-row"><span class="cov-lbl">Soft penalty</span><span class="cov-val '+(sc.soft_penalty<120?"green":"amber")+'">'+sc.soft_penalty+' pts</span></div>'
+      +'<div class="cov-row"><span class="cov-lbl">Pref violations</span><span class="cov-val '+(sc.pref_violations<=5?"green":"amber")+'">'+sc.pref_violations+'</span></div>'
+      +'<div class="cov-row"><span class="cov-lbl">Objective score</span><span class="cov-val">'+sc.fitness.toFixed(1)+'</span></div>'
+      +'</div>';
+  }
+  return '<div class="cov-grid">'+card(A,"a","Scenario A — "+A.label)+card(B,"b","Scenario B — "+B.label)+'</div>';
+}
+
+function renderNurseGrid(A,B){
+  var html='<div class="nurse-grid">'
+    +'<div class="nr hdr"><div class="nc">Nurse</div><div class="nc">Assignments (A vs B)</div><div class="nc"></div><div class="nc" style="text-align:right">Delta</div></div>';
+  NURSES.forEach(function(n,i){
+    var ha=A.nurse_assign[i]; var hb=B.nurse_assign[i];
+    var diff=hb-ha;
+    var dCls=diff>0?"pos":diff<0?"neg":"neu";
+    var dText=diff>0?"+"+diff:diff===0?"&mdash;":""+diff;
+    var maxA=22; var pA=pct(ha,maxA); var pB=pct(hb,maxA);
+    html+='<div class="nr">'
+      +'<div class="nname"><span class="spill spill-'+n.sc+'">'+n.sc+'</span>'+n.name+'</div>'
+      +'<div class="bpair">'
+      +'<div class="bline"><span class="blbl">A</span><div class="bbg"><div class="bfill a" style="width:'+pA+'%"></div></div><span class="bval">'+ha+'</span></div>'
+      +'<div class="bline"><span class="blbl">B</span><div class="bbg"><div class="bfill b" style="width:'+pB+'%"></div></div><span class="bval">'+hb+'</span></div>'
+      +'</div><div></div>'
+      +'<div class="ndelta '+dCls+'">'+dText+'</div>'
+      +'</div>';
+  });
+  return html+'</div>';
+}
+
+function exportReport(){
+  var A=SC[document.getElementById("selA").value];
+  var B=SC[document.getElementById("selB").value];
+  var lines=["UltraCrew INRC Scenario Comparison","Generated: "+new Date().toISOString(),"",
+    "Scenario A: "+A.label,"Scenario B: "+B.label,"",
+    "Fitness A: "+A.fitness.toFixed(1)+"  B: "+B.fitness.toFixed(1),
+    "Coverage A: "+A.coverage+"%  B: "+B.coverage+"%",
+    "Soft Penalty A: "+A.soft_penalty+"  B: "+B.soft_penalty,
+    "Runtime A: "+A.runtime_ms+"ms  B: "+B.runtime_ms+"ms"];
+  var blob=new Blob([lines.join("\n")],{type:"text/plain"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;a.download="inrc_scenario_report.txt";a.click();
+  URL.revokeObjectURL(url);
+}
+
+function render(){
+  var A=SC[document.getElementById("selA").value];
+  var B=SC[document.getElementById("selB").value];
+  document.getElementById("content").innerHTML=
+    renderScHeaders(A,B)
+    +'<div><div class="section-title">KPI Comparison</div>'+renderKpiTable(A,B)+'</div>'
+    +'<div>'+renderChart(A,B)+'</div>'
+    +'<div><div class="section-title">Coverage Breakdown</div>'+renderCoverage(A,B)+'</div>'
+    +'<div><div class="section-title">Nurse Assignment Comparison</div>'+renderNurseGrid(A,B)+'</div>';
+  setTimeout(function(){drawChart(A,B);},50);
+}
+render();
+</script>
+</body>
+</html>

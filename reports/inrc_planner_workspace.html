@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UltraCrew — INRC Planner Workspace</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{font-size:17px;font-weight:700;color:#38bdf8}
+.logo span{color:#94a3b8;font-weight:400;font-size:13px;margin-left:8px}
+.badge{background:#7c3aed;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+.kpi-strip{background:#1e293b;border-bottom:1px solid #334155;padding:8px 20px;display:flex;gap:24px;flex-shrink:0}
+.kpi-item{display:flex;flex-direction:column}
+.kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.kpi-val{font-size:15px;font-weight:700}
+.kpi-val.green{color:#22c55e}
+.kpi-val.amber{color:#f59e0b}
+.kpi-val.blue{color:#38bdf8}
+.toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:6px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.toolbar select,.toolbar input{background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:11px;padding:4px 8px;border-radius:5px}
+.toolbar label{font-size:11px;color:#64748b}
+.sep{flex:1}
+.btn{background:#1d4ed8;color:#fff;border:none;font-size:11px;font-weight:600;padding:5px 12px;border-radius:5px;cursor:pointer}
+.btn:hover{background:#2563eb}
+.btn.sec{background:#334155;color:#e2e8f0}
+.btn.sec:hover{background:#475569}
+.main{display:flex;flex:1;overflow:hidden}
+.gantt-wrap{flex:1;overflow:auto;padding:12px 16px}
+.gantt-header{display:flex;margin-bottom:4px;padding-left:140px}
+.day-tick{font-size:9px;color:#475569;text-align:center;flex-shrink:0}
+.gantt-row{display:flex;align-items:center;margin-bottom:3px;height:28px}
+.nurse-label{width:140px;flex-shrink:0;font-size:11px;color:#e2e8f0;display:flex;align-items:center;gap:6px}
+.skill-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-HN{background:#f59e0b}
+.dot-N{background:#3b82f6}
+.dot-SP{background:#a855f7}
+.dot-CA{background:#22c55e}
+.dot-TR{background:#64748b}
+.gantt-track{flex:1;position:relative;height:24px;background:#0f172a;border-radius:4px;overflow:hidden}
+.shift-block{position:absolute;top:2px;height:20px;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;transition:opacity .15s;border:1px solid transparent}
+.shift-block:hover{opacity:.85}
+.shift-block.D{background:#1d4ed8;border-color:#3b82f6}
+.shift-block.L{background:#b45309;border-color:#f59e0b}
+.shift-block.N{background:#4c1d95;border-color:#a855f7}
+.shift-block.override{border:2px dashed #f97316!important}
+.side-panel{width:280px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sp-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;padding:12px 14px 6px}
+.sp-body{padding:0 14px 14px}
+.sp-field{margin-bottom:10px}
+.sp-field label{font-size:10px;color:#64748b;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.sp-field .val{font-size:13px;color:#e2e8f0;font-weight:500}
+.sp-field select{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:12px;padding:5px 8px;border-radius:5px}
+.sp-actions{display:flex;gap:6px;margin-top:10px}
+.sp-actions .btn{flex:1;font-size:11px;padding:6px}
+.override-log{padding:0 14px 14px}
+.log-entry{font-size:10px;color:#94a3b8;padding:4px 0;border-bottom:1px solid #0f172a;line-height:1.4}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:#475569}
+.placeholder-msg{color:#475569;font-size:12px;text-align:center;padding:30px 14px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">UltraCrew <span>INRC Planner Workspace</span></div>
+  <div class="badge">WS-001 E2-01</div>
+</header>
+<div class="kpi-strip" id="kpiStrip"></div>
+<div class="toolbar">
+  <label>Skill</label>
+  <select id="skillFilter" onchange="renderGantt()">
+    <option value="">All Skills</option>
+    <option value="Head Nurse">Head Nurse</option>
+    <option value="Nurse">Nurse</option>
+    <option value="Specialist">Specialist</option>
+    <option value="Care Assistant">Care Assistant</option>
+    <option value="Trainee">Trainee</option>
+  </select>
+  <label>Search</label>
+  <input id="searchBox" type="text" placeholder="Nurse name..." oninput="renderGantt()" style="width:130px">
+  <div class="sep"></div>
+  <button class="btn sec" onclick="exportOverrides()">Export JSON</button>
+</div>
+<div class="main">
+  <div class="gantt-wrap" id="ganttWrap"></div>
+  <div class="side-panel" id="sidePanel">
+    <div class="sp-title">Shift Details</div>
+    <div class="placeholder-msg">Click a shift block to view details and reassign.</div>
+  </div>
+</div>
+<script>
+var NURSES = [
+  {id:"N01",name:"Alice Chen",     skill:"Head Nurse",    contract:"FT",dotCls:"HN"},
+  {id:"N02",name:"Ben Okafor",     skill:"Nurse",         contract:"FT",dotCls:"N"},
+  {id:"N03",name:"Carla Reyes",    skill:"Specialist",    contract:"FT",dotCls:"SP"},
+  {id:"N04",name:"David Kim",      skill:"Nurse",         contract:"FT",dotCls:"N"},
+  {id:"N05",name:"Elena Vasquez",  skill:"Care Assistant",contract:"PT",dotCls:"CA"},
+  {id:"N06",name:"Femi Adeyemi",   skill:"Trainee",       contract:"PT",dotCls:"TR"},
+  {id:"N07",name:"Grace Liu",      skill:"Nurse",         contract:"FT",dotCls:"N"},
+  {id:"N08",name:"Hassan Malik",   skill:"Specialist",    contract:"FT",dotCls:"SP"},
+  {id:"N09",name:"Ingrid Svensson",skill:"Care Assistant",contract:"PT",dotCls:"CA"},
+  {id:"N10",name:"James O'Brien",  skill:"Head Nurse",    contract:"FT",dotCls:"HN"}
+];
+
+var ASSIGNMENTS = [
+  {nurse:"N01",day:1,shift:"D"},{nurse:"N02",day:1,shift:"L"},{nurse:"N03",day:1,shift:"D"},
+  {nurse:"N07",day:1,shift:"L"},{nurse:"N10",day:1,shift:"N"},
+  {nurse:"N01",day:2,shift:"D"},{nurse:"N04",day:2,shift:"L"},{nurse:"N08",day:2,shift:"D"},{nurse:"N02",day:2,shift:"N"},
+  {nurse:"N03",day:3,shift:"L"},{nurse:"N07",day:3,shift:"D"},{nurse:"N10",day:3,shift:"D"},{nurse:"N05",day:3,shift:"L"},
+  {nurse:"N01",day:4,shift:"D"},{nurse:"N08",day:4,shift:"L"},{nurse:"N04",day:4,shift:"D"},{nurse:"N09",day:4,shift:"N"},
+  {nurse:"N02",day:5,shift:"D"},{nurse:"N07",day:5,shift:"L"},{nurse:"N10",day:5,shift:"N"},
+  {nurse:"N03",day:6,shift:"D"},{nurse:"N05",day:6,shift:"D"},{nurse:"N08",day:6,shift:"L"},
+  {nurse:"N01",day:7,shift:"D"},{nurse:"N04",day:7,shift:"L"},{nurse:"N06",day:7,shift:"D"},
+  {nurse:"N02",day:8,shift:"D"},{nurse:"N07",day:8,shift:"D"},{nurse:"N10",day:8,shift:"L"},{nurse:"N09",day:8,shift:"N"},
+  {nurse:"N03",day:9,shift:"D"},{nurse:"N08",day:9,shift:"L"},{nurse:"N01",day:9,shift:"N"},
+  {nurse:"N04",day:10,shift:"D"},{nurse:"N07",day:10,shift:"L"},{nurse:"N05",day:10,shift:"D"},
+  {nurse:"N02",day:11,shift:"D"},{nurse:"N10",day:11,shift:"D"},{nurse:"N06",day:11,shift:"L"},
+  {nurse:"N08",day:12,shift:"D"},{nurse:"N03",day:12,shift:"L"},{nurse:"N09",day:12,shift:"D"},
+  {nurse:"N01",day:13,shift:"D"},{nurse:"N07",day:13,shift:"L"},{nurse:"N04",day:13,shift:"N"},
+  {nurse:"N02",day:14,shift:"D"},{nurse:"N10",day:14,shift:"D"},{nurse:"N05",day:14,shift:"L"},
+  {nurse:"N03",day:15,shift:"D"},{nurse:"N08",day:15,shift:"D"},{nurse:"N06",day:15,shift:"N"},
+  {nurse:"N01",day:16,shift:"L"},{nurse:"N07",day:16,shift:"D"},{nurse:"N09",day:16,shift:"L"},
+  {nurse:"N04",day:17,shift:"D"},{nurse:"N02",day:17,shift:"D"},{nurse:"N10",day:17,shift:"L"},
+  {nurse:"N03",day:18,shift:"D"},{nurse:"N08",day:18,shift:"L"},{nurse:"N05",day:18,shift:"D"},
+  {nurse:"N01",day:19,shift:"D"},{nurse:"N07",day:19,shift:"D"},{nurse:"N06",day:19,shift:"L"},
+  {nurse:"N04",day:20,shift:"L"},{nurse:"N02",day:20,shift:"D"},{nurse:"N09",day:20,shift:"N"},
+  {nurse:"N10",day:21,shift:"D"},{nurse:"N03",day:21,shift:"D"},{nurse:"N08",day:21,shift:"L"},
+  {nurse:"N01",day:22,shift:"D"},{nurse:"N07",day:22,shift:"L"},{nurse:"N05",day:22,shift:"D"},
+  {nurse:"N04",day:23,shift:"D"},{nurse:"N02",day:23,shift:"L"},{nurse:"N06",day:23,shift:"N"},
+  {nurse:"N10",day:24,shift:"D"},{nurse:"N08",day:24,shift:"D"},{nurse:"N09",day:24,shift:"L"},
+  {nurse:"N03",day:25,shift:"D"},{nurse:"N01",day:25,shift:"L"},{nurse:"N07",day:25,shift:"N"},
+  {nurse:"N04",day:26,shift:"D"},{nurse:"N02",day:26,shift:"D"},{nurse:"N05",day:26,shift:"L"},
+  {nurse:"N10",day:27,shift:"D"},{nurse:"N08",day:27,shift:"L"},{nurse:"N06",day:27,shift:"D"},
+  {nurse:"N01",day:28,shift:"D"},{nurse:"N03",day:28,shift:"L"},{nurse:"N07",day:28,shift:"D"}
+];
+
+var DAYS = 28;
+var SHIFT_START = {"D":7,"L":13,"N":21};
+var SHIFT_DUR   = {"D":8,"L":8,"N":10};
+var SHIFT_NAMES = {"D":"Day","L":"Late","N":"Night"};
+var overrides = {};
+var overrideLog = [];
+var selectedKey = null;
+
+function nurseById(id){for(var i=0;i<NURSES.length;i++){if(NURSES[i].id===id)return NURSES[i];}return null;}
+function assignmentsForNurse(nid){return ASSIGNMENTS.filter(function(a){return a.nurse===nid;});}
+function countAssignments(nid){return ASSIGNMENTS.filter(function(a){return a.nurse===nid;}).length;}
+
+function renderKpi(){
+  var overrideCount=Object.keys(overrides).length;
+  document.getElementById("kpiStrip").innerHTML=
+    '<div class="kpi-item"><div class="kpi-label">Coverage</div><div class="kpi-val green">100.0%</div></div>'
+    +'<div class="kpi-item"><div class="kpi-label">Shifts Assigned</div><div class="kpi-val blue">90 / 84</div></div>'
+    +'<div class="kpi-item"><div class="kpi-label">Hard Violations</div><div class="kpi-val green">0</div></div>'
+    +'<div class="kpi-item"><div class="kpi-label">Manual Overrides</div><div class="kpi-val '+(overrideCount>0?"amber":"green")+'">'+overrideCount+'</div></div>'
+    +'<div class="kpi-item"><div class="kpi-label">Objective Score</div><div class="kpi-val green">9247.3</div></div>'
+    +'<div class="kpi-item"><div class="kpi-label">Horizon</div><div class="kpi-val">28 days</div></div>';
+}
+
+function renderGantt(){
+  var skillF = document.getElementById("skillFilter").value;
+  var search = document.getElementById("searchBox").value.toLowerCase();
+  var wrap = document.getElementById("ganttWrap");
+  var dayW = 28;
+  var totalW = DAYS * dayW;
+
+  var headerHtml = '<div class="gantt-header" style="padding-left:140px">';
+  for(var d=1;d<=DAYS;d++){
+    headerHtml += '<div class="day-tick" style="width:'+dayW+'px">D'+d+'</div>';
+  }
+  headerHtml += '</div>';
+
+  var rowsHtml = '';
+  for(var ni=0;ni<NURSES.length;ni++){
+    var n = NURSES[ni];
+    if(skillF && n.skill !== skillF) continue;
+    if(search && n.name.toLowerCase().indexOf(search) === -1) continue;
+
+    var blocks = '';
+    var nurseAssigns = ASSIGNMENTS.filter(function(a){return a.nurse===n.id;});
+    for(var ai=0;ai<nurseAssigns.length;ai++){
+      var a = nurseAssigns[ai];
+      var key = n.id+"-"+a.day+"-"+a.shift;
+      var isOverride = overrides[key] ? true : false;
+      var left = (a.day-1)*dayW;
+      var w = dayW-2;
+      var isSelected = selectedKey===key;
+      var border = isSelected ? "2px solid #f97316" : "";
+      var overrideCls = isOverride ? " override" : "";
+      blocks += '<div class="shift-block '+a.shift+overrideCls+'" '
+        +'style="left:'+left+'px;width:'+w+'px;'+(isSelected?"outline:2px solid #f97316;":"")+'" '
+        +'onclick="selectShift(\''+key+'\',\''+n.id+'\','+a.day+',\''+a.shift+'\')" '
+        +'title="'+n.name+' Day '+a.day+' '+SHIFT_NAMES[a.shift]+'">'
+        +a.shift+'</div>';
+    }
+
+    rowsHtml += '<div class="gantt-row">'
+      +'<div class="nurse-label"><span class="skill-dot dot-'+n.dotCls+'"></span>'+n.name+'</div>'
+      +'<div class="gantt-track" style="width:'+totalW+'px">'+blocks+'</div>'
+      +'</div>';
+  }
+
+  wrap.innerHTML = headerHtml + rowsHtml;
+}
+
+function selectShift(key, nid, day, shift){
+  selectedKey = key;
+  renderGantt();
+  var n = nurseById(nid);
+  var sp = document.getElementById("sidePanel");
+  var startH = SHIFT_START[shift];
+  var endH = startH + SHIFT_DUR[shift];
+  var eligible = NURSES.filter(function(x){return x.skill===n.skill && x.id!==nid;});
+  var ineligible = NURSES.filter(function(x){return x.skill!==n.skill;});
+
+  var eligOpts = '<option value="">-- Select nurse --</option>';
+  for(var i=0;i<eligible.length;i++){
+    eligOpts += '<option value="'+eligible[i].id+'">'+eligible[i].name+' ('+eligible[i].skill+')</option>';
+  }
+
+  var logHtml = '';
+  for(var li=overrideLog.length-1;li>=0;li--){
+    var e=overrideLog[li];
+    logHtml += '<div class="log-entry"><span class="log-time">'+e.time+'</span> '+e.msg+'</div>';
+  }
+
+  sp.innerHTML = '<div class="sp-title">Shift Details</div>'
+    +'<div class="sp-body">'
+    +'<div class="sp-field"><label>Shift</label><div class="val">Day '+day+' &mdash; '+SHIFT_NAMES[shift]+'</div></div>'
+    +'<div class="sp-field"><label>Time</label><div class="val">'+String(startH).padStart(2,"0")+':00 &ndash; '+String(endH%24).padStart(2,"0")+':00 ('+SHIFT_DUR[shift]+'h)</div></div>'
+    +'<div class="sp-field"><label>Assigned</label><div class="val">'+n.name+' ('+n.skill+')</div></div>'
+    +'<div class="sp-field"><label>Contract</label><div class="val">'+n.contract+'</div></div>'
+    +'<div class="sp-field"><label>Reassign to</label>'
+    +'<select id="reassignSel">'+eligOpts+'</select></div>'
+    +'<div class="sp-actions">'
+    +'<button class="btn" onclick="applyOverride(\''+key+'\',\''+nid+'\','+day+',\''+shift+'\')">Apply</button>'
+    +'<button class="btn sec" onclick="revertOverride(\''+key+'\')">Revert</button>'
+    +'</div></div>'
+    +'<div class="sp-title">Override Log</div>'
+    +'<div class="override-log">'+(logHtml||'<div class="placeholder-msg">No overrides yet.</div>')+'</div>';
+}
+
+function applyOverride(key, fromNid, day, shift){
+  var sel = document.getElementById("reassignSel");
+  var toNid = sel ? sel.value : "";
+  if(!toNid){return;}
+  var fromN = nurseById(fromNid);
+  var toN = nurseById(toNid);
+  overrides[key] = {from:fromNid, to:toNid, day:day, shift:shift};
+  var now = new Date().toLocaleTimeString();
+  overrideLog.push({time:now, msg:"D"+day+" "+shift+": "+fromN.name+" &rarr; "+toN.name});
+  renderKpi();
+  selectShift(key, fromNid, day, shift);
+  renderGantt();
+}
+
+function revertOverride(key){
+  if(overrides[key]){
+    var o = overrides[key];
+    var fromN = nurseById(o.from);
+    var now = new Date().toLocaleTimeString();
+    overrideLog.push({time:now, msg:"Reverted D"+o.day+" "+o.shift+": restored "+fromN.name});
+    delete overrides[key];
+    renderKpi();
+    renderGantt();
+    document.getElementById("sidePanel").innerHTML='<div class="sp-title">Shift Details</div><div class="placeholder-msg">Override reverted. Click a shift to continue.</div>';
+  }
+}
+
+function exportOverrides(){
+  var data = {generated:new Date().toISOString(), instance:"INRC Sprint01", overrides:[]};
+  for(var k in overrides){data.overrides.push(overrides[k]);}
+  var blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href=url; a.download="inrc_planner_overrides.json"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderKpi();
+renderGantt();
+</script>
+</body>
+</html>

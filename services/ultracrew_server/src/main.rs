@@ -11,15 +11,14 @@ use serde::{Deserialize, Serialize};
 use tower_http::cors::{Any, CorsLayer};
 use serde_json::json;
 use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
-use ultracrew_server::simulation::{generate_baseline_schedule, SkillCoverageAudit, SkillDeficit, ValidationReport};
+use ultracrew_server::simulation::{SkillCoverageAudit, SkillDeficit, ValidationReport};
 use ultracrew::inrc::models::{InrcScenario, InrcNurse};
-use ultracrew_server::optimizer::{UltraCrewEvaluator, UltraCrewMutator, ScheduleGenome};
 use std::path::{Path as StdPath, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use ultracrew_server::models::{DecisionCase, ScheduleVersion, DecisionLog};
 use ultracrew_server::persistence::{load_collection, save_item, delete_item};
-use ultracrew_server::validator::{validate_schedule};
+use ultracrew::inrc::validator::validate_schedule;
 use ultracrew_server::simulation::{ConstraintAudit, WorkloadAudit, FeasibilityReport, ParetoFrontierSolution, Bottleneck, can_recover, NurseBalance, BalanceChange, SimulationState, Dashboard, Coverage, CoverageAudit, Alert, RosterHealth, BaselineStatus, VerificationReports, RecoveryPlan, CandidateType, BlockedRecovery, RecoveryAudit};
 
 
@@ -840,13 +839,11 @@ async fn schedule_handler(
         return Err((axum::http::StatusCode::BAD_REQUEST, format!("Dataset validation failed: {}", e)));
     }
     
-    let mut config = coralys_moga::config::EvolutionConfig::default();
-    if let Some(limit) = req.generation_limit {
-        config.generation_limit = limit;
-    }
-    
-    let solution = ultracrew::pipeline::run_pipeline(context.clone(), config)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Optimization failed: {}", e)))?;
+    let solution = ultracrew::pipeline::run_pipeline_from_request(
+        context.clone(),
+        req.generation_limit,
+        None, None, None, None, None,
+    ).map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Optimization failed: {}", e)))?;
         
     let mut app_state = state.lock().unwrap();
     app_state.last_solution = Some(solution.clone());
@@ -877,29 +874,16 @@ async fn reschedule_handler(
     Json(req): Json<ultracrew::public_contracts::RescheduleRequest>,
 ) -> Result<Json<ScheduleResponse>, (axum::http::StatusCode, String)> {
     let context = req.to_context();
-    
-    let mut config = coralys_moga::config::EvolutionConfig::default();
-    if let Some(limit) = req.generation_limit {
-        config.generation_limit = limit;
-    }
-    if let Some(t_size) = req.tournament_size {
-        config.tournament_size = Some(t_size);
-    }
-    if let Some(pop_size) = req.population_size {
-        config.population_size = pop_size;
-    }
-    if let Some(mut_rate) = req.mutation_rate {
-        config.mutation_rate = mut_rate;
-    }
-    if let Some(cross_rate) = req.crossover_rate {
-        config.crossover_rate = cross_rate;
-    }
-    if let Some(elite) = req.elite_count {
-        config.elite_count = elite;
-    }
-    
-    let solution = ultracrew::pipeline::run_pipeline(context.clone(), config)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Rescheduling failed: {}", e)))?;
+
+    let solution = ultracrew::pipeline::run_pipeline_from_request(
+        context.clone(),
+        req.generation_limit,
+        req.tournament_size,
+        req.population_size,
+        req.mutation_rate,
+        req.crossover_rate,
+        req.elite_count,
+    ).map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Rescheduling failed: {}", e)))?;
         
     let mut app_state = state.lock().unwrap();
     app_state.last_solution = Some(solution.clone());
@@ -983,6 +967,56 @@ async fn metrics_handler(
     } else {
         Err((axum::http::StatusCode::NOT_FOUND, "No active schedule solution found. Please call /api/schedule first.".to_string()))
     }
+}
+
+async fn export_formats_handler() -> Json<Vec<ultracrew::generic_export::FormatDescriptor>> {
+    Json(ultracrew::generic_export::GenericExporter::supported_formats())
+}
+
+async fn export_solution_handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+    axum::extract::Path(format): axum::extract::Path<String>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, (axum::http::StatusCode, String)> {
+    use ultracrew::generic_export::{ExportConfig, ExportFormat, GenericExporter};
+
+    let fmt = ExportFormat::from_str(&format)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, e.to_string()))?;
+
+    let app_state = state.lock().unwrap();
+    let sol = app_state.last_solution.as_ref().ok_or_else(|| {
+        (
+            axum::http::StatusCode::NOT_FOUND,
+            "No active schedule solution. Call POST /api/schedule first.".to_string(),
+        )
+    })?;
+
+    let config = ExportConfig {
+        format: fmt.clone(),
+        pretty_json: params.get("pretty").map(|v| v == "true").unwrap_or(false),
+        include_telemetry: params.get("telemetry").map(|v| v != "false").unwrap_or(true),
+        include_recommendations: params
+            .get("recommendations")
+            .map(|v| v != "false")
+            .unwrap_or(true),
+        ..Default::default()
+    };
+
+    let result = GenericExporter::export(sol, &config)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mime = result.mime_type.clone();
+    let body = result.content;
+
+    Ok((
+        axum::http::StatusCode::OK,
+        [(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_str(&mime)
+                .unwrap_or(axum::http::HeaderValue::from_static("application/octet-stream")),
+        )],
+        body,
+    ))
 }
 
 async fn get_balance_handler(
@@ -1111,48 +1145,31 @@ async fn main() {
         bottlenecks,
     };
     
-    let baseline_genome = match generate_baseline_schedule(&scenario, &requirements) {
-        Ok(s) => s,
-        Err(e) => {
-            println!("Fatal Error: {:?}", e);
-            use ultracrew_server::optimizer::ScheduleGenome;
-            ScheduleGenome { slots: Vec::new(), num_days, nurses: scenario.nurses.iter().map(|n| n.id.clone()).collect() }
+    let startup = ultracrew::pipeline::run_inrc_startup_pipeline(
+        &base_dir.join("Sc-n030w4.json"),
+        &base_dir.join("WD-n030w4-0.json"),
+        100,
+    ).unwrap_or_else(|e| {
+        println!("Startup pipeline error: {:?}", e);
+        ultracrew::public_contracts::InrcStartupResult {
+            schedule: HashMap::new(),
+            pareto_solutions: Vec::new(),
         }
-    };
-    let baseline_schedule = baseline_genome.to_flat_schedule();
-    
-    use coralys_moga::engine_proof::EvolutionEngine;
-    
-    let evaluator = UltraCrewEvaluator { scenario: scenario.clone() };
-    let mutator = UltraCrewMutator::new(scenario.clone());
-    
-    let mut engine = EvolutionEngine::new(evaluator, mutator);
-    engine.seed(baseline_genome);
-    
-    for _ in 0..100 {
-        engine.step();
-    }
-    
-    let mut pareto_solutions = Vec::new();
-    for sol in &engine.archive.solutions {
-        pareto_solutions.push(ParetoFrontierSolution {
-            s6_assignment_penalty: sol.fitness[0],
-            s7_weekend_penalty: sol.fitness[1],
-            recovery_penalty: sol.fitness[2],
-            workload_balance: sol.fitness[3],
-            temporal_load_balance: sol.fitness[4],
-            schedule: sol.genome.to_flat_schedule(),
-        });
-    }
+    });
 
-    let final_schedule = if !engine.archive.solutions.is_empty() {
-        engine.archive.solutions[0].genome.to_flat_schedule()
-    } else {
-        baseline_schedule.clone()
-    };
-    
-    let validation_report = validate_schedule(&final_schedule, &scenario);
-    let schedule = final_schedule;
+    let pareto_solutions: Vec<ParetoFrontierSolution> = startup.pareto_solutions.into_iter().map(|p| {
+        ParetoFrontierSolution {
+            s6_assignment_penalty: p.s6_assignment_penalty,
+            s7_weekend_penalty: p.s7_weekend_penalty,
+            recovery_penalty: p.recovery_penalty,
+            workload_balance: p.workload_balance,
+            temporal_load_balance: p.temporal_load_balance,
+            schedule: p.schedule,
+        }
+    }).collect();
+
+    let validation_report = validate_schedule(&startup.schedule, &scenario);
+    let schedule = startup.schedule;
     
     let mut balances = Vec::new();
     for (i, nurse) in scenario.nurses.iter().enumerate() {
@@ -1399,6 +1416,9 @@ async fn main() {
         .route("/api/balance", get(get_balance_handler))
         .route("/api/dashboard", get(get_dashboard_handler))
         .route("/api/nurses", get(get_nurses_handler))
+        // Generic Export endpoints (Phase A Step 3)
+        .route("/api/export/formats", get(export_formats_handler))
+        .route("/api/export/{format}", post(export_solution_handler))
         // Decision workspace endpoints
         .route("/api/decision_cases", get(list_decision_cases).post(create_decision_case))
         .route("/api/decision_cases/{id}", get(get_decision_case).put(update_decision_case).delete(delete_decision_case))
@@ -1407,8 +1427,10 @@ async fn main() {
         .with_state(app_state)
         .layer(cors);
 
-    let addr = tokio::net::TcpListener::bind("0.0.0.0:3001").await.unwrap();
-    println!("UltraCrew Server running on http://127.0.0.1:3001");
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+    let bind_addr = format!("0.0.0.0:{}", port);
+    let addr = tokio::net::TcpListener::bind(&bind_addr).await.unwrap();
+    println!("UltraCrew Server running on http://0.0.0.0:{}", port);
     axum::serve(addr, app).await.unwrap();
 }
 
@@ -1491,6 +1513,8 @@ mod server_endpoints_tests {
             original_state: baseline_state,
             last_solution: None,
             last_request: None,
+            decisions: Vec::new(),
+            schedule_versions: Vec::new(),
         }));
 
         Router::new()

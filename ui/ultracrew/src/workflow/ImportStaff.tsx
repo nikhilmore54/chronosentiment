@@ -110,7 +110,7 @@ export const ImportStaff: React.FC<{
       )}
 
       {staff.length > 0 && (
-        <div style={{ overflowX: 'auto', maxHeight: '280px', overflowY: 'auto' }}>
+        <div style={{ overflowX: 'auto', maxHeight: '220px', overflowY: 'auto', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>

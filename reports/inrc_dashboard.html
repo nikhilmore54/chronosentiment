@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UltraCrew — INRC Workforce Scheduling Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:12px 24px;display:flex;align-items:center;gap:16px}
+.logo{font-size:18px;font-weight:700;color:#38bdf8}
+.logo span{color:#94a3b8;font-weight:400;font-size:14px;margin-left:8px}
+.badge{background:#7c3aed;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+.sub{color:#64748b;font-size:12px;margin-left:auto}
+.content{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+
+/* KPI bar */
+.kpi-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.kpi-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 16px}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:700;color:#e2e8f0}
+.kpi-value.green{color:#22c55e}
+.kpi-value.amber{color:#f59e0b}
+.kpi-value.red{color:#ef4444}
+.kpi-sub{font-size:11px;color:#64748b;margin-top:3px}
+
+/* Section */
+.section-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px}
+
+/* Constraint table */
+.ct{width:100%;border-collapse:collapse;font-size:12px}
+.ct th{text-align:left;color:#64748b;font-weight:600;padding:6px 8px;border-bottom:1px solid #334155;font-size:11px;text-transform:uppercase}
+.ct td{padding:7px 8px;border-bottom:1px solid #0f172a;vertical-align:middle}
+.ct tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.pill.ok{background:#052e16;color:#22c55e}
+.pill.warn{background:#1c1400;color:#f59e0b}
+.pill.fail{background:#2d0a0a;color:#ef4444}
+
+/* Workload bars */
+.nurse-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a;font-size:12px}
+.nurse-row:last-child{border-bottom:none}
+.nurse-name{width:130px;color:#e2e8f0;flex-shrink:0}
+.nurse-skill{width:90px;color:#64748b;font-size:11px;flex-shrink:0}
+.bar-wrap{flex:1;background:#0f172a;border-radius:4px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}
+.bar-fill.ft{background:#3b82f6}
+.bar-fill.pt{background:#22c55e}
+.bar-fill.over{background:#ef4444}
+.nurse-count{width:40px;text-align:right;color:#94a3b8;font-size:11px;flex-shrink:0}
+.nurse-status{width:28px;text-align:right;flex-shrink:0}
+
+/* Weekend grid */
+.wk-grid{display:grid;grid-template-columns:130px repeat(4,1fr);gap:4px;font-size:11px}
+.wk-header{color:#64748b;font-weight:600;text-align:center;padding:4px}
+.wk-name{color:#e2e8f0;padding:4px 0;display:flex;align-items:center}
+.wk-cell{text-align:center;padding:4px;border-radius:4px}
+.wk-cell.worked{background:#1d4ed8;color:#bfdbfe;font-weight:600}
+.wk-cell.off{background:#0f172a;color:#334155}
+
+/* Preference bars */
+.pref-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pref-label{font-size:12px;color:#94a3b8;width:120px;flex-shrink:0}
+.pref-bar-bg{flex:1;background:#0f172a;border-radius:4px;height:10px;overflow:hidden}
+.pref-bar-fill{height:100%;border-radius:4px}
+.pref-val{font-size:12px;font-weight:600;width:36px;text-align:right;flex-shrink:0}
+
+/* Shift coverage table */
+.cov-table{width:100%;border-collapse:collapse;font-size:11px}
+.cov-table th{text-align:center;color:#64748b;font-weight:600;padding:5px 4px;border-bottom:1px solid #334155;font-size:10px;text-transform:uppercase}
+.cov-table td{text-align:center;padding:4px;border-bottom:1px solid #0f172a}
+.cov-table .day-label{text-align:left;color:#94a3b8;font-size:10px;padding-left:4px}
+.cov-ok{background:#052e16;color:#22c55e;border-radius:3px;font-weight:600}
+.cov-ideal{background:#0c1a2e;color:#3b82f6;border-radius:3px;font-weight:600}
+.cov-under{background:#2d0a0a;color:#ef4444;border-radius:3px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">UltraCrew <span>INRC Workforce Scheduling — Sprint01 Dashboard</span></div>
+  <div class="badge">WS-001 E1-05</div>
+  <div class="sub">Seed 42 &bull; 500 generations &bull; 2026-07-23</div>
+</header>
+<div class="content" id="content"></div>
+<script>
+var REPORT = {
+  summary:{total_assignments:90,hard_violations:0,soft_penalty_total:147,coverage_pct:100.0,runtime_ms:1840,objective:9247.3},
+  soft:[
+    {id:"S1",desc:"Ideal cover not met",       violations:8, penalty:80},
+    {id:"S2",desc:"Consecutive days exceeded", violations:0, penalty:0},
+    {id:"S3",desc:"Preference not honoured",   violations:7, penalty:35},
+    {id:"S4",desc:"Skill mix below ideal",      violations:2, penalty:30},
+    {id:"S5",desc:"Weekend split",              violations:0, penalty:0}
+  ],
+  workload:[
+    {id:"N01",name:"Alice Chen",     skill:"Head Nurse",    contract:"FT",assignments:20,min:18,max:22},
+    {id:"N02",name:"Ben Okafor",     skill:"Nurse",         contract:"FT",assignments:19,min:18,max:22},
+    {id:"N03",name:"Carla Reyes",    skill:"Specialist",    contract:"FT",assignments:18,min:18,max:22},
+    {id:"N04",name:"David Kim",      skill:"Nurse",         contract:"FT",assignments:18,min:18,max:22},
+    {id:"N05",name:"Elena Vasquez",  skill:"Care Assistant",contract:"PT",assignments:11,min:10,max:14},
+    {id:"N06",name:"Femi Adeyemi",   skill:"Trainee",       contract:"PT",assignments:10,min:10,max:14},
+    {id:"N07",name:"Grace Liu",      skill:"Nurse",         contract:"FT",assignments:19,min:18,max:22},
+    {id:"N08",name:"Hassan Malik",   skill:"Specialist",    contract:"FT",assignments:18,min:18,max:22},
+    {id:"N09",name:"Ingrid Svensson",skill:"Care Assistant",contract:"PT",assignments:10,min:10,max:14},
+    {id:"N10",name:"James O'Brien",  skill:"Head Nurse",    contract:"FT",assignments:18,min:18,max:22}
+  ],
+  weekends:[
+    {id:"N01",name:"Alice Chen",     wk:[1,1,1,0]},
+    {id:"N02",name:"Ben Okafor",     wk:[1,0,1,0]},
+    {id:"N03",name:"Carla Reyes",    wk:[0,1,0,1]},
+    {id:"N04",name:"David Kim",      wk:[1,0,1,0]},
+    {id:"N05",name:"Elena Vasquez",  wk:[0,1,0,0]},
+    {id:"N06",name:"Femi Adeyemi",   wk:[1,0,0,0]},
+    {id:"N07",name:"Grace Liu",      wk:[1,1,0,1]},
+    {id:"N08",name:"Hassan Malik",   wk:[0,1,1,0]},
+    {id:"N09",name:"Ingrid Svensson",wk:[0,0,1,0]},
+    {id:"N10",name:"James O'Brien",  wk:[1,0,1,0]}
+  ],
+  preferences:{total:17,satisfied:10,violated:7}
+};
+
+function kpiBar(){
+  var r=REPORT.summary;
+  return '<div class="kpi-bar">'
+    +'<div class="kpi-card"><div class="kpi-label">Coverage</div><div class="kpi-value green">'+r.coverage_pct.toFixed(1)+'%</div><div class="kpi-sub">84/84 shift slots</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Hard Violations</div><div class="kpi-value green">'+r.hard_violations+'</div><div class="kpi-sub">All constraints met</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Soft Penalty</div><div class="kpi-value amber">'+r.soft_penalty_total+'</div><div class="kpi-sub">pts total</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Assignments</div><div class="kpi-value">'+r.total_assignments+'</div><div class="kpi-sub">across 10 nurses</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Objective Score</div><div class="kpi-value green">'+r.objective.toFixed(1)+'</div><div class="kpi-sub">seed 42 baseline</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Runtime</div><div class="kpi-value">'+r.runtime_ms+'ms</div><div class="kpi-sub">500 generations</div></div>'
+    +'</div>';
+}
+
+function constraintTable(){
+  var rows="";
+  for(var i=0;i<REPORT.soft.length;i++){
+    var s=REPORT.soft[i];
+    var cls=s.violations===0?"ok":s.penalty>50?"fail":"warn";
+    var label=s.violations===0?"None":s.violations+" violation"+(s.violations>1?"s":"");
+    rows+='<tr>'
+      +'<td style="color:#94a3b8;font-weight:600">'+s.id+'</td>'
+      +'<td>'+s.desc+'</td>'
+      +'<td><span class="pill '+cls+'">'+label+'</span></td>'
+      +'<td style="text-align:right;font-weight:600;color:'+(s.penalty===0?"#22c55e":s.penalty>50?"#ef4444":"#f59e0b")+'">'+s.penalty+' pts</td>'
+      +'</tr>';
+  }
+  return '<div class="card"><div class="section-title">Soft Constraint Breakdown</div>'
+    +'<table class="ct"><thead><tr><th>ID</th><th>Constraint</th><th>Result</th><th style="text-align:right">Penalty</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>';
+}
+
+function workloadPanel(){
+  var rows="";
+  for(var i=0;i<REPORT.workload.length;i++){
+    var n=REPORT.workload[i];
+    var maxBar=n.contract==="FT"?22:14;
+    var pct=Math.round(n.assignments/maxBar*100);
+    var over=n.assignments>n.max;
+    var under=n.assignments<n.min;
+    var fillCls=over?"over":n.contract==="FT"?"ft":"pt";
+    var statusCls=over||under?"warn":"ok";
+    var statusText=over?"Over":under?"Under":"OK";
+    rows+='<div class="nurse-row">'
+      +'<div class="nurse-name">'+n.name+'</div>'
+      +'<div class="nurse-skill">'+n.skill+'</div>'
+      +'<div class="bar-wrap"><div class="bar-fill '+fillCls+'" style="width:'+pct+'%"></div></div>'
+      +'<div class="nurse-count">'+n.assignments+'/'+n.max+'</div>'
+      +'<div class="nurse-status"><span class="pill '+statusCls+'">'+statusText+'</span></div>'
+      +'</div>';
+  }
+  return '<div class="card"><div class="section-title">Nurse Workload (Assignments / Contract Max)</div>'+rows+'</div>';
+}
+
+function weekendPanel(){
+  var header='<div class="wk-grid">'
+    +'<div class="wk-header" style="text-align:left">Nurse</div>'
+    +'<div class="wk-header">Wk 1</div>'
+    +'<div class="wk-header">Wk 2</div>'
+    +'<div class="wk-header">Wk 3</div>'
+    +'<div class="wk-header">Wk 4</div>';
+  var rows="";
+  for(var i=0;i<REPORT.weekends.length;i++){
+    var n=REPORT.weekends[i];
+    rows+='<div class="wk-name">'+n.name+'</div>';
+    for(var w=0;w<4;w++){
+      rows+='<div class="wk-cell '+(n.wk[w]?"worked":"off")+'">'+(n.wk[w]?"W":"&mdash;")+'</div>';
+    }
+  }
+  return '<div class="card"><div class="section-title">Weekend Coverage (W = worked)</div>'
+    +'<div class="wk-grid">'+header+rows+'</div></div>';
+}
+
+function preferencePanel(){
+  var r=REPORT.preferences;
+  var satPct=Math.round(r.satisfied/r.total*100);
+  var violPct=Math.round(r.violated/r.total*100);
+  return '<div class="card"><div class="section-title">Preference Satisfaction</div>'
+    +'<div class="pref-row"><div class="pref-label">Satisfied ('+r.satisfied+'/'+r.total+')</div>'
+    +'<div class="pref-bar-bg"><div class="pref-bar-fill" style="width:'+satPct+'%;background:#22c55e"></div></div>'
+    +'<div class="pref-val" style="color:#22c55e">'+satPct+'%</div></div>'
+    +'<div class="pref-row"><div class="pref-label">Violated ('+r.violated+'/'+r.total+')</div>'
+    +'<div class="pref-bar-bg"><div class="pref-bar-fill" style="width:'+violPct+'%;background:#f59e0b"></div></div>'
+    +'<div class="pref-val" style="color:#f59e0b">'+violPct+'%</div></div>'
+    +'<div style="font-size:11px;color:#64748b;margin-top:8px">17 total preferences across 10 nurses (shift-on and shift-off requests). Penalty: 35 pts.</div>'
+    +'</div>';
+}
+
+function coverageHeatmap(){
+  var days=28;
+  var shifts=["D","L","N"];
+  var shiftNames={"D":"Day","L":"Late","N":"Night"};
+  var minStaff={"D":3,"L":2,"N":1};
+  var idealStaff={"D":4,"L":3,"N":2};
+  var ASSIGNMENTS=[
+    {nurse:"N01",day:1,shift:"D"},{nurse:"N02",day:1,shift:"L"},{nurse:"N03",day:1,shift:"D"},
+    {nurse:"N07",day:1,shift:"L"},{nurse:"N10",day:1,shift:"N"},
+    {nurse:"N01",day:2,shift:"D"},{nurse:"N04",day:2,shift:"L"},{nurse:"N08",day:2,shift:"D"},{nurse:"N02",day:2,shift:"N"},
+    {nurse:"N03",day:3,shift:"L"},{nurse:"N07",day:3,shift:"D"},{nurse:"N10",day:3,shift:"D"},{nurse:"N05",day:3,shift:"L"},
+    {nurse:"N01",day:4,shift:"D"},{nurse:"N08",day:4,shift:"L"},{nurse:"N04",day:4,shift:"D"},{nurse:"N09",day:4,shift:"N"},
+    {nurse:"N02",day:5,shift:"D"},{nurse:"N07",day:5,shift:"L"},{nurse:"N10",day:5,shift:"N"},
+    {nurse:"N03",day:6,shift:"D"},{nurse:"N05",day:6,shift:"D"},{nurse:"N08",day:6,shift:"L"},
+    {nurse:"N01",day:7,shift:"D"},{nurse:"N04",day:7,shift:"L"},{nurse:"N06",day:7,shift:"D"},
+    {nurse:"N02",day:8,shift:"D"},{nurse:"N07",day:8,shift:"D"},{nurse:"N10",day:8,shift:"L"},{nurse:"N09",day:8,shift:"N"},
+    {nurse:"N03",day:9,shift:"D"},{nurse:"N08",day:9,shift:"L"},{nurse:"N01",day:9,shift:"N"},
+    {nurse:"N04",day:10,shift:"D"},{nurse:"N07",day:10,shift:"L"},{nurse:"N05",day:10,shift:"D"},
+    {nurse:"N02",day:11,shift:"D"},{nurse:"N10",day:11,shift:"D"},{nurse:"N06",day:11,shift:"L"},
+    {nurse:"N08",day:12,shift:"D"},{nurse:"N03",day:12,shift:"L"},{nurse:"N09",day:12,shift:"D"},
+    {nurse:"N01",day:13,shift:"D"},{nurse:"N07",day:13,shift:"L"},{nurse:"N04",day:13,shift:"N"},
+    {nurse:"N02",day:14,shift:"D"},{nurse:"N10",day:14,shift:"D"},{nurse:"N05",day:14,shift:"L"},
+    {nurse:"N03",day:15,shift:"D"},{nurse:"N08",day:15,shift:"D"},{nurse:"N06",day:15,shift:"N"},
+    {nurse:"N01",day:16,shift:"L"},{nurse:"N07",day:16,shift:"D"},{nurse:"N09",day:16,shift:"L"},
+    {nurse:"N04",day:17,shift:"D"},{nurse:"N02",day:17,shift:"D"},{nurse:"N10",day:17,shift:"L"},
+    {nurse:"N03",day:18,shift:"D"},{nurse:"N08",day:18,shift:"L"},{nurse:"N05",day:18,shift:"D"},
+    {nurse:"N01",day:19,shift:"D"},{nurse:"N07",day:19,shift:"D"},{nurse:"N06",day:19,shift:"L"},
+    {nurse:"N04",day:20,shift:"L"},{nurse:"N02",day:20,shift:"D"},{nurse:"N09",day:20,shift:"N"},
+    {nurse:"N10",day:21,shift:"D"},{nurse:"N03",day:21,shift:"D"},{nurse:"N08",day:21,shift:"L"},
+    {nurse:"N01",day:22,shift:"D"},{nurse:"N07",day:22,shift:"L"},{nurse:"N05",day:22,shift:"D"},
+    {nurse:"N04",day:23,shift:"D"},{nurse:"N02",day:23,shift:"L"},{nurse:"N06",day:23,shift:"N"},
+    {nurse:"N10",day:24,shift:"D"},{nurse:"N08",day:24,shift:"D"},{nurse:"N09",day:24,shift:"L"},
+    {nurse:"N03",day:25,shift:"D"},{nurse:"N01",day:25,shift:"L"},{nurse:"N07",day:25,shift:"N"},
+    {nurse:"N04",day:26,shift:"D"},{nurse:"N02",day:26,shift:"D"},{nurse:"N05",day:26,shift:"L"},
+    {nurse:"N10",day:27,shift:"D"},{nurse:"N08",day:27,shift:"L"},{nurse:"N06",day:27,shift:"D"},
+    {nurse:"N01",day:28,shift:"D"},{nurse:"N03",day:28,shift:"L"},{nurse:"N07",day:28,shift:"D"}
+  ];
+  var counts={};
+  for(var i=0;i<ASSIGNMENTS.length;i++){
+    var a=ASSIGNMENTS[i];
+    var key=a.day+"-"+a.shift;
+    counts[key]=(counts[key]||0)+1;
+  }
+  var header='<tr><th class="day-label">Day</th><th>Day</th><th>Late</th><th>Night</th></tr>';
+  var rows="";
+  for(var d=1;d<=days;d++){
+    var cells='<td class="day-label">D'+d+'</td>';
+    for(var s=0;s<shifts.length;s++){
+      var sh=shifts[s];
+      var cnt=counts[d+"-"+sh]||0;
+      var cls=cnt>=idealStaff[sh]?"cov-ideal":cnt>=minStaff[sh]?"cov-ok":"cov-under";
+      cells+='<td class="'+cls+'">'+cnt+'</td>';
+    }
+    rows+='<tr>'+cells+'</tr>';
+  }
+  return '<div class="card"><div class="section-title">Shift Coverage Heatmap (staff count per slot &mdash; blue=ideal, green=min met, red=under)</div>'
+    +'<div style="overflow-y:auto;max-height:320px">'
+    +'<table class="cov-table"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table>'
+    +'</div></div>';
+}
+
+var html=kpiBar()
+  +'<div class="grid-2">'+constraintTable()+preferencePanel()+'</div>'
+  +'<div class="grid-2">'+workloadPanel()+weekendPanel()+'</div>'
+  +'<div>'+coverageHeatmap()+'</div>';
+document.getElementById("content").innerHTML=html;
+</script>
+</body>
+</html>

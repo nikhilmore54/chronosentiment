@@ -22,6 +22,7 @@ fn test_dataset_validation() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let context = request.to_context();
     assert!(validate_context(&context).is_ok());
@@ -37,6 +38,7 @@ fn test_dataset_validation() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let bad_context = bad_request.to_context();
     assert!(validate_context(&bad_context).is_err());
@@ -51,6 +53,7 @@ fn test_dataset_validation() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let bad_context2 = bad_request2.to_context();
     assert!(validate_context(&bad_context2).is_err());
@@ -72,6 +75,7 @@ fn test_optimization_and_explanation_pipeline() {
         historical_workloads: None,
         rng_seed: Some(123),
         generation_limit: None,
+        scenario: None,
     };
     let context = request.to_context();
     
@@ -156,6 +160,7 @@ fn test_constraint_engine_report_details() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let context = request.to_context();
     let engine = ConstraintEngine::new(context);
@@ -192,6 +197,7 @@ fn test_recommendation_generation() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let context = request.to_context();
     let constraint_engine = ConstraintEngine::new(context);
@@ -225,6 +231,7 @@ fn test_optimizer_telemetry_generation() {
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: None,
+        scenario: None,
     };
     let context = request.to_context();
     let config = EvolutionConfig {

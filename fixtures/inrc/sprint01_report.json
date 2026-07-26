@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "schema_version": "1.0",
+    "instance": "INRC-II Sprint01",
+    "programme": "WS-001",
+    "generated": "2026-07-23",
+    "seed": 42,
+    "generations": 500,
+    "population": 100,
+    "profile": "balanced"
+  },
+  "summary": {
+    "total_assignments": 90,
+    "hard_violations": 0,
+    "soft_penalty_total": 147,
+    "coverage_pct": 100.0,
+    "runtime_ms": 1840
+  },
+  "coverage": {
+    "shift_slots_required": 84,
+    "shift_slots_covered": 84,
+    "under_staffed_slots": 0,
+    "over_staffed_slots": 3,
+    "coverage_pct": 100.0
+  },
+  "hard_constraint_results": [
+    {"id":"H1","description":"No double shift","violations":0},
+    {"id":"H2","description":"Night followed by rest","violations":0},
+    {"id":"H3","description":"Minimum cover met","violations":0},
+    {"id":"H4","description":"Contract bounds respected","violations":0}
+  ],
+  "soft_constraint_results": [
+    {"id":"S1","description":"Ideal cover not met",          "violations":8, "penalty":80},
+    {"id":"S2","description":"Consecutive days exceeded",    "violations":0, "penalty":0},
+    {"id":"S3","description":"Preference not honoured",      "violations":7, "penalty":35},
+    {"id":"S4","description":"Skill mix below ideal",        "violations":2, "penalty":30},
+    {"id":"S5","description":"Weekend split",                "violations":0, "penalty":0}
+  ],
+  "workload": {
+    "per_nurse": [
+      {"nurse_id":"N01","assignments":20,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N02","assignments":19,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N03","assignments":18,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N04","assignments":18,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N05","assignments":11,"contract":"Part-Time","min":10,"max":14,"status":"ok"},
+      {"nurse_id":"N06","assignments":10,"contract":"Part-Time","min":10,"max":14,"status":"ok"},
+      {"nurse_id":"N07","assignments":19,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N08","assignments":18,"contract":"Full-Time","min":18,"max":22,"status":"ok"},
+      {"nurse_id":"N09","assignments":10,"contract":"Part-Time","min":10,"max":14,"status":"ok"},
+      {"nurse_id":"N10","assignments":18,"contract":"Full-Time","min":18,"max":22,"status":"ok"}
+    ],
+    "mean_assignments": 16.1,
+    "std_dev": 3.8
+  },
+  "weekend_analysis": {
+    "weekends_in_horizon": 4,
+    "complete_weekend_violations": 0,
+    "per_nurse": [
+      {"nurse_id":"N01","weekends_worked":3},
+      {"nurse_id":"N02","weekends_worked":2},
+      {"nurse_id":"N03","weekends_worked":2},
+      {"nurse_id":"N04","weekends_worked":2},
+      {"nurse_id":"N05","weekends_worked":1},
+      {"nurse_id":"N06","weekends_worked":1},
+      {"nurse_id":"N07","weekends_worked":3},
+      {"nurse_id":"N08","weekends_worked":2},
+      {"nurse_id":"N09","weekends_worked":1},
+      {"nurse_id":"N10","weekends_worked":2}
+    ]
+  },
+  "preference_analysis": {
+    "total_preferences": 17,
+    "satisfied": 10,
+    "violated": 7,
+    "satisfaction_pct": 58.8
+  },
+  "objective": {
+    "score": 9247.3,
+    "breakdown": {
+      "coverage_reward": 9600.0,
+      "soft_penalty": -147.0,
+      "workload_fairness_bonus": -205.7
+    }
+  }
+}

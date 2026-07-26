@@ -30,7 +30,21 @@ pub struct ScheduleRequest {
     /// Optional domain-independent scenario contract supplied by the adapter.
     /// When present, the engine uses scenario fields to contextualise constraints.
     /// When absent, engine defaults apply (backward-compatible).
+    #[serde(default)]
     pub scenario: Option<Scenario>,
+}
+
+impl Default for ScheduleRequest {
+    fn default() -> Self {
+        Self {
+            workers: Vec::new(),
+            shifts: Vec::new(),
+            historical_workloads: None,
+            rng_seed: None,
+            generation_limit: None,
+            scenario: None,
+        }
+    }
 }
 
 impl ScheduleRequest {
@@ -102,4 +116,25 @@ impl RescheduleRequest {
 pub struct ValidateRequest {
     pub request: ScheduleRequest,
     pub assignments: HashMap<u64, u64>,
+}
+
+/// A single solution on the Pareto frontier produced by the INRC startup pipeline.
+/// Returned by `pipeline::run_inrc_startup_pipeline` so the application layer
+/// does not need to import `coralys_moga` types directly.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InrcParetoSolution {
+    pub s6_assignment_penalty: f64,
+    pub s7_weekend_penalty: f64,
+    pub recovery_penalty: f64,
+    pub workload_balance: f64,
+    pub temporal_load_balance: f64,
+    pub schedule: std::collections::HashMap<String, Vec<String>>,
+}
+
+/// Result returned by `pipeline::run_inrc_startup_pipeline`.
+/// Contains the best schedule and the full Pareto frontier.
+#[derive(Debug, Clone)]
+pub struct InrcStartupResult {
+    pub schedule: std::collections::HashMap<String, Vec<String>>,
+    pub pareto_solutions: Vec<InrcParetoSolution>,
 }

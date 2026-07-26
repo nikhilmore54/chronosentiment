@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore for ultracrew_server Docker build
+# Excludes large non-Rust directories to keep build context fast.
+# The Dockerfile copies the full workspace for cargo build, so all Rust
+# source and Cargo.toml files must be included.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Frontend (not needed in backend image)
+ui/
+
+# Python environments and caches
+.venv/
+.venv_kite/
+.venv_test/
+.venv-e2e/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+.pw-e2e/
+
+# Large data / capture directories
+chronology/
+historical_capture/
+live_capture/
+logs/
+snapshots/
+genomes/
+results/
+analysis/
+research_experiments/
+phase0d/
+phase1/
+phase1b2_75_artifacts/
+tmp_audit_substrates/
+scratch/
+archive_justifications/
+claims/
+cohorts/
+benchmarks/
+observatory/
+my-chrono-sentiment-ui/
+
+# Git
+.git/
+.github/
+.cursor/
+.lyzo/
+
+# Compiled output (will be rebuilt inside Docker)
+target/
+
+# Test artifacts
+test_assets/
+test_release/
+.baseline_worktree_cbf0f859/
+
+# Misc
+*.log
+*.tmp
+calc_coverage_*

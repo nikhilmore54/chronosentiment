@@ -94,10 +94,61 @@ fn main() -> anyhow::Result<()> {
 
 
     // 4. Run pipeline
-    let solution = ultracrew::pipeline::run_pipeline(context, config)
+    let start = std::time::Instant::now();
+    let solution = ultracrew::pipeline::run_pipeline(context.clone(), config)
         .map_err(|e| anyhow::anyhow!("Optimization pipeline failed: {}", e))?;
+    let elapsed = start.elapsed();
 
-    // 5. Output schedule solution to JSON
+    // 5. Compute summary KPIs
+    let total_shifts = context.shifts.len();
+    let assigned_shifts = solution.assignments.len();
+    let coverage_pct = if total_shifts > 0 {
+        (assigned_shifts as f64 / total_shifts as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    // Compute per-worker hours for workload balance
+    let mut worker_hours: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();
+    for (&shift_id, &worker_id) in &solution.assignments {
+        if let Some(shift) = context.shifts.iter().find(|s| s.id == shift_id) {
+            *worker_hours.entry(worker_id).or_insert(0) += shift.duration_hours;
+        }
+    }
+    let hours_values: Vec<f64> = worker_hours.values().map(|&h| h as f64).collect();
+    let mean_hours = if hours_values.is_empty() { 0.0 } else {
+        hours_values.iter().sum::<f64>() / hours_values.len() as f64
+    };
+    let max_hours = hours_values.iter().cloned().fold(0.0_f64, f64::max);
+    let min_hours = hours_values.iter().cloned().fold(f64::MAX, f64::min);
+
+    // 6. Print summary
+    eprintln!();
+    eprintln!("────────────────────────────────────────────────────");
+    eprintln!("  UltraCrew Optimization Summary");
+    eprintln!("────────────────────────────────────────────────────");
+    eprintln!("  Scenario:          {}", args.input.display());
+    eprintln!("  Workers:           {}", context.workers.len());
+    eprintln!("  Shifts:            {}", total_shifts);
+    eprintln!("  Profile:           {:?}", args.profile);
+    eprintln!("────────────────────────────────────────────────────");
+    eprintln!("  Coverage:          {}/{} shifts ({:.1}%)", assigned_shifts, total_shifts, coverage_pct);
+    eprintln!("  Hard violations:   {}", solution.hard_violations);
+    eprintln!("  Rest violations:   {}", solution.rest_violations);
+    eprintln!("  Fitness score:     {:.4}", solution.fitness);
+    eprintln!("  Fairness penalty:  {:.4}", solution.fairness_penalty);
+    eprintln!("  Fatigue penalty:   {:.4}", solution.fatigue_penalty);
+    eprintln!("────────────────────────────────────────────────────");
+    eprintln!("  Workload balance:");
+    eprintln!("    Mean hours/worker: {:.1}h", mean_hours);
+    eprintln!("    Min hours/worker:  {:.1}h", if min_hours == f64::MAX { 0.0 } else { min_hours });
+    eprintln!("    Max hours/worker:  {:.1}h", max_hours);
+    eprintln!("────────────────────────────────────────────────────");
+    eprintln!("  Runtime:           {:.2}s", elapsed.as_secs_f64());
+    eprintln!("  Output:            {}", args.output.display());
+    eprintln!("────────────────────────────────────────────────────");
+
+    // 7. Output schedule solution to JSON
     let out_file = File::create(&args.output)
         .map_err(|e| anyhow::anyhow!("Failed to create output file {}: {}", args.output.display(), e))?;
     serde_json::to_writer_pretty(out_file, &solution)

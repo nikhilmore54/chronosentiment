@@ -38,8 +38,23 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState(false);
   const [activeHighlightCell, setActiveHighlightCell] = useState<{ nurseId: string; dayIndex: number } | null>(null);
   const [changedAssignments, setChangedAssignments] = useState<Record<string, boolean[]>>({});
+
+  // Backend connectivity state
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   
   const hasAutoScrolledRef = React.useRef(false);
+
+  // Poll backend health every 5 seconds
+  useEffect(() => {
+    const check = () => {
+      fetch('/api/health')
+        .then(res => setBackendOnline(res.ok))
+        .catch(() => setBackendOnline(false));
+    };
+    check();
+    const id = setInterval(check, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!loading && scheduleContainerRef.current && !hasAutoScrolledRef.current) {
@@ -171,11 +186,16 @@ function App() {
     return <Landing onStartDemo={() => setShowDemo(true)} />;
   }
 
+  // Backend status pill colours
+  const statusColor = backendOnline === null ? '#94a3b8' : backendOnline ? '#22c55e' : '#ef4444';
+  const statusLabel = backendOnline === null ? 'Checking...' : backendOnline ? 'Backend Connected' : 'Backend Offline';
+  const statusDot = backendOnline === null ? '●' : backendOnline ? '●' : '⚠';
+
   return (
     <div className="app-container">
-      <header className="header" style={{ display: 'flex', gap: '2rem' }}>
+      <header className="header" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
         <h1 style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('dashboard')}>UltraCrew</h1>
-        <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1 }}>
           <button 
             onClick={() => setCurrentTab('dashboard')}
             style={{ 
@@ -219,6 +239,26 @@ function App() {
             Import &amp; Schedule
           </button>
         </nav>
+
+        {/* Backend Status Pill */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          padding: '0.3rem 0.75rem',
+          borderRadius: '999px',
+          border: `1px solid ${statusColor}33`,
+          backgroundColor: `${statusColor}11`,
+          fontSize: '0.78rem',
+          fontWeight: 600,
+          color: statusColor,
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: '0.6rem' }}>{statusDot}</span>
+          {statusLabel}
+          {backendOnline && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>&nbsp;:3001</span>}
+        </div>
       </header>
       
       <div className="content">
@@ -229,14 +269,45 @@ function App() {
       <Constraints />
     ) : (
       <>
+        {/* Dashboard empty/offline state */}
+        {!loading && !dashboardData && (
+          <div style={{
+            margin: '1.5rem',
+            padding: '2rem',
+            backgroundColor: 'var(--panel-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px',
+            textAlign: 'center',
+            color: 'var(--text-muted)',
+          }}>
+            {backendOnline === false ? (
+              <>
+                <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>⚠</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>Backend Offline</div>
+                <div style={{ fontSize: '0.9rem' }}>
+                  Start the UltraCrew server: <code style={{ color: 'var(--accent-color)' }}>cargo run -p ultracrew_server</code>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>📋</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>No workforce loaded</div>
+                <div style={{ fontSize: '0.9rem' }}>Import staff to see team balance and generate a schedule.</div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Executive Dashboard */}
-        <Dashboard
-          data={dashboardData}
-          baselineData={baselineDashboardData}
-          simulationState={simulationState}
-          demoStep={demoStep}
-          onAlertClick={handleAlertClick}
-        />
+        {dashboardData && (
+          <Dashboard
+            data={dashboardData}
+            baselineData={baselineDashboardData}
+            simulationState={simulationState}
+            demoStep={demoStep}
+            onAlertClick={handleAlertClick}
+          />
+        )}
         {/* Decision Workspace */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <TeamBalance

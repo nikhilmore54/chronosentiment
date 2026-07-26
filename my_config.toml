@@ -1,0 +1,13 @@
+# UltraCrew Optimizer Configuration — SunAir Demo
+# Format: TOML  |  Schema: OptimizerConfig v1.0
+# This file is the canonical configuration for the SunAir demonstration scenario.
+# It produces the regression baseline: 100% coverage, 0 violations, fitness 8649.6.
+
+[optimizer]
+generation_limit = 500
+population_size  = 50
+rng_seed         = 42
+
+[scenario]
+planning_horizon_hours = 168.0
+max_hours_per_worker   = 48.0
