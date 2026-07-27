@@ -1,9 +1,9 @@
 # Coralys Platform — Product Traceability
 
 **Document type:** Product Traceability
-**Version:** 1.0
-**Status:** Baseline
-**Date:** 2026-07-26
+**Version:** 2.0
+**Status:** Updated — EP-001 resolutions applied
+**Date:** 2026-07-27
 **Owner:** Platform / Engineering
 
 ---
@@ -12,7 +12,8 @@
 
 | Field | Value |
 |-------|-------|
-| Document Status | Baseline v1.0 |
+| Document Status | v2.0 — EP-001 post-sprint update |
+| Previous Version | v1.0 Baseline (2026-07-26) |
 | Review Trigger | Blueprint capability status changes; new crate or module added; product architecture revision |
 
 **Relationship to other documents:**
@@ -20,6 +21,7 @@
 - Informed by: `UC-B-001_UltraCrew_Blueprint_v1.0.md` (UltraCrew blueprint)
 - Informed by: `CS-E-B-001_ChronoSentiment_Enterprise_Blueprint_v1.0.md` (Enterprise blueprint)
 - Informed by: `CS-P-B-001_ChronoSentiment_Personal_Blueprint_v1.0.md` (Personal blueprint)
+- Informed by: `EP-001_MILESTONE.md` (sprint resolutions)
 - Informs: `CORALYS_GAP_REGISTER.md` (implementation gap register)
 
 ---
@@ -38,6 +40,20 @@ This document maps every blueprint capability for each product to its implementi
 | **Partial** | Core structure exists; capabilities incomplete |
 | **Stub** | Type or module defined but not implemented |
 | **Planned** | Documented in blueprint; not yet started |
+
+---
+
+## EP-001 Status Changes
+
+| Capability | v1.0 Status | v2.0 Status | Change |
+|------------|-------------|-------------|--------|
+| UltraCrew — Real-time re-optimisation workflow | Planned | Implemented | `disruption_recovery.rs` |
+| UltraCrew — Disruption evidence recording | Planned | Implemented | `disruption_recovery.rs` |
+| UltraCrew — Recovery option ranking | Planned | Implemented | `disruption_recovery.rs` |
+| UltraCrew — Learning loop workflow | Planned | Implemented | `decision_intelligence.rs` |
+| UltraCrew — Cycle review report | Planned | Implemented | `decision_intelligence.rs` |
+| ChronoSentiment Personal — All capabilities | Planned | Implemented | 5 modules, 22 tests |
+| ChronoSentiment Enterprise — Shared foundation | Planned | Partial | Shared modules implemented; Enterprise-specific wiring pending |
 
 ---
 
@@ -107,9 +123,9 @@ This document maps every blueprint capability for each product to its implementi
 | Disruption modelling | **Implemented** | `adapters/airline` | `resilience/disruption` |
 | Reserve crew management | **Implemented** | `adapters/airline` | `resilience/reserve` |
 | Robustness scoring | **Implemented** | `adapters/airline` | `resilience/robustness` |
-| Real-time re-optimisation workflow | **Planned** | — | — |
-| Disruption evidence recording | **Planned** | — | — |
-| Recovery option ranking | **Planned** | — | — |
+| Real-time re-optimisation workflow | **Implemented** | `adapters/ultracrew` | `disruption_recovery::DisruptionRecoveryEngine` |
+| Disruption evidence recording | **Implemented** | `adapters/ultracrew` | `disruption_recovery::DisruptionRecord` |
+| Recovery option ranking | **Implemented** | `adapters/ultracrew` | `disruption_recovery` (ranked by feasibility then impact) |
 
 ---
 
@@ -131,8 +147,10 @@ This document maps every blueprint capability for each product to its implementi
 | Innovation tracking | **Implemented** | `coralys-core` | `memory::InnovationTracker` |
 | Ecology-aware optimisation | **Implemented** | `adapters/ultracrew` | `ecology` |
 | Pattern accumulation | **Partial** | `coralys-ecology` | `traits::MemoryModel` |
-| Learning loop workflow | **Planned** | — | — |
-| Cycle review report | **Planned** | — | — |
+| Learning loop workflow | **Implemented** | `adapters/ultracrew` | `decision_intelligence::OperationalLearningLoop` |
+| Cycle review report | **Implemented** | `adapters/ultracrew` | `decision_intelligence::CycleReviewReport` |
+| Pattern maturity lifecycle | **Implemented** | `adapters/ultracrew` | `decision_intelligence::PatternMaturity` |
+| Auto-promote insights | **Implemented** | `adapters/ultracrew` | `decision_intelligence::auto_promote_insights` |
 
 ---
 
@@ -165,46 +183,48 @@ This document maps every blueprint capability for each product to its implementi
 
 ## ChronoSentiment Enterprise — Financial Decision Intelligence Platform
 
-**Overall adapter status:** Stub (`adapters/chronosentiment/src/lib.rs` is empty)
+**Overall adapter status (v1.0):** Stub — `adapters/chronosentiment/src/lib.rs` was empty.
 
-All ChronoSentiment Enterprise capabilities are documented in the blueprint but not yet implemented in the adapter. The Coralys platform provides the lifecycle infrastructure; the domain adapter is the missing layer.
+**EP-001 update:** Shared adapter foundation implemented. Enterprise-specific wiring (committee review, organisational learning loop, institutional KG) remains pending.
 
 | Capability | Status | Crate | Module / Type |
 |------------|--------|-------|--------------|
-| Decision Workspace | **Planned** | `adapters/chronosentiment` | — |
-| Investment Thesis with versioning | **Planned** | `adapters/chronosentiment` | — |
-| Evidence management | **Planned** | `adapters/chronosentiment` | — |
+| Decision Workspace | **Partial** | `adapters/chronosentiment` | `workspace::InvestmentWorkspace` (shared foundation; Enterprise committee wiring pending) |
+| Investment Thesis with versioning | **Partial** | `adapters/chronosentiment` | `hypothesis::InvestmentThesis` (shared foundation; Enterprise approval workflow pending) |
+| Evidence management | **Partial** | `adapters/chronosentiment` | `evidence::EvidenceItem`, `EvidenceDossier` (shared foundation; regulatory tagging pending) |
 | Committee Review workflow | **Planned** | `adapters/chronosentiment` | — |
-| Decision Timeline | **Planned** | `coralys-core` (foundation) | `models::DecisionLineage` (reusable) |
-| Decision Outcome recording | **Planned** | `adapters/chronosentiment` | — |
+| Decision Timeline | **Implemented** | `adapters/chronosentiment` | `timeline::TimelineEvent`, `TimelineView` |
+| Decision Outcome recording | **Partial** | `adapters/chronosentiment` | `workspace::InvestmentOutcome` (shared foundation; Enterprise outcome types pending) |
 | Organisational Decision Learning Loop | **Planned** | `adapters/chronosentiment` | — |
 | Institutional Decision Knowledge Graph | **Planned** | `coralys-ecology` (foundation) | `traits::MemoryModel` (reusable) |
 | AI conversation documentation | **Planned** | `adapters/chronosentiment` | — |
 
 **Platform foundations reusable for ChronoSentiment Enterprise:**
-- `coralys-core::DecisionLineage` → Decision Timeline
+- `coralys-core::DecisionLineage` → Decision Timeline (foundation)
 - `coralys-core::InnovationTracker` → Organisational Decision Learning Loop (foundation)
 - `coralys-ecology::MemoryModel` → Institutional Decision Knowledge Graph (foundation)
-- `coralys-decision::CandidateEvaluator`, `DecisionMaker`, `DecisionPolicy` → Decision evaluation stubs
+- `adapters/chronosentiment::workspace`, `evidence`, `hypothesis`, `timeline`, `learning` → Shared with Personal
 
 ---
 
 ## ChronoSentiment Personal — Personal Investment Knowledge Platform
 
-**Overall adapter status:** Stub (shares `adapters/chronosentiment` with Enterprise)
+**Overall adapter status (v1.0):** Stub — shared `adapters/chronosentiment` with Enterprise.
 
-All ChronoSentiment Personal capabilities are documented in the blueprint but not yet implemented. The Personal product shares the same adapter stub as Enterprise.
+**EP-001 update:** All Critical and High capabilities implemented. 5 modules, 22 tests.
 
 | Capability | Status | Crate | Module / Type |
 |------------|--------|-------|--------------|
-| Research Workspace | **Planned** | `adapters/chronosentiment` | — |
-| Research Dossier | **Planned** | `adapters/chronosentiment` | — |
-| Investment Thesis with versioning | **Planned** | `adapters/chronosentiment` | — |
-| Research Timeline | **Planned** | `coralys-core` (foundation) | `models::DecisionLineage` (reusable) |
-| Quarterly Research Review | **Planned** | `adapters/chronosentiment` | — |
-| Investment Outcome recording | **Planned** | `adapters/chronosentiment` | — |
-| Personal Investment Learning Loop | **Planned** | `adapters/chronosentiment` | — |
-| Personal Investment Knowledge Graph | **Planned** | `coralys-ecology` (foundation) | `traits::MemoryModel` (reusable) |
+| Research Workspace | **Implemented** | `adapters/chronosentiment` | `workspace::InvestmentWorkspace` |
+| Research Dossier | **Implemented** | `adapters/chronosentiment` | `workspace::InvestmentWorkspace` (structured research records) |
+| Investment Thesis with versioning | **Implemented** | `adapters/chronosentiment` | `hypothesis::InvestmentThesis`, `ThesisReview`, `ReviewVerdict` |
+| Research Timeline | **Implemented** | `adapters/chronosentiment` | `timeline::TimelineEvent`, `TimelineView` (15 event kinds, filtering, narrative) |
+| Quarterly Research Review | **Implemented** | `adapters/chronosentiment` | `learning::QuarterlyReviewReport` |
+| Investment Outcome recording | **Implemented** | `adapters/chronosentiment` | `workspace::InvestmentOutcome` |
+| Personal Investment Learning Loop | **Implemented** | `adapters/chronosentiment` | `learning::PersonalInvestmentLearningLoop` |
+| Pattern maturity lifecycle | **Implemented** | `adapters/chronosentiment` | `learning::PatternMaturity` |
+| Auto-promote insights | **Implemented** | `adapters/chronosentiment` | `learning::auto_promote_insights` |
+| Personal Investment Knowledge Graph | **Planned** | `coralys-ecology` (foundation) | `traits::MemoryModel` (reusable; adapter wiring pending) |
 | AI conversation documentation | **Planned** | `adapters/chronosentiment` | — |
 
 ---
@@ -216,14 +236,14 @@ The following platform capabilities are implemented once and reused across all p
 | Platform capability | Crate | Type | Products |
 |--------------------|-------|------|---------|
 | Multi-objective optimisation | `coralys-moga` | `MogaReasoningEngine` | UltraCrew (implemented); Enterprise/Personal (planned) |
-| Decision lineage / Timeline | `coralys-core` | `DecisionLineage` | UltraCrew (partial); Enterprise/Personal (planned) |
-| Innovation tracking / Learning | `coralys-core` | `InnovationTracker` | UltraCrew (implemented); Enterprise/Personal (planned) |
-| Memory model / Knowledge Graph | `coralys-ecology` | `MemoryModel` | UltraCrew (partial); Enterprise/Personal (planned) |
-| Constraint enforcement | `coralys-moga` | `ConstraintChecker` | UltraCrew (implemented); Enterprise/Personal (planned) |
-| Outcome evaluation | `coralys-core` | `Outcome` trait | UltraCrew (implemented); Enterprise/Personal (planned) |
+| Decision lineage / Timeline | `coralys-core` | `DecisionLineage` | UltraCrew (partial); Enterprise/Personal (implemented via adapter) |
+| Innovation tracking / Learning | `coralys-core` | `InnovationTracker` | UltraCrew (implemented); Enterprise/Personal (implemented via adapter) |
+| Knowledge Graph foundation | `coralys-ecology` | `MemoryModel`, `TopologyModel` | All products (partial — persistence pending) |
+| Evidence management | `adapters/chronosentiment` | `EvidenceItem`, `EvidenceDossier` | ChronoSentiment Personal (implemented); Enterprise (partial — shared foundation) |
+| Hypothesis versioning | `adapters/chronosentiment` | `InvestmentThesis` | ChronoSentiment Personal (implemented); Enterprise (partial — shared foundation) |
 
 ---
 
-*Coralys Platform Product Traceability v1.0 | July 2026 | Status: Baseline*
-*Maps every blueprint capability to its implementing crate and module.*
+*Coralys Platform Product Traceability v2.0 | July 2026 | Status: Updated — EP-001 resolutions applied*
+*Previous version: v1.0 Baseline (2026-07-26)*
 *Review trigger: Blueprint capability status changes; new crate or module added; product architecture revision.*

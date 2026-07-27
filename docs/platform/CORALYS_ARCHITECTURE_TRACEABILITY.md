@@ -1,9 +1,9 @@
 # Coralys Platform — Architecture Traceability
 
 **Document type:** Architecture Traceability
-**Version:** 1.0
-**Status:** Baseline
-**Date:** 2026-07-26
+**Version:** 2.0
+**Status:** Updated — EP-001 resolutions applied
+**Date:** 2026-07-27
 **Owner:** Platform / Engineering
 
 ---
@@ -12,7 +12,8 @@
 
 | Field | Value |
 |-------|-------|
-| Document Status | Baseline v1.0 |
+| Document Status | v2.0 — EP-001 post-sprint update |
+| Previous Version | v1.0 Baseline (2026-07-26) |
 | Review Trigger | New crate added; primitive implementation status changes; platform architecture revision |
 
 **Relationship to other documents:**
@@ -41,6 +42,18 @@ This is a living engineering reference. It should be updated whenever a primitiv
 
 ---
 
+## EP-001 Status Changes
+
+| Primitive / Adapter | v1.0 Status | v2.0 Status | Change |
+|--------------------|-------------|-------------|--------|
+| Evidence | Partial | Implemented (adapter level) | ChronoSentiment `evidence.rs` — immutability enforced |
+| Hypothesis | Partial | Implemented (adapter level) | ChronoSentiment `hypothesis.rs` — versioning implemented |
+| Pattern | Partial | Partial (updated notes) | `PatternMaturity` lifecycle now in both adapters |
+| ChronoSentiment Adapter | Stub | Implemented | 5 modules, 22 tests |
+| UltraCrew Adapter | Implemented | Implemented (extended) | disruption_recovery + decision_intelligence added |
+
+---
+
 ## Platform Primitive Traceability
 
 ### Workspace
@@ -52,7 +65,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Partial** |
 | Primary crate | `coralys-core` |
 | Primary type | `Scenario` trait (`coralys-core/src/lib.rs:1`) |
-| Notes | `Scenario` is the domain-neutral trait that corresponds to Workspace at the platform level. Domain adapters implement `Scenario` to define their Workspace type. The full Workspace lifecycle (Active → Completed → Archived) is not yet enforced at the platform level — it is managed within each adapter. |
+| Notes | `Scenario` is the domain-neutral trait that corresponds to Workspace at the platform level. Domain adapters implement `Scenario` to define their Workspace type. The full Workspace lifecycle (Active → Completed → Archived) is not yet enforced at the platform level — it is managed within each adapter. EP-001: `InvestmentWorkspace` in `adapters/chronosentiment/src/workspace.rs` enforces the lifecycle and the single-Outcome invariant at the adapter level. |
 
 ---
 
@@ -78,7 +91,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Stub** |
 | Primary crate | `coralys-core` |
 | Primary type | `DecisionProposal` (`coralys-core/src/models/decision_proposal.rs`) |
-| Notes | `DecisionProposal` carries the intent of a decision step but is not a full Intent primitive. A standalone `Intent` trait at the platform level is not yet implemented. Intent is currently implicit in the `Scenario` configuration passed to each adapter. |
+| Notes | `DecisionProposal` carries the intent of a decision step but is not a full Intent primitive. A standalone `Intent` trait at the platform level is not yet implemented. Intent is currently implicit in the `Scenario` configuration passed to each adapter. EP-001: `InvestmentWorkspace.research_objective` carries the Intent for the ChronoSentiment adapter — the invariant "one Intent per Workspace" is enforced at the adapter level. Platform-level promotion pending. |
 
 ---
 
@@ -114,10 +127,10 @@ This is a living engineering reference. It should be updated whenever a primitiv
 
 | Aspect | Detail |
 |--------|--------|
-| Implementation status | **Partial** |
-| Primary crate | `coralys-core` |
-| Primary type | `EvaluationResult` (`coralys-core/src/models/evaluation_result.rs`) |
-| Notes | `EvaluationResult` captures the result of evaluating a candidate solution — this is the closest current implementation to the Evidence primitive. True Evidence immutability (the platform invariant that Evidence cannot be mutated once recorded) is not yet enforced at the platform level. Evidence is managed within each adapter. |
+| Implementation status | **Implemented (adapter level)** |
+| Primary crate | `adapters/chronosentiment` (adapter); `coralys-core` (platform foundation) |
+| Primary type | `EvidenceItem` (`adapters/chronosentiment/src/evidence.rs`); `EvaluationResult` (`coralys-core/src/models/evaluation_result.rs`) |
+| Notes | EP-001: `EvidenceItem` in `adapters/chronosentiment/src/evidence.rs` is a full implementation of the Evidence primitive with immutability enforced — no mutation methods exist; `add_evidence` is append-only; superseded items are preserved with a forward reference. The platform invariant (Evidence cannot be mutated once recorded) is enforced at the adapter level. Platform-level promotion (a `coralys-core` Evidence trait that enforces immutability across all adapters) is pending. |
 
 ---
 
@@ -127,10 +140,10 @@ This is a living engineering reference. It should be updated whenever a primitiv
 
 | Aspect | Detail |
 |--------|--------|
-| Implementation status | **Partial** |
-| Primary crate | `coralys-core` |
-| Primary type | `DecisionProposal` (`coralys-core/src/models/decision_proposal.rs`) |
-| Notes | `DecisionProposal` is the closest current implementation to the Hypothesis primitive — it represents a proposed decision with associated reasoning. Hypothesis versioning (v1 → v2 → v3) is not yet implemented at the platform level. In the UltraCrew adapter, roster versions serve as hypothesis versions. |
+| Implementation status | **Implemented (adapter level)** |
+| Primary crate | `adapters/chronosentiment` (adapter); `coralys-core` (platform foundation) |
+| Primary type | `InvestmentThesis` (`adapters/chronosentiment/src/hypothesis.rs`); `DecisionProposal` (`coralys-core/src/models/decision_proposal.rs`) |
+| Notes | EP-001: `InvestmentThesis` in `adapters/chronosentiment/src/hypothesis.rs` is a full implementation of the Hypothesis primitive with versioning — `add_thesis_version` creates a new version; previous versions are never modified; all versions are preserved. The platform invariant (versions immutable once created) is enforced at the adapter level. Platform-level promotion (a `coralys-core` Hypothesis trait with versioning) is pending. |
 
 ---
 
@@ -143,7 +156,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Partial** |
 | Primary crate | `coralys-core` |
 | Primary type | `DecisionPlugin::evaluate()` (`coralys-core/src/lib.rs:38`) |
-| Notes | `DecisionPlugin::evaluate()` performs the review step — comparing the current state against the proposal. A structured Review primitive with documented outcomes, attendees, and conditions is not yet implemented at the platform level. |
+| Notes | `DecisionPlugin::evaluate()` performs the review step — comparing the current state against the proposal. A structured Review primitive with documented outcomes, attendees, and conditions is not yet implemented at the platform level. EP-001: `ThesisReview` in `adapters/chronosentiment/src/hypothesis.rs` is a structured review record with verdict, reviewer, and notes — an adapter-level realisation of the Review primitive. |
 
 ---
 
@@ -156,7 +169,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Implemented** |
 | Primary crate | `coralys-core` |
 | Primary type | `DecisionLineage` (`coralys-core/src/models/decision_lineage.rs:16`) |
-| Notes | `DecisionLineage` is a full implementation of the Timeline primitive. It maintains a tree of `LineageNode` entries, each with a parent reference, a `DecisionProposal`, and an `EvaluationResult`. The `root_id` and `current_id` fields allow traversal of the full decision history. This is the most complete primitive implementation in the platform. |
+| Notes | `DecisionLineage` is a full implementation of the Timeline primitive. It maintains a tree of `LineageNode` entries, each with a parent reference, a `DecisionProposal`, and an `EvaluationResult`. The `root_id` and `current_id` fields allow traversal of the full decision history. This is the most complete primitive implementation in the platform. EP-001: `TimelineEvent` and `TimelineView` in `adapters/chronosentiment/src/timeline.rs` provide a domain-specific Timeline with 15 event kinds, filtering, and narrative generation. |
 
 ---
 
@@ -169,7 +182,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Implemented** |
 | Primary crate | `coralys-core` |
 | Primary type | `Outcome` trait (`coralys-core/src/lib.rs:5`) |
-| Notes | `Outcome` is fully implemented as a platform trait. It provides `objectives()` (multi-objective fitness values), `primary_objective()`, `is_valid()`, and `solution()`. The platform invariant (every Outcome belongs to exactly one Workspace) is not yet enforced at the platform level — it is managed within each adapter. |
+| Notes | `Outcome` is fully implemented as a platform trait. It provides `objectives()` (multi-objective fitness values), `primary_objective()`, `is_valid()`, and `solution()`. The platform invariant (every Outcome belongs to exactly one Workspace) is not yet enforced at the platform level. EP-001: `InvestmentOutcome` in `adapters/chronosentiment/src/workspace.rs` enforces the single-Outcome invariant at the adapter level — `record_outcome` returns `Err` if called twice. |
 
 ---
 
@@ -182,7 +195,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Implemented** |
 | Primary crate | `coralys-core` |
 | Primary type | `InnovationTracker` (`coralys-core/src/memory.rs:14`) |
-| Notes | `InnovationTracker` is a full implementation of the Learning primitive. It observes solution signatures across generations, tracks novel discoveries, persistence, rediscovery, and extinction. It produces `InnovationTelemetry` — a structured learning output. It does not store solutions — it stores signatures (hashes). The platform invariant (Learning never mutates historical Evidence) is satisfied by design. |
+| Notes | `InnovationTracker` is a full implementation of the Learning primitive. It observes solution signatures across generations, tracks novel discoveries, persistence, rediscovery, and extinction. It produces `InnovationTelemetry` — a structured learning output. It does not store solutions — it stores signatures (hashes). The platform invariant (Learning never mutates historical Evidence) is satisfied by design. EP-001: `OperationalLearningLoop` (UltraCrew) and `PersonalInvestmentLearningLoop` (ChronoSentiment) are adapter-level Learning implementations with full PatternMaturity lifecycle. |
 
 ---
 
@@ -195,7 +208,7 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Implementation status | **Partial** |
 | Primary crate | `coralys-ecology` |
 | Primary type | `MemoryModel` trait (`coralys-ecology/src/traits.rs:7`) |
-| Notes | `MemoryModel` provides the observe/state interface for pattern accumulation. `TopologyModel` provides the transformation interface for pattern extraction. The full Pattern primitive (with maturity levels: Candidate → Observed → Repeated → Validated → Institutionalised) is not yet implemented. Patterns are currently implicit in the `InnovationTracker` signature memory. |
+| Notes | `MemoryModel` provides the observe/state interface for pattern accumulation. `TopologyModel` provides the transformation interface for pattern extraction. EP-001: `PatternMaturity` lifecycle (Candidate → Observed → Repeated → Validated) is now implemented in both `adapters/ultracrew/src/decision_intelligence.rs` (`WorkforcePattern`) and `adapters/chronosentiment/src/learning.rs` (`InvestmentPattern`). Platform-level Pattern primitive (with persistence and cross-Workspace accumulation) is pending. |
 
 ---
 
@@ -232,10 +245,11 @@ This is a living engineering reference. It should be updated whenever a primitiv
 | Aspect | Detail |
 |--------|--------|
 | Implementation status | **Implemented** |
-| Coralys primitives realised | Workspace (Scheduling Workspace), Actor (Scheduler), Intent (Scheduling objective), Subject (Scheduling period / crew base), Evidence (Operational data), Hypothesis (Roster Strategy), Timeline (Scheduling Timeline), Outcome (Operational KPIs), Learning (Workforce Operations Learning Loop), Pattern (Workforce Behaviour Pattern) |
-| Key modules | `constraint_engine`, `decision_intelligence`, `ecology`, `optimization`, `pipeline`, `recommendation`, `schedule_solution`, `public_contracts` |
+| Coralys primitives realised | Workspace (Scheduling Workspace), Actor (Scheduler), Intent (Scheduling objective), Subject (Scheduling period / crew base), Evidence (Operational data, disruption records), Hypothesis (Roster Strategy), Timeline (Scheduling Timeline), Outcome (Operational KPIs), Learning (Workforce Operations Learning Loop), Pattern (Workforce Behaviour Pattern with PatternMaturity lifecycle) |
+| Key modules | `constraint_engine`, `decision_intelligence`, `disruption_recovery`, `ecology`, `optimization`, `pipeline`, `recommendation`, `schedule_solution`, `public_contracts` |
 | INRC2 implementation | `inrc/evaluator`, `inrc/schedule_optimizer`, `inrc/validator`, `inrc/parser`, `inrc/history`, `inrc/audit`, `inrc/baseline`, `inrc/bipartite_matching` |
 | Benchmark evidence | Ablation matrices (30-seed), survival curves, extinction curves, horizon tests, alpha sweeps |
+| EP-001 additions | `disruption_recovery.rs` — 5-step disruption workflow, 4 tests; `decision_intelligence.rs` — OperationalLearningLoop, PatternMaturity lifecycle, CycleReviewReport, 4 tests |
 
 ---
 
@@ -254,9 +268,11 @@ This is a living engineering reference. It should be updated whenever a primitiv
 
 | Aspect | Detail |
 |--------|--------|
-| Implementation status | **Stub** |
-| Coralys primitives realised | None — adapter is an empty stub |
-| Notes | The ChronoSentiment adapter is registered in the codebase but contains no implementation. All ChronoSentiment product capabilities (Decision Workspace, Investment Thesis, Committee Review, etc.) are documented in the blueprints but not yet implemented in the adapter. |
+| Implementation status | **Implemented** |
+| Coralys primitives realised | Workspace (InvestmentWorkspace — transaction boundary, lifecycle, single-Outcome invariant), Evidence (EvidenceItem — immutable, append-only, EvidenceDossier), Hypothesis (InvestmentThesis — versioned, ThesisReview), Timeline (TimelineEvent, 15 event kinds, TimelineView with filtering and narrative), Outcome (InvestmentOutcome — immutable once recorded), Learning (PersonalInvestmentLearningLoop — PatternMaturity lifecycle, QuarterlyReviewReport), Pattern (InvestmentPattern — 6 types, PatternMaturity) |
+| Key modules | `evidence`, `hypothesis`, `timeline`, `workspace`, `learning` |
+| Test coverage | 22 tests (4 per module + 5 in workspace) |
+| EP-001 note | Adapter moved from empty stub to full shared foundation for both ChronoSentiment Personal and Enterprise products. Enterprise-specific wiring (committee review, organisational learning loop, institutional KG) is pending. |
 
 ---
 
@@ -275,44 +291,3 @@ This is a living engineering reference. It should be updated whenever a primitiv
 |--------|--------|
 | Implementation status | **Planned** |
 | Notes | Documented in Architecture as a candidate future engine. The `coralys-ecology` crate provides the foundational traits (`TopologyModel`, `MemoryModel`) that would underpin this engine. Full implementation (clustering, embeddings, similarity search, graph mining) is planned for v2. |
-
----
-
-## Platform Invariant Implementation Status
-
-The following platform invariants are documented in Architecture Observation 9. This table records their current enforcement status.
-
-| Invariant | Status | Notes |
-|-----------|--------|-------|
-| Every Workspace has exactly one Intent | **Not enforced** | Intent is implicit in Scenario configuration; no platform-level enforcement |
-| Evidence is immutable once recorded | **Not enforced** | Immutability is a design principle; not yet enforced by the platform |
-| Every Outcome belongs to exactly one Workspace | **Not enforced** | Ownership is managed within each adapter; no platform-level enforcement |
-| Learning never mutates historical Evidence | **Satisfied by design** | `InnovationTracker` stores signatures, not Evidence; cannot mutate Evidence |
-| Knowledge Graph stores but does not infer without traceability | **Partial** | `MemoryModel` stores state; traceability of inference is not yet implemented |
-
----
-
-## Summary
-
-| Primitive | Status | Primary crate | Primary type |
-|-----------|--------|--------------|-------------|
-| Workspace | Partial | `coralys-core` | `Scenario` |
-| Actor | Partial | `coralys-planning` | `Worker` |
-| Intent | Stub | `coralys-core` | `DecisionProposal` (partial) |
-| Subject | Partial | `coralys-planning` | `PlanningScenario` |
-| Context | Planned | — | — |
-| Evidence | Partial | `coralys-core` | `EvaluationResult` |
-| Hypothesis | Partial | `coralys-core` | `DecisionProposal` |
-| Review | Partial | `coralys-core` | `DecisionPlugin::evaluate()` |
-| Timeline | **Implemented** | `coralys-core` | `DecisionLineage` |
-| Outcome | **Implemented** | `coralys-core` | `Outcome` trait |
-| Learning | **Implemented** | `coralys-core` | `InnovationTracker` |
-| Pattern | Partial | `coralys-ecology` | `MemoryModel` |
-| Knowledge Graph | Partial | `coralys-ecology` | `MemoryModel` + `TopologyModel` |
-| Continuous Learning Engine | **Implemented** | `coralys-moga` | `MogaReasoningEngine` |
-
----
-
-*Coralys Platform Architecture Traceability v1.0 | July 2026 | Status: Baseline*
-*Maps every Coralys platform primitive to its Rust implementation.*
-*Review trigger: New crate added; primitive implementation status changes; platform architecture revision.*
