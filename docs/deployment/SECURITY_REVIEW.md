@@ -488,11 +488,37 @@ If the public URL fails during a meeting:
 
 ---
 
+## Milestone P0.5 — Deployment Validation
+
+Milestone P0.5 is passed after the public deployment is live and the full end-to-end workflow has been verified on the production URLs. It is the gate between "deployed" and "feature frozen."
+
+### Acceptance criteria (all must be true)
+
+- [ ] Public HTTPS URLs respond correctly (Vercel frontend, Render backend)
+- [ ] Frontend communicates with backend over the public URLs (not localhost)
+- [ ] Supabase persistence verified: a complete demo session produces a record in the `pilot_sessions` table
+- [ ] SunAir/GERAD scenario executes successfully end-to-end on the public deployment
+- [ ] End-to-end pilot session completes: WOA interview → optimisation → commercial evidence → submit
+- [ ] No critical errors in browser console or server logs during the full workflow
+- [ ] Render service cold-boot verified (stop and restart the service; confirm it recovers without manual intervention)
+
+### Sequence
+
+```
+P0 GO/NO-GO  →  Deploy to Render + Vercel  →  P0.5 Validation  →  Feature Freeze  →  Customer Demos
+```
+
+P0 proves the code is ready to deploy. P0.5 proves the deployment actually works. Feature Freeze is declared only after P0.5 passes.
+
+---
+
 ## Feature Freeze Declaration
 
-**Pilot Experience v1.0 is feature frozen as of the date of Milestone P0 achievement.**
+**Pilot Experience v1.0 is feature frozen upon passing Milestone P0.5 — Deployment Validation.**
 
-After P0, only the following changes are permitted without a formal review:
+The freeze is not declared at P0 (code readiness) but at P0.5 (deployment readiness). This ensures the freeze is based on a proven working deployment, not an assumption that deployment will succeed.
+
+After P0.5, only the following changes are permitted without a formal review:
 
 - Bug fixes that affect demo reliability
 - Security patches (HIGH or CRITICAL findings from audits)
@@ -500,5 +526,16 @@ After P0, only the following changes are permitted without a formal review:
 - Stability improvements
 
 New capabilities (WOA Report Generator, Executive Dashboard, WDX Scorecard, Pilot Proposal Generator) are deferred until at least three customer demonstrations have been completed and their feedback has been reviewed. This protects the integrity of evidence gathering and ensures future development is driven by observed customer needs rather than assumptions.
-- [ ] Production-grade monitoring and alerting
-- [ ] Advanced API signing or mTLS between backend and Supabase
+
+### Success metrics (post-freeze)
+
+| Metric | Target |
+|--------|--------|
+| Public demo uptime | >99% during scheduled demos |
+| Successful demo completion rate | >90% |
+| WOA assessments completed | 10 |
+| WDX demonstrations completed | 10 |
+| Pilot opportunities generated | 3 |
+| Customer feedback items collected | Every session |
+
+These metrics will determine the priority of the next development phase. The roadmap after v1.0 is evidence-driven, not assumption-driven.
