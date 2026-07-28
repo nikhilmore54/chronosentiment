@@ -1,204 +1,222 @@
 # Pilot Evidence Register v1.0
 
-**UltraCrew Commercial Validation — Master Evidence Log**
-**For internal use only**
+**UltraCrew Commercial Validation — Evidence Log**
 
 ---
 
 ## Purpose
 
-This register is the single source of truth for all external commercial interactions. Every WOA assessment, WDX demonstration, and pilot discussion gets one row. The register drives the v1.1 roadmap — capabilities that appear in multiple rows are candidates for the next release; single-organisation requests are recorded but not prioritised.
+This register is the single source of truth for all external commercial interactions during the UltraCrew pilot phase.
 
----
-
-## How to Use
-
-1. Create a new row for every external session (including informal conversations with practitioners).
-2. Complete all fields within 48 hours of the session.
-3. Classify every piece of feedback using the three evidence categories below.
-4. Review the register before every planning decision about v1.1.
+Every session — whether a WOA diagnostic, a WDX demonstration, or a pilot conversation — is logged here. The register drives the v1.1 roadmap. Nothing enters the v1.1 backlog unless it appears in this register.
 
 ---
 
 ## Evidence Categories
 
-Classify all feedback immediately after each session. Do not let it accumulate unclassified.
+All feedback and observations are classified into one of three categories before being recorded.
 
-### Product Evidence
-Observations about the software itself.
+| Category | Definition | Examples |
+|----------|------------|---------|
+| **Product Evidence** | Observations about the software itself — what worked, what failed, what confused | UI friction, missing features, performance issues, data accuracy questions |
+| **Commercial Evidence** | Observations about the sales and engagement process | Objections raised, questions not answered, pricing reactions, procurement concerns |
+| **Strategic Evidence** | Observations about market fit, positioning, and competitive context | Comparisons to alternatives, regulatory requirements, organisational readiness signals |
 
-Examples: missing constraint, UI confusion, performance issue, incorrect calculation, missing export format.
-
-→ Candidate for v1.1 if raised by 2+ organisations.
-
-### Commercial Evidence
-Observations about the business proposition, pricing, or procurement process.
-
-Examples: ROI not obvious, pricing concern, procurement timeline, executive stakeholder identified, budget cycle timing.
-
-→ Sales and GTM improvements. Does not automatically become a feature.
-
-### Strategic Evidence
-Observations that suggest a different market, use case, or partnership.
-
-Examples: new industry opportunity (charter, ground handling, rail), different use case (training scheduling, ground crew), integration requirement (specific HR/ERP system), partnership opportunity.
-
-→ Product strategy and roadmap. Requires multiple signals before acting.
+**Classification rule:** If you are unsure which category applies, ask: *"Would fixing this require a code change?"* If yes → Product. If no, ask: *"Would fixing this require a different conversation?"* If yes → Commercial. If neither → Strategic.
 
 ---
 
-## Register
+## Evidence Hierarchy
 
-Copy this template for each session. Maintain all sessions in a single spreadsheet or Notion database with one row per session.
+When interpreting session data, weight evidence according to this hierarchy. Prioritise what customers actually did and said over internal assumptions.
 
----
+| Evidence type | Weight |
+|---------------|--------|
+| Behaviour observed during a demo | High |
+| Direct quote from a customer | High |
+| Requested capability | Medium |
+| Facilitator interpretation | Low |
+| Internal opinion | Lowest |
 
-### Session Template
-
-**Session ID:** PER-001 *(increment for each session)*
-
-**Date:**
-
-**Organisation:**
-
-**Contact name(s) and role(s):**
-
-**Session type:** WOA Assessment / WDX Demonstration / Pilot Discussion / Informal
-
-**Facilitator:**
-
----
-
-#### WOA Assessment
-
-| Field | Value |
-|-------|-------|
-| Fleet size (aircraft) | |
-| Crew size (total FTE) | |
-| Current scheduling tool | Manual / Spreadsheet / Legacy system / Modern system |
-| Scheduling cycle time (hours) | |
-| Disruption frequency (events/month) | |
-| Average disruption recovery time (hours) | |
-| WOA maturity tier assessed | 1 Reactive / 2 Managed / 3 Optimised / 4 Adaptive |
-| Primary pain point | |
-
----
-
-#### WDX Demonstration
-
-| Field | Value |
-|-------|-------|
-| Demo completed in full? | Yes / Partial / No |
-| If partial or no, reason | |
-| Optimisation appeared credible? | ★★★★★ |
-| Constraint report understood? | Yes / With explanation / No |
-| Decision audit understood? | Yes / With explanation / No |
-
----
-
-#### Feedback Classification
-
-**Product Evidence** *(software observations)*
-
-| Observation | Severity | Raised by |
-|-------------|----------|-----------|
-| | | |
-
-**Commercial Evidence** *(business proposition observations)*
-
-| Observation | Category | Raised by |
-|-------------|----------|-----------|
-| | | |
-
-**Strategic Evidence** *(market/use case observations)*
-
-| Observation | Signal strength | Raised by |
-|-------------|----------------|-----------|
-| | | |
-
----
-
-#### Pilot Readiness
-
-| Field | Value |
-|-------|-------|
-| Pilot interest | Hot / Warm / Cold |
-| Stated blocker (if not Hot) | |
-| Decision maker identified? | Yes / No |
-| Budget cycle timing | |
-| Procurement process | |
-
----
-
-#### Agreed Next Steps
-
-| Action | Owner | Deadline |
-|--------|-------|----------|
-| | | |
-
----
-
-#### Facilitator Notes
-
-*(Free text — anything not captured above)*
-
----
-
-## Aggregate Tracking
-
-Update this section after every 5 sessions.
-
-### KPI Dashboard
-
-| KPI | Target | Actual |
-|-----|--------|--------|
-| WOA assessments completed | 10 | |
-| WDX demonstrations completed | 10 | |
-| Organisations at Pilot Interest = Hot | 3 | |
-| Demo completion rate | >90% | |
-
-### Recurring Product Evidence
-
-List observations raised by 2+ organisations. These are v1.1 candidates.
-
-| Observation | Sessions | Classification |
-|-------------|----------|----------------|
-| | | |
-
-### Recurring Commercial Evidence
-
-| Observation | Sessions | Action |
-|-------------|----------|--------|
-| | | |
-
-### Recurring Strategic Evidence
-
-| Observation | Sessions | Signal |
-|-------------|----------|--------|
-| | | |
+**Principle:** If a roadmap decision rests primarily on facilitator interpretation or internal opinion, it requires corroboration from at least one High-weight evidence item before it is actioned.
 
 ---
 
 ## v1.1 Decision Rules
 
-Apply these rules after 10 demonstrations. Do not apply them earlier.
+These rules govern how evidence translates into roadmap decisions.
 
-| Rule | Condition | Action |
-|------|-----------|--------|
-| Prioritise | Capability requested by 2+ organisations | Add to v1.1 backlog |
-| Record only | Capability requested by 1 organisation | Log, do not prioritise |
-| Fix first | Workflow step causes confusion in 2+ sessions | Fix before adding features |
-| Refine messaging | Business value questioned in 2+ sessions | Improve messaging before expanding product |
-| Investigate | Strategic signal from 2+ organisations | Assess as potential roadmap direction |
+1. **2+ organisations before it becomes a v1.1 candidate.** A capability requested by a single organisation is recorded but not prioritised. A capability raised by two or more organisations is a v1.1 candidate.
 
----
+2. **Exception — critical compliance or safety requirements.** A regulatory or safety capability that is mandatory to operate in a target market can bypass the 2+ organisations rule. Record the requirement, the market, and the regulatory basis before actioning.
 
-## Version History
+3. **Fix workflow friction before adding features.** If a step in the demo or pilot process causes repeated confusion, that is addressed before new capabilities are added.
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-07-28 | Initial release — pre-first customer session |
+4. **Refine messaging before expanding product.** If business value is questioned, the response is to improve how value is communicated — not to add more features.
+
+5. **Roadmap is driven by this register, not by internal assumptions.** No v1.1 item is added without a corresponding entry in this register.
 
 ---
 
-*This document is internal. Do not share with prospects.*
+## Session Template
+
+Copy this template for every external session. One entry per session.
+
+---
+
+### Session [N] — [Organisation Name]
+
+**Date:** YYYY-MM-DD
+**Facilitator:** [Name]
+**Attendees:** [Names and roles]
+**Session type:** WOA Diagnostic / WDX Demonstration / Pilot Conversation / Combined
+
+---
+
+#### WOA Assessment
+
+| Dimension | Observed tier | Notes |
+|-----------|--------------|-------|
+| Data availability | Reactive / Managed / Optimised / Adaptive | |
+| Decision process | Reactive / Managed / Optimised / Adaptive | |
+| Tooling maturity | Reactive / Managed / Optimised / Adaptive | |
+| Organisational readiness | Reactive / Managed / Optimised / Adaptive | |
+
+**Overall WOA tier:** [Reactive / Managed / Optimised / Adaptive]
+
+---
+
+#### WDX Demonstration
+
+| Step | Completed | Notes |
+|------|-----------|-------|
+| 1. Baseline establishment | Yes / No | |
+| 2. Divergence identification | Yes / No | |
+| 3. Decision proposal | Yes / No | |
+| 4. Outcome simulation | Yes / No | |
+| 5. Confidence scoring | Yes / No | |
+| 6. Commercial evidence capture | Yes / No | |
+
+**Demo completion:** Full / Partial / Not reached
+**Reason if partial:** [Note]
+
+---
+
+#### Customer Confidence
+
+Rate each dimension 1–5 after the session. A customer may not be ready for a pilot but still rate operational credibility highly — record both.
+
+| Dimension | Rating (1–5) | Notes |
+|-----------|-------------|-------|
+| Operational credibility | | |
+| Decision transparency | | |
+| Overall confidence | | |
+
+**Rating guide:** 1 = No confidence / 2 = Sceptical / 3 = Neutral / 4 = Confident / 5 = Strong confidence
+
+---
+
+#### Objection Status
+
+Record every objection raised during the session and its resolution status.
+
+| Objection | Addressed during meeting | Requires follow-up | Product change required |
+|-----------|------------------------|-------------------|------------------------|
+| [Objection 1] | Yes / No | Yes / No | Yes / No |
+| [Objection 2] | Yes / No | Yes / No | Yes / No |
+| [Objection 3] | Yes / No | Yes / No | Yes / No |
+
+**Review unresolved objections before the next engagement with this organisation.**
+
+---
+
+#### Feedback Classification
+
+| Item | Category | Severity | v1.1 candidate? |
+|------|----------|----------|----------------|
+| [Observation 1] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
+| [Observation 2] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
+| [Observation 3] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
+
+---
+
+#### Pilot Readiness
+
+| Question | Answer |
+|----------|--------|
+| Decision maker identified? | Yes / No / Unknown |
+| Budget cycle known? | Yes / No / Unknown |
+| Procurement process understood? | Yes / No / Unknown |
+| Pilot scope agreed? | Yes / No / Not yet |
+| Timeline discussed? | Yes / No / Not yet |
+
+**Pilot readiness assessment:** Ready / Promising / Early / Not suitable
+
+---
+
+#### Agreed Next Steps
+
+| Action | Owner | Due date |
+|--------|-------|----------|
+| [Action 1] | [Name] | YYYY-MM-DD |
+| [Action 2] | [Name] | YYYY-MM-DD |
+
+---
+
+#### Facilitator Notes
+
+*Free text. Record anything that does not fit the structured fields above — tone of the meeting, unexpected questions, moments of genuine interest, concerns not raised directly.*
+
+---
+
+## Aggregate KPI Dashboard
+
+Update this section after every session.
+
+| KPI | Target | Actual |
+|-----|--------|--------|
+| WOA assessments completed | 10 | 0 |
+| WDX demonstrations completed | 10 | 0 |
+| Pilot opportunities identified | 3 | 0 |
+| Demo completion rate | >90% | — |
+| Repeat issues (2+ sessions) | Tracked | 0 |
+
+---
+
+## Roadmap Summary
+
+Update after every session. After ten demonstrations, this gives an immediate overview of where momentum is.
+
+| Status | Count |
+|--------|------:|
+| Product evidence items | |
+| Commercial evidence items | |
+| Strategic evidence items | |
+| v1.1 candidates | |
+| Deferred ideas | |
+
+---
+
+## Recurring Observations
+
+When the same issue appears in two or more sessions, it is recorded here and becomes a v1.1 candidate.
+
+| Observation | Sessions | Category | v1.1 candidate |
+|-------------|----------|----------|---------------|
+| [Issue] | [Session numbers] | Product / Commercial / Strategic | Yes |
+
+---
+
+## Deferred Ideas
+
+Requests raised by a single organisation that are recorded but not prioritised.
+
+| Idea | Organisation | Session | Category | Notes |
+|------|-------------|---------|----------|-------|
+| [Idea] | [Org] | [N] | Product / Commercial / Strategic | [Note] |
+
+---
+
+*Register opened: [Date]*
+*Last updated: [Date]*
+*Maintained by: [Name]*
