@@ -378,5 +378,127 @@ If any `/docs`, `/swagger`, or `/openapi.json` endpoints exist, verify they are 
 - [ ] External penetration test (OWASP Top 10)
 - [ ] Authentication for `/api/pilot/sessions` list endpoint
 - [ ] Switch backend to Supabase service role key (see Section 3)
+---
+
+## Milestone P0 — Release Decision Gate
+
+This gate must be passed before announcing any public URL. It is not a checklist to work through gradually — it is a binary GO / NO-GO decision made at a single point in time.
+
+### GO criteria (all must be true)
+
+**Functional**
+- [ ] Public frontend deployed and accessible over HTTPS
+- [ ] Public backend deployed and accessible over HTTPS
+- [ ] `GET /api/health` returns `{"status":"ok"}` from the public Render URL
+- [ ] Supabase persistence verified: complete a demo session and confirm the record appears in the Supabase dashboard
+- [ ] End-to-end workflow tested: SunAir scenario → optimizer → Step 6 evidence → submit → Supabase record
+
+**Security**
+- [ ] All 10 must-do items in the Pre-Launch Checklist above are complete
+- [ ] `cargo audit` shows zero HIGH or CRITICAL findings
+- [ ] `npm audit --audit-level=high` shows zero HIGH or CRITICAL findings
+- [ ] Rate limiting confirmed active (verify 429 response after rapid repeated calls to `/api/schedule`)
+- [ ] Repository confirmed private on GitHub
+
+**Operational**
+- [ ] Render service starts from a cold boot without manual intervention
+- [ ] Vercel frontend connects to the correct Render backend (not localhost)
+- [ ] Browser refresh on any step does not break the session
+- [ ] Error pages are user-friendly (no stack traces visible)
+
+### NO-GO conditions (any one blocks release)
+
+- Any must-do security item incomplete
+- `cargo audit` or `npm audit` contains HIGH or CRITICAL findings
+- Rate limiting disabled or unverified
+- Repository public
+- Supabase persistence unverified
+- End-to-end workflow untested on the public URLs
+
+---
+
+## Operational Readiness — Pre-Demo Verification
+
+Run this checklist before every customer or investor demonstration. It takes approximately 10 minutes.
+
+### Environment check
+
+1. Open `https://ultracrew-demo.vercel.app` in a fresh browser tab (incognito/private mode)
+2. Verify the portal loads without errors
+3. Open browser DevTools → Console — confirm no red errors on load
+4. Call `GET https://ultracrew-api.onrender.com/api/health` — confirm `{"status":"ok"}`
+
+### Smoke test (full workflow)
+
+5. Start a new demo session — select the SunAir scenario
+6. Run the optimizer — confirm it completes within 30 seconds and returns a schedule
+7. Step through Steps 1–5 — verify all UI elements render correctly
+8. Complete Step 6 commercial evidence fields
+9. Submit the session — confirm the success screen appears
+10. Open the Supabase dashboard → `pilot_sessions` table — confirm the new record is present
+
+### Recovery check
+
+11. Refresh the browser mid-session — confirm the app recovers gracefully
+12. Confirm the Render service is not in a sleeping state (free tier sleeps after 15 min inactivity — trigger a wake-up call to `/api/health` before the meeting)
+
+---
+
+## Disaster Recovery
+
+If something goes wrong during a live demonstration, follow this procedure in order.
+
+### Frontend failure (Vercel)
+
+1. Open the Vercel dashboard → Deployments
+2. Identify the last successful deployment
+3. Click "Promote to Production" on that deployment
+4. Wait 60–90 seconds for propagation
+5. Verify `https://ultracrew-demo.vercel.app` loads correctly
+
+### Backend failure (Render)
+
+1. Open the Render dashboard → `ultracrew-api` service
+2. Click "Manual Deploy" → "Deploy latest commit"
+3. Wait for the build to complete (first build ~15 min; subsequent builds ~2–3 min)
+4. Verify `GET /api/health` returns `{"status":"ok"}`
+5. Run the smoke test (Steps 5–10 above)
+
+### Environment variable loss
+
+If env vars are lost (e.g. after a service recreation):
+
+1. Render: set `PORT=10000`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DEMO_MODE=true`
+2. Vercel: set `REACT_APP_API_URL=https://ultracrew-api.onrender.com`
+3. Redeploy both services
+4. Run the smoke test
+
+### Supabase unavailable
+
+If Supabase is unreachable, the backend automatically falls back to local disk writes (`pilot_sessions/*.json`). The demo continues to function. Session records will not appear in the Supabase dashboard until connectivity is restored, but the demo workflow is unaffected.
+
+### During a live meeting — immediate fallback
+
+If the public URL fails during a meeting:
+
+1. Switch to the local demo: run `./start-demo.sh` (macOS/Linux) or `start-demo.ps1` (Windows)
+2. Share screen showing `http://localhost:3000`
+3. The local demo is functionally identical to the public deployment
+4. Apologise briefly, continue the demonstration — do not dwell on the technical issue
+
+---
+
+## Feature Freeze Declaration
+
+**Pilot Experience v1.0 is feature frozen as of the date of Milestone P0 achievement.**
+
+After P0, only the following changes are permitted without a formal review:
+
+- Bug fixes that affect demo reliability
+- Security patches (HIGH or CRITICAL findings from audits)
+- Deployment and infrastructure changes
+- Stability improvements
+
+New capabilities (WOA Report Generator, Executive Dashboard, WDX Scorecard, Pilot Proposal Generator) are deferred until at least three customer demonstrations have been completed and their feedback has been reviewed. This protects the integrity of evidence gathering and ensures future development is driven by observed customer needs rather than assumptions.
 - [ ] Production-grade monitoring and alerting
 - [ ] Advanced API signing or mTLS between backend and Supabase
