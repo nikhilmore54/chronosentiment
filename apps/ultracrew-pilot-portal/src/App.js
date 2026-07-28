@@ -45,6 +45,8 @@ const STEPS = ['Identity', 'Run Optimizer', 'Review Schedule', 'Recommendations'
 const REJECTION_REASONS = ['Crew unavailable in reality', 'Operational preference', 'Qualification issue', 'Rest concern', 'Airport logistics', 'Local knowledge', 'Other'];
 const MANUAL_EDIT_REASONS = ['Local knowledge', 'Customer request', 'Crew preference', 'Weather / delay', 'Qualification not in model', 'Other'];
 const ADOPTION_OPTIONS = [{ value: 'yes', label: 'Yes' }, { value: 'probably', label: 'Probably' }, { value: 'probably_not', label: 'Probably not' }, { value: 'no', label: 'No' }];
+const WILLING_TO_PILOT_OPTIONS = [{ value: 'yes', label: 'Yes — ready to proceed' }, { value: 'maybe', label: 'Maybe — need more information' }, { value: 'no', label: 'No — not at this time' }];
+const NEXT_STEPS_OPTIONS = ['Schedule a follow-up call', 'Provide a formal proposal', 'Run a paid pilot', 'Share with procurement / IT', 'No next step agreed', 'Other'];
 const EXPLANATION_LABELS = ['', 'Not useful', 'Slightly useful', 'Moderately useful', 'Very useful', 'Extremely useful'];
 
 async function fetchCsrfToken() {
@@ -294,6 +296,13 @@ export default function App() {
   const [adoptionSignal, setAdoptionSignal] = useState('');
   const [adoptionBarrier, setAdoptionBarrier] = useState('');
   const [dispatcherComments, setDispatcherComments] = useState('');
+  // -- Commercial evidence fields (Stream 4) ----------------------------------
+  const [orgName, setOrgName] = useState('');
+  const [baselineSchedulingMins, setBaselineSchedulingMins] = useState('');
+  const [baselineDisruptionMins, setBaselineDisruptionMins] = useState('');
+  const [productGaps, setProductGaps] = useState('');
+  const [nextSteps, setNextSteps] = useState('');
+  const [willingToPilot, setWillingToPilot] = useState('');
   // Disruption simulation state
   const [disruptionType, setDisruptionType] = useState('');
   const [disruptionShiftId, setDisruptionShiftId] = useState('');
@@ -426,6 +435,12 @@ export default function App() {
       manual_edit_reasons: manualEdits.map(e => e.reason).filter(Boolean),
       avg_explanation_rating: avgExplanationRating, recommendations_modified: modified,
       override_rate: recDecisions.length > 0 ? ((rejected + modified) / recDecisions.length * 100).toFixed(1) : '0.0',
+      org_name: orgName || null,
+      baseline_scheduling_mins: baselineSchedulingMins ? parseFloat(baselineSchedulingMins) : null,
+      baseline_disruption_mins: baselineDisruptionMins ? parseFloat(baselineDisruptionMins) : null,
+      product_gaps: productGaps || null,
+      next_steps: nextSteps || null,
+      willing_to_pilot: willingToPilot || null,
     };
     try { const record = await submitPilotSession(payload); setSubmitted(record); }
     catch (e) { setSubmitError(e.message); }
@@ -930,6 +945,36 @@ export default function App() {
 
               <label style={S.label}>Any other comments?</label>
               <textarea style={S.textarea} value={dispatcherComments} onChange={e => setDispatcherComments(e.target.value)} placeholder="What surprised you? What was most useful? What was missing?" />
+
+              <div style={S.divider} />
+
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#f1f5f9', marginBottom: '4px' }}>Commercial Evidence</div>
+              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>These fields help us build the business case. All optional.</div>
+
+              <label style={S.label}>Organisation name</label>
+              <input style={S.input} value={orgName} onChange={e => setOrgName(e.target.value)} placeholder="e.g. SunAir, IndiGo, Air India Express" />
+
+              <label style={S.label}>How long does manual scheduling take today? (minutes)</label>
+              <input style={S.input} type="number" min={0} value={baselineSchedulingMins} onChange={e => setBaselineSchedulingMins(e.target.value)} placeholder="e.g. 120" />
+
+              <label style={S.label}>How long does disruption recovery take today? (minutes)</label>
+              <input style={S.input} type="number" min={0} value={baselineDisruptionMins} onChange={e => setBaselineDisruptionMins(e.target.value)} placeholder="e.g. 45" />
+
+              <label style={S.label}>What was missing or would need to change before you could use this?</label>
+              <textarea style={S.textarea} value={productGaps} onChange={e => setProductGaps(e.target.value)} placeholder="Missing features, integration requirements, data needs, regulatory concerns…" />
+
+              <label style={S.label}>Would you be willing to run a paid pilot?</label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {WILLING_TO_PILOT_OPTIONS.map(o => (
+                  <button key={o.value} style={S.radioBtn(willingToPilot === o.value)} onClick={() => setWillingToPilot(o.value)}>{o.label}</button>
+                ))}
+              </div>
+
+              <label style={S.label}>Agreed next step</label>
+              <select style={S.select} value={nextSteps} onChange={e => setNextSteps(e.target.value)}>
+                <option value="">— select —</option>
+                {NEXT_STEPS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
 
               {submitError && <div style={S.alert('error')}>{submitError}</div>}
             </div>
