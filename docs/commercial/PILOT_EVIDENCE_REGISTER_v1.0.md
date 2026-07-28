@@ -1,14 +1,16 @@
-# Pilot Evidence Register v1.0
+# Coralys Commercial Evidence Register v1.0
 
-**UltraCrew Commercial Validation — Evidence Log**
+**Coralys Workforce Solutions — Commercial Evidence Register**
+
+*Applies to all Solution Engines: UltraCrew · UltraRoster · UltraShift · UltraRail · UltraField*
 
 ---
 
 ## Purpose
 
-This register is the single source of truth for all external commercial interactions during the UltraCrew pilot phase.
+This register is the single source of truth for all external commercial interactions across the Coralys platform.
 
-Every session — whether a WOA diagnostic, a WDX demonstration, or a pilot conversation — is logged here. The register drives the v1.1 roadmap. Nothing enters the v1.1 backlog unless it appears in this register.
+Every session — whether a WOA diagnostic, a WDX demonstration, or a pilot conversation — is logged here, regardless of which Solution Engine was demonstrated. The register drives the roadmap for both the platform and individual solutions. Nothing enters any backlog unless it appears in this register.
 
 ---
 
@@ -42,6 +44,19 @@ When interpreting session data, weight evidence according to this hierarchy. Pri
 
 ---
 
+## Evidence Scope Classification
+
+Every evidence item is classified by scope before it enters the roadmap. This prevents domain-specific requests from polluting the platform backlog, and platform gaps from being buried in solution-specific feedback.
+
+| Scope | Description | Examples |
+|-------|-------------|---------|
+| **Platform** | Applies to Coralys itself — optimisation engine, explainability, reporting, APIs, performance, security | "Need faster schedule generation", "Need audit trail for all decisions", "Need REST API for integration" |
+| **Solution** | Applies only to a specific Solution Engine | "Need ICU nurse certification rules" (UltraRoster), "Need DGCA duty-time rules" (UltraCrew) |
+
+**Classification rule:** Ask — *"Would this change affect every Solution Engine, or only one?"* If every engine → Platform. If one engine → Solution (note which).
+
+---
+
 ## v1.1 Decision Rules
 
 These rules govern how evidence translates into roadmap decisions.
@@ -70,6 +85,8 @@ Copy this template for every external session. One entry per session.
 **Facilitator:** [Name]
 **Attendees:** [Names and roles]
 **Session type:** WOA Diagnostic / WDX Demonstration / Pilot Conversation / Combined
+**Solution:** UltraCrew / UltraRoster / UltraShift / UltraRail / UltraField / Other
+**Domain:** Airline / Healthcare / Manufacturing / Rail / Logistics / Other
 
 ---
 
@@ -132,11 +149,11 @@ Record every objection raised during the session and its resolution status.
 
 #### Feedback Classification
 
-| Item | Category | Severity | v1.1 candidate? |
-|------|----------|----------|----------------|
-| [Observation 1] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
-| [Observation 2] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
-| [Observation 3] | Product / Commercial / Strategic | High / Medium / Low | Yes / No |
+| Item | Category | Scope | Severity | v1.1 candidate? |
+|------|----------|-------|----------|----------------|
+| [Observation 1] | Product / Commercial / Strategic | Platform / Solution | High / Medium / Low | Yes / No |
+| [Observation 2] | Product / Commercial / Strategic | Platform / Solution | High / Medium / Low | Yes / No |
+| [Observation 3] | Product / Commercial / Strategic | Platform / Solution | High / Medium / Low | Yes / No |
 
 ---
 
@@ -180,6 +197,24 @@ Update this section after every session.
 | Pilot opportunities identified | 3 | 0 |
 | Demo completion rate | >90% | — |
 | Repeat issues (2+ sessions) | Tracked | 0 |
+
+### Commercial Funnel
+
+Track every opportunity from first contact to signed subscription. If many prospects complete WOA but few accept a paid assessment, the commercial offer — not the technology — needs work.
+
+| Stage | Count |
+|-------|------:|
+| Initial contact | |
+| Discovery completed | |
+| WOA completed | |
+| WDX demonstrated | |
+| Assessment proposal sent | |
+| Assessment won | |
+| Pilot proposal sent | |
+| Pilot won | |
+| Subscription signed | |
+
+**Conversion to watch:** WOA completed → Assessment won. A drop here indicates a pricing or value-communication problem, not a product problem.
 
 ---
 
