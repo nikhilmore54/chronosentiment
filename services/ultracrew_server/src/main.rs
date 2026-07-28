@@ -9,6 +9,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower_http::cors::{Any, CorsLayer};
+use tower_governor::GovernorLayer;
+use tower_governor::governor::GovernorConfigBuilder;
 use serde_json::json;
 use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
 use ultracrew_server::simulation::{SkillCoverageAudit, SkillDeficit, ValidationReport};
@@ -1839,6 +1841,17 @@ async fn main() {
     // ─────────────────────────────────────────────────────────────────────────
 
 
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    // 2 requests/second per IP, burst of 5.  Applied globally so that
+    // /api/schedule (the expensive optimizer endpoint) cannot be abused.
+    // Returns HTTP 429 Too Many Requests when the limit is exceeded.
+    let governor_conf = GovernorConfigBuilder::default()
+        .per_second(2)
+        .burst_size(5)
+        .finish()
+        .expect("Invalid governor configuration");
+    let governor_conf = std::sync::Arc::new(governor_conf);
+
     let app = Router::new()
         .route("/api/health", get(health_check))
         .route("/api/csrf-token", get(csrf_token_handler))
@@ -1870,6 +1883,7 @@ async fn main() {
         .route("/api/pilot/session", post(pilot_session_handler))
         .route("/api/pilot/sessions", get(list_pilot_sessions_handler))
         .with_state(app_state)
+        .layer(GovernorLayer { config: governor_conf })
         .layer(cors);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
