@@ -49,8 +49,10 @@ const WILLING_TO_PILOT_OPTIONS = [{ value: 'yes', label: 'Yes — ready to proce
 const NEXT_STEPS_OPTIONS = ['Schedule a follow-up call', 'Provide a formal proposal', 'Run a paid pilot', 'Share with procurement / IT', 'No next step agreed', 'Other'];
 const EXPLANATION_LABELS = ['', 'Not useful', 'Slightly useful', 'Moderately useful', 'Very useful', 'Extremely useful'];
 
+const API_BASE = process.env.REACT_APP_API_URL || '';
+
 async function fetchCsrfToken() {
-  const res = await fetch('/api/csrf-token');
+  const res = await fetch(`${API_BASE}/api/csrf-token`);
   if (!res.ok) throw new Error('Failed to fetch CSRF token');
   return (await res.json()).csrf_token;
 }
@@ -232,7 +234,7 @@ async function runOptimizer(scenarioId, generationLimit, seed) {
     : scenarioId === 'gerad-benchmark' ? buildGeradBenchmarkScenario()
     : buildSunairScenario();
   const { workers, shifts, layoverMarkers, horizonHours, maxHoursPerWorker } = scenarioData;
-  const res = await fetch('/api/schedule', {
+  const res = await fetch(`${API_BASE}/api/schedule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ workers, shifts, rng_seed: seed, generation_limit: generationLimit, scenario: { planning_horizon_hours: horizonHours, max_hours_per_worker: maxHoursPerWorker } }),
@@ -245,7 +247,7 @@ async function runOptimizer(scenarioId, generationLimit, seed) {
 async function submitPilotSession(payload) {
   // Re-fetch CSRF token immediately before the POST to avoid stale-token errors
   const csrfToken = await fetchCsrfToken();
-  const res = await fetch('/api/pilot/session', {
+  const res = await fetch(`${API_BASE}/api/pilot/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify(payload),
@@ -348,8 +350,8 @@ export default function App() {
       try {
         const analysisBody = JSON.stringify({ schedule: data.schedule, shifts, workers });
         const [pairRes, dutyRes] = await Promise.all([
-          fetch('/api/pairings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
-          fetch('/api/duties',   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
+          fetch(`${API_BASE}/api/pairings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
+          fetch(`${API_BASE}/api/duties`,   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
         ]);
         if (dutyRes.ok) {
           const dutyData = await dutyRes.json();

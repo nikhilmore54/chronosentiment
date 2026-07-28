@@ -1,34 +1,13 @@
 services:
-  # ─────────────────────────────────────────────
-  # Backend — Rust (ultracrew_server)
-  # ─────────────────────────────────────────────
   - type: web
     name: ultracrew-api
-    runtime: docker
-    dockerfilePath: ./services/ultracrew_server/Dockerfile
-    dockerContext: .
-    plan: free
-    healthCheckPath: /api/health
+    runtime: rust
+    buildCommand: cargo build --release --bin ultracrew_server
+    startCommand: ./target/release/ultracrew_server
     envVars:
       - key: PORT
-        value: 3001
-      - key: RUST_LOG
-        value: info
-
-  # ─────────────────────────────────────────────
-  # Frontend — Vite/React static site
-  # ─────────────────────────────────────────────
-  - type: web
-    name: ultracrew-ui
-    runtime: static
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    rootDir: ui/ultracrew
-    plan: free
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://ultracrew-api.onrender.com
+        value: 10000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
