@@ -1,0 +1,16 @@
+[package]
+name = "coralys-gerad"
+version = "0.1.0"
+edition = "2024"
+description = "GERAD G-2014-22 dataset adapter — translates the benchmark's native format into the Coralys airline domain model. After import, no downstream code knows the data originated from GERAD."
+
+[dependencies]
+coralys-airline = { path = "../airline" }
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+csv = "1"
+
+[dev-dependencies]
+serde_json = "1.0"
+tempfile = "3"
