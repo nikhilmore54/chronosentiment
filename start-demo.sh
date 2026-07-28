@@ -248,12 +248,29 @@ echo "  Workforce Optimisation Platform  |  Demo Launcher"
 echo "  UltraCrew (Airline) + UltraRoster (Healthcare)"
 echo ""
 
+load_inrc_scenario() {
+    if $START_ULTRAROSTER; then
+        info "Loading default INRC scenario into backend..."
+        local response
+        response=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "http://localhost:$BACKEND_PORT/api/load-scenario" 2>/dev/null || true)
+        if [[ -n "$response" ]]; then
+            info "INRC scenario loaded: $response"
+        else
+            warn "INRC scenario load returned no response — UltraRoster simulation endpoints may return 503 until loaded manually."
+        fi
+    fi
+}
+
 check_deps
 install_frontend_deps   # parallel npm install (skipped if node_modules exist)
 start_backend           # ─┐
 start_ultracrew         #  ├─ all three launch concurrently as background jobs
 start_ultraroster       # ─┘
 wait_for_all            # parallel readiness checks with spinner
+load_inrc_scenario      # POST /api/load-scenario — seeds UltraRoster with default n030w4 dataset
 open_browser
 
 echo ""

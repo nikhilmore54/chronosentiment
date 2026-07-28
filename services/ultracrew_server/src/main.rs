@@ -872,6 +872,117 @@ async fn simulate_sick_leave(
     Json(current_state).into_response()
 }
 
+// ─── Load INRC Scenario Endpoint ─────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct LoadScenarioRequest {
+    /// Absolute or relative path to the scenario directory.
+    /// Defaults to the bundled n030w4 fixture when omitted.
+    base_dir: Option<String>,
+}
+
+#[derive(Serialize)]
+struct LoadScenarioResponse {
+    loaded: bool,
+    nurses: usize,
+    weeks: usize,
+    message: String,
+}
+
+async fn load_scenario_handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Json(req): Json<LoadScenarioRequest>,
+) -> impl IntoResponse {
+    let base_dir = match req.base_dir {
+        Some(ref p) => PathBuf::from(p),
+        None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../adapters/ultracrew/tests/data/n030w4"),
+    };
+
+    let scenario_path = base_dir.join("Sc-n030w4.json");
+    let week_data_path = base_dir.join("WD-n030w4-0.json");
+
+    let scenario = match parse_scenario(scenario_path) {
+        Ok(s) => s,
+        Err(e) => return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({"error": format!("Failed to parse scenario: {}", e)})),
+        ).into_response(),
+    };
+
+    let week_data = match parse_week_data(week_data_path) {
+        Ok(w) => w,
+        Err(e) => return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({"error": format!("Failed to parse week data: {}", e)})),
+        ).into_response(),
+    };
+
+    // Build a baseline schedule from the scenario + requirements
+    let genome = match ultracrew_server::simulation::generate_baseline_schedule(
+        &scenario,
+        &week_data.requirements,
+    ) {
+        Ok(g) => g,
+        Err(e) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Failed to generate baseline schedule: {}", e)})),
+        ).into_response(),
+    };
+
+    // Convert genome → HashMap<nurse_id, Vec<shift_per_day>> using built-in method
+    let schedule = genome.to_flat_schedule();
+
+    let validation_report = ultracrew::inrc::validator::validate_schedule(&schedule, &scenario);
+
+    let balances: Vec<ultracrew_server::simulation::NurseBalance> = scenario.nurses.iter().map(|n| {
+        ultracrew_server::simulation::NurseBalance {
+            nurse_id: n.id.clone(),
+            balance: 0,
+            explanation: vec!["Baseline — no adjustments yet".to_string()],
+        }
+    }).collect();
+
+    let dashboard = make_dynamic_dashboard(
+        &schedule,
+        &scenario,
+        &week_data,
+        &validation_report,
+        None,
+        None,
+    );
+
+    let sim_state = SimulationState {
+        schedule,
+        dashboard,
+        balances,
+        recovery_plan: None,
+        verification_reports: VerificationReports {
+            baseline: Some(validation_report),
+            sickness: None,
+            recovery: None,
+        },
+    };
+
+    let nurses = scenario.nurses.len();
+    let weeks = scenario.number_of_weeks as usize;
+
+    let mut app = state.lock().unwrap();
+    app.scenario = Some(scenario);
+    app.baseline_state = Some(sim_state.clone());
+    app.original_state = Some(sim_state);
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "loaded": true,
+            "nurses": nurses,
+            "weeks": weeks,
+            "message": format!("INRC scenario loaded: {} nurses, {} weeks", nurses, weeks)
+        })),
+    ).into_response()
+}
+
 #[derive(Serialize)]
 struct ValidateResponse {
     is_valid: bool,
@@ -1882,6 +1993,7 @@ async fn main() {
         // Pilot portal evidence endpoints
         .route("/api/pilot/session", post(pilot_session_handler))
         .route("/api/pilot/sessions", get(list_pilot_sessions_handler))
+        .route("/api/load-scenario", post(load_scenario_handler))
         .with_state(app_state)
         .layer(GovernorLayer { config: governor_conf })
         .layer(cors);
