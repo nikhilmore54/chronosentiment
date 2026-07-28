@@ -1508,6 +1508,25 @@ struct PilotSessionRecord {
     dispatcher_comments: String,
     /// Session completed successfully
     session_complete: bool,
+    // ── Commercial evidence fields (Stream 4) ────────────────────────────────
+    /// Organisation name (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    org_name: Option<String>,
+    /// Current manual scheduling time in minutes (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline_scheduling_mins: Option<f64>,
+    /// Current disruption recovery time in minutes (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline_disruption_mins: Option<f64>,
+    /// Product gaps / what was missing (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    product_gaps: Option<String>,
+    /// Agreed next step (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_steps: Option<String>,
+    /// Willingness to run a paid pilot (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    willing_to_pilot: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1536,6 +1555,19 @@ struct PilotSessionInput {
     explanation_usefulness: u8,
     dispatcher_comments: String,
     session_complete: bool,
+    // ── Commercial evidence fields (Stream 4) ────────────────────────────────
+    #[serde(default)]
+    org_name: Option<String>,
+    #[serde(default)]
+    baseline_scheduling_mins: Option<f64>,
+    #[serde(default)]
+    baseline_disruption_mins: Option<f64>,
+    #[serde(default)]
+    product_gaps: Option<String>,
+    #[serde(default)]
+    next_steps: Option<String>,
+    #[serde(default)]
+    willing_to_pilot: Option<String>,
 }
 
 async fn pilot_session_handler(
@@ -1583,42 +1615,115 @@ async fn pilot_session_handler(
         explanation_usefulness: input.explanation_usefulness,
         dispatcher_comments: input.dispatcher_comments,
         session_complete: input.session_complete,
+        org_name: input.org_name,
+        baseline_scheduling_mins: input.baseline_scheduling_mins,
+        baseline_disruption_mins: input.baseline_disruption_mins,
+        product_gaps: input.product_gaps,
+        next_steps: input.next_steps,
+        willing_to_pilot: input.willing_to_pilot,
     };
 
-    // Write to pilot_sessions/ directory
-    let dir = std::path::Path::new("pilot_sessions");
-    std::fs::create_dir_all(dir)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create pilot_sessions dir: {}", e)))?;
+    // ── Persist: Supabase REST (preferred) or local disk (fallback) ──────────
+    let supabase_url = std::env::var("SUPABASE_URL").ok();
+    let supabase_key = std::env::var("SUPABASE_ANON_KEY").ok();
 
-    let file_path = dir.join(format!("{}.json", dsp_id));
-    let json = serde_json::to_string_pretty(&record)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Serialization failed: {}", e)))?;
-    std::fs::write(&file_path, &json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write session record: {}", e)))?;
+    match (supabase_url, supabase_key) {
+        (Some(url), Some(key)) => {
+            // Supabase PostgREST insert
+            let endpoint = format!("{}/rest/v1/pilot_sessions", url.trim_end_matches('/'));
+            let client = reqwest::Client::new();
+            let resp = client
+                .post(&endpoint)
+                .header("apikey", &key)
+                .header("Authorization", format!("Bearer {}", key))
+                .header("Content-Type", "application/json")
+                .header("Prefer", "return=minimal")
+                .json(&record)
+                .send()
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase request failed: {}", e)))?;
 
-    println!("Pilot session recorded: {} -> {:?}", dsp_id, file_path);
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err((StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Supabase insert failed ({}): {}", status, body)));
+            }
+            println!("Pilot session persisted to Supabase: {}", dsp_id);
+        }
+        _ => {
+            // Local disk fallback (development / no Supabase configured)
+            let dir = std::path::Path::new("pilot_sessions");
+            std::fs::create_dir_all(dir)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create pilot_sessions dir: {}", e)))?;
+            let file_path = dir.join(format!("{}.json", dsp_id));
+            let json = serde_json::to_string_pretty(&record)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Serialization failed: {}", e)))?;
+            std::fs::write(&file_path, &json)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write session record: {}", e)))?;
+            println!("Pilot session recorded to disk (no Supabase): {} -> {:?}", dsp_id, file_path);
+        }
+    }
+
     Ok(Json(record))
 }
 
 async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, (StatusCode, String)> {
-    let dir = std::path::Path::new("pilot_sessions");
-    if !dir.exists() {
-        return Ok(Json(vec![]));
-    }
-    let mut records = Vec::new();
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read pilot_sessions: {}", e)))?;
-    for entry in entries.flatten() {
-        if entry.path().extension().map(|e| e == "json").unwrap_or(false) {
-            if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                if let Ok(record) = serde_json::from_str::<PilotSessionRecord>(&content) {
-                    records.push(record);
+    let supabase_url = std::env::var("SUPABASE_URL").ok();
+    let supabase_key = std::env::var("SUPABASE_ANON_KEY").ok();
+
+    match (supabase_url, supabase_key) {
+        (Some(url), Some(key)) => {
+            // Supabase PostgREST select — ordered by timestamp ascending
+            let endpoint = format!(
+                "{}/rest/v1/pilot_sessions?order=timestamp.asc",
+                url.trim_end_matches('/')
+            );
+            let client = reqwest::Client::new();
+            let resp = client
+                .get(&endpoint)
+                .header("apikey", &key)
+                .header("Authorization", format!("Bearer {}", key))
+                .header("Accept", "application/json")
+                .send()
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase request failed: {}", e)))?;
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err((StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Supabase select failed ({}): {}", status, body)));
+            }
+
+            let records: Vec<PilotSessionRecord> = resp
+                .json()
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase response parse failed: {}", e)))?;
+            Ok(Json(records))
+        }
+        _ => {
+            // Local disk fallback
+            let dir = std::path::Path::new("pilot_sessions");
+            if !dir.exists() {
+                return Ok(Json(vec![]));
+            }
+            let mut records = Vec::new();
+            let entries = std::fs::read_dir(dir)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read pilot_sessions: {}", e)))?;
+            for entry in entries.flatten() {
+                if entry.path().extension().map(|e| e == "json").unwrap_or(false) {
+                    if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                        if let Ok(record) = serde_json::from_str::<PilotSessionRecord>(&content) {
+                            records.push(record);
+                        }
+                    }
                 }
             }
+            records.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+            Ok(Json(records))
         }
     }
-    records.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-    Ok(Json(records))
 }
 
 async fn export_formats_handler() -> Json<Vec<ultracrew::generic_export::FormatDescriptor>> {
