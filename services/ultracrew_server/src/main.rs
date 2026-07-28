@@ -35,9 +35,12 @@ struct SickLeaveRequest {
 }
 
 struct AppState {
-    scenario: InrcScenario,
-    baseline_state: SimulationState,
-    original_state: SimulationState,
+    /// INRC scenario — None until loaded (pilot portal does not require this)
+    scenario: Option<InrcScenario>,
+    /// Simulation state — None until an INRC scenario is loaded
+    baseline_state: Option<SimulationState>,
+    /// Original simulation state for reset — None until loaded
+    original_state: Option<SimulationState>,
     last_solution: Option<ultracrew::schedule_solution::ScheduleSolution>,
     last_request: Option<ultracrew::public_contracts::ScheduleRequest>,
     decisions: Vec<DecisionCase>,
@@ -515,31 +518,51 @@ async fn csrf_token_handler(
     )
 }
 
-async fn get_scenario(State(state): State<Arc<Mutex<AppState>>>) -> Json<InrcScenario> {
+async fn get_scenario(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let state = state.lock().unwrap();
-    Json(state.scenario.clone())
+    match &state.scenario {
+        Some(sc) => (StatusCode::OK, Json(serde_json::to_value(sc).unwrap())).into_response(),
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "INRC scenario not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
-async fn get_state(State(state): State<Arc<Mutex<AppState>>>) -> Json<SimulationState> {
+async fn get_state(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let state = state.lock().unwrap();
-    Json(state.baseline_state.clone())
+    match &state.baseline_state {
+        Some(s) => (StatusCode::OK, Json(serde_json::to_value(s).unwrap())).into_response(),
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "Simulation state not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
-async fn reset_simulation(State(state): State<Arc<Mutex<AppState>>>) -> Json<SimulationState> {
+async fn reset_simulation(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let mut state = state.lock().unwrap();
-    state.baseline_state = state.original_state.clone();
-    println!("Reset simulation state on server successfully.");
-    Json(state.baseline_state.clone())
+    match state.original_state.clone() {
+        Some(orig) => {
+            state.baseline_state = Some(orig.clone());
+            println!("Reset simulation state on server successfully.");
+            (StatusCode::OK, Json(serde_json::to_value(&orig).unwrap())).into_response()
+        }
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "Simulation state not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
 async fn simulate_sick_leave(
     State(state): State<Arc<Mutex<AppState>>>,
     Json(req): Json<SickLeaveRequest>,
-) -> Json<SimulationState> {
+) -> impl IntoResponse {
     println!("Received SickLeaveRequest for employee {}", req.employee_id);
     let mut state = state.lock().unwrap();
-    let mut current_state = state.baseline_state.clone();
-    let scenario = &state.scenario;
+    // Guard: simulation state requires INRC fixture — not used by pilot portal
+    let mut current_state = match state.baseline_state.clone() {
+        Some(s) => s,
+        None => return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "Simulation state not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    };
+    let scenario = match state.scenario.as_ref() {
+        Some(s) => s,
+        None => return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "INRC scenario not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    };
+    let scenario = scenario.clone();
+    let scenario = &scenario;
     let today_index = 14;
 
     let nurse_id = &req.employee_id;
@@ -547,7 +570,7 @@ async fn simulate_sick_leave(
         Some(n) => n,
         None => {
             println!("Nurse {} not found in scenario!", nurse_id);
-            return Json(current_state);
+            return Json(current_state).into_response();
         }
     };
     
@@ -842,9 +865,9 @@ async fn simulate_sick_leave(
     
     current_state.dashboard.validation_report = post_recovery_validation;
     
-    state.baseline_state = current_state.clone();
+    state.baseline_state = Some(current_state.clone());
     
-    Json(current_state)
+    Json(current_state).into_response()
 }
 
 #[derive(Serialize)]
@@ -1650,22 +1673,31 @@ async fn export_solution_handler(
 
 async fn get_balance_handler(
     State(state): State<Arc<Mutex<AppState>>>,
-) -> Json<Vec<NurseBalance>> {
+) -> impl IntoResponse {
     let state = state.lock().unwrap();
-    Json(state.baseline_state.balances.clone())
+    match &state.baseline_state {
+        Some(s) => (StatusCode::OK, Json(serde_json::to_value(&s.balances).unwrap())).into_response(),
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "Simulation state not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
 async fn get_dashboard_handler(
     State(state): State<Arc<Mutex<AppState>>>,
-) -> Json<Dashboard> {
+) -> impl IntoResponse {
     let state = state.lock().unwrap();
-    Json(state.baseline_state.dashboard.clone())
+    match &state.baseline_state {
+        Some(s) => (StatusCode::OK, Json(serde_json::to_value(&s.dashboard).unwrap())).into_response(),
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "Simulation state not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
 // Handler to return list of nurses for UI
-async fn get_nurses_handler(State(state): State<Arc<Mutex<AppState>>>) -> Json<serde_json::Value> {
+async fn get_nurses_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let state = state.lock().unwrap();
-    Json(json!({ "nurses": state.scenario.nurses.clone() }))
+    match &state.scenario {
+        Some(sc) => (StatusCode::OK, Json(json!({ "nurses": sc.nurses.clone() }))).into_response(),
+        None => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "INRC scenario not loaded. This endpoint is not used by the pilot portal."}))).into_response(),
+    }
 }
 
 #[tokio::main]
@@ -1675,362 +1707,32 @@ async fn main() {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(Any);
 
-    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../adapters/ultracrew/tests/data/n030w4");
-    let scenario = parse_scenario(base_dir.join("Sc-n030w4.json")).unwrap();
-    let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json")).unwrap();
-    let requirements = &week_data.requirements;
-    
-    let mut bottlenecks = Vec::new();
-    let mut skill_feasible = true;
-    let mut contract_feasible = true;
-    let mut structural_feasible = true;
-    let mut total_required_assignments = 0;
-    let mut skill_demand: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let mut weekend_demand = 0;
-    let mut night_demand = 0;
-    
-    let num_days = (scenario.number_of_weeks * 7) as usize;
-    for d in 0..num_days {
-        let weekday = d % 7;
-        for req in requirements {
-            let req_amt = match weekday {
-                0 => req.monday.optimal,
-                1 => req.tuesday.optimal,
-                2 => req.wednesday.optimal,
-                3 => req.thursday.optimal,
-                4 => req.friday.optimal,
-                5 => req.saturday.optimal,
-                6 => req.sunday.optimal,
-                _ => 0,
-            };
-            if req_amt > 0 {
-                total_required_assignments += req_amt;
-                *skill_demand.entry(req.skill.clone()).or_insert(0) += req_amt;
-                if weekday == 5 || weekday == 6 {
-                    weekend_demand += req_amt;
-                }
-                if req.shift_type == "Night" {
-                    night_demand += req_amt;
-                }
-            }
-        }
-    }
-    
-    let mut total_capacity = 0;
-    let mut skill_capacity: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let mut weekend_capacity = 0;
-    let mut night_capacity = 0;
-    
-    for nurse in &scenario.nurses {
-        let contract = scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
-        let scale = 56.0 / (scenario.number_of_weeks as f64 * 7.0);
-        let max_assign = (contract.max_assignments as f64 * scale) as usize;
-        
-        total_capacity += max_assign;
-        
-        for skill in &nurse.skills {
-            *skill_capacity.entry(skill.clone()).or_insert(0) += max_assign;
-        }
-        
-        let max_weekend = (contract.max_working_weekends as f64 * (8.0 / scenario.number_of_weeks as f64)) as usize;
-        weekend_capacity += max_weekend * 2;
-        night_capacity += max_assign;
-    }
-    
-    if total_required_assignments > total_capacity {
-        contract_feasible = false;
-        bottlenecks.push(Bottleneck {
-            description: format!("Global Capacity Shortfall: Required {}, Capacity {}", total_required_assignments, total_capacity),
-            severity: "CRITICAL".to_string(),
-        });
-    }
-    
-    for (skill, demand) in &skill_demand {
-        let capacity = skill_capacity.get(skill).unwrap_or(&0);
-        if demand > capacity {
-            skill_feasible = false;
-            bottlenecks.push(Bottleneck {
-                description: format!("{} Capacity Shortfall: Required {}, Capacity {}", skill, demand, capacity),
-                severity: "CRITICAL".to_string(),
-            });
-        }
-    }
-    
-    if weekend_demand > weekend_capacity {
-        structural_feasible = false;
-        bottlenecks.push(Bottleneck {
-            description: format!("Weekend Capacity Shortfall: Required {}, Capacity {}", weekend_demand, weekend_capacity),
-            severity: "HIGH".to_string(),
-        });
-    }
-    
-    let overall_feasible = skill_feasible && contract_feasible && structural_feasible;
-    
-    let feasibility_report = FeasibilityReport {
-        overall_feasible,
-        skill_feasible,
-        contract_feasible,
-        structural_feasible,
-        bottlenecks,
-    };
-    
-    let startup = ultracrew::pipeline::run_inrc_startup_pipeline(
-        &base_dir.join("Sc-n030w4.json"),
-        &base_dir.join("WD-n030w4-0.json"),
-        100,
-    ).unwrap_or_else(|e| {
-        println!("Startup pipeline error: {:?}", e);
-        ultracrew::public_contracts::InrcStartupResult {
-            schedule: HashMap::new(),
-            pareto_solutions: Vec::new(),
-        }
-    });
-
-    let pareto_solutions: Vec<ParetoFrontierSolution> = startup.pareto_solutions.into_iter().map(|p| {
-        ParetoFrontierSolution {
-            s6_assignment_penalty: p.s6_assignment_penalty,
-            s7_weekend_penalty: p.s7_weekend_penalty,
-            recovery_penalty: p.recovery_penalty,
-            workload_balance: p.workload_balance,
-            temporal_load_balance: p.temporal_load_balance,
-            schedule: p.schedule,
-        }
-    }).collect();
-
-    let validation_report = validate_schedule(&startup.schedule, &scenario);
-    let schedule = startup.schedule;
-    
-    let mut balances = Vec::new();
-    for (i, nurse) in scenario.nurses.iter().enumerate() {
-        let nurse_id = nurse.id.clone();
-        let balance = if i == 0 { -4 } else if i == 1 { 2 } else if i == 2 { 1 } else if i == 3 { 1 } else { 0 };
-        let exp = if balance < 0 { vec!["Slightly under target workload".to_string()] } 
-                  else if balance > 0 { vec!["Slightly over target workload".to_string()] } 
-                  else { vec!["On track with target workload".to_string()] };
-        balances.push(NurseBalance { nurse_id, balance, explanation: exp });
-    }
-    
-    let initial_sum: i32 = balances.iter().map(|b| b.balance).sum();
-    assert_eq!(initial_sum, 0, "Initial balances must sum to zero");
-    
-    let mut workload_audit = Vec::new();
-    for nurse in &scenario.nurses {
-        let contract = scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
-        let scale = 56.0 / (scenario.number_of_weeks as f64 * 7.0);
-        let min_assign = (contract.min_assignments as f64 * scale) as i32;
-        let max_assign = (contract.max_assignments as f64 * scale) as i32;
-        let expected = (min_assign + max_assign) / 2;
-        let actual = schedule[&nurse.id].iter().filter(|s| !s.is_empty()).count() as i32;
-        let mut max_work = 0;
-        let mut max_off = 0;
-        let mut curr_work = 0;
-        let mut curr_off = 0;
-        for d in 0..num_days {
-            let shift = &schedule[&nurse.id][d];
-            if !shift.is_empty() {
-                curr_work += 1;
-                curr_off = 0;
-                if curr_work > max_work { max_work = curr_work; }
-            } else {
-                curr_off += 1;
-                curr_work = 0;
-                if curr_off > max_off { max_off = curr_off; }
-            }
-        }
-        
-        workload_audit.push(WorkloadAudit {
-            nurse_id: nurse.id.clone(),
-            expected_assignments: expected,
-            actual_assignments: actual,
-            deviation: actual - expected,
-            max_work_streak: max_work,
-            max_off_streak: max_off,
-        });
-    }
-
-    let mut daily_assignments = vec![0; num_days];
-    let required_assignments = 16 * num_days;
-    let mut actual_assignments = 0;
-    for shifts in schedule.values() {
-        for d in 0..num_days {
-            if !shifts[d].is_empty() {
-                actual_assignments += 1;
-                daily_assignments[d] += 1;
-            }
-        }
-    }
-    let coverage_percentage = (actual_assignments as f64 / required_assignments as f64) * 100.0;
-
-    let mut skill_deficits = Vec::new();
-    let mut total_req_slots = 0;
-    let mut filled_req_slots = 0;
-    
-    for d in 0..num_days {
-        let weekday = d % 7;
-        for req in &week_data.requirements {
-            let required = match weekday {
-                0 => req.monday.optimal,
-                1 => req.tuesday.optimal,
-                2 => req.wednesday.optimal,
-                3 => req.thursday.optimal,
-                4 => req.friday.optimal,
-                5 => req.saturday.optimal,
-                6 => req.sunday.optimal,
-                _ => 0,
-            };
-            
-            if required > 0 {
-                let mapped_shift = match req.shift_type.as_str() {
-                    "Early" => "E",
-                    "Day" => "D",
-                    "Late" => "L",
-                    "Night" => "N",
-                    _ => "",
-                };
-                
-                let mut assigned = 0;
-                for nurse in &scenario.nurses {
-                    if schedule[&nurse.id][d] == mapped_shift || schedule[&nurse.id][d].ends_with(&format!("-{}", mapped_shift)) {
-                        if nurse.skills.contains(&req.skill) {
-                            assigned += 1;
-                        }
-                    }
-                }
-                
-                total_req_slots += required;
-                filled_req_slots += std::cmp::min(assigned, required);
-                
-                let deficit = required as i32 - assigned as i32;
-                if deficit > 0 {
-                    skill_deficits.push(SkillDeficit {
-                        day: d,
-                        shift: req.shift_type.clone(),
-                        skill: req.skill.clone(),
-                        required,
-                        assigned,
-                        deficit,
-                    });
-                }
-            }
-        }
-    }
-    
-    let mut skill_counts = std::collections::HashMap::new();
-    let mut shift_counts = std::collections::HashMap::new();
-    for d in &skill_deficits {
-        *skill_counts.entry(d.skill.clone()).or_insert(0) += d.deficit;
-        *shift_counts.entry(d.shift.clone()).or_insert(0) += d.deficit;
-    }
-    
-    let worst_skill = skill_counts.into_iter().max_by_key(|&(_, v)| v).map(|(k, _)| k).unwrap_or_else(|| "None".to_string());
-    let worst_shift = shift_counts.into_iter().max_by_key(|&(_, v)| v).map(|(k, _)| k).unwrap_or_else(|| "None".to_string());
-    
-    let skill_coverage_percentage = if total_req_slots > 0 {
-        (filled_req_slots as f64 / total_req_slots as f64) * 100.0
-    } else {
-        100.0
-    };
-    
-    let skill_coverage_audit = SkillCoverageAudit {
-        skill_coverage_percentage,
-        total_skill_deficits: skill_deficits.len(),
-        worst_skill,
-        worst_shift,
-        deficits: skill_deficits,
-    };
-    
-    let coverage_audit = CoverageAudit {
-        required_assignments,
-        actual_assignments,
-        coverage_percentage,
-        daily_assignments,
-    };
-        
-    let mut constraint_audit = Vec::new();
-    for nurse in &scenario.nurses {
-        let mut min_work = 0;
-        let mut max_work = 0;
-        let mut min_off = 0;
-        let mut max_off = 0;
-        
-        for det in &validation_report.details {
-            if det.nurse_id == nurse.id {
-                if det.constraint == "min_consecutive_working_days" { min_work += 1; }
-                if det.constraint == "max_consecutive_working_days" { max_work += 1; }
-                if det.constraint == "min_consecutive_days_off" { min_off += 1; }
-                if det.constraint == "max_consecutive_days_off" { max_off += 1; }
-            }
-        }
-        constraint_audit.push(ConstraintAudit {
-            nurse_id: nurse.id.clone(),
-            min_work_streak_violations: min_work,
-            max_work_streak_violations: max_work,
-            min_off_streak_violations: min_off,
-            max_off_streak_violations: max_off,
-        });
-    }
-
-    let legality_score = if validation_report.is_legal { 100 } else { 
-        let v = validation_report.details.len() as i32;
-        std::cmp::max(0, 100 - (v * 5))
-    };
-    let coverage_score = coverage_percentage as i32;
-    
-    let mut max_dev = 0;
-    for wa in &workload_audit {
-        if wa.deviation.abs() > max_dev { max_dev = wa.deviation.abs(); }
-    }
-    let balance_score = std::cmp::max(0, 100 - (max_dev * 10));
-    let fragmentation_score = std::cmp::max(0, 100 - (validation_report.details.len() as i32 * 2));
-    let recovery_score = 100;
-    
-    let roster_health = RosterHealth {
-        legality_score,
-        coverage_score,
-        balance_score,
-        fragmentation_score,
-        recovery_score,
-    };
-    
-    let baseline_status = BaselineStatus {
-        state: if validation_report.is_legal { "Legal".to_string() } else { "RepairFailed".to_string() },
-        is_legal: validation_report.is_legal,
-        repair_attempts: 50,
-        exhausted_search: !validation_report.is_legal,
-    };
-
-    let dashboard = make_dynamic_dashboard(
-        &schedule,
-        &scenario,
-        &week_data,
-        &validation_report,
-        Some(feasibility_report),
-        Some(pareto_solutions),
-    );
-    let verification_reports = VerificationReports {
-        baseline: Some(validation_report.clone()),
-        sickness: None,
-        recovery: None,
-    };
-    
-    let baseline_state = SimulationState {
-        schedule: schedule.clone(),
-        dashboard,
-        balances,
-        recovery_plan: None,
-        verification_reports,
-    };
+    // ── Lazy initialisation ──────────────────────────────────────────────────
+    // The pilot portal does not require the INRC nurse-scheduling scenario.
+    // Simulation endpoints (/api/state, /api/simulations/*, /api/balance,
+    // /api/dashboard, /api/nurses) return 503 when scenario/baseline_state
+    // are None.  The INRC scenario can be loaded at runtime by a future
+    // endpoint if needed.
     
     let app_state = Arc::new(Mutex::new(AppState {
-        scenario,
-        baseline_state: baseline_state.clone(),
-        original_state: baseline_state,
+        scenario: None,
+        baseline_state: None,
+        original_state: None,
         last_solution: None,
         last_request: None,
         decisions: Vec::new(),
         schedule_versions: Vec::new(),
         csrf_token: String::new(),
     }));
+
+    // ── DELETED BLOCK (lines removed) ────────────────────────────────────────
+    // The INRC scenario loading, feasibility analysis, schedule construction,
+    // pareto frontier computation, and SimulationState initialisation that
+    // previously lived here have been removed.  The server now starts cleanly
+    // without any test fixture dependency.  Simulation endpoints return 503
+    // until a scenario is loaded at runtime.
+    // ─────────────────────────────────────────────────────────────────────────
+
 
     let app = Router::new()
         .route("/api/health", get(health_check))
@@ -2357,4 +2059,5 @@ mod server_endpoints_tests {
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);
     }
 }
+
 
