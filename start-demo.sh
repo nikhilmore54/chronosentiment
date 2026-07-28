@@ -266,11 +266,27 @@ load_inrc_scenario() {
 
 check_deps
 install_frontend_deps   # parallel npm install (skipped if node_modules exist)
-start_backend           # ─┐
-start_ultracrew         #  ├─ all three launch concurrently as background jobs
+
+# ── Sequenced startup: backend first, scenario seeded, then frontends ──────────
+# The UltraRoster frontend fetches /api/nurses on first render.
+# The scenario must be loaded before the frontend starts to avoid a 503 on that
+# first fetch which would leave the dashboard showing "No workforce loaded".
+start_backend
+info "Waiting for backend to be ready before seeding scenario..."
+local_wait=0
+while ! curl -sf "http://localhost:$BACKEND_PORT/api/health" >/dev/null 2>&1; do
+    sleep 1
+    local_wait=$((local_wait + 1))
+    if [[ $local_wait -ge 30 ]]; then
+        warn "Backend did not start within 30s — skipping scenario seed"
+        break
+    fi
+done
+load_inrc_scenario      # POST /api/load-scenario before frontends start
+
+start_ultracrew         # ─┐ frontends start after scenario is seeded
 start_ultraroster       # ─┘
-wait_for_all            # parallel readiness checks with spinner
-load_inrc_scenario      # POST /api/load-scenario — seeds UltraRoster with default n030w4 dataset
+wait_for_all            # parallel readiness checks with spinner (frontends only now)
 open_browser
 
 echo ""
