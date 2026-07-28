@@ -1,0 +1,22 @@
+{
+  "id": "DSP-890817AF",
+  "timestamp": "2026-07-27T03:47:41Z",
+  "dispatcher_id": "D-04",
+  "dispatcher_role": "Junior Dispatcher (<2 years)",
+  "scenario_id": "sunair_demo",
+  "adapter_version": "0.1.0",
+  "coverage_pct": 100.0,
+  "hard_violations": 0,
+  "rest_violations": 0,
+  "fitness": 9942.4,
+  "runtime_secs": 9.699,
+  "disruption_recovery_secs": null,
+  "manual_edits": 0,
+  "recommendations_presented": 0,
+  "recommendations_accepted": 0,
+  "recommendations_rejected": 0,
+  "recommendation_decisions": [],
+  "explanation_usefulness": 0,
+  "dispatcher_comments": "",
+  "session_complete": true
+}

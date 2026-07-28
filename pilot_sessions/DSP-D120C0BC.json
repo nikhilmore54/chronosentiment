@@ -1,0 +1,22 @@
+{
+  "id": "DSP-D120C0BC",
+  "timestamp": "2026-07-27T03:46:44Z",
+  "dispatcher_id": "D-01",
+  "dispatcher_role": "Senior Dispatcher (5+ years)",
+  "scenario_id": "sunair_demo",
+  "adapter_version": "0.1.0",
+  "coverage_pct": 100.0,
+  "hard_violations": 0,
+  "rest_violations": 0,
+  "fitness": 10000.0,
+  "runtime_secs": 2.3,
+  "disruption_recovery_secs": null,
+  "manual_edits": 0,
+  "recommendations_presented": 0,
+  "recommendations_accepted": 0,
+  "recommendations_rejected": 0,
+  "recommendation_decisions": [],
+  "explanation_usefulness": 0,
+  "dispatcher_comments": "test",
+  "session_complete": true
+}
