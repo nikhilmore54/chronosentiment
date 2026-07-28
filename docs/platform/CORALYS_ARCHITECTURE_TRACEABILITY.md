@@ -18,6 +18,7 @@
 
 **Relationship to other documents:**
 - Informed by: `CORALYS_PLATFORM_ARCHITECTURE.md` (platform architecture — primitives, lifecycle, Continuous Learning Engine)
+- Governed by: `../strategy/CS-S-001_Product_First_Governance_Principle.md` (platform promotion criterion — authoritative)
 - Informs: `CORALYS_PRODUCT_TRACEABILITY.md` (product capability → crate mapping)
 - Informs: `CORALYS_GAP_REGISTER.md` (implementation gap register)
 
@@ -55,6 +56,8 @@ This is a living engineering reference. It should be updated whenever a primitiv
 ---
 
 ## Platform Primitive Traceability
+
+> **Promotion criterion (CS-S-001, 2026-07-27):** "Implemented (adapter level)" does not automatically qualify a primitive for promotion to `coralys-core`. Promotion requires at least two independent products to have demonstrated the same semantics. This table tracks implementation state; promotion decisions are governed by [`CS-S-001`](../strategy/CS-S-001_Product_First_Governance_Principle.md) and triggered by evidence in the Evidence Ledger.
 
 ### Workspace
 

@@ -4,6 +4,7 @@ pub mod models;
 pub mod optimization;
 pub mod inrc;
 pub mod workforce;
+pub mod compliance;
 
 pub mod helpers {
     use super::ecology::WorkforceEcology;

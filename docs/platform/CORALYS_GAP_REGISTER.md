@@ -21,6 +21,7 @@
 - Informed by: `CORALYS_PRODUCT_TRACEABILITY.md` (capability → crate mapping)
 - Informed by: All Baseline product blueprints (UC-B-001, CS-E-B-001, CS-P-B-001)
 - Informed by: `EP-001_MILESTONE.md` (sprint resolutions)
+- Governed by: `../strategy/CS-S-001_Product_First_Governance_Principle.md` (platform promotion criterion — authoritative)
 - Informs: Engineering sprint planning; pilot readiness assessment
 
 ---
@@ -72,6 +73,8 @@ EP-001 closed or substantially resolved the following gaps. Full evidence is rec
 ## Platform Primitive Gaps
 
 These gaps affect all products built on the Coralys platform.
+
+> **Promotion criterion (CS-S-001, 2026-07-27):** A platform primitive gap is resolved by promoting the primitive to `coralys-core` only when at least two independent products have demonstrated they need the same semantics. Gaps listed here are valid inventory items; they are not automatically scheduled for EP-002. Promotion is triggered by product evidence, not by architectural completeness. See [`CS-S-001_Product_First_Governance_Principle.md`](../strategy/CS-S-001_Product_First_Governance_Principle.md).
 
 | Gap | Severity | Status | Description | Blocking |
 |-----|----------|--------|-------------|----------|

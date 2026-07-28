@@ -99,6 +99,19 @@
 
 ---
 
+## 5a. `docs/blueprints/` — Product Blueprints
+
+Type: Blueprint. Lifecycle: Draft → Baseline. Authority: Normative. Owner: Product / Engineering.
+
+| File | Product | What it defines | Action |
+|------|---------|----------------|--------|
+| `UC-B-001_UltraCrew_Blueprint_v1.0.md` | UltraCrew/INRC | UltraCrew product blueprint — Workforce Decision Engine positioning, crew scheduling domain model, compliance framework layers, GERAD benchmark integration | ✅ KEEP |
+| `CS-E-B-001_ChronoSentiment_Enterprise_Blueprint_v1.0.md` | ChronoSentiment Enterprise | Enterprise blueprint | ✅ KEEP |
+| `CS-P-B-001_ChronoSentiment_Personal_Blueprint_v1.0.md` | ChronoSentiment Personal | Personal blueprint | ✅ KEEP |
+| `UC-ARCH-001_Credit_Framework_Architecture.md` | UltraCrew/INRC | Credit Framework Architecture — operational/contractual/optimisation layer separation; `CreditPolicy` trait; `GeradCreditPolicy` (official GERAD formula: flight_time + 0.5 × deadhead_time); `DutyCredit`; `RosterMetrics`; `BaseCreditFloor`; fairness objective correction from block hours to credited hours. Triggered by GERAD G-2014-22 benchmark analysis. | ✅ KEEP |
+
+---
+
 ## 6. `docs/research/` — CS-R Series (Phase 1A Research Baseline)
 
 All 15 CS-R documents are current research baseline artefacts. Product: ChronoSentiment. Owner: Research. Authority: Informational (evidence) / Normative (recommendations). Review trigger: Phase 1B completion.
@@ -728,6 +741,7 @@ These apply to any product built on Coralys. They are not product-specific.
 - `docs/INRC_DEMO_GUIDE.md`, `docs/INRC_PRODUCT_EVIDENCE_PROGRAMME.md`
 - `docs/BENCHMARK_RESULTS.md`, `docs/ULTRACREW_WORKFORCE_EVIDENCE.md`
 - `docs/sunair_pilot_guide.md`, `docs/sunair_sales_playbook.md`
+- `docs/blueprints/UC-ARCH-001_Credit_Framework_Architecture.md`
 
 ### Programme Documents: P-001 Pilot
 

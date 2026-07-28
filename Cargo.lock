@@ -561,6 +561,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "coralys-gerad"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "coralys-airline",
+ "csv",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "coralys-infrastructure"
 version = "0.1.0"
 
@@ -3190,6 +3203,7 @@ name = "ultracrew_server"
 version = "0.1.0"
 dependencies = [
  "axum 0.8.9",
+ "chrono",
  "chronosentiment_adapter",
  "chronosentiment_optimization",
  "coralys-core",

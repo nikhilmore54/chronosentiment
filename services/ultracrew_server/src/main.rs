@@ -42,6 +42,8 @@ struct AppState {
     last_request: Option<ultracrew::public_contracts::ScheduleRequest>,
     decisions: Vec<DecisionCase>,
     schedule_versions: Vec<ScheduleVersion>,
+    /// Current CSRF token (double-submit cookie pattern)
+    csrf_token: String,
 }
 
 fn make_dynamic_dashboard(
@@ -475,6 +477,42 @@ async fn health_check() -> Json<StatusResponse> {
     Json(StatusResponse {
         status: "ok".to_string(),
     })
+}
+
+// ─── CSRF Token Endpoint ──────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+struct CsrfTokenResponse {
+    csrf_token: String,
+}
+
+/// Issue a CSRF token. The client must:
+/// 1. Call GET /api/csrf-token to receive the token.
+/// 2. Store it and send it as the X-CSRF-Token header on all POST requests.
+/// 3. The server validates the header matches the issued token.
+///
+/// For PX-001 pilot (single-server, no user sessions), we use a simple
+/// per-request token stored in a shared atomic string. This is sufficient
+/// for the pilot environment and can be upgraded to a proper session-based
+/// CSRF scheme before production deployment.
+async fn csrf_token_handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+) -> impl IntoResponse {
+    let token = uuid::Uuid::new_v4().to_string();
+    {
+        let mut s = state.lock().unwrap();
+        s.csrf_token = token.clone();
+    }
+    // Set as a cookie (SameSite=Strict) AND return in body for double-submit
+    let cookie = format!(
+        "csrf_token={}; Path=/; SameSite=Strict; HttpOnly=false",
+        token
+    );
+    (
+        axum::http::StatusCode::OK,
+        [(axum::http::header::SET_COOKIE, cookie)],
+        Json(CsrfTokenResponse { csrf_token: token }),
+    )
 }
 
 async fn get_scenario(State(state): State<Arc<Mutex<AppState>>>) -> Json<InrcScenario> {
@@ -945,6 +983,439 @@ async fn validate_handler(
     Ok(Json(response))
 }
 
+// ─── FDP Constants (DGCA / ICAO Annex 6 Part I) ─────────────────────────────
+const MAX_FDP_HOURS: f64 = 13.0;   // Maximum Flight Duty Period
+const MIN_REST_HOURS: f64 = 10.0;  // Minimum rest between FDPs
+const MAX_WEEKLY_HOURS: f64 = 60.0; // Maximum hours in any 7-day window
+const MAX_CONSECUTIVE_DAYS: u64 = 6; // Maximum consecutive duty days
+
+// ─── Shared request type for pairings / duties / swap_exchanges ──────────────
+
+#[derive(Deserialize)]
+struct ScheduleAnalysisRequest {
+    /// shift_id → worker_id (the schedule produced by /api/schedule)
+    schedule: HashMap<u64, u64>,
+    /// The same shifts array sent to /api/schedule
+    shifts: Vec<ShiftInput>,
+    /// The same workers array sent to /api/schedule
+    workers: Vec<WorkerInput>,
+}
+
+#[derive(Deserialize, Clone)]
+struct ShiftInput {
+    id: u64,
+    start_hour: u64,
+    duration_hours: u64,
+    required_skill: String,
+}
+
+#[derive(Deserialize, Clone)]
+struct WorkerInput {
+    id: u64,
+    skills: Vec<String>,
+}
+
+// ─── Pairing: a sequence of consecutive duties for one worker ─────────────────
+
+#[derive(Serialize)]
+struct Pairing {
+    pairing_id: String,
+    worker_id: u64,
+    worker_skill: String,
+    duties: Vec<DutyInPairing>,
+    total_fdp_hours: f64,
+    rest_before_next_hours: Option<f64>,
+    fdp_compliant: bool,
+    fdp_violation: Option<String>,
+    layover_hours: f64,
+}
+
+#[derive(Serialize)]
+struct DutyInPairing {
+    shift_id: u64,
+    start_hour: u64,
+    end_hour: u64,
+    duration_hours: u64,
+    required_skill: String,
+}
+
+#[derive(Serialize)]
+struct PairingsResponse {
+    pairings: Vec<Pairing>,
+    total_pairings: usize,
+    fdp_violations: usize,
+    compliant_pairings: usize,
+}
+
+/// POST /api/pairings
+/// Groups each worker's assigned shifts into pairings (consecutive duty blocks
+/// separated by ≥ MIN_REST_HOURS rest). Validates each pairing against FDP limits.
+async fn pairings_handler(
+    Json(req): Json<ScheduleAnalysisRequest>,
+) -> Result<Json<PairingsResponse>, (StatusCode, String)> {
+    // Build shift lookup
+    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
+    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
+
+    // Group shifts by worker
+    let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
+    for (shift_id, worker_id) in &req.schedule {
+        if let Some(shift) = shift_map.get(shift_id) {
+            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
+        }
+    }
+
+    let mut pairings: Vec<Pairing> = Vec::new();
+    let mut pairing_counter = 0u64;
+
+    for (worker_id, mut shifts) in worker_shifts {
+        // Sort by start_hour
+        shifts.sort_by_key(|s| s.start_hour);
+        let skill = worker_map.get(&worker_id)
+            .and_then(|w| w.skills.first())
+            .cloned()
+            .unwrap_or_default();
+
+        // Split into pairings: a new pairing starts when rest gap ≥ MIN_REST_HOURS
+        let mut current_duties: Vec<ShiftInput> = Vec::new();
+        for shift in &shifts {
+            if current_duties.is_empty() {
+                current_duties.push(shift.clone());
+            } else {
+                let last = current_duties.last().unwrap();
+                let last_end = last.start_hour + last.duration_hours;
+                let gap = shift.start_hour as f64 - last_end as f64;
+                if gap >= MIN_REST_HOURS {
+                    // Emit current pairing
+                    pairing_counter += 1;
+                    let p = build_pairing(pairing_counter, worker_id, &skill, &current_duties, Some(gap));
+                    pairings.push(p);
+                    current_duties = vec![shift.clone()];
+                } else {
+                    current_duties.push(shift.clone());
+                }
+            }
+        }
+        // Emit final pairing for this worker
+        if !current_duties.is_empty() {
+            pairing_counter += 1;
+            let p = build_pairing(pairing_counter, worker_id, &skill, &current_duties, None);
+            pairings.push(p);
+        }
+    }
+
+    // Sort pairings by worker_id then start hour
+    pairings.sort_by(|a, b| a.worker_id.cmp(&b.worker_id)
+        .then(a.duties.first().map(|d| d.start_hour).unwrap_or(0)
+            .cmp(&b.duties.first().map(|d| d.start_hour).unwrap_or(0))));
+
+    let fdp_violations = pairings.iter().filter(|p| !p.fdp_compliant).count();
+    let compliant_pairings = pairings.len() - fdp_violations;
+    let total_pairings = pairings.len();
+
+    Ok(Json(PairingsResponse { pairings, total_pairings, fdp_violations, compliant_pairings }))
+}
+
+fn build_pairing(id: u64, worker_id: u64, skill: &str, duties: &[ShiftInput], rest_before_next: Option<f64>) -> Pairing {
+    let total_fdp_hours: f64 = duties.iter().map(|d| d.duration_hours as f64).sum();
+    let first_start = duties.first().map(|d| d.start_hour).unwrap_or(0);
+    let last_end = duties.last().map(|d| d.start_hour + d.duration_hours).unwrap_or(0);
+    let span_hours = (last_end - first_start) as f64;
+    // FDP = time from report (first start) to release (last end)
+    let fdp_compliant = span_hours <= MAX_FDP_HOURS;
+    let fdp_violation = if !fdp_compliant {
+        Some(format!("FDP span {:.1}h exceeds maximum {:.1}h", span_hours, MAX_FDP_HOURS))
+    } else {
+        None
+    };
+    // Layover = span - actual flying time
+    let layover_hours = (span_hours - total_fdp_hours).max(0.0);
+
+    Pairing {
+        pairing_id: format!("P{:04}", id),
+        worker_id,
+        worker_skill: skill.to_string(),
+        duties: duties.iter().map(|d| DutyInPairing {
+            shift_id: d.id,
+            start_hour: d.start_hour,
+            end_hour: d.start_hour + d.duration_hours,
+            duration_hours: d.duration_hours,
+            required_skill: d.required_skill.clone(),
+        }).collect(),
+        total_fdp_hours,
+        rest_before_next_hours: rest_before_next,
+        fdp_compliant,
+        fdp_violation,
+        layover_hours,
+    }
+}
+
+// ─── Duties: per-worker duty periods with FDP compliance ─────────────────────
+
+#[derive(Serialize)]
+struct DutyPeriod {
+    duty_id: String,
+    worker_id: u64,
+    worker_skill: String,
+    shift_ids: Vec<u64>,
+    report_hour: u64,
+    release_hour: u64,
+    fdp_hours: f64,
+    rest_after_hours: Option<f64>,
+    fdp_compliant: bool,
+    rest_compliant: bool,
+    weekly_hours_compliant: bool,
+    violations: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct DutiesResponse {
+    duties: Vec<DutyPeriod>,
+    total_duties: usize,
+    fdp_violations: usize,
+    rest_violations: usize,
+    weekly_violations: usize,
+}
+
+/// POST /api/duties
+/// Returns per-worker duty periods with full FDP compliance checking.
+async fn duties_handler(
+    Json(req): Json<ScheduleAnalysisRequest>,
+) -> Result<Json<DutiesResponse>, (StatusCode, String)> {
+    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
+    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
+
+    let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
+    for (shift_id, worker_id) in &req.schedule {
+        if let Some(shift) = shift_map.get(shift_id) {
+            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
+        }
+    }
+
+    let mut duties: Vec<DutyPeriod> = Vec::new();
+    let mut duty_counter = 0u64;
+
+    for (worker_id, mut shifts) in worker_shifts {
+        shifts.sort_by_key(|s| s.start_hour);
+        let skill = worker_map.get(&worker_id)
+            .and_then(|w| w.skills.first())
+            .cloned()
+            .unwrap_or_default();
+
+        // Group into duty periods (same logic as pairings)
+        let mut groups: Vec<Vec<ShiftInput>> = Vec::new();
+        let mut current: Vec<ShiftInput> = Vec::new();
+        for shift in &shifts {
+            if current.is_empty() {
+                current.push(shift.clone());
+            } else {
+                let last = current.last().unwrap();
+                let gap = shift.start_hour as f64 - (last.start_hour + last.duration_hours) as f64;
+                if gap >= MIN_REST_HOURS {
+                    groups.push(current.clone());
+                    current = vec![shift.clone()];
+                } else {
+                    current.push(shift.clone());
+                }
+            }
+        }
+        if !current.is_empty() { groups.push(current); }
+
+        // Compute weekly hours for this worker
+        let total_hours: f64 = shifts.iter().map(|s| s.duration_hours as f64).sum();
+        let weekly_hours_compliant = total_hours <= MAX_WEEKLY_HOURS;
+
+        for (i, group) in groups.iter().enumerate() {
+            duty_counter += 1;
+            let report_hour = group.first().map(|s| s.start_hour).unwrap_or(0);
+            let release_hour = group.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
+            let fdp_hours = (release_hour - report_hour) as f64;
+            let fdp_compliant = fdp_hours <= MAX_FDP_HOURS;
+
+            // Rest after = gap to next duty group
+            let rest_after_hours = groups.get(i + 1).map(|next| {
+                let next_report = next.first().map(|s| s.start_hour).unwrap_or(0);
+                next_report as f64 - release_hour as f64
+            });
+            let rest_compliant = rest_after_hours.map(|r| r >= MIN_REST_HOURS).unwrap_or(true);
+
+            let mut violations = Vec::new();
+            if !fdp_compliant {
+                violations.push(format!("FDP {:.1}h > max {:.1}h", fdp_hours, MAX_FDP_HOURS));
+            }
+            if !rest_compliant {
+                violations.push(format!("Rest {:.1}h < min {:.1}h", rest_after_hours.unwrap_or(0.0), MIN_REST_HOURS));
+            }
+            if !weekly_hours_compliant {
+                violations.push(format!("Weekly hours {:.1}h > max {:.1}h", total_hours, MAX_WEEKLY_HOURS));
+            }
+
+            duties.push(DutyPeriod {
+                duty_id: format!("D{:05}", duty_counter),
+                worker_id,
+                worker_skill: skill.clone(),
+                shift_ids: group.iter().map(|s| s.id).collect(),
+                report_hour,
+                release_hour,
+                fdp_hours,
+                rest_after_hours,
+                fdp_compliant,
+                rest_compliant,
+                weekly_hours_compliant,
+                violations,
+            });
+        }
+    }
+
+    duties.sort_by(|a, b| a.worker_id.cmp(&b.worker_id).then(a.report_hour.cmp(&b.report_hour)));
+
+    let fdp_violations = duties.iter().filter(|d| !d.fdp_compliant).count();
+    let rest_violations = duties.iter().filter(|d| !d.rest_compliant).count();
+    let weekly_violations = duties.iter().filter(|d| !d.weekly_hours_compliant).count();
+    let total_duties = duties.len();
+
+    Ok(Json(DutiesResponse { duties, total_duties, fdp_violations, rest_violations, weekly_violations }))
+}
+
+// ─── Swap Exchanges: feasible worker swaps for a given shift ─────────────────
+
+#[derive(Serialize)]
+struct SwapCandidate {
+    shift_id: u64,
+    current_worker_id: u64,
+    candidate_worker_id: u64,
+    candidate_skill: String,
+    feasible: bool,
+    reason: Option<String>,
+    /// Estimated FDP hours for candidate after swap
+    candidate_fdp_after: f64,
+    /// Whether candidate's FDP would remain compliant after swap
+    candidate_fdp_compliant: bool,
+}
+
+#[derive(Serialize)]
+struct SwapExchangesResponse {
+    swaps: Vec<SwapCandidate>,
+    total_candidates: usize,
+    feasible_swaps: usize,
+}
+
+/// POST /api/swap_exchanges
+/// For each assigned shift, finds workers who could swap in while remaining FDP-compliant.
+async fn swap_exchanges_handler(
+    Json(req): Json<ScheduleAnalysisRequest>,
+) -> Result<Json<SwapExchangesResponse>, (StatusCode, String)> {
+    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
+    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
+
+    // Build per-worker shift lists
+    let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
+    for (shift_id, worker_id) in &req.schedule {
+        if let Some(shift) = shift_map.get(shift_id) {
+            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
+        }
+    }
+    // Sort each worker's shifts
+    for shifts in worker_shifts.values_mut() {
+        shifts.sort_by_key(|s| s.start_hour);
+    }
+
+    let mut swaps: Vec<SwapCandidate> = Vec::new();
+
+    for (shift_id, current_worker_id) in &req.schedule {
+        let shift = match shift_map.get(shift_id) { Some(s) => s, None => continue };
+
+        // Find candidate workers: same skill, not already assigned at this time
+        for worker in &req.workers {
+            if worker.id == *current_worker_id { continue; }
+            if !worker.skills.contains(&shift.required_skill) { continue; }
+
+            // Check if candidate is free during this shift
+            let candidate_shifts = worker_shifts.get(&worker.id).cloned().unwrap_or_default();
+            let conflict = candidate_shifts.iter().any(|cs| {
+                let cs_end = cs.start_hour + cs.duration_hours;
+                let s_end = shift.start_hour + shift.duration_hours;
+                // Overlap check
+                cs.start_hour < s_end && shift.start_hour < cs_end
+            });
+
+            if conflict {
+                swaps.push(SwapCandidate {
+                    shift_id: *shift_id,
+                    current_worker_id: *current_worker_id,
+                    candidate_worker_id: worker.id,
+                    candidate_skill: worker.skills.first().cloned().unwrap_or_default(),
+                    feasible: false,
+                    reason: Some("Scheduling conflict: candidate already assigned during this period".to_string()),
+                    candidate_fdp_after: 0.0,
+                    candidate_fdp_compliant: false,
+                });
+                continue;
+            }
+
+            // Check FDP: would adding this shift violate FDP for the candidate?
+            // Find adjacent shifts for candidate to compute new FDP span
+            let prev_shift = candidate_shifts.iter().rev()
+                .find(|cs| cs.start_hour + cs.duration_hours <= shift.start_hour);
+            let next_shift = candidate_shifts.iter()
+                .find(|cs| cs.start_hour >= shift.start_hour + shift.duration_hours);
+
+            // Check rest before
+            let rest_before_ok = prev_shift.map(|ps| {
+                (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) >= MIN_REST_HOURS
+            }).unwrap_or(true);
+
+            // Check rest after
+            let rest_after_ok = next_shift.map(|ns| {
+                (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) >= MIN_REST_HOURS
+            }).unwrap_or(true);
+
+            // Compute FDP span if this shift is added (worst case: adjacent to prev/next)
+            let fdp_start = prev_shift
+                .filter(|ps| (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) < MIN_REST_HOURS)
+                .map(|ps| ps.start_hour)
+                .unwrap_or(shift.start_hour);
+            let fdp_end = next_shift
+                .filter(|ns| (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) < MIN_REST_HOURS)
+                .map(|ns| ns.start_hour + ns.duration_hours)
+                .unwrap_or(shift.start_hour + shift.duration_hours);
+            let candidate_fdp_after = (fdp_end - fdp_start) as f64;
+            let candidate_fdp_compliant = candidate_fdp_after <= MAX_FDP_HOURS;
+
+            let feasible = rest_before_ok && rest_after_ok && candidate_fdp_compliant;
+            let reason = if !feasible {
+                let mut reasons = Vec::new();
+                if !rest_before_ok { reasons.push(format!("Insufficient rest before ({:.1}h < {:.1}h)",
+                    prev_shift.map(|ps| shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64).unwrap_or(0.0), MIN_REST_HOURS)); }
+                if !rest_after_ok { reasons.push(format!("Insufficient rest after ({:.1}h < {:.1}h)",
+                    next_shift.map(|ns| ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64).unwrap_or(0.0), MIN_REST_HOURS)); }
+                if !candidate_fdp_compliant { reasons.push(format!("FDP would be {:.1}h > {:.1}h", candidate_fdp_after, MAX_FDP_HOURS)); }
+                Some(reasons.join("; "))
+            } else {
+                None
+            };
+
+            swaps.push(SwapCandidate {
+                shift_id: *shift_id,
+                current_worker_id: *current_worker_id,
+                candidate_worker_id: worker.id,
+                candidate_skill: worker.skills.first().cloned().unwrap_or_default(),
+                feasible,
+                reason,
+                candidate_fdp_after,
+                candidate_fdp_compliant,
+            });
+        }
+    }
+
+    swaps.sort_by(|a, b| a.shift_id.cmp(&b.shift_id).then(b.feasible.cmp(&a.feasible)));
+
+    let feasible_swaps = swaps.iter().filter(|s| s.feasible).count();
+    let total_candidates = swaps.len();
+
+    Ok(Json(SwapExchangesResponse { swaps, total_candidates, feasible_swaps }))
+}
+
 async fn recommendations_handler(
     State(state): State<Arc<Mutex<AppState>>>,
 ) -> Result<Json<RecommendationsResponse>, (axum::http::StatusCode, String)> {
@@ -967,6 +1438,164 @@ async fn metrics_handler(
     } else {
         Err((axum::http::StatusCode::NOT_FOUND, "No active schedule solution found. Please call /api/schedule first.".to_string()))
     }
+}
+
+// ─── Pilot Portal Evidence Endpoint ──────────────────────────────────────────
+
+/// DSP evidence record — written to disk as JSON for EL-001 ingestion.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PilotSessionRecord {
+    /// Evidence ID (DSP-NNN)
+    id: String,
+    /// ISO 8601 timestamp
+    timestamp: String,
+    /// Dispatcher identifier (anonymised)
+    dispatcher_id: String,
+    /// Dispatcher role and experience level
+    dispatcher_role: String,
+    /// Scenario dataset used
+    scenario_id: String,
+    /// Software version
+    adapter_version: String,
+    /// Coverage from optimizer output
+    coverage_pct: f64,
+    /// Hard violations from optimizer output
+    hard_violations: u32,
+    /// Rest violations from optimizer output
+    rest_violations: u32,
+    /// Fitness score from optimizer output
+    fitness: f64,
+    /// Optimizer runtime in seconds
+    runtime_secs: f64,
+    /// Time from disruption event to accepted recovery plan (seconds), if measured
+    disruption_recovery_secs: Option<f64>,
+    /// Number of manual edits made after optimization
+    manual_edits: u32,
+    /// Recommendations presented to dispatcher
+    recommendations_presented: u32,
+    /// Recommendations accepted by dispatcher
+    recommendations_accepted: u32,
+    /// Recommendations rejected by dispatcher
+    recommendations_rejected: u32,
+    /// Per-recommendation decisions: [{id, action, reason}]
+    recommendation_decisions: Vec<RecommendationDecision>,
+    /// Explanation usefulness rating (1–5)
+    explanation_usefulness: u8,
+    /// Free-text qualitative comments from dispatcher
+    dispatcher_comments: String,
+    /// Session completed successfully
+    session_complete: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct RecommendationDecision {
+    recommendation_text: String,
+    action: String, // "accepted" | "rejected"
+    rejection_reason: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct PilotSessionInput {
+    dispatcher_id: String,
+    dispatcher_role: String,
+    scenario_id: String,
+    coverage_pct: f64,
+    hard_violations: u32,
+    rest_violations: u32,
+    fitness: f64,
+    runtime_secs: f64,
+    disruption_recovery_secs: Option<f64>,
+    manual_edits: u32,
+    recommendations_presented: u32,
+    recommendations_accepted: u32,
+    recommendations_rejected: u32,
+    recommendation_decisions: Vec<RecommendationDecision>,
+    explanation_usefulness: u8,
+    dispatcher_comments: String,
+    session_complete: bool,
+}
+
+async fn pilot_session_handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+    headers: axum::http::HeaderMap,
+    Json(input): Json<PilotSessionInput>,
+) -> Result<Json<PilotSessionRecord>, (StatusCode, String)> {
+    // CSRF validation — double-submit: X-CSRF-Token header must match stored token
+    {
+        let s = state.lock().unwrap();
+        let stored = &s.csrf_token;
+        let provided = headers
+            .get("x-csrf-token")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if stored.is_empty() || provided != stored.as_str() {
+            return Err((StatusCode::FORBIDDEN, "CSRF token invalid or missing. Call GET /api/csrf-token first.".to_string()));
+        }
+    }
+
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let dsp_id = format!("DSP-{}", &session_id[..8].to_uppercase());
+
+    // ISO 8601 timestamp (UTC)
+    let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+
+    let record = PilotSessionRecord {
+        id: dsp_id.clone(),
+        timestamp,
+        dispatcher_id: input.dispatcher_id,
+        dispatcher_role: input.dispatcher_role,
+        scenario_id: input.scenario_id,
+        adapter_version: ultracrew::health::ADAPTER_VERSION.to_string(),
+        coverage_pct: input.coverage_pct,
+        hard_violations: input.hard_violations,
+        rest_violations: input.rest_violations,
+        fitness: input.fitness,
+        runtime_secs: input.runtime_secs,
+        disruption_recovery_secs: input.disruption_recovery_secs,
+        manual_edits: input.manual_edits,
+        recommendations_presented: input.recommendations_presented,
+        recommendations_accepted: input.recommendations_accepted,
+        recommendations_rejected: input.recommendations_rejected,
+        recommendation_decisions: input.recommendation_decisions,
+        explanation_usefulness: input.explanation_usefulness,
+        dispatcher_comments: input.dispatcher_comments,
+        session_complete: input.session_complete,
+    };
+
+    // Write to pilot_sessions/ directory
+    let dir = std::path::Path::new("pilot_sessions");
+    std::fs::create_dir_all(dir)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create pilot_sessions dir: {}", e)))?;
+
+    let file_path = dir.join(format!("{}.json", dsp_id));
+    let json = serde_json::to_string_pretty(&record)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Serialization failed: {}", e)))?;
+    std::fs::write(&file_path, &json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write session record: {}", e)))?;
+
+    println!("Pilot session recorded: {} -> {:?}", dsp_id, file_path);
+    Ok(Json(record))
+}
+
+async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, (StatusCode, String)> {
+    let dir = std::path::Path::new("pilot_sessions");
+    if !dir.exists() {
+        return Ok(Json(vec![]));
+    }
+    let mut records = Vec::new();
+    let entries = std::fs::read_dir(dir)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read pilot_sessions: {}", e)))?;
+    for entry in entries.flatten() {
+        if entry.path().extension().map(|e| e == "json").unwrap_or(false) {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                if let Ok(record) = serde_json::from_str::<PilotSessionRecord>(&content) {
+                    records.push(record);
+                }
+            }
+        }
+    }
+    records.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+    Ok(Json(records))
 }
 
 async fn export_formats_handler() -> Json<Vec<ultracrew::generic_export::FormatDescriptor>> {
@@ -1400,10 +2029,12 @@ async fn main() {
         last_request: None,
         decisions: Vec::new(),
         schedule_versions: Vec::new(),
+        csrf_token: String::new(),
     }));
 
     let app = Router::new()
         .route("/api/health", get(health_check))
+        .route("/api/csrf-token", get(csrf_token_handler))
         .route("/api/scenario", get(get_scenario))
         .route("/api/state", get(get_state))
         .route("/api/simulations/sick-leave", post(simulate_sick_leave))
@@ -1424,6 +2055,13 @@ async fn main() {
         .route("/api/decision_cases/{id}", get(get_decision_case).put(update_decision_case).delete(delete_decision_case))
         .route("/api/decision_cases/{id}/commit", post(commit_schedule_version))
         .route("/api/decision_cases/{id}/export", get(export_decision_case_csv))
+        // Flight duty analysis endpoints (pairings / duties / swap exchanges)
+        .route("/api/pairings", post(pairings_handler))
+        .route("/api/duties", post(duties_handler))
+        .route("/api/swap_exchanges", post(swap_exchanges_handler))
+        // Pilot portal evidence endpoints
+        .route("/api/pilot/session", post(pilot_session_handler))
+        .route("/api/pilot/sessions", get(list_pilot_sessions_handler))
         .with_state(app_state)
         .layer(cors);
 

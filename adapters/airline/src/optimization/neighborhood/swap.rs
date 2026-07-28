@@ -106,15 +106,22 @@ mod tests {
 
     #[test]
     fn swap_exchanges_pairings() {
+        use crate::domain::crew::CrewId;
+
         let roster = make_two_rotation_roster();
         let result = swap_pairings(&roster, 0, 0, 1, 0);
         assert!(result.is_some());
         let new_roster = result.unwrap();
-        let rots: Vec<_> = new_roster.rotations().collect();
-        // After swap: rotation 0 should have P2, rotation 1 should have P1.
-        // pairings() returns &[Pairing] — index directly.
-        assert_eq!(rots[0].pairings()[0].id.as_str(), "P2");
-        assert_eq!(rots[1].pairings()[0].id.as_str(), "P1");
+
+        // rotations() iterates a HashMap — order is non-deterministic.
+        // Look up by crew ID instead of by index.
+        let rot_c1 = new_roster.rotation_for(&CrewId::new("C1")).expect("C1 rotation missing");
+        let rot_c2 = new_roster.rotation_for(&CrewId::new("C2")).expect("C2 rotation missing");
+
+        // C1 originally had P1; after swap it should have P2.
+        assert_eq!(rot_c1.pairings()[0].id.as_str(), "P2");
+        // C2 originally had P2; after swap it should have P1.
+        assert_eq!(rot_c2.pairings()[0].id.as_str(), "P1");
     }
 
     #[test]

@@ -9,14 +9,20 @@ use std::io::BufReader;
 use serde_json;
 use ultracrew::public_contracts::ScheduleRequest;
 use ultracrew::config::OptimizationProfile;
+use ultracrew::health::health_check;
 
 /// Command‑line arguments for the UltraCrew CLI.
 #[derive(Parser, Debug)]
 #[command(name = "ultracrew-cli", author, version, about = "Run the UltraCrew optimizer on a dataset")]
 struct Cli {
+    /// Run adapter health checks and print a JSON status report, then exit.
+    /// Can be used without --input. Exit code 0 = ok, 1 = degraded or error.
+    #[arg(long, action)]
+    health: bool,
+
     /// Path to the input dataset (JSON format)
     #[arg(short, long, value_name = "FILE")]
-    input: PathBuf,
+    input: Option<PathBuf>,
 
     /// Path to write the output schedule (JSON)
     #[arg(short, long, value_name = "FILE", default_value = "schedule.json")]
@@ -47,6 +53,17 @@ fn main() -> anyhow::Result<()> {
     // Parse CLI arguments
     let args = Cli::parse();
 
+    // Handle --health flag (standalone; does not require --input)
+    if args.health {
+        let resp = health_check();
+        println!("{}", resp.to_json());
+        if resp.is_ok() {
+            std::process::exit(0);
+        } else {
+            std::process::exit(1);
+        }
+    }
+
     // Print banner (to stderr)
     eprintln!("====================================================");
     eprintln!("UltraCrew Optimizer – Demo Configuration Standard v1");
@@ -65,8 +82,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     // 1. Load the dataset into ScheduleRequest
-    let file = File::open(&args.input)
-        .map_err(|e| anyhow::anyhow!("Failed to open input file {}: {}", args.input.display(), e))?;
+    let input_path = args.input.ok_or_else(|| {
+        anyhow::anyhow!("--input is required unless --health, --list-profiles, or --show-config is used")
+    })?;
+    let file = File::open(&input_path)
+        .map_err(|e| anyhow::anyhow!("Failed to open input file {}: {}", input_path.display(), e))?;
     let reader = BufReader::new(file);
     let request: ScheduleRequest = serde_json::from_reader(reader)
         .map_err(|e| anyhow::anyhow!("Failed to deserialize input JSON: {}", e))?;
@@ -127,7 +147,7 @@ fn main() -> anyhow::Result<()> {
     eprintln!("────────────────────────────────────────────────────");
     eprintln!("  UltraCrew Optimization Summary");
     eprintln!("────────────────────────────────────────────────────");
-    eprintln!("  Scenario:          {}", args.input.display());
+    eprintln!("  Scenario:          {}", input_path.display());
     eprintln!("  Workers:           {}", context.workers.len());
     eprintln!("  Shifts:            {}", total_shifts);
     eprintln!("  Profile:           {:?}", args.profile);

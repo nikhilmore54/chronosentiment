@@ -1,10 +1,14 @@
 # Coralys Platform — Post EP-001 Roadmap
 
 **Document type:** Roadmap
-**Version:** 1.0
+**Version:** 2.0
 **Status:** Operational
 **Date:** 2026-07-27
-**Owner:** Platform / Engineering
+**Owner:** Product / Engineering Leadership
+
+> **Supersedes:** v1.0 (2026-07-27) — Platform-centric framing replaced by product-first governance principle.
+> The phase structure and evidence gates are preserved. The framing, scope of EP-002, and governing principle have changed.
+> See [`CS-S-001_Product_First_Governance_Principle.md`](strategy/CS-S-001_Product_First_Governance_Principle.md) for the authoritative statement of the product-first principle.
 
 ---
 
@@ -12,13 +16,14 @@
 
 | Field | Value |
 |-------|-------|
-| Document Status | Operational v1.0 |
-| Review Trigger | Phase completion; evidence acquisition changes priority; new architectural constraint identified |
+| Document Status | Operational v2.0 |
+| Review Trigger | Phase completion; evidence acquisition changes priority; product milestone reached |
 
 **Relationship to other documents:**
 - Informed by: `EP-001_MILESTONE.md` (EP-001 completion state)
 - Informed by: `CORALYS_GAP_REGISTER.md` v2.0 (remaining gaps)
 - Informed by: `CORALYS_ARCHITECTURE_TRACEABILITY.md` v2.0 (implementation state)
+- Governed by: `CS-S-001_Product_First_Governance_Principle.md` (product-first principle — authoritative)
 - Informs: Engineering sprint planning; commercial execution; pilot planning
 
 ---
@@ -29,13 +34,13 @@ As of EP-001, the repository is considered **architecturally stable**.
 
 This means:
 
-> Changes from this point onward should be driven by evidence from implementation and customer validation rather than by introducing new architectural abstractions.
+> Changes from this point onward should be driven by evidence from product validation and customer outcomes rather than by introducing new architectural abstractions.
 
 The governing principle for all future platform evolution is:
 
-> **No new platform abstraction may be introduced unless required by at least two independent domain adapters or supported by operational evidence.**
+> **Products discover abstractions; architects consolidate them.**
 
-This preserves the discipline that Coralys evolves from proven patterns rather than speculative design.
+No new platform abstraction may be introduced unless required by at least two independent domain adapters or supported by operational evidence from product use. Platform work is now secondary to product work. See [`CS-S-001`](strategy/CS-S-001_Product_First_Governance_Principle.md) for the full governing principle.
 
 ---
 
@@ -72,7 +77,7 @@ All traceability documents use the following five-level maturity model. This is 
 EP-001  Platform Foundations Operational  ✅ Complete
             │
             ▼
-EP-002  Platform Primitive Formalisation
+EP-002  Platform Consolidation
             │
             ▼
 P-001   SunAir Operational Demonstration
@@ -90,28 +95,31 @@ Each phase has a distinct purpose. No phase should begin until its predecessor h
 
 ---
 
-## EP-002 — Platform Primitive Formalisation
+## EP-002 — Platform Consolidation
 
-**Objective:** Promote proven adapter concepts into `coralys-core`. This is extraction and consolidation, not new feature development.
+> **v2.0 reframe:** EP-002 was previously titled "Platform Primitive Formalisation." That title implied a platform-driven agenda. The correct framing is **Platform Consolidation**: removing duplication that products have already exposed, driven by demonstrated product need rather than architectural completeness.
 
-**Governing principle:** Every abstraction promoted into `coralys-core` must already exist in at least one concrete adapter. EP-002 is justified because the ChronoSentiment adapter has already proven Evidence, Hypothesis, and Workspace-Outcome invariants.
+**Objective:** Consolidate proven adapter concepts into `coralys-core` where two or more products have independently demonstrated the same need. This is extraction of what already exists, not invention of new capabilities.
 
-**Scope:**
+**Governing principle:** Every abstraction consolidated into `coralys-core` must already be used by at least one product in demonstrated operation, and a second product must demonstrably need the same semantics. EP-002 scope is therefore conditional on product evidence, not predetermined.
 
-| Item | Description | Source |
-|------|-------------|--------|
-| Platform `Evidence` trait | Append-only semantics; immutability enforced at platform level | `adapters/chronosentiment/src/evidence.rs` |
-| Platform `Hypothesis` trait | Immutable version history; versioning enforced at platform level | `adapters/chronosentiment/src/hypothesis.rs` |
-| Platform `Intent` primitive | Standalone trait; enforces one-Intent-per-Workspace invariant | Implicit in `InvestmentWorkspace.research_objective` |
-| Workspace-Outcome invariant | Platform-level enforcement of single-Outcome-per-Workspace | `adapters/chronosentiment/src/workspace.rs` |
-| Adapter refactoring | UltraCrew and ChronoSentiment adapters consume new platform traits | Both adapters |
+**Scope (conditional on product evidence):**
+
+| Item | Consolidation trigger | Source |
+|------|----------------------|--------|
+| Platform `Evidence` trait | When UltraCrew operational evidence also requires Evidence semantics | `adapters/chronosentiment/src/evidence.rs` |
+| Platform `Hypothesis` trait | When a second product demonstrates the same versioning need | `adapters/chronosentiment/src/hypothesis.rs` |
+| Platform `Intent` primitive | When two products expose the same one-Intent-per-Workspace invariant | Implicit in `InvestmentWorkspace.research_objective` |
+| Workspace-Outcome invariant | When both adapters confirm semantics are genuinely shared | `adapters/chronosentiment/src/workspace.rs` |
+| Adapter refactoring | After consolidation triggers are met | Both adapters |
 
 **What EP-002 is not:**
 - Not a new feature sprint
 - Not a Knowledge Graph implementation (that is P-002)
-- Not a new primitive invention — only extraction of what already exists
+- Not a new primitive invention — only extraction of what products have already proven
+- Not a prerequisite for P-001 or CV-001 — product work proceeds in parallel
 
-**Exit criterion:** Both adapters compile against the new platform traits with no behaviour change. All existing tests pass.
+**Exit criterion:** Consolidated traits are used by at least two adapters with no behaviour change. All existing tests pass. No consolidation is performed speculatively.
 
 ---
 
@@ -177,19 +185,32 @@ Each phase has a distinct purpose. No phase should begin until its predecessor h
 
 ---
 
-## Governance Principle: Evidence Before Abstraction
+## Governance Principle: Products Discover Abstractions
 
 The following rule governs all future platform evolution:
 
-> **No new platform abstraction may be introduced unless required by at least two independent domain adapters or supported by operational evidence.**
+> **Products discover abstractions; architects consolidate them.**
+
+No new platform abstraction may be introduced unless required by at least two independent domain adapters or supported by operational evidence from product use.
 
 This rule:
 - Prevents speculative platform design
 - Ensures abstractions are grounded in real domain requirements
 - Keeps the platform lean and the adapters expressive
-- Aligns with the Coralys principle that the platform evolves from proven patterns
+- Ensures platform evolution is driven by product outcomes, not architectural completeness
+
+**Effort allocation (6–12 month horizon):**
+
+| Area | Allocation |
+|------|-----------|
+| Product development and validation | 60–70% |
+| Platform consolidation | 20–30% |
+| Research | 10–20% |
+
+The authoritative statement of this principle is [`CS-S-001_Product_First_Governance_Principle.md`](strategy/CS-S-001_Product_First_Governance_Principle.md).
 
 ---
 
-*Coralys Platform Post-EP-001 Roadmap v1.0 | July 2026 | Status: Operational*
-*Review trigger: Phase completion; evidence acquisition changes priority; new architectural constraint identified.*
+*Coralys Platform Post-EP-001 Roadmap v2.0 | July 2026 | Status: Operational*
+*Supersedes: v1.0 (2026-07-27) — Platform-centric framing replaced by product-first governance.*
+*Review trigger: Phase completion; evidence acquisition changes priority; product milestone reached.*

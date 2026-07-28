@@ -22,6 +22,7 @@ members = [
     "coralys-matching",
     "adapters/roadef",
     "adapters/airline",
+    "adapters/gerad",
     "coralys-planning",
     "services/ultracrew_server",
     "services/cvrp_server",
