@@ -55,7 +55,7 @@ install_frontend_deps() {
 start_backend() {
     info "Building and starting backend on port $BACKEND_PORT..."
     info "(First build may take 1-2 minutes)"
-    PORT="$BACKEND_PORT" cargo run --manifest-path "$BACKEND_DIR/Cargo.toml" --release \
+    PORT="$BACKEND_PORT" cargo run --manifest-path "$BACKEND_DIR/Cargo.toml" --bin ultracrew_server --release \
         >/tmp/ultracrew-backend.log 2>&1 &
     BACKEND_PID=$!
     echo "$BACKEND_PID" >/tmp/ultracrew-backend.pid
@@ -64,7 +64,7 @@ start_backend() {
 
 start_frontend() {
     info "Starting frontend on port $FRONTEND_PORT..."
-    BROWSER=none (cd "$FRONTEND_DIR" && npm start) \
+    (cd "$FRONTEND_DIR" && BROWSER=none npm start) \
         >/tmp/ultracrew-frontend.log 2>&1 &
     FRONTEND_PID=$!
     echo "$FRONTEND_PID" >/tmp/ultracrew-frontend.pid

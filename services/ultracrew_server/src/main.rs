@@ -1890,7 +1890,7 @@ async fn main() {
     let bind_addr = format!("0.0.0.0:{}", port);
     let addr = tokio::net::TcpListener::bind(&bind_addr).await.unwrap();
     println!("UltraCrew Server running on http://0.0.0.0:{}", port);
-    axum::serve(addr, app).await.unwrap();
+    axum::serve(addr, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.unwrap();
 }
 
 #[cfg(test)]
