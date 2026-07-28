@@ -41,7 +41,7 @@ const S = {
   editCard: { background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '14px', marginBottom: '10px' },
 };
 
-const STEPS = ['Identity', 'Run Optimizer', 'Pairing Constraints', 'Review Schedule', 'Recommendations', 'Disruption Recovery', 'Session Debrief'];
+const STEPS = ['Identity', 'Run Optimizer', 'Review Schedule', 'Recommendations', 'Disruption Recovery', 'Session Debrief'];
 const REJECTION_REASONS = ['Crew unavailable in reality', 'Operational preference', 'Qualification issue', 'Rest concern', 'Airport logistics', 'Local knowledge', 'Other'];
 const MANUAL_EDIT_REASONS = ['Local knowledge', 'Customer request', 'Crew preference', 'Weather / delay', 'Qualification not in model', 'Other'];
 const ADOPTION_OPTIONS = [{ value: 'yes', label: 'Yes' }, { value: 'probably', label: 'Probably' }, { value: 'probably_not', label: 'Probably not' }, { value: 'no', label: 'No' }];
@@ -550,101 +550,29 @@ export default function App() {
         {step === 2 && result && (
           <div>
             <div style={S.card}>
-              <div style={S.cardTitle}>Step 3 — Pairing Constraints</div>
-              <div style={S.cardSub}>
-                A flight cannot depart unless every pairing satisfies crew rest, FDP limits, and qualification requirements.
-                Review the constraint status for each pairing below. Hard violations must be resolved before the schedule can be published.
-              </div>
-              {pairings.length === 0 && (
-                <div style={S.alert('info')}>
-                  No pairing data returned by the backend for this scenario. This is expected for the SunAir demo — pairing analysis requires the GERAD fixture or benchmark scenario.
-                  <br /><br />
-                  <strong>What is a pairing?</strong> A pairing is a sequence of duties (flights) assigned to a crew member between two home-base rest periods. Each pairing must satisfy:
-                  <ul style={{ marginTop: '8px', paddingLeft: '20px', lineHeight: '1.8' }}>
-                    <li><strong>Minimum rest between duties</strong> — typically ≥10h between duty periods</li>
-                    <li><strong>Flight Duty Period (FDP) limit</strong> — maximum hours on duty per day (e.g. 13h for A320)</li>
-                    <li><strong>Qualification match</strong> — Captain must hold type rating for the aircraft</li>
-                    <li><strong>Crew complement</strong> — each flight needs Captain + First Officer + required cabin crew</li>
-                  </ul>
-                </div>
-              )}
+              <div style={S.cardTitle}>Step 3 — Review Schedule</div>
+              <div style={S.cardSub}>Review the proposed schedule below. If you would change anything in practice, use the button at the bottom to record what and why.</div>
+              {/* ── Implicit pairing constraint status — shown inline, not as a separate step ── */}
               {pairings.length > 0 && (() => {
                 const hardViolations = pairings.filter(p => !p.rest_compliant || !p.fdp_compliant);
+                if (hardViolations.length === 0) return (
+                  <div style={S.alert('success')}>
+                    ✓ All {pairings.length} pairings satisfy rest and FDP requirements — schedule is legally dispatchable.
+                  </div>
+                );
                 return (
-                  <div>
-                    <div style={S.kpiGrid}>
-                      <div style={S.kpiCard}><div style={S.kpiValue}>{pairings.length}</div><div style={S.kpiLabel}>Pairings</div></div>
-                      <div style={S.kpiCard}><div style={{ ...S.kpiValue, color: hardViolations.length === 0 ? '#10b981' : '#ef4444' }}>{hardViolations.length}</div><div style={S.kpiLabel}>Hard violations</div></div>
-                      <div style={S.kpiCard}><div style={S.kpiValue}>{pairings.filter(p => p.rest_compliant && p.fdp_compliant).length}</div><div style={S.kpiLabel}>Legal pairings</div></div>
-                    </div>
-                    {hardViolations.length > 0 && (
-                      <div style={S.alert('error')}>
-                        ⚠ {hardViolations.length} pairing{hardViolations.length > 1 ? 's' : ''} violate rest or FDP rules.
-                        These flights <strong>cannot depart</strong> until the violations are resolved.
-                        The optimizer will attempt to repair these — or you can record a manual edit below.
-                      </div>
-                    )}
-                    {pairings.map((p, i) => {
-                      const isLegal = p.rest_compliant && p.fdp_compliant;
+                  <div style={S.alert('error')}>
+                    ⚠ <strong>{hardViolations.length} of {pairings.length} pairings</strong> violate crew rest or FDP limits.
+                    Affected flights <strong>cannot depart</strong> until violations are resolved.
+                    {' '}Violations: {hardViolations.map((p, i) => {
                       const wMeta = workersMap[p.worker_id] || {};
-                      const workerLabel = wMeta.name || `Worker ${p.worker_id}`;
-                      const roleLabel = wMeta.role || (wMeta.skills && wMeta.skills[0]) || '';
-                      return (
-                        <div key={i} style={{ background: isLegal ? '#052e16' : '#450a0a', border: `1px solid ${isLegal ? '#14532d' : '#7f1d1d'}`, borderRadius: '8px', padding: '14px', marginBottom: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '13px', fontWeight: '700', color: isLegal ? '#86efac' : '#fca5a5' }}>
-                                {isLegal ? '✓ Legal' : '✗ Violation'}
-                              </span>
-                              <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '10px' }}>
-                                Pairing {p.pairing_id || i + 1} · {workerLabel}{roleLabel ? ` · ${roleLabel}` : ''}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
-                              {p.total_duty_hours != null ? `${p.total_duty_hours.toFixed(1)}h total duty` : ''}
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: p.rest_compliant ? '#14532d' : '#7f1d1d', color: p.rest_compliant ? '#86efac' : '#fca5a5' }}>
-                              {p.rest_compliant ? '✓ Rest OK' : '✗ Rest violation'}
-                            </span>
-                            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: p.fdp_compliant ? '#14532d' : '#7f1d1d', color: p.fdp_compliant ? '#86efac' : '#fca5a5' }}>
-                              {p.fdp_compliant ? '✓ FDP OK' : '✗ FDP exceeded'}
-                            </span>
-                          </div>
-                          {p.duties && p.duties.length > 0 && (
-                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                              {p.duties.map((d, di) => (
-                                <span key={di} style={{ marginRight: '8px' }}>
-                                  D{di + 1}: h{d.report_hour}–h{d.release_hour}
-                                  {d.rest_after_hours != null && di < p.duties.length - 1 && (
-                                    <span style={{ color: d.rest_after_hours >= 10 ? '#64748b' : '#ef4444', marginLeft: '4px' }}>
-                                      (rest {d.rest_after_hours.toFixed(1)}h{d.rest_after_hours < 10 ? ' ⚠' : ''})
-                                    </span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
+                      const label = wMeta.name || `W${p.worker_id}`;
+                      const reasons = [!p.rest_compliant && 'rest', !p.fdp_compliant && 'FDP'].filter(Boolean).join('+');
+                      return <span key={i} style={{ marginLeft: '6px', fontFamily: 'monospace', fontSize: '11px' }}>[{label} · {reasons}]</span>;
                     })}
                   </div>
                 );
               })()}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={S.btn('secondary')} onClick={() => setStep(1)}>← Back</button>
-              <button style={S.btn('primary')} onClick={() => setStep(3)}>Continue to Schedule Review →</button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && result && (
-          <div>
-            <div style={S.card}>
-              <div style={S.cardTitle}>Step 4 — Review Schedule</div>
-              <div style={S.cardSub}>Review the proposed schedule below. If you would change anything in practice, use the button at the bottom to record what and why.</div>
               <div style={S.kpiGrid}>
                 <div style={S.kpiCard}><div style={S.kpiValue}>{result.schedule ? Object.keys(result.schedule).length : '—'}</div><div style={S.kpiLabel}>Shifts assigned</div></div>
                 <div style={S.kpiCard}><div style={S.kpiValue}>{result.constraint_report ? result.constraint_report.hard_violations : '—'}</div><div style={S.kpiLabel}>Rule violations</div></div>
@@ -946,14 +874,14 @@ export default function App() {
               <button style={S.btn('secondary')} onClick={addManualEdit}>+ Record Manual Edit</button>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={S.btn('secondary')} onClick={() => setStep(2)}>← Back</button>
-              <button style={S.btn('primary')} onClick={() => setStep(4)}>Continue →</button>
+              <button style={S.btn('secondary')} onClick={() => setStep(1)}>← Back</button>
+              <button style={S.btn('primary')} onClick={() => setStep(3)}>Continue →</button>
             </div>
           </div>
-        )}{step === 4 && (
+        )}{step === 3 && (
           <div>
             <div style={S.card}>
-              <div style={S.cardTitle}>Step 5 — Recommendation Decisions</div>
+              <div style={S.cardTitle}>Step 4 — Recommendation Decisions</div>
               <div style={S.cardSub}>
                 For each recommendation, decide whether to accept, reject, or modify it. Your decision and reasoning are captured as evidence automatically.
               </div>
@@ -985,16 +913,16 @@ export default function App() {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={S.btn('secondary')} onClick={() => setStep(3)}>← Back</button>
-              <button style={S.btn('primary')} onClick={() => setStep(5)}>Continue →</button>
+              <button style={S.btn('secondary')} onClick={() => setStep(2)}>← Back</button>
+              <button style={S.btn('primary')} onClick={() => setStep(4)}>Continue →</button>
             </div>
           </div>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <div>
             <div style={S.card}>
-              <div style={S.cardTitle}>Step 6 — Disruption Recovery (Optional)</div>
+              <div style={S.cardTitle}>Step 5 — Disruption Recovery (Optional)</div>
               <div style={S.cardSub}>
                 If a disruption scenario was run during this session, record the time from the disruption event to an accepted recovery plan. Leave blank if not applicable.
               </div>
@@ -1007,16 +935,16 @@ export default function App() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={S.btn('secondary')} onClick={() => setStep(4)}>← Back</button>
-              <button style={S.btn('primary')} onClick={() => setStep(6)}>Continue →</button>
+              <button style={S.btn('secondary')} onClick={() => setStep(3)}>← Back</button>
+              <button style={S.btn('primary')} onClick={() => setStep(5)}>Continue →</button>
             </div>
           </div>
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <div>
             <div style={S.card}>
-              <div style={S.cardTitle}>Step 7 — Session Debrief</div>
+              <div style={S.cardTitle}>Step 6 — Session Debrief</div>
               <div style={S.cardSub}>
                 A few final questions about your experience with the scheduling tool today.
               </div>
