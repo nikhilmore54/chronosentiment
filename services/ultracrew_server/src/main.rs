@@ -1764,6 +1764,144 @@ async fn swap_exchanges_handler(
     Ok(Json(SwapExchangesResponse { swaps, total_candidates, feasible_swaps }))
 }
 
+// ─── INRC Compliance Endpoint ─────────────────────────────────────────────────
+
+/// Request body for POST /api/inrc/compliance.
+/// Accepts a schedule as nurse_id → [shift_per_day] (same format as /api/schedule output).
+#[derive(Deserialize)]
+struct InrcComplianceRequest {
+    /// nurse_id → list of shift strings, one per day (empty string = day off).
+    schedule: HashMap<String, Vec<String>>,
+}
+
+/// Per-nurse compliance summary returned by POST /api/inrc/compliance.
+#[derive(Serialize)]
+struct NurseComplianceSummary {
+    nurse_id: String,
+    is_compliant: bool,
+    forbidden_succession_violations: usize,
+    max_consecutive_work_violations: usize,
+    min_consecutive_work_violations: usize,
+    min_days_off_violations: usize,
+    max_days_off_violations: usize,
+    total_violations: usize,
+}
+
+/// Response body for POST /api/inrc/compliance.
+#[derive(Serialize)]
+struct InrcComplianceResponse {
+    /// True only if the schedule has zero hard-constraint violations.
+    is_legal: bool,
+    /// Total hard-constraint violations across all nurses.
+    total_violations: usize,
+    /// Breakdown by violation type.
+    forbidden_succession_violations: usize,
+    max_consecutive_work_violations: usize,
+    min_consecutive_work_violations: usize,
+    min_days_off_violations: usize,
+    max_days_off_violations: usize,
+    /// Coverage percentage (assigned shifts / required slots × 100).
+    coverage_achieved: f64,
+    /// Per-nurse compliance summaries.
+    nurses: Vec<NurseComplianceSummary>,
+    /// Flat list of all violation details.
+    violations: Vec<serde_json::Value>,
+}
+
+/// POST /api/inrc/compliance
+///
+/// Validates an INRC nurse roster against the loaded scenario's hard constraints:
+///   HC1 — forbidden shift-type successions (e.g. Night → Early violates EU WTD 11h rest)
+///   HC2 — max consecutive working days
+///   HC3 — min consecutive working days
+///   HC4 — min consecutive days off
+///   HC5 — max consecutive days off
+///
+/// Requires a scenario to be loaded first via POST /api/load-scenario.
+/// The schedule format is identical to the output of POST /api/schedule:
+///   { "schedule": { "nurse_id": ["Early", "", "Night", ...] } }
+async fn inrc_compliance_handler(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Json(req): Json<InrcComplianceRequest>,
+) -> impl IntoResponse {
+    let app_state = state.lock().unwrap();
+    let scenario = match app_state.scenario.as_ref() {
+        Some(s) => s,
+        None => return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "No INRC scenario loaded. Call POST /api/load-scenario first."
+            })),
+        ).into_response(),
+    };
+
+    let report = ultracrew::inrc::validator::validate_schedule(&req.schedule, scenario);
+
+    // Build per-nurse summaries
+    let mut nurse_map: HashMap<String, NurseComplianceSummary> = scenario.nurses.iter().map(|n| {
+        (n.id.clone(), NurseComplianceSummary {
+            nurse_id: n.id.clone(),
+            is_compliant: true,
+            forbidden_succession_violations: 0,
+            max_consecutive_work_violations: 0,
+            min_consecutive_work_violations: 0,
+            min_days_off_violations: 0,
+            max_days_off_violations: 0,
+            total_violations: 0,
+        })
+    }).collect();
+
+    let mut violations_json: Vec<serde_json::Value> = Vec::new();
+
+    for detail in &report.details {
+        violations_json.push(serde_json::json!({
+            "nurse_id": detail.nurse_id,
+            "day": detail.day,
+            "constraint": detail.constraint,
+            "actual": detail.actual,
+            "required": detail.required,
+        }));
+
+        if let Some(ns) = nurse_map.get_mut(&detail.nurse_id) {
+            ns.total_violations += 1;
+            ns.is_compliant = false;
+            match detail.constraint.as_str() {
+                "forbidden_shift_type_successions"  => ns.forbidden_succession_violations += 1,
+                "max_consecutive_working_days"      => ns.max_consecutive_work_violations += 1,
+                "min_consecutive_working_days"      => ns.min_consecutive_work_violations += 1,
+                "min_consecutive_days_off"          => ns.min_days_off_violations += 1,
+                "max_consecutive_days_off"          => ns.max_days_off_violations += 1,
+                _ => {}
+            }
+        }
+    }
+
+    let nurses: Vec<NurseComplianceSummary> = scenario.nurses.iter()
+        .filter_map(|n| nurse_map.remove(&n.id))
+        .collect();
+
+    let total_violations = report.forbidden_successions
+        + report.max_consecutive_work_violations
+        + report.min_consecutive_work_violations
+        + report.min_days_off_violations
+        + report.max_days_off_violations;
+
+    let response = InrcComplianceResponse {
+        is_legal: report.is_legal,
+        total_violations,
+        forbidden_succession_violations: report.forbidden_successions,
+        max_consecutive_work_violations: report.max_consecutive_work_violations,
+        min_consecutive_work_violations: report.min_consecutive_work_violations,
+        min_days_off_violations: report.min_days_off_violations,
+        max_days_off_violations: report.max_days_off_violations,
+        coverage_achieved: report.coverage_achieved,
+        nurses,
+        violations: violations_json,
+    };
+
+    (StatusCode::OK, Json(serde_json::to_value(response).unwrap())).into_response()
+}
+
 async fn recommendations_handler(
     State(state): State<Arc<Mutex<AppState>>>,
 ) -> Result<Json<RecommendationsResponse>, (axum::http::StatusCode, String)> {
@@ -2206,6 +2344,8 @@ async fn main() {
         .route("/api/pilot/session", post(pilot_session_handler))
         .route("/api/pilot/sessions", get(list_pilot_sessions_handler))
         .route("/api/load-scenario", post(load_scenario_handler))
+        // INRC nurse rostering compliance endpoint
+        .route("/api/inrc/compliance", post(inrc_compliance_handler))
         .with_state(app_state)
         .layer(GovernorLayer { config: governor_conf })
         .layer(cors);
