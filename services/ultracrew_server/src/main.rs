@@ -1120,10 +1120,55 @@ async fn validate_handler(
 }
 
 // ─── FDP Constants (DGCA / ICAO Annex 6 Part I) ─────────────────────────────
-const MAX_FDP_HOURS: f64 = 13.0;   // Maximum Flight Duty Period
-const MIN_REST_HOURS: f64 = 10.0;  // Minimum rest between FDPs
-const MAX_WEEKLY_HOURS: f64 = 60.0; // Maximum hours in any 7-day window
-const MAX_CONSECUTIVE_DAYS: u64 = 6; // Maximum consecutive duty days
+// ─── FTA Constants (DGCA CAR Section 7 / EASA ORO.FTL) ──────────────────────
+/// Minimum rest between consecutive FDPs (layover rest within a pairing).
+/// DGCA CAR Section 7 / EASA ORO.FTL.235: minimum 10h, of which 8h must be
+/// an opportunity for sleep.
+const LAYOVER_REST_HOURS: f64 = 10.0;
+
+/// Home-base rest threshold: a rest gap >= this value ends a pairing and
+/// returns the crew to base. DGCA CAR Section 7 specifies home-base rest as
+/// >= 2× preceding FDP (min 12h). We use 34h as the conventional industry
+/// threshold that distinguishes a home-base rest from a layover.
+const HOME_BASE_REST_HOURS: f64 = 34.0;
+
+/// Maximum hours in any 7-day window (DGCA CAR Section 7 cumulative limit).
+const MAX_WEEKLY_HOURS: f64 = 60.0;
+
+/// Maximum consecutive duty days (DGCA CAR Section 7).
+const MAX_CONSECUTIVE_DAYS: u64 = 6;
+
+/// DGCA CAR Section 7 / EASA ORO.FTL Table: maximum FDP hours.
+///
+/// Reporting time bands:
+///   Day:       06:00–13:59  (report_hour in 6..=13)
+///   Afternoon: 14:00–17:59  (report_hour in 14..=17)
+///   Night:     18:00–05:59  (report_hour in 18..=23 or 0..=5)
+///
+/// Sector count:
+///   1-2 sectors: Day 13h, Afternoon 12h, Night 11h
+///   3-4 sectors: Day 12h, Afternoon 11h, Night 10h
+///   5+ sectors:  Day 11h, Afternoon 10h, Night  9h
+fn max_fdp_hours(sector_count: usize, report_hour: u64) -> f64 {
+    let band: usize = if report_hour >= 6 && report_hour <= 13 {
+        0 // Day
+    } else if report_hour >= 14 && report_hour <= 17 {
+        1 // Afternoon
+    } else {
+        2 // Night (18:00–05:59)
+    };
+    match (sector_count, band) {
+        (0..=2, 0) => 13.0,
+        (0..=2, 1) => 12.0,
+        (0..=2, _) => 11.0,
+        (3..=4, 0) => 12.0,
+        (3..=4, 1) => 11.0,
+        (3..=4, _) => 10.0,
+        (_,     0) => 11.0,
+        (_,     1) => 10.0,
+        (_,     _) =>  9.0,
+    }
+}
 
 // ─── Shared request type for pairings / duties / swap_exchanges ──────────────
 
@@ -1153,21 +1198,39 @@ struct WorkerInput {
 
 // ─── Pairing: a sequence of consecutive duties for one worker ─────────────────
 
+// ─── FTA data model ───────────────────────────────────────────────────────────
+
+/// A single Flight Duty Period: from crew report to last block-off.
+/// Each sector (shift) within the FDP is separated by a ground time < LAYOVER_REST_HOURS.
 #[derive(Serialize)]
-struct Pairing {
-    pairing_id: String,
-    worker_id: u64,
-    worker_skill: String,
-    duties: Vec<DutyInPairing>,
-    total_fdp_hours: f64,
-    rest_before_next_hours: Option<f64>,
+struct FdpPeriod {
+    /// Shifts (sectors) in this FDP, in chronological order.
+    sectors: Vec<SectorInFdp>,
+    /// Hour at which the crew reports for duty (= start_hour of first sector).
+    report_hour: u64,
+    /// Hour at which the crew is released (= end_hour of last sector).
+    release_hour: u64,
+    /// FDP duration in hours (release_hour - report_hour).
+    fdp_hours: f64,
+    /// Number of sectors in this FDP.
+    sector_count: usize,
+    /// Maximum FDP allowed for this sector count and reporting time (DGCA CAR Section 7).
+    fdp_limit_hours: f64,
+    /// Whether this FDP is within the regulatory limit.
     fdp_compliant: bool,
+    /// Violation message if not compliant.
     fdp_violation: Option<String>,
-    layover_hours: f64,
+    /// Rest gap after this FDP before the next FDP (None if this is the last FDP in the pairing).
+    rest_after_hours: Option<f64>,
+    /// Minimum required rest after this FDP: max(fdp_hours, LAYOVER_REST_HOURS).
+    /// EASA ORO.FTL.235: rest >= preceding FDP duration, never < 10h.
+    min_rest_required_hours: f64,
+    /// Whether the rest after this FDP meets the minimum requirement.
+    rest_compliant: bool,
 }
 
 #[derive(Serialize)]
-struct DutyInPairing {
+struct SectorInFdp {
     shift_id: u64,
     start_hour: u64,
     end_hour: u64,
@@ -1175,21 +1238,63 @@ struct DutyInPairing {
     required_skill: String,
 }
 
+/// A crew pairing: a sequence of FDPs from home-base departure to home-base return.
+/// A pairing boundary is a rest gap >= HOME_BASE_REST_HOURS (34h).
+/// Within a pairing, FDPs are separated by layover rests (10h–33h).
+#[derive(Serialize)]
+struct Pairing {
+    pairing_id: String,
+    worker_id: u64,
+    worker_skill: String,
+    /// Individual FDPs within this pairing (each validated separately).
+    fdp_periods: Vec<FdpPeriod>,
+    /// Total block hours across all FDPs in this pairing.
+    total_block_hours: f64,
+    /// Total layover hours within this pairing (time away from base between FDPs).
+    total_layover_hours: f64,
+    /// Number of FDPs in this pairing.
+    fdp_count: usize,
+    /// Rest gap after this pairing (home-base rest). None if this is the last pairing.
+    home_base_rest_hours: Option<f64>,
+    /// True only if ALL FDPs in this pairing are FDP-compliant.
+    fdp_compliant: bool,
+    /// True only if ALL inter-FDP rests within this pairing are rest-compliant.
+    rest_compliant: bool,
+    /// Combined violation messages.
+    violations: Vec<String>,
+}
+
 #[derive(Serialize)]
 struct PairingsResponse {
     pairings: Vec<Pairing>,
     total_pairings: usize,
+    /// Number of pairings with at least one FDP violation.
     fdp_violations: usize,
+    /// Number of pairings with at least one rest violation.
+    rest_violations: usize,
+    /// Number of fully compliant pairings (no FDP or rest violations).
     compliant_pairings: usize,
 }
 
 /// POST /api/pairings
-/// Groups each worker's assigned shifts into pairings (consecutive duty blocks
-/// separated by ≥ MIN_REST_HOURS rest). Validates each pairing against FDP limits.
+///
+/// Correct FTA model (DGCA CAR Section 7 / EASA ORO.FTL):
+///
+/// 1. Group each worker's shifts into FDPs: consecutive sectors with inter-sector
+///    ground time < LAYOVER_REST_HOURS (10h) belong to the same FDP.
+///
+/// 2. Group FDPs into pairings: consecutive FDPs with inter-FDP rest
+///    < HOME_BASE_REST_HOURS (34h) belong to the same pairing. A rest >= 34h
+///    ends the pairing (crew returns to home base).
+///
+/// 3. Validate each FDP:
+///    - FDP limit: max_fdp_hours(sector_count, report_hour) per DGCA CAR Section 7 Table.
+///    - Rest compliance: rest_after >= max(fdp_hours, LAYOVER_REST_HOURS).
+///      (EASA ORO.FTL.235: rest must be at least as long as the preceding FDP,
+///       and never less than 10h.)
 async fn pairings_handler(
     Json(req): Json<ScheduleAnalysisRequest>,
 ) -> Result<Json<PairingsResponse>, (StatusCode, String)> {
-    // Build shift lookup
     let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
     let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
 
@@ -1205,85 +1310,176 @@ async fn pairings_handler(
     let mut pairing_counter = 0u64;
 
     for (worker_id, mut shifts) in worker_shifts {
-        // Sort by start_hour
         shifts.sort_by_key(|s| s.start_hour);
         let skill = worker_map.get(&worker_id)
             .and_then(|w| w.skills.first())
             .cloned()
             .unwrap_or_default();
 
-        // Split into pairings: a new pairing starts when rest gap ≥ MIN_REST_HOURS
-        let mut current_duties: Vec<ShiftInput> = Vec::new();
+        // ── Step 1: group sectors into FDPs ──────────────────────────────────
+        // A new FDP starts when the ground time between consecutive sectors >= LAYOVER_REST_HOURS.
+        let mut fdp_groups: Vec<Vec<ShiftInput>> = Vec::new();
+        let mut current_fdp: Vec<ShiftInput> = Vec::new();
         for shift in &shifts {
-            if current_duties.is_empty() {
-                current_duties.push(shift.clone());
+            if current_fdp.is_empty() {
+                current_fdp.push(shift.clone());
             } else {
-                let last = current_duties.last().unwrap();
-                let last_end = last.start_hour + last.duration_hours;
-                let gap = shift.start_hour as f64 - last_end as f64;
-                if gap >= MIN_REST_HOURS {
-                    // Emit current pairing
-                    pairing_counter += 1;
-                    let p = build_pairing(pairing_counter, worker_id, &skill, &current_duties, Some(gap));
-                    pairings.push(p);
-                    current_duties = vec![shift.clone()];
+                let last = current_fdp.last().unwrap();
+                let ground_time = shift.start_hour as f64 - (last.start_hour + last.duration_hours) as f64;
+                if ground_time >= LAYOVER_REST_HOURS {
+                    fdp_groups.push(current_fdp.clone());
+                    current_fdp = vec![shift.clone()];
                 } else {
-                    current_duties.push(shift.clone());
+                    current_fdp.push(shift.clone());
                 }
             }
         }
-        // Emit final pairing for this worker
-        if !current_duties.is_empty() {
+        if !current_fdp.is_empty() { fdp_groups.push(current_fdp); }
+
+        // ── Step 2: group FDPs into pairings ─────────────────────────────────
+        // A new pairing starts when the rest between consecutive FDPs >= HOME_BASE_REST_HOURS.
+        let mut pairing_fdp_groups: Vec<Vec<Vec<ShiftInput>>> = Vec::new();
+        let mut current_pairing: Vec<Vec<ShiftInput>> = Vec::new();
+        for fdp in &fdp_groups {
+            if current_pairing.is_empty() {
+                current_pairing.push(fdp.clone());
+            } else {
+                let prev_fdp = current_pairing.last().unwrap();
+                let prev_release = prev_fdp.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
+                let next_report = fdp.first().map(|s| s.start_hour).unwrap_or(0);
+                let rest_gap = next_report as f64 - prev_release as f64;
+                if rest_gap >= HOME_BASE_REST_HOURS {
+                    pairing_fdp_groups.push(current_pairing.clone());
+                    current_pairing = vec![fdp.clone()];
+                } else {
+                    current_pairing.push(fdp.clone());
+                }
+            }
+        }
+        if !current_pairing.is_empty() { pairing_fdp_groups.push(current_pairing); }
+
+        // ── Step 3: build and validate each pairing ───────────────────────────
+        for (pi, fdp_list) in pairing_fdp_groups.iter().enumerate() {
             pairing_counter += 1;
-            let p = build_pairing(pairing_counter, worker_id, &skill, &current_duties, None);
-            pairings.push(p);
+
+            // Compute rest gap to next pairing (home-base rest)
+            let home_base_rest_hours: Option<f64> = pairing_fdp_groups.get(pi + 1).map(|next_pairing| {
+                let this_release = fdp_list.last()
+                    .and_then(|fdp| fdp.last())
+                    .map(|s| s.start_hour + s.duration_hours)
+                    .unwrap_or(0);
+                let next_report = next_pairing.first()
+                    .and_then(|fdp| fdp.first())
+                    .map(|s| s.start_hour)
+                    .unwrap_or(0);
+                next_report as f64 - this_release as f64
+            });
+
+            // Build FdpPeriod structs with compliance checks
+            let mut fdp_periods: Vec<FdpPeriod> = Vec::new();
+            for (fi, fdp_sectors) in fdp_list.iter().enumerate() {
+                let report_hour = fdp_sectors.first().map(|s| s.start_hour).unwrap_or(0);
+                let release_hour = fdp_sectors.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
+                let fdp_hours = (release_hour - report_hour) as f64;
+                let sector_count = fdp_sectors.len();
+                let report_hour_of_day = report_hour % 24;
+                let fdp_limit = max_fdp_hours(sector_count, report_hour_of_day);
+                let fdp_compliant = fdp_hours <= fdp_limit;
+                let fdp_violation = if !fdp_compliant {
+                    Some(format!(
+                        "FDP {:.1}h exceeds limit {:.1}h ({} sector{}, report {:02}:00)",
+                        fdp_hours, fdp_limit, sector_count,
+                        if sector_count == 1 { "" } else { "s" },
+                        report_hour_of_day
+                    ))
+                } else {
+                    None
+                };
+
+                // Rest after this FDP (gap to next FDP within the pairing)
+                let rest_after_hours: Option<f64> = fdp_list.get(fi + 1).map(|next_fdp| {
+                    let next_report = next_fdp.first().map(|s| s.start_hour).unwrap_or(0);
+                    next_report as f64 - release_hour as f64
+                });
+
+                // EASA ORO.FTL.235: rest >= max(preceding_FDP_hours, LAYOVER_REST_HOURS)
+                let min_rest_required = fdp_hours.max(LAYOVER_REST_HOURS);
+                let rest_compliant = rest_after_hours
+                    .map(|r| r >= min_rest_required)
+                    .unwrap_or(true); // last FDP in pairing: rest compliance is home-base rest (checked separately)
+
+                fdp_periods.push(FdpPeriod {
+                    sectors: fdp_sectors.iter().map(|s| SectorInFdp {
+                        shift_id: s.id,
+                        start_hour: s.start_hour,
+                        end_hour: s.start_hour + s.duration_hours,
+                        duration_hours: s.duration_hours,
+                        required_skill: s.required_skill.clone(),
+                    }).collect(),
+                    report_hour,
+                    release_hour,
+                    fdp_hours,
+                    sector_count,
+                    fdp_limit_hours: fdp_limit,
+                    fdp_compliant,
+                    fdp_violation,
+                    rest_after_hours,
+                    min_rest_required_hours: min_rest_required,
+                    rest_compliant,
+                });
+            }
+
+            let total_block_hours: f64 = fdp_periods.iter()
+                .flat_map(|fp| fp.sectors.iter())
+                .map(|s| s.duration_hours as f64)
+                .sum();
+            let total_layover_hours: f64 = fdp_periods.iter()
+                .filter_map(|fp| fp.rest_after_hours)
+                .sum();
+            let fdp_count = fdp_periods.len();
+            let pairing_fdp_compliant = fdp_periods.iter().all(|fp| fp.fdp_compliant);
+            let pairing_rest_compliant = fdp_periods.iter().all(|fp| fp.rest_compliant);
+            let mut violations: Vec<String> = Vec::new();
+            for fp in &fdp_periods {
+                if let Some(v) = &fp.fdp_violation { violations.push(v.clone()); }
+                if !fp.rest_compliant {
+                    if let Some(r) = fp.rest_after_hours {
+                        violations.push(format!(
+                            "Rest {:.1}h < required {:.1}h (must be >= preceding FDP {:.1}h)",
+                            r, fp.min_rest_required_hours, fp.fdp_hours
+                        ));
+                    }
+                }
+            }
+
+            pairings.push(Pairing {
+                pairing_id: format!("P{:04}", pairing_counter),
+                worker_id,
+                worker_skill: skill.clone(),
+                fdp_periods,
+                total_block_hours,
+                total_layover_hours,
+                fdp_count,
+                home_base_rest_hours,
+                fdp_compliant: pairing_fdp_compliant,
+                rest_compliant: pairing_rest_compliant,
+                violations,
+            });
         }
     }
 
-    // Sort pairings by worker_id then start hour
     pairings.sort_by(|a, b| a.worker_id.cmp(&b.worker_id)
-        .then(a.duties.first().map(|d| d.start_hour).unwrap_or(0)
-            .cmp(&b.duties.first().map(|d| d.start_hour).unwrap_or(0))));
+        .then(
+            a.fdp_periods.first().and_then(|fp| fp.sectors.first()).map(|s| s.start_hour).unwrap_or(0)
+            .cmp(&b.fdp_periods.first().and_then(|fp| fp.sectors.first()).map(|s| s.start_hour).unwrap_or(0))
+        ));
 
     let fdp_violations = pairings.iter().filter(|p| !p.fdp_compliant).count();
-    let compliant_pairings = pairings.len() - fdp_violations;
+    let rest_violations = pairings.iter().filter(|p| !p.rest_compliant).count();
+    let compliant_pairings = pairings.iter().filter(|p| p.fdp_compliant && p.rest_compliant).count();
     let total_pairings = pairings.len();
 
-    Ok(Json(PairingsResponse { pairings, total_pairings, fdp_violations, compliant_pairings }))
-}
-
-fn build_pairing(id: u64, worker_id: u64, skill: &str, duties: &[ShiftInput], rest_before_next: Option<f64>) -> Pairing {
-    let total_fdp_hours: f64 = duties.iter().map(|d| d.duration_hours as f64).sum();
-    let first_start = duties.first().map(|d| d.start_hour).unwrap_or(0);
-    let last_end = duties.last().map(|d| d.start_hour + d.duration_hours).unwrap_or(0);
-    let span_hours = (last_end - first_start) as f64;
-    // FDP = time from report (first start) to release (last end)
-    let fdp_compliant = span_hours <= MAX_FDP_HOURS;
-    let fdp_violation = if !fdp_compliant {
-        Some(format!("FDP span {:.1}h exceeds maximum {:.1}h", span_hours, MAX_FDP_HOURS))
-    } else {
-        None
-    };
-    // Layover = span - actual flying time
-    let layover_hours = (span_hours - total_fdp_hours).max(0.0);
-
-    Pairing {
-        pairing_id: format!("P{:04}", id),
-        worker_id,
-        worker_skill: skill.to_string(),
-        duties: duties.iter().map(|d| DutyInPairing {
-            shift_id: d.id,
-            start_hour: d.start_hour,
-            end_hour: d.start_hour + d.duration_hours,
-            duration_hours: d.duration_hours,
-            required_skill: d.required_skill.clone(),
-        }).collect(),
-        total_fdp_hours,
-        rest_before_next_hours: rest_before_next,
-        fdp_compliant,
-        fdp_violation,
-        layover_hours,
-    }
+    Ok(Json(PairingsResponse { pairings, total_pairings, fdp_violations, rest_violations, compliant_pairings }))
 }
 
 // ─── Duties: per-worker duty periods with FDP compliance ─────────────────────
@@ -1347,7 +1543,7 @@ async fn duties_handler(
             } else {
                 let last = current.last().unwrap();
                 let gap = shift.start_hour as f64 - (last.start_hour + last.duration_hours) as f64;
-                if gap >= MIN_REST_HOURS {
+                if gap >= LAYOVER_REST_HOURS {
                     groups.push(current.clone());
                     current = vec![shift.clone()];
                 } else {
@@ -1366,21 +1562,34 @@ async fn duties_handler(
             let report_hour = group.first().map(|s| s.start_hour).unwrap_or(0);
             let release_hour = group.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
             let fdp_hours = (release_hour - report_hour) as f64;
-            let fdp_compliant = fdp_hours <= MAX_FDP_HOURS;
+            let sector_count = group.len();
+            let report_hour_of_day = report_hour % 24;
+            let fdp_limit = max_fdp_hours(sector_count, report_hour_of_day);
+            let fdp_compliant = fdp_hours <= fdp_limit;
 
             // Rest after = gap to next duty group
             let rest_after_hours = groups.get(i + 1).map(|next| {
                 let next_report = next.first().map(|s| s.start_hour).unwrap_or(0);
                 next_report as f64 - release_hour as f64
             });
-            let rest_compliant = rest_after_hours.map(|r| r >= MIN_REST_HOURS).unwrap_or(true);
+            // EASA ORO.FTL.235: rest >= max(preceding_FDP_hours, LAYOVER_REST_HOURS)
+            let min_rest_required = fdp_hours.max(LAYOVER_REST_HOURS);
+            let rest_compliant = rest_after_hours.map(|r| r >= min_rest_required).unwrap_or(true);
 
             let mut violations = Vec::new();
             if !fdp_compliant {
-                violations.push(format!("FDP {:.1}h > max {:.1}h", fdp_hours, MAX_FDP_HOURS));
+                violations.push(format!(
+                    "FDP {:.1}h > limit {:.1}h ({} sector{}, report {:02}:00)",
+                    fdp_hours, fdp_limit, sector_count,
+                    if sector_count == 1 { "" } else { "s" },
+                    report_hour_of_day
+                ));
             }
             if !rest_compliant {
-                violations.push(format!("Rest {:.1}h < min {:.1}h", rest_after_hours.unwrap_or(0.0), MIN_REST_HOURS));
+                violations.push(format!(
+                    "Rest {:.1}h < required {:.1}h (>= max(FDP {:.1}h, 10h))",
+                    rest_after_hours.unwrap_or(0.0), min_rest_required, fdp_hours
+                ));
             }
             if !weekly_hours_compliant {
                 violations.push(format!("Weekly hours {:.1}h > max {:.1}h", total_hours, MAX_WEEKLY_HOURS));
@@ -1498,34 +1707,37 @@ async fn swap_exchanges_handler(
 
             // Check rest before
             let rest_before_ok = prev_shift.map(|ps| {
-                (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) >= MIN_REST_HOURS
+                (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) >= LAYOVER_REST_HOURS
             }).unwrap_or(true);
 
             // Check rest after
             let rest_after_ok = next_shift.map(|ns| {
-                (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) >= MIN_REST_HOURS
+                (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) >= LAYOVER_REST_HOURS
             }).unwrap_or(true);
 
             // Compute FDP span if this shift is added (worst case: adjacent to prev/next)
             let fdp_start = prev_shift
-                .filter(|ps| (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) < MIN_REST_HOURS)
+                .filter(|ps| (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) < LAYOVER_REST_HOURS)
                 .map(|ps| ps.start_hour)
                 .unwrap_or(shift.start_hour);
             let fdp_end = next_shift
-                .filter(|ns| (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) < MIN_REST_HOURS)
+                .filter(|ns| (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) < LAYOVER_REST_HOURS)
                 .map(|ns| ns.start_hour + ns.duration_hours)
                 .unwrap_or(shift.start_hour + shift.duration_hours);
             let candidate_fdp_after = (fdp_end - fdp_start) as f64;
-            let candidate_fdp_compliant = candidate_fdp_after <= MAX_FDP_HOURS;
+            // Use conservative 1-sector limit at the candidate's report hour
+            let candidate_report_hod = fdp_start % 24;
+            let candidate_fdp_limit = max_fdp_hours(1, candidate_report_hod);
+            let candidate_fdp_compliant = candidate_fdp_after <= candidate_fdp_limit;
 
             let feasible = rest_before_ok && rest_after_ok && candidate_fdp_compliant;
             let reason = if !feasible {
                 let mut reasons = Vec::new();
                 if !rest_before_ok { reasons.push(format!("Insufficient rest before ({:.1}h < {:.1}h)",
-                    prev_shift.map(|ps| shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64).unwrap_or(0.0), MIN_REST_HOURS)); }
+                    prev_shift.map(|ps| shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64).unwrap_or(0.0), LAYOVER_REST_HOURS)); }
                 if !rest_after_ok { reasons.push(format!("Insufficient rest after ({:.1}h < {:.1}h)",
-                    next_shift.map(|ns| ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64).unwrap_or(0.0), MIN_REST_HOURS)); }
-                if !candidate_fdp_compliant { reasons.push(format!("FDP would be {:.1}h > {:.1}h", candidate_fdp_after, MAX_FDP_HOURS)); }
+                    next_shift.map(|ns| ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64).unwrap_or(0.0), LAYOVER_REST_HOURS)); }
+                if !candidate_fdp_compliant { reasons.push(format!("FDP would be {:.1}h > {:.1}h", candidate_fdp_after, candidate_fdp_limit)); }
                 Some(reasons.join("; "))
             } else {
                 None
@@ -1953,12 +2165,12 @@ async fn main() {
 
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
-    // 2 requests/second per IP, burst of 5.  Applied globally so that
-    // /api/schedule (the expensive optimizer endpoint) cannot be abused.
+    // 10 requests/second per IP, burst of 20.  Permissive for local dev/demo;
+    // tighten before production deployment.
     // Returns HTTP 429 Too Many Requests when the limit is exceeded.
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(2)
-        .burst_size(5)
+        .per_second(10)
+        .burst_size(20)
         .finish()
         .expect("Invalid governor configuration");
     let governor_conf = std::sync::Arc::new(governor_conf);
@@ -2290,5 +2502,3 @@ mod server_endpoints_tests {
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);
     }
 }
-
-

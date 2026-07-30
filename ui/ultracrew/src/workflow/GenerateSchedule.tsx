@@ -29,10 +29,18 @@ export const GenerateSchedule: React.FC<{
     }, 700);
 
     try {
+      // Fetch CSRF token (double-submit pattern required by the backend)
+      const csrfRes = await fetch('/api/csrf-token');
+      const csrfData = await csrfRes.json();
+      const csrfToken: string = csrfData.csrf_token ?? '';
+
       const payload = buildSchedulePayload(staff, rulePayload);
       const res = await fetch('/api/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Server error ${res.status}`);

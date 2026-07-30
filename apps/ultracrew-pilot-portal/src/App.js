@@ -554,11 +554,9 @@ export default function App() {
               <div style={S.cardSub}>Review the proposed schedule below. If you would change anything in practice, use the button at the bottom to record what and why.</div>
               {/* ── Implicit pairing constraint status — shown inline, not as a separate step ── */}
               {pairings.length > 0 && (() => {
-                // rest_compliant: a pairing is rest-compliant if rest_before_next_hours is null
-                // (it is the last pairing for that worker) or >= 10h (DGCA minimum crew rest).
-                const isPairingRestCompliant = p =>
-                  p.rest_before_next_hours == null || p.rest_before_next_hours >= 10;
-                const hardViolations = pairings.filter(p => !isPairingRestCompliant(p) || !p.fdp_compliant);
+                // New FTA model: p.rest_compliant and p.fdp_compliant are pre-computed booleans
+                // on each Pairing object returned by POST /api/pairings.
+                const hardViolations = pairings.filter(p => !p.rest_compliant || !p.fdp_compliant);
                 if (hardViolations.length === 0) return (
                   <div style={S.alert('success')}>
                     ✓ All {pairings.length} pairings satisfy rest and FDP requirements — schedule is legally dispatchable.
@@ -571,7 +569,7 @@ export default function App() {
                     {' '}Violations: {hardViolations.map((p, i) => {
                       const wMeta = workersMap[p.worker_id] || {};
                       const label = wMeta.name || `W${p.worker_id}`;
-                      const reasons = [!isPairingRestCompliant(p) && 'rest', !p.fdp_compliant && 'FDP'].filter(Boolean).join('+');
+                      const reasons = [!p.rest_compliant && 'rest', !p.fdp_compliant && 'FDP'].filter(Boolean).join('+');
                       return <span key={i} style={{ marginLeft: '6px', fontFamily: 'monospace', fontSize: '11px' }}>[{label} · {reasons}]</span>;
                     })}
                   </div>
