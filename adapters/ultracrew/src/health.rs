@@ -136,7 +136,7 @@ fn check_validator() -> bool {
 
     let req = ScheduleRequest {
         workers: vec![Worker { id: 1, skills: vec![Skill::new("Captain")] }],
-        shifts:  vec![Shift  { id: 1, start_hour: 6, duration_hours: 8, required_skill: Skill::new("Captain") }],
+        shifts:  vec![Shift  { id: 1, start_hour: 6, duration_hours: 8, required_skill: Skill::new("Captain"), flight_id: None, crew_role: None }],
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: Some(10),

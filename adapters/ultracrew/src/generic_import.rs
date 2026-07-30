@@ -253,7 +253,7 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
             )));
         }
 
-        shifts.push(Shift { id, start_hour, duration_hours, required_skill });
+        shifts.push(Shift { id, start_hour, duration_hours, required_skill, flight_id: None, crew_role: None });
     }
 
     Ok(shifts)
@@ -338,12 +338,16 @@ pub fn export_request_template() -> String {
                 start_hour: 0,
                 duration_hours: 8,
                 required_skill: Skill::new("Nurse"),
+                flight_id: None,
+                crew_role: None,
             },
             crate::models::Shift {
                 id: 2,
                 start_hour: 8,
                 duration_hours: 8,
                 required_skill: Skill::new("ICU"),
+                flight_id: None,
+                crew_role: None,
             },
         ],
         historical_workloads: Some({

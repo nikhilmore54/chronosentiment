@@ -45,6 +45,8 @@ pub mod helpers {
                 start_hour: start as u64,
                 duration_hours: 8,
                 required_skill: all_skills[i % all_skills.len()].clone(),
+                flight_id: None,
+                crew_role: None,
             });
         }
 

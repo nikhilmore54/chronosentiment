@@ -86,23 +86,31 @@ impl ConstraintEngine {
             if let Some(shifts) = worker_shifts.get(&worker.id) {
                 let mut sorted_shifts = shifts.clone();
                 sorted_shifts.sort_by_key(|s| s.start_hour);
+                // HC2: check ALL pairs for overlap (double-booking)
                 for i in 0..sorted_shifts.len() {
                     for j in (i + 1)..sorted_shifts.len() {
                         let s_i = sorted_shifts[i];
                         let s_j = sorted_shifts[j];
-                        // Overlap detection
                         if s_i.overlaps_with(s_j) {
                             fitness -= 1000.0;
                             hc2_violations += 1;
                         }
-                        // Rest period check (minimum 8 hours between consecutive shifts)
-                        let gap = if s_j.start_hour >= s_i.end_hour() {
-                            s_j.start_hour - s_i.end_hour()
-                        } else { 0 };
-                        if gap < 8 {
-                            fitness -= 200.0;
-                            rest_violations += 1;
-                        }
+                    }
+                }
+                // Rest: check only CONSECUTIVE shifts (adjacent in time order)
+                // A rest violation means the gap between the end of shift[i] and
+                // the start of shift[i+1] is less than 10 hours (DGCA/EASA minimum).
+                for i in 0..sorted_shifts.len().saturating_sub(1) {
+                    let s_i = sorted_shifts[i];
+                    let s_next = sorted_shifts[i + 1];
+                    let gap = if s_next.start_hour >= s_i.end_hour() {
+                        s_next.start_hour - s_i.end_hour()
+                    } else { 0 };
+                    if gap < 10 {
+                        // Penalty scales with severity: short gaps cost more
+                        let severity = if gap < 4 { 3.0 } else if gap < 8 { 2.0 } else { 1.0 };
+                        fitness -= 800.0 * severity;
+                        rest_violations += 1;
                     }
                 }
             }
@@ -121,6 +129,53 @@ impl ConstraintEngine {
             let fairness_cost = variance * 10.0;
             fitness -= fairness_cost;
             fairness_penalty += fairness_cost;
+        }
+
+        // Pass 3: Pairing completion — evaluated inside the GA loop as part of the fitness
+        // function so the GA actively evolves toward complete, legal pairings.
+        //
+        // A pairing is the set of shifts sharing the same flight_id. Every flight must have:
+        //   - A qualified Captain (skill ends with "-CPT" or crew_role == "Captain")
+        //   - A qualified First Officer (skill ends with "-FO" or crew_role == "First Officer")
+        //   - All other required crew roles filled with qualified workers
+        //
+        // Incomplete pairing penalty: -5000 per missing cockpit role, -2000 per unqualified role.
+        // Complete pairing reward: +500 per crew member in a fully legal pairing.
+        // This makes pairing completion the dominant fitness signal, overriding coverage alone.
+        {
+            let mut flight_shifts: HashMap<String, Vec<&Shift>> = HashMap::new();
+            for shift in self.context.shifts.iter() {
+                if let Some(ref fid) = shift.flight_id {
+                    flight_shifts.entry(fid.clone()).or_default().push(shift);
+                }
+            }
+            for (_fid, flt_shifts) in &flight_shifts {
+                let has_captain = flt_shifts.iter().any(|s| {
+                    s.crew_role.as_deref() == Some("Captain") || s.required_skill.0.ends_with("-CPT")
+                });
+                let has_fo = flt_shifts.iter().any(|s| {
+                    s.crew_role.as_deref() == Some("First Officer") || s.required_skill.0.ends_with("-FO")
+                });
+                // Check all assigned workers are qualified for their shift
+                let all_qualified = flt_shifts.iter().all(|shift| {
+                    let worker_id = genome.assignments.get(&shift.id).unwrap();
+                    let worker = self.context.workers.iter().find(|w| w.id == *worker_id).unwrap();
+                    worker.skills.contains(&shift.required_skill)
+                });
+                if !has_captain {
+                    fitness -= 5000.0;
+                }
+                if !has_fo {
+                    fitness -= 5000.0;
+                }
+                if !all_qualified {
+                    fitness -= 2000.0;
+                }
+                if has_captain && has_fo && all_qualified {
+                    // Reward complete, legal pairings — incentivises the GA to fill all roles
+                    fitness += 500.0 * (flt_shifts.len() as f64);
+                }
+            }
         }
 
         // Base reward for completing the schedule
