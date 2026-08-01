@@ -1119,55 +1119,61 @@ async fn validate_handler(
     Ok(Json(response))
 }
 
-// ─── FDP Constants (DGCA / ICAO Annex 6 Part I) ─────────────────────────────
-// ─── FTA Constants (DGCA CAR Section 7 / EASA ORO.FTL) ──────────────────────
-/// Minimum rest between consecutive FDPs (layover rest within a pairing).
-/// DGCA CAR Section 7 / EASA ORO.FTL.235: minimum 10h, of which 8h must be
-/// an opportunity for sleep.
-const LAYOVER_REST_HOURS: f64 = 10.0;
+// ─── FTA Constants (TC CAR 700 — Air Canada / Air Transat) ───────────────────
+//
+// Transport Canada Commercial Air Services, Subpart 700.15 (Flight Duty Period)
+// and 700.17 (Rest Period).  These are the rules used by the GERAD G-2014-22
+// benchmark dataset (Kasirzadeh, Saddoune & Soumis 2014, HEC Montréal).
+//
+// Key differences from DGCA CAR Section 7 / EASA ORO.FTL:
+//   • Night band is 00:00–05:59 only (not 18:00–05:59).
+//     Reporting 06:00–23:59 is treated as "day" (no afternoon sub-band).
+//   • FDP limits: 1-2 sectors 13h/12h, 3-4 sectors 12h/11h, 5+ sectors 11h/10h
+//     (day/night respectively).
+//   • Minimum rest = max(8h, preceding FDP duration).
+//     TC CAR 700.17(1): rest period ≥ 8h free from duty.
+//     TC CAR 700.17(2): if FDP > 8h, rest ≥ FDP.
+//   • Home-base rest threshold: 34h (industry convention, same as DGCA).
 
-/// Home-base rest threshold: a rest gap >= this value ends a pairing and
-/// returns the crew to base. DGCA CAR Section 7 specifies home-base rest as
-/// >= 2× preceding FDP (min 12h). We use 34h as the conventional industry
-/// threshold that distinguishes a home-base rest from a layover.
+/// Minimum absolute rest between consecutive FDPs (TC CAR 700.17(1)).
+const LAYOVER_REST_HOURS: f64 = 8.0;
+
+/// Home-base rest threshold: rest gap >= this value ends a pairing.
 const HOME_BASE_REST_HOURS: f64 = 34.0;
 
-/// Maximum hours in any 7-day window (DGCA CAR Section 7 cumulative limit).
+/// Maximum hours in any 7-day window (TC CAR 700 cumulative limit).
 const MAX_WEEKLY_HOURS: f64 = 60.0;
 
-/// Maximum consecutive duty days (DGCA CAR Section 7).
+/// Maximum consecutive duty days (TC CAR 700).
 const MAX_CONSECUTIVE_DAYS: u64 = 6;
 
-/// DGCA CAR Section 7 / EASA ORO.FTL Table: maximum FDP hours.
+/// TC CAR 700.15 Table: maximum FDP hours by sector count and reporting time.
 ///
-/// Reporting time bands:
-///   Day:       06:00–13:59  (report_hour in 6..=13)
-///   Afternoon: 14:00–17:59  (report_hour in 14..=17)
-///   Night:     18:00–05:59  (report_hour in 18..=23 or 0..=5)
+/// Reporting time bands (TC CAR 700):
+///   Night: 00:00–05:59  (report_hour in 0..=5)
+///   Day:   06:00–23:59  (all other hours)
 ///
 /// Sector count:
-///   1-2 sectors: Day 13h, Afternoon 12h, Night 11h
-///   3-4 sectors: Day 12h, Afternoon 11h, Night 10h
-///   5+ sectors:  Day 11h, Afternoon 10h, Night  9h
+///   1-2 sectors: Day 13h, Night 12h
+///   3-4 sectors: Day 12h, Night 11h
+///   5+ sectors:  Day 11h, Night 10h
 fn max_fdp_hours(sector_count: usize, report_hour: u64) -> f64 {
-    let band: usize = if report_hour >= 6 && report_hour <= 13 {
-        0 // Day
-    } else if report_hour >= 14 && report_hour <= 17 {
-        1 // Afternoon
-    } else {
-        2 // Night (18:00–05:59)
-    };
-    match (sector_count, band) {
-        (0..=2, 0) => 13.0,
-        (0..=2, 1) => 12.0,
-        (0..=2, _) => 11.0,
-        (3..=4, 0) => 12.0,
-        (3..=4, 1) => 11.0,
-        (3..=4, _) => 10.0,
-        (_,     0) => 11.0,
-        (_,     1) => 10.0,
-        (_,     _) =>  9.0,
+    // Night band: 00:00–05:59 only (TC CAR 700 definition)
+    let is_night = report_hour <= 5;
+    match (sector_count, is_night) {
+        (0..=2, false) => 13.0,
+        (0..=2, true)  => 12.0,
+        (3..=4, false) => 12.0,
+        (3..=4, true)  => 11.0,
+        (_,     false) => 11.0,
+        (_,     true)  => 10.0,
     }
+}
+
+/// TC CAR 700.17: minimum rest after an FDP.
+/// rest >= max(LAYOVER_REST_HOURS=8h, preceding FDP duration).
+fn min_rest_after_fdp(fdp_hours: f64) -> f64 {
+    f64::max(LAYOVER_REST_HOURS, fdp_hours)
 }
 
 // ─── Shared request type for pairings / duties / swap_exchanges ──────────────
@@ -1223,7 +1229,7 @@ struct FdpPeriod {
     /// Rest gap after this FDP before the next FDP (None if this is the last FDP in the pairing).
     rest_after_hours: Option<f64>,
     /// Minimum required rest after this FDP: max(fdp_hours, LAYOVER_REST_HOURS).
-    /// EASA ORO.FTL.235: rest >= preceding FDP duration, never < 10h.
+    /// TC CAR 700.17: rest >= max(8h, preceding FDP duration).
     min_rest_required_hours: f64,
     /// Whether the rest after this FDP meets the minimum requirement.
     rest_compliant: bool,
@@ -1281,17 +1287,16 @@ struct PairingsResponse {
 /// Correct FTA model (DGCA CAR Section 7 / EASA ORO.FTL):
 ///
 /// 1. Group each worker's shifts into FDPs: consecutive sectors with inter-sector
-///    ground time < LAYOVER_REST_HOURS (10h) belong to the same FDP.
+///    ground time < LAYOVER_REST_HOURS (8h) belong to the same FDP.
 ///
 /// 2. Group FDPs into pairings: consecutive FDPs with inter-FDP rest
 ///    < HOME_BASE_REST_HOURS (34h) belong to the same pairing. A rest >= 34h
 ///    ends the pairing (crew returns to home base).
 ///
 /// 3. Validate each FDP:
-///    - FDP limit: max_fdp_hours(sector_count, report_hour) per DGCA CAR Section 7 Table.
-///    - Rest compliance: rest_after >= max(fdp_hours, LAYOVER_REST_HOURS).
-///      (EASA ORO.FTL.235: rest must be at least as long as the preceding FDP,
-///       and never less than 10h.)
+///    - FDP limit: max_fdp_hours(sector_count, report_hour) per TC CAR 700.15 Table.
+///    - Rest compliance: rest_after >= min_rest_after_fdp(fdp_hours).
+///      (TC CAR 700.17: rest >= max(8h, preceding FDP duration).)
 async fn pairings_handler(
     Json(req): Json<ScheduleAnalysisRequest>,
 ) -> Result<Json<PairingsResponse>, (StatusCode, String)> {
@@ -1402,8 +1407,8 @@ async fn pairings_handler(
                     next_report as f64 - release_hour as f64
                 });
 
-                // EASA ORO.FTL.235: rest >= max(preceding_FDP_hours, LAYOVER_REST_HOURS)
-                let min_rest_required = fdp_hours.max(LAYOVER_REST_HOURS);
+                // TC CAR 700.17: rest >= max(8h, preceding FDP duration)
+                let min_rest_required = min_rest_after_fdp(fdp_hours);
                 let rest_compliant = rest_after_hours
                     .map(|r| r >= min_rest_required)
                     .unwrap_or(true); // last FDP in pairing: rest compliance is home-base rest (checked separately)
@@ -1572,8 +1577,8 @@ async fn duties_handler(
                 let next_report = next.first().map(|s| s.start_hour).unwrap_or(0);
                 next_report as f64 - release_hour as f64
             });
-            // EASA ORO.FTL.235: rest >= max(preceding_FDP_hours, LAYOVER_REST_HOURS)
-            let min_rest_required = fdp_hours.max(LAYOVER_REST_HOURS);
+            // TC CAR 700.17: rest >= max(8h, preceding FDP duration)
+            let min_rest_required = min_rest_after_fdp(fdp_hours);
             let rest_compliant = rest_after_hours.map(|r| r >= min_rest_required).unwrap_or(true);
 
             let mut violations = Vec::new();

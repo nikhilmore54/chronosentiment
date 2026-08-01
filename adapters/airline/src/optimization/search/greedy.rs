@@ -54,8 +54,46 @@ impl<'a> GreedyScheduler<'a> {
     ) -> Roster {
         let mut current = roster.clone();
 
+        // ── Sub-stage profiling accumulators ─────────────────────────────────
+        let mut t_rotation_collect_us: u128 = 0; // collect rotations snapshot (once per pairing)
+        let mut t_pairing_clone_us: u128 = 0;    // clone pairings vec + Rotation::new()
+        let mut t_rotation_clone_us: u128 = 0;   // clone all rotations into new_rotations vec
+        let mut t_leg_clone_us: u128 = 0;        // current.legs().cloned().collect()
+        let mut t_roster_new_us: u128 = 0;       // Roster::new() construction
+        let mut t_evaluate_us: u128 = 0;         // CostEvaluator::evaluate()
+        let mut t_commit_us: u128 = 0;           // commit best_roster to current
+        let mut total_candidates: u64 = 0;
+        let mut pairing_count: u64 = 0;
+        // Object-count accumulators (not timing — counts reveal asymptotic cost)
+        let mut n_rotation_clones: u64 = 0;
+        let mut n_leg_clones: u64 = 0;
+        let mut n_pairing_vec_clones: u64 = 0;
+        let mut n_roster_constructions: u64 = 0;
+
+        // ── Feasibility / objective-distribution accumulators ─────────────────
+        // Per-pairing: rotations_examined, rotations_legal (Rotation::new ok),
+        // rotations_improving (weighted < best_cost so far).
+        // We aggregate min/max/sum across pairings to avoid per-pairing log spam.
+        let mut total_rot_examined: u64 = 0;
+        let mut total_rot_legal: u64 = 0;
+        let mut total_rot_improving: u64 = 0;
+        let mut min_rot_legal: u64 = u64::MAX;
+        let mut max_rot_legal: u64 = 0;
+        let mut min_rot_improving: u64 = u64::MAX;
+        let mut max_rot_improving: u64 = 0;
+        // Objective value distribution: across all legal candidates, how many
+        // are strictly improving vs tied with best vs strictly worse?
+        let mut n_obj_improving: u64 = 0; // weighted < best_cost at time of evaluation
+        let mut n_obj_tied: u64 = 0;      // weighted == best_cost (f64 exact equality)
+        let mut n_obj_worse: u64 = 0;     // weighted > best_cost
+
         for pairing in pairings {
+            pairing_count += 1;
+
+            let t0 = std::time::Instant::now();
             let rotations: Vec<_> = current.rotations().collect();
+            t_rotation_collect_us += t0.elapsed().as_micros();
+
             let n = rotations.len();
             if n == 0 {
                 break;
@@ -64,10 +102,19 @@ impl<'a> GreedyScheduler<'a> {
             let mut best_cost = f64::INFINITY;
             let mut best_roster: Option<Roster> = None;
 
+            // Per-pairing feasibility counters
+            let mut p_rot_examined: u64 = 0;
+            let mut p_rot_legal: u64 = 0;
+            let mut p_rot_improving: u64 = 0;
+
             for (rot_idx, rotation) in rotations.iter().enumerate() {
-                // Build a candidate roster with the pairing appended to this rotation.
-                // pairings() returns &[Pairing]; use .to_vec() to clone into a Vec.
+                total_candidates += 1;
+                p_rot_examined += 1;
+
+                // ── Phase A: clone pairings + Rotation::new() ─────────────
+                let t1 = std::time::Instant::now();
                 let mut new_pairings: Vec<_> = rotation.pairings().to_vec();
+                n_pairing_vec_clones += new_pairings.len() as u64;
                 new_pairings.push(pairing.clone());
 
                 let new_rotation = match Rotation::new(
@@ -76,27 +123,54 @@ impl<'a> GreedyScheduler<'a> {
                     new_pairings,
                 ) {
                     Ok(r) => r,
-                    Err(_) => continue,
+                    Err(_) => {
+                        t_pairing_clone_us += t1.elapsed().as_micros();
+                        continue;
+                    }
                 };
+                p_rot_legal += 1;
+                t_pairing_clone_us += t1.elapsed().as_micros();
 
+                // ── Phase B: clone all rotations into new_rotations ────────
+                let t2a = std::time::Instant::now();
+                let n_rot = current.rotations().count() as u64;
                 let new_rotations: Vec<_> = current
                     .rotations()
                     .enumerate()
                     .map(|(i, r)| if i == rot_idx { new_rotation.clone() } else { r.clone() })
                     .collect();
+                n_rotation_clones += n_rot;
+                t_rotation_clone_us += t2a.elapsed().as_micros();
 
+                // ── Phase C: clone all legs ────────────────────────────────
+                let t2b = std::time::Instant::now();
+                let n_legs = current.legs().count() as u64;
+                let legs_cloned: Vec<_> = current.legs().cloned().collect();
+                n_leg_clones += n_legs;
+                t_leg_clone_us += t2b.elapsed().as_micros();
+
+                // ── Phase D: Roster::new() ─────────────────────────────────
+                let t2c = std::time::Instant::now();
                 let candidate = match Roster::new(
                     current.id.clone(),
                     current.period.clone(),
-                    current.legs().cloned().collect(),
+                    legs_cloned,
                     new_rotations,
                 ) {
                     Ok(r) => r,
-                    Err(_) => continue,
+                    Err(_) => {
+                        t_roster_new_us += t2c.elapsed().as_micros();
+                        continue;
+                    }
                 };
+                n_roster_constructions += 1;
+                t_roster_new_us += t2c.elapsed().as_micros();
 
                 metrics.record_evaluation();
+                let t3 = std::time::Instant::now();
                 let cost = self.evaluator.evaluate(&candidate);
+                t_evaluate_us += t3.elapsed().as_micros();
+
                 let weighted = if self.weights.is_empty() {
                     cost.sum()
                 } else {
@@ -107,13 +181,58 @@ impl<'a> GreedyScheduler<'a> {
                     best_cost = weighted;
                     best_roster = Some(candidate);
                     metrics.record_improvement();
+                    p_rot_improving += 1;
+                    n_obj_improving += 1;
+                } else if weighted == best_cost {
+                    n_obj_tied += 1;
+                } else {
+                    n_obj_worse += 1;
                 }
             }
 
+            // Aggregate per-pairing counters into cross-pairing totals
+            total_rot_examined += p_rot_examined;
+            total_rot_legal += p_rot_legal;
+            total_rot_improving += p_rot_improving;
+            if p_rot_legal < min_rot_legal { min_rot_legal = p_rot_legal; }
+            if p_rot_legal > max_rot_legal { max_rot_legal = p_rot_legal; }
+            if p_rot_improving < min_rot_improving { min_rot_improving = p_rot_improving; }
+            if p_rot_improving > max_rot_improving { max_rot_improving = p_rot_improving; }
+
+            let t4 = std::time::Instant::now();
             if let Some(better) = best_roster {
                 current = better;
             }
+            t_commit_us += t4.elapsed().as_micros();
         }
+
+        eprintln!(
+            "  [greedy_profile] pairings={pairing_count} candidates={total_candidates} \
+             rotation_collect={t_rotation_collect_us}µs \
+             pairing_clone={t_pairing_clone_us}µs \
+             rotation_clone={t_rotation_clone_us}µs \
+             leg_clone={t_leg_clone_us}µs \
+             roster_new={t_roster_new_us}µs \
+             evaluate={t_evaluate_us}µs \
+             commit={t_commit_us}µs | \
+             n_pairing_vec_clones={n_pairing_vec_clones} \
+             n_rotation_clones={n_rotation_clones} \
+             n_leg_clones={n_leg_clones} \
+             n_roster_constructions={n_roster_constructions}"
+        );
+
+        // Normalise min values: if no pairing was processed, leave as 0 rather than u64::MAX
+        let min_rot_legal_out     = if min_rot_legal     == u64::MAX { 0 } else { min_rot_legal };
+        let min_rot_improving_out = if min_rot_improving == u64::MAX { 0 } else { min_rot_improving };
+        eprintln!(
+            "  [greedy_feasibility] \
+             rot_examined={total_rot_examined} \
+             rot_legal={total_rot_legal} \
+             rot_improving={total_rot_improving} \
+             legal_min={min_rot_legal_out} legal_max={max_rot_legal} \
+             improving_min={min_rot_improving_out} improving_max={max_rot_improving} \
+             obj_improving={n_obj_improving} obj_tied={n_obj_tied} obj_worse={n_obj_worse}"
+        );
 
         current
     }
