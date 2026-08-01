@@ -134,6 +134,136 @@ Each entry contains:
 
 ---
 
+---
+
+## WS1 — Duplicate Code Inventory (2026-08-01)
+
+The following items were identified by read-only scan of all `*.rs` files. No source files were modified.
+
+---
+
+### CLN-007 — Duplicate `percentile` function
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-007 |
+| **Type** | Consolidate |
+| **Asset A** | `original_engine.rs` line 7034 — `fn percentile(mut values: Vec<f64>, p: f64) -> f64` |
+| **Asset B** | `infrastructure/core/deprecated_examples/live_engine.rs` line 613 — identical signature and body |
+| **Reason** | Two identical implementations; Asset B is in `deprecated_examples/` |
+| **Canonical** | **`original_engine.rs`** — annotated `UTILITY`, deferred wiring. Asset B is in `deprecated_examples/` which has no active Cargo consumers (confirmed 2026-08-01). |
+| **Dependents** | None outside their respective files |
+| **Validation** | Asset B will be removed as part of CLN-013 (deprecated_examples archival). No separate action needed for CLN-007 beyond confirming CLN-013 is complete. |
+| **Status** | **COMPLETE** — canonical is `original_engine.rs`; Asset B removed via CLN-013 (2026-08-01) |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-008 — Duplicate `mean` helper function
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-008 |
+| **Type** | Consolidate |
+| **Asset A** | `original_engine.rs` line 606 — `fn mean(&self) -> f64` (method on a struct) |
+| **Asset B** | `adapters/ultracrew/src/bin/config_sweep.rs` line 185 — `fn mean(sum: f64, cnt: usize) -> f64` (free function, different signature) |
+| **Reason** | Both compute arithmetic mean but with different signatures; not true duplicates — different calling conventions |
+| **Canonical** | Not a true duplicate — different signatures. No action required. |
+| **Dependents** | — |
+| **Validation** | Signatures confirmed different (method vs free function, different parameters). Closed. |
+| **Status** | **CLOSED — not a true duplicate** |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-009 — Scattered CSV writers (no canonical abstraction)
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-009 |
+| **Type** | Consolidate |
+| **Assets** | 40+ `writeln!(file, ...)` / `File::create("*.csv")` patterns across: `services/ultracrew_server/src/bin/validation_pass.rs`, `services/cvrp_server/src/bin/m11_*.rs` through `m18_*.rs`, `adapters/cvrp/src/bin/m30_*.rs`, `adapters/roadef/src/bin/m26_*.rs` through `m27_*.rs`, `adapters/ultracrew/src/bin/deprecated/*.rs`, `adapters/ultracrew/src/bin/inrc_*.rs` |
+| **Reason** | Every experiment writes its own CSV with inline `writeln!` — no shared abstraction. The harness `ResultPersistence` (`HARNESS-003`) is the canonical CSV writer for airline experiments but is not used by other adapters. |
+| **WS2 Decision** | This is an **architectural ownership** question, not a duplicate-function problem. The decision is: (1) `ResultPersistence` is intentionally experiment-specific to the airline harness — it should not be promoted repository-wide without a clear cross-adapter requirement; (2) domain-specific persistence layers are intentional — each adapter owns its own output format; (3) the 40+ inline CSV writers in experiment binaries are acceptable as-is; they are not duplicates of each other — each writes a different schema for a different experiment; (4) if a future experiment requires a shared CSV abstraction, it should be added to the harness at that time. No consolidation now. |
+| **Canonical** | `adapters/airline/tests/harness/persistence.rs` — `ResultPersistence` (airline experiments only, intentionally scoped) |
+| **Dependents** | All experiment binaries listed above — no change required |
+| **Validation** | No action required. Domain-specific persistence is intentional. |
+| **Status** | **Decided — no consolidation; domain-specific persistence layers are intentional** |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-010 — Scattered `eprintln!` logging (no canonical abstraction outside harness)
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-010 |
+| **Type** | Consolidate |
+| **Assets** | 100+ `eprintln!` call sites across: `coralys-moga/src/engine.rs`, `adapters/cvrp/src/bin/campaign.rs`, `adapters/roadef/src/bin/campaign.rs`, `adapters/roadef/src/bin/campaign_engine.rs`, `adapters/ultracrew/src/bin/ultracrew-cli.rs`, and many others |
+| **Canonical A** | `adapters/airline/tests/harness/logging.rs` — `EventLogger` (structured JSON-lines + stderr; airline experiments only) |
+| **Canonical B** | `adapters/ultracrew/src/telemetry.rs` — `tracing`-based macros (`uc_info!`, `uc_warn!`, `uc_error!`) for UltraCrew service code |
+| **Reason** | Two structured logging systems exist (harness `EventLogger` and UltraCrew `telemetry.rs`); all other adapters use raw `eprintln!`. |
+| **WS2 Decision** | These are **intentionally separate concerns**, not competing implementations: (1) `EventLogger` is experiment-infrastructure logging — structured, machine-readable, tied to the harness lifecycle (ExperimentStart, RunStart, GenerationEnd, etc.); (2) `telemetry.rs` is runtime service logging — `tracing`-based, for production UltraCrew service code; (3) raw `eprintln!` in experiment binaries is acceptable ad-hoc diagnostic output — it is not a logging system and should not be replaced unless a binary is promoted to production. Decision: both canonical systems remain; raw `eprintln!` in existing experiment binaries requires no action. New experiment code in the airline harness should use `EventLogger`; new UltraCrew service code should use `telemetry.rs`. |
+| **Canonical** | `EventLogger` for experiment harness code; `telemetry.rs` for UltraCrew service code; `eprintln!` acceptable for experiment binaries |
+| **Dependents** | All binaries using raw `eprintln!` — no change required |
+| **Validation** | No action required. Separate concerns are intentional. |
+| **Status** | **Decided — two canonical logging systems for two different concerns; raw eprintln! in experiment binaries is acceptable** |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-011 — Duplicate `ObjectiveVector` / `ObjectiveValue` / `ObjectiveWeights`
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-011 |
+| **Type** | Consolidate |
+| **Asset A** | `coralys-ecology/src/diagnostics.rs` — `ObjectiveVector` struct + impl |
+| **Asset B** | `coralys-eval/src/types.rs` — `ObjectiveValue` struct + impl |
+| **Asset C** | `adapters/ultracrew/src/inrc/models.rs` — `ObjectiveWeights` struct + impl Default |
+| **Reason** | Three structs representing objective-related data in three different crates; names differ but purposes overlap. `ObjectiveVector` holds a `Vec<f64>`, `ObjectiveValue` holds a named scalar, `ObjectiveWeights` holds integer weights for INRC constraints. |
+| **WS2 Decision** | These are **not mechanical duplicates** — they serve different semantic roles at different abstraction layers. The WS2 decision is: (1) `coralys-eval` owns the semantic definition of objective values (`ObjectiveValue`); (2) `coralys-ecology` may retain `ObjectiveVector` as a diagnostics-layer type if it is not consumed outside that crate; (3) `ObjectiveWeights` in `adapters/ultracrew` is domain-specific to INRC and should remain in the adapter. No consolidation until a consuming crate requires cross-crate objective type compatibility. |
+| **Canonical** | `coralys-eval/src/types.rs` — canonical for objective value semantics. `ObjectiveVector` and `ObjectiveWeights` remain in their respective crates until a cross-crate consumer requires unification. |
+| **Dependents** | Any code importing from `coralys-ecology::diagnostics`, `coralys-eval::types`, or `adapters/ultracrew::inrc::models` |
+| **Validation** | Confirm `ObjectiveVector` is not consumed outside `coralys-ecology`; confirm `ObjectiveWeights` is not consumed outside `adapters/ultracrew`. If either is consumed cross-crate, revisit. |
+| **Status** | **Decided — no immediate consolidation; canonical owner assigned per layer** |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-012 — `adapters/gerad/` vs `adapters/airline/` overlap
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-012 |
+| **Type** | Consolidate |
+| **Asset A** | `adapters/gerad/` — GERAD benchmark parser and importer (`coralys-gerad`) |
+| **Asset B** | `adapters/airline/` — airline crew pairing domain model (`coralys-airline`) |
+| **Reason** | Both adapters exist; role of `adapters/gerad/` relative to `adapters/airline/` was unclear. |
+| **Canonical** | **`adapters/airline/`** — confirmed canonical domain model. `adapters/gerad/` is a downstream consumer: `coralys-gerad` depends on `coralys-airline` (confirmed via `adapters/gerad/Cargo.toml`). Dependency is one-directional: `gerad → airline`. No cycle, no overlap. |
+| **Dependents** | `adapters/airline/tests/gerad_coralys.rs` (FROZEN), `adapters/airline/tests/gerad_e2e.rs` |
+| **Validation** | Confirmed: `adapters/airline/Cargo.toml` has no dependency on `coralys-gerad`. `adapters/gerad/Cargo.toml` description: "After import, no downstream code knows the data originated from GERAD." These are complementary, not overlapping. |
+| **Status** | **CLOSED — not a problematic overlap; one-directional gerad→airline dependency is correct** |
+| **Date** | 2026-08-01 |
+
+---
+
+### CLN-013 — `infrastructure/core/deprecated_examples/` directory
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-013 |
+| **Type** | Archive or Delete |
+| **Asset** | `infrastructure/core/deprecated_examples/` — contains `live_engine.rs`, `live_observatory.rs`, `replay_live_suggestions.rs`, `train_nse.rs`, `training_nse.rs` |
+| **Reason** | Directory is explicitly named `deprecated_examples`. No active `Cargo.toml` declares these as `[[example]]` entries (confirmed 2026-08-01). |
+| **Canonical** | None — these are superseded implementations |
+| **Dependents** | `training_nse.rs` uses `#[path = "train_nse.rs"]` to include `train_nse.rs` — internally coupled within the deprecated directory only. `financial/ese/src/main.rs` references `./target/release/examples/live_observatory` — this is a compiled binary path, not the source file. `financial/ese/examples/live_observatory.rs` is a separate file in the `financial` crate, not the deprecated one. |
+| **Validation** | Confirmed: no active `Cargo.toml` includes these files as `[[example]]` entries. `live_engine.rs` and `replay_live_suggestions.rs` have no active consumers. `train_nse.rs`/`training_nse.rs` are not declared as Cargo examples. Entire directory is safe to archive or delete. |
+| **Status** | **COMPLETE — deleted 2026-08-01** |
+| **Date** | 2026-08-01 |
+
+---
+
 ## Completed Items
 
 *No items completed yet.*
