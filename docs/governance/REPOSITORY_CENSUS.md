@@ -1,7 +1,7 @@
 # Repository Census
 
 **Document ID:** GOV-RR1-001
-**Version:** 1.0
+**Version:** 2.0
 **Status:** Active
 **Created:** 2026-08-01
 **Programme:** Repository Rationalization Programme (RRP v1.0)
@@ -10,9 +10,30 @@
 
 ## Purpose
 
-This document is the source of truth for the Repository Rationalization Programme. It records every Rust source file by crate, compile target, and purpose. It is the input to RR2 (Reachability), RR3 (Version Analysis), and all subsequent rationalization workstreams.
+This document is the engineering source of truth for the Repository Rationalization Programme. It answers exactly one question:
+
+> **What exists?**
+
+Disposition decisions (keep, archive, delete) belong to RR4–RR7. This document records facts only.
 
 **Rule:** No file may be archived or deleted under RRP without a corresponding entry in this census confirming its classification.
+
+---
+
+## Schema
+
+Each crate entry records:
+
+| Field | Values |
+|-------|--------|
+| **Workspace** | `coralys-workspace` |
+| **Package** | Cargo package name |
+| **Workspace Member** | Yes / No (Orphan) |
+| **Lifecycle** | Active / Research / Deprecated / Frozen / Stub / Unknown |
+| **Compile Reachability** | Workspace / Dependency / Binary / Example / Test / Bench / None |
+| **Canonical Owner** | Which crate/module owns this capability |
+| **Governed By** | CLN-xxx or RR-xxx decision reference, if applicable |
+| **RR Decision** | Pending (all entries start as Pending) |
 
 ---
 
@@ -21,401 +42,428 @@ This document is the source of truth for the Repository Rationalization Programm
 | Metric | Value |
 |--------|-------|
 | Total Rust source files | 477 |
-| Total LOC (confirmed) | 114,544 |
-| Crates / top-level directories | 23 |
-| Files with explicit `deprecated/` path | 7 (ultracrew/bin/deprecated) |
-| Files in `original_engine.rs` (monolith) | 1 (~13,000+ LOC) |
+| Total LOC (confirmed by wc -l) | 114,544 |
+| Workspace members | 26 |
+| Non-workspace crates | 2 (coralys-policy orphan; research_experiments) |
+| Files in deprecated/ subdirectories | 7 (adapters/ultracrew/src/bin/deprecated/) |
+| Stub crates (≤3 files, minimal content) | 8 |
+| Version candidate groups | 6 (see GOV-RR3-001) |
 
 ---
 
-## Per-Crate Inventory
+## Crate Inventory
 
-### 1. `adapters/airline` — `coralys-airline` (50 files, 12,760 LOC)
+### 1. `adapters/airline` — `coralys-airline`
 
-**Role:** Canonical airline crew pairing domain model. Layer 1 of the scheduling stack.
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-airline |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 50 files / 12,760 LOC |
+| **Lifecycle** | Active (lib) + Frozen (tests) |
+| **Compile Reachability** | Workspace (lib); Test (tests/); Dependency (coralys-gerad depends on this) |
+| **Canonical Owner** | Self — canonical airline crew pairing domain model |
+| **Governed By** | ADAPTER-001 (GOV-KS-001); CLN-012 (gerad→airline one-directional confirmed) |
+| **RR Decision** | Pending |
 
-**Compile targets:**
+**Source files by compile target:**
 
-| Path | Target | Purpose |
-|------|--------|---------|
-| `src/lib.rs` | lib | Crate root |
-| `src/domain/*.rs` (8 files) | lib | Domain types: flight, duty, crew, pairing, rotation, roster, cost, credit |
-| `src/legality/*.rs` (8 files) | lib | Legality checks: FDP, rest, duty time, coverage, qualification |
-| `src/optimization/*.rs` (4 files) | lib | Objective functions, metrics, cost |
-| `src/optimization/neighborhood/*.rs` (3 files) | lib | Relocate, swap operators |
-| `src/optimization/search/*.rs` (3 files) | lib | Greedy, local search |
-| `src/planner/*.rs` (4 files) | lib | Incremental planner, what-if, summary |
-| `src/resilience/*.rs` (4 files) | lib | Disruption, reserve, robustness |
-| `tests/gerad_coralys.rs` | test | **FROZEN** — GERAD Coralys v1.0 baseline (2026-08-01) |
-| `tests/gerad_e2e.rs` | test | GERAD end-to-end integration test |
-| `tests/harness/*.rs` (6 files) | test | **FROZEN** — Experiment harness API (2026-08-01) |
-
-**Classification:** KEEP (canonical domain model + frozen research baseline)
-
----
-
-### 2. `adapters/gerad` — `coralys-gerad` (8 files, 1,462 LOC)
-
-**Role:** GERAD G-2014-22 benchmark parser. Translates benchmark format into `coralys-airline` domain model. Downstream consumer of `coralys-airline`.
-
-**Compile targets:**
-
-| Path | Target | Purpose |
-|------|--------|---------|
-| `src/lib.rs` | lib | Crate root |
-| `src/parser.rs` | lib | GERAD file format parser |
-| `src/importer.rs` | lib | Domain model importer |
-| `src/*.rs` (remaining) | lib | Supporting types |
-
-**Classification:** KEEP (active benchmark adapter, one-directional dependency confirmed)
+| Path | Target | Lifecycle |
+|------|--------|-----------|
+| `src/lib.rs` | lib | Active |
+| `src/domain/*.rs` (8 files) | lib | Active |
+| `src/legality/*.rs` (8 files) | lib | Active |
+| `src/optimization/*.rs` (4 files) | lib | Active |
+| `src/optimization/neighborhood/*.rs` (3 files) | lib | Active |
+| `src/optimization/search/*.rs` (3 files) | lib | Active |
+| `src/planner/*.rs` (4 files) | lib | Active |
+| `src/resilience/*.rs` (4 files) | lib | Active |
+| `tests/gerad_coralys.rs` | test | Frozen (2026-08-01) |
+| `tests/gerad_e2e.rs` | test | Active |
+| `tests/harness/mod.rs` | test | Frozen (2026-08-01) |
+| `tests/harness/schema.rs` | test | Frozen (2026-08-01) |
+| `tests/harness/logging.rs` | test | Frozen (2026-08-01) |
+| `tests/harness/persistence.rs` | test | Frozen (2026-08-01) |
+| `tests/harness/reproducibility.rs` | test | Frozen (2026-08-01) |
+| `tests/harness/report.rs` | test | Frozen (2026-08-01) |
 
 ---
 
-### 3. `adapters/ultracrew` — `coralys-ultracrew` (99 files, 19,638 LOC)
+### 2. `adapters/gerad` — `coralys-gerad`
 
-**Role:** UltraCrew INRC scheduling adapter. Largest crate by file count. Contains active binaries, deprecated binaries, and research experiments.
-
-**Compile targets — library:**
-
-| Path | Target | Purpose |
-|------|--------|---------|
-| `src/lib.rs` | lib | Crate root |
-| `src/inrc/*.rs` | lib | INRC domain model |
-| `src/telemetry.rs` | lib | **CANONICAL** — tracing-based logging for service code |
-| `src/strict_validator.rs` | lib | Constraint validation |
-| `src/decision_intelligence.rs` | lib | Cycle review report generation |
-
-**Compile targets — active binaries (`src/bin/`):**
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `ultracrew-cli.rs` | Production CLI entry point | KEEP |
-| `config_sweep.rs` | Parameter sweep experiment | Research |
-| `inrc_ecology_ablation_matrix.rs` | Ecology ablation experiment | Research |
-| `inrc_ecology_cost_curve.rs` | Cost curve experiment | Research |
-| `inrc_ecology_memory_depth.rs` | Memory depth experiment | Research |
-| `inrc_ecology_multi_week_ablation.rs` | Multi-week ablation | Research |
-| `inrc_ecology_response_curve.rs` | Response curve experiment | Research |
-| `inrc_m22_ancestry.rs` | M22 ancestry analysis | Research |
-| `inrc_m22_benchmark.rs` | M22 benchmark | Research |
-| `inrc_natural_history_pilot.rs` | Natural history pilot | Research |
-| `m23a_synthetic.rs` | M23a synthetic experiment | Research |
-| `m30_0b_passive_telemetry.rs` | M30 passive telemetry | Research |
-| `m30_0d_active_pilot.rs` | M30 active pilot | Research |
-| `m31_2a_engagement_audit.rs` | M31 engagement audit | Research |
-| `m31_benchmarks.rs` | M31 benchmarks | Research |
-| `story1.rs` | Story 1 narrative experiment | Research |
-
-**Compile targets — deprecated binaries (`src/bin/deprecated/`):**
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `inrc_ecology_ablation.rs` | Superseded by `inrc_ecology_ablation_matrix.rs` | **DEPRECATED** |
-| `inrc_ecology_history_test.rs` | Superseded ecology history test | **DEPRECATED** |
-| `inrc_ecology_horizon_test.rs` | Superseded ecology horizon test | **DEPRECATED** |
-| `inrc_ecology_mechanism_audit.rs` | Superseded mechanism audit | **DEPRECATED** |
-| `inrc_ecology_multi_week_ablation.rs` | Duplicate of active version | **DEPRECATED** |
-| `ultracrew_atlas.rs` | Superseded atlas experiment | **DEPRECATED** |
-| `ultracrew_repair_atlas.rs` | Superseded repair atlas | **DEPRECATED** |
-
-**Classification:** KEEP (lib + active binaries); DEPRECATED directory is RR3/RR7 candidate
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-gerad |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 8 files / 1,462 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Workspace (lib) |
+| **Canonical Owner** | Self — GERAD G-2014-22 benchmark parser |
+| **Governed By** | CLN-012 (one-directional gerad→airline dependency confirmed) |
+| **RR Decision** | Pending |
 
 ---
 
-### 4. `adapters/cvrp` — `coralys-cvrp` (25 files, 9,662 LOC)
+### 3. `adapters/ultracrew` — `coralys-ultracrew`
 
-**Role:** CVRP (Capacitated Vehicle Routing Problem) adapter. Contains campaign runner, BDD tests, and research experiment binaries.
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-ultracrew |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 99 files / 19,638 LOC |
+| **Lifecycle** | Mixed (see below) |
+| **Compile Reachability** | Workspace (lib); Binary (src/bin/*.rs) |
+| **Canonical Owner** | Self — UltraCrew INRC scheduling adapter |
+| **Governed By** | CLN-010 (telemetry.rs canonical for service logging) |
+| **RR Decision** | Pending |
 
-**Compile targets — active binaries:**
+**Source files by lifecycle:**
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `campaign.rs` | CVRP campaign runner | KEEP |
-| `bdd_baseline.rs` | BDD baseline | KEEP |
-| `bdd_benchmark.rs` | BDD benchmark | KEEP |
-| `bdd_campaign.rs` | BDD campaign | KEEP |
-| `bdd_campaign_compare.rs` | BDD campaign comparison | KEEP |
-| `bdd_check_negative.rs` | BDD negative check | KEEP |
-| `bdd_p55_multi.rs` | BDD P55 multi | KEEP |
-| `bdd_telemetry.rs` | BDD telemetry | KEEP |
-| `bdd_validation.rs` | BDD validation | KEEP |
-| `compare.rs` | Result comparison | KEEP |
-| `cvrp_sanity.rs` | Sanity check | KEEP |
-| `cvrplib_registry.rs` | CVRPLIB instance registry | KEEP |
-| `search_config.rs` | Search configuration | KEEP |
-| `m30_2_active_pilot.rs` | M30.2 active pilot | Research |
-| `m30_2a_1_ecology_audit.rs` | M30.2a ecology audit | Research |
-| `m30_2a_2_shadow_advisory.rs` | M30.2a shadow advisory | Research |
-
-**Classification:** KEEP (active campaign + BDD infrastructure); research binaries are RR3 candidates
-
----
-
-### 5. `adapters/roadef` — `coralys-roadef` (27 files, 7,128 LOC)
-
-**Role:** ROADEF 2026 network optimization adapter. Contains campaign runners and research experiment binaries (m25–m27 series).
-
-**Compile targets — active:**
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `campaign.rs` | ROADEF campaign runner | KEEP |
-| `campaign_engine.rs` | Alternative campaign engine | Research — version of campaign.rs |
-| `e001_dual_path.rs` | E-001 dual-path validation | KEEP |
-| `eval_profiler.rs` | Evaluator performance profiler | Research |
-| `tiny_solver.rs` | Minimal solver for testing | Research |
-| `m25_benchmark.rs` | M25 benchmark | Research |
-| `m25_8_bridge.rs` | M25.8 bridge experiment | Research |
-| `m25_8b_ecology.rs` | M25.8b ecology variant | Research — version of m25_8_bridge.rs |
-| `m25_final.rs` | M25 final experiment | Research |
-| `m26_1_observation_audit.rs` | M26.1 observation audit | Research |
-| `m26_1c_discriminative_audit.rs` | M26.1c discriminative audit | Research |
-| `m26_1d_failure_density.rs` | M26.1d failure density | Research |
-| `m26_1e_survival_curves.rs` | M26.1e survival curves | Research |
-| `m26_3_passive_learner.rs` | M26.3 passive learner | Research |
-| `m26_4a_shadow_advisory.rs` | M26.4a shadow advisory | Research |
-| `m26_4b_active_pilot.rs` | M26.4b active pilot | Research |
-| `m27_1_passive_operator_telemetry.rs` | M27.1 operator telemetry | Research |
-
-**Note:** `campaign.rs` and `campaign_engine.rs` are version candidates (RR3). `m25_8_bridge.rs` and `m25_8b_ecology.rs` are version candidates.
-
-**Classification:** KEEP (campaign + validation); research binaries are RR3 candidates
+| Path | Target | Lifecycle |
+|------|--------|-----------|
+| `src/lib.rs` + `src/**/*.rs` (lib files) | lib | Active |
+| `src/telemetry.rs` | lib | Active — canonical service logging |
+| `src/bin/ultracrew-cli.rs` | Binary | Active |
+| `src/bin/config_sweep.rs` | Binary | Research |
+| `src/bin/inrc_ecology_ablation_matrix.rs` | Binary | Research |
+| `src/bin/inrc_ecology_cost_curve.rs` | Binary | Research |
+| `src/bin/inrc_ecology_memory_depth.rs` | Binary | Research |
+| `src/bin/inrc_ecology_multi_week_ablation.rs` | Binary | Research |
+| `src/bin/inrc_ecology_response_curve.rs` | Binary | Research |
+| `src/bin/inrc_m22_ancestry.rs` | Binary | Research |
+| `src/bin/inrc_m22_benchmark.rs` | Binary | Research |
+| `src/bin/inrc_natural_history_pilot.rs` | Binary | Research |
+| `src/bin/m23a_synthetic.rs` | Binary | Research |
+| `src/bin/m30_0b_passive_telemetry.rs` | Binary | Research |
+| `src/bin/m30_0d_active_pilot.rs` | Binary | Research |
+| `src/bin/m31_2a_engagement_audit.rs` | Binary | Research |
+| `src/bin/m31_benchmarks.rs` | Binary | Research |
+| `src/bin/story1.rs` | Binary | Research |
+| `src/bin/deprecated/inrc_ecology_ablation.rs` | Binary | Deprecated |
+| `src/bin/deprecated/inrc_ecology_history_test.rs` | Binary | Deprecated |
+| `src/bin/deprecated/inrc_ecology_horizon_test.rs` | Binary | Deprecated |
+| `src/bin/deprecated/inrc_ecology_mechanism_audit.rs` | Binary | Deprecated |
+| `src/bin/deprecated/inrc_ecology_multi_week_ablation.rs` | Binary | Deprecated |
+| `src/bin/deprecated/ultracrew_atlas.rs` | Binary | Deprecated |
+| `src/bin/deprecated/ultracrew_repair_atlas.rs` | Binary | Deprecated |
 
 ---
 
-### 6. `adapters/chronosentiment` — `coralys-chronosentiment` (6 files, 1,597 LOC)
+### 4. `adapters/cvrp` — `coralys-cvrp`
 
-**Role:** ChronoSentiment domain adapter (evidence, hypothesis, learning, timeline, workspace).
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-cvrp |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 25 files / 9,662 LOC |
+| **Lifecycle** | Mixed (Active + Research) |
+| **Compile Reachability** | Workspace (lib); Binary (src/bin/*.rs) |
+| **Canonical Owner** | Self — CVRP adapter |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
-**Classification:** KEEP (active domain adapter)
+**Binaries by lifecycle:**
 
----
-
-### 7. `coralys-core` (11 files, 437 LOC)
-
-**Role:** Core Coralys types: decision lineage, decision proposal, evaluation result, matching result, state reference, violation, analysis, memory, telemetry.
-
-**Classification:** KEEP (core platform types)
-
----
-
-### 8. `coralys-ecology` (6 files, 1,553 LOC)
-
-**Role:** Ecology system: diagnostics, models, progress, state, traits.
-
-**Classification:** KEEP (active platform component)
-
----
-
-### 9. `coralys-eval` (5 files, 956 LOC)
-
-**Role:** Evaluation types. **Canonical owner of objective value semantics** (per CLN-011 decision).
-
-**Classification:** KEEP (canonical evaluation types)
+| File | Lifecycle |
+|------|-----------|
+| `campaign.rs` | Active |
+| `bdd_baseline.rs` through `bdd_validation.rs` (8 files) | Active |
+| `compare.rs`, `cvrp_sanity.rs`, `cvrplib_registry.rs`, `search_config.rs` | Active |
+| `m30_2_active_pilot.rs`, `m30_2a_1_ecology_audit.rs`, `m30_2a_2_shadow_advisory.rs` | Research |
 
 ---
 
-### 10. `coralys-moga` (33 files, 4,500 LOC)
+### 5. `adapters/roadef` — `coralys-roadef`
 
-**Role:** Multi-objective genetic algorithm engine. Core optimization platform.
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-roadef |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 27 files / 7,128 LOC |
+| **Lifecycle** | Mixed (Active + Research) |
+| **Compile Reachability** | Workspace (lib); Binary (src/bin/*.rs) |
+| **Canonical Owner** | Self — ROADEF 2026 network optimization adapter |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
-**Classification:** KEEP (active optimization engine)
+**Binaries by lifecycle:**
 
----
-
-### 11. Stub crates (7 crates, ~830 LOC total)
-
-| Crate | Files | LOC | Status |
-|-------|-------|-----|--------|
-| `coralys-infrastructure` | 1 | 14 | Stub — single `lib.rs` |
-| `coralys-matching` | 1 | 96 | Stub |
-| `coralys-planning` | 1 | 103 | Stub |
-| `coralys-policy` | 1 | 136 | Stub |
-| `coralys-recommendation` | 3 | 293 | Stub |
-| `coralys-simulation` | 2 | 91 | Stub |
-| `coralys-v2` | 1 | 96 | Stub |
-| `coralys-decision` | 2 | 96 | Stub |
-
-**Classification:** RR2/RR6 candidates — stub crates with minimal content may exist only to satisfy dependency declarations. Verify whether any active crate depends on them.
-
----
-
-### 12. `infrastructure/core` — `chronosentiment_core` (23 files, 3,472 LOC)
-
-**Role:** Core infrastructure: capture daemon, historical importer, Yahoo importer, and supporting modules.
-
-**Note:** `deprecated_examples/` directory deleted (CLN-013, 2026-08-01). Remaining files are active infrastructure.
-
-**Classification:** KEEP (active infrastructure)
+| File | Lifecycle | Note |
+|------|-----------|------|
+| `campaign.rs` | Research | Version candidate — see GOV-RR3-001 |
+| `campaign_engine.rs` | Research | Version candidate — see GOV-RR3-001 |
+| `e001_dual_path.rs` | Active | Validation harness |
+| `eval_profiler.rs` | Research | — |
+| `tiny_solver.rs` | Research | — |
+| `m25_benchmark.rs` | Research | — |
+| `m25_8_bridge.rs` | Research | Version candidate — see GOV-RR3-001 |
+| `m25_8b_ecology.rs` | Research | Version candidate — see GOV-RR3-001 |
+| `m25_final.rs` | Research | — |
+| `m26_1_observation_audit.rs` through `m26_1e_survival_curves.rs` (4 files) | Research | — |
+| `m26_3_passive_learner.rs` | Research | — |
+| `m26_4a_shadow_advisory.rs`, `m26_4b_active_pilot.rs` | Research | — |
+| `m27_1_passive_operator_telemetry.rs` | Research | — |
 
 ---
 
-### 13. `services/ultracrew_server` (21 files, 7,981 LOC)
+### 6. `adapters/chronosentiment` — `coralys-chronosentiment`
 
-**Role:** UltraCrew HTTP server. Contains main server, persistence, and validation/benchmark binaries.
-
-**Compile targets — binaries:**
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `acceptance_test.rs` | Acceptance benchmark | KEEP |
-| `benchmark.rs` | Performance benchmark | KEEP |
-| `cs_governance_validation.rs` | Governance validation | KEEP |
-| `ecology_validation.rs` | Ecology validation | KEEP |
-| `inrc_archive_forensics.rs` | INRC archive forensics | Research |
-| `m8g_cs_validation.rs` | M8g CS validation | Research |
-| `m8g_ultracrew_validation.rs` | M8g UltraCrew validation | Research |
-| `m9a_search_observatory.rs` | M9a search observatory | Research |
-| `policy_seed_runner.rs` | Policy seed runner | Research |
-| `validation_pass.rs` | Validation pass | Research |
-
-**Classification:** KEEP (active server); research binaries are RR3 candidates
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-chronosentiment |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 6 files / 1,597 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Workspace (lib) |
+| **Canonical Owner** | Self — ChronoSentiment domain adapter |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
 ---
 
-### 14. `services/cvrp_server` (31 files, 9,550 LOC)
+### 7. `adapters/cvd001` — `coralys-cvd001`
 
-**Role:** CVRP research server. Contains m11–m22 series experiment binaries (landscape analysis, repair atlas, backbone causality, structural invariants).
-
-**Note:** This is a research-only server — all binaries are experiment binaries in the m11–m22 series. No production service functionality.
-
-**Compile targets — all research binaries:**
-
-m11 through m22 series (20 files), plus: `basin_characterization.rs`, `check_demand.rs`, `elite_manifold_probe.rs`, `elite_partition_probe.rs`, `find_797.rs`, `frozen_partition_probe.rs`, `initial_basin_distribution.rs`, `seed_ecology_study.rs`, `verify_758.rs`, `verify_bks.rs`
-
-**Classification:** Research only — RR3/RR7 candidates. Determine which experiments are complete vs ongoing.
-
----
-
-### 15. `financial` (69 files, 9,130 LOC)
-
-**Role:** Financial strategy research: ESE (Execution Strategy Engine), strategies, infrastructure.
-
-**Classification:** Research only — separate research programme from Coralys/UltraCrew. RR2 candidate.
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-cvd001 |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 8 files / TBD LOC |
+| **Lifecycle** | Unknown |
+| **Compile Reachability** | Workspace (lib) |
+| **Canonical Owner** | Unknown — purpose to be determined in RR2 |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
 ---
 
-### 16. `research_experiments` (4 files, 259 LOC)
+### 8. `coralys-core`
 
-**Role:** Python bridge and Yahoo adapter for research experiments.
-
-**Classification:** Research only — RR2 candidate.
-
----
-
-### 17. `original_engine.rs` (1 file, ~13,000+ LOC)
-
-**Role:** Monolithic original engine. Contains `#[allow(dead_code)]` annotations for multiple planned but unwired features (Phase 2 items). Used by `financial` strategies.
-
-**Classification:** RR2/RR3 candidate — largest single file in repository. Determine whether it is the canonical financial engine or a superseded implementation.
-
----
-
-## Version Candidates (RR3 Priority List)
-
-The following file pairs/groups are version candidates identified during RR1:
-
-| Group | Files | Relationship |
-|-------|-------|-------------|
-| Campaign runners (ROADEF) | `campaign.rs`, `campaign_engine.rs` | Two versions of the same campaign runner |
-| M25.8 experiments (ROADEF) | `m25_8_bridge.rs`, `m25_8b_ecology.rs` | Ecology variant of bridge experiment |
-| Ecology ablation (ultracrew) | `inrc_ecology_ablation.rs` (deprecated), `inrc_ecology_ablation_matrix.rs` (active) | Deprecated superseded by active |
-| Multi-week ablation (ultracrew) | `inrc_ecology_multi_week_ablation.rs` (deprecated), `inrc_ecology_multi_week_ablation.rs` (active) | Exact filename duplicate across deprecated/ |
-| Atlas experiments (ultracrew) | `ultracrew_atlas.rs` (deprecated), `ultracrew_repair_atlas.rs` (deprecated) | Superseded atlas experiments |
-| Stub crates | 8 crates with 1–3 files each | May be superseded by `coralys-core` or `coralys-moga` |
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-core |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 11 files / 437 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Dependency (depended on by multiple crates) |
+| **Canonical Owner** | Self — core Coralys platform types |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
 ---
 
-### 18. `infrastructure/optimization` (2 files, ~LOC TBD)
+### 9. `coralys-ecology`
 
-**Role:** Workspace member. Contains `evolution_engine.rs` and `lib.rs`. Likely an optimization infrastructure layer.
-
-**Classification:** RR2 candidate — determine relationship to `coralys-moga`.
-
----
-
-### 19. `infrastructure/observatory/api` (15+ files)
-
-**Role:** Workspace member. Observatory API server with handlers, routes, DTOs, market adapter, replay, simulation, timeline, certify, signatures, events, errors, inspector.
-
-**Classification:** KEEP (active API server)
-
----
-
-### 20. `financial/core` (10 files), `financial/ese` (14 files), `financial/strategies` (45 files)
-
-**Role:** Financial research programme. Three workspace members covering core types, ESE (Execution Strategy Engine), and trading strategies.
-
-**Classification:** Research only — separate programme from Coralys/UltraCrew.
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-ecology |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 6 files / 1,553 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Dependency |
+| **Canonical Owner** | Self — ecology system |
+| **Governed By** | CLN-011 (ObjectiveVector remains in this crate; coralys-eval owns objective value semantics) |
+| **RR Decision** | Pending |
 
 ---
 
-### 21. `adapters/cvd001` (8 files)
+### 10. `coralys-eval`
 
-**Role:** CVD001 adapter. Workspace member.
-
-**Classification:** RR2 candidate — purpose and active consumers to be determined.
-
----
-
-### 22. `coralys-policy` (1 file — `lib.rs`)
-
-**Role:** Single-file stub. **NOT a workspace member** (absent from root `Cargo.toml`). Cannot be compiled by `cargo build --workspace`.
-
-**Classification:** **ORPHAN** — not in workspace, not reachable. RR7 candidate for deletion.
-
----
-
-## Workspace Membership Summary
-
-| Crate | In Workspace | Files | LOC |
-|-------|-------------|-------|-----|
-| `infrastructure/core` | ✓ | 23 | 3,472 |
-| `infrastructure/optimization` | ✓ | 2 | TBD |
-| `infrastructure/observatory/api` | ✓ | 15+ | TBD |
-| `financial/ese` | ✓ | 14 | — |
-| `financial/strategies` | ✓ | 45 | — |
-| `financial/core` | ✓ | 10 | — |
-| `coralys-moga` | ✓ | 33 | 4,500 |
-| `coralys-simulation` | ✓ | 2 | 91 |
-| `coralys-ecology` | ✓ | 6 | 1,553 |
-| `coralys-decision` | ✓ | 2 | 96 |
-| `coralys-recommendation` | ✓ | 3 | 293 |
-| `coralys-infrastructure` | ✓ | 1 | 14 |
-| `adapters/ultracrew` | ✓ | 99 | 19,638 |
-| `adapters/chronosentiment` | ✓ | 6 | 1,597 |
-| `adapters/cvrp` | ✓ | 25 | 9,662 |
-| `adapters/cvd001` | ✓ | 8 | TBD |
-| `coralys-v2` | ✓ | 1 | 96 |
-| `coralys-core` | ✓ | 11 | 437 |
-| `coralys-eval` | ✓ | 5 | 956 |
-| `coralys-matching` | ✓ | 1 | 96 |
-| `adapters/roadef` | ✓ | 27 | 7,128 |
-| `adapters/airline` | ✓ | 50 | 12,760 |
-| `adapters/gerad` | ✓ | 8 | 1,462 |
-| `coralys-planning` | ✓ | 1 | 103 |
-| `services/ultracrew_server` | ✓ | 21 | 7,981 |
-| `services/cvrp_server` | ✓ | 31 | 9,550 |
-| `coralys-policy` | **✗ ORPHAN** | 1 | 136 |
-| `research_experiments` | **✗** | 4 | 259 |
-| `financial` (root) | **✗** | — | — |
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-eval |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 5 files / 956 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Dependency |
+| **Canonical Owner** | Self — canonical owner of objective value semantics |
+| **Governed By** | CLN-011 |
+| **RR Decision** | Pending |
 
 ---
 
-## Files Not Yet Classified
+### 11. `coralys-moga`
 
-The following require RR2 investigation:
-
-- `original_engine.rs` (root-level monolith, ~13,000+ LOC — not a workspace member)
-- `tests/` (workspace-level integration tests)
-- `benchmarks/` directory
-- Any `.rs` files in `scripts/`, `scratch/`, or other non-crate directories
-- `coralys-policy/src/lib.rs` (orphan — not in workspace)
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-moga |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 33 files / 4,500 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Dependency + Workspace |
+| **Canonical Owner** | Self — multi-objective genetic algorithm engine |
+| **Governed By** | — |
+| **RR Decision** | Pending |
 
 ---
 
-## Next Steps
+### 12–18. Stub Crates
 
-1. **RR2** — Reachability: for each crate, determine whether it is compiled by any active `Cargo.toml` workspace member.
-2. **RR3** — Version Analysis: resolve the six version candidate groups above.
-3. **RR6** — Dependency Reduction: audit the 8 stub crates; determine if any can be removed.
+| Crate | Package | Workspace Member | Files | LOC | Lifecycle | Compile Reachability |
+|-------|---------|-----------------|-------|-----|-----------|---------------------|
+| `coralys-infrastructure` | coralys-infrastructure | Yes | 1 | 14 | Stub | Workspace |
+| `coralys-matching` | coralys-matching | Yes | 1 | 96 | Stub | Workspace |
+| `coralys-planning` | coralys-planning | Yes | 1 | 103 | Stub | Workspace |
+| `coralys-recommendation` | coralys-recommendation | Yes | 3 | 293 | Stub | Workspace |
+| `coralys-simulation` | coralys-simulation | Yes | 2 | 91 | Stub | Workspace |
+| `coralys-v2` | coralys-v2 | Yes | 1 | 96 | Stub | Workspace |
+| `coralys-decision` | coralys-decision | Yes | 2 | 96 | Stub | Workspace |
+
+**Note:** All 7 stub crates are workspace members but have minimal content (1–3 files). Whether any active crate depends on them is to be determined in RR2. Governed By: RR2 audit pending.
+
+---
+
+### 19. `coralys-policy`
+
+| Field | Value |
+|-------|-------|
+| **Package** | coralys-policy |
+| **Workspace Member** | **No — ORPHAN** |
+| **Files / LOC** | 1 file / 136 LOC |
+| **Lifecycle** | Unknown |
+| **Compile Reachability** | None (not in workspace; cannot be built by `cargo build --workspace`) |
+| **Canonical Owner** | Unknown |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+---
+
+### 20. `infrastructure/core` — `chronosentiment_core`
+
+| Field | Value |
+|-------|-------|
+| **Package** | chronosentiment_core |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 23 files / 3,472 LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Workspace (lib + binaries) |
+| **Canonical Owner** | Self — core infrastructure (capture daemon, importers) |
+| **Governed By** | CLN-013 (deprecated_examples/ deleted 2026-08-01) |
+| **RR Decision** | Pending |
+
+---
+
+### 21. `infrastructure/optimization`
+
+| Field | Value |
+|-------|-------|
+| **Package** | TBD |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 2 files / TBD LOC |
+| **Lifecycle** | Unknown |
+| **Compile Reachability** | Workspace (lib) |
+| **Canonical Owner** | Unknown — relationship to coralys-moga to be determined in RR2 |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+---
+
+### 22. `infrastructure/observatory/api`
+
+| Field | Value |
+|-------|-------|
+| **Package** | TBD |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 15+ files / TBD LOC |
+| **Lifecycle** | Active |
+| **Compile Reachability** | Workspace (lib + binary: main.rs) |
+| **Canonical Owner** | Self — Observatory API server |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+---
+
+### 23. `services/ultracrew_server`
+
+| Field | Value |
+|-------|-------|
+| **Package** | TBD |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 21 files / 7,981 LOC |
+| **Lifecycle** | Mixed (Active + Research) |
+| **Compile Reachability** | Workspace (lib + binaries) |
+| **Canonical Owner** | Self — UltraCrew HTTP server |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+**Binaries by lifecycle:**
+
+| File | Lifecycle |
+|------|-----------|
+| `acceptance_test.rs`, `benchmark.rs`, `cs_governance_validation.rs`, `ecology_validation.rs` | Active |
+| `inrc_archive_forensics.rs`, `m8g_cs_validation.rs`, `m8g_ultracrew_validation.rs`, `m9a_search_observatory.rs`, `policy_seed_runner.rs`, `validation_pass.rs` | Research |
+
+---
+
+### 24. `services/cvrp_server`
+
+| Field | Value |
+|-------|-------|
+| **Package** | TBD |
+| **Workspace Member** | Yes |
+| **Files / LOC** | 31 files / 9,550 LOC |
+| **Lifecycle** | Research |
+| **Compile Reachability** | Workspace (binaries only — research-only server) |
+| **Canonical Owner** | Self — CVRP research experiment server |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+**All 31 binaries are research experiment binaries (m11–m22 series + supporting tools).**
+
+---
+
+### 25–27. Financial Programme
+
+| Crate | Package | Workspace Member | Files | Lifecycle | Compile Reachability |
+|-------|---------|-----------------|-------|-----------|---------------------|
+| `financial/core` | TBD | Yes | 10 | Research | Dependency |
+| `financial/ese` | TBD | Yes | 14 | Research | Workspace (lib + binary) |
+| `financial/strategies` | TBD | Yes | 45 | Research | Workspace (lib + binaries) |
+
+**Note:** Financial programme is a separate research programme from Coralys/UltraCrew. `original_engine.rs` (root-level monolith, ~13,000+ LOC, not a workspace member) is used by financial strategies.
+
+---
+
+### 28. `research_experiments`
+
+| Field | Value |
+|-------|-------|
+| **Package** | None |
+| **Workspace Member** | No |
+| **Files / LOC** | 4 files / 259 LOC |
+| **Lifecycle** | Research |
+| **Compile Reachability** | None (not in workspace) |
+| **Canonical Owner** | Unknown |
+| **Governed By** | — |
+| **RR Decision** | Pending |
+
+---
+
+## Non-Workspace Files
+
+| File | Lifecycle | Compile Reachability | Note |
+|------|-----------|---------------------|------|
+| `original_engine.rs` | Unknown | None (not in workspace) | Root-level monolith, ~13,000+ LOC. Used by financial strategies via path include or direct compilation. |
+| `coralys-policy/src/lib.rs` | Unknown | None | Orphan — not in workspace Cargo.toml |
+
+---
+
+## Version Candidates
+
+Version candidate groups have been moved to GOV-RR3-001. See `docs/governance/RR3_VERSION_ANALYSIS.md` (to be created).
+
+The six groups identified during RR1 are:
+
+1. `adapters/roadef/src/bin/campaign.rs` vs `campaign_engine.rs`
+2. `adapters/roadef/src/bin/m25_8_bridge.rs` vs `m25_8b_ecology.rs`
+3. `adapters/ultracrew/src/bin/deprecated/inrc_ecology_ablation.rs` vs active `inrc_ecology_ablation_matrix.rs`
+4. `adapters/ultracrew/src/bin/deprecated/inrc_ecology_multi_week_ablation.rs` vs active version
+5. `adapters/ultracrew/src/bin/deprecated/ultracrew_atlas.rs` + `ultracrew_repair_atlas.rs`
+6. Stub crates (7 crates) vs `coralys-core` / `coralys-moga`
+
+---
+
+## Governance Rule
+
+> **Any workspace member discovered during RR1 that is absent from GOV-KS-001 must be added to the Knowledge Survey before RR2 commences.**
+
+Missing from GOV-KS-001 (to be added): `financial/core`, `financial/ese`, `financial/strategies`, `infrastructure/optimization`, `infrastructure/observatory/api`, `adapters/cvd001`.

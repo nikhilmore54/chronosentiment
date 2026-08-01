@@ -1,7 +1,7 @@
 # Repository Knowledge Survey
 
 **Document ID:** GOV-KS-001
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Active
 **Created:** 2026-08-01
 **Scope:** Full repository asset inventory — all five knowledge systems
@@ -114,12 +114,32 @@ This survey is the authoritative, typed inventory of every canonical asset in th
 | ADAPTER-001 | `adapters/airline/` | Airline crew pairing (UltraCrew / GERAD) | Active — canonical research adapter |
 | ADAPTER-002 | `adapters/chronosentiment/` | ChronoSentiment financial signals | Active |
 | ADAPTER-003 | `adapters/roadef/` | ROADEF 2026 challenge | Active |
+| ADAPTER-004 | `adapters/cvrp/` | CVRP (Capacitated Vehicle Routing) | Active |
+| ADAPTER-005 | `adapters/gerad/` | GERAD G-2014-22 benchmark parser | Active |
+| ADAPTER-006 | `adapters/cvd001/` | CVD001 adapter | Active — purpose under RR2 investigation |
 
 ### Services
 
 | ID | Path | Role | Status |
 |----|------|------|--------|
 | SERVICE-001 | `services/ultracrew_server/` | UltraCrew HTTP server | Active |
+| SERVICE-002 | `services/cvrp_server/` | CVRP research experiment server | Active — research only |
+| SERVICE-003 | `infrastructure/observatory/api/` | Observatory API server | Active |
+
+### Infrastructure
+
+| ID | Path | Role | Status |
+|----|------|------|--------|
+| INFRA-001 | `infrastructure/core/` | Core infrastructure (capture daemon, importers) | Active |
+| INFRA-002 | `infrastructure/optimization/` | Optimization infrastructure layer | Active — relationship to coralys-moga under RR2 investigation |
+
+### Financial Programme
+
+| ID | Path | Role | Status |
+|----|------|------|--------|
+| FIN-001 | `financial/core/` | Financial core types | Active |
+| FIN-002 | `financial/ese/` | Execution Strategy Engine (ESE) | Active |
+| FIN-003 | `financial/strategies/` | Financial trading strategies | Active |
 
 ### Applications
 
@@ -338,3 +358,11 @@ The following directories exist but have not been fully inventoried in this surv
 - `data/` — data assets
 - `validation/` — validation artifacts
 - `claims/` — claims registry (provisional, replicated, falsified)
+
+---
+
+## Amendment Log
+
+| Date | Amendment | Reason |
+|------|-----------|--------|
+| 2026-08-01 | v1.1: Added ADAPTER-004 (`adapters/cvrp/`), ADAPTER-005 (`adapters/gerad/`), ADAPTER-006 (`adapters/cvd001/`), SERVICE-002 (`services/cvrp_server/`), SERVICE-003 (`infrastructure/observatory/api/`), INFRA-001 (`infrastructure/core/`), INFRA-002 (`infrastructure/optimization/`), FIN-001 (`financial/core/`), FIN-002 (`financial/ese/`), FIN-003 (`financial/strategies/`) | RR1 Repository Census (GOV-RR1-001) discovered these workspace members were absent from v1.0. Governance rule: all workspace members must be registered before RR2 commences. |
