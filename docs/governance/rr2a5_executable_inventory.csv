@@ -1,0 +1,112 @@
+binary_name,member,package,workspace_status,entry_point,loc,purpose,rationale,deprecated
+capture_daemon,infrastructure/core,chronosentiment_core,Member,infrastructure/core/src/bin/capture_daemon.rs,138,Production,cli/server/ingest keyword,False
+chronology_serialize_probe,infrastructure/core,chronosentiment_core,Member,infrastructure/core/src/bin/chronology_serialize_probe.rs,141,Unknown,no pattern matched,False
+historical_importer,infrastructure/core,chronosentiment_core,Member,infrastructure/core/src/bin/historical_importer.rs,161,Migration,migration keyword,False
+yahoo_importer,infrastructure/core,chronosentiment_core,Member,infrastructure/core/src/bin/yahoo_importer.rs,107,Migration,migration keyword,False
+main,infrastructure/observatory/api,api,Member,infrastructure/observatory/api/src/main.rs,40,Production,main.rs in service crate,False
+main,financial/ese,cs-ingest,Member,financial/ese/src/main.rs,247,Production,main.rs in service crate,False
+financial_replay,financial/strategies,chronosentiment_strategies,Member,financial/strategies/src/bin/financial_replay.rs,174,Unknown,no pattern matched,False
+execution_simulator,financial/strategies,chronosentiment_strategies,Member,financial/strategies/src/bin/execution_simulator.rs,110,Unknown,no pattern matched,False
+strategy_simulator,financial/strategies,chronosentiment_strategies,Member,financial/strategies/src/bin/strategy_simulator.rs,157,Unknown,no pattern matched,False
+trace_compiler,financial/strategies,chronosentiment_strategies,Member,financial/strategies/src/bin/trace_compiler.rs,605,Unknown,no pattern matched,False
+execution_replay,financial/strategies,chronosentiment_strategies,Member,financial/strategies/src/bin/execution_replay.rs,120,Unknown,no pattern matched,False
+main,coralys-moga,coralys-moga,Member,coralys-moga/src/main.rs,5,Unknown,main.rs in non-service crate,False
+experiment,coralys-moga,coralys-moga,Member,coralys-moga/src/bin/experiment.rs,120,Unknown,no pattern matched,False
+config_sweep,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/config_sweep.rs,271,Experiment,experiment/analysis keyword,False
+inrc_ecology_ablation_matrix,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_ecology_ablation_matrix.rs,353,Experiment,experiment keyword,False
+inrc_ecology_cost_curve,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_ecology_cost_curve.rs,348,Experiment,experiment keyword,False
+inrc_ecology_memory_depth,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_ecology_memory_depth.rs,341,Experiment,experiment keyword,False
+inrc_ecology_multi_week_ablation,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_ecology_multi_week_ablation.rs,451,Experiment,experiment keyword,False
+inrc_ecology_response_curve,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_ecology_response_curve.rs,347,Experiment,experiment keyword,False
+inrc_m22_ancestry,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_m22_ancestry.rs,321,Experiment,experiment keyword,False
+inrc_m22_benchmark,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_m22_benchmark.rs,464,Benchmark,benchmark keyword,False
+inrc_natural_history_pilot,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/inrc_natural_history_pilot.rs,347,Experiment,pilot/telemetry keyword,False
+m23a_synthetic,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/m23a_synthetic.rs,203,Experiment,m-series milestone prefix,False
+m30_0b_passive_telemetry,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/m30_0b_passive_telemetry.rs,141,Experiment,m-series milestone prefix,False
+m30_0d_active_pilot,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/m30_0d_active_pilot.rs,221,Experiment,m-series milestone prefix,False
+m31_2a_engagement_audit,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/m31_2a_engagement_audit.rs,260,Experiment,m-series milestone prefix,False
+m31_benchmarks,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/m31_benchmarks.rs,463,Experiment,m-series milestone prefix,False
+story1,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/story1.rs,97,Experiment,experiment keyword,False
+ultracrew-cli,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/ultracrew-cli.rs,156,Production,cli/server/ingest keyword,False
+inrc_ecology_ablation,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/inrc_ecology_ablation.rs,124,Deprecated,in src/bin/deprecated/,True
+inrc_ecology_history_test,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/inrc_ecology_history_test.rs,376,Deprecated,in src/bin/deprecated/,True
+inrc_ecology_horizon_test,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/inrc_ecology_horizon_test.rs,368,Deprecated,in src/bin/deprecated/,True
+inrc_ecology_mechanism_audit,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/inrc_ecology_mechanism_audit.rs,391,Deprecated,in src/bin/deprecated/,True
+inrc_ecology_multi_week_ablation,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/inrc_ecology_multi_week_ablation.rs,451,Deprecated,in src/bin/deprecated/,True
+ultracrew_atlas,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/ultracrew_atlas.rs,133,Deprecated,in src/bin/deprecated/,True
+ultracrew_repair_atlas,adapters/ultracrew,ultracrew,Member,adapters/ultracrew/src/bin/deprecated/ultracrew_repair_atlas.rs,136,Deprecated,in src/bin/deprecated/,True
+bdd_baseline,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_baseline.rs,348,Benchmark,bdd_ prefix,False
+bdd_benchmark,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_benchmark.rs,424,Benchmark,bdd_ prefix,False
+bdd_campaign,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_campaign.rs,356,Benchmark,bdd_ prefix,False
+bdd_campaign_compare,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_campaign_compare.rs,1,Benchmark,bdd_ prefix,False
+bdd_check_negative,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_check_negative.rs,123,Benchmark,bdd_ prefix,False
+bdd_p55_multi,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_p55_multi.rs,141,Benchmark,bdd_ prefix,False
+bdd_telemetry,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_telemetry.rs,263,Benchmark,bdd_ prefix,False
+bdd_validation,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/bdd_validation.rs,115,Benchmark,bdd_ prefix,False
+campaign,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/campaign.rs,1536,Tool,campaign runner,False
+compare,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/compare.rs,52,Experiment,experiment/analysis keyword,False
+cvrp_sanity,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/cvrp_sanity.rs,82,Validation,validation/audit keyword,False
+cvrplib_registry,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/cvrplib_registry.rs,395,Tool,utility/tool keyword,False
+m30_2_active_pilot,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/m30_2_active_pilot.rs,216,Experiment,m-series milestone prefix,False
+m30_2a_1_ecology_audit,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/m30_2a_1_ecology_audit.rs,139,Experiment,m-series milestone prefix,False
+m30_2a_2_shadow_advisory,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/m30_2a_2_shadow_advisory.rs,169,Experiment,m-series milestone prefix,False
+search_config,adapters/cvrp,cvrp,Member,adapters/cvrp/src/bin/search_config.rs,122,Experiment,experiment/analysis keyword,False
+tiny_solver,adapters/roadef,roadef,Member,adapters/roadef/src/bin/tiny_solver.rs,259,Experiment,experiment/analysis keyword,False
+m25_benchmark,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m25_benchmark.rs,377,Experiment,m-series milestone prefix,False
+campaign,adapters/roadef,roadef,Member,adapters/roadef/src/bin/campaign.rs,330,Tool,campaign runner,False
+campaign_engine,adapters/roadef,roadef,Member,adapters/roadef/src/bin/campaign_engine.rs,365,Tool,campaign runner,False
+eval_profiler,adapters/roadef,roadef,Member,adapters/roadef/src/bin/eval_profiler.rs,125,Experiment,experiment/analysis keyword,False
+e001_dual_path,adapters/roadef,roadef,Member,adapters/roadef/src/bin/e001_dual_path.rs,133,Tool,utility/tool keyword,False
+m25_8_bridge,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m25_8_bridge.rs,338,Experiment,m-series milestone prefix,False
+m25_8b_ecology,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m25_8b_ecology.rs,358,Experiment,m-series milestone prefix,False
+m25_final,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m25_final.rs,284,Experiment,m-series milestone prefix,False
+m26_1_observation_audit,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_1_observation_audit.rs,154,Experiment,m-series milestone prefix,False
+m26_1c_discriminative_audit,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_1c_discriminative_audit.rs,233,Experiment,m-series milestone prefix,False
+m26_1d_failure_density,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_1d_failure_density.rs,171,Experiment,m-series milestone prefix,False
+m26_1e_survival_curves,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_1e_survival_curves.rs,150,Experiment,m-series milestone prefix,False
+m26_3_passive_learner,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_3_passive_learner.rs,240,Experiment,m-series milestone prefix,False
+m26_4a_shadow_advisory,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_4a_shadow_advisory.rs,303,Experiment,m-series milestone prefix,False
+m26_4b_active_pilot,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m26_4b_active_pilot.rs,307,Experiment,m-series milestone prefix,False
+m27_1_passive_operator_telemetry,adapters/roadef,roadef,Member,adapters/roadef/src/bin/m27_1_passive_operator_telemetry.rs,270,Experiment,m-series milestone prefix,False
+main,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/main.rs,2355,Production,main.rs in service crate,False
+acceptance_test,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/acceptance_test.rs,208,Validation,validation/audit keyword,False
+m8g_ultracrew_validation,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/m8g_ultracrew_validation.rs,156,Experiment,m-series milestone prefix,False
+m8g_cs_validation,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/m8g_cs_validation.rs,110,Experiment,m-series milestone prefix,False
+m9a_search_observatory,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/m9a_search_observatory.rs,316,Experiment,m-series milestone prefix,False
+inrc_archive_forensics,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/inrc_archive_forensics.rs,1509,Validation,validation/audit keyword,False
+ecology_validation,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/ecology_validation.rs,292,Validation,validation/audit keyword,False
+policy_seed_runner,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/policy_seed_runner.rs,347,Experiment,experiment keyword,False
+cs_governance_validation,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/cs_governance_validation.rs,333,Validation,validation/audit keyword,False
+benchmark,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/benchmark.rs,261,Benchmark,benchmark keyword,False
+validation_pass,services/ultracrew_server,ultracrew_server,Member,services/ultracrew_server/src/bin/validation_pass.rs,423,Validation,validation/audit keyword,False
+main,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/main.rs,788,Production,main.rs in service crate,False
+basin_characterization,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/basin_characterization.rs,180,Experiment,experiment keyword,False
+seed_ecology_study,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/seed_ecology_study.rs,276,Experiment,experiment keyword,False
+m8g_cvrp_validation,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m8g_cvrp_validation.rs,286,Experiment,m-series milestone prefix,False
+m14_cvrp_recognizability_audit,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m14_cvrp_recognizability_audit.rs,317,Experiment,m-series milestone prefix,False
+m15_cvrp_decoder_independence,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m15_cvrp_decoder_independence.rs,222,Experiment,m-series milestone prefix,False
+m16_cvrp_reconstruction_guidance,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m16_cvrp_reconstruction_guidance.rs,271,Experiment,m-series milestone prefix,False
+m17_cvrp_backbone_causality,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m17_cvrp_backbone_causality.rs,238,Experiment,m-series milestone prefix,False
+m18_structural_invariants,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m18_structural_invariants.rs,224,Experiment,m-series milestone prefix,False
+verify_758,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/verify_758.rs,39,Validation,validation/audit keyword,False
+check_demand,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/check_demand.rs,9,Validation,validation/audit keyword,False
+find_797,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/find_797.rs,38,Experiment,experiment/analysis keyword,False
+m20_epistasis,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m20_epistasis.rs,132,Experiment,m-series milestone prefix,False
+verify_bks,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/verify_bks.rs,35,Validation,validation/audit keyword,False
+m21_feasible_path,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m21_feasible_path.rs,257,Experiment,m-series milestone prefix,False
+m21c_sa,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m21c_sa.rs,246,Experiment,m-series milestone prefix,False
+m21d_elite_sa,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m21d_elite_sa.rs,215,Experiment,m-series milestone prefix,False
+m22_0_archive,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22_0_archive.rs,356,Experiment,m-series milestone prefix,False
+m22b_novelty_elitism,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22b_novelty_elitism.rs,371,Experiment,m-series milestone prefix,False
+m22a_annealed_elite,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22a_annealed_elite.rs,437,Experiment,m-series milestone prefix,False
+m22c_0_route_sa,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22c_0_route_sa.rs,230,Experiment,m-series milestone prefix,False
+m22c_1_memetic,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22c_1_memetic.rs,584,Experiment,m-series milestone prefix,False
+m22c_2_fidelity_audit,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22c_2_fidelity_audit.rs,657,Experiment,m-series milestone prefix,False
+m22_scale_up,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22_scale_up.rs,670,Experiment,m-series milestone prefix,False
+m22f_cvrp_control,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m22f_cvrp_control.rs,150,Experiment,m-series milestone prefix,False
+elite_manifold_probe,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/elite_manifold_probe.rs,95,Experiment,experiment keyword,False
+elite_partition_probe,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/elite_partition_probe.rs,149,Experiment,experiment keyword,False
+frozen_partition_probe,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/frozen_partition_probe.rs,160,Experiment,experiment keyword,False
+initial_basin_distribution,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/initial_basin_distribution.rs,71,Experiment,experiment keyword,False
+m11_reachability_atlas,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m11_reachability_atlas.rs,288,Experiment,m-series milestone prefix,False
+m12_cvrp_repair_atlas,services/cvrp_server,cvrp_server,Member,services/cvrp_server/src/bin/m12_cvrp_repair_atlas.rs,289,Experiment,m-series milestone prefix,False
