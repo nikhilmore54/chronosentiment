@@ -1,9 +1,9 @@
 # ROADEF Research Programme
 
-**Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing  
-**Status:** Active  
-**Version:** 1.0  
-**Date:** 2026-08-02  
+**Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
+**Status:** Active
+**Version:** 1.1
+**Date:** 2026-08-02
 
 ---
 
@@ -176,30 +176,61 @@ The baseline solver uses:
 
 Research questions are numbered RP-4xx. Each produces a measurable result against Baseline v1.0.
 
-### RP-401 — ECMP-Aware Flow Estimation
+Every RP must produce a standard evidence record before its result is considered final:
+
+| Field | Description |
+|-------|-------------|
+| Research Question | What hypothesis is being tested? |
+| Baseline | Previous best solver / commit |
+| Metric | Official ROADEF objective (sum MLU + inv_load_cost) |
+| Result | Improvement / regression per instance |
+| Runtime | Wall-clock time per instance |
+| Statistical Confidence | Multiple runs with fixed seeds if stochastic |
+| Platform Impact | Generalisable to Coralys beyond ROADEF? |
+| Decision | Promote / Archive / Continue |
+
+---
+
+### RP-000 — Budget Semantics Validation *(completed)*
+
+**Research Finding:** Shared SR paths eliminate transition-budget expenditure by construction.
+
+The budget distance metric charges `dist(uninitialized, explicit(len=N)) = N` per demand when t=0 has an explicit srpath but t=1 is uninitialized. Emitting identical waypoints for both t=0 and t=1 makes `dist(explicit_A, explicit_A) = 0`, guaranteeing zero budget cost for all demands regardless of path length or instance size.
+
+This is a structural insight into the problem formulation. It establishes the correct baseline interpretation of the challenge rules. Any heuristic improvement built without this understanding would have been built on an invalid budget model.
+
+**Evidence:** `campaign_engine.rs` (commit `ec4d3821`). All 20 Dataset A instances produce valid solutions. Budget constraint is never violated.
+
+**Platform Impact:** The budget distance metric (`SrPathBit::dist`) is a general transition-cost model applicable to any multi-period routing problem. The shared-path strategy is a general technique for zero-cost initialisation in budget-constrained re-routing problems.
+
+**Decision:** Archived as foundational finding. Informs all subsequent RPs.
+
+---
+
+### RP-401 — ECMP-Aware Flow Estimation *(priority 1)*
 
 **Question:** Can we eliminate the ECMP mismatch by simulating ECMP flow during path selection?
 
-**Hypothesis:** If the solver uses the same ECMP routing logic as the evaluator to estimate link loads, the `obj=inf` instances will become solvable.
+**Hypothesis:** If the solver uses the same ECMP routing logic as the evaluator to estimate link loads, the `obj=inf` instances will become solvable and finite-objective instances will improve.
 
 **Approach:**
 - Replace the greedy flow tracker with a call to `evaluator.compute_loads()` after each demand assignment
 - Accept the higher computational cost in exchange for accurate load estimates
-- Measure: number of instances with finite objective, objective improvement on currently-inf instances
+- Measure: number of instances with finite objective, objective improvement on currently-inf instances (setA-02, 03, 06, 08, 11, 12, 14, 17)
 
 **Expected binary:** `src/bin/rp401_ecmp_aware.rs`
 
 ---
 
-### RP-402 — Budget-Aware t=1 Adaptation
+### RP-402 — Budget-Aware t=1 Adaptation *(priority 2)*
 
 **Question:** Can we improve t=1 quality while respecting the budget constraint?
 
 **Hypothesis:** For instances with budget > 0, selectively re-routing the demands with the largest traffic change between t=0 and t=1 will reduce t=1 objective without violating the budget.
 
 **Approach:**
-- After computing the shared path, identify demands where `|v[1] - v[0]|` is largest
-- Re-route those demands for t=1 only, counting budget cost
+- After computing the shared path (using RP-401 ECMP-aware routing), identify demands where `|v[1] - v[0]|` is largest
+- Re-route those demands for t=1 only, counting budget cost via `SrPathBit::dist`
 - Stop when budget is exhausted
 - Measure: objective improvement on setA-05, setA-10, setA-17 (budget=1 instances)
 
@@ -207,72 +238,76 @@ Research questions are numbered RP-4xx. Each produces a measurable result agains
 
 ---
 
-### RP-403 — Iterative Load Balancing
+### RP-403 — Multi-Path Candidate Generation *(priority 3)*
 
-**Question:** Does iterating the greedy assignment (re-routing demands that ended up on saturated links) improve the objective?
+**Question:** Does generating K candidate paths per demand and selecting the best combination improve the objective?
 
-**Hypothesis:** A second pass that re-routes demands whose assigned paths are now saturated will reduce `obj=inf` instances.
+**Hypothesis:** The greedy solver considers only one path per demand. Evaluating K shortest paths per demand under ECMP-accurate load estimation will find better combinations, particularly for high-volume demands that dominate the objective.
 
 **Approach:**
-- After the first greedy pass, identify demands routed through links with sat > 0.9
-- Re-route those demands using updated link saturations
-- Repeat for up to K iterations
-- Measure: convergence rate, objective improvement, runtime
+- For each demand, generate K shortest paths (K = 3, 5, 10)
+- Evaluate each candidate path under ECMP-accurate load estimation
+- Select the combination that minimises the objective greedily
+- Measure: objective improvement vs RP-401, runtime scaling with K
 
-**Expected binary:** `src/bin/rp403_iterative_lb.rs`
+**Expected binary:** `src/bin/rp403_multipath.rs`
+
+**Note:** This stage increases the search space substantially while keeping the solver deterministic. It is the correct foundation before introducing metaheuristics.
 
 ---
 
-### RP-404 — Coralys MOGA Integration
+### RP-404 — Large Neighbourhood Search *(priority 4)*
 
-**Question:** Can the existing Coralys MOGA engine improve on the greedy baseline?
-
-**Hypothesis:** A population-based search using the MOGA engine with SR path assignment as the genome will find better solutions on large instances.
-
-**Approach:**
-- Define genome as a vector of waypoint assignments (one per demand)
-- Use `evaluator.evaluate_solution()` as the fitness function
-- Initialise population from the greedy baseline
-- Run for a fixed time budget (e.g. 60 seconds per instance)
-- Measure: objective improvement, runtime, population diversity
-
-**Expected binary:** `src/bin/rp404_moga_solver.rs`
-
----
-
-### RP-405 — Large Neighbourhood Search
-
-**Question:** Can LNS with destroy/repair operators improve on the greedy baseline?
+**Question:** Can LNS with destroy/repair operators improve on the deterministic baseline?
 
 **Hypothesis:** Destroying and repairing subsets of demand assignments will escape local optima that the greedy solver gets stuck in.
 
 **Approach:**
-- Start from the greedy baseline solution
+- Start from the RP-403 solution
 - Destroy operator: remove waypoints for K randomly selected demands
-- Repair operator: re-route removed demands using load-aware Dijkstra
+- Repair operator: re-route removed demands using ECMP-aware Dijkstra (RP-401)
 - Accept if objective improves
 - Measure: objective improvement, convergence, operator effectiveness
 
-**Expected binary:** `src/bin/rp405_lns.rs`
+**Expected binary:** `src/bin/rp404_lns.rs`
 
 ---
 
-### RP-406 — Hyper-Heuristic Operator Selection
+### RP-405 — Hyper-Heuristic Operator Selection *(priority 5)*
 
 **Question:** Can adaptive operator selection (using Coralys memory structures) improve LNS performance?
 
 **Hypothesis:** Tracking which destroy/repair operator combinations succeed on which instance types will improve operator selection over time.
 
 **Approach:**
-- Extend RP-405 with a Coralys vault tracking operator success/failure rates
+- Extend RP-404 with a Coralys vault tracking operator success/failure rates
 - Use pressure-guided selection to prefer operators with lower failure rates
-- Measure: improvement over RP-405, vault convergence rate
+- Measure: improvement over RP-404, vault convergence rate
 
-**Expected binary:** `src/bin/rp406_hyper_lns.rs`
+**Expected binary:** `src/bin/rp405_hyper_lns.rs`
 
 ---
 
-### RP-407 — Hybrid Exact Subproblem
+### RP-406 — Coralys MOGA Integration *(priority 6)*
+
+**Question:** Can the existing Coralys MOGA engine improve on the LNS baseline?
+
+**Hypothesis:** A population-based search using the MOGA engine with SR path assignment as the genome will find better solutions on large instances, particularly after the decoder (RP-401) and neighbourhood (RP-404) are already strong.
+
+**Approach:**
+- Define genome as a vector of waypoint assignments (one per demand)
+- Use `evaluator.evaluate_solution()` as the fitness function
+- Initialise population from the RP-403 deterministic solution
+- Run for a fixed time budget (e.g. 60 seconds per instance)
+- Measure: objective improvement over RP-404, runtime, population diversity
+
+**Expected binary:** `src/bin/rp406_moga_solver.rs`
+
+**Note:** Evolutionary algorithms perform much better when the decoder and neighbourhoods are already strong. Introducing MOGA before RP-401–403 would waste search effort repairing weak candidate solutions.
+
+---
+
+### RP-407 — Hybrid Exact Subproblem *(priority 7)*
 
 **Question:** Can solving a small exact subproblem (e.g. single-commodity flow for the most congested link) improve the overall solution?
 
@@ -354,3 +389,4 @@ Evidence that generalises beyond ROADEF should be promoted to the platform. Evid
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0 | 2026-08-02 | Initial programme document. Baseline v1.0 established from `campaign_engine` (commit `ec4d3821`). |
+| 1.1 | 2026-08-02 | Added RP-000 (Budget Semantics Validation) as completed foundational finding. Added standard evidence record schema. Reordered experimental programme: RP-403 is now Multi-Path Candidate Generation (deterministic); MOGA moved to RP-406 after LNS (RP-404) and hyper-heuristic (RP-405). Rationale: metaheuristics perform better when decoder and neighbourhoods are already strong. |
