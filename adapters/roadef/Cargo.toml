@@ -37,3 +37,11 @@ path = "src/bin/eval_profiler.rs"
 [[bin]]
 name = "e001_dual_path"
 path = "src/bin/e001_dual_path.rs"
+
+[[bin]]
+name = "rp401c_ecmp_construction"
+path = "src/bin/rp401c_ecmp_construction.rs"
+
+[[bin]]
+name = "rp401d_ecmp_path_selection"
+path = "src/bin/rp401d_ecmp_path_selection.rs"
