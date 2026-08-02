@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.3
+**Version:** 1.4
 **Date:** 2026-08-02
 
 ---
@@ -207,25 +207,25 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-401 — ECMP-Aware Flow Estimation *(priority 1)*
+### RP-401 — ECMP-Aware Flow Estimation *(🔒 FROZEN 2026-08-02)*
 
-**Question:** Can we eliminate the ECMP mismatch by simulating ECMP flow during path selection?
+**Status:** Complete. All four stages executed 20/20. RP-401 is frozen.
 
-**Hypothesis:** If the solver uses the same ECMP routing logic as the evaluator to estimate link loads, the `obj=inf` instances will become solvable and finite-objective instances will improve.
+**Scientific conclusion:** The primary bottleneck in the baseline solver was modelling fidelity. Correcting the ECMP load model (RP-401C) produced substantially larger improvements than introducing oracle-guided candidate selection (RP-401D). After model correction, search quality became the dominant remaining source of improvement.
 
-RP-401 is structured as a **measurement project before an optimisation project**. Evidence precedes optimisation.
+| Stage | Outcome | Key result |
+|-------|---------|------------|
+| RP-401A | ✅ Oracle verified | `compute_loads()` matches official checker |
+| RP-401B | ✅ Divergence quantified | Heuristic error: (k−1)/k on k-way ECMP |
+| RP-401C | ✅ 13/20 improved, 0 regressed | +2,512,099 obj; 8 ∞→finite transitions |
+| RP-401D | ✅ 15/20 finite | +2,584,407 obj vs empty; mixed vs RP-401C |
 
-| Stage | Objective | Deliverable |
-|-------|-----------|-------------|
-| RP-401A | Replace heuristic load estimation with `evaluator.compute_loads()` | Verified ECMP oracle — confirms the oracle matches the checker |
-| RP-401B | Quantify divergence between heuristic and ECMP loads on Baseline v1.0 solutions | Link-by-link error report — which links had the largest prediction error, which demands changed routing |
-| RP-401C | Re-run Dataset A with identical routing decisions but ECMP-aware evaluation during construction | Baseline comparison — how much improvement comes purely from correcting the model |
-| RP-401D | Introduce ECMP-aware path selection (routing decisions informed by ECMP loads) | RP-401 solver binary |
+**Capabilities promoted:**
+- ECMP-aware incremental load estimation: C1 → **C2** (benchmark validated)
+- Oracle-guided constructive routing: C1 → **C2** (benchmark validated)
+- Oracle-guided candidate selection: remains **C1** (exploratory evidence only)
 
-The RP-401B measurements will also inform RP-403: if load prediction error is concentrated on a small subset of demands, multi-path generation should focus there rather than expanding uniformly across the network.
-
-**Expected binary:** `src/bin/rp401_ecmp_aware.rs`
-**Intermediate artefact:** `docs/roadef/rp401b_load_divergence.csv` (link-by-link error report)
+**Full evidence:** [`RP401_FINAL_REPORT.md`](RP401_FINAL_REPORT.md) v1.3
 
 ---
 
@@ -398,7 +398,7 @@ Promotion follows the same evidence-driven gate model as the RP evidence record 
 
 The authoritative capability register is maintained at [`docs/governance/CAPABILITY_REGISTER.md`](../governance/CAPABILITY_REGISTER.md). The snapshot below reflects the state at the time of this programme version.
 
-### 6.3 Capability Snapshot (v1.2 baseline)
+### 6.3 Capability Snapshot (v1.3 — post RP-401 freeze)
 
 | Capability | Level | Evidence |
 |------------|-------|---------|
@@ -408,12 +408,14 @@ The authoritative capability register is maintained at [`docs/governance/CAPABIL
 | Ecology / adaptive search | C3 | CVRP, UltraCrew |
 | Workforce scheduling | C3 | UltraCrew |
 | Vehicle routing | C3 | CVRP |
-| Network routing | C2 | ROADEF Baseline v1.0 (Dataset A, 20 instances) |
-| ECMP-aware routing | C1 → C2 | After RP-401 |
-| Budget-aware transition planning | C1 → C2 | After RP-402 |
-| Multi-path candidate generation | C0 → C2 | After RP-403 |
-| LNS for routing | C0 → C2 | After RP-404 |
-| Hyper-heuristic operator selection | C1 → C3 | After RP-405 (cross-domain: CVRP + ROADEF) |
+| Network routing (SR paths) | C2 | ROADEF Baseline v1.0 (Dataset A, 20 instances) |
+| ECMP-aware incremental load estimation | **C2** | RP-401C — 13/20 improved, 0 regressed |
+| Oracle-guided constructive routing | **C2** | RP-401C — same evidence; distinct reusable capability |
+| Oracle-guided candidate selection | C1 | RP-401D — exploratory evidence only |
+| Budget-aware transition planning | C1 | RP-000 (shared-path strategy); RP-402 target |
+| Multi-path candidate generation | C0 | RP-403 target |
+| LNS for routing | C0 | RP-404 target |
+| Hyper-heuristic operator selection | C1 | RP-405 target (cross-domain: CVRP + ROADEF) |
 
 ### 6.4 ROADEF Capability Contributions
 
@@ -461,3 +463,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.1 | 2026-08-02 | Added RP-000 (Budget Semantics Validation) as completed foundational finding. Added standard evidence record schema. Reordered experimental programme: RP-403 is now Multi-Path Candidate Generation (deterministic); MOGA moved to RP-406 after LNS (RP-404) and hyper-heuristic (RP-405). Rationale: metaheuristics perform better when decoder and neighbourhoods are already strong. |
 | 1.2 | 2026-08-02 | Added four-stage RP-401 structure (401A–401D): measurement before optimisation. Added §6 Capability Maturity Model (C0–C5) with current capability register and ROADEF contribution targets. Renumbered §6 Evidence Feedback to §7, §7 Programme Governance to §8. |
 | 1.3 | 2026-08-02 | Added CMM exit criteria to §6.2 (evidence-driven promotion gates). Added cross-reference to CAPABILITY_REGISTER.md. Created docs/governance/CAPABILITY_REGISTER.md (GOV-CR-001 v1.0) as platform-wide governance artefact tracking 14 capabilities across Core Optimisation, Planning and Search, Routing, and Domain Adapter categories. |
+| 1.4 | 2026-08-02 | RP-401 frozen. §4 RP-401 entry replaced with frozen summary (all four stages, scientific conclusion, capability promotions). §6.3 capability snapshot updated to v1.3: "ECMP-aware routing" split into three distinct capabilities — ECMP-aware incremental load estimation (C2), oracle-guided constructive routing (C2, new), oracle-guided candidate selection (C1). CAPABILITY_REGISTER.md updated to v1.2 with same split. RP401_FINAL_REPORT.md updated to v1.3 with strengthened scientific conclusions, RP-401D renamed, §5 comparison table, timeout caveat, §10 Scientific Contribution. |

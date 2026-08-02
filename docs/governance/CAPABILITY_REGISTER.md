@@ -2,7 +2,7 @@
 
 **Document:** GOV-CR-001
 **Status:** Active
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2026-08-02
 **Owner:** Platform Engineering
 
@@ -55,8 +55,10 @@ Promotion between levels is evidence-driven. A capability cannot advance without
 
 | Capability | Owner | Current | Target | Evidence | Next Milestone |
 |------------|-------|---------|--------|---------|----------------|
-| Network routing (SR paths) | `adapters/roadef` | C2 | C3 | ROADEF Baseline v1.0 — Dataset A, 20 instances, commit `ec4d3821` | RP-401D |
-| ECMP-aware routing | `coralys-core` | **C2** | C3 | RP-401C — 13/20 improved, 0 regressed, total improvement 2,512,099.84 (BASELINE_HISTORY v1.2) | RP-401 cross-domain |
+| Network routing (SR paths) | `adapters/roadef` | C2 | C3 | ROADEF Baseline v1.0 — Dataset A, 20 instances, commit `ec4d3821` | RP-402 |
+| ECMP-aware incremental load estimation | `coralys-core` | **C2** | C3 | RP-401C — 13/20 improved, 0 regressed, total improvement 2,512,099.84 (BASELINE_HISTORY v1.2, RP401_FINAL_REPORT v1.3 §7.2) | RP-401 cross-domain |
+| Oracle-guided constructive routing | `coralys-core` | **C2** | C3 | RP-401C — same evidence; construction strategy benchmark-validated (RP401_FINAL_REPORT v1.3 §7.3) | RP-402 cross-domain |
+| Oracle-guided candidate selection | `coralys-core` | C1 | C2 | RP-401D — exploratory; mixed results, timeout regressions (RP401_FINAL_REPORT v1.3 §7.4) | RP-402/403 controlled experiment |
 | Budget-constrained re-routing | `coralys-planning` | C1 | C2 | RP-000 (shared-path strategy) | RP-402 (ROADEF) |
 
 ### Domain Adapters
@@ -103,9 +105,17 @@ Budget-aware transition planning (C1)
                 │
                 └── RP-402 + CVRP validation → C3
 
-ECMP-aware routing (C2) ← promoted 2026-08-02 via RP-401C
+ECMP-aware incremental load estimation (C2) ← promoted 2026-08-02 via RP-401C
         │
         └── RP-401 cross-domain validation → C3
+
+Oracle-guided constructive routing (C2) ← promoted 2026-08-02 via RP-401C
+        │
+        └── RP-402 cross-domain validation → C3
+
+Oracle-guided candidate selection (C1) ← exploratory evidence RP-401D
+        │
+        └── RP-402/403 controlled experiment → C2
 
 LNS for routing (C0)
         │
@@ -122,3 +132,4 @@ LNS for routing (C0)
 |---------|------|--------|---------------|
 | 1.0 | 2026-08-02 | Initial register. Baseline established from RR1–RR4 governance work and ROADEF Baseline v1.0 (commit `ec4d3821`). Network routing promoted to C2 on strength of Dataset A results. Budget-aware transition planning promoted to C1 on strength of RP-000 finding. | Programme Owner |
 | 1.1 | 2026-08-02 | ECMP-aware routing promoted C1→C2. Evidence: RP-401C — 13/20 Dataset A instances improved, 0 regressions, total improvement 2,512,099.84. Full evidence in BASELINE_HISTORY.md v1.2 and RP401_FINAL_REPORT.md v1.1. | RP-401 |
+| 1.2 | 2026-08-02 | Reviewer-directed capability split. "ECMP-aware routing" renamed to "ECMP-aware incremental load estimation" (C2, unchanged). Added "Oracle-guided constructive routing" (C2, promoted from C1 — same RP-401C evidence, distinct reusable capability). Added "Oracle-guided candidate selection" (C1, exploratory evidence from RP-401D only). Dependency map updated. Evidence references updated to RP401_FINAL_REPORT.md v1.3. | RP-401 |
