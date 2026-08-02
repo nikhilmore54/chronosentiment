@@ -1,409 +1,372 @@
-/// ROADEF 2026 Platform Validation Campaign — M19 (Engine)
+/// campaign_engine — ROADEF 2026 Dataset A Submission Generator
 ///
-/// Uses coralys-moga EvolutionEngine unchanged to validate that the generic
-/// MOGA engine generalizes to ROADEF without modification.
+/// Runs on all 20 setA instances and writes srpaths.json solution files.
 ///
-/// Purpose: Platform evidence (not algorithm research).
-/// Evidence: "The generic EvolutionEngine works unchanged for ROADEF."
+/// Key insight from path.rs:
+///   Budget cost at t=1 = sum over demands of dist(t1_path, t0_path)
+///   dist(uninitialized, explicit(len=N)) = N  (expensive!)
+///   dist(explicit_A, explicit_A) = 0          (free — same path)
+///   dist(uninitialized, uninitialized) = 0     (free — both default)
 ///
-/// Companion binary: campaign.rs (research harness with deep instrumentation)
+/// Strategy:
+///   1. Find one good srpath per demand that works for BOTH time slots.
+///   2. Emit it for both t=0 and t=1 → budget cost = 0 for all demands.
+///   3. For demands affected by t=1 interventions, find an alternative path
+///      and emit it only for t=1, within the budget limit.
 ///
-/// M19 acceptance criteria:
-///   - All 20 setA instances run through EvolutionEngine unchanged
-///   - Zero modifications to coralys-moga
-///   - Zero modifications to frozen Qualification Subsystem v1.0
+/// The empty solution (srpaths=[]) is always valid. This solver attempts to
+/// improve on it by steering traffic away from saturated links.
 
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
-use std::time::Instant;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::cmp::Reverse;
+use std::fs::File;
+use std::io::Write;
 
-use serde::{Deserialize, Serialize};
-use chrono::Utc;
-
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
+use roadef::models::{Network, Solution, SrPath};
 use roadef::evaluator::RoadefEvaluator;
-use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-};
-
-use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
-use coralys_moga::termination::TerminationPolicy;
-use coralys_moga::traits::Evaluated;
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Dijkstra shortest path (metric-weighted, ignoring disabled arcs)
+// Returns the full path as a list of node IDs from src to dst (inclusive).
+// Returns None if no path exists.
 // ---------------------------------------------------------------------------
-
-const INSTANCE_DIR: &str = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
-const REPORT_DIR: &str = "benchmarks/roadef/campaign";
-
-// Execution parameters
-const POPULATION_SIZE: usize = 50;
-const GENERATION_LIMIT: usize = 500;   // high ceiling — time budget governs large instances
-const ELITE_COUNT: usize = 5;
-const CAMPAIGN_ID: &str = "campaign_engine_v1.0_verify";
-
-// Adaptive time budget per instance (execution policy — not an EA parameter)
-// budget = clamp(0.5ms × demands × links, MIN_BUDGET_SECS, MAX_BUDGET_SECS)
-const MIN_BUDGET_SECS: u64 = 30;
-const MAX_BUDGET_SECS: u64 = 300;
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct InstanceResult {
-    instance_id: usize,
-    name: String,
-    num_demands: usize,
-    num_nodes: usize,
-    num_links: usize,
-    num_time_slots: usize,
-    best_obj: f64,
-    avg_mlu: f64,
-    valid: bool,
-    runtime_ms: u128,
-    budget_secs: u64,
-    generations: usize,
-    /// Milliseconds per generation. 0 when generations == 0 (feasibility-limited instances).
-    /// Distinguishes evaluation-limited runs (high ms/gen) from search-limited runs (low ms/gen).
-    ms_per_generation: u128,
-    quality_class: String,
-    termination_reason: String,
-    /// Derived search mode classification for Horizon 4 tracking.
-    /// SearchLimited: valid && NoImprovement (GA converged before budget).
-    /// EvaluationLimited: valid && TimeBudget (evaluator consumed all time).
-    /// Infeasible: !valid (no feasible solution found within budget).
-    search_mode: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct CampaignReport {
-    campaign_id: String,
-    timestamp: String,
-    solver_version: String,
-    engine: String,
-    total_instances: usize,
-    valid_count: usize,
-    invalid_count: usize,
-    results: Vec<InstanceResult>,
-}
-
-fn classify_obj(obj: f64, valid: bool) -> &'static str {
-    if !valid { return "Invalid"; }
-    if obj < 10.0  { "Excellent" }
-    else if obj < 30.0  { "Good" }
-    else if obj < 60.0  { "Competitive" }
-    else if obj < 100.0 { "Weak" }
-    else               { "Poor" }
-}
-
-/// Infer termination reason from observable campaign-layer data.
-///
-/// The frozen EvolutionEngine does not expose a termination reason in GaResult,
-/// so we reconstruct it deterministically:
-///   - TimeBudget:   runtime consumed ≥ 90% of budget (engine hit MaxRuntime policy)
-///   - GenerationLimit: generations reached the configured ceiling
-///   - NoImprovement: engine stopped early due to stagnation
-///   - LoadError / EvolutionError: passed through from error paths
-fn infer_termination(generations: usize, runtime_ms: u128, budget_secs: u64) -> &'static str {
-    let budget_ms = budget_secs * 1000;
-    let threshold_ms = (budget_ms as f64 * 0.90) as u128;
-    if runtime_ms >= threshold_ms {
-        "TimeBudget"
-    } else if generations >= GENERATION_LIMIT {
-        "GenerationLimit"
-    } else {
-        "NoImprovement"
+fn dijkstra_path(
+    net: &Network,
+    src: u64,
+    dst: u64,
+    disabled_links: &HashSet<u64>,
+) -> Option<Vec<u64>> {
+    if src == dst {
+        return Some(vec![src]);
     }
-}
 
-fn discover_instances() -> Vec<(String, String, String, String)> {
-    let mut instances = Vec::new();
-    for i in 1..=20 {
-        let name = format!("setA-{:02}", i);
-        let net      = format!("{}/{}-net.json",      INSTANCE_DIR, name);
-        let tm       = format!("{}/{}-tm.json",       INSTANCE_DIR, name);
-        let scenario = format!("{}/{}-scenario.json", INSTANCE_DIR, name);
-        if Path::new(&net).exists() && Path::new(&tm).exists() && Path::new(&scenario).exists() {
-            instances.push((name, net, tm, scenario));
+    // Build adjacency: node_id -> Vec<(neighbor_id, metric)>
+    let mut adj: HashMap<u64, Vec<(u64, f64)>> = HashMap::new();
+    for link in &net.links {
+        if disabled_links.contains(&link.id) {
+            continue;
+        }
+        adj.entry(link.from).or_default().push((link.to, link.metric));
+    }
+
+    let mut dist: HashMap<u64, u64> = HashMap::new();
+    let mut prev: HashMap<u64, u64> = HashMap::new();
+    let mut heap: BinaryHeap<(Reverse<u64>, u64)> = BinaryHeap::new();
+
+    dist.insert(src, 0);
+    heap.push((Reverse(0), src));
+
+    while let Some((Reverse(cost), node)) = heap.pop() {
+        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost {
+            continue;
+        }
+        if node == dst {
+            break;
+        }
+        if let Some(neighbors) = adj.get(&node) {
+            for &(next, metric) in neighbors {
+                let new_cost = cost + (metric * 1000.0) as u64;
+                let better = dist.get(&next).copied().unwrap_or(u64::MAX) > new_cost;
+                if better {
+                    dist.insert(next, new_cost);
+                    prev.insert(next, node);
+                    heap.push((Reverse(new_cost), next));
+                }
+            }
         }
     }
-    instances
+
+    if !dist.contains_key(&dst) {
+        return None;
+    }
+
+    let mut path = vec![dst];
+    let mut cur = dst;
+    while cur != src {
+        if let Some(&p) = prev.get(&cur) {
+            path.push(p);
+            cur = p;
+        } else {
+            return None;
+        }
+    }
+    path.reverse();
+    Some(path)
 }
 
-fn main() {
-    let campaign_start = Instant::now();
-    eprintln!("=== ROADEF 2026 Platform Validation Campaign — {} ===", CAMPAIGN_ID);
-    eprintln!("Engine: coralys-moga EvolutionEngine (unchanged)");
-    eprintln!("Purpose: Platform evidence — generic engine generalizes to ROADEF");
-    eprintln!();
+// ---------------------------------------------------------------------------
+// Load-aware Dijkstra: weights links by (metric + load_penalty * saturation)
+// ---------------------------------------------------------------------------
+fn load_aware_path(
+    net: &Network,
+    src: u64,
+    dst: u64,
+    disabled_links: &HashSet<u64>,
+    link_saturation: &HashMap<u64, f64>,
+    load_penalty: f64,
+) -> Option<Vec<u64>> {
+    if src == dst {
+        return Some(vec![src]);
+    }
 
-    let instances = discover_instances();
-    let total = instances.len();
-    eprintln!("Discovered {} instances", total);
-    eprintln!();
-
-    let mut results: Vec<InstanceResult> = Vec::new();
-
-    for (idx, (name, net_path, tm_path, scenario_path)) in instances.iter().enumerate() {
-        let instance_num = idx + 1;
-        eprintln!("[{}/{}] {}", instance_num, total, name);
-
-        let net = match roadef::loader::load_network(net_path) {
-            Ok(n) => n,
-            Err(e) => {
-                eprintln!("  ERROR loading network: {}", e);
-                results.push(InstanceResult {
-                    instance_id: instance_num, name: name.clone(),
-                    num_demands: 0, num_nodes: 0, num_links: 0, num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, budget_secs: 0, generations: 0,
-                    ms_per_generation: 0,
-                    quality_class: "LoadError".to_string(),
-                    termination_reason: "LoadError".to_string(),
-                    search_mode: "Infeasible".to_string(),
-                });
-                continue;
-            }
+    let mut adj: HashMap<u64, Vec<(u64, f64)>> = HashMap::new();
+    for link in &net.links {
+        if disabled_links.contains(&link.id) {
+            continue;
+        }
+        let sat = link_saturation.get(&link.id).copied().unwrap_or(0.0);
+        let penalty = if sat >= 1.0 {
+            1e9
+        } else if sat > 0.8 {
+            load_penalty * (1.0 / (1.0 - sat) - 1.0) * 10.0
+        } else {
+            load_penalty * sat
         };
-        let tm = match roadef::loader::load_traffic_matrix(tm_path) {
-            Ok(t) => t,
-            Err(e) => {
-                eprintln!("  ERROR loading traffic matrix: {}", e);
-                results.push(InstanceResult {
-                    instance_id: instance_num, name: name.clone(),
-                    num_demands: 0, num_nodes: net.nodes.len(), num_links: net.links.len(), num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, budget_secs: 0, generations: 0,
-                    ms_per_generation: 0,
-                    quality_class: "LoadError".to_string(),
-                    termination_reason: "LoadError".to_string(),
-                    search_mode: "Infeasible".to_string(),
-                });
-                continue;
+        let effective_metric = link.metric + penalty;
+        adj.entry(link.from).or_default().push((link.to, effective_metric));
+    }
+
+    let mut dist: HashMap<u64, u64> = HashMap::new();
+    let mut prev: HashMap<u64, u64> = HashMap::new();
+    let mut heap: BinaryHeap<(Reverse<u64>, u64)> = BinaryHeap::new();
+
+    dist.insert(src, 0);
+    heap.push((Reverse(0), src));
+
+    while let Some((Reverse(cost), node)) = heap.pop() {
+        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost {
+            continue;
+        }
+        if node == dst {
+            break;
+        }
+        if let Some(neighbors) = adj.get(&node) {
+            for &(next, effective_metric) in neighbors {
+                let new_cost = cost + (effective_metric * 1000.0) as u64;
+                let better = dist.get(&next).copied().unwrap_or(u64::MAX) > new_cost;
+                if better {
+                    dist.insert(next, new_cost);
+                    prev.insert(next, node);
+                    heap.push((Reverse(new_cost), next));
+                }
             }
-        };
-        let scenario = match roadef::loader::load_scenario(scenario_path) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("  ERROR loading scenario: {}", e);
-                results.push(InstanceResult {
-                    instance_id: instance_num, name: name.clone(),
-                    num_demands: 0, num_nodes: net.nodes.len(), num_links: net.links.len(), num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, budget_secs: 0, generations: 0,
-                    ms_per_generation: 0,
-                    quality_class: "LoadError".to_string(),
-                    termination_reason: "LoadError".to_string(),
-                    search_mode: "Infeasible".to_string(),
-                });
-                continue;
+        }
+    }
+
+    if !dist.contains_key(&dst) {
+        return None;
+    }
+
+    let mut path = vec![dst];
+    let mut cur = dst;
+    while cur != src {
+        if let Some(&p) = prev.get(&cur) {
+            path.push(p);
+            cur = p;
+        } else {
+            return None;
+        }
+    }
+    path.reverse();
+    Some(path)
+}
+
+// ---------------------------------------------------------------------------
+// Extract waypoints from a full node path (intermediate nodes only)
+// and enforce max_segments constraint.
+// ---------------------------------------------------------------------------
+fn path_to_waypoints(full_path: &[u64], max_segments: usize) -> Vec<u64> {
+    if full_path.len() <= 2 {
+        return vec![];
+    }
+    let waypoints: Vec<u64> = full_path[1..full_path.len() - 1].to_vec();
+    // max_segments constraint: waypoints.len() + 1 <= max_segments
+    // i.e. waypoints.len() <= max_segments - 1
+    if max_segments > 0 && waypoints.len() + 1 > max_segments {
+        waypoints[..max_segments - 1].to_vec()
+    } else {
+        waypoints
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Greedy load-balanced solver for one time slot.
+// Returns: HashMap<demand_idx, waypoints>
+// Only includes demands where we found a non-trivial path.
+// ---------------------------------------------------------------------------
+fn solve_greedy(
+    net: &Network,
+    demands: &[(usize, u64, u64, f64)], // (demand_idx, src, dst, vol)
+    disabled_links: &HashSet<u64>,
+    max_segments: usize,
+) -> HashMap<usize, Vec<u64>> {
+    // Sort demands by volume descending
+    let mut sorted: Vec<(usize, u64, u64, f64)> = demands.to_vec();
+    sorted.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Build link lookup: link_id -> capacity
+    let mut link_capacity: HashMap<u64, f64> = HashMap::new();
+    let mut link_flow: HashMap<u64, f64> = HashMap::new();
+    let mut link_saturation: HashMap<u64, f64> = HashMap::new();
+    // Build (from, to) -> link_id for flow tracking
+    let mut link_by_endpoints: HashMap<(u64, u64), u64> = HashMap::new();
+    for link in &net.links {
+        link_capacity.insert(link.id, link.capacity);
+        link_flow.insert(link.id, 0.0);
+        link_saturation.insert(link.id, 0.0);
+        link_by_endpoints.insert((link.from, link.to), link.id);
+    }
+
+    let mut assignments: HashMap<usize, Vec<u64>> = HashMap::new();
+
+    for (d_idx, src, dst, vol) in &sorted {
+        let full_path = load_aware_path(net, *src, *dst, disabled_links, &link_saturation, 100.0)
+            .or_else(|| dijkstra_path(net, *src, *dst, disabled_links));
+
+        if let Some(fp) = full_path {
+            let waypoints = path_to_waypoints(&fp, max_segments);
+
+            // Update link flows using the full path
+            for j in 0..fp.len().saturating_sub(1) {
+                if let Some(&link_id) = link_by_endpoints.get(&(fp[j], fp[j + 1])) {
+                    let flow = link_flow.entry(link_id).or_insert(0.0);
+                    *flow += vol;
+                    let cap = link_capacity.get(&link_id).copied().unwrap_or(1.0);
+                    link_saturation.insert(link_id, *flow / cap);
+                }
             }
-        };
+
+            assignments.insert(*d_idx, waypoints);
+        }
+        // If no path found, don't insert — demand will use ECMP default
+    }
+
+    assignments
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+fn main() -> anyhow::Result<()> {
+    let set_dir = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
+
+    println!("ROADEF 2026 — Dataset A Submission Generator");
+    println!("{}", "=".repeat(60));
+
+    for instance_id in 1..=20 {
+        let inst = format!("{:02}", instance_id);
+        let net_path = format!("{}/setA-{}-net.json", set_dir, inst);
+        let tm_path = format!("{}/setA-{}-tm.json", set_dir, inst);
+        let sc_path = format!("{}/setA-{}-scenario.json", set_dir, inst);
+        let out_path = format!("{}/setA-{}-srpaths.json", set_dir, inst);
+
+        let net = load_network(&net_path)?;
+        let tm = load_traffic_matrix(&tm_path)?;
+        let scenario = load_scenario(&sc_path)?;
 
         let num_demands = tm.demands.len();
-        let num_time_slots = tm.num_time_slots;
-        let num_nodes = net.nodes.len();
-        let num_links = net.links.len();
-        let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
+        let num_slots = tm.num_time_slots;
+        let max_seg = if scenario.max_segments >= 0 { scenario.max_segments as usize } else { 100 };
+        let budget_t1 = scenario.budget.iter().find(|b| b.t == 1).map(|b| b.value).unwrap_or(0);
 
-        eprintln!("  nodes={} links={} demands={} slots={}", num_nodes, num_links, num_demands, num_time_slots);
+        print!("setA-{}: {} nodes, {} links, {} demands, {} slots, budget_t1={} ... ",
+            inst, net.nodes.len(), net.links.len(), num_demands, num_slots, budget_t1);
 
-        let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
+        // Disabled links at each time slot
+        let disabled_t0: HashSet<u64> = scenario.interventions.iter()
+            .filter(|i| i.t == 0)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
+        let disabled_t1: HashSet<u64> = scenario.interventions.iter()
+            .filter(|i| i.t == 1)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
 
-        let factory = RoadefGenomeFactory { num_demands, num_time_slots, node_ids: node_ids.clone() };
-        let fitness_eval = RoadefFitnessEvaluator { evaluator: Arc::clone(&evaluator) };
-        let mutator = RoadefMutator { node_ids: node_ids.clone() };
-        let crossover = RoadefCrossover;
+        // Build demand lists for each time slot
+        let demands_t0: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+            .map(|(i, d)| (i, d.s, d.t, d.v[0]))
+            .collect();
+        let demands_t1: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+            .map(|(i, d)| (i, d.s, d.t, if d.v.len() > 1 { d.v[1] } else { d.v[0] }))
+            .collect();
 
-        // ── Platform validation: EvolutionEngine used unchanged ──────────────
-        let engine = match EvolutionEngineBuilder::new()
-            .with_evaluator(fitness_eval)
-            .with_mutator(mutator)
-            .with_crossover(crossover)
-            .with_factory(factory)
-            .build()
-        {
-            Ok(e) => e,
-            Err(e) => {
-                eprintln!("  ERROR building engine: {}", e);
-                continue;
-            }
-        };
+        // --- Strategy: find paths that work for both time slots ---
+        // Use the union of disabled links as the constraint for the "shared" path,
+        // so the path is valid in both slots.
+        let disabled_both: HashSet<u64> = disabled_t0.union(&disabled_t1).copied().collect();
 
-        // Adaptive time budget: clamp(0.5ms × demands × links, MIN, MAX)
-        let raw_budget_ms = (num_demands as u64) * (num_links as u64) / 2;
-        let budget_secs = raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
-        let budget = std::time::Duration::from_secs(budget_secs);
-        eprintln!("  budget={}s (demands={} links={})", budget_secs, num_demands, num_links);
+        // Use average volume for routing priority
+        let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+            .map(|(i, d)| {
+                let v0 = d.v[0];
+                let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
+                (i, d.s, d.t, (v0 + v1) / 2.0)
+            })
+            .collect();
 
-        let config = EvolutionConfig {
-            population_size: POPULATION_SIZE,
-            elite_count: ELITE_COUNT,
-            generation_limit: GENERATION_LIMIT,
-            mutation_rate: 0.3,
-            crossover_rate: 0.7,
-            seed: None,
-            tournament_size: Some(3),
-            termination_policy: Some(TerminationPolicy::Or(
-                Box::new(TerminationPolicy::Or(
-                    Box::new(TerminationPolicy::FixedGenerations(GENERATION_LIMIT)),
-                    Box::new(TerminationPolicy::NoImprovement(20)),
-                )),
-                Box::new(TerminationPolicy::MaxRuntime(budget)),
-            )),
-        };
+        let shared_assign = solve_greedy(&net, &demands_avg, &disabled_both, max_seg);
 
-        let t0 = Instant::now();
-        let ga_result = match engine.run_ga_evolution(config) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("  ERROR running evolution: {}", e);
-                results.push(InstanceResult {
-                    instance_id: instance_num, name: name.clone(),
-                    num_demands, num_nodes, num_links, num_time_slots,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: t0.elapsed().as_millis(), budget_secs, generations: 0,
-                    ms_per_generation: 0,
-                    quality_class: "EvolutionError".to_string(),
-                    termination_reason: "EvolutionError".to_string(),
-                    search_mode: "Infeasible".to_string(),
-                });
-                continue;
-            }
-        };
-        let runtime_ms = t0.elapsed().as_millis();
+        // Build srpaths: emit the shared path for BOTH t=0 and t=1
+        // This guarantees budget cost = 0 for all demands using shared paths.
+        let mut srpaths: Vec<SrPath> = Vec::new();
 
-        let best = &ga_result.global_best;
-        let best_obj = if best.is_valid() { -best.fitness() } else { f64::INFINITY };
-        let valid = best.is_valid();
-
-        // Compute avg MLU from best solution
-        let best_solution = best.genome().to_solution();
-        let mut total_mlu = 0.0;
-        let mut mlu_count = 0;
-        for t in 0..num_time_slots {
-            if let Some(loads) = evaluator.compute_loads(t, &best_solution) {
-                total_mlu += loads.mlu;
-                mlu_count += 1;
+        for d_idx in 0..num_demands {
+            if let Some(w) = shared_assign.get(&d_idx) {
+                if !w.is_empty() {
+                    // Emit same waypoints for both t=0 and t=1
+                    srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
+                    if num_slots > 1 {
+                        srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                    }
+                }
             }
         }
-        let avg_mlu = if mlu_count > 0 { total_mlu / mlu_count as f64 } else { f64::INFINITY };
 
-        let quality_class = classify_obj(best_obj, valid).to_string();
-        let generations = ga_result.generation_history.len();
-        let termination_reason = infer_termination(generations, runtime_ms, budget_secs).to_string();
-        let ms_per_generation = if generations > 0 { runtime_ms / generations as u128 } else { 0 };
-        let search_mode = if !valid {
-            "Infeasible".to_string()
-        } else if termination_reason.starts_with("NoImprovement") {
-            "SearchLimited".to_string()
+        // Validate and compare against empty solution
+        let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
+        let solution = Solution { srpaths: srpaths.clone() };
+        let result = evaluator.evaluate_solution(&solution);
+
+        let empty_sol = Solution { srpaths: vec![] };
+        let empty_result = evaluator.evaluate_solution(&empty_sol);
+
+        let final_srpaths = if !result.valid {
+            // Our solution is structurally invalid (budget/segment violation) — use empty
+            println!("INVALID → empty (obj={:.4})", empty_result.obj);
+            vec![]
+        } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
+            // Our solution is finite and better than or equal to empty
+            println!("obj={:.4} (empty={:.4})", result.obj, empty_result.obj);
+            srpaths
+        } else if result.obj.is_infinite() && empty_result.obj.is_finite() {
+            // Our solution is inf but empty is finite — use empty
+            println!("inf → empty (obj={:.4})", empty_result.obj);
+            vec![]
+        } else if result.obj.is_infinite() && empty_result.obj.is_infinite() {
+            // Both inf — keep our solution (it may still be better on some metric)
+            println!("obj=inf (empty=inf, keeping ours)");
+            srpaths
         } else {
-            "EvaluationLimited".to_string()
+            // Our solution is worse than empty — use empty
+            println!("obj={:.4} worse than empty={:.4} → using empty", result.obj, empty_result.obj);
+            vec![]
         };
 
-        let ms_gen_display = if ms_per_generation > 0 { format!("{}ms/gen", ms_per_generation) } else { "—ms/gen".to_string() };
-        eprintln!("  → obj={:.4}  mlu={:.4}  valid={}  [{}]  {}ms  {} gens  {}  mode={}  reason={}",
-            best_obj, avg_mlu, valid, quality_class, runtime_ms, generations, ms_gen_display, search_mode, termination_reason);
-
-        results.push(InstanceResult {
-            instance_id: instance_num, name: name.clone(),
-            num_demands, num_nodes, num_links, num_time_slots,
-            best_obj, avg_mlu, valid, runtime_ms, budget_secs, generations,
-            ms_per_generation, quality_class, termination_reason, search_mode,
+        // Write solution
+        let sol_json = serde_json::json!({
+            "srpaths": final_srpaths.iter().map(|p| serde_json::json!({
+                "d": p.d,
+                "t": p.t,
+                "w": p.w
+            })).collect::<Vec<_>>()
         });
+
+        let mut f = File::create(&out_path)?;
+        writeln!(f, "{}", serde_json::to_string_pretty(&sol_json)?)?;
     }
 
-    let elapsed_total = campaign_start.elapsed();
-    eprintln!();
-    eprintln!("=== Campaign complete: {}/{} instances  {:.1}s ===",
-        results.len(), total, elapsed_total.as_secs_f64());
-
-    if let Err(e) = fs::create_dir_all(REPORT_DIR) {
-        eprintln!("ERROR creating report dir: {}", e);
-        return;
-    }
-
-    let valid_count = results.iter().filter(|r| r.valid).count();
-    let invalid_count = results.iter().filter(|r| !r.valid).count();
-
-    let report = CampaignReport {
-        campaign_id: CAMPAIGN_ID.to_string(),
-        timestamp: Utc::now().to_rfc3339(),
-        solver_version: env!("CARGO_PKG_VERSION").to_string(),
-        engine: "coralys-moga EvolutionEngine (unchanged)".to_string(),
-        total_instances: results.len(),
-        valid_count,
-        invalid_count,
-        results: results.clone(),
-    };
-
-    let json_path = format!("{}/{}.json", REPORT_DIR, CAMPAIGN_ID);
-    if let Ok(json) = serde_json::to_string_pretty(&report) {
-        if let Err(e) = fs::write(&json_path, &json) {
-            eprintln!("ERROR writing JSON: {}", e);
-        } else {
-            eprintln!("JSON: {}", json_path);
-        }
-    }
-
-    // Markdown evidence
-    let md_path = format!("{}/EVIDENCE-engine-v1.0.md", REPORT_DIR);
-    let md = build_markdown(&report, elapsed_total.as_secs_f64());
-    if let Err(e) = fs::write(&md_path, &md) {
-        eprintln!("ERROR writing markdown: {}", e);
-    } else {
-        eprintln!("Evidence: {}", md_path);
-    }
-}
-
-fn build_markdown(report: &CampaignReport, total_secs: f64) -> String {
-    let mut md = String::new();
-    md.push_str("# ROADEF 2026 — Platform Validation Evidence\n\n");
-    md.push_str(&format!("**Campaign:** {}  \n", report.campaign_id));
-    md.push_str(&format!("**Engine:** {}  \n", report.engine));
-    md.push_str(&format!("**Timestamp:** {}  \n", report.timestamp));
-    md.push_str(&format!("**Total runtime:** {:.1}s  \n\n", total_secs));
-
-    md.push_str("## Platform Evidence\n\n");
-    md.push_str("This campaign validates that `coralys-moga EvolutionEngine` generalizes to ROADEF\n");
-    md.push_str("without modification. The engine's generic bounds (`G: Genome, F: FitnessEvaluator<G>,\n");
-    md.push_str("`M: MutationOperator<G>, C: CrossoverOperator<G>`) were sufficient to accept a\n");
-    md.push_str("completely different solution space (SR-path waypoints vs CVRP permutations).\n\n");
-
-    md.push_str("## Summary\n\n");
-    md.push_str("| Metric | Value |\n|--------|-------|\n");
-    md.push_str(&format!("| Total instances | {} |\n", report.total_instances));
-    md.push_str(&format!("| Valid solutions | {} |\n", report.valid_count));
-    md.push_str(&format!("| Invalid solutions | {} |\n", report.invalid_count));
-
-    md.push_str("\n## Per-Instance Results\n\n");
-    md.push_str("| # | Instance | Demands | Nodes | Links | Slots | Budget(s) | Obj | MLU | Valid | Class | ms | Gens | ms/gen | Mode | Termination |\n");
-    md.push_str("|---|----------|---------|-------|-------|-------|-----------|-----|-----|-------|-------|----|------|--------|------|-------------|\n");
-    for r in &report.results {
-        let obj_str = if r.best_obj.is_finite() { format!("{:.4}", r.best_obj) } else { "∞".to_string() };
-        let mlu_str = if r.avg_mlu.is_finite() { format!("{:.4}", r.avg_mlu) } else { "∞".to_string() };
-        let ms_gen_str = if r.ms_per_generation > 0 { r.ms_per_generation.to_string() } else { "—".to_string() };
-        md.push_str(&format!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
-            r.instance_id, r.name, r.num_demands, r.num_nodes, r.num_links,
-            r.num_time_slots, r.budget_secs, obj_str, mlu_str,
-            if r.valid { "✓" } else { "✗" },
-            r.quality_class, r.runtime_ms, r.generations, ms_gen_str, r.search_mode, r.termination_reason
-        ));
-    }
-
-    md.push_str("\n## Platform Validation Criteria\n\n");
-    md.push_str("| Criterion | Status |\n|-----------|--------|\n");
-    md.push_str(&format!("| EvolutionEngine used unchanged | ✓ PASS |\n"));
-    md.push_str(&format!("| All instances load | {} |\n",
-        if report.results.iter().all(|r| r.quality_class != "LoadError") { "✓ PASS" } else { "✗ FAIL" }));
-    md.push_str(&format!("| Engine runs end-to-end | {} |\n",
-        if report.results.iter().all(|r| r.quality_class != "EvolutionError") { "✓ PASS" } else { "✗ FAIL" }));
-    md.push_str("| Zero modifications to coralys-moga | ✓ PASS |\n");
-    md.push_str("| Zero modifications to Qualification Subsystem v1.0 | ✓ PASS |\n");
-
-    md
+    println!("{}", "=".repeat(60));
+    println!("Done. Solution files written to {}", set_dir);
+    Ok(())
 }
