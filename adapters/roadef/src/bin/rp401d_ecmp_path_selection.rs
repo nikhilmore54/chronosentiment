@@ -218,6 +218,7 @@ fn solve_greedy_oracle(
     time_slot: usize,
     max_segments: usize,
     k_candidates: usize,
+    deadline: std::time::Instant,
 ) -> HashMap<usize, Vec<u64>> {
     let mut sorted: Vec<(usize, u64, u64, f64)> = demands.to_vec();
     sorted.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
@@ -236,6 +237,9 @@ fn solve_greedy_oracle(
     }
 
     for (d_idx, src, dst, _vol) in &sorted {
+        if std::time::Instant::now() >= deadline {
+            break;
+        }
         // Generate K candidate paths
         let candidates = generate_candidates(
             net, *src, *dst, disabled_links, &ecmp_saturation, k_candidates, max_segments,
@@ -341,8 +345,9 @@ fn main() -> anyhow::Result<()> {
 
         // RP-401D: oracle-guided path selection
         let t_start = Instant::now();
+        let deadline = t_start + std::time::Duration::from_secs(300);
         let shared_assign = solve_greedy_oracle(
-            &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg, k_candidates,
+            &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg, k_candidates, deadline,
         );
 
         // Build srpaths
