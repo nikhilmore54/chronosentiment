@@ -29,17 +29,52 @@ SET_DIR = "adapters/roadef/repo/challenge-roadef-2026-main/setA"
 def parse_binary_output(filepath):
     """Parse the tabular output from rp401c or rp401d binary.
 
-    Handles both old format (4 columns) and new timed format (5 columns):
-      setA-01     53.3172          inf   improved     1234
+    Handles three formats:
+      RP-401C (5 cols): setA-01  53.3172  inf  improved  1234
+      RP-401D (6 cols): setA-01  53.0880  see rp401c  inf  n/a  93
+        — col3 is RP-401C reference (skipped), col4=empty_obj, col5=delta, col6=ms
+      Old (4 cols):     setA-01  53.3172  inf  improved
     """
     results = {}
     if not os.path.exists(filepath):
         return results
     with open(filepath) as f:
         for line in f:
-            # Match: setA-NN  <our_obj>  <empty_obj>  <delta>  [<ms>]
+            line = line.rstrip()
+            # RP-401D 6-column format: instance  d_obj  rp401c_obj  empty_obj  delta  ms
+            # Detected by presence of "see rp401c" in col3
+            m6 = re.match(
+                r'\s*(setA-\d+)\s+(\S+)\s+see rp401c\s+(\S+)\s+(\S+)\s+(\d+)', line
+            )
+            if m6:
+                inst = m6.group(1)
+                our_obj = m6.group(2)
+                empty_obj = m6.group(3)
+                delta_raw = m6.group(4)
+                ms = m6.group(5)
+                # Normalise delta: n/a means inf→inf or inf→finite
+                if delta_raw == 'n/a':
+                    # Determine from our_obj and empty_obj
+                    if our_obj == 'inf' and empty_obj == 'inf':
+                        delta = 'both inf'
+                    elif our_obj != 'inf' and empty_obj == 'inf':
+                        delta = 'improved'
+                    else:
+                        delta = delta_raw
+                else:
+                    delta = delta_raw
+                results[inst] = {
+                    'our_obj': our_obj,
+                    'empty_obj': empty_obj,
+                    'delta': delta,
+                    'ms': ms,
+                }
+                continue
+
+            # RP-401C / old format: instance  our_obj  empty_obj  delta  [ms]
+            # delta may be two words: "both inf"
             m = re.match(
-                r'\s*(setA-\d+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\d+))?', line
+                r'\s*(setA-\d+)\s+(\S+)\s+(\S+)\s+(both inf|improved|=|\S+)(?:\s+(\d+))?', line
             )
             if m:
                 inst = m.group(1)
@@ -181,7 +216,14 @@ def print_instance_table(results, label, suffix):
         delta = r.get('delta', 'pending')
         ms = r.get('ms', '—') or '—'
         our_finite = our not in ('inf', 'pending', '—')
-        finite_mark = "✓" if our_finite else ("→ empty" if delta in ('=', 'improved', 'both inf') else "pending")
+        if our_finite:
+            finite_mark = "✓"
+        elif delta in ('both inf', 'improved', '='):
+            finite_mark = "→ empty"
+        elif delta == 'pending':
+            finite_mark = "pending"
+        else:
+            finite_mark = "→ empty"
         srpaths = count_srpaths(inst, suffix)
         print(f"| {inst} | {our} | {empty} | {delta} | {finite_mark} | {ms} | {srpaths} |")
     print()
