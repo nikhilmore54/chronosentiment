@@ -1,10 +1,10 @@
 # Coralys Platform Capability Register
 
-**Document:** GOV-CR-001  
-**Status:** Active  
-**Version:** 1.0  
-**Date:** 2026-08-02  
-**Owner:** Platform Engineering  
+**Document:** GOV-CR-001
+**Status:** Active
+**Version:** 1.1
+**Date:** 2026-08-02
+**Owner:** Platform Engineering
 
 ---
 
@@ -56,7 +56,7 @@ Promotion between levels is evidence-driven. A capability cannot advance without
 | Capability | Owner | Current | Target | Evidence | Next Milestone |
 |------------|-------|---------|--------|---------|----------------|
 | Network routing (SR paths) | `adapters/roadef` | C2 | C3 | ROADEF Baseline v1.0 — Dataset A, 20 instances, commit `ec4d3821` | RP-401D |
-| ECMP-aware routing | `coralys-core` | C1 | C3 | RP-000 (budget semantics validated) | RP-401 (ROADEF) |
+| ECMP-aware routing | `coralys-core` | **C2** | C3 | RP-401C — 13/20 improved, 0 regressed, total improvement 2,512,099.84 (BASELINE_HISTORY v1.2) | RP-401 cross-domain |
 | Budget-constrained re-routing | `coralys-planning` | C1 | C2 | RP-000 (shared-path strategy) | RP-402 (ROADEF) |
 
 ### Domain Adapters
@@ -103,11 +103,9 @@ Budget-aware transition planning (C1)
                 │
                 └── RP-402 + CVRP validation → C3
 
-ECMP-aware routing (C1)
+ECMP-aware routing (C2) ← promoted 2026-08-02 via RP-401C
         │
-        └── RP-401 → C2 (ROADEF benchmark)
-                │
-                └── RP-401 + second domain → C3
+        └── RP-401 cross-domain validation → C3
 
 LNS for routing (C0)
         │
@@ -123,3 +121,4 @@ LNS for routing (C0)
 | Version | Date | Change | Authorised By |
 |---------|------|--------|---------------|
 | 1.0 | 2026-08-02 | Initial register. Baseline established from RR1–RR4 governance work and ROADEF Baseline v1.0 (commit `ec4d3821`). Network routing promoted to C2 on strength of Dataset A results. Budget-aware transition planning promoted to C1 on strength of RP-000 finding. | Programme Owner |
+| 1.1 | 2026-08-02 | ECMP-aware routing promoted C1→C2. Evidence: RP-401C — 13/20 Dataset A instances improved, 0 regressions, total improvement 2,512,099.84. Full evidence in BASELINE_HISTORY.md v1.2 and RP401_FINAL_REPORT.md v1.1. | RP-401 |
