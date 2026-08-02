@@ -213,12 +213,19 @@ This is a structural insight into the problem formulation. It establishes the co
 
 **Hypothesis:** If the solver uses the same ECMP routing logic as the evaluator to estimate link loads, the `obj=inf` instances will become solvable and finite-objective instances will improve.
 
-**Approach:**
-- Replace the greedy flow tracker with a call to `evaluator.compute_loads()` after each demand assignment
-- Accept the higher computational cost in exchange for accurate load estimates
-- Measure: number of instances with finite objective, objective improvement on currently-inf instances (setA-02, 03, 06, 08, 11, 12, 14, 17)
+RP-401 is structured as a **measurement project before an optimisation project**. Evidence precedes optimisation.
+
+| Stage | Objective | Deliverable |
+|-------|-----------|-------------|
+| RP-401A | Replace heuristic load estimation with `evaluator.compute_loads()` | Verified ECMP oracle — confirms the oracle matches the checker |
+| RP-401B | Quantify divergence between heuristic and ECMP loads on Baseline v1.0 solutions | Link-by-link error report — which links had the largest prediction error, which demands changed routing |
+| RP-401C | Re-run Dataset A with identical routing decisions but ECMP-aware evaluation during construction | Baseline comparison — how much improvement comes purely from correcting the model |
+| RP-401D | Introduce ECMP-aware path selection (routing decisions informed by ECMP loads) | RP-401 solver binary |
+
+The RP-401B measurements will also inform RP-403: if load prediction error is concentrated on a small subset of demands, multi-path generation should focus there rather than expanding uniformly across the network.
 
 **Expected binary:** `src/bin/rp401_ecmp_aware.rs`
+**Intermediate artefact:** `docs/roadef/rp401b_load_divergence.csv` (link-by-link error report)
 
 ---
 
@@ -359,7 +366,67 @@ Research binaries that do not meet the promotion threshold are archived (not del
 
 ---
 
-## 6. Evidence Feedback to Coralys Platform
+## 6. Capability Maturity Model
+
+Coralys is an optimisation platform with mature infrastructure and evolving domain capabilities. The ROADEF programme does not build Coralys from scratch — it exercises Coralys against a demanding industrial benchmark and discovers new reusable capabilities in the process.
+
+The distinction matters: ROADEF is a **Platform Capability Discovery Programme**, not a maturity-building exercise. Improvements that emerge from ROADEF are promoted into the platform and reused across UltraCrew and future domains.
+
+### 6.1 Platform Maturity Dimensions
+
+| Dimension | Current Assessment |
+|-----------|-------------------|
+| Architecture maturity | Very High — modular crates, governance, observability, lifecycle management, benchmark methodology |
+| Optimisation maturity | High — evolutionary search, multi-objective optimisation, ecology, adaptive operators, instrumentation |
+| Domain maturity | Medium — CVRP (decoder, repair, ecology), UltraCrew (scheduling, explainability), ROADEF (routing, emerging) |
+| Evidence maturity | Growing rapidly — architecture → governance → benchmarks → research programmes → external competitions |
+
+### 6.2 Capability Maturity Levels
+
+Each platform capability is tracked independently against a six-level scale:
+
+| Level | Description |
+|-------|-------------|
+| C0 | Concept proven — theoretical basis established, no implementation |
+| C1 | Unit tested — implementation exists, passes unit tests |
+| C2 | Benchmark validated — validated on a recognised benchmark instance set |
+| C3 | Cross-domain validated — demonstrated on ≥ 2 independent problem domains |
+| C4 | Production validated — deployed in a production or near-production context |
+| C5 | Industry-proven — externally validated through competition, publication, or customer deployment |
+
+### 6.3 Current Capability Register
+
+| Capability | Level | Evidence |
+|------------|-------|---------|
+| Evolution Engine | C4 | CVRP, UltraCrew, ROADEF baseline |
+| Multi-objective optimisation | C4 | CVRP, UltraCrew |
+| Observability / telemetry | C4 | Production deployment |
+| Ecology / adaptive search | C3 | CVRP, UltraCrew |
+| Workforce scheduling | C3 | UltraCrew |
+| Vehicle routing | C3 | CVRP |
+| Network routing | C2 | ROADEF Baseline v1.0 (Dataset A, 20 instances) |
+| ECMP-aware routing | C1 → C2 | After RP-401 |
+| Budget-aware transition planning | C1 → C2 | After RP-402 |
+| Multi-path candidate generation | C0 → C2 | After RP-403 |
+| LNS for routing | C0 → C2 | After RP-404 |
+| Hyper-heuristic operator selection | C1 → C3 | After RP-405 (cross-domain: CVRP + ROADEF) |
+
+### 6.4 ROADEF Capability Contributions
+
+| ROADEF Result | Coralys Capability | Target Level |
+|---------------|--------------------|-------------|
+| ECMP-aware load estimation | `coralys-core` routing module | C3 (cross-domain after CVRP validation) |
+| Budget distance metric | `coralys-planning` multi-period planning | C2 |
+| Multi-path generation | `coralys-planning` decoder | C2 |
+| LNS operators | `coralys-planning` neighbourhood search | C2 |
+| Hyper-heuristic selection | `coralys-ecology` | C3 |
+| MOGA on network routing | `coralys-moga` | C3 |
+
+Evidence that generalises beyond ROADEF should be promoted to the platform. Evidence that is ROADEF-specific remains in the adapter.
+
+---
+
+## 7. Evidence Feedback to Coralys Platform
 
 Each research programme produces platform-level evidence. ROADEF evidence targets:
 
@@ -367,16 +434,14 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 |----------|--------------------|-------------|
 | ECMP-aware load estimation | `coralys-core` routing module | RP-401 |
 | Budget-constrained re-routing | `coralys-planning` | RP-402 |
-| Iterative load balancing | `coralys-core` | RP-403 |
-| MOGA on network routing | `coralys-moga` | RP-404 |
-| LNS operators for routing | `coralys-planning` | RP-405 |
-| Hyper-heuristic selection | `coralys-ecology` | RP-406 |
-
-Evidence that generalises beyond ROADEF should be promoted to the platform. Evidence that is ROADEF-specific remains in the adapter.
+| Multi-path candidate generation | `coralys-planning` | RP-403 |
+| LNS operators for routing | `coralys-planning` | RP-404 |
+| Hyper-heuristic selection | `coralys-ecology` | RP-405 |
+| MOGA on network routing | `coralys-moga` | RP-406 |
 
 ---
 
-## 7. Programme Governance
+## 8. Programme Governance
 
 | Role | Responsibility |
 |------|---------------|
@@ -390,3 +455,4 @@ Evidence that generalises beyond ROADEF should be promoted to the platform. Evid
 |---------|------|--------|
 | 1.0 | 2026-08-02 | Initial programme document. Baseline v1.0 established from `campaign_engine` (commit `ec4d3821`). |
 | 1.1 | 2026-08-02 | Added RP-000 (Budget Semantics Validation) as completed foundational finding. Added standard evidence record schema. Reordered experimental programme: RP-403 is now Multi-Path Candidate Generation (deterministic); MOGA moved to RP-406 after LNS (RP-404) and hyper-heuristic (RP-405). Rationale: metaheuristics perform better when decoder and neighbourhoods are already strong. |
+| 1.2 | 2026-08-02 | Added four-stage RP-401 structure (401A–401D): measurement before optimisation. Added §6 Capability Maturity Model (C0–C5) with current capability register and ROADEF contribution targets. Renumbered §6 Evidence Feedback to §7, §7 Programme Governance to §8. |
