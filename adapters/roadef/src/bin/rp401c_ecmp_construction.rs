@@ -203,6 +203,7 @@ fn solve_greedy_ecmp(
     disabled_links: &HashSet<u64>,
     time_slot: usize,
     max_segments: usize,
+    deadline: std::time::Instant,
 ) -> HashMap<usize, Vec<u64>> {
     // Sort demands by volume descending (same as baseline)
     let mut sorted: Vec<(usize, u64, u64, f64)> = demands.to_vec();
@@ -225,6 +226,11 @@ fn solve_greedy_ecmp(
     }
 
     for (d_idx, src, dst, _vol) in &sorted {
+        // Per-demand timeout check: if deadline exceeded, stop early
+        if std::time::Instant::now() >= deadline {
+            break;
+        }
+
         // Use current ECMP saturations for path selection
         let full_path = load_aware_path_ecmp(net, *src, *dst, disabled_links, &ecmp_saturation, 100.0)
             .or_else(|| dijkstra_path(net, *src, *dst, disabled_links));
@@ -311,8 +317,11 @@ fn main() -> anyhow::Result<()> {
         // RP-401C: ECMP-aware greedy construction
         // Use time_slot=0 for oracle queries during shared-path construction
         let t_start = Instant::now();
+        // Per-instance timeout: 300 seconds. Large instances (setA-16+) can
+        // exceed this due to O(D²) oracle calls; they fall back to empty solution.
+        let deadline = t_start + std::time::Duration::from_secs(300);
         let shared_assign = solve_greedy_ecmp(
-            &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg,
+            &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg, deadline,
         );
 
         // Build srpaths: shared path for both t=0 and t=1
