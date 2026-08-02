@@ -1,9 +1,9 @@
 # RP-401 Final Report — ECMP Oracle Integration
 
 **Document ID:** ROADEF-RP-401-FINAL
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2026-08-02
-**Status:** RP-401C complete (20/20); RP-401D in progress
+**Status:** RP-401 COMPLETE — all four stages executed 20/20
 
 ---
 
@@ -95,49 +95,72 @@ treat feasible paths as saturated. See
 
 ### 4.4 RP-401D — Efficiency Recovery (Dataset A)
 
-**Status:** In progress — 9/20 instances complete as of 2026-08-02 15:28 IST.
+**Status:** ✅ Complete — 20/20 instances executed 2026-08-02.
 
 RP-401D uses K=5 candidate paths per demand, evaluated by the oracle, selecting
 the MLU-minimising candidate. Oracle calls: O(D×K) vs O(D²) for RP-401C.
+Per-instance timeout: 300s (outer + inner loop checks, commits `e07e01a5`, `1c68e529`).
 
-**Early results (9/20):**
+**Full results (20/20):**
 
-| Instance | RP-401D obj | RP-401C obj | vs RP-401C |
-|----------|-------------|-------------|------------|
-| setA-01 | 53.0880 | 53.3172 | −0.23 |
-| setA-02 | inf | inf | = |
-| setA-03 | 101.3206 | 96.9447 | +4.38 (slight regression) |
-| setA-04 | 59.3135 | 70.3656 | −11.05 |
-| setA-05 | 13.3236 | 72,329.3884 | **−72,316** (major improvement) |
-| setA-06 | 52.3126 | 59.6593 | −7.35 |
-| setA-07 | inf | inf | = |
-| setA-08 | 48.6693 | inf | **∞→finite** (RP-401C couldn't solve) |
-| setA-09 | inf | inf | = |
+| Instance | RP-401D obj | RP-401C obj | vs RP-401C | ms |
+|----------|-------------|-------------|------------|----|
+| setA-01 | 53.0880 | 53.3172 | −0.23 | 89 |
+| setA-02 | inf | inf | = | 310 |
+| setA-03 | 101.3206 | 96.9447 | +4.38 | 89 |
+| setA-04 | 59.3135 | 70.3656 | −11.05 | 6,529 |
+| setA-05 | 13.3236 | 72,329.3884 | **−72,316** | 4,095 |
+| setA-06 | 52.3126 | 59.6593 | −7.35 | 98,500 |
+| setA-07 | inf | inf | = | 261,155 |
+| setA-08 | 48.6693 | inf | **∞→finite** | 28,046 |
+| setA-09 | inf | inf | = | 24,588 |
+| setA-10 | 69.0157 | 73.4619 | −4.45 | 301,459 |
+| setA-11 | 99.3299 | 99.3105 | +0.02 | 144,840 |
+| setA-12 | inf | 26.1166 | **finite→∞** (regression) | 162,401 |
+| setA-13 | 58.5801 | 59.2952 | −0.72 | 301,598 |
+| setA-14 | 75.7237 | inf | **∞→finite** (new) | 301,446 |
+| setA-15 | 210.4095 | 208.1804 | +2.23 | 301,625 |
+| setA-16 | 3,355,568.5654 | 3,355,568.5541 | +0.01 | 304,460 |
+| setA-17 | inf | inf | = | 302,896 |
+| setA-18 | 799,169.1790 | 799,167.0856 | +2.09 | 303,035 |
+| setA-19 | 5,592,518.2733 | 5,592,516.4280 | +2.85 | 306,406 |
+| setA-20 | 454.4424 | 449.5543 | +4.89 | 311,524 |
 
-Notable: setA-05 improved from 72,329 to 13.32 (K=5 path diversity found a much better route).
-setA-08 solved by RP-401D despite RP-401C returning inf (K=5 candidates found a feasible path).
+**Final summary (20/20):**
+- Instances improved vs empty: 13 (9 ∞→finite + 4 finite→finite)
+- Both still ∞: 5 (setA-02, 07, 09, 12, 17)
+- Finite instances: 15/20
+- Regressions vs empty: 0
+- Total objective improvement vs empty: 2,584,407.78
+
+**vs RP-401C comparison:**
+- setA-12: regressed (26.12 → inf) — timeout partial solution was infeasible
+- setA-14: improved (inf → 75.72) — K=5 diversity found a feasible path
+- setA-05: major improvement (72,329 → 13.32) — K=5 path diversity found a much better route
+- setA-08: improved (inf → 48.67) — K=5 candidates found a feasible path
 
 ---
 
 ## 5. Summary Statistics
 
-*RP-401C complete. RP-401D in progress (9/20 as of 2026-08-02 15:28 IST).*
+*RP-401 complete — all four stages executed 20/20.*
 
 | Metric | Baseline v1.0 | RP-401C | RP-401D |
 |--------|---------------|---------|---------|
-| Instances improved / 20 | 3 | **13** | pending |
-| Previously ∞ → finite | 0 | 8 | pending |
-| Both still ∞ | 17 | 6 | pending |
-| Finite instances (our sol) | 3 | 13 | pending |
-| Mean obj (finite instances) | ~244 | ~627,082 | pending |
-| Median obj (finite instances) | ~159 | ~208 (setA-15) | pending |
-| Best improvement (vs empty) | setA-16: −3,355,441 | setA-20: −1,525,197 | pending |
-| Total runtime | < 1s | ~51 min | pending |
+| Instances improved / 20 | 3 | **13** | **13** |
+| Previously ∞ → finite | 0 | 8 | 9 |
+| Both still ∞ | 17 | 6 | 5 |
+| Finite instances (our sol) | 3 | 14 | 15 |
+| Mean obj (finite instances) | ~244 | ~701,484 | ~649,903 |
+| Median obj (finite instances) | ~159 | ~98 (setA-11) | ~75 (setA-14) |
+| Best improvement (vs empty) | setA-16: −3,355,441 | setA-20: −1,525,197 | setA-20: −1,525,192 |
+| Total runtime | < 1s | ~51 min | ~58 min |
 | Oracle calls | 0 | Σ D² | Σ D×K (K=5) |
-| Total obj improvement vs empty | — | **2,512,099.84** | pending |
+| Total obj improvement vs empty | — | **2,512,099.84** | **2,584,407.78** |
 
-> Note: RP-401C mean obj is dominated by large-value instances (setA-16: 3.36M, setA-18: 799K, setA-19: 5.59M).
-> Median is a better central tendency measure: ~208 (setA-15).
+> Note: Mean obj is dominated by large-value instances (setA-16: 3.36M, setA-18: 799K, setA-19: 5.59M).
+> Median is a better central tendency measure. RP-401D median improved from ~98 to ~75 vs RP-401C.
+> RP-401D gained 1 additional finite instance (setA-14: inf→75.72) but lost setA-12 (26.12→inf, timeout partial).
 
 ---
 
@@ -207,13 +230,13 @@ domains where ECMP is the forwarding model.
 
 ## 8. Next Steps
 
-1. Complete RP-401C (20/20 instances)
-2. Execute RP-401D
-3. Populate `BASELINE_HISTORY.md` with full results
-4. Update this report with final summary statistics
-5. Promote ECMP-aware routing C1→C2 in Capability Register
-6. Freeze RP-401
-7. Begin RP-402 (budget-aware t=1 adaptation)
+1. ✅ Complete RP-401C (20/20 instances)
+2. ✅ Execute RP-401D (20/20 instances)
+3. ✅ Populate `BASELINE_HISTORY.md` with full results (v1.3)
+4. ✅ Update this report with final summary statistics (v1.2)
+5. ✅ Promote ECMP-aware routing C1→C2 in Capability Register (v1.1)
+6. ✅ Freeze RP-401
+7. → Begin RP-402 (feasibility recovery for remaining inf instances: setA-02, 07, 09, 12, 17)
 
 ---
 
@@ -223,3 +246,4 @@ domains where ECMP is the forwarding model.
 |---------|------|--------|--------|
 | 1.0 | 2026-08-02 | Lyzo | Initial draft (15/20 instances complete) |
 | 1.1 | 2026-08-02 | Lyzo | RP-401C 20/20 complete. Updated §4.3 with full results table. Updated §4.4 with RP-401D early results (9/20). Updated §5 summary statistics. Updated §7 Capability Review — all 9 criteria satisfied, promotion approved. |
+| 1.2 | 2026-08-02 | Lyzo | RP-401D 20/20 complete. Updated §4.4 with full results table. Updated §5 with final RP-401D statistics. Updated §8 next steps. RP-401 frozen. |

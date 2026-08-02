@@ -1,7 +1,7 @@
 # ROADEF 2026 — Dataset A Baseline History
 
 **Document ID:** ROADEF-BH-001
-**Version:** 1.2
+**Version:** 1.3
 **Date:** 2026-08-02
 
 This document is the permanent performance ledger for Dataset A. It records
@@ -49,16 +49,17 @@ Wall-clock runtime varies with hardware; oracle evaluations are intrinsic to the
 
 This table is updated after each solver version is fully evaluated.
 
-| Solver | Improved/20 | Finite/20 | Mean Obj (finite) | Runtime (total) | Oracle Calls |
-|--------|-------------|-----------|-------------------|-----------------|--------------|
-| Baseline v1.0 (`campaign_engine`) | 3/20 | 3/20 | ~244 | < 1s | 0 |
-| RP-401C (Ground-Truth Construction) | 13/20 | 13/20 | ~627,082 | ~51 min | Σ D² per instance |
-| RP-401D (Efficiency Recovery) | pending | pending | pending | pending | Σ D×K per instance (K=5) |
+| Solver | Improved/20 | Finite/20 | Mean Obj (finite) | Median Obj (finite) | Runtime (total) | Oracle Calls |
+|--------|-------------|-----------|-------------------|---------------------|-----------------|--------------|
+| Baseline v1.0 (`campaign_engine`) | 3/20 | 3/20 | ~244 | ~159 | < 1s | 0 |
+| RP-401C (Ground-Truth Construction) | 13/20 | 14/20 | ~701,484 | ~98 | ~51 min | Σ D² per instance |
+| RP-401D (Efficiency Recovery) | 13/20 | 15/20 | ~649,903 | ~75 | ~58 min | Σ D×K per instance (K=5) |
 
 Note: "Improved/20" counts instances where our solution is strictly better than empty.
 Baseline v1.0 had 3 finite instances (setA-16: 127, setA-19: 159, setA-20: 447).
 RP-401C mean obj is dominated by large-value instances (setA-16: 3.36M, setA-18: 799K, setA-19: 5.59M).
-Median obj (finite) for RP-401C: ~208 (setA-15).
+Median obj (finite) for RP-401C: ~98 (setA-11). Median obj (finite) for RP-401D: ~75 (setA-14).
+RP-401D improved 1 additional instance to finite vs RP-401C (setA-14: inf→75.72).
 
 ---
 
@@ -143,39 +144,44 @@ leading to infeasible or worse solutions on most instances (see RP-401B).
 
 ---
 
-## RP-401D — Efficiency Recovery (commit 6da376a7)
+## RP-401D — Efficiency Recovery (commits 6da376a7, e07e01a5, 1c68e529)
 
 **Solver:** `rp401d_ecmp_path_selection`
 **Role:** Efficiency recovery — answers "how much of RP-401C's quality can we retain at O(D×K) cost instead of O(D²)?"
 **Strategy:** K=5 candidate paths per demand; oracle selects MLU-minimising candidate
 **Change from RP-401C:** Path selection criterion changed from penalty-weighted metric to oracle MLU; K candidates instead of 1
 **Oracle calls:** O(D × K) per instance (K=5) — 5× cheaper than RP-401C per demand
-**Status:** Binary written; execution results pending (awaiting RP-401C completion)
+**Per-instance timeout:** 300s deadline (commits `e07e01a5`, `1c68e529`) — outer + inner loop checks; large instances return partial solution
+**Status:** ✅ Complete — 20/20 instances executed 2026-08-02
+**Summary:** 13 improved vs empty, 0 regressed, 7 unchanged. Total objective improvement vs empty: 2,584,407.78
 
-| Instance | Our obj | Empty obj | vs Empty | Finite | Notes |
-|----------|---------|-----------|----------|--------|-------|
-| setA-01 | pending | 64.9962 | pending | pending | |
-| setA-02 | pending | pending | pending | pending | |
-| setA-03 | pending | pending | pending | pending | |
-| setA-04 | pending | pending | pending | pending | |
-| setA-05 | pending | pending | pending | pending | budget=1 |
-| setA-06 | pending | pending | pending | pending | |
-| setA-07 | pending | pending | pending | pending | |
-| setA-08 | pending | pending | pending | pending | |
-| setA-09 | pending | pending | pending | pending | |
-| setA-10 | pending | pending | pending | pending | |
-| setA-11 | pending | pending | pending | pending | |
-| setA-12 | pending | pending | pending | pending | |
-| setA-13 | pending | pending | pending | pending | |
-| setA-14 | pending | pending | pending | pending | |
-| setA-15 | pending | pending | pending | pending | |
-| setA-16 | pending | 3,355,568 | pending | pending | |
-| setA-17 | pending | pending | pending | pending | |
-| setA-18 | pending | pending | pending | pending | |
-| setA-19 | pending | 5,592,518 | pending | pending | |
-| setA-20 | pending | 1,525,646 | pending | pending | |
+| Instance | Our obj | Empty obj | vs Empty | Finite | ms | Notes |
+|----------|---------|-----------|----------|--------|----|-------|
+| setA-01 | 53.0880 | inf | improved | ✓ | 89 | ∞ → finite |
+| setA-02 | inf | inf | both inf | → empty | 310 | |
+| setA-03 | 101.3206 | inf | improved | ✓ | 89 | ∞ → finite |
+| setA-04 | 59.3135 | inf | improved | ✓ | 6,529 | ∞ → finite |
+| setA-05 | 13.3236 | 72,329.3884 | −72,316.06 | ✓ | 4,095 | Major improvement; budget=1 |
+| setA-06 | 52.3126 | inf | improved | ✓ | 98,500 | ∞ → finite |
+| setA-07 | inf | inf | both inf | → empty | 261,155 | |
+| setA-08 | 48.6693 | inf | improved | ✓ | 28,046 | ∞ → finite |
+| setA-09 | inf | inf | both inf | → empty | 24,588 | |
+| setA-10 | 69.0157 | inf | improved | ✓ | 301,459 | ∞ → finite; timeout partial |
+| setA-11 | 99.3299 | inf | improved | ✓ | 144,840 | ∞ → finite |
+| setA-12 | inf | inf | both inf | → empty | 162,401 | Regressed vs RP-401C (26.12→inf) |
+| setA-13 | 58.5801 | 986,957.8301 | −986,899.25 | ✓ | 301,598 | Strongest finite improvement; timeout partial |
+| setA-14 | 75.7237 | inf | improved | ✓ | 301,446 | ∞ → finite; new vs RP-401C; timeout partial |
+| setA-15 | 210.4095 | inf | improved | ✓ | 301,625 | ∞ → finite; timeout partial |
+| setA-16 | 3,355,568.5654 | 3,355,568.5684 | −0.00 | ✓ | 304,460 | Timeout partial; tiny improvement |
+| setA-17 | inf | inf | both inf | → empty | 302,896 | Timeout; both inf |
+| setA-18 | 799,169.1790 | 799,169.1790 | +0.00 | ✓ | 303,035 | Timeout partial; unchanged |
+| setA-19 | 5,592,518.2733 | 5,592,518.2733 | +0.00 | ✓ | 306,406 | Timeout partial; unchanged |
+| setA-20 | 454.4424 | 1,525,646.9067 | −1,525,192.46 | ✓ | 311,524 | Major improvement |
 
-**To populate:** Run `cargo run --bin rp401d_ecmp_path_selection --release` from `adapters/roadef/`.
+**Summary:** 13/20 improved vs empty (9 ∞→finite + 4 finite→finite). 5 both inf. 0 unchanged (finite). 0 regressions vs empty.
+**vs RP-401C:** setA-12 regressed (26.12→inf); setA-14 improved (inf→75.72); setA-05 improved (72329→13.32).
+**Total runtime:** ~3,465,091 ms (~58 min) across 20 instances with 300s per-instance timeout.
+**Best improvement:** setA-13 (−986,899.25 objective units); setA-20 (−1,525,192.46 vs empty).
 
 ---
 
@@ -216,3 +222,4 @@ simultaneously.
 | 1.0 | 2026-08-02 | Initial document. Baseline v1.0 results populated from commit `ec4d3821`. RP-401C and RP-401D rows created as pending-execution placeholders (commit `6da376a7`). |
 | 1.1 | 2026-08-02 | Added Oracle Calls column to scoring convention. Added Efficiency Summary Table. Reframed RP-401C as "Ground-Truth Construction" and RP-401D as "Efficiency Recovery" (commit `50944b82`). |
 | 1.2 | 2026-08-02 | Populated RP-401C full 20/20 results. 13 improved, 0 regressed, 7 unchanged. Total improvement vs empty: 2,512,099.84. RP-401D pending (run in progress). |
+| 1.3 | 2026-08-02 | Populated RP-401D full 20/20 results. 13 improved vs empty, 15/20 finite. Total improvement vs empty: 2,584,407.78. Updated efficiency summary table. RP-401 phase complete. |
