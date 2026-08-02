@@ -254,6 +254,9 @@ fn solve_greedy_oracle(
         let mut best_mlu = f64::INFINITY;
 
         for waypoints in &candidates {
+            if std::time::Instant::now() >= deadline {
+                break;
+            }
             // Build trial partial solution with this candidate
             let mut trial_srpaths = partial_srpaths.clone();
             if !waypoints.is_empty() {
