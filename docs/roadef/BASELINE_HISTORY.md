@@ -34,10 +34,29 @@ promotion under the CMM framework (§6 of the ROADEF Programme).
 - **Finite**: solution has finite objective (no saturated links, no disconnected demands)
 - **vs Empty**: delta from empty solution objective (negative = improvement)
 - **Empty obj**: objective of the empty solution (no SR paths) — the universal baseline
-- **Runtime**: wall-clock time to generate all 20 solutions
+- **Runtime**: wall-clock time to generate all 20 solutions (hardware-dependent)
+- **Oracle Calls**: number of `compute_loads()` invocations (hardware-independent complexity measure)
 
 The empty solution is always valid and always finite (assuming the network is
 connected at each time slot). It is the universal lower bound on solver quality.
+
+Oracle Calls is the preferred complexity metric because it is machine-independent.
+Wall-clock runtime varies with hardware; oracle evaluations are intrinsic to the algorithm.
+
+---
+
+## Efficiency Summary Table
+
+This table is updated after each solver version is fully evaluated.
+
+| Solver | Finite/20 | Mean Obj (finite) | Runtime (total) | Oracle Calls |
+|--------|-----------|-------------------|-----------------|--------------|
+| Baseline v1.0 (`campaign_engine`) | 3/20 | ~244 | < 1s | 0 |
+| RP-401C (Ground-Truth Construction) | pending | pending | pending | Σ D² per instance |
+| RP-401D (Efficiency Recovery) | pending | pending | pending | Σ D×K per instance (K=5) |
+
+Note: "Finite/20" counts instances where our solution is strictly better than empty.
+Baseline v1.0 had 3 finite instances (setA-16: 127, setA-19: 159, setA-20: 447).
 
 ---
 
@@ -82,13 +101,15 @@ leading to infeasible or worse solutions on most instances (see RP-401B).
 
 ---
 
-## RP-401C — ECMP-Aware Construction (commit 6da376a7)
+## RP-401C — Ground-Truth Construction (commit 6da376a7)
 
-**Solver:** `rp401c_ecmp_construction`  
-**Strategy:** Load-aware Dijkstra with ECMP-oracle saturation; shared-path (t=0 = t=1)  
-**Change from baseline:** `compute_loads()` replaces heuristic saturation accumulator  
-**Oracle calls:** O(D²) per instance  
-**Status:** Binary written; execution results pending
+**Solver:** `rp401c_ecmp_construction`
+**Role:** Ground-truth measurement oracle — answers "what decisions would we make with accurate congestion information?"
+**Strategy:** Load-aware Dijkstra with ECMP-oracle saturation; shared-path (t=0 = t=1)
+**Change from baseline:** `compute_loads()` replaces heuristic saturation accumulator
+**Oracle calls:** O(D²) per instance — intentionally expensive; this is a measurement tool, not a competition solver
+**Status:** Execution in progress (12/20 instances complete as of 2026-08-02 10:45 IST)
+**Partial results:** setA-01 (53.32), setA-03 (96.94), setA-04 (70.37), setA-06 (59.66), setA-10 (73.46), setA-11 (99.31), setA-12 (26.12) — all improved from ∞ baseline
 
 | Instance | Our obj | Empty obj | vs Empty | Finite | Notes |
 |----------|---------|-----------|----------|--------|-------|
@@ -117,13 +138,14 @@ leading to infeasible or worse solutions on most instances (see RP-401B).
 
 ---
 
-## RP-401D — ECMP Oracle-Guided Path Selection (commit 6da376a7)
+## RP-401D — Efficiency Recovery (commit 6da376a7)
 
-**Solver:** `rp401d_ecmp_path_selection`  
-**Strategy:** K=5 candidate paths per demand; oracle selects MLU-minimising candidate  
-**Change from RP-401C:** Path selection criterion changed from penalty-weighted metric to oracle MLU  
-**Oracle calls:** O(D × K) per instance (K=5)  
-**Status:** Binary written; execution results pending
+**Solver:** `rp401d_ecmp_path_selection`
+**Role:** Efficiency recovery — answers "how much of RP-401C's quality can we retain at O(D×K) cost instead of O(D²)?"
+**Strategy:** K=5 candidate paths per demand; oracle selects MLU-minimising candidate
+**Change from RP-401C:** Path selection criterion changed from penalty-weighted metric to oracle MLU; K candidates instead of 1
+**Oracle calls:** O(D × K) per instance (K=5) — 5× cheaper than RP-401C per demand
+**Status:** Binary written; execution results pending (awaiting RP-401C completion)
 
 | Instance | Our obj | Empty obj | vs Empty | Finite | Notes |
 |----------|---------|-----------|----------|--------|-------|
