@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.1
+**Version:** 1.3
 **Date:** 2026-08-02
 
 ---
@@ -383,18 +383,22 @@ The distinction matters: ROADEF is a **Platform Capability Discovery Programme**
 
 ### 6.2 Capability Maturity Levels
 
-Each platform capability is tracked independently against a six-level scale:
+Each platform capability is tracked independently against a six-level scale. Promotion between levels is evidence-driven: a capability advances only when its exit criteria are met and an evidence record is filed.
 
-| Level | Description |
-|-------|-------------|
-| C0 | Concept proven — theoretical basis established, no implementation |
-| C1 | Unit tested — implementation exists, passes unit tests |
-| C2 | Benchmark validated — validated on a recognised benchmark instance set |
-| C3 | Cross-domain validated — demonstrated on ≥ 2 independent problem domains |
-| C4 | Production validated — deployed in a production or near-production context |
-| C5 | Industry-proven — externally validated through competition, publication, or customer deployment |
+| Level | Description | Exit Criteria |
+|-------|-------------|---------------|
+| C0 | Concept proven | Mathematical formulation documented; theoretical basis established |
+| C1 | Unit tested | Implementation exists; unit tests pass; no benchmark validation yet |
+| C2 | Benchmark validated | Measurable improvement demonstrated on a recognised benchmark instance set with reproducible evidence |
+| C3 | Cross-domain validated | Same capability succeeds in ≥ 2 independent problem domains with separate evidence records |
+| C4 | Production validated | Deployed in a production or near-production context; performance documented |
+| C5 | Industry-proven | Externally validated through competition result, peer-reviewed publication, or customer deployment |
 
-### 6.3 Current Capability Register
+Promotion follows the same evidence-driven gate model as the RP evidence record schema: a capability cannot advance without a filed evidence record that satisfies the exit criteria for the target level.
+
+The authoritative capability register is maintained at [`docs/governance/CAPABILITY_REGISTER.md`](../governance/CAPABILITY_REGISTER.md). The snapshot below reflects the state at the time of this programme version.
+
+### 6.3 Capability Snapshot (v1.2 baseline)
 
 | Capability | Level | Evidence |
 |------------|-------|---------|
@@ -456,3 +460,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.0 | 2026-08-02 | Initial programme document. Baseline v1.0 established from `campaign_engine` (commit `ec4d3821`). |
 | 1.1 | 2026-08-02 | Added RP-000 (Budget Semantics Validation) as completed foundational finding. Added standard evidence record schema. Reordered experimental programme: RP-403 is now Multi-Path Candidate Generation (deterministic); MOGA moved to RP-406 after LNS (RP-404) and hyper-heuristic (RP-405). Rationale: metaheuristics perform better when decoder and neighbourhoods are already strong. |
 | 1.2 | 2026-08-02 | Added four-stage RP-401 structure (401A–401D): measurement before optimisation. Added §6 Capability Maturity Model (C0–C5) with current capability register and ROADEF contribution targets. Renumbered §6 Evidence Feedback to §7, §7 Programme Governance to §8. |
+| 1.3 | 2026-08-02 | Added CMM exit criteria to §6.2 (evidence-driven promotion gates). Added cross-reference to CAPABILITY_REGISTER.md. Created docs/governance/CAPABILITY_REGISTER.md (GOV-CR-001 v1.0) as platform-wide governance artefact tracking 14 capabilities across Core Optimisation, Planning and Search, Routing, and Domain Adapter categories. |
