@@ -22,6 +22,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
+use std::time::Instant;
 
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
@@ -294,10 +295,10 @@ fn main() -> anyhow::Result<()> {
     let k_candidates = 5;
 
     println!("RP-401D — ECMP Oracle-Guided Path Selection (Dataset A)");
-    println!("{}", "=".repeat(65));
-    println!("{:<10} {:>12} {:>12} {:>12} {:>10}",
-        "Instance", "RP-401D obj", "RP-401C obj", "Empty obj", "vs Empty");
-    println!("{}", "-".repeat(60));
+    println!("{}", "=".repeat(74));
+    println!("{:<10} {:>12} {:>12} {:>12} {:>10} {:>8}",
+        "Instance", "RP-401D obj", "RP-401C obj", "Empty obj", "vs Empty", "ms");
+    println!("{}", "-".repeat(68));
 
     let mut improved_vs_empty = 0usize;
     let mut total_improvement = 0.0f64;
@@ -339,6 +340,7 @@ fn main() -> anyhow::Result<()> {
             .collect();
 
         // RP-401D: oracle-guided path selection
+        let t_start = Instant::now();
         let shared_assign = solve_greedy_oracle(
             &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg, k_candidates,
         );
@@ -385,6 +387,7 @@ fn main() -> anyhow::Result<()> {
             "n/a".to_string()
         };
 
+        let elapsed_ms = t_start.elapsed().as_millis();
         let obj_str = if final_obj.is_finite() { format!("{:.4}", final_obj) } else { "inf".to_string() };
         let empty_str = if empty_result.obj.is_finite() { format!("{:.4}", empty_result.obj) } else { "inf".to_string() };
 
@@ -397,8 +400,8 @@ fn main() -> anyhow::Result<()> {
             "—".to_string()
         };
 
-        println!("{:<10} {:>12} {:>12} {:>12} {:>10}",
-            format!("setA-{}", inst), obj_str, rp401c_str, empty_str, delta_str);
+        println!("{:<10} {:>12} {:>12} {:>12} {:>10} {:>8}",
+            format!("setA-{}", inst), obj_str, rp401c_str, empty_str, delta_str, elapsed_ms);
 
         // Write solution file
         let out_path = format!("{}/setA-{}-srpaths-rp401d.json", set_dir, inst);
@@ -413,7 +416,7 @@ fn main() -> anyhow::Result<()> {
         writeln!(f, "{}", serde_json::to_string_pretty(&sol_json)?)?;
     }
 
-    println!("{}", "=".repeat(65));
+    println!("{}", "=".repeat(74));
     println!("Instances improved vs empty: {}", improved_vs_empty);
     println!("Total objective improvement vs empty: {:.4}", total_improvement);
     println!("K candidates per demand: {}", k_candidates);

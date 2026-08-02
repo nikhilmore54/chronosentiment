@@ -19,6 +19,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
+use std::time::Instant;
 
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
@@ -262,9 +263,9 @@ fn main() -> anyhow::Result<()> {
     let set_dir = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
 
     println!("RP-401C — ECMP-Aware Construction (Dataset A)");
-    println!("{}", "=".repeat(60));
-    println!("{:<10} {:>12} {:>12} {:>10}", "Instance", "RP-401C obj", "Baseline obj", "Delta");
-    println!("{}", "-".repeat(50));
+    println!("{}", "=".repeat(68));
+    println!("{:<10} {:>12} {:>12} {:>10} {:>8}", "Instance", "RP-401C obj", "Baseline obj", "Delta", "ms");
+    println!("{}", "-".repeat(58));
 
     let mut total_improvement = 0.0f64;
     let mut improved_count = 0usize;
@@ -309,6 +310,7 @@ fn main() -> anyhow::Result<()> {
 
         // RP-401C: ECMP-aware greedy construction
         // Use time_slot=0 for oracle queries during shared-path construction
+        let t_start = Instant::now();
         let shared_assign = solve_greedy_ecmp(
             &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg,
         );
@@ -372,10 +374,11 @@ fn main() -> anyhow::Result<()> {
             "=".to_string()
         };
 
+        let elapsed_ms = t_start.elapsed().as_millis();
         let obj_str = if final_obj.is_finite() { format!("{:.4}", final_obj) } else { "inf".to_string() };
         let empty_str = if empty_result.obj.is_finite() { format!("{:.4}", empty_result.obj) } else { "inf".to_string() };
 
-        println!("{:<10} {:>12} {:>12} {:>10}", format!("setA-{}", inst), obj_str, empty_str, delta_str);
+        println!("{:<10} {:>12} {:>12} {:>10} {:>8}", format!("setA-{}", inst), obj_str, empty_str, delta_str, elapsed_ms);
 
         // Write solution file
         let out_path = format!("{}/setA-{}-srpaths-rp401c.json", set_dir, inst);
@@ -390,7 +393,7 @@ fn main() -> anyhow::Result<()> {
         writeln!(f, "{}", serde_json::to_string_pretty(&sol_json)?)?;
     }
 
-    println!("{}", "=".repeat(60));
+    println!("{}", "=".repeat(68));
     println!("Summary: {} improved, {} regressed, {} unchanged", improved_count, regressed_count, unchanged_count);
     println!("Total objective improvement vs empty: {:.4}", total_improvement);
     println!("Solution files written to {}/setA-*-srpaths-rp401c.json", set_dir);
