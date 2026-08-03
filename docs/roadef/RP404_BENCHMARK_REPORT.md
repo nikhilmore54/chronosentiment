@@ -1,8 +1,8 @@
 # RP-404 Benchmark Report: Large Neighbourhood Search Framework
 
-**Version:** 1.1 FINAL
+**Version:** 1.2 FINAL
 **Date:** 2026-08-03
-**Status:** COMPLETE — all three operator conditions evaluated
+**Status:** COMPLETE — four operator conditions evaluated (generic + first problem-specific)
 
 ---
 
@@ -64,6 +64,7 @@ operator, making RP-404B a clean single-variable comparison:
 | `random` | Remove K demands selected uniformly at random | RP-404A |
 | `congestion` | Remove K demands routed through the most saturated links | RP-404B |
 | `highcost` | Remove K demands with highest total saturation exposure | RP-404B |
+| `bottleneck-link` | Remove demands traversing the single most saturated link (directed edge), iterating to next most saturated link until K demands collected | RP-404C |
 
 ### 1.7 Reproducibility
 
@@ -200,6 +201,88 @@ Selects the K demands with the highest total saturation exposure (cost contribut
 6. Zero regressions across all three operators and all 60 instance-operator pairs.
 
 ---
+## 4 RP-404C Results: Bottleneck-Link Destroy Operator
+
+### 4.1 Operator Design
+
+The bottleneck-link operator is the first problem-specific neighbourhood in the
+RP-404 study. It differs from the RP-404B congestion operator in two key ways:
+
+1. **Link-by-link iteration in saturation order:** Rather than collecting demands
+   that pass through any of the top-K congested nodes, the operator identifies
+   the single most saturated link and removes all demands whose path traverses
+   that directed edge (from→to). It then moves to the next most saturated link
+   and repeats until K demands are collected.
+
+2. **Directed edge membership (not node membership):** The congestion operator
+   approximates demand-link membership via waypoint node membership in a
+   congested-node set. The bottleneck-link operator checks whether any
+   consecutive pair (u, v) in the demand's full path (src → w[0] → … → dst)
+   matches the directed link (from, to). This is the correct structural check.
+
+The intent is to concentrate the destroy on the single worst bottleneck rather
+than diffusing it across many congested nodes.
+
+### 4.2 Per-Instance Results
+
+| Instance | LNS obj | RP-403 obj | Δ | Improved | Runtime (s) |
+|---|---|---|---|---|---|
+| setA-01 | 52.7731 | 52.7731 | = | no | 0.9 |
+| setA-02 | 54.0907 | 54.0907 | = | no | 1.7 |
+| setA-03 | 96.4205 | 96.4842 | −0.0636 | yes | 1.4 |
+| setA-04 | 59.0314 | 59.1228 | −0.0914 | yes | 15.2 |
+| setA-05 | 13.3236 | 13.3236 | = | no | 19.2 |
+| setA-06 | 50.1002 | 50.1002 | = | no | 94.3 |
+| setA-07 | 191.7970 | 191.7970 | = | no | 121.7 |
+| setA-08 | 45.6696 | 45.6696 | = | no | 68.6 |
+| setA-09 | 153.5330 | 153.5330 | = | no | 62.8 |
+| setA-10 | 68.7706 | 68.7706 | = | no | 121.4 |
+| setA-11 | 99.3105 | 99.3105 | = | no | 121.3 |
+| setA-12 | 26.1166 | 26.1166 | = | no | 121.4 |
+| setA-13 | 56.4934 | 56.4934 | = | no | 122.1 |
+| setA-14 | 75.7198 | 75.7198 | = | no | 122.1 |
+| setA-15 | 208.1804 | 208.1804 | = | no | 122.3 |
+| setA-16 | 3355568.5541 | 3355568.5541 | = | no | 127.2 |
+| setA-17 | inf | inf | both inf | no | 124.2 |
+| setA-18 | 799167.0784 | 799167.0784 | = | no | 124.5 |
+| setA-19 | 5592513.4524 | 5592513.4524 | = | no | 128.5 |
+| setA-20 | 449.5543 | 449.5543 | = | no | 129.3 |
+
+### 4.3 Summary Statistics
+
+| Metric | Value |
+|---|---|
+| Improved | 2 / 20 (10%) |
+| Unchanged | 18 / 20 (90%) |
+| Regressed | 0 / 20 (0%) |
+| Total Δ vs RP-403 | −0.1550 |
+| Finite solutions | 19 / 20 |
+| setA-17 recovered | No |
+
+### 4.4 Four-Way Operator Comparison
+
+| Operator | Improved | Regressed | Unchanged | Total Δ vs RP-403 | Finite | Unique improvements |
+|---|---|---|---|---|---|---|
+| random (RP-404A) | **6** | 0 | 14 | **−5.3671** | 19/20 | setA-01, setA-07, setA-12, setA-15 |
+| highcost (RP-404B) | 4 | 0 | 16 | −0.6463 | 19/20 | setA-12, setA-15 |
+| bottleneck-link (RP-404C) | 2 | 0 | 18 | −0.1550 | 19/20 | none |
+| congestion (RP-404B) | 2 | 0 | 18 | −0.0949 | 19/20 | none |
+
+**Key observations:**
+
+1. Random destroy remains the strongest operator by a large margin (Δ=−5.3671 vs −0.6463 vs −0.1550 vs −0.0949). The gap is nearly an order of magnitude between random and the best targeted operator.
+
+2. The ordering is: random > highcost > bottleneck-link > congestion.
+
+3. Bottleneck-link improves only setA-03 and setA-04 — the same two instances that congestion improves. It finds no unique improvements.
+
+4. Bottleneck-link achieves a larger Δ on setA-04 (−0.0914) than congestion (−0.0313), but a smaller Δ than highcost (−0.4234). It is not the strongest targeted operator.
+
+5. Congestion is now fully dominated: it finds no unique improvements, is worse than all other operators on total Δ, and is weakly dominated by bottleneck-link on setA-04.
+
+6. setA-17 remains infeasible under all four operators. This is now a strong negative result across the full operator portfolio (80 instance-operator evaluations, zero recoveries of setA-17).
+
+---
 
 ## 4 Programme Progression
 
@@ -211,8 +294,9 @@ Selects the K demands with the highest total saturation exposure (cost contribut
 | RP-403 | Construction portfolio | 19/20 | setA-08 and setA-12 recovered |
 | RP-404A | Random LNS | 19/20 | Improves solution quality without regressions |
 | RP-404B | Targeted LNS operators | 19/20 | Operator comparison; highcost weakly dominates congestion |
+| RP-404C | Problem-specific LNS (bottleneck-link) | 19/20 | First routing-aware operator; no unique improvements; confirms generic operators are insufficient |
 
-RP-404A/B are the first research stages primarily improving objective values
+RP-404A/B/C are the first research stages primarily improving objective values
 rather than feasibility.
 
 ---
@@ -221,7 +305,7 @@ rather than feasibility.
 
 ### 5.1 Framework Stability
 
-All three operators produced zero regressions across 20 instances each (60
+All four operators produced zero regressions across 20 instances each (80
 instance-operator evaluations total). Feasibility is exactly preserved at
 19/20 finite solutions across all conditions. We interpret this as evidence
 that the LNS framework integrates cleanly with the RP-403 baseline and does
@@ -254,26 +338,39 @@ We interpret this as evidence that congestion-based selection is a less
 effective proxy for identifying improvable demands than cost-based selection,
 under the current repair operator.
 
-### 5.5 Generic Destroy Operators Are Insufficient for the Principal Remaining Limitation
+### 5.5 All Four Destroy Operators Are Insufficient for the Principal Remaining Limitation
 
-Across all three operators, the pattern is consistent: improvements occur
+Across all four operators, the pattern is consistent: improvements occur
 quickly (1–2 accepted moves) or not at all. Large instances exhaust the 120s
 budget without accepting any move. More importantly, setA-17 remains infeasible
-under all three operators. The evidence does not reject LNS as a framework, but
-it does reject the hypothesis that a generic destroy/repair neighbourhood is the
-dominant missing capability. The current experiments have compared three generic
-destroy strategies; they have not yet explored neighbourhoods that exploit the
-structural information available from the routing problem itself.
+under all four operators (80 instance-operator evaluations). The evidence does
+not reject LNS as a framework, but it does reject the hypothesis that any of
+the tested destroy/repair neighbourhoods is sufficient to overcome the principal
+remaining limitation. The bottleneck-link operator is the first routing-aware
+neighbourhood tested; it finds no unique improvements and does not recover
+setA-17, confirming that link-saturation targeting alone is insufficient.
 
-### 5.6 setA-17 Remains Unrecovered
+### 5.6 Bottleneck-Link Is Surprisingly Weak
 
-setA-17 remains infeasible after 50 LNS iterations with all three destroy
-operators. This confirms that generic destroy-and-repair is insufficient to
-recover this instance. The evidence is not yet sufficient to conclude that
-neighbourhood design in general is the bottleneck — only that generic
-neighbourhood design is insufficient. Problem-specific neighbourhoods (e.g.
-bottleneck-link destroy, ECMP-conflict destroy, budget-critical destroy) have
-not yet been evaluated.
+The bottleneck-link operator was designed to directly target the structural
+cause of infeasibility by removing demands from the most saturated link. The
+result is negative: it improves only setA-03 and setA-04 (the same two
+instances as congestion), finds no unique improvements, and does not recover
+setA-17. We interpret this as evidence that link bottlenecks alone are not the
+principal cause of poor solutions. The best improving moves are not concentrated
+around the demands traversing the most saturated link — they require a
+neighbourhood that is not biased toward any single structural feature.
+
+### 5.7 setA-17 Remains Unrecovered — Strong Negative Result
+
+setA-17 remains infeasible after 50 LNS iterations with all four destroy
+operators (random, congestion, highcost, bottleneck-link). This is now a strong
+negative result: four qualitatively different neighbourhood definitions, 200
+total LNS iterations on setA-17, zero recoveries. The evidence supports
+concluding that the remaining limitation is not addressable by destroy-and-repair
+LNS with the current repair operator (RP-401C greedy). The bottleneck is more
+likely in the repair operator's inability to find a feasible routing from the
+destroyed state, rather than in the choice of which demands to destroy.
 
 ---
 
@@ -283,44 +380,57 @@ not yet been evaluated.
 escape local optima that the greedy constructor gets stuck in, producing
 measurable improvement over the RP-403 deterministic baseline.
 
-**Assessment:** Partially supported. The evidence does not reject LNS as a
-framework, but it does reject the hypothesis that a generic destroy/repair
-neighbourhood is the dominant missing capability.
+**Assessment:** Partially supported. The LNS framework is validated. Neither
+generic nor the first problem-specific destroy operator is sufficient to
+overcome the principal remaining limitation.
 
-- **Supported:** All three operators improve at least 2/20 instances with zero
-  regressions. The LNS framework demonstrably escapes construction-induced
-  local optima on a subset of instances. The framework implementation is
-  validated.
-- **Not supported:** Generic destroy operators do not recover setA-17 or
-  produce substantial improvements on large instances. The principal remaining
-  limitation identified after RP-403 (construction-induced local optima,
-  setA-17 infeasibility) is not overcome by generic neighbourhood search.
+- **Supported:** All four operators improve at least 2/20 instances with zero
+  regressions across 80 instance-operator evaluations. The LNS framework
+  demonstrably escapes construction-induced local optima on a subset of
+  instances. The framework implementation is validated.
+- **Not supported:** No operator recovers setA-17 or produces substantial
+  improvements on large instances. The bottleneck-link operator (first
+  problem-specific neighbourhood) finds no unique improvements and does not
+  outperform random destroy. The principal remaining limitation is not overcome
+  by any tested neighbourhood.
 - **Operator finding:** Random destroy dominates on total improvement (Δ=−5.3671
-  vs −0.6463 vs −0.0949). Highcost weakly dominates congestion. Highcost acts
-  as a local refinement operator rather than a diversification operator.
-- **Next step:** Problem-specific neighbourhoods (bottleneck-link destroy,
-  ECMP-conflict destroy, budget-critical destroy, congestion-cluster destroy)
-  have not yet been evaluated. The evidence is not yet sufficient to conclude
-  that neighbourhood design in general is the bottleneck.
+  vs −0.6463 vs −0.1550 vs −0.0949). Ordering: random > highcost >
+  bottleneck-link > congestion. Congestion is fully dominated. Bottleneck-link
+  is surprisingly weak — link-saturation targeting does not identify the
+  demands whose removal enables improvement.
+- **Conclusion:** The evidence now supports concluding that the remaining
+  limitation is not in the destroy operator design. The bottleneck is more
+  likely in the repair operator (RP-401C greedy) or in the problem structure
+  itself (setA-17 may require a fundamentally different routing approach).
 
 ---
 
 ## 7 RP-404 Termination Gate
 
-**Status:** ⏳ Hypothesis Partially Supported — RP-404 continues
+**Status:** ⏳ Hypothesis Partially Supported — RP-404 continues with further routing-aware operators
 
 **Capability outcome:** RP-404 establishes a working LNS framework that
 improves solution quality over the RP-403 construction portfolio baseline
-without introducing regressions. Generic destroy operators (random, congestion,
-highcost) have been evaluated. The framework is validated.
+without introducing regressions. Four destroy operators have been evaluated
+(random, congestion, highcost, bottleneck-link). The framework is validated.
+The first problem-specific neighbourhood (bottleneck-link) has been tested and
+found insufficient.
 
-**Remaining work:** Problem-specific neighbourhoods exploiting routing
-structure have not yet been evaluated. RP-404 should not be terminated until
-at least one problem-specific neighbourhood has been tested. If no
-problem-specific neighbourhood recovers setA-17 or produces substantial
-improvement on large instances, the evidence will support concluding that the
-remaining limitation is not neighbourhood design, and the programme can
-proceed to the next research question.
+**Evidence so far:** 80 instance-operator evaluations, zero regressions, zero
+setA-17 recoveries. Bottleneck-link finds no unique improvements vs prior
+operators. The ordering random > highcost > bottleneck-link > congestion is
+stable. The best improving moves are not concentrated around any single
+structural feature (congestion, cost, or bottleneck link).
+
+**Remaining work:** Further routing-aware neighbourhoods with materially
+different hypotheses should be tested before terminating RP-404. Candidates
+include ECMP-conflict destroy (targets demands whose ECMP paths conflict with
+each other), budget-critical destroy (targets demands near the budget boundary),
+and segment-boundary destroy (targets demands at SR segment boundaries). If
+none of these recovers setA-17 or produces substantial improvement on large
+instances, the evidence will support concluding that the remaining limitation
+is in the repair operator or problem structure, and the programme can proceed
+to the next research question.
 
 ---
 
@@ -330,3 +440,4 @@ proceed to the next research question.
 |---|---|---|
 | 1.0 | 2026-08-03 | Initial draft with RP-404A complete results; RP-404B sections pending |
 | 1.1 | 2026-08-03 | RP-404B complete results added (congestion: 2 improved Δ=−0.0949; highcost: 4 improved Δ=−0.6463); three-way comparison; analysis updated to reflect generic vs problem-specific neighbourhood distinction; termination gate set to ⏳ Continues (problem-specific neighbourhoods not yet evaluated) |
+| 1.2 | 2026-08-03 | RP-404C complete results added (bottleneck-link: 2 improved Δ=−0.1550, no unique improvements, setA-17 still inf); §1.6 operator table updated; §4 RP-404C section added; §4.4 four-way comparison table; §5.1 count updated to 80 evaluations; §5.5–5.7 updated; §6 hypothesis updated; §7 termination gate updated; §5 programme progression table updated |
