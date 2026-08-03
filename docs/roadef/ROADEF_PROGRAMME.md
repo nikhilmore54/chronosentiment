@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.7
+**Version:** 1.8
 **Date:** 2026-08-03
 
 ---
@@ -188,6 +188,41 @@ Every RP must produce a standard evidence record before its result is considered
 | Statistical Confidence | Multiple runs with fixed seeds if stochastic |
 | Platform Impact | Generalisable to Coralys beyond ROADEF? |
 | Decision | Promote / Archive / Continue |
+
+### 4.1 Standard RP Lifecycle
+
+Every research programme item follows the same lifecycle. This template is mandatory for all future RPs and applies equally to ROADEF, CVRP, UltraCrew, and any future Coralys research programme.
+
+```
+Research Question
+      ↓
+Hypothesis
+      ↓
+Implementation
+      ↓
+Benchmark
+      ↓
+Capability Assessment
+      ↓
+Root-Cause Analysis
+      ↓
+Termination Gate
+      ↓
+Next RP
+```
+
+**Termination gate (standard):** Every RP must explicitly answer one of four outcomes before the next RP may begin:
+
+| Outcome | Symbol | Meaning |
+|---------|--------|---------|
+| Capability promoted | ✅ | Hypothesis confirmed; capability advances to next maturity level; next RP proceeds |
+| Capability refined | 🔄 | Partial confirmation; capability scope narrowed; current RP extended or redefined |
+| Capability archived | 📦 | Hypothesis not confirmed; capability remains at current level; RP archived with negative result |
+| Hypothesis rejected | ❌ | Evidence contradicts hypothesis; RP archived; programme direction reconsidered |
+
+A negative result (📦 or ❌) is a valid and valuable outcome. It prevents engineering effort from being spent on the wrong problem. The programme records the negative result, archives the RP, and either redefines scope or advances to the next independent research question.
+
+No RP may proceed to implementation before its hypothesis is stated. No RP may be declared complete without a termination gate decision. No next RP may begin without the preceding RP's termination gate being cleared.
 
 ---
 
@@ -499,3 +534,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.5 | 2026-08-02 | Conditional evidence gates added to RP-403 through RP-407 — each programme item now requires evidence from the preceding RP before proceeding, replacing the old priority-number labels. RP-402 entry sharpened: target instances named (setA-02, 07, 09, 12, 17), "one hypothesis, one capability, one evidence record" discipline recorded. Cross-reference to CS-S-005 Programme Horizon Strategy (three-horizon model, RP-408 deferral). |
 | 1.6 | 2026-08-03 | RP-402 frozen. §4 RP-402 entry replaced with frozen summary (15/20 improved, 18/20 finite, 3/5 targets recovered, capabilities promoted). RP-403 reframed as "Adaptive Candidate Generation and Diversity Recovery" — evidence-driven framing from RP-402 results, pre-coding root-cause analysis required for setA-12 and setA-17. §6.3 capability snapshot updated to v1.4: budget-aware transition planning and budget-constrained re-routing both promoted to C2. CAPABILITY_REGISTER.md updated to v1.3 with same promotions. RP402_FINAL_REPORT.md v1.0 filed. |
 | 1.7 | 2026-08-03 | Explicit termination gate added to RP-403. RP-403 shall only proceed to implementation if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. If setA-17 is confirmed budget-limited or setA-12 shows no structural path-diversity gap, RP-403 records a negative result and is archived or redefined before any binary is written. |
+| 1.8 | 2026-08-03 | Standard RP lifecycle template formalised as §4.1. Every future RP must follow the eight-stage lifecycle (Research Question → Hypothesis → Implementation → Benchmark → Capability Assessment → Root-Cause Analysis → Termination Gate → Next RP) and record one of four outcomes (✅ promoted, 🔄 refined, 📦 archived, ❌ rejected) before the next RP may begin. Template applies to ROADEF, CVRP, UltraCrew, and all future Coralys research programmes. |
