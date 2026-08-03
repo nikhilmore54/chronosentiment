@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.9
+**Version:** 1.10
 **Date:** 2026-08-03
 
 ---
@@ -287,37 +287,59 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-403 — Construction Strategy Evaluation and Selection *(🔄 REDEFINED 2026-08-03)*
+### RP-403 — Construction Strategy Evaluation and Selection *(🔄 Refined — Validation Pending 2026-08-03)*
 
-**Termination gate outcome:** 🔄 Redefine — original hypothesis (insufficient path diversity) not supported by evidence. Construction robustness is the gating factor. Candidate generation is deferred, not rejected.
+**Status:** Benchmark executed 20/20 instances. Termination gate cannot be fully cleared until Validation Task V1 (RP-401C behavioural equivalence) is complete.
 
 **Root-cause analysis:** [`RP403_ROOT_CAUSE_ANALYSIS.md`](RP403_ROOT_CAUSE_ANALYSIS.md) v1.1 (Phase 1A mining, 2026-08-03)
+**Benchmark report:** [`RP403_BENCHMARK_REPORT.md`](RP403_BENCHMARK_REPORT.md) v1.2 (2026-08-03)
+**Binary:** `src/bin/rp403_construction_portfolio.rs` (791 lines, commit `1a6ce6d8`)
 
 **Key findings from Phase 1A JSON mining:**
 
 | Instance | Finding | Failure layer |
 |----------|---------|---------------|
-| setA-12 | RP-402 adaptation never fired (adapted=0/392). RP-401C vs RP-402 diverge on 232/392 t0 demands (59.2%). RP-401D vs RP-402 differ on only 6/392 (1.5%). | Construction — strategy differences (including, but not yet proven to be limited to, demand ordering) |
-| setA-17 | Zero adaptation attempted by any solver. RP-402 emits None waypoints from demand 53 onward. Budget=1 is NOT the binding constraint — t=0 construction fails. | Construction — routing failure |
-| setA-08 | RP-401D: adapted=0, total_cost=0 (feasible at 48.67). RP-402: adapted=2, total_cost=4 (still inf). RP-401D vs RP-402 diverge on 30/193 t0 demands (15.5%). | Construction — construction divergence |
+| setA-12 | RP-402 adaptation never fired (adapted=0/392). RP-401C vs RP-402 diverge on 232/392 t0 demands (59.2%). RP-401D vs RP-402 differ on only 6/392 (1.5%). | Construction — strategy differences |
+| setA-17 | Zero adaptation attempted. RP-402 emits None waypoints from demand 53 onward. Budget=1 is NOT the binding constraint. | Construction — routing failure |
+| setA-08 | RP-401D: adapted=0, total_cost=0 (feasible at 48.67). RP-402: adapted=2, total_cost=4 (still inf). | Construction — construction divergence |
 
-**Redefined question (diagnostic experiment):** Does selecting between two construction strategies (RP-401C nearest-neighbour greedy and RP-401D EDF-sorted greedy) eliminate the observed regressions for setA-12 and setA-08?
+**20/20 benchmark results (commit `1a6ce6d8`):**
 
-**Hypothesis:** Construction strategy differences (including, but not yet proven to be limited to, demand ordering) are the gating factor for the investigated failures. Running both constructions and selecting the better result will recover setA-12 and setA-08 without regressing the 18 currently finite instances.
+| Metric | RP-402 | RP-403 |
+|--------|--------|--------|
+| Finite instances | 18/20 | **19/20** |
+| setA-08 | inf | **45.67 (RECOVERED)** |
+| setA-12 | inf | inf (CONFOUNDED — implementation divergence) |
+| setA-17 | inf | inf |
+| Instances improved vs RP-402 | — | 7 |
+| Objective regressions | — | 1 (setA-01: +2.91) |
+| Feasibility regressions | — | 0 |
 
-**Important distinction:** Candidate generation (original RP-403 scope) is **deferred, not rejected**. Once construction consistently produces feasible base solutions, candidate diversity may become the next bottleneck. That hypothesis remains open and should be revisited after this RP establishes construction robustness.
+**Scientific findings:**
+1. Construction strategy selection materially affects downstream optimisation quality (setA-08 recovered; 7 instances improved).
+2. The optimization pipeline is path-dependent: construction-time objective is not a reliable predictor of post-adaptation objective (setA-01 demonstrates this).
+3. setA-12 result is confounded by RP-401C implementation non-equivalence — the embedded `solve_rp401c` returns inf while the standalone binary returns 26.12. The experiment cannot be evaluated on setA-12 until this discrepancy is resolved.
 
-**Approach (diagnostic experiment first, architecture decision second):**
-- Run RP-401C and RP-401D constructions in parallel for each instance
-- Select the construction with lower objective (or the feasible one if only one is feasible)
-- Use the selected construction as the base for RP-402's budget-aware adaptation
-- Measure: recovery of setA-12 and setA-08, no regression on the 18 currently finite instances
-- If the experiment succeeds, decide whether to retain both constructions, automatically choose between them, or merge their strengths into a single robust construction
+**Termination gate outcome:** 🔄 Refined — evidence collected, validation pending. RP-403 cannot be fully closed until Validation Task V1 is complete.
 
-**One remaining open assumption:** The evidence demonstrates that different construction strategies produce different feasibility outcomes. It does not yet isolate whether EDF ordering specifically is the cause. This assumption is a hypothesis to be tested within this RP.
+---
 
-**Expected binary:** `src/bin/rp403_construction_portfolio.rs`
+#### RP-403 Validation Task V1 — RP-401C Behavioural Equivalence *(pending)*
 
+**Status:** Pending. Blocks final termination-gate decision for RP-403.
+
+**Question:** Does the embedded `solve_rp401c` function produce the same waypoint assignments as the standalone `rp401c_ecmp_construction` binary for all 20 setA instances?
+
+**Required evidence:**
+- Compare waypoint assignments produced by both implementations on all 20 instances
+- Confirm identical assignments, or identify the first point of divergence
+- Localize any divergence to penalty function, tie-breaking behaviour, graph traversal, or other implementation detail
+
+**Possible causes of divergence (under investigation):** penalty function magnitude, tie-breaking behaviour, path enumeration order, or other implementation details. The specific source has not yet been isolated.
+
+**Closure criteria:** Either (a) equivalence confirmed on all 20 instances, or (b) divergence localized and corrected, and RP-403 re-run on setA-12 with the corrected implementation.
+
+**After closure:** RP-403 receives its final termination gate decision (✅ promoted or 📦 archived for setA-12), and RP-404 becomes the active work item.
 ---
 
 ### RP-404 — Large Neighbourhood Search *(conditional on RP-403 evidence)*
@@ -535,3 +557,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.7 | 2026-08-03 | Explicit termination gate added to RP-403. RP-403 shall only proceed to implementation if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. If setA-17 is confirmed budget-limited or setA-12 shows no structural path-diversity gap, RP-403 records a negative result and is archived or redefined before any binary is written. |
 | 1.8 | 2026-08-03 | Standard RP lifecycle template formalised as §4.1. Every future RP must follow the eight-stage lifecycle (Research Question → Hypothesis → Implementation → Benchmark → Capability Assessment → Root-Cause Analysis → Termination Gate → Next RP) and record one of four outcomes (✅ promoted, 🔄 refined, 📦 archived, ❌ rejected) before the next RP may begin. Template applies to ROADEF, CVRP, UltraCrew, and all future Coralys research programmes. |
 | 1.9 | 2026-08-03 | RP-403 redefined following Phase 1A root-cause analysis (RP403_ROOT_CAUSE_ANALYSIS.md v1.1). Original hypothesis (insufficient path diversity) not supported: all three failures (setA-12, setA-17, setA-08) occur at the construction layer; RP-402 adaptation never fires for setA-12/17 (adapted=0, total_cost=0). RP-403 renamed "Construction Strategy Evaluation and Selection" — diagnostic experiment running RP-401C and RP-401D constructions in parallel and selecting the better result. Candidate generation deferred (not rejected): remains a downstream hypothesis to be revisited after construction robustness is established. Expected binary renamed rp403_construction_portfolio.rs. |
+| 1.10 | 2026-08-03 | RP-403 Construction Portfolio experiment executed 20/20 instances (commit 1a6ce6d8). Results: 19/20 finite (RP-402 baseline: 18/20); setA-08 recovered (inf->45.67); setA-12 CONFOUNDED (embedded RP-401C returns inf, standalone returns 26.12 -- implementation non-equivalence). RP-403 status: Refined/Validation Pending. Validation Task V1 (RP-401C behavioural equivalence) added as blocking sub-task. RP-403 termination gate cannot be fully cleared until V1 is complete. RP-404 proceeds only after RP-403 closes. Benchmark report: RP403_BENCHMARK_REPORT.md v1.2. |
