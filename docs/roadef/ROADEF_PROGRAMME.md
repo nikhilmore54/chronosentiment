@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.6
+**Version:** 1.7
 **Date:** 2026-08-03
 
 ---
@@ -269,6 +269,11 @@ This is a structural insight into the problem formulation. It establishes the co
 2. setA-17 budget analysis: determine whether setA-17 becomes feasible with budget=2 or budget=3.
 3. setA-08 regression analysis: determine whether RP-403 can recover setA-08 without regressing the 3 instances recovered by RP-402.
 
+**Termination gate (mandatory):** RP-403 shall only proceed to implementation if the root-cause analysis identifies at least one failure mode that is plausibly addressable by candidate-generation methods. Specifically:
+- If setA-17 is confirmed budget-limited (feasibility requires ≥2 re-routes but budget=1 allows only 1), candidate generation cannot help and RP-403 is not warranted for that instance.
+- If setA-12 shows no structural path-diversity gap (i.e. RP-401C's feasible paths are available to RP-402 but not selected), the failure is a selection/ordering problem, not a candidate-generation problem.
+- If neither instance has a failure mode addressable by candidate generation, RP-403 shall record a negative result and either be archived or redefined in scope before any binary is written.
+
 **Approach:**
 - For each demand, generate K candidate paths (K = 3, 5, 10) using diverse path generation strategies
 - Evaluate each candidate under ECMP-accurate load estimation
@@ -493,3 +498,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.4 | 2026-08-02 | RP-401 frozen. §4 RP-401 entry replaced with frozen summary (all four stages, scientific conclusion, capability promotions). §6.3 capability snapshot updated to v1.3: "ECMP-aware routing" split into three distinct capabilities — ECMP-aware incremental load estimation (C2), oracle-guided constructive routing (C2, new), oracle-guided candidate selection (C1). CAPABILITY_REGISTER.md updated to v1.2 with same split. RP401_FINAL_REPORT.md updated to v1.3 with strengthened scientific conclusions, RP-401D renamed, §5 comparison table, timeout caveat, §10 Scientific Contribution. |
 | 1.5 | 2026-08-02 | Conditional evidence gates added to RP-403 through RP-407 — each programme item now requires evidence from the preceding RP before proceeding, replacing the old priority-number labels. RP-402 entry sharpened: target instances named (setA-02, 07, 09, 12, 17), "one hypothesis, one capability, one evidence record" discipline recorded. Cross-reference to CS-S-005 Programme Horizon Strategy (three-horizon model, RP-408 deferral). |
 | 1.6 | 2026-08-03 | RP-402 frozen. §4 RP-402 entry replaced with frozen summary (15/20 improved, 18/20 finite, 3/5 targets recovered, capabilities promoted). RP-403 reframed as "Adaptive Candidate Generation and Diversity Recovery" — evidence-driven framing from RP-402 results, pre-coding root-cause analysis required for setA-12 and setA-17. §6.3 capability snapshot updated to v1.4: budget-aware transition planning and budget-constrained re-routing both promoted to C2. CAPABILITY_REGISTER.md updated to v1.3 with same promotions. RP402_FINAL_REPORT.md v1.0 filed. |
+| 1.7 | 2026-08-03 | Explicit termination gate added to RP-403. RP-403 shall only proceed to implementation if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. If setA-17 is confirmed budget-limited or setA-12 shows no structural path-diversity gap, RP-403 records a negative result and is archived or redefined before any binary is written. |
