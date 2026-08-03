@@ -49,3 +49,7 @@ path = "src/bin/rp401d_ecmp_path_selection.rs"
 [[bin]]
 name = "rp403_construction_portfolio"
 path = "src/bin/rp403_construction_portfolio.rs"
+
+[[bin]]
+name = "rp403v1_validate_rp401c"
+path = "src/bin/rp403v1_validate_rp401c.rs"
