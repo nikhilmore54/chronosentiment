@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.4
+**Version:** 1.5
 **Date:** 2026-08-02
 
 ---
@@ -229,23 +229,29 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-402 — Budget-Aware t=1 Adaptation *(priority 2)*
+### RP-402 — Budget-Aware t=1 Adaptation *(priority 2 — next)*
 
-**Question:** Can we improve t=1 quality while respecting the budget constraint?
+**Question:** Can budget-aware transition planning recover additional feasible solutions or improve objective values on the remaining infeasible instances?
 
 **Hypothesis:** For instances with budget > 0, selectively re-routing the demands with the largest traffic change between t=0 and t=1 will reduce t=1 objective without violating the budget.
+
+**Target instances (remaining infeasible after RP-401):** setA-02, setA-07, setA-09, setA-12, setA-17.
 
 **Approach:**
 - After computing the shared path (using RP-401 ECMP-aware routing), identify demands where `|v[1] - v[0]|` is largest
 - Re-route those demands for t=1 only, counting budget cost via `SrPathBit::dist`
 - Stop when budget is exhausted
-- Measure: objective improvement on setA-05, setA-10, setA-17 (budget=1 instances)
+- Measure: objective improvement on target instances; regression check on all 20
+
+**Discipline:** One hypothesis, one capability, one evidence record. RP-402 is complete when the evidence record is filed and the result is recorded in BASELINE_HISTORY.md.
 
 **Expected binary:** `src/bin/rp402_budget_adapt.rs`
 
 ---
 
-### RP-403 — Multi-Path Candidate Generation *(priority 3)*
+### RP-403 — Multi-Path Candidate Generation *(conditional on RP-402 evidence)*
+
+**Gate:** Proceed only if RP-402 evidence shows that candidate diversity is the dominant remaining limitation.
 
 **Question:** Does generating K candidate paths per demand and selecting the best combination improve the objective?
 
@@ -255,7 +261,7 @@ This is a structural insight into the problem formulation. It establishes the co
 - For each demand, generate K shortest paths (K = 3, 5, 10)
 - Evaluate each candidate path under ECMP-accurate load estimation
 - Select the combination that minimises the objective greedily
-- Measure: objective improvement vs RP-401, runtime scaling with K
+- Measure: objective improvement vs RP-402, runtime scaling with K
 
 **Expected binary:** `src/bin/rp403_multipath.rs`
 
@@ -263,7 +269,9 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-404 — Large Neighbourhood Search *(priority 4)*
+### RP-404 — Large Neighbourhood Search *(conditional on RP-403 evidence)*
+
+**Gate:** Proceed only if RP-403 evidence shows that deterministic improvements have plateaued and stochastic search is warranted.
 
 **Question:** Can LNS with destroy/repair operators improve on the deterministic baseline?
 
@@ -280,7 +288,9 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-405 — Hyper-Heuristic Operator Selection *(priority 5)*
+### RP-405 — Hyper-Heuristic Operator Selection *(conditional on RP-404 evidence)*
+
+**Gate:** Proceed only if RP-404 evidence shows that operator selection is the dominant bottleneck in LNS performance.
 
 **Question:** Can adaptive operator selection (using Coralys memory structures) improve LNS performance?
 
@@ -295,7 +305,9 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-406 — Coralys MOGA Integration *(priority 6)*
+### RP-406 — Coralys MOGA Integration *(conditional on RP-405 evidence)*
+
+**Gate:** Proceed only if RP-405 evidence shows that evolutionary search has a realistic chance of improving competition scores beyond the LNS baseline.
 
 **Question:** Can the existing Coralys MOGA engine improve on the LNS baseline?
 
@@ -314,7 +326,9 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ---
 
-### RP-407 — Hybrid Exact Subproblem *(priority 7)*
+### RP-407 — Hybrid Exact Subproblem *(conditional on RP-406 evidence)*
+
+**Gate:** Proceed only if RP-406 evidence shows that exact optimisation of bottleneck subproblems offers a measurable return over the MOGA baseline.
 
 **Question:** Can solving a small exact subproblem (e.g. single-commodity flow for the most congested link) improve the overall solution?
 
@@ -464,3 +478,4 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.2 | 2026-08-02 | Added four-stage RP-401 structure (401A–401D): measurement before optimisation. Added §6 Capability Maturity Model (C0–C5) with current capability register and ROADEF contribution targets. Renumbered §6 Evidence Feedback to §7, §7 Programme Governance to §8. |
 | 1.3 | 2026-08-02 | Added CMM exit criteria to §6.2 (evidence-driven promotion gates). Added cross-reference to CAPABILITY_REGISTER.md. Created docs/governance/CAPABILITY_REGISTER.md (GOV-CR-001 v1.0) as platform-wide governance artefact tracking 14 capabilities across Core Optimisation, Planning and Search, Routing, and Domain Adapter categories. |
 | 1.4 | 2026-08-02 | RP-401 frozen. §4 RP-401 entry replaced with frozen summary (all four stages, scientific conclusion, capability promotions). §6.3 capability snapshot updated to v1.3: "ECMP-aware routing" split into three distinct capabilities — ECMP-aware incremental load estimation (C2), oracle-guided constructive routing (C2, new), oracle-guided candidate selection (C1). CAPABILITY_REGISTER.md updated to v1.2 with same split. RP401_FINAL_REPORT.md updated to v1.3 with strengthened scientific conclusions, RP-401D renamed, §5 comparison table, timeout caveat, §10 Scientific Contribution. |
+| 1.5 | 2026-08-02 | Conditional evidence gates added to RP-403 through RP-407 — each programme item now requires evidence from the preceding RP before proceeding, replacing the old priority-number labels. RP-402 entry sharpened: target instances named (setA-02, 07, 09, 12, 17), "one hypothesis, one capability, one evidence record" discipline recorded. Cross-reference to CS-S-005 Programme Horizon Strategy (three-horizon model, RP-408 deferral). |
