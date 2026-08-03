@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Complete — Termination Gate Decision Made
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-08-03
 
 ---
@@ -84,9 +84,9 @@ The RP-401C feasible assignment is reachable (it exists), but RP-401D and RP-402
 
 **Is this addressable by candidate generation?**
 
-Partially. If RP-403 generates K candidate paths per demand and evaluates them under ECMP-accurate load estimation, it might find the RP-401C-equivalent assignment. However, the root cause is the demand processing order, not the set of candidate paths available. A selection policy fix (reverting to RP-401C ordering for setA-12's topology) would be cheaper and more targeted than generating K candidates.
+Partially, but candidate generation is not the first bottleneck here. If RP-403 generates K candidate paths per demand and evaluates them under ECMP-accurate load estimation, it might find the RP-401C-equivalent assignment. However, the evidence demonstrates that the construction strategy (including, but not yet proven to be limited to, demand ordering) is the gating factor. Candidate generation cannot be evaluated until a robust base construction is in place.
 
-**Verdict for termination gate:** The failure is primarily a **construction/ordering problem**. Candidate generation could help if it includes the RP-401C path as one of K candidates, but this is not the most direct fix.
+**Verdict for termination gate:** The failure is primarily a **construction strategy problem**. Candidate generation is not rejected as a research topic — it is deferred until construction consistently produces feasible base solutions. The evidence does not yet isolate whether EDF ordering specifically is the cause; it demonstrates that different construction strategies produce different feasibility outcomes for setA-12's topology.
 
 ---
 
@@ -217,9 +217,9 @@ RP-401D uses EDF (earliest-deadline-first) sorting before greedy construction. R
 
 **Is this addressable by candidate generation?**
 
-Potentially. If RP-403 generates K candidate paths per demand and includes the RP-401D path as one candidate, it could recover the feasible assignment. However, this requires the candidate generator to produce paths that match RP-401D's EDF-ordered greedy — which is a specific construction strategy, not a diversity improvement.
+Candidate generation is not the first bottleneck here. The evidence demonstrates that RP-402's base construction diverges from RP-401D's on 30/193 demands, and that divergence is what causes infeasibility. Candidate generation operates downstream of construction — it cannot be evaluated until the construction layer produces a feasible base. If construction robustness is improved and setA-08 becomes feasible, candidate generation may become relevant for further objective improvement.
 
-**Verdict for termination gate:** The failure is a **construction divergence** between RP-401D and RP-402. Candidate generation could help if it includes RP-401D-equivalent paths, but the more direct fix is to preserve the RP-401D construction as a fallback when RP-402's construction is infeasible.
+**Verdict for termination gate:** The failure is a **construction divergence**. Candidate generation is deferred, not rejected. The evidence does not yet isolate whether the divergence is caused by EDF ordering specifically or by other implementation differences between RP-401D and RP-402; it demonstrates that the constructions produce different assignments and that RP-401D's happens to be feasible for setA-08's topology.
 
 ---
 
@@ -257,11 +257,13 @@ The RP-403 hypothesis was:
 
 **Assessment:**
 
-**setA-12:** The hypothesis is **partially wrong**. The failure is not that alternative paths cannot be generated — RP-401C already generates a feasible assignment. The failure is that RP-401D and RP-402 use a different demand ordering (EDF sort) that produces a different, infeasible assignment. Candidate generation could help if it includes RP-401C-equivalent paths, but the root cause is ordering, not diversity.
+**setA-12:** The hypothesis is **not supported by the evidence**. The failure is not that alternative paths cannot be generated — RP-401C already generates a feasible assignment. The evidence demonstrates that different construction strategies produce different feasibility outcomes. The evidence does not yet isolate whether EDF ordering specifically is the cause; it shows that construction strategy differences (including, but not yet proven to be limited to, demand ordering) are the gating factor. Candidate generation is not the first bottleneck.
 
-**setA-17:** The hypothesis is **wrong**. The failure is not budget allocation (budget=1 is never consumed) and not path diversity. The failure is that the construction cannot route all 2000 demands feasibly on setA-17's topology. Budget=1 is irrelevant — the t=0 construction itself fails. No amount of candidate generation for t=1 can fix a t=0 construction failure.
+**setA-17:** The hypothesis is **not supported by the evidence**. The failure is not budget allocation (budget=1 is never consumed — total_transition_cost=0 for all solvers) and not path diversity. The construction cannot route all demands feasibly on setA-17's topology. Budget=1 is irrelevant — the t=0 construction itself fails. Candidate generation for t=1 cannot address a t=0 construction failure.
 
-**setA-08:** The hypothesis is **partially applicable**. RP-402's construction diverges from RP-401D's on 30/193 demands. If RP-403 generates K candidates that include RP-401D-equivalent paths, it could recover setA-08. However, the more direct fix is a construction fallback strategy.
+**setA-08:** The hypothesis is **not the first bottleneck**. RP-402's construction diverges from RP-401D's on 30/193 demands, and that divergence causes infeasibility before candidate generation can be evaluated. Once construction robustness is improved, candidate generation may become relevant for further objective improvement on setA-08.
+
+**Important distinction:** The evidence shows that candidate generation is **not the immediate bottleneck** for any of the three investigated instances. It does not show that candidate generation is useless. Once construction consistently produces feasible base solutions, candidate diversity may become the next bottleneck. That hypothesis remains open and should be revisited after RP-403 (redefined) establishes construction robustness.
 
 ---
 
@@ -280,30 +282,33 @@ Per ROADEF_PROGRAMME.md v1.7, RP-403 shall only proceed to implementation if the
 **Decision:**
 
 - [ ] ✅ Proceed with RP-403 as originally scoped
-- [x] 🔄 **Redefine RP-403** — failure modes identified but require a different approach than candidate generation
+- [x] 🔄 **Redefine RP-403** — construction robustness is the gating factor; candidate generation is deferred, not rejected
 - [ ] 📦 Archive RP-403
 - [ ] ❌ Reject hypothesis
 
 **Rationale:**
 
-The root-cause analysis reveals that all three failures occur at the **construction layer**, not the candidate generation layer. The original RP-403 hypothesis (insufficient path diversity) is not supported by the evidence.
+RP-403 (Adaptive Candidate Generation and Diversity Recovery) should not proceed in its current form because the evidence indicates that **construction robustness is the gating factor** for all three investigated failures. Candidate generation remains a downstream hypothesis that should be revisited only after construction consistently produces feasible base solutions. The immediate research priority is therefore construction robustness, with candidate diversity **deferred rather than rejected**.
 
-However, the analysis also reveals a specific, addressable problem: **construction strategy selection**. RP-401C's nearest-neighbour greedy (without EDF sorting) produces feasible assignments for setA-12 and setA-08 that RP-401D and RP-402 do not. The correct next step is not to generate K candidate paths per demand, but to:
+This distinction is important:
+- **Rejected as the immediate solution:** Yes. The evidence shows that candidate generation is not the first bottleneck. RP-402 almost never reaches the stage where candidate diversity can matter — adaptation never executes for setA-12 and setA-17 because the base construction is already infeasible.
+- **Rejected as a research topic:** No. Once construction robustness is established, candidate diversity may become the next bottleneck. That hypothesis remains open.
 
-1. **Preserve the best construction across RP-401C and RP-401D** — run both constructions and select the feasible one (or the one with lower objective).
-2. **Fix the RP-402 base construction** — RP-402 should inherit the better of RP-401C and RP-401D as its base, not always use RP-401D's EDF-ordered construction.
-3. **Investigate setA-17's construction failure** — 2000 demands on 300 nodes with budget=1 may require a fundamentally different construction strategy (e.g., demand clustering, capacity-aware routing).
+**RP-403 redefined scope — "Construction Strategy Evaluation and Selection":**
 
-**RP-403 redefined scope:**
+This is framed as a research experiment, not a permanent architecture decision. The experiment answers:
 
-RP-403 should be redefined as **"Construction Strategy Selection and Fallback"** rather than "Adaptive Candidate Generation and Diversity Recovery":
+> *Does selecting between two construction strategies (RP-401C nearest-neighbour greedy and RP-401D EDF-sorted greedy) eliminate the observed regressions?*
 
-- Run RP-401C and RP-401D constructions in parallel
+Approach:
+- Run RP-401C and RP-401D constructions in parallel for each instance
 - Select the construction with lower objective (or the feasible one if only one is feasible)
 - Use the selected construction as the base for RP-402's budget-aware adaptation
 - Measure: recovery of setA-12 and setA-08, no regression on the 18 currently finite instances
 
-This is a targeted, evidence-driven redefinition. It addresses the actual failure mode (construction ordering) rather than the hypothesised failure mode (candidate diversity).
+If the answer is yes, the programme can later decide whether to retain both constructions, automatically choose between them, or merge their strengths into a single robust construction. The experiment is diagnostic first; architecture decisions follow from its results.
+
+**One remaining open assumption:** The evidence demonstrates that different construction strategies produce different feasibility outcomes. It does not yet isolate whether EDF ordering specifically is the cause of the divergence, or whether other implementation differences between RP-401C and RP-401D are responsible. This assumption should be explicitly marked as a hypothesis to be tested in RP-403 (redefined).
 
 ---
 
@@ -313,3 +318,4 @@ This is a targeted, evidence-driven redefinition. It addresses the actual failur
 |---------|------|--------|
 | 0.1 | 2026-08-03 | Skeleton created. Investigation structure defined. All three instances (setA-12, setA-17, setA-08) scoped. Termination gate decision deferred pending diagnostic runs. |
 | 1.0 | 2026-08-03 | Phase 1A mining complete. All three instances analysed using existing solution JSONs (scripts/rp403_json_mining.py). Key finding: all failures occur at the construction layer, not the candidate generation layer. RP-403 redefined as "Construction Strategy Selection and Fallback". Termination gate decision: 🔄 Redefine. |
+| 1.1 | 2026-08-03 | Reasoning tightened per reviewer. (1) Weakened "candidate generation is not the answer" to "candidate generation is not the first bottleneck" — deferred, not rejected. (2) EDF ordering claim softened to "construction strategy differences (including, but not yet proven to be limited to, demand ordering)". (3) Termination gate decision wording revised to distinguish rejected-as-immediate-solution from rejected-as-research-topic. (4) RP-403 redesign renamed "Construction Strategy Evaluation and Selection" and framed as a diagnostic experiment, not a permanent architecture. |
