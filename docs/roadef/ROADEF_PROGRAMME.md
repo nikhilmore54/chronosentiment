@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.12
+**Version:** 1.13
 **Date:** 2026-08-03
 
 ---
@@ -38,6 +38,41 @@ This programme is enabled by the completion of RR1–RR4:
 | RR4 Governance Baseline | 98 governed artefacts; lifecycle decisions recorded |
 
 The repository structure will not change underneath this programme. Research can proceed without governance disruption.
+
+### 1.2 Programme Scientific Objectives
+
+Beyond producing a competitive ROADEF submission, the programme seeks to advance reusable optimisation capabilities within Coralys. The intended scientific contributions are:
+
+1. Construction methods for ECMP-aware segment routing (RP-401).
+2. Budget-aware multi-period adaptation (RP-402).
+3. Construction portfolio selection (RP-403).
+4. Large neighbourhood search for adaptive routing (RP-404).
+5. Hyper-heuristic operator selection (RP-405).
+6. Cross-domain optimisation capabilities reusable beyond network routing (RP-403 onwards).
+
+Each contribution is validated on the ROADEF benchmark and promoted into the Coralys platform as a reusable capability. The programme follows the principle: identify the dominant bottleneck, solve it, promote the capability, identify the next bottleneck.
+
+### 1.3 Programme Research Cycle
+
+The programme follows a repeating evidence-driven cycle. Each iteration produces one promoted capability and identifies the next dominant bottleneck:
+
+```
+Research Question
+        ↓
+Hypothesis
+        ↓
+Implementation
+        ↓
+Benchmark Evidence
+        ↓
+Capability Assessment
+        ↓
+Platform Promotion
+        ↓
+Next Research Question
+```
+
+This cycle is enforced by the standard RP lifecycle (§4.1). No RP may proceed to implementation without a stated hypothesis. No RP may be declared complete without a termination gate decision. No capability may advance without a filed evidence record.
 
 ---
 
@@ -341,6 +376,8 @@ This is a structural insight into the problem formulation. It establishes the co
 
 **Gate:** ✅ Cleared. RP-403 Hypothesis Confirmed (2026-08-03). Use the validated RP-403 construction portfolio (commit `e9296dfa`) as the deterministic baseline. Primary target: setA-17 (the single remaining infeasible instance across all deterministic construction strategies). The benchmark also reveals strong initialization sensitivity — 14 objective regressions on previously feasible instances — suggesting that escaping local optima via LNS may yield substantial improvements beyond the deterministic baseline.
 
+**Scientific lineage:** RP-403 demonstrated that deterministic construction strongly influences downstream optimisation and identified initialization sensitivity as the principal remaining limitation (14 objective regressions on previously feasible instances; setA-17 unrecovered by all deterministic strategies). RP-404 therefore investigates whether neighbourhood search can escape these construction-induced local optima.
+
 **Question:** Can LNS with destroy/repair operators improve on the deterministic baseline?
 
 **Hypothesis:** Destroying and repairing subsets of demand assignments will escape local optima that the greedy solver gets stuck in.
@@ -358,7 +395,7 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ### RP-405 — Hyper-Heuristic Operator Selection *(conditional on RP-404 evidence)*
 
-**Gate:** Proceed only if RP-404 evidence shows that operator selection is the dominant bottleneck in LNS performance.
+**Gate:** Proceed only if RP-404 identifies hyper-heuristic operator selection as the dominant remaining limitation.
 
 **Question:** Can adaptive operator selection (using Coralys memory structures) improve LNS performance?
 
@@ -432,10 +469,12 @@ Competition Submission
 
 ### 5.1 Promotion Criteria
 
-A Research binary becomes a Candidate when:
-- It beats Baseline v1.0 on ≥ 15 of 20 Dataset A instances
-- It produces no regressions on instances where the baseline has finite objective
-- Runtime is documented and within acceptable bounds
+A Research binary becomes a Candidate when its approved benchmark evidence record demonstrates:
+- Net improvement over the current best result on Dataset A (more finite solutions, lower aggregate objective, or both)
+- No feasibility regressions on instances where the current best has a finite objective
+- Runtime documented and reproducible from a clean build
+
+Promotion is based on the approved benchmark evidence record rather than a fixed numerical threshold. The termination gate mechanism (§4.1) already enforces evidence-driven promotion; a separate numerical threshold would be redundant and could exclude a solver with fewer improvements but critical feasibility recoveries.
 
 A Candidate becomes the Competition Submission when:
 - It beats the previous Competition Submission on the full instance set
@@ -471,7 +510,7 @@ Each platform capability is tracked independently against a six-level scale. Pro
 |-------|-------------|---------------|
 | C0 | Concept proven | Mathematical formulation documented; theoretical basis established |
 | C1 | Unit tested | Implementation exists; unit tests pass; no benchmark validation yet |
-| C2 | Benchmark validated | Measurable improvement demonstrated on a recognised benchmark instance set with reproducible evidence |
+| C2 | Benchmark validated | Reproducible benchmark evidence demonstrating that the capability provides measurable benefit on a recognised instance set |
 | C3 | Cross-domain validated | Same capability succeeds in ≥ 2 independent problem domains with separate evidence records |
 | C4 | Production validated | Deployed in a production or near-production context; performance documented |
 | C5 | Industry-proven | Externally validated through competition result, peer-reviewed publication, or customer deployment |
@@ -501,7 +540,7 @@ The authoritative capability register is maintained at [`docs/governance/CAPABIL
 | LNS for routing | C0 | RP-404 target |
 | Hyper-heuristic operator selection | C1 | RP-405 target (cross-domain: CVRP + ROADEF) |
 
-### 6.4 ROADEF Capability Contributions
+### 6.4 Expected Platform Capability Contributions
 
 | ROADEF Result | Coralys Capability | Target Level |
 |---------------|--------------------|-------------|
@@ -516,7 +555,7 @@ Evidence that generalises beyond ROADEF should be promoted to the platform. Evid
 
 ---
 
-## 7. Evidence Feedback to Coralys Platform
+## 7. Evidence Promotion to Coralys Platform
 
 Each research programme produces platform-level evidence. ROADEF evidence targets:
 
@@ -543,16 +582,17 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0 | 2026-08-02 | Initial programme document. Baseline v1.0 established from `campaign_engine` (commit `ec4d3821`). |
-| 1.1 | 2026-08-02 | Added RP-000 (Budget Semantics Validation) as completed foundational finding. Added standard evidence record schema. Reordered experimental programme: RP-403 is now Multi-Path Candidate Generation (deterministic); MOGA moved to RP-406 after LNS (RP-404) and hyper-heuristic (RP-405). Rationale: metaheuristics perform better when decoder and neighbourhoods are already strong. |
-| 1.2 | 2026-08-02 | Added four-stage RP-401 structure (401A–401D): measurement before optimisation. Added §6 Capability Maturity Model (C0–C5) with current capability register and ROADEF contribution targets. Renumbered §6 Evidence Feedback to §7, §7 Programme Governance to §8. |
-| 1.3 | 2026-08-02 | Added CMM exit criteria to §6.2 (evidence-driven promotion gates). Added cross-reference to CAPABILITY_REGISTER.md. Created docs/governance/CAPABILITY_REGISTER.md (GOV-CR-001 v1.0) as platform-wide governance artefact tracking 14 capabilities across Core Optimisation, Planning and Search, Routing, and Domain Adapter categories. |
-| 1.4 | 2026-08-02 | RP-401 frozen. §4 RP-401 entry replaced with frozen summary (all four stages, scientific conclusion, capability promotions). §6.3 capability snapshot updated to v1.3: "ECMP-aware routing" split into three distinct capabilities — ECMP-aware incremental load estimation (C2), oracle-guided constructive routing (C2, new), oracle-guided candidate selection (C1). CAPABILITY_REGISTER.md updated to v1.2 with same split. RP401_FINAL_REPORT.md updated to v1.3 with strengthened scientific conclusions, RP-401D renamed, §5 comparison table, timeout caveat, §10 Scientific Contribution. |
-| 1.5 | 2026-08-02 | Conditional evidence gates added to RP-403 through RP-407 — each programme item now requires evidence from the preceding RP before proceeding, replacing the old priority-number labels. RP-402 entry sharpened: target instances named (setA-02, 07, 09, 12, 17), "one hypothesis, one capability, one evidence record" discipline recorded. Cross-reference to CS-S-005 Programme Horizon Strategy (three-horizon model, RP-408 deferral). |
-| 1.6 | 2026-08-03 | RP-402 frozen. §4 RP-402 entry replaced with frozen summary (15/20 improved, 18/20 finite, 3/5 targets recovered, capabilities promoted). RP-403 reframed as "Adaptive Candidate Generation and Diversity Recovery" — evidence-driven framing from RP-402 results, pre-coding root-cause analysis required for setA-12 and setA-17. §6.3 capability snapshot updated to v1.4: budget-aware transition planning and budget-constrained re-routing both promoted to C2. CAPABILITY_REGISTER.md updated to v1.3 with same promotions. RP402_FINAL_REPORT.md v1.0 filed. |
-| 1.7 | 2026-08-03 | Explicit termination gate added to RP-403. RP-403 shall only proceed to implementation if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. If setA-17 is confirmed budget-limited or setA-12 shows no structural path-diversity gap, RP-403 records a negative result and is archived or redefined before any binary is written. |
-| 1.8 | 2026-08-03 | Standard RP lifecycle template formalised as §4.1. Every future RP must follow the eight-stage lifecycle (Research Question → Hypothesis → Implementation → Benchmark → Capability Assessment → Root-Cause Analysis → Termination Gate → Next RP) and record one of four outcomes (✅ promoted, 🔄 refined, 📦 archived, ❌ rejected) before the next RP may begin. Template applies to ROADEF, CVRP, UltraCrew, and all future Coralys research programmes. |
-| 1.9 | 2026-08-03 | RP-403 redefined following Phase 1A root-cause analysis (RP403_ROOT_CAUSE_ANALYSIS.md v1.1). Original hypothesis (insufficient path diversity) not supported: all three failures (setA-12, setA-17, setA-08) occur at the construction layer; RP-402 adaptation never fires for setA-12/17 (adapted=0, total_cost=0). RP-403 renamed "Construction Strategy Evaluation and Selection" — diagnostic experiment running RP-401C and RP-401D constructions in parallel and selecting the better result. Candidate generation deferred (not rejected): remains a downstream hypothesis to be revisited after construction robustness is established. Expected binary renamed rp403_construction_portfolio.rs. |
-| 1.10 | 2026-08-03 | RP-403 benchmark completed (20/20 instances). Construction portfolio increased finite solutions from 18/20 to 19/20 and recovered setA-08. setA-12 classified as CONFOUNDED due to behavioural non-equivalence between standalone and embedded RP-401C implementations. Added Validation Task V1 — RP-401C Behavioural Equivalence as a blocking prerequisite for RP-403 termination-gate closure and progression to RP-404. |
-| 1.11 | 2026-08-03 | Governance refinements (reviewer feedback). RP-404 gate updated to reference RP-403 Validation Task V1 — RP-401C Behavioural Equivalence closure explicitly. Capability snapshot updated: "Construction portfolio selection" added at C1 (benchmark executed, validation pending); "Multi-path candidate generation" reclassified as deferred research hypothesis. §6.4 and §7 evidence tables updated to reflect RP-403's actual contribution (construction portfolio selection, not multi-path generation). Capability snapshot version bumped to v1.5. Amendment log 1.10 rewritten in concise style. |
-| 1.12 | 2026-08-03 | RP-403 closed: Hypothesis Confirmed. RP-403 section replaced with corrected 20/20 benchmark results (commit `e9296dfa`): 19/20 finite, setA-08 RECOVERED, setA-12 RECOVERED, setA-17 still infeasible. Validation Task V1 subsection closed (400/400 waypoint equivalence confirmed; root cause: multiplicative vs additive penalty). RP-404 gate cleared and updated with coupled-system insight (initialization sensitivity; 14 objective regressions motivate LNS). Capability snapshot bumped to v1.6: construction portfolio selection promoted C1 → C2. |
+| 1.0 | 2026-08-02 | Initial programme document. Baseline v1.0 established from `campaign_engine` (commit `ec4d3821`): 11/20 finite solutions, shared-path strategy, ECMP mismatch identified as primary weakness. |
+| 1.1 | 2026-08-02 | RP-000 (Budget Semantics Validation) added as completed foundational finding: shared SR paths guarantee zero budget cost. Standard evidence record schema added. RP sequence reordered: MOGA deferred to RP-406 after LNS and hyper-heuristic (metaheuristics perform better when decoder and neighbourhoods are already strong). |
+| 1.2 | 2026-08-02 | Four-stage RP-401 structure added (401A–401D): measurement before optimisation. §6 Capability Maturity Model (C0–C5) added with current capability register and ROADEF contribution targets. |
+| 1.3 | 2026-08-02 | CMM exit criteria added to §6.2 (evidence-driven promotion gates). CAPABILITY_REGISTER.md (GOV-CR-001 v1.0) created as platform-wide governance artefact tracking 14 capabilities. |
+| 1.4 | 2026-08-02 | RP-401 frozen: all four stages complete; ECMP-aware load estimation and oracle-guided constructive routing both promoted to C2; 13/20 improved, 0 regressed. Capability snapshot v1.3: "ECMP-aware routing" split into three distinct capabilities. |
+| 1.5 | 2026-08-02 | Conditional evidence gates added to RP-403 through RP-407: each RP now requires evidence from the preceding RP before proceeding. RP-402 entry sharpened: target instances named (setA-02, 07, 09, 12, 17). |
+| 1.6 | 2026-08-03 | RP-402 frozen: 15/20 improved, 18/20 finite, 3/5 targets recovered; budget-aware transition planning and budget-constrained re-routing promoted to C2. RP-403 reframed as "Adaptive Candidate Generation and Diversity Recovery" with pre-coding root-cause analysis required. |
+| 1.7 | 2026-08-03 | Explicit termination gate added to RP-403: proceed to implementation only if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. |
+| 1.8 | 2026-08-03 | Standard RP lifecycle template formalised as §4.1: eight-stage lifecycle with four termination outcomes (✅ promoted, 🔄 refined, 📦 archived, ❌ rejected). Template applies to all future Coralys research programmes. |
+| 1.9 | 2026-08-03 | RP-403 redefined following Phase 1A root-cause analysis: original path-diversity hypothesis not supported; all three failures occur at the construction layer (RP-402 adaptation never fires for setA-12/17). RP-403 renamed "Construction Strategy Evaluation and Selection"; binary renamed `rp403_construction_portfolio.rs`. |
+| 1.10 | 2026-08-03 | RP-403 initial benchmark completed (20/20 instances): 19/20 finite, setA-08 RECOVERED. setA-12 classified CONFOUNDED (embedded vs standalone RP-401C divergence). Validation Task V1 added as blocking prerequisite for RP-403 termination-gate closure. |
+| 1.11 | 2026-08-03 | Governance refinements: RP-404 gate updated to reference Validation Task V1 closure explicitly; capability snapshot v1.5 (construction portfolio selection at C1, validation pending); §6.4 and §7 evidence tables updated to reflect RP-403's actual contribution. |
+| 1.12 | 2026-08-03 | RP-403 closed following corrected benchmark validation (commit `e9296dfa`): 19/20 finite, setA-08 RECOVERED, setA-12 RECOVERED (400/400 waypoint equivalence confirmed; root cause: multiplicative vs additive penalty). Validation Task V1 closed. RP-404 gate cleared with initialization-sensitivity motivation. Capability snapshot v1.6: construction portfolio selection promoted C1 → C2. |
+| 1.13 | 2026-08-03 | Programme-level refinements: §1.2 Scientific Objectives added; RP-404 scientific lineage from RP-403 stated explicitly; C2 exit criteria sharpened to "reproducible benchmark evidence demonstrating measurable benefit"; promotion criteria made evidence-driven (fixed numerical threshold removed); RP-405 gate reframed as bottleneck-driven; §6.4 renamed to Expected Platform Capability Contributions; §7 renamed to Evidence Promotion to Coralys Platform; amendment log entries enriched with substantive summaries. |
