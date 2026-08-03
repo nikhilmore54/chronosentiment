@@ -1,6 +1,6 @@
 # RP-404 Benchmark Report: Large Neighbourhood Search Framework
 
-**Version:** 1.2 FINAL
+**Version:** 1.3 FINAL
 **Date:** 2026-08-03
 **Status:** COMPLETE — four operator conditions evaluated (generic + first problem-specific)
 
@@ -81,26 +81,26 @@ seeded pseudo-random number generator.
 
 | Instance | LNS obj | RP-403 obj | Δ | Improved | Runtime (s) |
 |---|---|---|---|---|---|
-| setA-01 | 191.1679 | 195.8826 | −4.7147 | yes | 0.8 |
-| setA-02 | 191.5000 | 191.5000 | = | no | 1.8 |
-| setA-03 | 191.0138 | 191.5000 | −0.4862 | yes | 1.4 |
-| setA-04 | 191.3624 | 191.5000 | −0.1376 | yes | 13.7 |
-| setA-05 | 191.5000 | 191.5000 | = | no | 17.3 |
-| setA-06 | 191.5000 | 191.5000 | = | no | 92.3 |
-| setA-07 | 191.6856 | 191.7970 | −0.0114 | yes | 121.2 |
-| setA-08 | 191.5000 | 191.5000 | = | no | 67.9 |
-| setA-09 | 191.5000 | 191.5000 | = | no | 57.4 |
-| setA-10 | 191.5000 | 191.5000 | = | no | 121.3 |
-| setA-11 | 99.3105 | 99.3105 | = | no | 121.7 |
-| setA-12 | 26.1091 | 26.1166 | −0.0076 | yes | 121.1 |
-| setA-13 | 56.4934 | 56.4934 | = | no | 123.3 |
-| setA-14 | 75.7198 | 75.7198 | = | no | 122.3 |
-| setA-15 | 208.1709 | 208.1804 | −0.0095 | yes | 122.1 |
-| setA-16 | 3355568.5541 | 3355568.5541 | = | no | 128.3 |
-| setA-17 | inf | inf | both inf | no | 124.2 |
-| setA-18 | 799167.0784 | 799167.0784 | = | no | 125.1 |
-| setA-19 | 5592513.4524 | 5592513.4524 | = | no | 127.9 |
-| setA-20 | 449.5543 | 449.5543 | = | no | 132.9 |
+| setA-01 | 48.0584 | 52.7731 | −4.7147 | yes | 0.8 |
+| setA-02 | 54.0907 | 54.0907 | = | no | 1.6 |
+| setA-03 | 95.9979 | 96.4842 | −0.4862 | yes | 1.3 |
+| setA-04 | 58.9851 | 59.1228 | −0.1376 | yes | 14.7 |
+| setA-05 | 13.3236 | 13.3236 | = | no | 18.6 |
+| setA-06 | 50.1002 | 50.1002 | = | no | 94.0 |
+| setA-07 | 191.7855 | 191.7970 | −0.0114 | yes | 121.2 |
+| setA-08 | 45.6696 | 45.6696 | = | no | 65.2 |
+| setA-09 | 153.5330 | 153.5330 | = | no | 54.6 |
+| setA-10 | 68.7706 | 68.7706 | = | no | 121.5 |
+| setA-11 | 99.3105 | 99.3105 | = | no | 121.3 |
+| setA-12 | 26.1091 | 26.1166 | −0.0076 | yes | 121.3 |
+| setA-13 | 56.4934 | 56.4934 | = | no | 124.3 |
+| setA-14 | 75.7198 | 75.7198 | = | no | 123.9 |
+| setA-15 | 208.1739 | 208.1804 | −0.0065 | yes | 125.0 |
+| setA-16 | 3355568.5541 | 3355568.5541 | = | no | 133.5 |
+| setA-17 | inf | inf | both inf | no | 129.5 |
+| setA-18 | 799167.0784 | 799167.0784 | = | no | 131.2 |
+| setA-19 | 5592513.4524 | 5592513.4524 | = | no | 136.3 |
+| setA-20 | 449.5543 | 449.5543 | = | no | 144.4 |
 
 ### 2.2 Summary Statistics
 
@@ -109,7 +109,7 @@ seeded pseudo-random number generator.
 | Improved | 6 / 20 (30%) |
 | Unchanged | 14 / 20 (70%) |
 | Regressed | 0 / 20 (0%) |
-| Total Δ vs RP-403 | −5.3671 |
+| Total Δ vs RP-403 | −5.3641 |
 | Finite solutions | 19 / 20 |
 | setA-17 recovered | No |
 
@@ -182,13 +182,13 @@ Selects the K demands with the highest total saturation exposure (cost contribut
 
 | Operator | Improved | Regressed | Unchanged | Total Δ vs RP-403 | Finite |
 |---|---|---|---|---|---|
-| random | **6** | 0 | 14 | **−5.3671** | 19/20 |
+| random | **6** | 0 | 14 | **−5.3641** | 19/20 |
 | congestion | 2 | 0 | 18 | −0.0949 | 19/20 |
 | highcost | 4 | 0 | 16 | −0.6463 | 19/20 |
 
 **Key observations:**
 
-1. Random destroy outperforms both targeted operators on total improvement (−5.3671 vs −0.6463 vs −0.0949). This is driven almost entirely by the large setA-01 improvement (−4.7147) which only random achieves.
+1. Random destroy outperforms both targeted operators on total improvement (−5.3641 vs −0.6463 vs −0.0949). This is driven almost entirely by the large setA-01 improvement (−4.7147) which only random achieves.
 
 2. Highcost outperforms congestion on both improvement count (4 vs 2) and total Δ (−0.6463 vs −0.0949).
 
@@ -263,14 +263,14 @@ than diffusing it across many congested nodes.
 
 | Operator | Improved | Regressed | Unchanged | Total Δ vs RP-403 | Finite | Unique improvements |
 |---|---|---|---|---|---|---|
-| random (RP-404A) | **6** | 0 | 14 | **−5.3671** | 19/20 | setA-01, setA-07, setA-12, setA-15 |
+| random (RP-404A) | **6** | 0 | 14 | **−5.3641** | 19/20 | setA-01, setA-07, setA-12, setA-15 |
 | highcost (RP-404B) | 4 | 0 | 16 | −0.6463 | 19/20 | setA-12, setA-15 |
 | bottleneck-link (RP-404C) | 2 | 0 | 18 | −0.1550 | 19/20 | none |
 | congestion (RP-404B) | 2 | 0 | 18 | −0.0949 | 19/20 | none |
 
 **Key observations:**
 
-1. Random destroy remains the strongest operator by a large margin (Δ=−5.3671 vs −0.6463 vs −0.1550 vs −0.0949). The gap is nearly an order of magnitude between random and the best targeted operator.
+1. Random destroy remains the strongest operator by a large margin (Δ=−5.3641 vs −0.6463 vs −0.1550 vs −0.0949). The gap is nearly an order of magnitude between random and the best targeted operator.
 
 2. The ordering is: random > highcost > bottleneck-link > congestion.
 
@@ -313,7 +313,7 @@ not destabilise feasible solutions during search.
 
 ### 5.2 Random Destroy Dominates on Total Improvement
 
-The random operator achieves the largest total improvement (−5.3671), driven
+The random operator achieves the largest total improvement (−5.3641), driven
 primarily by setA-01 (−4.7147). Neither targeted operator finds this
 improvement. We interpret this as evidence that the setA-01 improvement
 requires a neighbourhood that is not biased toward congested or high-cost
@@ -350,27 +350,30 @@ remaining limitation. The bottleneck-link operator is the first routing-aware
 neighbourhood tested; it finds no unique improvements and does not recover
 setA-17, confirming that link-saturation targeting alone is insufficient.
 
-### 5.6 Bottleneck-Link Is Surprisingly Weak
+### 5.6 Bottleneck-Link Targeting Does Not Outperform Simpler Neighbourhoods
 
 The bottleneck-link operator was designed to directly target the structural
 cause of infeasibility by removing demands from the most saturated link. The
 result is negative: it improves only setA-03 and setA-04 (the same two
 instances as congestion), finds no unique improvements, and does not recover
-setA-17. We interpret this as evidence that link bottlenecks alone are not the
-principal cause of poor solutions. The best improving moves are not concentrated
-around the demands traversing the most saturated link — they require a
-neighbourhood that is not biased toward any single structural feature.
+setA-17. The benchmark directly tested the hypothesis that the principal
+remaining issue was concentrated around the most saturated links; the evidence
+does not support that hypothesis. The best improving moves are not concentrated
+around the demands traversing the most saturated link.
 
-### 5.7 setA-17 Remains Unrecovered — Strong Negative Result
+### 5.7 setA-17 Remains Unrecovered
 
 setA-17 remains infeasible after 50 LNS iterations with all four destroy
-operators (random, congestion, highcost, bottleneck-link). This is now a strong
-negative result: four qualitatively different neighbourhood definitions, 200
-total LNS iterations on setA-17, zero recoveries. The evidence supports
-concluding that the remaining limitation is not addressable by destroy-and-repair
-LNS with the current repair operator (RP-401C greedy). The bottleneck is more
-likely in the repair operator's inability to find a feasible routing from the
-destroyed state, rather than in the choice of which demands to destroy.
+operators (random, congestion, highcost, bottleneck-link): four qualitatively
+different neighbourhood definitions, 200 total LNS iterations on setA-17, zero
+recoveries. None of the four destroy operators evaluated — including one
+routing-aware neighbourhood — materially changes the remaining feasibility
+boundary or recovers setA-17. This suggests that further improvements are more
+likely to require either more problem-specific neighbourhoods or stronger repair
+mechanisms. The consistent pattern of early acceptance followed by plateau is
+consistent with the repair operator (RP-401C greedy) reconstructing essentially
+the same local basin after destruction, though this interpretation requires
+further investigation.
 
 ---
 
@@ -393,15 +396,24 @@ overcome the principal remaining limitation.
   problem-specific neighbourhood) finds no unique improvements and does not
   outperform random destroy. The principal remaining limitation is not overcome
   by any tested neighbourhood.
-- **Operator finding:** Random destroy dominates on total improvement (Δ=−5.3671
-  vs −0.6463 vs −0.1550 vs −0.0949). Ordering: random > highcost >
-  bottleneck-link > congestion. Congestion is fully dominated. Bottleneck-link
-  is surprisingly weak — link-saturation targeting does not identify the
-  demands whose removal enables improvement.
-- **Conclusion:** The evidence now supports concluding that the remaining
-  limitation is not in the destroy operator design. The bottleneck is more
-  likely in the repair operator (RP-401C greedy) or in the problem structure
-  itself (setA-17 may require a fundamentally different routing approach).
+- **Operator finding:** Random destroy dominates on total improvement (Δ=−5.3641
+  vs −0.6463 vs −0.1550 vs −0.0949). The ordering random > highcost >
+  bottleneck-link > congestion remained stable across the complete Dataset A
+  benchmark. Congestion is fully dominated. Bottleneck-link targeting does not
+  outperform simpler operators — link-saturation targeting does not identify
+  the demands whose removal enables improvement.
+- **Repair operator hypothesis:** The consistent pattern of early acceptance
+  followed by plateau across all four operators suggests that the repair
+  operator (RP-401C greedy) may limit exploration after destruction by
+  reconstructing essentially the same local basin. This interpretation is
+  consistent with the evidence but requires further investigation.
+- **Conclusion:** None of the four destroy operators evaluated — including one
+  routing-aware neighbourhood — materially changes the remaining feasibility
+  boundary or recovers setA-17. This is consistent with the hypothesis that
+  further improvements require either more problem-specific neighbourhoods or
+  stronger repair mechanisms. RP-404 has evolved into a controlled comparative
+  study of neighbourhood selection; the repair-operator and problem-structure
+  hypotheses remain untested in RP-404.
 
 ---
 
@@ -441,3 +453,4 @@ to the next research question.
 | 1.0 | 2026-08-03 | Initial draft with RP-404A complete results; RP-404B sections pending |
 | 1.1 | 2026-08-03 | RP-404B complete results added (congestion: 2 improved Δ=−0.0949; highcost: 4 improved Δ=−0.6463); three-way comparison; analysis updated to reflect generic vs problem-specific neighbourhood distinction; termination gate set to ⏳ Continues (problem-specific neighbourhoods not yet evaluated) |
 | 1.2 | 2026-08-03 | RP-404C complete results added (bottleneck-link: 2 improved Δ=−0.1550, no unique improvements, setA-17 still inf); §1.6 operator table updated; §4 RP-404C section added; §4.4 four-way comparison table; §5.1 count updated to 80 evaluations; §5.5–5.7 updated; §6 hypothesis updated; §7 termination gate updated; §5 programme progression table updated |
+| 1.3 | 2026-08-03 | Scientific corrections per reviewer: §2.1 RP-404A per-instance table corrected (placeholder values replaced with actual benchmark output); §2.2 total Δ corrected to −5.3641; §5.6 heading softened (removed "surprisingly"); §5.7 conclusion softened (removed definitive causal claim, added repair-operator hypothesis as credible but untested); §6 operator finding updated (ordering stability noted, "surprisingly weak" removed); §6 repair operator hypothesis bullet added; §6 conclusion reframed as consistent-with-hypothesis rather than confirmed; all Δ=−5.3671 references updated to −5.3641 |
