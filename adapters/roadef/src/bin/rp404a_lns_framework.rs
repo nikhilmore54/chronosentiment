@@ -851,7 +851,13 @@ fn main() -> anyhow::Result<()> {
             iters_improved, elapsed_ms);
 
         // Step 6: Write solution file
-        let out_path = format!("{}/setA-{}-srpaths-rp404a.json", set_dir, inst);
+        // Output suffix encodes the destroy operator so RP-404B runs don't overwrite RP-404A.
+        let out_suffix = match cfg.destroy {
+            DestroyOperator::Random     => "rp404a",
+            DestroyOperator::Congestion => "rp404b-congestion",
+            DestroyOperator::HighCost   => "rp404b-highcost",
+        };
+        let out_path = format!("{}/setA-{}-srpaths-{}.json", set_dir, inst, out_suffix);
         let sol_json = serde_json::json!({
             "srpaths": output_srpaths.iter().map(|p| serde_json::json!({
                 "d": p.d,
@@ -870,7 +876,12 @@ fn main() -> anyhow::Result<()> {
     println!("Finite solutions: {}/20", finite_count);
     println!("Destroy operator: {}  k={}  iters={}  seed={}",
         destroy_name, cfg.k, cfg.iters, cfg.seed);
-    println!("Solution files written to {}/setA-*-srpaths-rp404a.json", set_dir);
+    let out_suffix = match cfg.destroy {
+        DestroyOperator::Random     => "rp404a",
+        DestroyOperator::Congestion => "rp404b-congestion",
+        DestroyOperator::HighCost   => "rp404b-highcost",
+    };
+    println!("Solution files written to {}/setA-*-srpaths-{}.json", set_dir, out_suffix);
 
     Ok(())
 }
