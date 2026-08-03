@@ -21,6 +21,7 @@
 - Informs: All future sprint planning, platform promotion decisions, EP-002 scope
 - Informed by: `EP-001_MILESTONE.md` (Phase 1 completion state)
 - Informs: `CS-S-002_UltraCrew_Product_Strategy_v1.0.md`, `CS-S-003_ChronoSentiment_Enterprise_Product_Strategy_v1.0.md`, `CS-S-004_ChronoSentiment_Personal_Product_Strategy_v1.0.md`
+- Applied by: [`CS-S-005_Programme_Horizon_Strategy.md`](CS-S-005_Programme_Horizon_Strategy.md) — three-horizon model for UltraCrew MSP, ROADEF, and Coralys Platform workstreams (2026-08-02)
 
 ---
 
