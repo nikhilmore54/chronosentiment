@@ -578,7 +578,7 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | Solver Engineer | Implements RP binaries, maintains `campaign_engine` |
 | Platform Engineer | Integrates generalised evidence into Coralys platform |
 
-### 7.1 Amendment Log
+### 8.1 Amendment Log
 
 | Version | Date | Change |
 |---------|------|--------|
