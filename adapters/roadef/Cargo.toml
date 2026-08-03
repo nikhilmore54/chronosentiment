@@ -53,3 +53,7 @@ path = "src/bin/rp403_construction_portfolio.rs"
 [[bin]]
 name = "rp403v1_validate_rp401c"
 path = "src/bin/rp403v1_validate_rp401c.rs"
+
+[[bin]]
+name = "rp404a_lns_framework"
+path = "src/bin/rp404a_lns_framework.rs"
