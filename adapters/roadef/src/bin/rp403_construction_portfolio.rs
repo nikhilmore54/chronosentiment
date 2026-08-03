@@ -122,11 +122,91 @@ fn path_to_waypoints(full_path: &[u64], max_segments: usize) -> Vec<u64> {
 }
 
 // ---------------------------------------------------------------------------
+// Load-aware Dijkstra with ADDITIVE penalty — matches standalone binary exactly.
+//
+// Corrected in Validation Task V1 Commit C (2026-08-03).
+// Original used multiplicative metric multiplier (metric * mult).
+// Corrected to use additive penalty (metric + penalty), matching
+// rp401c_ecmp_construction.rs load_aware_path_ecmp() exactly.
+//
+// Penalty formula (load_penalty = 100.0):
+//   sat >= 1.0  → penalty = 1e9
+//   sat >  0.8  → penalty = load_penalty * (1/(1-sat) - 1) * 10.0
+//   else        → penalty = load_penalty * sat
+// ---------------------------------------------------------------------------
+fn load_aware_path_ecmp_rp401c(
+    net: &Network,
+    src: u64,
+    dst: u64,
+    disabled_links: &HashSet<u64>,
+    ecmp_saturation: &HashMap<u64, f64>,
+    load_penalty: f64,
+) -> Option<Vec<u64>> {
+    if src == dst {
+        return Some(vec![src]);
+    }
+    let mut adj: HashMap<u64, Vec<(u64, f64)>> = HashMap::new();
+    for link in &net.links {
+        if disabled_links.contains(&link.id) {
+            continue;
+        }
+        let sat = ecmp_saturation.get(&link.id).copied().unwrap_or(0.0);
+        let penalty = if sat >= 1.0 {
+            1e9
+        } else if sat > 0.8 {
+            load_penalty * (1.0 / (1.0 - sat) - 1.0) * 10.0
+        } else {
+            load_penalty * sat
+        };
+        let effective_metric = link.metric + penalty;
+        adj.entry(link.from).or_default().push((link.to, effective_metric));
+    }
+    let mut dist: HashMap<u64, u64> = HashMap::new();
+    let mut prev: HashMap<u64, u64> = HashMap::new();
+    let mut heap: BinaryHeap<(Reverse<u64>, u64)> = BinaryHeap::new();
+    dist.insert(src, 0);
+    heap.push((Reverse(0), src));
+    while let Some((Reverse(cost), node)) = heap.pop() {
+        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost {
+            continue;
+        }
+        if node == dst {
+            break;
+        }
+        if let Some(neighbors) = adj.get(&node) {
+            for &(next, em) in neighbors {
+                let new_cost = cost + (em * 1000.0) as u64;
+                if dist.get(&next).copied().unwrap_or(u64::MAX) > new_cost {
+                    dist.insert(next, new_cost);
+                    prev.insert(next, node);
+                    heap.push((Reverse(new_cost), next));
+                }
+            }
+        }
+    }
+    if !dist.contains_key(&dst) {
+        return None;
+    }
+    let mut path = vec![dst];
+    let mut cur = dst;
+    while cur != src {
+        if let Some(&p) = prev.get(&cur) {
+            path.push(p);
+            cur = p;
+        } else {
+            return None;
+        }
+    }
+    path.reverse();
+    Some(path)
+}
+
+// ---------------------------------------------------------------------------
 // RP-401C: ECMP-aware greedy construction (volume-sorted).
 //
 // For each demand (sorted by volume descending):
 //   1. Query ECMP-oracle saturations from the current partial solution.
-//   2. Run load-aware Dijkstra using those saturations.
+//   2. Run load-aware Dijkstra with ADDITIVE penalty (corrected in V1 Commit C).
 //   3. Commit the chosen path and update ECMP saturations.
 // ---------------------------------------------------------------------------
 fn solve_rp401c(
@@ -157,23 +237,10 @@ fn solve_rp401c(
             break;
         }
 
-        // Build load-aware metric multipliers from ECMP saturation
-        let load_mult: HashMap<u64, f64> = net.links.iter()
-            .filter(|l| !disabled_links.contains(&l.id))
-            .map(|l| {
-                let sat = ecmp_saturation.get(&l.id).copied().unwrap_or(0.0);
-                let mult = if sat >= 1.0 {
-                    1e9
-                } else if sat > 0.8 {
-                    100.0 * (1.0 / (1.0 - sat) - 1.0)
-                } else {
-                    1.0 + sat
-                };
-                (l.id, mult)
-            })
-            .collect();
-
-        let full_path = dijkstra_path(net, *src, *dst, disabled_links, &load_mult)
+        // Corrected: additive-penalty ECMP-aware Dijkstra (matches standalone binary)
+        let full_path = load_aware_path_ecmp_rp401c(
+                net, *src, *dst, disabled_links, &ecmp_saturation, 100.0,
+            )
             .or_else(|| dijkstra_path(net, *src, *dst, disabled_links, &HashMap::new()));
 
         if let Some(fp) = full_path {
