@@ -2,7 +2,7 @@
 
 **Programme:** EURO/ROADEF 2026 Challenge — T-Adaptive Segment Routing
 **Status:** Active
-**Version:** 1.10
+**Version:** 1.11
 **Date:** 2026-08-03
 
 ---
@@ -344,7 +344,7 @@ This is a structural insight into the problem formulation. It establishes the co
 
 ### RP-404 — Large Neighbourhood Search *(conditional on RP-403 evidence)*
 
-**Gate:** Proceed only if RP-403 evidence shows that deterministic improvements have plateaued and stochastic search is warranted.
+**Gate:** Proceed only after RP-403 has completed Validation Task V1 — RP-401C Behavioural Equivalence and its termination gate has been cleared. If RP-403 is promoted, use the validated RP-403 portfolio as the deterministic baseline. If RP-403 is archived, use the final validated RP-402 baseline.
 
 **Question:** Can LNS with destroy/repair operators improve on the deterministic baseline?
 
@@ -485,7 +485,7 @@ Promotion follows the same evidence-driven gate model as the RP evidence record 
 
 The authoritative capability register is maintained at [`docs/governance/CAPABILITY_REGISTER.md`](../governance/CAPABILITY_REGISTER.md). The snapshot below reflects the state at the time of this programme version.
 
-### 6.3 Capability Snapshot (v1.4 — post RP-402 freeze)
+### 6.3 Capability Snapshot (v1.5 — post RP-403 benchmark)
 
 | Capability | Level | Evidence |
 |------------|-------|---------|
@@ -501,7 +501,8 @@ The authoritative capability register is maintained at [`docs/governance/CAPABIL
 | **Budget-aware transition planning** | **C2** | RP-402 — 15/20 improved, 18/20 finite, 3/5 targets recovered |
 | **Budget-constrained re-routing** | **C2** | RP-402 — subsumed by budget-aware transition planning evidence |
 | Oracle-guided candidate selection | C1 | RP-401D — exploratory evidence only |
-| Multi-path candidate generation | C0 | RP-403 target (Adaptive Candidate Generation) |
+| Construction portfolio selection | **C1** | RP-403 implementation complete; benchmark executed; validation pending |
+| Multi-path candidate generation | C0 | Deferred research hypothesis |
 | LNS for routing | C0 | RP-404 target |
 | Hyper-heuristic operator selection | C1 | RP-405 target (cross-domain: CVRP + ROADEF) |
 
@@ -511,7 +512,7 @@ The authoritative capability register is maintained at [`docs/governance/CAPABIL
 |---------------|--------------------|-------------|
 | ECMP-aware load estimation | `coralys-core` routing module | C3 (cross-domain after CVRP validation) |
 | Budget distance metric | `coralys-planning` multi-period planning | C2 |
-| Multi-path generation | `coralys-planning` decoder | C2 |
+| Construction portfolio selection | `coralys-planning` construction framework | C2 |
 | LNS operators | `coralys-planning` neighbourhood search | C2 |
 | Hyper-heuristic selection | `coralys-ecology` | C3 |
 | MOGA on network routing | `coralys-moga` | C3 |
@@ -528,7 +529,7 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 |----------|--------------------|-------------|
 | ECMP-aware load estimation | `coralys-core` routing module | RP-401 |
 | Budget-constrained re-routing | `coralys-planning` | RP-402 |
-| Multi-path candidate generation | `coralys-planning` | RP-403 |
+| Construction portfolio selection | `coralys-planning` construction framework | RP-403 |
 | LNS operators for routing | `coralys-planning` | RP-404 |
 | Hyper-heuristic selection | `coralys-ecology` | RP-405 |
 | MOGA on network routing | `coralys-moga` | RP-406 |
@@ -557,4 +558,5 @@ Each research programme produces platform-level evidence. ROADEF evidence target
 | 1.7 | 2026-08-03 | Explicit termination gate added to RP-403. RP-403 shall only proceed to implementation if root-cause analysis identifies at least one failure mode plausibly addressable by candidate-generation methods. If setA-17 is confirmed budget-limited or setA-12 shows no structural path-diversity gap, RP-403 records a negative result and is archived or redefined before any binary is written. |
 | 1.8 | 2026-08-03 | Standard RP lifecycle template formalised as §4.1. Every future RP must follow the eight-stage lifecycle (Research Question → Hypothesis → Implementation → Benchmark → Capability Assessment → Root-Cause Analysis → Termination Gate → Next RP) and record one of four outcomes (✅ promoted, 🔄 refined, 📦 archived, ❌ rejected) before the next RP may begin. Template applies to ROADEF, CVRP, UltraCrew, and all future Coralys research programmes. |
 | 1.9 | 2026-08-03 | RP-403 redefined following Phase 1A root-cause analysis (RP403_ROOT_CAUSE_ANALYSIS.md v1.1). Original hypothesis (insufficient path diversity) not supported: all three failures (setA-12, setA-17, setA-08) occur at the construction layer; RP-402 adaptation never fires for setA-12/17 (adapted=0, total_cost=0). RP-403 renamed "Construction Strategy Evaluation and Selection" — diagnostic experiment running RP-401C and RP-401D constructions in parallel and selecting the better result. Candidate generation deferred (not rejected): remains a downstream hypothesis to be revisited after construction robustness is established. Expected binary renamed rp403_construction_portfolio.rs. |
-| 1.10 | 2026-08-03 | RP-403 Construction Portfolio experiment executed 20/20 instances (commit 1a6ce6d8). Results: 19/20 finite (RP-402 baseline: 18/20); setA-08 recovered (inf->45.67); setA-12 CONFOUNDED (embedded RP-401C returns inf, standalone returns 26.12 -- implementation non-equivalence). RP-403 status: Refined/Validation Pending. Validation Task V1 (RP-401C behavioural equivalence) added as blocking sub-task. RP-403 termination gate cannot be fully cleared until V1 is complete. RP-404 proceeds only after RP-403 closes. Benchmark report: RP403_BENCHMARK_REPORT.md v1.2. |
+| 1.10 | 2026-08-03 | RP-403 benchmark completed (20/20 instances). Construction portfolio increased finite solutions from 18/20 to 19/20 and recovered setA-08. setA-12 classified as CONFOUNDED due to behavioural non-equivalence between standalone and embedded RP-401C implementations. Added Validation Task V1 — RP-401C Behavioural Equivalence as a blocking prerequisite for RP-403 termination-gate closure and progression to RP-404. |
+| 1.11 | 2026-08-03 | Governance refinements (reviewer feedback). RP-404 gate updated to reference RP-403 Validation Task V1 — RP-401C Behavioural Equivalence closure explicitly. Capability snapshot updated: "Construction portfolio selection" added at C1 (benchmark executed, validation pending); "Multi-path candidate generation" reclassified as deferred research hypothesis. §6.4 and §7 evidence tables updated to reflect RP-403's actual contribution (construction portfolio selection, not multi-path generation). Capability snapshot version bumped to v1.5. Amendment log 1.10 rewritten in concise style. |
