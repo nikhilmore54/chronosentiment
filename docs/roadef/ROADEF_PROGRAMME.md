@@ -48,7 +48,7 @@ Beyond producing a competitive ROADEF submission, the programme seeks to advance
 3. Construction portfolio selection (RP-403).
 4. Large neighbourhood search for adaptive routing (RP-404).
 5. Hyper-heuristic operator selection (RP-405).
-6. Cross-domain optimisation capabilities reusable beyond network routing (RP-403 onwards).
+6. Cross-domain optimisation capabilities identified through the ROADEF programme and promoted into Coralys where supported by evidence.
 
 Each contribution is validated on the ROADEF benchmark and promoted into the Coralys platform as a reusable capability. The programme follows the principle: identify the dominant bottleneck, solve it, promote the capability, identify the next bottleneck.
 
@@ -483,7 +483,7 @@ A Candidate becomes the Competition Submission when:
 
 ### 5.2 Archive Policy
 
-Research binaries that do not meet the promotion threshold are archived (not deleted). They remain as evidence of the research lineage. This follows the same policy as the CVRP and UltraCrew experiment archives.
+Research binaries that do not satisfy the promotion criteria or whose evidence does not justify promotion are archived (not deleted). They remain as evidence of the research lineage. This follows the same policy as the CVRP and UltraCrew experiment archives.
 
 ---
 
