@@ -57,3 +57,8 @@ path = "src/bin/rp403v1_validate_rp401c.rs"
 [[bin]]
 name = "rp404a_lns_framework"
 path = "src/bin/rp404a_lns_framework.rs"
+
+[[bin]]
+name = "rp404c_bottleneck_link"
+path = "src/bin/rp404c_bottleneck_link.rs"
+
