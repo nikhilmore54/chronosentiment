@@ -70,3 +70,6 @@ path = "src/bin/rp404d_ecmp_conflict.rs"
 name = "rp405_adaptive"
 path = "src/bin/rp405_adaptive.rs"
 
+[[bin]]
+name = "rp406_setA17_diag"
+path = "src/bin/rp406_setA17_diag.rs"
