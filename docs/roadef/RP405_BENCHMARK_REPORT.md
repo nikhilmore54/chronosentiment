@@ -123,7 +123,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 
 ### 4.3 Improved Instances Detail
 
-| Instance | Delta | Dominant operator (final weight) | Notes |
+| Instance | Delta | Most rewarded operator (final weights) | Notes |
 |----------|-------|----------------------------------|-------|
 | setA-01 | -2.8339 | random (0.58) and highcost (0.58) tied | Largest absolute improvement |
 | setA-03 | -0.4862 | random (1.31) | Random rewarded most |
@@ -142,7 +142,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 |----------|-------------|----------|-----------|
 | RP-404A Random | -5.3641 | 6 | 0 |
 | RP-404D ECMP-conflict | -2.5545 | 4 | 0 |
-| RP-404B-HC Highcost | -0.6463 | 3 | 0 |
+| RP-404B-HC Highcost | -0.6463 | 4 | 0 |
 | RP-404C Bottleneck | -0.1550 | 2 | 0 |
 | RP-404B Congestion | -0.0949 | 2 | 0 |
 | **RP-405 Adaptive** | **-3.5313** | **6** | **0** |
@@ -195,4 +195,5 @@ RP-405 produced a validated adaptive LNS framework. Future research (RP-406) can
 |---------|------|--------|---------|
 | v1.0 | 2026-08-04 | Research Programme | Initial report — 20-instance benchmark complete |
 | v1.1 | 2026-08-04 | Research Programme | Reviewer corrections: random improved count corrected to 6; improvement count claim softened to "matches highest"; setA-18 claim softened to "not observed in fixed-operator benchmarks"; §5.3 learning dynamics sentence added; hypothesis verdict rewritten |
-| v1.2 | 2026-08-04 | Research Programme | Scientific precision corrections: §5.2 rewritten to reviewer's exact wording (improvement count parity, setA-18 framing); §5.3 expanded with decay mechanism sentence; §6 hypothesis verdict refined with final sentence distinguishing improvement-count parity from aggregate objective performance |
+| v1.2 | 2026-08-04 | Research Programme | Final scientific precision revisions: §5.2 rewritten to final reviewer wording; §5.3 expanded with decay-mechanism interpretation; §6 hypothesis verdict refined to distinguish improvement-count parity from aggregate objective performance |
+| v1.3 | 2026-08-04 | Research Programme | Final scientific precision revisions: §5.1 highcost improved count corrected 3→4; §4.3 column heading changed from "Dominant operator" to "Most rewarded operator (final weights)"; amendment log v1.2 entry wording updated for audit clarity |
