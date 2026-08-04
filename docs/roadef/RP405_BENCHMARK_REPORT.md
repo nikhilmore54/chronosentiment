@@ -149,7 +149,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 
 ### 5.2 Analysis
 
-RP-405 matches the highest improvement count (6/20), equalling the random destroy operator while outperforming every targeted fixed operator in improvement count. The adaptive policy does not surpass the random operator's aggregate objective delta (−3.5313 vs −5.3641 for random). The distinction is therefore: improvement count is tied (6 vs 6), but aggregate objective improvement favours random. setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark, demonstrating that operator complementarity is real and exploitable by the adaptive policy.
+RP-405 matches the highest improvement count (6/20), equalling the RP-404A random operator while outperforming every targeted fixed operator. The adaptive policy achieves a total delta of −3.5313 (vs −5.3641 for RP-404A random). This is consistent with the hypothesis that adaptive selection can exploit complementary operator strengths: setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark. However, the random operator's broad diversification remains highly effective on this benchmark.
 
 ### 5.3 Weight Convergence Observations
 
@@ -159,7 +159,7 @@ On instances where improvements were found, the adaptive policy successfully ide
 - setA-15: random rewarded to 1.09
 - setA-18: highcost rewarded to 1.35 — highcost found an improvement on a large instance not observed in any fixed-operator RP-404 benchmark
 
-On instances where no improvement was found (uniform weights at decay-equilibrium), the weights converged to a uniform distribution, indicating no operator had a systematic advantage. This indicates that the learning dynamics did not introduce artificial operator bias in the absence of successful moves.
+On instances where no improvement was found (uniform weights at decay-equilibrium), the weights converged to a uniform distribution, indicating no operator had a systematic advantage. This indicates that the learning dynamics did not introduce artificial operator bias in the absence of successful moves. When no operator consistently received positive reinforcement, the decay mechanism naturally returned the policy toward an approximately uniform distribution.
 
 ---
 
@@ -167,11 +167,9 @@ On instances where no improvement was found (uniform weights at decay-equilibriu
 
 **Hypothesis:** An adaptive selection policy will outperform any single fixed destroy operator by choosing operators based on observed search behaviour.
 
-**Result:** Partially supported.
+**Result: Partially supported.**
 
-The adaptive policy successfully exploited complementary operator behaviour, matching the best improvement count achieved by any single operator (6/20), outperforming all fixed targeted operators in aggregate objective improvement, and discovering an improvement on setA-18 not observed in the fixed-operator benchmarks. However, it did not surpass the strongest fixed strategy (random destroy) in aggregate objective improvement, so the hypothesis is supported only in part.
-
-Specifically: setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark. This demonstrates that operator complementarity is real and exploitable. The random operator's dominance in total delta (−5.3641 vs −3.5313) reflects the difficulty of the benchmark: on most large instances, no operator finds improvements within the 120s timeout, and on the few small instances where improvements exist, random's broad diversification is highly competitive.
+The adaptive policy successfully exploited complementary operator behaviour, matching the highest improvement count achieved by any single operator (6/20), outperforming all fixed targeted operators in aggregate objective improvement, and discovering an improvement on setA-18 that was not observed in the fixed-operator RP-404 benchmarks. However, it did not surpass the strongest fixed strategy (random destroy) in aggregate objective improvement (−3.5313 vs −5.3641). Therefore, the hypothesis is supported only in part: adaptive operator selection demonstrably exploits operator complementarity, but this simple weight-based bandit is insufficient to outperform the strongest diversification strategy on the evaluated benchmark.
 
 ---
 
@@ -197,3 +195,4 @@ RP-405 produced a validated adaptive LNS framework. Future research (RP-406) can
 |---------|------|--------|---------|
 | v1.0 | 2026-08-04 | Research Programme | Initial report — 20-instance benchmark complete |
 | v1.1 | 2026-08-04 | Research Programme | Reviewer corrections: random improved count corrected to 6; improvement count claim softened to "matches highest"; setA-18 claim softened to "not observed in fixed-operator benchmarks"; §5.3 learning dynamics sentence added; hypothesis verdict rewritten |
+| v1.2 | 2026-08-04 | Research Programme | Scientific precision corrections: §5.2 rewritten to reviewer's exact wording (improvement count parity, setA-18 framing); §5.3 expanded with decay mechanism sentence; §6 hypothesis verdict refined with final sentence distinguishing improvement-count parity from aggregate objective performance |
