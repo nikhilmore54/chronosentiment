@@ -62,3 +62,8 @@ path = "src/bin/rp404a_lns_framework.rs"
 name = "rp404c_bottleneck_link"
 path = "src/bin/rp404c_bottleneck_link.rs"
 
+[[bin]]
+name = "rp404d_ecmp_conflict"
+path = "src/bin/rp404d_ecmp_conflict.rs"
+
+
