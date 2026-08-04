@@ -1,6 +1,6 @@
 # RP-404 Benchmark Report: Large Neighbourhood Search Framework
 
-**Version:** 1.5 FINAL
+**Version:** 1.6 FINAL
 **Date:** 2026-08-04
 **Status:** COMPLETE — five operator conditions evaluated; RP-404 closed; RP-405 approved
 
@@ -415,6 +415,14 @@ requires a neighbourhood that is not biased toward congested or high-cost
 demands — the relevant improving move involves demands that are not
 disproportionately expensive or congested.
 
+Random destroy remains the strongest single operator in aggregate objective
+improvement. However, because it achieves this through broad diversification
+rather than problem-specific guidance, it provides a strong motivation for
+adaptive operator selection rather than diminishing the value of targeted
+operators. An adaptive policy that deploys random destroy when targeted
+operators stagnate, and targeted operators when structural signals are strong,
+may outperform either strategy in isolation. This is the RP-405 hypothesis.
+
 ### 5.3 Highcost Operator Acts as a Local Refinement Operator
 
 The highcost operator uniquely improves setA-12 (−0.0160) and setA-15
@@ -468,9 +476,9 @@ setA-17, zero recoveries. None of the five destroy operators evaluated —
 including two routing-aware neighbourhoods — materially changes the remaining
 feasibility boundary or recovers setA-17. The ECMP-conflict operator, despite
 being the strongest targeted operator overall, also fails to recover setA-17.
-This suggests that the infeasibility of setA-17 is not primarily caused by
-ECMP routing conflicts among demands, and that further investigation of
-setA-17 may require a dedicated research programme (e.g., RP-406: Feasibility
+This suggests that ECMP routing conflicts alone are unlikely to explain the
+remaining infeasibility of setA-17, and that further investigation may require
+a dedicated research programme (e.g., RP-406: Feasibility
 Frontier Investigation) rather than continued neighbourhood variation. The
 consistent pattern of early acceptance followed by plateau across all five
 operators is consistent with the repair operator (RP-401C greedy)
@@ -508,8 +516,8 @@ destroy operators. RP-404 is closed.
   better results than targeting demands by cost, congestion, or bottleneck-link
   membership. This demonstrates that exploiting routing interactions is more
   informative than targeting individual congested links or high-cost demands.
-  This validates the RP-401 ECMP model as a source of structure that can be
-  exploited by neighbourhood search.
+  These results demonstrate that the RP-401 ECMP representation contains useful
+  search structure that can be exploited effectively by neighbourhood search.
 - **Remaining limitation:** No operator recovers setA-17 or produces
   substantial improvements on large instances (setA-07, setA-10, setA-16,
   setA-18, setA-19). The feasibility frontier remains at 19/20 across all
@@ -593,3 +601,4 @@ operator by exploiting the complementary strengths of the portfolio.
 | 1.3 | 2026-08-03 | Scientific corrections per reviewer: §2.1 RP-404A per-instance table corrected (placeholder values replaced with actual benchmark output); §2.2 total Δ corrected to −5.3641; §5.6 heading softened (removed "surprisingly"); §5.7 conclusion softened (removed definitive causal claim, added repair-operator hypothesis as credible but untested); §6 operator finding updated (ordering stability noted, "surprisingly weak" removed); §6 repair operator hypothesis bullet added; §6 conclusion reframed as consistent-with-hypothesis rather than confirmed; all Δ=−5.3671 references updated to −5.3641 |
 | 1.4 | 2026-08-04 | RP-404D complete results added (ecmp-conflict: 4 improved Δ=−2.5545, unique improvement on setA-11, setA-17 still inf); §1.6 operator table updated with ecmp-conflict entry; §4b RP-404D section added (per-instance table, summary, five-way comparison); §4 Programme Progression updated with RP-404D row; §5.1 evaluation count updated to 100; §6 hypothesis assessment updated to "Supported" (upgraded from "Partially supported"); §6 ECMP-conflict finding bullet added; §6 conclusion updated to frame RP-405; §7 termination gate closed (✅ CLOSED); §7 RP-405 hypothesis and operator portfolio table added; version 1.3 → 1.4 FINAL |
 | 1.5 | 2026-08-04 | Reviewer corrections: §5.5 heading updated to "All Five Destroy Operators", evaluation count corrected to 100; §5.7 all five operators listed explicitly, 250 total LNS iterations on setA-17 stated, RP-406 Feasibility Frontier Investigation mentioned; §6 ECMP-conflict finding: added "exploiting routing interactions is more informative than targeting individual congested links or high-cost demands"; §6 operator finding: softened "Routing-aware operators outperform generic targeted operators" to "The strongest routing-aware operator (ECMP-conflict) substantially outperforms the generic targeted operators evaluated" with explicit acknowledgement that bottleneck-link < highcost; §7 termination rationale: "routing-aware operators outperform generic ones" → "ECMP-aware conflict targeting is the most effective targeted strategy evaluated"; §7 reusable framework paragraph added (RP-404 produced a validated five-operator portfolio; RP-405 can focus exclusively on operator selection); version header updated to 1.5 FINAL |
+| 1.6 | 2026-08-04 | Scientific precision corrections per reviewer: §6 ECMP-conflict finding: "validates the RP-401 ECMP model" → "demonstrates that the RP-401 ECMP representation contains useful search structure" (claim tightened to what was observed); §5.2 random destroy paragraph added: random dominates through diversification rather than problem-specific guidance, motivating adaptive selection (RP-405); §5.7 setA-17 causal claim softened: "not primarily caused by ECMP routing conflicts" → "ECMP routing conflicts alone are unlikely to explain the remaining infeasibility" (avoids ruling out ECMP interactions as root cause from a single operator family) |
