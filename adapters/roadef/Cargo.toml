@@ -66,4 +66,7 @@ path = "src/bin/rp404c_bottleneck_link.rs"
 name = "rp404d_ecmp_conflict"
 path = "src/bin/rp404d_ecmp_conflict.rs"
 
+[[bin]]
+name = "rp405_adaptive"
+path = "src/bin/rp405_adaptive.rs"
 
