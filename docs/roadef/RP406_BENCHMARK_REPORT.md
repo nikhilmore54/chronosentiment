@@ -142,7 +142,7 @@ The diagnostic distinguishes between three possible failure modes:
 | Aggregate capacity shortage | Volume/capacity ratio = 0.0019 | **Ruled out** |
 | ECMP concentration on bottleneck link | Link 1173 overloaded by 0.11 units at t=0 | **Confirmed** |
 
-The infeasibility is **not** inherent to the instance. The instance has sufficient aggregate capacity and full graph connectivity. The infeasibility is caused by the repair operator's failure to assign SR paths to enough demands to prevent ECMP concentration on link 1173.
+The infeasibility is **not** inherent to the instance. The instance has sufficient aggregate capacity and full graph connectivity. The evidence indicates that the infinite objective is associated with ECMP concentration on link 1173 under the evaluator's default routing behaviour. RP-403 leaves a large proportion of demands on this default routing policy. RP-406B will determine whether rerouting a targeted subset of these demands is sufficient to eliminate the overload and restore a finite objective.
 
 ---
 
@@ -208,3 +208,4 @@ This is a much narrower and more tractable research problem than "improve the re
 |---------|------|--------|---------|
 | v1.0 | 2026-08-04 | Research Programme | Initial report — RP-406A diagnostics complete |
 | v1.1 | 2026-08-04 | Research Programme | Reviewer corrections: §4.4 root cause softened to evidence-based wording; key evaluator behaviour callout added; §7 reframed as RP-406B objectives rather than prescribing solution |
+| v1.2 | 2026-08-04 | Research Programme | Final archival correction: §5 causal claim replaced with evidence-based wording (ECMP concentration associated with overload; RP-406B to determine minimal rerouting set) |
