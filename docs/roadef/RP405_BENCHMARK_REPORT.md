@@ -130,7 +130,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 | setA-04 | -0.1721 | congestion (0.87) | Congestion operator rewarded |
 | setA-12 | -0.0013 | random (0.89) | Small improvement |
 | setA-15 | -0.0089 | random (1.09) | Random rewarded |
-| setA-18 | -0.0289 | highcost (1.35) | **Unique: highcost rewarded on large instance** |
+| setA-18 | -0.0289 | highcost (1.35) | **Improved only in RP-405; not improved by any fixed-operator RP-404 benchmark** |
 
 ---
 
@@ -140,7 +140,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 
 | Operator | Total Delta | Improved | Regressed |
 |----------|-------------|----------|-----------|
-| RP-404A Random | -5.3641 | 5 | 0 |
+| RP-404A Random | -5.3641 | 6 | 0 |
 | RP-404D ECMP-conflict | -2.5545 | 4 | 0 |
 | RP-404B-HC Highcost | -0.6463 | 3 | 0 |
 | RP-404C Bottleneck | -0.1550 | 2 | 0 |
@@ -149,7 +149,7 @@ RP-401C ECMP-aware greedy repair (unchanged from RP-404).
 
 ### 5.2 Analysis
 
-RP-405 achieves 6 improvements (vs 5 for the best single operator, RP-404A random) and a total delta of −3.5313 (vs −5.3641 for RP-404A random). The adaptive policy improves the improvement count over any single operator but does not surpass the random operator's total delta. This is consistent with the hypothesis that adaptive selection can find improvements that no single operator finds alone (setA-18 is a new improvement not found by random in RP-404A), but the random operator's broad diversification remains highly effective on this benchmark.
+RP-405 matches the highest improvement count (6/20), equalling the random destroy operator while outperforming every targeted fixed operator in improvement count. The adaptive policy does not surpass the random operator's aggregate objective delta (−3.5313 vs −5.3641 for random). The distinction is therefore: improvement count is tied (6 vs 6), but aggregate objective improvement favours random. setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark, demonstrating that operator complementarity is real and exploitable by the adaptive policy.
 
 ### 5.3 Weight Convergence Observations
 
@@ -157,9 +157,9 @@ On instances where improvements were found, the adaptive policy successfully ide
 - setA-03: random rewarded to 1.31 (vs 0.39 for others)
 - setA-04: congestion rewarded to 0.87
 - setA-15: random rewarded to 1.09
-- setA-18: highcost rewarded to 1.35 (unique — highcost found an improvement on a large instance that random did not)
+- setA-18: highcost rewarded to 1.35 — highcost found an improvement on a large instance not observed in any fixed-operator RP-404 benchmark
 
-On instances where no improvement was found (uniform weights at decay-equilibrium), the weights converged to a uniform distribution, indicating no operator had a systematic advantage.
+On instances where no improvement was found (uniform weights at decay-equilibrium), the weights converged to a uniform distribution, indicating no operator had a systematic advantage. This indicates that the learning dynamics did not introduce artificial operator bias in the absence of successful moves.
 
 ---
 
@@ -169,9 +169,9 @@ On instances where no improvement was found (uniform weights at decay-equilibriu
 
 **Result:** Partially supported.
 
-The adaptive policy achieves the highest improvement count (6/20) across all operators evaluated, confirming that it can exploit complementary operator strengths. setA-18 is a unique improvement found only by the adaptive policy (via highcost operator selection), not by any single fixed operator in RP-404. However, the total delta (−3.5313) does not exceed the random operator's total delta (−5.3641), because the random operator's large improvement on setA-01 (−2.8339) dominates the comparison and the adaptive policy does not consistently outperform random on the instances where random is most effective.
+The adaptive policy successfully exploited complementary operator behaviour, matching the best improvement count achieved by any single operator (6/20), outperforming all fixed targeted operators in aggregate objective improvement, and discovering an improvement on setA-18 not observed in the fixed-operator benchmarks. However, it did not surpass the strongest fixed strategy (random destroy) in aggregate objective improvement, so the hypothesis is supported only in part.
 
-The hypothesis is supported in the sense that adaptive selection finds improvements not available to any single fixed operator. It is not supported in the sense that the adaptive policy does not uniformly dominate the best single operator across all instances.
+Specifically: setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark. This demonstrates that operator complementarity is real and exploitable. The random operator's dominance in total delta (−5.3641 vs −3.5313) reflects the difficulty of the benchmark: on most large instances, no operator finds improvements within the 120s timeout, and on the few small instances where improvements exist, random's broad diversification is highly competitive.
 
 ---
 
@@ -181,8 +181,8 @@ The hypothesis is supported in the sense that adaptive selection finds improveme
 
 The adaptive operator selection hypothesis has been evaluated. Key findings:
 
-1. The adaptive policy achieves the highest improvement count (6/20) of any operator evaluated.
-2. setA-18 is a unique improvement found only by the adaptive policy, confirming that operator complementarity exists and is exploitable.
+1. The adaptive policy matches the highest improvement count (6/20), equalling the random destroy operator while outperforming every targeted fixed operator in improvement count.
+2. setA-18 was improved only in the adaptive RP-405 experiment and was not improved by any fixed-operator RP-404 benchmark, confirming that operator complementarity exists and is exploitable.
 3. The weight-based bandit correctly identifies effective operators on instances where improvements are possible.
 4. The random operator's dominance in total delta reflects the difficulty of the benchmark: on most large instances, no operator finds improvements within the 120s timeout, and on the few small instances where improvements exist, random's broad diversification is highly competitive.
 5. setA-17 remains infeasible across all operators (RP-404 and RP-405). This is a dedicated research target for RP-406.
@@ -196,3 +196,4 @@ RP-405 produced a validated adaptive LNS framework. Future research (RP-406) can
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | v1.0 | 2026-08-04 | Research Programme | Initial report — 20-instance benchmark complete |
+| v1.1 | 2026-08-04 | Research Programme | Reviewer corrections: random improved count corrected to 6; improvement count claim softened to "matches highest"; setA-18 claim softened to "not observed in fixed-operator benchmarks"; §5.3 learning dynamics sentence added; hypothesis verdict rewritten |
