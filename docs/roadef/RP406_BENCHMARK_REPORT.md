@@ -124,9 +124,11 @@ The `valid=true` result confirms that "valid" checks only structural correctness
 
 The evaluator routes unassigned demands via ECMP shortest paths (empty waypoints → `backward_dijkstra` + `route_ecmp`). With 2000 demands all routed via ECMP shortest paths (empty solution), link 1173 (12→36, cap=1513) becomes overloaded.
 
-The RP-403 repair operator assigns SR paths to only 425/2000 demands (21.25%). The remaining 1575 demands (78.75%) are routed via default ECMP shortest paths. These 1575 unassigned demands concentrate traffic on link 1173, causing `sat >= 1.0` → `inv_load_cost = f64::INFINITY`.
+The RP-403 repair operator assigns SR paths to only 425/2000 demands (21.25%). The remaining 1575 demands (78.75%) are routed via default ECMP shortest paths.
 
-**Root cause:** The repair operator (RP-401C) assigns SR paths to an insufficient fraction of demands. The 1575 unassigned demands route via ECMP shortest paths, which concentrate traffic on link 1173 (12→36, cap=1513), overloading it by 0.11 units and making the objective infinite.
+**Key evaluator behaviour:** An unassigned demand is not ignored. Instead, it is routed using the default ECMP shortest-path policy. Consequently, every demand contributes traffic to the objective, regardless of whether an explicit SR path has been assigned. This is the single most important behavioural finding of RP-406A, as it completely changes the interpretation of RP-403 and RP-405: both programmes assigned SR paths to only 425/2000 demands, leaving 1575 demands on default ECMP routing.
+
+**Evidence indicates** that the infinite objective arises because default ECMP routing concentrates enough traffic on link 1173 to exceed capacity. The current repair operator does not sufficiently redistribute traffic away from this bottleneck to restore finite objective values. Whether this requires assigning SR paths to all demands or only to a targeted subset remains an open question for RP-406B. The diagnostics do not yet isolate how much of the overload on link 1173 comes from assigned versus unassigned demands, nor whether rerouting a small subset would suffice.
 
 ---
 
@@ -172,7 +174,13 @@ To achieve a finite objective on setA-17, the repair operator must ensure that l
 1. **Assign SR paths to all demands that traverse link 1173 under default ECMP routing** — reroute them via explicit waypoints that avoid link 1173.
 2. **Assign SR paths to all 2000 demands** — eliminate default ECMP routing entirely, giving the solver full control over traffic distribution.
 
-The current RP-401C repair operator assigns paths to only 425/2000 demands. The RP-406B programme should implement a repair operator that assigns SR paths to all demands, or at minimum to all demands that traverse the bottleneck link under default ECMP routing.
+RP-406B has a focused, concrete objective:
+
+1. **Identify the minimal set of demands responsible for the overload on link 1173.** Determine how much of the overload comes from assigned versus unassigned demands, and which specific demands traverse link 1173 under default ECMP routing.
+2. **Evaluate whether rerouting only those demands restores a finite objective.** A targeted rerouting of a small subset may suffice; full-demand assignment may not be necessary.
+3. **Compare targeted rerouting with full-demand assignment.** If targeted rerouting restores finite objective, determine whether full-demand assignment provides additional improvement or shifts the bottleneck elsewhere.
+
+This is a much narrower and more tractable research problem than "improve the repair operator." RP-406A has changed the nature of the investigation from blind neighbourhood search to a specific bottleneck with a specific evaluator behaviour and a clear experimental target.
 
 ---
 
@@ -199,3 +207,4 @@ The current RP-401C repair operator assigns paths to only 425/2000 demands. The 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | v1.0 | 2026-08-04 | Research Programme | Initial report — RP-406A diagnostics complete |
+| v1.1 | 2026-08-04 | Research Programme | Reviewer corrections: §4.4 root cause softened to evidence-based wording; key evaluator behaviour callout added; §7 reframed as RP-406B objectives rather than prescribing solution |
