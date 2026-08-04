@@ -433,17 +433,20 @@ We interpret this as evidence that congestion-based selection is a less
 effective proxy for identifying improvable demands than cost-based selection,
 under the current repair operator.
 
-### 5.5 All Four Destroy Operators Are Insufficient for the Principal Remaining Limitation
+### 5.5 All Five Destroy Operators Are Insufficient for the Principal Remaining Limitation
 
-Across all four operators, the pattern is consistent: improvements occur
+Across all five operators, the pattern is consistent: improvements occur
 quickly (1–2 accepted moves) or not at all. Large instances exhaust the 120s
 budget without accepting any move. More importantly, setA-17 remains infeasible
-under all four operators (80 instance-operator evaluations). The evidence does
-not reject LNS as a framework, but it does reject the hypothesis that any of
-the tested destroy/repair neighbourhoods is sufficient to overcome the principal
-remaining limitation. The bottleneck-link operator is the first routing-aware
-neighbourhood tested; it finds no unique improvements and does not recover
-setA-17, confirming that link-saturation targeting alone is insufficient.
+under all five operators (100 instance-operator evaluations). The evidence does
+not reject LNS as a framework, but it does reject the hypothesis that any
+single fixed destroy/repair neighbourhood is sufficient to overcome the
+principal remaining limitation. The ECMP-conflict operator is the strongest
+targeted neighbourhood tested; it finds a unique improvement on setA-11 and
+substantially outperforms the other targeted operators, but does not recover
+setA-17. This demonstrates that exploiting routing interactions is more
+informative than targeting individual congested links or high-cost demands —
+but no single fixed operator is sufficient.
 
 ### 5.6 Bottleneck-Link Targeting Does Not Outperform Simpler Neighbourhoods
 
@@ -458,17 +461,21 @@ around the demands traversing the most saturated link.
 
 ### 5.7 setA-17 Remains Unrecovered
 
-setA-17 remains infeasible after 50 LNS iterations with all four destroy
-operators (random, congestion, highcost, bottleneck-link): four qualitatively
-different neighbourhood definitions, 200 total LNS iterations on setA-17, zero
-recoveries. None of the four destroy operators evaluated — including one
-routing-aware neighbourhood — materially changes the remaining feasibility
-boundary or recovers setA-17. This suggests that further improvements are more
-likely to require either more problem-specific neighbourhoods or stronger repair
-mechanisms. The consistent pattern of early acceptance followed by plateau is
-consistent with the repair operator (RP-401C greedy) reconstructing essentially
-the same local basin after destruction, though this interpretation requires
-further investigation.
+setA-17 remains infeasible after 50 LNS iterations with all five destroy
+operators (random, congestion, highcost, bottleneck-link, ecmp-conflict): five
+qualitatively different neighbourhood definitions, 250 total LNS iterations on
+setA-17, zero recoveries. None of the five destroy operators evaluated —
+including two routing-aware neighbourhoods — materially changes the remaining
+feasibility boundary or recovers setA-17. The ECMP-conflict operator, despite
+being the strongest targeted operator overall, also fails to recover setA-17.
+This suggests that the infeasibility of setA-17 is not primarily caused by
+ECMP routing conflicts among demands, and that further investigation of
+setA-17 may require a dedicated research programme (e.g., RP-406: Feasibility
+Frontier Investigation) rather than continued neighbourhood variation. The
+consistent pattern of early acceptance followed by plateau across all five
+operators is consistent with the repair operator (RP-401C greedy)
+reconstructing essentially the same local basin after destruction, though this
+interpretation requires further investigation.
 
 ---
 
@@ -491,18 +498,30 @@ destroy operators. RP-404 is closed.
   (Δ=−0.1550) > congestion (Δ=−0.0949). This ordering is stable and
   consistent. ECMP-conflict is the strongest targeted operator and the only
   one to find a unique improvement (setA-11) not found by random destroy.
-  Routing-aware operators outperform generic targeted operators.
+  The strongest routing-aware operator (ECMP-conflict) substantially
+  outperforms the generic targeted operators evaluated; routing-aware
+  neighbourhoods can outperform generic targeted neighbourhoods when they
+  exploit meaningful ECMP interaction structure.
 - **ECMP-conflict finding:** The ECMP-conflict operator confirms that ECMP
   routing interactions are a meaningful source of local optima. Targeting
   demands that compete for the same ECMP-expanded paths produces materially
   better results than targeting demands by cost, congestion, or bottleneck-link
-  membership. This validates the RP-401 ECMP model as a source of structure
-  that can be exploited by neighbourhood search.
+  membership. This demonstrates that exploiting routing interactions is more
+  informative than targeting individual congested links or high-cost demands.
+  This validates the RP-401 ECMP model as a source of structure that can be
+  exploited by neighbourhood search.
 - **Remaining limitation:** No operator recovers setA-17 or produces
   substantial improvements on large instances (setA-07, setA-10, setA-16,
   setA-18, setA-19). The feasibility frontier remains at 19/20 across all
   100 evaluations. The remaining limitation is not overcome by any single
   fixed destroy operator.
+- **Routing-aware neighbourhoods:** The strongest routing-aware operator
+  (ECMP-conflict) substantially outperforms the generic targeted operators
+  evaluated. However, not every routing-aware operator outperforms every
+  generic operator: bottleneck-link (Δ=−0.1550) is weaker than highcost
+  (Δ=−0.6463). The more precise conclusion is that routing-aware
+  neighbourhoods can outperform generic targeted neighbourhoods when they
+  exploit meaningful ECMP interaction structure.
 - **Repair operator hypothesis:** The consistent pattern of early acceptance
   followed by plateau across all five operators suggests that the repair
   operator (RP-401C greedy) may limit exploration after destruction by
@@ -510,11 +529,11 @@ destroy operators. RP-404 is closed.
   consistent with the evidence but requires further investigation.
 - **Conclusion:** RP-404 has established a validated LNS framework with a
   clear operator performance hierarchy. The evidence supports the hypothesis
-  that neighbourhood choice influences solution quality, and that routing-aware
-  operators outperform generic ones. The next research question is whether
-  adaptive operator selection (choosing operators based on observed search
-  behaviour) can outperform any single fixed strategy. This is the RP-405
-  hypothesis.
+  that neighbourhood choice influences solution quality, and that ECMP-aware
+  conflict targeting is the most effective targeted strategy evaluated. The
+  next research question is whether adaptive operator selection (choosing
+  operators based on observed search behaviour) can outperform any single
+  fixed strategy. This is the RP-405 hypothesis.
 
 ---
 
@@ -532,11 +551,15 @@ performance hierarchy has been established. The framework is validated.
 setA-17 recoveries. The five-operator ordering is stable: random > ecmp-conflict
 > highcost > bottleneck-link > congestion. ECMP-conflict is the strongest
 targeted operator (Δ=−2.5545) and finds a unique improvement on setA-11.
-Routing-aware operators outperform generic targeted operators.
+The strongest routing-aware operator (ECMP-conflict) substantially outperforms
+the generic targeted operators evaluated; routing-aware neighbourhoods can
+outperform generic targeted neighbourhoods when they exploit meaningful ECMP
+interaction structure.
 
 **Termination rationale:** RP-404 has answered its research question. The
-choice of destroy operator influences solution quality, and routing-aware
-operators outperform generic ones. However, no single fixed destroy operator
+choice of destroy operator influences solution quality, and ECMP-aware conflict
+targeting is the most effective targeted strategy evaluated. However, no single
+fixed destroy operator
 approaches the performance of random destroy on total improvement, and none
 recovers setA-17. The evidence supports concluding that the remaining
 limitation is not simply which demands to destroy, but whether the search can
