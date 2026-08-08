@@ -1,6 +1,7 @@
 services:
   - type: web
     name: ultracrew-api
+    plan: free
     runtime: rust
     buildCommand: cargo build --release --bin ultracrew_server
     startCommand: ./target/release/ultracrew_server
@@ -11,3 +12,29 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+
+  - type: web
+    name: ultracrew-pilot-portal
+    env: static
+    buildCommand: cd apps/ultracrew-pilot-portal && npm install && npm run build
+    staticPublishPath: apps/ultracrew-pilot-portal/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://ultracrew-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: ultraroster-ui
+    env: static
+    buildCommand: cd ui/ultracrew && npm install && npm run build
+    staticPublishPath: ui/ultracrew/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://ultracrew-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
