@@ -4,7 +4,7 @@ services:
     plan: free
     runtime: rust
     buildCommand: cargo build --release --bin ultracrew_server
-    startCommand: ./target/release/ultracrew_server & sleep 5 && curl -sf -X POST http://localhost:10000/api/load-scenario && wait
+    startCommand: ./target/release/ultracrew_server & sleep 5 && curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:10000/api/load-scenario && wait
     envVars:
       - key: PORT
         value: 10000
