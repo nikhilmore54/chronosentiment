@@ -136,6 +136,58 @@ function App() {
     }, 2000);
   };
 
+  const handleLoadInstance = (instance: string) => {
+    setLoadingProgress(true);
+    fetch(`/api/load-scenario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instance })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load instance');
+        return fetch(`/api/nurses`);
+      })
+      .then(res => res.json())
+      .then(data => {
+        const parsedNurses = data.nurses.map((n: any) => ({
+          id: n.id,
+          contract: n.contract,
+          skills: n.skills,
+        }));
+        setNurses(parsedNurses);
+        return fetch(`/api/state`);
+      })
+      .then(res => res.json())
+      .then(stateData => {
+        setSchedule(stateData.schedule);
+        setAuthenticSchedule(stateData.schedule);
+        setBalances(stateData.balances);
+        setBaselineBalances(stateData.balances);
+        setDashboardData(stateData.dashboard);
+        setBaselineDashboardData(stateData.dashboard);
+        
+        const sched = stateData.schedule as Record<string, string[]>;
+        const scheduleLength = Object.values(sched)[0]?.length || 28;
+        const startDate = new Date('2026-06-01T00:00:00');
+        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          return d;
+        });
+        setDates(scheduleDates);
+        
+        setSimulationState(null);
+        setChangedAssignments({});
+        setDemoStep('baseline');
+        setActiveHighlightCell(null);
+        setLoadingProgress(false);
+      })
+      .catch(err => {
+        console.error("Failed to load instance:", err);
+        setLoadingProgress(false);
+      });
+  };
+
   const handleResetDemo = () => {
     fetch(`/api/simulations/reset`, { method: 'POST' })
       .then(res => res.json())
@@ -393,7 +445,25 @@ function App() {
               <span style={{ fontWeight: 600, letterSpacing: '0.05em', color: simulationState ? 'var(--accent-color)' : 'var(--text-muted)', fontSize: '0.9rem' }}>
                 {simulationState ? '⚠️ SIMULATION ACTIVE: RECOVERY DETECTED' : '📋 ACTIVE WORKFORCE ROSTER'}
               </span>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <select
+                  onChange={(e) => handleLoadInstance(e.target.value)}
+                  defaultValue="n030w4"
+                  style={{
+                    backgroundColor: 'var(--panel-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--border-color)',
+                    padding: '0.4rem',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="n030w4">INRC n030w4 (30 Nurses)</option>
+                  <option value="n040w4">INRC n040w4 (40 Nurses)</option>
+                  <option value="n060w4">INRC n060w4 (60 Nurses)</option>
+                  <option value="n080w4">INRC n080w4 (80 Nurses)</option>
+                  <option value="n120w4">INRC n120w4 (120 Nurses)</option>
+                </select>
                 <button
                   onClick={handleExportCSV}
                   style={{

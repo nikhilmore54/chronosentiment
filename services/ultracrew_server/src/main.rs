@@ -879,6 +879,7 @@ struct LoadScenarioRequest {
     /// Absolute or relative path to the scenario directory.
     /// Defaults to the bundled n030w4 fixture when omitted.
     base_dir: Option<String>,
+    instance: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -893,14 +894,15 @@ async fn load_scenario_handler(
     State(state): State<Arc<Mutex<AppState>>>,
     Json(req): Json<LoadScenarioRequest>,
 ) -> impl IntoResponse {
+    let instance = req.instance.clone().unwrap_or_else(|| "n030w4".to_string());
     let base_dir = match req.base_dir {
         Some(ref p) => PathBuf::from(p),
         None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../adapters/ultracrew/tests/data/n030w4"),
+            .join(format!("../../adapters/ultracrew/tests/data/{}", instance)),
     };
 
-    let scenario_path = base_dir.join("Sc-n030w4.json");
-    let week_data_path = base_dir.join("WD-n030w4-0.json");
+    let scenario_path = base_dir.join(format!("Sc-{}.json", instance));
+    let week_data_path = base_dir.join(format!("WD-{}-0.json", instance));
 
     let scenario = match parse_scenario(scenario_path) {
         Ok(s) => s,
