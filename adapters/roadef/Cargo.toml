@@ -13,6 +13,7 @@ rand = "0.8"
 coralys-core = { path = "../../coralys-core" }
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
+rayon = "1.10"
 
 [[bin]]
 name = "tiny_solver"
@@ -73,3 +74,23 @@ path = "src/bin/rp405_adaptive.rs"
 [[bin]]
 name = "rp406_setA17_diag"
 path = "src/bin/rp406_setA17_diag.rs"
+
+[[bin]]
+name = "rp406b_bottleneck_relief"
+path = "src/bin/rp406b_bottleneck_relief.rs"
+
+[[bin]]
+name = "rp406c_characterise"
+path = "src/bin/rp406c_characterise.rs"
+
+[[bin]]
+name = "campaign_rp408b"
+path = "src/bin/campaign_rp408b.rs"
+
+[[bin]]
+name = "campaign_rp409b"
+path = "src/bin/campaign_rp409b.rs"
+
+[[bin]]
+name = "campaign_rc001"
+path = "src/bin/campaign_rc001.rs"

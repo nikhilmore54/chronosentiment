@@ -5,6 +5,7 @@ pub mod graph;
 pub mod ecmp;
 pub mod path;
 pub mod moga_impl;
+pub mod telemetry;
 
 use coralys_core::{
     DecisionPlugin, DecisionProposal, EvaluationResult, Violation,

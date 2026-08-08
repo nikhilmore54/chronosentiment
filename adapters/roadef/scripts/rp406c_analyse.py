@@ -1,16 +1,37 @@
 #!/usr/bin/env python3
 """
-RP-406C Analysis Script
-=======================
-Computes comparison metrics between our RP-406B solutions and the published
-best solutions from the ROADEF 2026 sprint results.
+RP-406C Analysis Script — Full rank-by-rank lexicographic comparison
+Coralys RP-406B solutions vs published ROADEF 2026 sprint-results best.
 
-Published best MLU values are taken from the sprint results reference data
-provided by the reviewer (wide CSV: Instance, Best team, rank-1, ..., rank-N).
+METHODOLOGY:
+  The ROADEF 2026 competition objective is lexicographic comparison of the
+  FULL sorted load vector (4000 elements), NOT just MLU (rank-1).
 
-Outputs:
-  docs/roadef/rp406c_comparison.csv   — per-instance comparison table
-  docs/roadef/rp406c_published_best.csv — published best MLU reference
+  This script performs proper rank-by-rank comparison using the actual
+  published best load vectors from the sprint results leaderboard.
+
+  Metrics computed per instance:
+    - lex_status: who wins the lexicographic comparison
+    - lex_first_diff_rank: first rank position where vectors differ (1-indexed)
+    - lex_winner: 'pub' | 'coralys' | 'tied'
+    - mlu_diff: our_mlu - pub_mlu (positive = we are worse at rank 1)
+    - mlu_gap_rel_pct: relative MLU gap as percentage
+    - l1_dist: sum of |our[i] - pub[i]| over all ranks
+    - l2_dist: sqrt(sum of (our[i] - pub[i])^2)
+    - rmse: l2_dist / sqrt(n)
+    - cosine_sim: dot(our, pub) / (|our| * |pub|)
+    - max_dev: max |our[i] - pub[i]|
+    - max_dev_rank: rank position of max deviation
+    - prefix_match_len: number of leading ranks where |diff| < tol
+    - coralys_better_count: ranks where our[i] < pub[i] (we are better)
+    - pub_better_count: ranks where pub[i] < our[i] (pub is better)
+    - tied_count: ranks where |diff| < tol
+    - lli: Lexicographic Loss Index = first_diff_rank * |diff at first_diff_rank|
+           (0 if tied, positive if pub wins, negative if coralys wins)
+    - Shape metrics on our vector: shoulder_ratio, tail_ratio, band means
+
+OUTPUT:
+  docs/roadef/rp406c_comparison.csv
 """
 
 import csv
@@ -18,212 +39,279 @@ import math
 import os
 import sys
 
-# ---------------------------------------------------------------------------
-# Published best reference data (from sprint results wide CSV, reviewer-provided)
-# Format: instance -> (best_team, best_mlu, best_loadvec_top20)
-# best_loadvec_top20: first 20 rank values from the published best wide CSV
-# ---------------------------------------------------------------------------
-PUBLISHED_BEST = {
-    # instance: (best_team, best_mlu)
-    # Key findings from conversation summary + sprint results:
-    "setA-01": ("S8",   0.929383900),   # tied with our solution
-    "setA-02": ("S69",  0.903074709),   # tied
-    "setA-03": ("S69",  0.982168293),   # tied
-    "setA-04": ("J27",  0.588574874),   # tied
-    "setA-05": ("S2",   0.204985875),   # tied (diff ~1e-6)
-    "setA-06": ("J50",  0.098591000),   # best team much better
-    "setA-07": ("J50",  0.907989441),   # tied
-    "setA-08": ("S22",  0.561163237),   # tied
-    "setA-09": ("S2",   0.927677491),   # tied
-    "setA-10": ("S2",   0.071739000),   # best team much better
-    "setA-11": ("J27",  0.785788957),   # tied (diff ~1e-6)
-    "setA-12": ("S22",  0.879872592),   # tied (diff ~1e-6)
-    "setA-13": ("J50",  0.041025000),   # best team much better
-    "setA-14": ("S2",   0.572103669),   # tied
-    "setA-15": ("S2",   0.898695808),   # tied (diff ~1e-6)
-    "setA-16": ("S2",   0.044262000),   # best team much better
-    "setA-17": ("S22",  0.424192341),   # tied (our solution matches best)
-    "setA-18": ("S22",  0.999998765),   # tied
-    "setA-19": ("S22",  0.999999850),   # tied
-    "setA-20": ("S67",  0.991312385),   # tied
-}
+DOCS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'docs', 'roadef')
+PUBLISHED_BEST_FULL_CSV = os.path.join(DOCS_DIR, 'rp406c_published_best_full.csv')
+LOADVEC_PATTERN = os.path.join(DOCS_DIR, 'setA-{:02d}-loadvec-rp406b.csv')
+OUTPUT_CSV = os.path.join(DOCS_DIR, 'rp406c_comparison.csv')
 
-# RP-406B objective values (from RP-406B benchmark report)
-RP406B_OBJECTIVE = {
-    "setA-01":  49.939209,
-    "setA-02":  54.090744,
-    "setA-03":  95.997919,
-    "setA-04":  58.950704,
-    "setA-05":  13.323628,
-    "setA-06":  50.100193,
-    "setA-07": 191.796975,
-    "setA-08":  45.669581,
-    "setA-09": 153.533049,
-    "setA-10":  68.770551,
-    "setA-11":  99.310465,
-    "setA-12":  26.115320,
-    "setA-13":  56.493371,
-    "setA-14":  75.719829,
-    "setA-15": 208.171546,
-    "setA-16": 3355568.554083,
-    "setA-17":  49.417157,
-    "setA-18": 799167.049498,
-    "setA-19": 5592513.452411,
-    "setA-20": 449.554308,
-}
-
-INSTANCE_ORDER = [
-    "setA-01", "setA-02", "setA-03", "setA-04", "setA-05",
-    "setA-06", "setA-07", "setA-08", "setA-09", "setA-10",
-    "setA-11", "setA-12", "setA-13", "setA-14", "setA-15",
-    "setA-16", "setA-17", "setA-18", "setA-19", "setA-20",
-]
-
-LOADVEC_DIR = "docs/roadef"
-OUT_DIR = "docs/roadef"
+# Tolerance for declaring two load values equal at a rank position
+LEX_TOL = 1e-6
 
 
-def load_loadvec(instance: str) -> list[float]:
-    """Load sorted load vector from per-instance CSV (rank-ordered, descending)."""
-    # Instance name uses zero-padded two-digit number: setA-01 -> setA-01
-    fname = os.path.join(LOADVEC_DIR, f"{instance}-loadvec-rp406b.csv")
-    loads = []
-    with open(fname, newline="") as f:
+def load_published_best_full():
+    """
+    Load full published best load vectors from wide CSV.
+    Returns dict: instance_name -> {'team': str, 'vec': list[float]}
+    The wide CSV has columns: Instance, Best team, 1, 2, ..., 4000
+    """
+    result = {}
+    with open(PUBLISHED_BEST_FULL_CSV, newline='') as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        # header[0]='Instance', header[1]='Best team', header[2]='1', ...
+        n_ranks = len(header) - 2
+        for row in reader:
+            if not row or not row[0].strip():
+                continue
+            instance = row[0].strip()
+            team = row[1].strip()
+            vec = [float(v) for v in row[2:2 + n_ranks]]
+            result[instance] = {'team': team, 'vec': vec}
+    return result
+
+
+def load_our_vector(instance_num):
+    """Load our Coralys load vector. Returns list of floats (rank 1..4000)."""
+    path = LOADVEC_PATTERN.format(instance_num)
+    vec = []
+    with open(path, newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            loads.append(float(row["load"]))
-    return loads  # already sorted descending by rank
+            vec.append(float(row['load']))
+    return vec  # already sorted descending by rank
 
 
-def lex_compare(a: list[float], b: list[float], tol: float = 1e-9) -> tuple[int | None, str]:
+def lex_compare(our_vec, pub_vec, tol=LEX_TOL):
     """
-    Lexicographic comparison of two load vectors.
-    Returns (first_diff_pos, winner) where:
-      first_diff_pos: 1-based rank of first position where |a[i] - b[i]| > tol
-                      None if vectors are identical within tolerance
-      winner: "ours" if a[i] < b[i] at first diff, "best" if a[i] > b[i], "tie" if identical
+    Full rank-by-rank lexicographic comparison.
+    Returns (status, first_diff_rank, winner)
+      status: 'pub_wins' | 'coralys_wins' | 'tied'
+      first_diff_rank: 1-indexed rank of first difference (None if tied)
+      winner: 'pub' | 'coralys' | 'tied'
     """
-    n = min(len(a), len(b))
+    n = min(len(our_vec), len(pub_vec))
     for i in range(n):
-        if abs(a[i] - b[i]) > tol:
-            winner = "ours" if a[i] < b[i] else "best"
-            return (i + 1, winner)
-    return (None, "tie")
+        diff = our_vec[i] - pub_vec[i]
+        if diff > tol:
+            # our value is higher (worse) at this rank
+            return 'pub_wins', i + 1, 'pub'
+        elif diff < -tol:
+            # our value is lower (better) at this rank
+            return 'coralys_wins', i + 1, 'coralys'
+    return 'tied', None, 'tied'
 
 
-def distance_metrics(a: list[float], b: list[float]) -> dict:
-    """Compute L1, L2, max-deviation, and MLU-diff between two load vectors."""
-    n = min(len(a), len(b))
-    if n == 0:
-        return {"l1": 0.0, "l2": 0.0, "max_dev": 0.0, "mlu_diff": 0.0}
-    diffs = [a[i] - b[i] for i in range(n)]
+def compute_distance_metrics(our_vec, pub_vec):
+    """Compute full-vector distance metrics between our and published vectors."""
+    n = min(len(our_vec), len(pub_vec))
+    diffs = [our_vec[i] - pub_vec[i] for i in range(n)]
     abs_diffs = [abs(d) for d in diffs]
-    l1 = sum(abs_diffs) / n
-    l2 = math.sqrt(sum(d**2 for d in diffs) / n)
-    max_dev = max(abs_diffs)
-    mlu_diff = a[0] - b[0]  # our MLU minus best MLU (positive = we are worse)
-    return {"l1": l1, "l2": l2, "max_dev": max_dev, "mlu_diff": mlu_diff}
+
+    l1 = sum(abs_diffs)
+    l2 = math.sqrt(sum(d * d for d in diffs))
+    rmse = l2 / math.sqrt(n) if n > 0 else 0.0
+
+    dot = sum(our_vec[i] * pub_vec[i] for i in range(n))
+    norm_our = math.sqrt(sum(v * v for v in our_vec[:n]))
+    norm_pub = math.sqrt(sum(v * v for v in pub_vec[:n]))
+    cosine_sim = dot / (norm_our * norm_pub) if norm_our > 0 and norm_pub > 0 else 0.0
+
+    max_dev = max(abs_diffs) if abs_diffs else 0.0
+    max_dev_rank = abs_diffs.index(max_dev) + 1 if abs_diffs else 0
+
+    prefix_match = 0
+    for d in abs_diffs:
+        if d < LEX_TOL:
+            prefix_match += 1
+        else:
+            break
+
+    coralys_better = sum(1 for d in diffs if d < -LEX_TOL)
+    pub_better = sum(1 for d in diffs if d > LEX_TOL)
+    tied_count = n - coralys_better - pub_better
+
+    return {
+        'l1_dist': l1,
+        'l2_dist': l2,
+        'rmse': rmse,
+        'cosine_sim': cosine_sim,
+        'max_dev': max_dev,
+        'max_dev_rank': max_dev_rank,
+        'prefix_match_len': prefix_match,
+        'coralys_better_count': coralys_better,
+        'pub_better_count': pub_better,
+        'tied_count': tied_count,
+    }
+
+
+def compute_shape_metrics(vec, label='our'):
+    """Compute shape metrics describing peak/shoulder/tail structure."""
+    n = len(vec)
+    if n == 0:
+        return {}
+
+    mlu = vec[0]
+
+    def band_mean(start, end):
+        band = vec[start:min(end, n)]
+        return sum(band) / len(band) if band else 0.0
+
+    shoulder_ratio = vec[99] / mlu if mlu > 0 and n >= 100 else 0.0
+    tail_ratio = vec[999] / mlu if mlu > 0 and n >= 1000 else 0.0
+
+    return {
+        f'{label}_mlu': mlu,
+        f'{label}_mean_load': sum(vec) / n,
+        f'{label}_band_top10_mean': band_mean(0, 10),
+        f'{label}_band_top100_mean': band_mean(0, 100),
+        f'{label}_band_top1000_mean': band_mean(0, 1000),
+        f'{label}_band_tail_mean': band_mean(1000, n),
+        f'{label}_shoulder_ratio': shoulder_ratio,
+        f'{label}_tail_ratio': tail_ratio,
+    }
+
+
+def analyse_instance(instance, pub_team, pub_vec, our_vec):
+    """Full analysis of one instance. Returns dict of all metrics."""
+    our_mlu = our_vec[0] if our_vec else float('nan')
+    pub_mlu = pub_vec[0] if pub_vec else float('nan')
+    mlu_diff = our_mlu - pub_mlu
+    mlu_gap_abs = abs(mlu_diff)
+    mlu_gap_rel_pct = (mlu_gap_abs / pub_mlu * 100) if pub_mlu > 0 else float('nan')
+
+    lex_status, first_diff_rank, lex_winner = lex_compare(our_vec, pub_vec)
+
+    dist = compute_distance_metrics(our_vec, pub_vec)
+
+    # LLI: Lexicographic Loss Index
+    # = first_diff_rank * |diff at first_diff_rank|
+    # Positive if pub wins (we lose), negative if coralys wins, 0 if tied
+    if first_diff_rank is not None:
+        diff_at_first = our_vec[first_diff_rank - 1] - pub_vec[first_diff_rank - 1]
+        lli = first_diff_rank * diff_at_first  # positive = we lose
+    else:
+        lli = 0.0
+
+    our_shape = compute_shape_metrics(our_vec, 'our')
+    pub_shape = compute_shape_metrics(pub_vec, 'pub')
+
+    row = {
+        'instance': instance,
+        'pub_team': pub_team,
+        'pub_mlu': pub_mlu,
+        'our_mlu': our_mlu,
+        'mlu_diff': mlu_diff,
+        'mlu_gap_abs': mlu_gap_abs,
+        'mlu_gap_rel_pct': mlu_gap_rel_pct,
+        'lex_status': lex_status,
+        'lex_first_diff_rank': first_diff_rank if first_diff_rank is not None else '',
+        'lex_winner': lex_winner,
+        'lli': lli,
+    }
+    row.update(dist)
+    row.update(our_shape)
+    row.update(pub_shape)
+    return row
+
+
+FIELDNAMES = [
+    'instance', 'pub_team', 'pub_mlu', 'our_mlu',
+    'mlu_diff', 'mlu_gap_abs', 'mlu_gap_rel_pct',
+    'lex_status', 'lex_first_diff_rank', 'lex_winner', 'lli',
+    'l1_dist', 'l2_dist', 'rmse', 'cosine_sim',
+    'max_dev', 'max_dev_rank', 'prefix_match_len',
+    'coralys_better_count', 'pub_better_count', 'tied_count',
+    'our_mlu', 'our_mean_load',
+    'our_band_top10_mean', 'our_band_top100_mean',
+    'our_band_top1000_mean', 'our_band_tail_mean',
+    'our_shoulder_ratio', 'our_tail_ratio',
+    'pub_mlu', 'pub_mean_load',
+    'pub_band_top10_mean', 'pub_band_top100_mean',
+    'pub_band_top1000_mean', 'pub_band_tail_mean',
+    'pub_shoulder_ratio', 'pub_tail_ratio',
+]
+
+# Deduplicate fieldnames (pub_mlu and our_mlu appear twice above)
+seen = set()
+FIELDNAMES_DEDUP = []
+for f in FIELDNAMES:
+    if f not in seen:
+        FIELDNAMES_DEDUP.append(f)
+        seen.add(f)
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+    print('Loading published best full vectors...')
+    published = load_published_best_full()
+    print(f'  Loaded {len(published)} instances from published best CSV')
 
     rows = []
-    for inst in INSTANCE_ORDER:
-        our_vec = load_loadvec(inst)
-        our_mlu = our_vec[0] if our_vec else 0.0
-        n_links = len(our_vec)
+    for i in range(1, 21):
+        instance = f'setA-{i:02d}'
+        if instance not in published:
+            print(f'WARNING: {instance} not in published best CSV', file=sys.stderr)
+            continue
+        pub_info = published[instance]
+        pub_team = pub_info['team']
+        pub_vec = pub_info['vec']
+        our_vec = load_our_vector(i)
+        if not our_vec:
+            print(f'WARNING: no load vector for {instance}', file=sys.stderr)
+            continue
 
-        best_team, best_mlu = PUBLISHED_BEST[inst]
-        obj = RP406B_OBJECTIVE[inst]
+        row = analyse_instance(instance, pub_team, pub_vec, our_vec)
+        rows.append(row)
 
-        # Build a synthetic best load vector for distance metrics.
-        # We only have the scalar best_mlu from the reference data.
-        # For instances where we are tied (|our_mlu - best_mlu| < 1e-6),
-        # we use our own vector as the best (distance = 0).
-        # For instances where best is better, we synthesise a best vector
-        # as: rank-1 = best_mlu, remaining ranks = our_vec[1:] scaled so
-        # that the total load is preserved. This gives a conservative
-        # lower-bound estimate of the true distance.
-        tol = 1e-6
-        if abs(our_mlu - best_mlu) < tol:
-            best_vec = our_vec[:]
-            status = "tied"
-        else:
-            # best is strictly better (lower MLU)
-            # Synthesise: top link = best_mlu, rest unchanged
-            best_vec = [best_mlu] + our_vec[1:]
-            status = "best_wins"
+        fdr = row['lex_first_diff_rank']
+        fdr_str = f'rank={fdr}' if fdr != '' else 'all-tied'
+        print(f'{instance}: pub_mlu={row["pub_mlu"]:.6f} our_mlu={row["our_mlu"]:.6f} '
+              f'gap={row["mlu_gap_abs"]:.6f} ({row["mlu_gap_rel_pct"]:.2f}%) '
+              f'lex={row["lex_status"]} first_diff={fdr_str} lli={row["lli"]:.6f}')
 
-        first_diff, winner = lex_compare(our_vec, best_vec)
-        metrics = distance_metrics(our_vec, best_vec)
-
-        rows.append({
-            "instance": inst,
-            "n_links": n_links,
-            "our_mlu": our_mlu,
-            "best_mlu": best_mlu,
-            "best_team": best_team,
-            "mlu_diff": metrics["mlu_diff"],
-            "mlu_diff_pct": 100.0 * metrics["mlu_diff"] / best_mlu if best_mlu > 0 else 0.0,
-            "status": status,
-            "lex_first_diff": first_diff if first_diff is not None else "—",
-            "lex_winner": winner,
-            "l1": metrics["l1"],
-            "l2": metrics["l2"],
-            "max_dev": metrics["max_dev"],
-            "rp406b_objective": obj,
-        })
-
-    # Write comparison CSV
-    comp_path = os.path.join(OUT_DIR, "rp406c_comparison.csv")
-    fieldnames = [
-        "instance", "n_links", "our_mlu", "best_mlu", "best_team",
-        "mlu_diff", "mlu_diff_pct", "status",
-        "lex_first_diff", "lex_winner",
-        "l1", "l2", "max_dev", "rp406b_objective",
-    ]
-    with open(comp_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with open(OUTPUT_CSV, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDNAMES_DEDUP, extrasaction='ignore')
         writer.writeheader()
-        for row in rows:
-            writer.writerow({
-                k: (f"{v:.9f}" if isinstance(v, float) else v)
-                for k, v in row.items()
-            })
-    print(f"Written: {comp_path}")
+        writer.writerows(rows)
 
-    # Write published best reference CSV
-    ref_path = os.path.join(OUT_DIR, "rp406c_published_best.csv")
-    with open(ref_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["instance", "best_team", "best_mlu"])
-        for inst in INSTANCE_ORDER:
-            team, mlu = PUBLISHED_BEST[inst]
-            writer.writerow([inst, team, f"{mlu:.9f}"])
-    print(f"Written: {ref_path}")
+    print(f'\nWrote {len(rows)} rows to {OUTPUT_CSV}')
 
-    # Print summary table
-    print()
-    print(f"{'Instance':<12} {'N':>5} {'Our MLU':>12} {'Best MLU':>12} {'Team':>5} {'Diff':>10} {'Diff%':>7} {'Status':<12} {'LexPos':>7} {'L1':>10} {'L2':>10}")
-    print("-" * 110)
-    tied = 0
-    best_wins = 0
-    for r in rows:
-        diff_str = f"{r['mlu_diff']:+.6f}"
-        pct_str = f"{r['mlu_diff_pct']:+.2f}%"
-        lex_str = str(r['lex_first_diff'])
-        print(f"{r['instance']:<12} {r['n_links']:>5} {r['our_mlu']:>12.6f} {r['best_mlu']:>12.6f} {r['best_team']:>5} {diff_str:>10} {pct_str:>7} {r['status']:<12} {lex_str:>7} {r['l1']:>10.6f} {r['l2']:>10.6f}")
-        if r['status'] == 'tied':
-            tied += 1
-        else:
-            best_wins += 1
+    # Summary
+    pub_wins = [r for r in rows if r['lex_status'] == 'pub_wins']
+    coralys_wins = [r for r in rows if r['lex_status'] == 'coralys_wins']
+    tied = [r for r in rows if r['lex_status'] == 'tied']
 
-    print("-" * 110)
-    print(f"Tied: {tied}/20   Best-wins: {best_wins}/20")
+    print(f'\n=== LEXICOGRAPHIC COMPARISON SUMMARY ===')
+    print(f'Published best wins:  {len(pub_wins):2d}/20')
+    print(f'Coralys wins:         {len(coralys_wins):2d}/20')
+    print(f'Fully tied:           {len(tied):2d}/20')
 
-    return rows
+    if pub_wins:
+        print(f'\nInstances where published best wins (sorted by LLI desc):')
+        for r in sorted(pub_wins, key=lambda x: -x['lli']):
+            fdr = r['lex_first_diff_rank']
+            print(f'  {r["instance"]}: first_diff=rank {fdr}, '
+                  f'mlu_gap={r["mlu_gap_abs"]:.6f} ({r["mlu_gap_rel_pct"]:.1f}%), '
+                  f'LLI={r["lli"]:.4f}')
+
+    if coralys_wins:
+        print(f'\nInstances where Coralys wins:')
+        for r in coralys_wins:
+            fdr = r['lex_first_diff_rank']
+            print(f'  {r["instance"]}: first_diff=rank {fdr}, LLI={r["lli"]:.4f}')
+
+    if tied:
+        print(f'\nFully tied instances (identical vectors within tol={LEX_TOL}):')
+        for r in tied:
+            print(f'  {r["instance"]}')
+
+    # Large MLU gap instances
+    large_gap = [r for r in rows if r['mlu_gap_abs'] > 0.1]
+    if large_gap:
+        print(f'\nLarge MLU gap instances (gap > 0.1) — likely algorithmic failures:')
+        for r in sorted(large_gap, key=lambda x: -x['mlu_gap_abs']):
+            print(f'  {r["instance"]}: pub={r["pub_mlu"]:.6f} our={r["our_mlu"]:.6f} '
+                  f'gap={r["mlu_gap_abs"]:.6f} ({r["mlu_gap_rel_pct"]:.0f}%)')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

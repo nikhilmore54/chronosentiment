@@ -28,6 +28,7 @@ use roadef::moga_impl::{
     RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
     EvolutionRunConfig, run_roadef_evolution,
 };
+use roadef::telemetry::{NullTelemetrySink, JsonlTelemetrySink, ComparatorMode};
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -196,6 +197,8 @@ fn main() {
             num_demands,
             num_time_slots,
             node_ids: node_ids.clone(),
+            mode: roadef::moga_impl::ConstructionMode::Random,
+            greedy_data: None,
         };
         let fitness_eval = RoadefFitnessEvaluator {
             evaluator: Arc::clone(&evaluator),
@@ -220,6 +223,8 @@ fn main() {
             log_interval: 10,
             health_interval: 20,
             max_runtime: Some(max_runtime),
+            comparator_mode: ComparatorMode::Scalar,
+            peak_demand_set: None,
         };
 
         // Open per-instance log file
@@ -232,15 +237,39 @@ fn main() {
             None => Box::new(std::io::stderr()),
         };
 
-        let run_result = run_roadef_evolution(
-            &factory,
-            &fitness_eval,
-            &mutator,
-            &crossover,
-            &evo_config,
-            name,
-            &mut *log_buf,
-        );
+        // RP-410: construct telemetry sink.
+        // Set RP410_TELEMETRY_DIR env var to enable JSONL output.
+        // Default: NullTelemetrySink (zero overhead, existing behaviour preserved).
+        let telemetry_dir = std::env::var("RP410_TELEMETRY_DIR").ok();
+        let seed_str = evo_config.seed.map(|s| s.to_string()).unwrap_or_else(|| "rand".to_string());
+        let run_result = if let Some(ref tdir) = telemetry_dir {
+            let _ = fs::create_dir_all(tdir);
+            let moves_path = format!("{}/rp410_moves_{}_{}.jsonl", tdir, name, seed_str);
+            let gens_path  = format!("{}/rp410_generations_{}_{}.jsonl", tdir, name, seed_str);
+            let moves_file = fs::File::create(&moves_path).map(|f| BufWriter::new(f));
+            let gens_file  = fs::File::create(&gens_path).map(|f| BufWriter::new(f));
+            match (moves_file, gens_file) {
+                (Ok(mf), Ok(gf)) => {
+                    let mut sink = JsonlTelemetrySink::new(mf, gf);
+                    run_roadef_evolution(
+                        &factory, &fitness_eval, &mutator, &crossover,
+                        &evo_config, name, &mut *log_buf, &mut sink,
+                    )
+                }
+                _ => {
+                    eprintln!("  [RP410] Warning: could not create telemetry files in {}", tdir);
+                    run_roadef_evolution(
+                        &factory, &fitness_eval, &mutator, &crossover,
+                        &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+                    )
+                }
+            }
+        } else {
+            run_roadef_evolution(
+                &factory, &fitness_eval, &mutator, &crossover,
+                &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+            )
+        };
 
         let best_obj = run_result.best_obj;
         let avg_mlu = run_result.best_mlu;

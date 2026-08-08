@@ -209,11 +209,18 @@ impl RoadefEvaluator {
             count_sat += 1;
 
             if sat > 0.0 {
-                if sat >= 1.0 {
+                // RC-001 FIX: use sat > 1.0 + 1e-6 instead of sat >= 1.0.
+                // Floating-point accumulation in ECMP routing can produce sat=1.000000686
+                // (flow=583.0004, cap=583.0000) which is physically feasible but was
+                // incorrectly rejected. The 1e-6 epsilon matches the ROADEF checker's
+                // tolerance and prevents false infeasibility from float rounding.
+                if sat > 1.0 + 1e-6 {
                     inv_load_cost += f64::INFINITY;
                 } else {
-                    // Use f32 logic exactly as C++ checker does: invArcLoadCost(float f_sat)
-                    let f_sat = sat as f32;
+                    // Clamp sat to [0, 1-eps] before computing inv_load_cost to avoid
+                    // division by zero or negative values from float near-equality.
+                    let sat_clamped = sat.min(1.0 - 1e-9);
+                    let f_sat = sat_clamped as f32;
                     let cost = (1.0 / (1.0 - f_sat as f64)) - 1.0;
                     inv_load_cost += cost;
                 }
@@ -234,6 +241,99 @@ impl RoadefEvaluator {
             jain_index,
             inv_load_cost,
         })
+    }
+
+    /// Diagnostic: returns a human-readable string describing the first reason
+    /// a solution is invalid. Used to instrument greedy genome failures.
+    /// Returns None if the solution is valid.
+    pub fn diagnose_failure(&self, solution: &Solution) -> Option<String> {
+        // Stage 1: segment check
+        if self.scenario.max_segments >= 0 {
+            for path in &solution.srpaths {
+                if path.w.len() + 1 > self.scenario.max_segments as usize {
+                    return Some(format!(
+                        "segment_limit: demand={} t={} waypoints={} max_segments={}",
+                        path.d, path.t, path.w.len(), self.scenario.max_segments
+                    ));
+                }
+            }
+        }
+
+        let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
+        for ts in 0..self.tm.num_time_slots {
+            // Stage 2: budget check
+            let mut budget_cost = 0;
+            let mut curr_paths: HashMap<u64, SrPathBit> = HashMap::new();
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let d_id_u64 = d_id as u64;
+                let mut bitpath = SrPathBit::new_uninitialized();
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    bitpath = SrPathBit::new_explicit(demand.s, demand.t, &srpath.w);
+                }
+                if ts > 0 {
+                    let uninit = SrPathBit::new_uninitialized();
+                    let prev_bitpath = prev_paths.get(&d_id_u64).unwrap_or(&uninit);
+                    budget_cost += bitpath.dist(prev_bitpath);
+                }
+                curr_paths.insert(d_id_u64, bitpath);
+            }
+            if ts > 0 {
+                let budget_val = self.scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                if budget_cost > budget_val {
+                    return Some(format!(
+                        "budget_exceeded: t={} budget_cost={} budget_val={}",
+                        ts, budget_cost, budget_val
+                    ));
+                }
+            }
+            prev_paths = curr_paths;
+
+            // Stage 3: routing check
+            let mut disabled_arcs = HashSet::new();
+            if let Some(intervention) = self.scenario.interventions.iter().find(|i| i.t == ts) {
+                for &link_id in &intervention.links {
+                    disabled_arcs.insert(link_id);
+                }
+            }
+            let mut arc_flows: HashMap<u64, f64> = HashMap::new();
+            for arc in &self.graph.arcs {
+                arc_flows.insert(arc.id, 0.0);
+            }
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let flow = demand.v[ts];
+                if flow <= 0.0 { continue; }
+                let mut waypoints: &[u64] = &[];
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    waypoints = &srpath.w;
+                }
+                let ok = expand_sr_path(
+                    &self.graph, demand.s, demand.t, waypoints,
+                    &disabled_arcs, flow, &mut arc_flows,
+                );
+                if !ok {
+                    return Some(format!(
+                        "routing_failure: t={} demand={} src={} dst={} waypoints={:?} disabled_arcs={:?}",
+                        ts, d_id, demand.s, demand.t, waypoints, disabled_arcs
+                    ));
+                }
+            }
+
+            // Stage 4: check for overloaded arcs (obj=inf)
+            // Use sat > 1.0 - 1e-6 to catch floating-point near-equality at sat=1.0.
+            // The evaluator's inv_load_cost formula 1/(1-sat)-1 diverges at sat=1.0,
+            // so sat >= 1.0 produces obj=inf → valid=false.
+            for arc in &self.graph.arcs {
+                let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
+                let sat = if arc.capacity > 0.0 { flow / arc.capacity } else { f64::INFINITY };
+                if sat >= 1.0 - 1e-6 {
+                    return Some(format!(
+                        "arc_overloaded: t={} arc={} flow={:.9} cap={:.9} sat={:.9}",
+                        ts, arc.id, flow, arc.capacity, sat
+                    ));
+                }
+            }
+        }
+        None // solution is valid
     }
 
     /// Instrumented variant of `evaluate_solution()`.
@@ -337,10 +437,11 @@ impl RoadefEvaluator {
                 let sat = if capacity > 0.0 { flow / capacity } else { f64::INFINITY };
                 if sat > mlu { mlu = sat; }
                 if sat > 0.0 {
-                    if sat >= 1.0 {
+                    if sat > 1.0 + 1e-6 {
                         inv_load_cost += f64::INFINITY;
                     } else {
-                        let f_sat = sat as f32;
+                        let sat_clamped = sat.min(1.0 - 1e-9);
+                        let f_sat = sat_clamped as f32;
                         inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
                     }
                 }
@@ -511,10 +612,11 @@ impl RoadefEvaluator {
                 let sat = if capacity > 0.0 { flow / capacity } else { f64::INFINITY };
                 if sat > mlu { mlu = sat; }
                 if sat > 0.0 {
-                    if sat >= 1.0 {
+                    if sat > 1.0 + 1e-6 {
                         inv_load_cost += f64::INFINITY;
                     } else {
-                        let f_sat = sat as f32;
+                        let sat_clamped = sat.min(1.0 - 1e-9);
+                        let f_sat = sat_clamped as f32;
                         inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
                     }
                 }
@@ -586,6 +688,77 @@ impl RoadefEvaluator {
             valid: true,
             obj: total_obj,
         }
+    }
+
+    /// RC-003: Compute the official ROADEF lexicographic objective vector for a solution.
+    ///
+    /// The official objective is the sorted (descending) vector of all per-link saturations
+    /// across all time slots. Two solutions are compared by this vector lexicographically:
+    /// the solution with the lower value at the first differing rank wins.
+    ///
+    /// Returns `None` if the solution is infeasible (connectivity failure or budget violation).
+    /// Returns `Some(vec)` where `vec` is sorted descending (rank-1 = highest saturation first).
+    ///
+    /// This method is used by RC-003 to validate that the surrogate scalar objective
+    /// (`Σ_t MLU_t + inv_load_cost_t`) preserves the official lexicographic ordering.
+    pub fn compute_lex_vector(&self, solution: &Solution) -> Option<Vec<f64>> {
+        // Segment count check (same as evaluate_solution)
+        if self.scenario.max_segments >= 0 {
+            for path in &solution.srpaths {
+                if path.w.len() + 1 > self.scenario.max_segments as usize {
+                    return None;
+                }
+            }
+        }
+
+        let mut all_saturations: Vec<f64> = Vec::new();
+        let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+        for t in 0..self.tm.num_time_slots {
+            // Budget check (same as evaluate_solution)
+            let mut budget_cost = 0;
+            let mut curr_paths: HashMap<u64, SrPathBit> = HashMap::new();
+
+            for (d_id, demand) in self.tm.demands.iter().enumerate() {
+                let d_id_u64 = d_id as u64;
+                let mut bitpath = SrPathBit::new_uninitialized();
+
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == t) {
+                    bitpath = SrPathBit::new_explicit(demand.s, demand.t, &srpath.w);
+                }
+
+                if t > 0 {
+                    let uninit = SrPathBit::new_uninitialized();
+                    let prev_bitpath = prev_paths.get(&d_id_u64).unwrap_or(&uninit);
+                    budget_cost += bitpath.dist(prev_bitpath);
+                }
+
+                curr_paths.insert(d_id_u64, bitpath);
+            }
+
+            if t > 0 {
+                let budget_val = self.scenario.budget.iter().find(|b| b.t == t).map(|b| b.value).unwrap_or(0);
+                if budget_cost > budget_val {
+                    return None;
+                }
+            }
+
+            prev_paths = curr_paths;
+
+            // Compute loads and collect all arc saturations for this time slot.
+            match self.compute_loads(t, solution) {
+                None => return None, // connectivity failure
+                Some(loads) => {
+                    for sat in loads.arc_saturations.values() {
+                        all_saturations.push(*sat);
+                    }
+                }
+            }
+        }
+
+        // Sort descending: rank-1 (highest saturation) first.
+        all_saturations.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        Some(all_saturations)
     }
 }
 
