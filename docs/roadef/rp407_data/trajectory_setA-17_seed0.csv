@@ -1,0 +1,3 @@
+generation,valid_count,population_size,unique_fitness_count,stagnation,best_obj,best_mlu,best_sdi,crossover_count,mutation_count,gen_moves_peak,gen_moves_shoulder,gen_moves_transition,gen_moves_tail,gen_moves_mixed,gen_moves_neutral
+0,12,50,13,0,63.90147455903424,0.4568225254250446,1.3369896176197298,0,0,,,,,,
+1,32,50,33,0,61.58262321868452,0.4405074334290816,1.2431579493118035,0,0,,,,,,

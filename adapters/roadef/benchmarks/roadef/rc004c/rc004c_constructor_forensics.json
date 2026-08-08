@@ -1,0 +1,4109 @@
+{
+  "campaign_id": "rc004c_v1.0",
+  "timestamp": "2026-08-07T04:37:27.604047+00:00",
+  "n_individuals": 100,
+  "seed": 42,
+  "instances": [
+    {
+      "instance": "setA-01",
+      "n_individuals": 100,
+      "n_valid": 100,
+      "validity_rate": 1.0,
+      "n_unique_edge_hashes": 86,
+      "unique_edge_pct": 0.86,
+      "n_unique_route_hashes": 86,
+      "unique_route_pct": 0.86,
+      "mean_pairwise_edge_overlap": 0.14,
+      "obj_mean": -56.449420286380494,
+      "obj_std": 2.006000207983035,
+      "obj_min": -62.19308134939939,
+      "obj_max": -52.29666688868283,
+      "mean_construct_ms": 1.55,
+      "total_construct_ms": 155,
+      "verdict": "FAIL",
+      "individuals": [
+        {
+          "id": 0,
+          "valid": true,
+          "surrogate_obj": -58.50381970373371,
+          "edge_hash": 13372706807725363403,
+          "route_hash": 14052173387631383961,
+          "construct_ms": 1
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "surrogate_obj": -53.97472912419334,
+          "edge_hash": 2059768393585654061,
+          "route_hash": 15396588973808697169,
+          "construct_ms": 1
+        },
+        {
+          "id": 2,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 2889584371685614082,
+          "route_hash": 17958931376515376988,
+          "construct_ms": 2
+        },
+        {
+          "id": 3,
+          "valid": true,
+          "surrogate_obj": -53.85489107863464,
+          "edge_hash": 4054547826424395228,
+          "route_hash": 57296889702964394,
+          "construct_ms": 1
+        },
+        {
+          "id": 4,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 10403076539086333636,
+          "route_hash": 3347238657097130807,
+          "construct_ms": 1
+        },
+        {
+          "id": 5,
+          "valid": true,
+          "surrogate_obj": -54.46061456228914,
+          "edge_hash": 14720635529832591228,
+          "route_hash": 6636300202284416676,
+          "construct_ms": 1
+        },
+        {
+          "id": 6,
+          "valid": true,
+          "surrogate_obj": -57.78600746955121,
+          "edge_hash": 12269102433988628709,
+          "route_hash": 13728562014639043001,
+          "construct_ms": 1
+        },
+        {
+          "id": 7,
+          "valid": true,
+          "surrogate_obj": -54.19289341860788,
+          "edge_hash": 104741450032415590,
+          "route_hash": 3452138986762520519,
+          "construct_ms": 2
+        },
+        {
+          "id": 8,
+          "valid": true,
+          "surrogate_obj": -61.525007892424874,
+          "edge_hash": 5612849952759359184,
+          "route_hash": 572243726218060929,
+          "construct_ms": 2
+        },
+        {
+          "id": 9,
+          "valid": true,
+          "surrogate_obj": -57.76533251951959,
+          "edge_hash": 11272535660275649565,
+          "route_hash": 17789004912435721299,
+          "construct_ms": 1
+        },
+        {
+          "id": 10,
+          "valid": true,
+          "surrogate_obj": -58.16455276706521,
+          "edge_hash": 18077800117487012658,
+          "route_hash": 6429732249657299832,
+          "construct_ms": 2
+        },
+        {
+          "id": 11,
+          "valid": true,
+          "surrogate_obj": -55.21685401184969,
+          "edge_hash": 13966819666287102016,
+          "route_hash": 16183602555281530905,
+          "construct_ms": 1
+        },
+        {
+          "id": 12,
+          "valid": true,
+          "surrogate_obj": -57.60326786272805,
+          "edge_hash": 14964916696741237517,
+          "route_hash": 6799287504386963446,
+          "construct_ms": 1
+        },
+        {
+          "id": 13,
+          "valid": true,
+          "surrogate_obj": -54.41648973949585,
+          "edge_hash": 3797793755477092250,
+          "route_hash": 3295509311247346012,
+          "construct_ms": 5
+        },
+        {
+          "id": 14,
+          "valid": true,
+          "surrogate_obj": -53.89897550557154,
+          "edge_hash": 9778560389197610177,
+          "route_hash": 17378811428418741229,
+          "construct_ms": 1
+        },
+        {
+          "id": 15,
+          "valid": true,
+          "surrogate_obj": -54.974468519475906,
+          "edge_hash": 5005157791507381175,
+          "route_hash": 3604684224024425617,
+          "construct_ms": 1
+        },
+        {
+          "id": 16,
+          "valid": true,
+          "surrogate_obj": -57.849838414286474,
+          "edge_hash": 10258036219024754855,
+          "route_hash": 7432841424438010551,
+          "construct_ms": 3
+        },
+        {
+          "id": 17,
+          "valid": true,
+          "surrogate_obj": -55.98400663970823,
+          "edge_hash": 1384184386001484667,
+          "route_hash": 15353541313583252564,
+          "construct_ms": 1
+        },
+        {
+          "id": 18,
+          "valid": true,
+          "surrogate_obj": -57.56401398506482,
+          "edge_hash": 17109681783300543624,
+          "route_hash": 4074304274121635495,
+          "construct_ms": 2
+        },
+        {
+          "id": 19,
+          "valid": true,
+          "surrogate_obj": -54.672834340850414,
+          "edge_hash": 709242968993384723,
+          "route_hash": 7282930226112547542,
+          "construct_ms": 19
+        },
+        {
+          "id": 20,
+          "valid": true,
+          "surrogate_obj": -52.29666688868283,
+          "edge_hash": 6100715720592356104,
+          "route_hash": 1172611061439762588,
+          "construct_ms": 6
+        },
+        {
+          "id": 21,
+          "valid": true,
+          "surrogate_obj": -58.04257743036559,
+          "edge_hash": 3238010988500461255,
+          "route_hash": 15739883899204393603,
+          "construct_ms": 1
+        },
+        {
+          "id": 22,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 2889584371685614082,
+          "route_hash": 17958931376515376988,
+          "construct_ms": 2
+        },
+        {
+          "id": 23,
+          "valid": true,
+          "surrogate_obj": -53.75895826188134,
+          "edge_hash": 10043644856490595688,
+          "route_hash": 4137375976374193255,
+          "construct_ms": 1
+        },
+        {
+          "id": 24,
+          "valid": true,
+          "surrogate_obj": -54.57898021959459,
+          "edge_hash": 13499165633230814299,
+          "route_hash": 13188889998071164076,
+          "construct_ms": 1
+        },
+        {
+          "id": 25,
+          "valid": true,
+          "surrogate_obj": -57.45181503412631,
+          "edge_hash": 16369193041730986959,
+          "route_hash": 5709237453806503699,
+          "construct_ms": 1
+        },
+        {
+          "id": 26,
+          "valid": true,
+          "surrogate_obj": -58.027075148569196,
+          "edge_hash": 2292852940273774676,
+          "route_hash": 7446545324653759220,
+          "construct_ms": 2
+        },
+        {
+          "id": 27,
+          "valid": true,
+          "surrogate_obj": -58.06114820721251,
+          "edge_hash": 5451062567052042619,
+          "route_hash": 9257967208619755428,
+          "construct_ms": 1
+        },
+        {
+          "id": 28,
+          "valid": true,
+          "surrogate_obj": -54.224791440060336,
+          "edge_hash": 9882803289177640314,
+          "route_hash": 6246368050440585037,
+          "construct_ms": 1
+        },
+        {
+          "id": 29,
+          "valid": true,
+          "surrogate_obj": -57.65291195966854,
+          "edge_hash": 2473762367892981285,
+          "route_hash": 8982571044902808924,
+          "construct_ms": 1
+        },
+        {
+          "id": 30,
+          "valid": true,
+          "surrogate_obj": -53.631900565735116,
+          "edge_hash": 17174392408910848444,
+          "route_hash": 9429035462048092167,
+          "construct_ms": 1
+        },
+        {
+          "id": 31,
+          "valid": true,
+          "surrogate_obj": -57.46335476388814,
+          "edge_hash": 9145734598130752230,
+          "route_hash": 18383735325210885553,
+          "construct_ms": 2
+        },
+        {
+          "id": 32,
+          "valid": true,
+          "surrogate_obj": -57.78600746955121,
+          "edge_hash": 12269102433988628709,
+          "route_hash": 13728562014639043001,
+          "construct_ms": 1
+        },
+        {
+          "id": 33,
+          "valid": true,
+          "surrogate_obj": -57.71412994724926,
+          "edge_hash": 11302614585715809921,
+          "route_hash": 5920685733305376514,
+          "construct_ms": 1
+        },
+        {
+          "id": 34,
+          "valid": true,
+          "surrogate_obj": -54.77752043706432,
+          "edge_hash": 4001429180350784307,
+          "route_hash": 10139079259165461802,
+          "construct_ms": 1
+        },
+        {
+          "id": 35,
+          "valid": true,
+          "surrogate_obj": -57.867658788616566,
+          "edge_hash": 5968052221994766738,
+          "route_hash": 10711984971166542746,
+          "construct_ms": 1
+        },
+        {
+          "id": 36,
+          "valid": true,
+          "surrogate_obj": -54.803930689981726,
+          "edge_hash": 8253464921534129776,
+          "route_hash": 1503557398604971237,
+          "construct_ms": 1
+        },
+        {
+          "id": 37,
+          "valid": true,
+          "surrogate_obj": -54.28031392738501,
+          "edge_hash": 12116672938694776231,
+          "route_hash": 16719019391036202990,
+          "construct_ms": 1
+        },
+        {
+          "id": 38,
+          "valid": true,
+          "surrogate_obj": -55.23682304088526,
+          "edge_hash": 1022853092550318490,
+          "route_hash": 1850214735369943950,
+          "construct_ms": 1
+        },
+        {
+          "id": 39,
+          "valid": true,
+          "surrogate_obj": -56.99294552429007,
+          "edge_hash": 10958392415820651770,
+          "route_hash": 16377849710991486176,
+          "construct_ms": 2
+        },
+        {
+          "id": 40,
+          "valid": true,
+          "surrogate_obj": -57.89310463769261,
+          "edge_hash": 12810127907049450496,
+          "route_hash": 7547775644734234330,
+          "construct_ms": 2
+        },
+        {
+          "id": 41,
+          "valid": true,
+          "surrogate_obj": -53.3262087787252,
+          "edge_hash": 15418940525030128798,
+          "route_hash": 1735074808588508129,
+          "construct_ms": 1
+        },
+        {
+          "id": 42,
+          "valid": true,
+          "surrogate_obj": -55.145950603276724,
+          "edge_hash": 9000911767074966063,
+          "route_hash": 9881280333377756655,
+          "construct_ms": 1
+        },
+        {
+          "id": 43,
+          "valid": true,
+          "surrogate_obj": -54.416022394422214,
+          "edge_hash": 16189518760331536154,
+          "route_hash": 69600911354775368,
+          "construct_ms": 1
+        },
+        {
+          "id": 44,
+          "valid": true,
+          "surrogate_obj": -54.72096933120007,
+          "edge_hash": 9862825636833181501,
+          "route_hash": 15515378810833423613,
+          "construct_ms": 2
+        },
+        {
+          "id": 45,
+          "valid": true,
+          "surrogate_obj": -57.83610426991643,
+          "edge_hash": 2486827238337990849,
+          "route_hash": 1669221526905449202,
+          "construct_ms": 1
+        },
+        {
+          "id": 46,
+          "valid": true,
+          "surrogate_obj": -58.14905913146819,
+          "edge_hash": 16135149468871929656,
+          "route_hash": 16266558293631016019,
+          "construct_ms": 1
+        },
+        {
+          "id": 47,
+          "valid": true,
+          "surrogate_obj": -58.82721466338441,
+          "edge_hash": 16168622885990217678,
+          "route_hash": 11853315384512438,
+          "construct_ms": 1
+        },
+        {
+          "id": 48,
+          "valid": true,
+          "surrogate_obj": -57.35994729787467,
+          "edge_hash": 2241884624677672624,
+          "route_hash": 18080877042329250039,
+          "construct_ms": 2
+        },
+        {
+          "id": 49,
+          "valid": true,
+          "surrogate_obj": -56.98884629519107,
+          "edge_hash": 4885033803782789114,
+          "route_hash": 8528733465482509587,
+          "construct_ms": 1
+        },
+        {
+          "id": 50,
+          "valid": true,
+          "surrogate_obj": -59.037613753293094,
+          "edge_hash": 15515434352816450030,
+          "route_hash": 12874312633762497536,
+          "construct_ms": 1
+        },
+        {
+          "id": 51,
+          "valid": true,
+          "surrogate_obj": -57.71412994724926,
+          "edge_hash": 11302614585715809921,
+          "route_hash": 5920685733305376514,
+          "construct_ms": 2
+        },
+        {
+          "id": 52,
+          "valid": true,
+          "surrogate_obj": -54.04660664649528,
+          "edge_hash": 12526290400609194997,
+          "route_hash": 12889595735891396253,
+          "construct_ms": 1
+        },
+        {
+          "id": 53,
+          "valid": true,
+          "surrogate_obj": -57.608781988829676,
+          "edge_hash": 6502501041401924553,
+          "route_hash": 2204817131666957824,
+          "construct_ms": 2
+        },
+        {
+          "id": 54,
+          "valid": true,
+          "surrogate_obj": -57.849838414286474,
+          "edge_hash": 10258036219024754855,
+          "route_hash": 7432841424438010551,
+          "construct_ms": 2
+        },
+        {
+          "id": 55,
+          "valid": true,
+          "surrogate_obj": -57.78600746955121,
+          "edge_hash": 12269102433988628709,
+          "route_hash": 13728562014639043001,
+          "construct_ms": 1
+        },
+        {
+          "id": 56,
+          "valid": true,
+          "surrogate_obj": -53.998170699937425,
+          "edge_hash": 8182351930090247367,
+          "route_hash": 10710550560343691736,
+          "construct_ms": 1
+        },
+        {
+          "id": 57,
+          "valid": true,
+          "surrogate_obj": -55.02213290084445,
+          "edge_hash": 12769364958580064879,
+          "route_hash": 4690526772481016311,
+          "construct_ms": 2
+        },
+        {
+          "id": 58,
+          "valid": true,
+          "surrogate_obj": -54.27339541640293,
+          "edge_hash": 303854170942133500,
+          "route_hash": 1518799850948035678,
+          "construct_ms": 1
+        },
+        {
+          "id": 59,
+          "valid": true,
+          "surrogate_obj": -57.71412994724926,
+          "edge_hash": 11302614585715809921,
+          "route_hash": 5920685733305376514,
+          "construct_ms": 1
+        },
+        {
+          "id": 60,
+          "valid": true,
+          "surrogate_obj": -52.98453860495607,
+          "edge_hash": 3853107818404047694,
+          "route_hash": 15970013542499900001,
+          "construct_ms": 1
+        },
+        {
+          "id": 61,
+          "valid": true,
+          "surrogate_obj": -54.860577500558534,
+          "edge_hash": 1802828684072046202,
+          "route_hash": 11982696990029923919,
+          "construct_ms": 1
+        },
+        {
+          "id": 62,
+          "valid": true,
+          "surrogate_obj": -62.19308134939939,
+          "edge_hash": 7934715010577281821,
+          "route_hash": 15719171260923793613,
+          "construct_ms": 2
+        },
+        {
+          "id": 63,
+          "valid": true,
+          "surrogate_obj": -54.97897918669559,
+          "edge_hash": 12160897472977518804,
+          "route_hash": 5743719413990537051,
+          "construct_ms": 1
+        },
+        {
+          "id": 64,
+          "valid": true,
+          "surrogate_obj": -54.24874889010181,
+          "edge_hash": 2981008803244139635,
+          "route_hash": 4142739767110213738,
+          "construct_ms": 1
+        },
+        {
+          "id": 65,
+          "valid": true,
+          "surrogate_obj": -57.67052210597278,
+          "edge_hash": 1460299479585606575,
+          "route_hash": 5159535274430229270,
+          "construct_ms": 1
+        },
+        {
+          "id": 66,
+          "valid": true,
+          "surrogate_obj": -54.472723674416926,
+          "edge_hash": 11277405677429846348,
+          "route_hash": 12851522085047336692,
+          "construct_ms": 2
+        },
+        {
+          "id": 67,
+          "valid": true,
+          "surrogate_obj": -61.9167872777269,
+          "edge_hash": 2245492584148981871,
+          "route_hash": 711261241658847147,
+          "construct_ms": 1
+        },
+        {
+          "id": 68,
+          "valid": true,
+          "surrogate_obj": -57.76533251951959,
+          "edge_hash": 11272535660275649565,
+          "route_hash": 17789004912435721299,
+          "construct_ms": 1
+        },
+        {
+          "id": 69,
+          "valid": true,
+          "surrogate_obj": -54.73955161942509,
+          "edge_hash": 8966482525985662190,
+          "route_hash": 9458025934437720301,
+          "construct_ms": 1
+        },
+        {
+          "id": 70,
+          "valid": true,
+          "surrogate_obj": -57.29161181649967,
+          "edge_hash": 15581907389273236049,
+          "route_hash": 11884852365532216316,
+          "construct_ms": 2
+        },
+        {
+          "id": 71,
+          "valid": true,
+          "surrogate_obj": -57.63191321169542,
+          "edge_hash": 5216306855655095596,
+          "route_hash": 13163927890252077015,
+          "construct_ms": 1
+        },
+        {
+          "id": 72,
+          "valid": true,
+          "surrogate_obj": -57.65291195966854,
+          "edge_hash": 2473762367892981285,
+          "route_hash": 8982571044902808924,
+          "construct_ms": 1
+        },
+        {
+          "id": 73,
+          "valid": true,
+          "surrogate_obj": -55.020028579092994,
+          "edge_hash": 5018043338071052609,
+          "route_hash": 8088593472824599430,
+          "construct_ms": 1
+        },
+        {
+          "id": 74,
+          "valid": true,
+          "surrogate_obj": -57.71412994724926,
+          "edge_hash": 11302614585715809921,
+          "route_hash": 5920685733305376514,
+          "construct_ms": 2
+        },
+        {
+          "id": 75,
+          "valid": true,
+          "surrogate_obj": -58.9807435047517,
+          "edge_hash": 2941645469790715401,
+          "route_hash": 13664163414174672254,
+          "construct_ms": 2
+        },
+        {
+          "id": 76,
+          "valid": true,
+          "surrogate_obj": -53.449995422741885,
+          "edge_hash": 6145879350984645546,
+          "route_hash": 6248387203740704651,
+          "construct_ms": 1
+        },
+        {
+          "id": 77,
+          "valid": true,
+          "surrogate_obj": -57.83333216693094,
+          "edge_hash": 8552178258127408643,
+          "route_hash": 9225954132632733307,
+          "construct_ms": 1
+        },
+        {
+          "id": 78,
+          "valid": true,
+          "surrogate_obj": -57.42876384168205,
+          "edge_hash": 7753158900631578102,
+          "route_hash": 948733816495046754,
+          "construct_ms": 1
+        },
+        {
+          "id": 79,
+          "valid": true,
+          "surrogate_obj": -54.35219144968694,
+          "edge_hash": 5424107406175208690,
+          "route_hash": 5188670241371143698,
+          "construct_ms": 1
+        },
+        {
+          "id": 80,
+          "valid": true,
+          "surrogate_obj": -53.91240982071336,
+          "edge_hash": 12554573418777427458,
+          "route_hash": 665050334657406625,
+          "construct_ms": 1
+        },
+        {
+          "id": 81,
+          "valid": true,
+          "surrogate_obj": -57.71412994724926,
+          "edge_hash": 11302614585715809921,
+          "route_hash": 5920685733305376514,
+          "construct_ms": 1
+        },
+        {
+          "id": 82,
+          "valid": true,
+          "surrogate_obj": -58.106650360714674,
+          "edge_hash": 15822469720731363246,
+          "route_hash": 3807624102382299733,
+          "construct_ms": 1
+        },
+        {
+          "id": 83,
+          "valid": true,
+          "surrogate_obj": -58.04257743036559,
+          "edge_hash": 3238010988500461255,
+          "route_hash": 15739883899204393603,
+          "construct_ms": 1
+        },
+        {
+          "id": 84,
+          "valid": true,
+          "surrogate_obj": -54.59781445594109,
+          "edge_hash": 10735954001382158747,
+          "route_hash": 13755864630725392247,
+          "construct_ms": 2
+        },
+        {
+          "id": 85,
+          "valid": true,
+          "surrogate_obj": -56.99294552429007,
+          "edge_hash": 671726670584595758,
+          "route_hash": 11367803493750964939,
+          "construct_ms": 1
+        },
+        {
+          "id": 86,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 2889584371685614082,
+          "route_hash": 17958931376515376988,
+          "construct_ms": 2
+        },
+        {
+          "id": 87,
+          "valid": true,
+          "surrogate_obj": -57.45181503412631,
+          "edge_hash": 2277011126039971624,
+          "route_hash": 15835843135051649381,
+          "construct_ms": 2
+        },
+        {
+          "id": 88,
+          "valid": true,
+          "surrogate_obj": -54.73250906096189,
+          "edge_hash": 15117747165445543585,
+          "route_hash": 7445372047497922250,
+          "construct_ms": 2
+        },
+        {
+          "id": 89,
+          "valid": true,
+          "surrogate_obj": -53.6441607417272,
+          "edge_hash": 4331189404833853645,
+          "route_hash": 11237871917983598476,
+          "construct_ms": 1
+        },
+        {
+          "id": 90,
+          "valid": true,
+          "surrogate_obj": -56.12251416945082,
+          "edge_hash": 11695554983379845597,
+          "route_hash": 1377737027213141195,
+          "construct_ms": 1
+        },
+        {
+          "id": 91,
+          "valid": true,
+          "surrogate_obj": -57.09697550561502,
+          "edge_hash": 14416322265760863875,
+          "route_hash": 12528331722387609161,
+          "construct_ms": 1
+        },
+        {
+          "id": 92,
+          "valid": true,
+          "surrogate_obj": -57.7025215148074,
+          "edge_hash": 12271826398454393122,
+          "route_hash": 5028914551539920565,
+          "construct_ms": 2
+        },
+        {
+          "id": 93,
+          "valid": true,
+          "surrogate_obj": -54.17496596896542,
+          "edge_hash": 12587822753635855539,
+          "route_hash": 12237309646249811307,
+          "construct_ms": 1
+        },
+        {
+          "id": 94,
+          "valid": true,
+          "surrogate_obj": -57.29161181649967,
+          "edge_hash": 7251899718355854698,
+          "route_hash": 7622616402161895515,
+          "construct_ms": 1
+        },
+        {
+          "id": 95,
+          "valid": true,
+          "surrogate_obj": -58.52733290858766,
+          "edge_hash": 5639361733268844056,
+          "route_hash": 18442121475710647753,
+          "construct_ms": 1
+        },
+        {
+          "id": 96,
+          "valid": true,
+          "surrogate_obj": -53.93204112280392,
+          "edge_hash": 1125319575282359714,
+          "route_hash": 12547220887629035795,
+          "construct_ms": 1
+        },
+        {
+          "id": 97,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 10403076539086333636,
+          "route_hash": 3347238657097130807,
+          "construct_ms": 1
+        },
+        {
+          "id": 98,
+          "valid": true,
+          "surrogate_obj": -58.01279623945886,
+          "edge_hash": 2889584371685614082,
+          "route_hash": 17958931376515376988,
+          "construct_ms": 1
+        },
+        {
+          "id": 99,
+          "valid": true,
+          "surrogate_obj": -56.86346930255436,
+          "edge_hash": 4937484137402670553,
+          "route_hash": 10911741041281099465,
+          "construct_ms": 1
+        }
+      ]
+    },
+    {
+      "instance": "setA-07",
+      "n_individuals": 100,
+      "n_valid": 100,
+      "validity_rate": 1.0,
+      "n_unique_edge_hashes": 100,
+      "unique_edge_pct": 1.0,
+      "n_unique_route_hashes": 100,
+      "unique_route_pct": 1.0,
+      "mean_pairwise_edge_overlap": 0.0,
+      "obj_mean": -199.57434461176734,
+      "obj_std": 1.809776045757573,
+      "obj_min": -204.40444905549703,
+      "obj_max": -194.95650643121422,
+      "mean_construct_ms": 302.42,
+      "total_construct_ms": 30242,
+      "verdict": "PASS",
+      "individuals": [
+        {
+          "id": 0,
+          "valid": true,
+          "surrogate_obj": -200.56313654661352,
+          "edge_hash": 14655577245225705728,
+          "route_hash": 7222373171403968870,
+          "construct_ms": 293
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "surrogate_obj": -200.61115138273348,
+          "edge_hash": 5982883963211054724,
+          "route_hash": 6822026167352158359,
+          "construct_ms": 293
+        },
+        {
+          "id": 2,
+          "valid": true,
+          "surrogate_obj": -199.38768620929963,
+          "edge_hash": 11386714157920831493,
+          "route_hash": 4095353363457319370,
+          "construct_ms": 292
+        },
+        {
+          "id": 3,
+          "valid": true,
+          "surrogate_obj": -199.0323771240288,
+          "edge_hash": 241082506962186866,
+          "route_hash": 6276503070966634617,
+          "construct_ms": 291
+        },
+        {
+          "id": 4,
+          "valid": true,
+          "surrogate_obj": -198.82901642112745,
+          "edge_hash": 806166242479295918,
+          "route_hash": 11005775559889446174,
+          "construct_ms": 339
+        },
+        {
+          "id": 5,
+          "valid": true,
+          "surrogate_obj": -200.96440613280484,
+          "edge_hash": 5753620555168989025,
+          "route_hash": 17642216295072245199,
+          "construct_ms": 295
+        },
+        {
+          "id": 6,
+          "valid": true,
+          "surrogate_obj": -199.76831024234713,
+          "edge_hash": 12109691889491638426,
+          "route_hash": 14981136491376339751,
+          "construct_ms": 300
+        },
+        {
+          "id": 7,
+          "valid": true,
+          "surrogate_obj": -200.89673230287974,
+          "edge_hash": 2248168950082877299,
+          "route_hash": 2021671197739202271,
+          "construct_ms": 293
+        },
+        {
+          "id": 8,
+          "valid": true,
+          "surrogate_obj": -199.7032002836038,
+          "edge_hash": 12827270787173534919,
+          "route_hash": 3607586880438915585,
+          "construct_ms": 292
+        },
+        {
+          "id": 9,
+          "valid": true,
+          "surrogate_obj": -199.95413089299024,
+          "edge_hash": 7647614757546080469,
+          "route_hash": 11811964561509543622,
+          "construct_ms": 291
+        },
+        {
+          "id": 10,
+          "valid": true,
+          "surrogate_obj": -198.9311265925133,
+          "edge_hash": 3409551133591337792,
+          "route_hash": 10832065409491775578,
+          "construct_ms": 293
+        },
+        {
+          "id": 11,
+          "valid": true,
+          "surrogate_obj": -201.21747510609504,
+          "edge_hash": 16223398739605191888,
+          "route_hash": 41069252932173584,
+          "construct_ms": 366
+        },
+        {
+          "id": 12,
+          "valid": true,
+          "surrogate_obj": -199.7735983702703,
+          "edge_hash": 18397572622620625816,
+          "route_hash": 6585715911013002470,
+          "construct_ms": 377
+        },
+        {
+          "id": 13,
+          "valid": true,
+          "surrogate_obj": -201.88887809815327,
+          "edge_hash": 12384798152687470098,
+          "route_hash": 5518647520364828850,
+          "construct_ms": 302
+        },
+        {
+          "id": 14,
+          "valid": true,
+          "surrogate_obj": -196.70941656896883,
+          "edge_hash": 12172093291345333101,
+          "route_hash": 5255437420468865792,
+          "construct_ms": 293
+        },
+        {
+          "id": 15,
+          "valid": true,
+          "surrogate_obj": -201.09800130495262,
+          "edge_hash": 9773793608677890282,
+          "route_hash": 13895928433019178343,
+          "construct_ms": 294
+        },
+        {
+          "id": 16,
+          "valid": true,
+          "surrogate_obj": -199.1780368837356,
+          "edge_hash": 13518345816892872765,
+          "route_hash": 3465212257433894461,
+          "construct_ms": 297
+        },
+        {
+          "id": 17,
+          "valid": true,
+          "surrogate_obj": -200.75975127856395,
+          "edge_hash": 1295686089487049311,
+          "route_hash": 8668641788861971671,
+          "construct_ms": 296
+        },
+        {
+          "id": 18,
+          "valid": true,
+          "surrogate_obj": -199.51600424892564,
+          "edge_hash": 11646255230049344555,
+          "route_hash": 13399728064957687622,
+          "construct_ms": 328
+        },
+        {
+          "id": 19,
+          "valid": true,
+          "surrogate_obj": -199.39563461795188,
+          "edge_hash": 18103535344406982867,
+          "route_hash": 9964838613211622201,
+          "construct_ms": 294
+        },
+        {
+          "id": 20,
+          "valid": true,
+          "surrogate_obj": -197.76698222688674,
+          "edge_hash": 3351520434474833997,
+          "route_hash": 18190376593956298465,
+          "construct_ms": 337
+        },
+        {
+          "id": 21,
+          "valid": true,
+          "surrogate_obj": -196.1971930031732,
+          "edge_hash": 14186540581194769162,
+          "route_hash": 9672574985160963406,
+          "construct_ms": 306
+        },
+        {
+          "id": 22,
+          "valid": true,
+          "surrogate_obj": -197.2126944636144,
+          "edge_hash": 2800105632780922266,
+          "route_hash": 10868214797210717381,
+          "construct_ms": 305
+        },
+        {
+          "id": 23,
+          "valid": true,
+          "surrogate_obj": -200.19495950254776,
+          "edge_hash": 4704164491361294173,
+          "route_hash": 16397300577932557083,
+          "construct_ms": 293
+        },
+        {
+          "id": 24,
+          "valid": true,
+          "surrogate_obj": -200.21665573508895,
+          "edge_hash": 4481591845124247799,
+          "route_hash": 5019110867807149,
+          "construct_ms": 299
+        },
+        {
+          "id": 25,
+          "valid": true,
+          "surrogate_obj": -200.57867815323627,
+          "edge_hash": 15315325454792145800,
+          "route_hash": 11300681069388637734,
+          "construct_ms": 293
+        },
+        {
+          "id": 26,
+          "valid": true,
+          "surrogate_obj": -201.3694721797398,
+          "edge_hash": 12452181040728175507,
+          "route_hash": 5187910890960177598,
+          "construct_ms": 303
+        },
+        {
+          "id": 27,
+          "valid": true,
+          "surrogate_obj": -200.08172723059073,
+          "edge_hash": 8527009337348766550,
+          "route_hash": 10919100829168646466,
+          "construct_ms": 292
+        },
+        {
+          "id": 28,
+          "valid": true,
+          "surrogate_obj": -199.68467450256946,
+          "edge_hash": 1286541485042692422,
+          "route_hash": 12521929972745570208,
+          "construct_ms": 316
+        },
+        {
+          "id": 29,
+          "valid": true,
+          "surrogate_obj": -195.92465159415912,
+          "edge_hash": 5556567622869801579,
+          "route_hash": 11144012450405531280,
+          "construct_ms": 292
+        },
+        {
+          "id": 30,
+          "valid": true,
+          "surrogate_obj": -202.23022173695358,
+          "edge_hash": 11486617537929816195,
+          "route_hash": 17986574036810237101,
+          "construct_ms": 292
+        },
+        {
+          "id": 31,
+          "valid": true,
+          "surrogate_obj": -196.7633204791157,
+          "edge_hash": 191431469822108451,
+          "route_hash": 8623201774911777002,
+          "construct_ms": 292
+        },
+        {
+          "id": 32,
+          "valid": true,
+          "surrogate_obj": -199.9406195357122,
+          "edge_hash": 2138299508415825665,
+          "route_hash": 2373702190669857684,
+          "construct_ms": 589
+        },
+        {
+          "id": 33,
+          "valid": true,
+          "surrogate_obj": -200.10274963917826,
+          "edge_hash": 2054718550385997435,
+          "route_hash": 3324245492115530542,
+          "construct_ms": 293
+        },
+        {
+          "id": 34,
+          "valid": true,
+          "surrogate_obj": -200.70764226708258,
+          "edge_hash": 11776190361640840692,
+          "route_hash": 940377393626919932,
+          "construct_ms": 296
+        },
+        {
+          "id": 35,
+          "valid": true,
+          "surrogate_obj": -199.96609638246764,
+          "edge_hash": 12632892997167002288,
+          "route_hash": 17214311632335988258,
+          "construct_ms": 294
+        },
+        {
+          "id": 36,
+          "valid": true,
+          "surrogate_obj": -197.43181222940993,
+          "edge_hash": 240448605537330685,
+          "route_hash": 3814032010419093125,
+          "construct_ms": 296
+        },
+        {
+          "id": 37,
+          "valid": true,
+          "surrogate_obj": -197.13750236253907,
+          "edge_hash": 733619815899627095,
+          "route_hash": 15724345314591573626,
+          "construct_ms": 293
+        },
+        {
+          "id": 38,
+          "valid": true,
+          "surrogate_obj": -200.89476585237017,
+          "edge_hash": 16856566211046914734,
+          "route_hash": 14271236662479176268,
+          "construct_ms": 292
+        },
+        {
+          "id": 39,
+          "valid": true,
+          "surrogate_obj": -199.06544613463882,
+          "edge_hash": 6982614960773798763,
+          "route_hash": 9520934674706720847,
+          "construct_ms": 295
+        },
+        {
+          "id": 40,
+          "valid": true,
+          "surrogate_obj": -196.87910224685288,
+          "edge_hash": 14516616022493479217,
+          "route_hash": 6914468797781564741,
+          "construct_ms": 298
+        },
+        {
+          "id": 41,
+          "valid": true,
+          "surrogate_obj": -200.27098877256225,
+          "edge_hash": 11322614674171085299,
+          "route_hash": 8091350140290370181,
+          "construct_ms": 290
+        },
+        {
+          "id": 42,
+          "valid": true,
+          "surrogate_obj": -196.23561855091506,
+          "edge_hash": 2312549256375520228,
+          "route_hash": 14859695840202286150,
+          "construct_ms": 302
+        },
+        {
+          "id": 43,
+          "valid": true,
+          "surrogate_obj": -200.1690127241171,
+          "edge_hash": 3266817440687577215,
+          "route_hash": 1584999978902588878,
+          "construct_ms": 300
+        },
+        {
+          "id": 44,
+          "valid": true,
+          "surrogate_obj": -199.93465063811846,
+          "edge_hash": 14616846266885000238,
+          "route_hash": 15153972832730579333,
+          "construct_ms": 294
+        },
+        {
+          "id": 45,
+          "valid": true,
+          "surrogate_obj": -199.4353902986952,
+          "edge_hash": 13032589156914182667,
+          "route_hash": 6318859030820185229,
+          "construct_ms": 357
+        },
+        {
+          "id": 46,
+          "valid": true,
+          "surrogate_obj": -196.22886554976932,
+          "edge_hash": 13695555419081914984,
+          "route_hash": 9612146166934966831,
+          "construct_ms": 325
+        },
+        {
+          "id": 47,
+          "valid": true,
+          "surrogate_obj": -199.35944210973616,
+          "edge_hash": 7232774886281905552,
+          "route_hash": 16668238368635697977,
+          "construct_ms": 294
+        },
+        {
+          "id": 48,
+          "valid": true,
+          "surrogate_obj": -200.91017546824287,
+          "edge_hash": 11101353558419839709,
+          "route_hash": 6636666437782333181,
+          "construct_ms": 299
+        },
+        {
+          "id": 49,
+          "valid": true,
+          "surrogate_obj": -201.62565149565216,
+          "edge_hash": 17519424457762515705,
+          "route_hash": 13730853845740087882,
+          "construct_ms": 293
+        },
+        {
+          "id": 50,
+          "valid": true,
+          "surrogate_obj": -194.95650643121422,
+          "edge_hash": 1620700317856260524,
+          "route_hash": 1681626767035277142,
+          "construct_ms": 290
+        },
+        {
+          "id": 51,
+          "valid": true,
+          "surrogate_obj": -200.89504553057375,
+          "edge_hash": 9054691219764130442,
+          "route_hash": 10522677071375189820,
+          "construct_ms": 294
+        },
+        {
+          "id": 52,
+          "valid": true,
+          "surrogate_obj": -202.09469845355684,
+          "edge_hash": 14410159544905553057,
+          "route_hash": 16880641457005097379,
+          "construct_ms": 312
+        },
+        {
+          "id": 53,
+          "valid": true,
+          "surrogate_obj": -200.8566102474961,
+          "edge_hash": 3712681922034283401,
+          "route_hash": 4154970636566126204,
+          "construct_ms": 309
+        },
+        {
+          "id": 54,
+          "valid": true,
+          "surrogate_obj": -200.12423184127226,
+          "edge_hash": 6602504667354341580,
+          "route_hash": 15764413515514194918,
+          "construct_ms": 322
+        },
+        {
+          "id": 55,
+          "valid": true,
+          "surrogate_obj": -200.26055596643482,
+          "edge_hash": 8407730346937346256,
+          "route_hash": 8004353725545344458,
+          "construct_ms": 300
+        },
+        {
+          "id": 56,
+          "valid": true,
+          "surrogate_obj": -202.12377248362344,
+          "edge_hash": 10867375443452934359,
+          "route_hash": 2496133377928340247,
+          "construct_ms": 315
+        },
+        {
+          "id": 57,
+          "valid": true,
+          "surrogate_obj": -196.55930516873167,
+          "edge_hash": 2402734213862349301,
+          "route_hash": 18312645556355621782,
+          "construct_ms": 297
+        },
+        {
+          "id": 58,
+          "valid": true,
+          "surrogate_obj": -202.30787495773853,
+          "edge_hash": 2363848362646296473,
+          "route_hash": 6093929691307510102,
+          "construct_ms": 300
+        },
+        {
+          "id": 59,
+          "valid": true,
+          "surrogate_obj": -199.79994626552562,
+          "edge_hash": 9868282029147889266,
+          "route_hash": 13024713760830566189,
+          "construct_ms": 302
+        },
+        {
+          "id": 60,
+          "valid": true,
+          "surrogate_obj": -200.52787178274968,
+          "edge_hash": 4487876770449081872,
+          "route_hash": 10008214092030421233,
+          "construct_ms": 298
+        },
+        {
+          "id": 61,
+          "valid": true,
+          "surrogate_obj": -201.79320845001638,
+          "edge_hash": 4419440793660087961,
+          "route_hash": 7096236351668375089,
+          "construct_ms": 295
+        },
+        {
+          "id": 62,
+          "valid": true,
+          "surrogate_obj": -199.3254665186481,
+          "edge_hash": 18134273958587900898,
+          "route_hash": 9224589765129150171,
+          "construct_ms": 293
+        },
+        {
+          "id": 63,
+          "valid": true,
+          "surrogate_obj": -199.36925071383172,
+          "edge_hash": 12556040465029536471,
+          "route_hash": 2904083410745666226,
+          "construct_ms": 306
+        },
+        {
+          "id": 64,
+          "valid": true,
+          "surrogate_obj": -199.07484044863716,
+          "edge_hash": 18190836573245623655,
+          "route_hash": 7459961556999660995,
+          "construct_ms": 299
+        },
+        {
+          "id": 65,
+          "valid": true,
+          "surrogate_obj": -200.27666164507502,
+          "edge_hash": 14078804316382700101,
+          "route_hash": 3280236081957385920,
+          "construct_ms": 290
+        },
+        {
+          "id": 66,
+          "valid": true,
+          "surrogate_obj": -200.5883014520506,
+          "edge_hash": 18276510354909737089,
+          "route_hash": 17154770560020722685,
+          "construct_ms": 290
+        },
+        {
+          "id": 67,
+          "valid": true,
+          "surrogate_obj": -200.17904362894393,
+          "edge_hash": 7456693865713221735,
+          "route_hash": 8257816202390225349,
+          "construct_ms": 290
+        },
+        {
+          "id": 68,
+          "valid": true,
+          "surrogate_obj": -199.45398424038024,
+          "edge_hash": 1154484126200293310,
+          "route_hash": 7078432385171461697,
+          "construct_ms": 291
+        },
+        {
+          "id": 69,
+          "valid": true,
+          "surrogate_obj": -200.72794331307404,
+          "edge_hash": 10769109266657999012,
+          "route_hash": 10202493911462913150,
+          "construct_ms": 317
+        },
+        {
+          "id": 70,
+          "valid": true,
+          "surrogate_obj": -199.5218225534702,
+          "edge_hash": 9769136615237700771,
+          "route_hash": 13490791886991406365,
+          "construct_ms": 292
+        },
+        {
+          "id": 71,
+          "valid": true,
+          "surrogate_obj": -201.03404907362778,
+          "edge_hash": 14895761963841247130,
+          "route_hash": 6029094001989222960,
+          "construct_ms": 302
+        },
+        {
+          "id": 72,
+          "valid": true,
+          "surrogate_obj": -200.8672799308008,
+          "edge_hash": 7036783348409528545,
+          "route_hash": 4210792691757405115,
+          "construct_ms": 298
+        },
+        {
+          "id": 73,
+          "valid": true,
+          "surrogate_obj": -201.35293752142846,
+          "edge_hash": 16028756325964814686,
+          "route_hash": 17705174320134759687,
+          "construct_ms": 290
+        },
+        {
+          "id": 74,
+          "valid": true,
+          "surrogate_obj": -195.8906680093841,
+          "edge_hash": 7442832865082222206,
+          "route_hash": 7947452068126686800,
+          "construct_ms": 291
+        },
+        {
+          "id": 75,
+          "valid": true,
+          "surrogate_obj": -201.2510840164486,
+          "edge_hash": 11990160352770600433,
+          "route_hash": 17698258807315870948,
+          "construct_ms": 300
+        },
+        {
+          "id": 76,
+          "valid": true,
+          "surrogate_obj": -197.75583753074443,
+          "edge_hash": 4246201851239306909,
+          "route_hash": 860242831663562503,
+          "construct_ms": 302
+        },
+        {
+          "id": 77,
+          "valid": true,
+          "surrogate_obj": -202.01601330405964,
+          "edge_hash": 10855923367515955633,
+          "route_hash": 4015999370173272942,
+          "construct_ms": 290
+        },
+        {
+          "id": 78,
+          "valid": true,
+          "surrogate_obj": -199.2915405073311,
+          "edge_hash": 3758275228733307490,
+          "route_hash": 4667987181057319580,
+          "construct_ms": 290
+        },
+        {
+          "id": 79,
+          "valid": true,
+          "surrogate_obj": -197.2557220161798,
+          "edge_hash": 15660808156066461392,
+          "route_hash": 11288731386379347092,
+          "construct_ms": 294
+        },
+        {
+          "id": 80,
+          "valid": true,
+          "surrogate_obj": -200.85082597737596,
+          "edge_hash": 2536766720136337568,
+          "route_hash": 812392601487948185,
+          "construct_ms": 288
+        },
+        {
+          "id": 81,
+          "valid": true,
+          "surrogate_obj": -200.62201344926387,
+          "edge_hash": 3874618314859380817,
+          "route_hash": 10778336652956568529,
+          "construct_ms": 290
+        },
+        {
+          "id": 82,
+          "valid": true,
+          "surrogate_obj": -196.5448847962993,
+          "edge_hash": 4029771659686919550,
+          "route_hash": 1672700901445165151,
+          "construct_ms": 303
+        },
+        {
+          "id": 83,
+          "valid": true,
+          "surrogate_obj": -198.21679626739052,
+          "edge_hash": 14665627745522910290,
+          "route_hash": 17459445802084540055,
+          "construct_ms": 295
+        },
+        {
+          "id": 84,
+          "valid": true,
+          "surrogate_obj": -200.96657424156137,
+          "edge_hash": 14606900568876092117,
+          "route_hash": 8779592439543119786,
+          "construct_ms": 299
+        },
+        {
+          "id": 85,
+          "valid": true,
+          "surrogate_obj": -199.7404711579906,
+          "edge_hash": 11051998231251691744,
+          "route_hash": 1811244948844321188,
+          "construct_ms": 299
+        },
+        {
+          "id": 86,
+          "valid": true,
+          "surrogate_obj": -197.5919477753634,
+          "edge_hash": 17429050920070155790,
+          "route_hash": 6251009464418095867,
+          "construct_ms": 289
+        },
+        {
+          "id": 87,
+          "valid": true,
+          "surrogate_obj": -199.88862231855148,
+          "edge_hash": 170054291674498049,
+          "route_hash": 13753629467218497969,
+          "construct_ms": 287
+        },
+        {
+          "id": 88,
+          "valid": true,
+          "surrogate_obj": -202.32520306087412,
+          "edge_hash": 5865137901365054040,
+          "route_hash": 4804869019878774749,
+          "construct_ms": 288
+        },
+        {
+          "id": 89,
+          "valid": true,
+          "surrogate_obj": -204.40444905549703,
+          "edge_hash": 12689449491824452978,
+          "route_hash": 8352156214060225318,
+          "construct_ms": 292
+        },
+        {
+          "id": 90,
+          "valid": true,
+          "surrogate_obj": -200.2670633581597,
+          "edge_hash": 7892521650868870537,
+          "route_hash": 5521256821433338961,
+          "construct_ms": 287
+        },
+        {
+          "id": 91,
+          "valid": true,
+          "surrogate_obj": -197.44019526163373,
+          "edge_hash": 10593549859247130005,
+          "route_hash": 14052134589836098299,
+          "construct_ms": 291
+        },
+        {
+          "id": 92,
+          "valid": true,
+          "surrogate_obj": -198.62918419546122,
+          "edge_hash": 16605369053412048497,
+          "route_hash": 14576068095007405417,
+          "construct_ms": 288
+        },
+        {
+          "id": 93,
+          "valid": true,
+          "surrogate_obj": -200.39806006634117,
+          "edge_hash": 10703329408838937287,
+          "route_hash": 5423200381526506336,
+          "construct_ms": 289
+        },
+        {
+          "id": 94,
+          "valid": true,
+          "surrogate_obj": -199.2001535778059,
+          "edge_hash": 2667931657409367233,
+          "route_hash": 2926583236579738558,
+          "construct_ms": 296
+        },
+        {
+          "id": 95,
+          "valid": true,
+          "surrogate_obj": -196.0386564488876,
+          "edge_hash": 15598747889582337906,
+          "route_hash": 1409602835553737993,
+          "construct_ms": 290
+        },
+        {
+          "id": 96,
+          "valid": true,
+          "surrogate_obj": -197.12897833440604,
+          "edge_hash": 10001077840558063202,
+          "route_hash": 16479570380262764315,
+          "construct_ms": 289
+        },
+        {
+          "id": 97,
+          "valid": true,
+          "surrogate_obj": -199.54316767714562,
+          "edge_hash": 17257510976981793237,
+          "route_hash": 14922047500315841850,
+          "construct_ms": 293
+        },
+        {
+          "id": 98,
+          "valid": true,
+          "surrogate_obj": -195.92873693532687,
+          "edge_hash": 3554538411912387340,
+          "route_hash": 6249067838212569878,
+          "construct_ms": 300
+        },
+        {
+          "id": 99,
+          "valid": true,
+          "surrogate_obj": -201.48156954405698,
+          "edge_hash": 7384450087129921405,
+          "route_hash": 8432854368103569240,
+          "construct_ms": 291
+        }
+      ]
+    },
+    {
+      "instance": "setA-10",
+      "n_individuals": 100,
+      "n_valid": 92,
+      "validity_rate": 0.92,
+      "n_unique_edge_hashes": 100,
+      "unique_edge_pct": 1.0,
+      "n_unique_route_hashes": 100,
+      "unique_route_pct": 1.0,
+      "mean_pairwise_edge_overlap": 0.0,
+      "obj_mean": -88.33390452937688,
+      "obj_std": 18.435663533015976,
+      "obj_min": -166.67974316471654,
+      "obj_max": -69.43802404547873,
+      "mean_construct_ms": 653.22,
+      "total_construct_ms": 65322,
+      "verdict": "FAIL",
+      "individuals": [
+        {
+          "id": 0,
+          "valid": true,
+          "surrogate_obj": -113.0121767349896,
+          "edge_hash": 1995119092692914349,
+          "route_hash": 9516344686154581251,
+          "construct_ms": 604
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "surrogate_obj": -106.8130466119253,
+          "edge_hash": 11484957018201051226,
+          "route_hash": 18092376757182905679,
+          "construct_ms": 617
+        },
+        {
+          "id": 2,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 15830322019446841306,
+          "route_hash": 3790147984520720873,
+          "construct_ms": 611
+        },
+        {
+          "id": 3,
+          "valid": true,
+          "surrogate_obj": -87.57335374440454,
+          "edge_hash": 1554155115955262060,
+          "route_hash": 396660572203727504,
+          "construct_ms": 610
+        },
+        {
+          "id": 4,
+          "valid": true,
+          "surrogate_obj": -106.37649659896366,
+          "edge_hash": 2026397427373329934,
+          "route_hash": 16442366932407678993,
+          "construct_ms": 610
+        },
+        {
+          "id": 5,
+          "valid": true,
+          "surrogate_obj": -90.09476371370654,
+          "edge_hash": 13338690400156172186,
+          "route_hash": 4622850366699989909,
+          "construct_ms": 607
+        },
+        {
+          "id": 6,
+          "valid": true,
+          "surrogate_obj": -90.68837469937725,
+          "edge_hash": 17482983436479892503,
+          "route_hash": 16097275024875946901,
+          "construct_ms": 672
+        },
+        {
+          "id": 7,
+          "valid": true,
+          "surrogate_obj": -75.912104486992,
+          "edge_hash": 9133573476095545723,
+          "route_hash": 6205495550090586127,
+          "construct_ms": 645
+        },
+        {
+          "id": 8,
+          "valid": true,
+          "surrogate_obj": -100.25271157173052,
+          "edge_hash": 8443203216393581958,
+          "route_hash": 9308436066685988391,
+          "construct_ms": 693
+        },
+        {
+          "id": 9,
+          "valid": true,
+          "surrogate_obj": -73.7756698325048,
+          "edge_hash": 5423114783759763810,
+          "route_hash": 4112932453184916886,
+          "construct_ms": 648
+        },
+        {
+          "id": 10,
+          "valid": true,
+          "surrogate_obj": -93.24039511351593,
+          "edge_hash": 4536697882259237069,
+          "route_hash": 985297204319671181,
+          "construct_ms": 628
+        },
+        {
+          "id": 11,
+          "valid": true,
+          "surrogate_obj": -78.53150161224114,
+          "edge_hash": 3885723026115463369,
+          "route_hash": 10918581482761494412,
+          "construct_ms": 718
+        },
+        {
+          "id": 12,
+          "valid": true,
+          "surrogate_obj": -80.8187180407202,
+          "edge_hash": 10242145276438943927,
+          "route_hash": 16898641730134798178,
+          "construct_ms": 656
+        },
+        {
+          "id": 13,
+          "valid": true,
+          "surrogate_obj": -85.26546781385404,
+          "edge_hash": 3441434702671337789,
+          "route_hash": 4252475179472701772,
+          "construct_ms": 612
+        },
+        {
+          "id": 14,
+          "valid": true,
+          "surrogate_obj": -162.43212669697937,
+          "edge_hash": 11655060269265326599,
+          "route_hash": 1782990560683385595,
+          "construct_ms": 639
+        },
+        {
+          "id": 15,
+          "valid": true,
+          "surrogate_obj": -79.25738223222683,
+          "edge_hash": 13348118403541905640,
+          "route_hash": 17941207020246197582,
+          "construct_ms": 690
+        },
+        {
+          "id": 16,
+          "valid": true,
+          "surrogate_obj": -121.72613658142956,
+          "edge_hash": 8415425748608350441,
+          "route_hash": 11197448374896430731,
+          "construct_ms": 617
+        },
+        {
+          "id": 17,
+          "valid": true,
+          "surrogate_obj": -79.67780813559584,
+          "edge_hash": 17532851939568109809,
+          "route_hash": 15310187165055683808,
+          "construct_ms": 658
+        },
+        {
+          "id": 18,
+          "valid": true,
+          "surrogate_obj": -79.33899540298574,
+          "edge_hash": 12415033998739661978,
+          "route_hash": 17133320266495260777,
+          "construct_ms": 608
+        },
+        {
+          "id": 19,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 15525655422801397464,
+          "route_hash": 132286434307710545,
+          "construct_ms": 622
+        },
+        {
+          "id": 20,
+          "valid": true,
+          "surrogate_obj": -91.90248192335686,
+          "edge_hash": 13649481294219764514,
+          "route_hash": 12624223965705615844,
+          "construct_ms": 616
+        },
+        {
+          "id": 21,
+          "valid": true,
+          "surrogate_obj": -91.45367245928045,
+          "edge_hash": 2128617871074281275,
+          "route_hash": 18151689391650846821,
+          "construct_ms": 657
+        },
+        {
+          "id": 22,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 14978308234818326960,
+          "route_hash": 4655868402991884341,
+          "construct_ms": 610
+        },
+        {
+          "id": 23,
+          "valid": true,
+          "surrogate_obj": -83.80175822701915,
+          "edge_hash": 1114599297291328197,
+          "route_hash": 11713348290393622280,
+          "construct_ms": 629
+        },
+        {
+          "id": 24,
+          "valid": true,
+          "surrogate_obj": -78.27048310274571,
+          "edge_hash": 8687855403787228775,
+          "route_hash": 3601943158325243022,
+          "construct_ms": 635
+        },
+        {
+          "id": 25,
+          "valid": true,
+          "surrogate_obj": -89.32582788561254,
+          "edge_hash": 16078919965863118681,
+          "route_hash": 12601833865071624987,
+          "construct_ms": 941
+        },
+        {
+          "id": 26,
+          "valid": true,
+          "surrogate_obj": -101.85631114991457,
+          "edge_hash": 642593730765450546,
+          "route_hash": 7858973001669229118,
+          "construct_ms": 649
+        },
+        {
+          "id": 27,
+          "valid": true,
+          "surrogate_obj": -74.53397661546745,
+          "edge_hash": 12043392628377368615,
+          "route_hash": 5097126926626937067,
+          "construct_ms": 609
+        },
+        {
+          "id": 28,
+          "valid": true,
+          "surrogate_obj": -72.65483294441492,
+          "edge_hash": 18055226505551511256,
+          "route_hash": 16803553326942744628,
+          "construct_ms": 1099
+        },
+        {
+          "id": 29,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 8424417620199895620,
+          "route_hash": 8733294266511518608,
+          "construct_ms": 622
+        },
+        {
+          "id": 30,
+          "valid": true,
+          "surrogate_obj": -80.18824571704965,
+          "edge_hash": 8354818911003664994,
+          "route_hash": 2257537660420619877,
+          "construct_ms": 606
+        },
+        {
+          "id": 31,
+          "valid": true,
+          "surrogate_obj": -78.03616219315836,
+          "edge_hash": 15307379977538128346,
+          "route_hash": 4478113531316541462,
+          "construct_ms": 606
+        },
+        {
+          "id": 32,
+          "valid": true,
+          "surrogate_obj": -166.67974316471654,
+          "edge_hash": 8259921606335271582,
+          "route_hash": 2929572058506227844,
+          "construct_ms": 608
+        },
+        {
+          "id": 33,
+          "valid": true,
+          "surrogate_obj": -80.4438111219384,
+          "edge_hash": 14505681544390898080,
+          "route_hash": 16110850808631784013,
+          "construct_ms": 607
+        },
+        {
+          "id": 34,
+          "valid": true,
+          "surrogate_obj": -86.6906173088868,
+          "edge_hash": 12317222597532360838,
+          "route_hash": 14356030891949046512,
+          "construct_ms": 736
+        },
+        {
+          "id": 35,
+          "valid": true,
+          "surrogate_obj": -90.30391178130265,
+          "edge_hash": 1243292675429297608,
+          "route_hash": 8227695145681279336,
+          "construct_ms": 617
+        },
+        {
+          "id": 36,
+          "valid": true,
+          "surrogate_obj": -73.20197927263648,
+          "edge_hash": 10936569334968665834,
+          "route_hash": 18031633410786317260,
+          "construct_ms": 654
+        },
+        {
+          "id": 37,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 6604328374241054499,
+          "route_hash": 4311166386314372555,
+          "construct_ms": 622
+        },
+        {
+          "id": 38,
+          "valid": true,
+          "surrogate_obj": -79.06858633557349,
+          "edge_hash": 7888753966499299172,
+          "route_hash": 7466702762856157073,
+          "construct_ms": 608
+        },
+        {
+          "id": 39,
+          "valid": true,
+          "surrogate_obj": -80.11729692103603,
+          "edge_hash": 17529369683789203609,
+          "route_hash": 3296854725563206453,
+          "construct_ms": 754
+        },
+        {
+          "id": 40,
+          "valid": true,
+          "surrogate_obj": -81.38931135649958,
+          "edge_hash": 284225487676736155,
+          "route_hash": 1477723169835736684,
+          "construct_ms": 602
+        },
+        {
+          "id": 41,
+          "valid": true,
+          "surrogate_obj": -72.53104353629266,
+          "edge_hash": 1610960059462333922,
+          "route_hash": 1027931785882559969,
+          "construct_ms": 663
+        },
+        {
+          "id": 42,
+          "valid": true,
+          "surrogate_obj": -86.50448812411727,
+          "edge_hash": 11666192085463221443,
+          "route_hash": 547691189821655839,
+          "construct_ms": 652
+        },
+        {
+          "id": 43,
+          "valid": true,
+          "surrogate_obj": -79.62918995159939,
+          "edge_hash": 8925718104074985379,
+          "route_hash": 18031621979327978686,
+          "construct_ms": 618
+        },
+        {
+          "id": 44,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 3803441794948980709,
+          "route_hash": 11855094883367126483,
+          "construct_ms": 611
+        },
+        {
+          "id": 45,
+          "valid": true,
+          "surrogate_obj": -79.10466338281236,
+          "edge_hash": 3161968554044514351,
+          "route_hash": 14338177496962394328,
+          "construct_ms": 608
+        },
+        {
+          "id": 46,
+          "valid": true,
+          "surrogate_obj": -77.90596045106975,
+          "edge_hash": 7756400846516693917,
+          "route_hash": 17087405113526850944,
+          "construct_ms": 672
+        },
+        {
+          "id": 47,
+          "valid": true,
+          "surrogate_obj": -90.52247500009048,
+          "edge_hash": 29241312123631979,
+          "route_hash": 6102409708718130362,
+          "construct_ms": 610
+        },
+        {
+          "id": 48,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 8406061757915812346,
+          "route_hash": 107490958652885196,
+          "construct_ms": 614
+        },
+        {
+          "id": 49,
+          "valid": true,
+          "surrogate_obj": -82.73843889127782,
+          "edge_hash": 3209409733842648513,
+          "route_hash": 6299373074349033756,
+          "construct_ms": 614
+        },
+        {
+          "id": 50,
+          "valid": true,
+          "surrogate_obj": -84.16413549717353,
+          "edge_hash": 8477407474955759336,
+          "route_hash": 1079600921564218617,
+          "construct_ms": 615
+        },
+        {
+          "id": 51,
+          "valid": true,
+          "surrogate_obj": -84.22308099129515,
+          "edge_hash": 2152105777462040253,
+          "route_hash": 961686526872678996,
+          "construct_ms": 613
+        },
+        {
+          "id": 52,
+          "valid": true,
+          "surrogate_obj": -92.1348324176447,
+          "edge_hash": 17437772772221557629,
+          "route_hash": 983915491272690290,
+          "construct_ms": 611
+        },
+        {
+          "id": 53,
+          "valid": true,
+          "surrogate_obj": -80.85792687625069,
+          "edge_hash": 11301892038980701439,
+          "route_hash": 5299882835098409953,
+          "construct_ms": 609
+        },
+        {
+          "id": 54,
+          "valid": true,
+          "surrogate_obj": -76.90808683427707,
+          "edge_hash": 9808026606509742106,
+          "route_hash": 16478019604332138465,
+          "construct_ms": 609
+        },
+        {
+          "id": 55,
+          "valid": true,
+          "surrogate_obj": -101.37696880635795,
+          "edge_hash": 13691811717176567245,
+          "route_hash": 14671149212133435786,
+          "construct_ms": 608
+        },
+        {
+          "id": 56,
+          "valid": true,
+          "surrogate_obj": -74.8650174282777,
+          "edge_hash": 12280057727410304130,
+          "route_hash": 16667944348100911780,
+          "construct_ms": 610
+        },
+        {
+          "id": 57,
+          "valid": true,
+          "surrogate_obj": -93.94459204073803,
+          "edge_hash": 8430619410878153967,
+          "route_hash": 2246865567557374992,
+          "construct_ms": 610
+        },
+        {
+          "id": 58,
+          "valid": true,
+          "surrogate_obj": -119.72853049344607,
+          "edge_hash": 15532733912310725947,
+          "route_hash": 5308325104799372521,
+          "construct_ms": 670
+        },
+        {
+          "id": 59,
+          "valid": true,
+          "surrogate_obj": -85.49195240552729,
+          "edge_hash": 4132559884061899071,
+          "route_hash": 9592602261641740860,
+          "construct_ms": 651
+        },
+        {
+          "id": 60,
+          "valid": true,
+          "surrogate_obj": -76.00705203958631,
+          "edge_hash": 17576654317272132735,
+          "route_hash": 11614194575936368016,
+          "construct_ms": 677
+        },
+        {
+          "id": 61,
+          "valid": true,
+          "surrogate_obj": -113.87916025344732,
+          "edge_hash": 13973646657567885954,
+          "route_hash": 15578413878218178637,
+          "construct_ms": 632
+        },
+        {
+          "id": 62,
+          "valid": true,
+          "surrogate_obj": -76.59298658358327,
+          "edge_hash": 8993077099844616608,
+          "route_hash": 5811571041726932668,
+          "construct_ms": 693
+        },
+        {
+          "id": 63,
+          "valid": true,
+          "surrogate_obj": -84.40104151313199,
+          "edge_hash": 17121370082577418182,
+          "route_hash": 16128132733371157205,
+          "construct_ms": 740
+        },
+        {
+          "id": 64,
+          "valid": true,
+          "surrogate_obj": -71.74742314102132,
+          "edge_hash": 14085465662401743479,
+          "route_hash": 5667848495530686348,
+          "construct_ms": 636
+        },
+        {
+          "id": 65,
+          "valid": true,
+          "surrogate_obj": -81.11076863390096,
+          "edge_hash": 12324992313059324870,
+          "route_hash": 1497502592715313592,
+          "construct_ms": 636
+        },
+        {
+          "id": 66,
+          "valid": true,
+          "surrogate_obj": -83.791682165787,
+          "edge_hash": 14647934060674457100,
+          "route_hash": 12860039848300452505,
+          "construct_ms": 707
+        },
+        {
+          "id": 67,
+          "valid": true,
+          "surrogate_obj": -113.31308648093005,
+          "edge_hash": 2062066852127617153,
+          "route_hash": 16493486718884516712,
+          "construct_ms": 745
+        },
+        {
+          "id": 68,
+          "valid": true,
+          "surrogate_obj": -90.6934180869539,
+          "edge_hash": 3698380052751237804,
+          "route_hash": 15280809866380249555,
+          "construct_ms": 699
+        },
+        {
+          "id": 69,
+          "valid": true,
+          "surrogate_obj": -70.16968885869821,
+          "edge_hash": 13702284588262913587,
+          "route_hash": 4624484005315249799,
+          "construct_ms": 607
+        },
+        {
+          "id": 70,
+          "valid": true,
+          "surrogate_obj": -113.99221750808138,
+          "edge_hash": 10130879089711838442,
+          "route_hash": 13115422991495522649,
+          "construct_ms": 612
+        },
+        {
+          "id": 71,
+          "valid": true,
+          "surrogate_obj": -87.94587800817578,
+          "edge_hash": 13787404796199833339,
+          "route_hash": 11795308072712449463,
+          "construct_ms": 961
+        },
+        {
+          "id": 72,
+          "valid": true,
+          "surrogate_obj": -73.56936627142669,
+          "edge_hash": 7424747288259419187,
+          "route_hash": 3362542967902806634,
+          "construct_ms": 686
+        },
+        {
+          "id": 73,
+          "valid": true,
+          "surrogate_obj": -76.56383391664464,
+          "edge_hash": 8216288533210265228,
+          "route_hash": 17312021028429577159,
+          "construct_ms": 610
+        },
+        {
+          "id": 74,
+          "valid": true,
+          "surrogate_obj": -83.28895560736038,
+          "edge_hash": 15658614211419163904,
+          "route_hash": 2573039309413955575,
+          "construct_ms": 887
+        },
+        {
+          "id": 75,
+          "valid": true,
+          "surrogate_obj": -92.64614855353008,
+          "edge_hash": 9609030191784122840,
+          "route_hash": 3387064988156207852,
+          "construct_ms": 644
+        },
+        {
+          "id": 76,
+          "valid": true,
+          "surrogate_obj": -75.07499519837631,
+          "edge_hash": 14286600160375128596,
+          "route_hash": 17296855291502068686,
+          "construct_ms": 609
+        },
+        {
+          "id": 77,
+          "valid": true,
+          "surrogate_obj": -164.8050796197869,
+          "edge_hash": 6267063952206773754,
+          "route_hash": 7624112829779712182,
+          "construct_ms": 943
+        },
+        {
+          "id": 78,
+          "valid": true,
+          "surrogate_obj": -83.80971411298796,
+          "edge_hash": 16798835160562259399,
+          "route_hash": 1516812893955268852,
+          "construct_ms": 688
+        },
+        {
+          "id": 79,
+          "valid": true,
+          "surrogate_obj": -86.67075628947038,
+          "edge_hash": 14522666029488836823,
+          "route_hash": 12824087588402801438,
+          "construct_ms": 747
+        },
+        {
+          "id": 80,
+          "valid": true,
+          "surrogate_obj": -71.24228743130463,
+          "edge_hash": 5639532529942869243,
+          "route_hash": 10487779603023618369,
+          "construct_ms": 738
+        },
+        {
+          "id": 81,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 6172081978154779673,
+          "route_hash": 10198101286475290373,
+          "construct_ms": 617
+        },
+        {
+          "id": 82,
+          "valid": true,
+          "surrogate_obj": -86.72492865311133,
+          "edge_hash": 8385112873960536974,
+          "route_hash": 6906638919914495729,
+          "construct_ms": 631
+        },
+        {
+          "id": 83,
+          "valid": true,
+          "surrogate_obj": -72.45394084717142,
+          "edge_hash": 1179904531944880684,
+          "route_hash": 2350435261997386540,
+          "construct_ms": 641
+        },
+        {
+          "id": 84,
+          "valid": true,
+          "surrogate_obj": -81.71769165957087,
+          "edge_hash": 189372117782456877,
+          "route_hash": 2089235829085774397,
+          "construct_ms": 628
+        },
+        {
+          "id": 85,
+          "valid": true,
+          "surrogate_obj": -86.28883966887545,
+          "edge_hash": 9442242668300720148,
+          "route_hash": 8615510400774354395,
+          "construct_ms": 658
+        },
+        {
+          "id": 86,
+          "valid": true,
+          "surrogate_obj": -77.56939800623766,
+          "edge_hash": 8199156453108329778,
+          "route_hash": 4844615139701181396,
+          "construct_ms": 617
+        },
+        {
+          "id": 87,
+          "valid": true,
+          "surrogate_obj": -75.03756552778171,
+          "edge_hash": 15315979560934309714,
+          "route_hash": 2143572014044990860,
+          "construct_ms": 608
+        },
+        {
+          "id": 88,
+          "valid": true,
+          "surrogate_obj": -99.7701552327317,
+          "edge_hash": 5226780886891794439,
+          "route_hash": 201398246626830031,
+          "construct_ms": 609
+        },
+        {
+          "id": 89,
+          "valid": true,
+          "surrogate_obj": -75.41986882400323,
+          "edge_hash": 4740755072906103477,
+          "route_hash": 16482100285665884015,
+          "construct_ms": 605
+        },
+        {
+          "id": 90,
+          "valid": true,
+          "surrogate_obj": -69.43802404547873,
+          "edge_hash": 3670203004061181947,
+          "route_hash": 11049863083006809728,
+          "construct_ms": 605
+        },
+        {
+          "id": 91,
+          "valid": true,
+          "surrogate_obj": -74.0567492017037,
+          "edge_hash": 4591148262388622959,
+          "route_hash": 16817394152446460598,
+          "construct_ms": 608
+        },
+        {
+          "id": 92,
+          "valid": true,
+          "surrogate_obj": -83.38708610696224,
+          "edge_hash": 4344127205837236080,
+          "route_hash": 15296090103882002320,
+          "construct_ms": 604
+        },
+        {
+          "id": 93,
+          "valid": true,
+          "surrogate_obj": -80.78829287358792,
+          "edge_hash": 4630840595677641593,
+          "route_hash": 14682983960882467239,
+          "construct_ms": 605
+        },
+        {
+          "id": 94,
+          "valid": true,
+          "surrogate_obj": -111.82584467316445,
+          "edge_hash": 16727461972926908144,
+          "route_hash": 14033462077967353021,
+          "construct_ms": 607
+        },
+        {
+          "id": 95,
+          "valid": true,
+          "surrogate_obj": -75.40319584437535,
+          "edge_hash": 11588116812858469808,
+          "route_hash": 93340788194027993,
+          "construct_ms": 607
+        },
+        {
+          "id": 96,
+          "valid": true,
+          "surrogate_obj": -80.95105127637805,
+          "edge_hash": 9084442698037500955,
+          "route_hash": 150655760027663445,
+          "construct_ms": 607
+        },
+        {
+          "id": 97,
+          "valid": true,
+          "surrogate_obj": -82.48621072653813,
+          "edge_hash": 1486047466563762186,
+          "route_hash": 479055332638517320,
+          "construct_ms": 638
+        },
+        {
+          "id": 98,
+          "valid": true,
+          "surrogate_obj": -113.6558548417493,
+          "edge_hash": 14657464923454322408,
+          "route_hash": 13427426745435942205,
+          "construct_ms": 605
+        },
+        {
+          "id": 99,
+          "valid": true,
+          "surrogate_obj": -81.09135618606459,
+          "edge_hash": 13311400346498209731,
+          "route_hash": 10423767691278984386,
+          "construct_ms": 605
+        }
+      ]
+    },
+    {
+      "instance": "setA-13",
+      "n_individuals": 100,
+      "n_valid": 97,
+      "validity_rate": 0.97,
+      "n_unique_edge_hashes": 100,
+      "unique_edge_pct": 1.0,
+      "n_unique_route_hashes": 100,
+      "unique_route_pct": 1.0,
+      "mean_pairwise_edge_overlap": 0.0,
+      "obj_mean": -30616.964021469626,
+      "obj_std": 170847.28228645393,
+      "obj_min": -986957.2059248834,
+      "obj_max": -51.13402583336841,
+      "mean_construct_ms": 1773.46,
+      "total_construct_ms": 177346,
+      "verdict": "PASS",
+      "individuals": [
+        {
+          "id": 0,
+          "valid": true,
+          "surrogate_obj": -77.78668902137304,
+          "edge_hash": 9778771776506392935,
+          "route_hash": 5676150746585041397,
+          "construct_ms": 1700
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "surrogate_obj": -68.57986595253371,
+          "edge_hash": 4244305823178442019,
+          "route_hash": 13940892771151944590,
+          "construct_ms": 1700
+        },
+        {
+          "id": 2,
+          "valid": true,
+          "surrogate_obj": -54.70574355966319,
+          "edge_hash": 4529613227680851206,
+          "route_hash": 15958550292122702260,
+          "construct_ms": 1738
+        },
+        {
+          "id": 3,
+          "valid": true,
+          "surrogate_obj": -69.62715185170207,
+          "edge_hash": 17345782397978188370,
+          "route_hash": 227972072030199629,
+          "construct_ms": 1786
+        },
+        {
+          "id": 4,
+          "valid": true,
+          "surrogate_obj": -72.67758513810267,
+          "edge_hash": 10677575996317997138,
+          "route_hash": 2347097961141634189,
+          "construct_ms": 1711
+        },
+        {
+          "id": 5,
+          "valid": true,
+          "surrogate_obj": -116.86317189614931,
+          "edge_hash": 10622954761822570328,
+          "route_hash": 6739341522240583770,
+          "construct_ms": 1703
+        },
+        {
+          "id": 6,
+          "valid": true,
+          "surrogate_obj": -69.71351385102153,
+          "edge_hash": 2200567742514318656,
+          "route_hash": 18322902171667546478,
+          "construct_ms": 1825
+        },
+        {
+          "id": 7,
+          "valid": true,
+          "surrogate_obj": -60.1487234492958,
+          "edge_hash": 16139058693049143210,
+          "route_hash": 13340630849092596564,
+          "construct_ms": 1719
+        },
+        {
+          "id": 8,
+          "valid": true,
+          "surrogate_obj": -125.70803997884781,
+          "edge_hash": 3262687600195523973,
+          "route_hash": 15548220607566460051,
+          "construct_ms": 1782
+        },
+        {
+          "id": 9,
+          "valid": true,
+          "surrogate_obj": -180.558039226225,
+          "edge_hash": 13631670687490764140,
+          "route_hash": 8494415118673561983,
+          "construct_ms": 1874
+        },
+        {
+          "id": 10,
+          "valid": true,
+          "surrogate_obj": -194.043998922024,
+          "edge_hash": 17533468910823881470,
+          "route_hash": 8881547467653422672,
+          "construct_ms": 1822
+        },
+        {
+          "id": 11,
+          "valid": true,
+          "surrogate_obj": -170.86551991553245,
+          "edge_hash": 4296810540491907004,
+          "route_hash": 241356276596081550,
+          "construct_ms": 1724
+        },
+        {
+          "id": 12,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 9551300871157843789,
+          "route_hash": 5878361505731262229,
+          "construct_ms": 1717
+        },
+        {
+          "id": 13,
+          "valid": true,
+          "surrogate_obj": -60.656849548559954,
+          "edge_hash": 1542145258646893426,
+          "route_hash": 15004338366609939274,
+          "construct_ms": 1743
+        },
+        {
+          "id": 14,
+          "valid": true,
+          "surrogate_obj": -62.79541168636215,
+          "edge_hash": 9155164430074906284,
+          "route_hash": 3371658484275523051,
+          "construct_ms": 1721
+        },
+        {
+          "id": 15,
+          "valid": true,
+          "surrogate_obj": -65.69962544206614,
+          "edge_hash": 8504081502174287798,
+          "route_hash": 3188640689154221709,
+          "construct_ms": 1714
+        },
+        {
+          "id": 16,
+          "valid": true,
+          "surrogate_obj": -122.91769596819256,
+          "edge_hash": 456033215289938153,
+          "route_hash": 12475340792710297401,
+          "construct_ms": 1709
+        },
+        {
+          "id": 17,
+          "valid": true,
+          "surrogate_obj": -64.79224344950958,
+          "edge_hash": 6906725664049616156,
+          "route_hash": 4036949488832764629,
+          "construct_ms": 1714
+        },
+        {
+          "id": 18,
+          "valid": true,
+          "surrogate_obj": -189.21399522709532,
+          "edge_hash": 8943126664362923492,
+          "route_hash": 12332732786296253454,
+          "construct_ms": 1715
+        },
+        {
+          "id": 19,
+          "valid": true,
+          "surrogate_obj": -169.36286244917326,
+          "edge_hash": 9050962653054498119,
+          "route_hash": 2286359975783322817,
+          "construct_ms": 1744
+        },
+        {
+          "id": 20,
+          "valid": true,
+          "surrogate_obj": -62.70747551997411,
+          "edge_hash": 3744212366298752269,
+          "route_hash": 9788462759927499694,
+          "construct_ms": 1721
+        },
+        {
+          "id": 21,
+          "valid": true,
+          "surrogate_obj": -112.97214371628039,
+          "edge_hash": 8345360628537223403,
+          "route_hash": 6173809442811154850,
+          "construct_ms": 2003
+        },
+        {
+          "id": 22,
+          "valid": true,
+          "surrogate_obj": -65.06223428674672,
+          "edge_hash": 9503129122951869133,
+          "route_hash": 4604056052040400865,
+          "construct_ms": 1748
+        },
+        {
+          "id": 23,
+          "valid": true,
+          "surrogate_obj": -62.182615552579136,
+          "edge_hash": 17934205332620542180,
+          "route_hash": 8941523292583299653,
+          "construct_ms": 1904
+        },
+        {
+          "id": 24,
+          "valid": true,
+          "surrogate_obj": -70.13275020811723,
+          "edge_hash": 5111935551965395562,
+          "route_hash": 12522027633818161323,
+          "construct_ms": 1871
+        },
+        {
+          "id": 25,
+          "valid": true,
+          "surrogate_obj": -67.0011919950973,
+          "edge_hash": 3344921322808099822,
+          "route_hash": 2286375860543513937,
+          "construct_ms": 1710
+        },
+        {
+          "id": 26,
+          "valid": true,
+          "surrogate_obj": -71.40288315118605,
+          "edge_hash": 10274496642493845167,
+          "route_hash": 17361078756453778228,
+          "construct_ms": 1718
+        },
+        {
+          "id": 27,
+          "valid": true,
+          "surrogate_obj": -66.2630484762902,
+          "edge_hash": 8567663415835997619,
+          "route_hash": 1771051147856824362,
+          "construct_ms": 1751
+        },
+        {
+          "id": 28,
+          "valid": true,
+          "surrogate_obj": -149.3866874501963,
+          "edge_hash": 11982498107239792324,
+          "route_hash": 12482905211294188690,
+          "construct_ms": 1739
+        },
+        {
+          "id": 29,
+          "valid": true,
+          "surrogate_obj": -51.13402583336841,
+          "edge_hash": 14805248104814494408,
+          "route_hash": 2327079600020636784,
+          "construct_ms": 1900
+        },
+        {
+          "id": 30,
+          "valid": true,
+          "surrogate_obj": -135.0254511707676,
+          "edge_hash": 9106516924922631076,
+          "route_hash": 13562820729688079599,
+          "construct_ms": 1924
+        },
+        {
+          "id": 31,
+          "valid": true,
+          "surrogate_obj": -56.0857149335484,
+          "edge_hash": 3767364339507855011,
+          "route_hash": 8243437392657376400,
+          "construct_ms": 1793
+        },
+        {
+          "id": 32,
+          "valid": true,
+          "surrogate_obj": -87.53845215660427,
+          "edge_hash": 11654692549488160092,
+          "route_hash": 15667489560346410909,
+          "construct_ms": 2137
+        },
+        {
+          "id": 33,
+          "valid": true,
+          "surrogate_obj": -99.88211843080444,
+          "edge_hash": 2891517509845121180,
+          "route_hash": 8340510039480925536,
+          "construct_ms": 1771
+        },
+        {
+          "id": 34,
+          "valid": true,
+          "surrogate_obj": -72.82631026720223,
+          "edge_hash": 3416969882330420135,
+          "route_hash": 5060093160043781959,
+          "construct_ms": 1696
+        },
+        {
+          "id": 35,
+          "valid": true,
+          "surrogate_obj": -101.68669947910004,
+          "edge_hash": 6624353085552802264,
+          "route_hash": 12714733700135642622,
+          "construct_ms": 1701
+        },
+        {
+          "id": 36,
+          "valid": true,
+          "surrogate_obj": -57.12005463894835,
+          "edge_hash": 15833951055588020439,
+          "route_hash": 14622856689891416986,
+          "construct_ms": 1702
+        },
+        {
+          "id": 37,
+          "valid": true,
+          "surrogate_obj": -77.30120628052461,
+          "edge_hash": 9871038213869289588,
+          "route_hash": 1586471750056207990,
+          "construct_ms": 1696
+        },
+        {
+          "id": 38,
+          "valid": true,
+          "surrogate_obj": -75.80575404692405,
+          "edge_hash": 11265177171733044340,
+          "route_hash": 15079684280065802444,
+          "construct_ms": 1724
+        },
+        {
+          "id": 39,
+          "valid": true,
+          "surrogate_obj": -173.45914273993924,
+          "edge_hash": 15921500350233577039,
+          "route_hash": 8089573512165755145,
+          "construct_ms": 2203
+        },
+        {
+          "id": 40,
+          "valid": true,
+          "surrogate_obj": -69.84282345326781,
+          "edge_hash": 18218419197698588373,
+          "route_hash": 14819279845463354684,
+          "construct_ms": 1812
+        },
+        {
+          "id": 41,
+          "valid": true,
+          "surrogate_obj": -78.72029682238951,
+          "edge_hash": 4312871840071280556,
+          "route_hash": 15036780786268688459,
+          "construct_ms": 2060
+        },
+        {
+          "id": 42,
+          "valid": true,
+          "surrogate_obj": -160.86314161159393,
+          "edge_hash": 2077182930021615067,
+          "route_hash": 2657883225762871597,
+          "construct_ms": 1880
+        },
+        {
+          "id": 43,
+          "valid": true,
+          "surrogate_obj": -87.78026393712396,
+          "edge_hash": 12365110836764539173,
+          "route_hash": 15377992781735125036,
+          "construct_ms": 1744
+        },
+        {
+          "id": 44,
+          "valid": true,
+          "surrogate_obj": -141.7116462180611,
+          "edge_hash": 7856853382863276421,
+          "route_hash": 5090809751402964403,
+          "construct_ms": 1741
+        },
+        {
+          "id": 45,
+          "valid": true,
+          "surrogate_obj": -70.3526113415955,
+          "edge_hash": 15884229236976555347,
+          "route_hash": 17358217201029006511,
+          "construct_ms": 1861
+        },
+        {
+          "id": 46,
+          "valid": true,
+          "surrogate_obj": -113.22961241779822,
+          "edge_hash": 3873975143506806114,
+          "route_hash": 12444900996423758315,
+          "construct_ms": 1718
+        },
+        {
+          "id": 47,
+          "valid": true,
+          "surrogate_obj": -57.42633620122719,
+          "edge_hash": 2365658741361073579,
+          "route_hash": 13392255514282235080,
+          "construct_ms": 1739
+        },
+        {
+          "id": 48,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 4591729082863299067,
+          "route_hash": 16701148962913447582,
+          "construct_ms": 2270
+        },
+        {
+          "id": 49,
+          "valid": true,
+          "surrogate_obj": -128.92233441924216,
+          "edge_hash": 3713216370179132215,
+          "route_hash": 14353254527303245536,
+          "construct_ms": 1717
+        },
+        {
+          "id": 50,
+          "valid": true,
+          "surrogate_obj": -69.60849068534263,
+          "edge_hash": 7035831160265785817,
+          "route_hash": 8573499902814329628,
+          "construct_ms": 1767
+        },
+        {
+          "id": 51,
+          "valid": true,
+          "surrogate_obj": -65.5625603355094,
+          "edge_hash": 15313454734956047369,
+          "route_hash": 16839790453323543971,
+          "construct_ms": 1765
+        },
+        {
+          "id": 52,
+          "valid": true,
+          "surrogate_obj": -96.51365915013899,
+          "edge_hash": 18038642867153494029,
+          "route_hash": 52967789702666242,
+          "construct_ms": 1732
+        },
+        {
+          "id": 53,
+          "valid": true,
+          "surrogate_obj": -78.70722256261202,
+          "edge_hash": 16911348678845365364,
+          "route_hash": 18343087760349815630,
+          "construct_ms": 1705
+        },
+        {
+          "id": 54,
+          "valid": true,
+          "surrogate_obj": -986955.847621085,
+          "edge_hash": 17698875052056786683,
+          "route_hash": 10613977768675597129,
+          "construct_ms": 1699
+        },
+        {
+          "id": 55,
+          "valid": true,
+          "surrogate_obj": -67.06227974512878,
+          "edge_hash": 15302316357882607223,
+          "route_hash": 13578207248525653573,
+          "construct_ms": 1710
+        },
+        {
+          "id": 56,
+          "valid": true,
+          "surrogate_obj": -125.84339763566145,
+          "edge_hash": 4860994707609910690,
+          "route_hash": 8280948987153554846,
+          "construct_ms": 1691
+        },
+        {
+          "id": 57,
+          "valid": true,
+          "surrogate_obj": -73.72936721962893,
+          "edge_hash": 15531094936086688398,
+          "route_hash": 13913703736326625230,
+          "construct_ms": 1694
+        },
+        {
+          "id": 58,
+          "valid": true,
+          "surrogate_obj": -78.96355660210884,
+          "edge_hash": 13281279658663752560,
+          "route_hash": 14149165290625823236,
+          "construct_ms": 1731
+        },
+        {
+          "id": 59,
+          "valid": true,
+          "surrogate_obj": -58.74896919496732,
+          "edge_hash": 11618458946775975152,
+          "route_hash": 10083445365311358319,
+          "construct_ms": 1692
+        },
+        {
+          "id": 60,
+          "valid": true,
+          "surrogate_obj": -74.27386233004103,
+          "edge_hash": 9536737745167663715,
+          "route_hash": 1732774959372931088,
+          "construct_ms": 1695
+        },
+        {
+          "id": 61,
+          "valid": true,
+          "surrogate_obj": -146.5413439434801,
+          "edge_hash": 17144109885333035273,
+          "route_hash": 901691221414349615,
+          "construct_ms": 1745
+        },
+        {
+          "id": 62,
+          "valid": true,
+          "surrogate_obj": -65.036743643228,
+          "edge_hash": 2579118724466477504,
+          "route_hash": 7582539885871329092,
+          "construct_ms": 1913
+        },
+        {
+          "id": 63,
+          "valid": true,
+          "surrogate_obj": -100.94895790423686,
+          "edge_hash": 16112053065134559434,
+          "route_hash": 18350481303022440436,
+          "construct_ms": 1722
+        },
+        {
+          "id": 64,
+          "valid": true,
+          "surrogate_obj": -131.3634122752123,
+          "edge_hash": 5708613578606295614,
+          "route_hash": 15703805058689571404,
+          "construct_ms": 1707
+        },
+        {
+          "id": 65,
+          "valid": true,
+          "surrogate_obj": -123.97675869447238,
+          "edge_hash": 13901748537963293448,
+          "route_hash": 5161542852005736400,
+          "construct_ms": 1725
+        },
+        {
+          "id": 66,
+          "valid": true,
+          "surrogate_obj": -139.5288425748754,
+          "edge_hash": 4121858374552977013,
+          "route_hash": 5809428824295897473,
+          "construct_ms": 1699
+        },
+        {
+          "id": 67,
+          "valid": true,
+          "surrogate_obj": -119.2264522062867,
+          "edge_hash": 10347691092098191458,
+          "route_hash": 18123096155426327955,
+          "construct_ms": 1703
+        },
+        {
+          "id": 68,
+          "valid": true,
+          "surrogate_obj": -124.43738072665768,
+          "edge_hash": 4323557983808050030,
+          "route_hash": 3528929547748167055,
+          "construct_ms": 1694
+        },
+        {
+          "id": 69,
+          "valid": true,
+          "surrogate_obj": -173.29926603210293,
+          "edge_hash": 12506983594699325167,
+          "route_hash": 2727597336771759133,
+          "construct_ms": 1738
+        },
+        {
+          "id": 70,
+          "valid": true,
+          "surrogate_obj": -58.82718773143194,
+          "edge_hash": 2416680463670939676,
+          "route_hash": 15395644968376968241,
+          "construct_ms": 1683
+        },
+        {
+          "id": 71,
+          "valid": true,
+          "surrogate_obj": -59.97470315752683,
+          "edge_hash": 7286878679271404005,
+          "route_hash": 395286066192865118,
+          "construct_ms": 1718
+        },
+        {
+          "id": 72,
+          "valid": true,
+          "surrogate_obj": -130.33429864181767,
+          "edge_hash": 3265328836564963247,
+          "route_hash": 9393943685234485452,
+          "construct_ms": 1700
+        },
+        {
+          "id": 73,
+          "valid": true,
+          "surrogate_obj": -73.8316555736353,
+          "edge_hash": 10869079738081721390,
+          "route_hash": 13121907950319807347,
+          "construct_ms": 1693
+        },
+        {
+          "id": 74,
+          "valid": true,
+          "surrogate_obj": -85.5784567164191,
+          "edge_hash": 11929563481774347208,
+          "route_hash": 364808439752200805,
+          "construct_ms": 1691
+        },
+        {
+          "id": 75,
+          "valid": true,
+          "surrogate_obj": -59.20837041839823,
+          "edge_hash": 10202229150130752826,
+          "route_hash": 7941041917719328322,
+          "construct_ms": 1696
+        },
+        {
+          "id": 76,
+          "valid": true,
+          "surrogate_obj": -73.1900255116102,
+          "edge_hash": 15027759962072085663,
+          "route_hash": 2744807912793863202,
+          "construct_ms": 1692
+        },
+        {
+          "id": 77,
+          "valid": true,
+          "surrogate_obj": -57.83061247706566,
+          "edge_hash": 17951049389660680095,
+          "route_hash": 3115816637513951195,
+          "construct_ms": 1697
+        },
+        {
+          "id": 78,
+          "valid": false,
+          "surrogate_obj": null,
+          "edge_hash": 14868704725892519881,
+          "route_hash": 17565137376866933680,
+          "construct_ms": 1695
+        },
+        {
+          "id": 79,
+          "valid": true,
+          "surrogate_obj": -60.42214867256023,
+          "edge_hash": 13617351262631933429,
+          "route_hash": 8055734643709438716,
+          "construct_ms": 1699
+        },
+        {
+          "id": 80,
+          "valid": true,
+          "surrogate_obj": -84.03643856146061,
+          "edge_hash": 17135538523694715771,
+          "route_hash": 355304000372513061,
+          "construct_ms": 1743
+        },
+        {
+          "id": 81,
+          "valid": true,
+          "surrogate_obj": -986957.2059248834,
+          "edge_hash": 11196590526046747490,
+          "route_hash": 11411688024163982443,
+          "construct_ms": 1717
+        },
+        {
+          "id": 82,
+          "valid": true,
+          "surrogate_obj": -142.0276592149896,
+          "edge_hash": 6230566178813318610,
+          "route_hash": 15492799205322892105,
+          "construct_ms": 2030
+        },
+        {
+          "id": 83,
+          "valid": true,
+          "surrogate_obj": -986951.502248203,
+          "edge_hash": 15891525782395334284,
+          "route_hash": 12276776865465312889,
+          "construct_ms": 1733
+        },
+        {
+          "id": 84,
+          "valid": true,
+          "surrogate_obj": -77.05924923569555,
+          "edge_hash": 16805317997542680192,
+          "route_hash": 1018966784118118013,
+          "construct_ms": 1692
+        },
+        {
+          "id": 85,
+          "valid": true,
+          "surrogate_obj": -81.99107817237581,
+          "edge_hash": 5583154401560680511,
+          "route_hash": 3069882302255313561,
+          "construct_ms": 1677
+        },
+        {
+          "id": 86,
+          "valid": true,
+          "surrogate_obj": -78.78024216637834,
+          "edge_hash": 32794262538222457,
+          "route_hash": 8343014023769407833,
+          "construct_ms": 1686
+        },
+        {
+          "id": 87,
+          "valid": true,
+          "surrogate_obj": -79.8035194823635,
+          "edge_hash": 872308038383542759,
+          "route_hash": 13425420418270731046,
+          "construct_ms": 1699
+        },
+        {
+          "id": 88,
+          "valid": true,
+          "surrogate_obj": -65.27043832545809,
+          "edge_hash": 5095791971758651091,
+          "route_hash": 3175014817151316971,
+          "construct_ms": 1706
+        },
+        {
+          "id": 89,
+          "valid": true,
+          "surrogate_obj": -138.709460876479,
+          "edge_hash": 40736459521037447,
+          "route_hash": 2440553430419556667,
+          "construct_ms": 1819
+        },
+        {
+          "id": 90,
+          "valid": true,
+          "surrogate_obj": -75.11453672298367,
+          "edge_hash": 15131714763734272188,
+          "route_hash": 10123390443852843867,
+          "construct_ms": 1704
+        },
+        {
+          "id": 91,
+          "valid": true,
+          "surrogate_obj": -63.91001299900692,
+          "edge_hash": 3970527360976204775,
+          "route_hash": 18439444517178567879,
+          "construct_ms": 1774
+        },
+        {
+          "id": 92,
+          "valid": true,
+          "surrogate_obj": -83.16711375976303,
+          "edge_hash": 5791921763319483819,
+          "route_hash": 1450939547796844849,
+          "construct_ms": 2139
+        },
+        {
+          "id": 93,
+          "valid": true,
+          "surrogate_obj": -69.89269469798998,
+          "edge_hash": 2130046414880539321,
+          "route_hash": 1542042176131020351,
+          "construct_ms": 1767
+        },
+        {
+          "id": 94,
+          "valid": true,
+          "surrogate_obj": -80.46904464510351,
+          "edge_hash": 16068918843941698592,
+          "route_hash": 17499787833934495448,
+          "construct_ms": 1922
+        },
+        {
+          "id": 95,
+          "valid": true,
+          "surrogate_obj": -289.5545047712166,
+          "edge_hash": 3839027994195577255,
+          "route_hash": 6294197825427513830,
+          "construct_ms": 1813
+        },
+        {
+          "id": 96,
+          "valid": true,
+          "surrogate_obj": -79.76232832693785,
+          "edge_hash": 13639987701522380355,
+          "route_hash": 13914554313316686338,
+          "construct_ms": 2074
+        },
+        {
+          "id": 97,
+          "valid": true,
+          "surrogate_obj": -122.34060152054641,
+          "edge_hash": 12974455060123681261,
+          "route_hash": 13119449431895590055,
+          "construct_ms": 1751
+        },
+        {
+          "id": 98,
+          "valid": true,
+          "surrogate_obj": -100.29922017702387,
+          "edge_hash": 2597621200857280723,
+          "route_hash": 886834639192392176,
+          "construct_ms": 1856
+        },
+        {
+          "id": 99,
+          "valid": true,
+          "surrogate_obj": -75.65440907371254,
+          "edge_hash": 11671740833645313642,
+          "route_hash": 16369978185262975772,
+          "construct_ms": 1738
+        }
+      ]
+    },
+    {
+      "instance": "setA-18",
+      "n_individuals": 100,
+      "n_valid": 100,
+      "validity_rate": 1.0,
+      "n_unique_edge_hashes": 100,
+      "unique_edge_pct": 1.0,
+      "n_unique_route_hashes": 100,
+      "unique_route_pct": 1.0,
+      "mean_pairwise_edge_overlap": 0.0,
+      "obj_mean": -799168.9645871787,
+      "obj_std": 0.3204731612735608,
+      "obj_min": -799169.8682962648,
+      "obj_max": -799168.3142605043,
+      "mean_construct_ms": 2685.67,
+      "total_construct_ms": 268567,
+      "verdict": "PASS",
+      "individuals": [
+        {
+          "id": 0,
+          "valid": true,
+          "surrogate_obj": -799169.1608372554,
+          "edge_hash": 18010408348021796798,
+          "route_hash": 11392659360509648687,
+          "construct_ms": 2534
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "surrogate_obj": -799168.9578651749,
+          "edge_hash": 7564660189334860635,
+          "route_hash": 16553362656133256512,
+          "construct_ms": 2488
+        },
+        {
+          "id": 2,
+          "valid": true,
+          "surrogate_obj": -799168.7382654438,
+          "edge_hash": 4971312166024915201,
+          "route_hash": 553999788401011222,
+          "construct_ms": 2520
+        },
+        {
+          "id": 3,
+          "valid": true,
+          "surrogate_obj": -799168.8601841873,
+          "edge_hash": 12533636695402274173,
+          "route_hash": 14647373552929468451,
+          "construct_ms": 2875
+        },
+        {
+          "id": 4,
+          "valid": true,
+          "surrogate_obj": -799168.5617615992,
+          "edge_hash": 16490202480685457902,
+          "route_hash": 7443790647676445120,
+          "construct_ms": 2560
+        },
+        {
+          "id": 5,
+          "valid": true,
+          "surrogate_obj": -799169.2981418736,
+          "edge_hash": 6094627373344070982,
+          "route_hash": 1536748965628187928,
+          "construct_ms": 2470
+        },
+        {
+          "id": 6,
+          "valid": true,
+          "surrogate_obj": -799168.8231620624,
+          "edge_hash": 16945258598497010600,
+          "route_hash": 3433865529652529298,
+          "construct_ms": 2575
+        },
+        {
+          "id": 7,
+          "valid": true,
+          "surrogate_obj": -799169.050128053,
+          "edge_hash": 7721173118629534788,
+          "route_hash": 13685906039048598072,
+          "construct_ms": 2502
+        },
+        {
+          "id": 8,
+          "valid": true,
+          "surrogate_obj": -799168.8207339769,
+          "edge_hash": 13853726755539460785,
+          "route_hash": 16243400420913754814,
+          "construct_ms": 2534
+        },
+        {
+          "id": 9,
+          "valid": true,
+          "surrogate_obj": -799168.972177287,
+          "edge_hash": 419553474196427511,
+          "route_hash": 8041279024574562882,
+          "construct_ms": 2567
+        },
+        {
+          "id": 10,
+          "valid": true,
+          "surrogate_obj": -799169.3792638427,
+          "edge_hash": 15402596097840827079,
+          "route_hash": 11318415276884329836,
+          "construct_ms": 2627
+        },
+        {
+          "id": 11,
+          "valid": true,
+          "surrogate_obj": -799169.0957112095,
+          "edge_hash": 30934475121023625,
+          "route_hash": 3755631108330424283,
+          "construct_ms": 2508
+        },
+        {
+          "id": 12,
+          "valid": true,
+          "surrogate_obj": -799169.0993301462,
+          "edge_hash": 686504482959180257,
+          "route_hash": 11675545161740560219,
+          "construct_ms": 2490
+        },
+        {
+          "id": 13,
+          "valid": true,
+          "surrogate_obj": -799169.0283330556,
+          "edge_hash": 12733579004343010166,
+          "route_hash": 8917419212483730746,
+          "construct_ms": 2606
+        },
+        {
+          "id": 14,
+          "valid": true,
+          "surrogate_obj": -799168.5784131634,
+          "edge_hash": 2795318507938399251,
+          "route_hash": 11628144452885036053,
+          "construct_ms": 3631
+        },
+        {
+          "id": 15,
+          "valid": true,
+          "surrogate_obj": -799169.0792527619,
+          "edge_hash": 24855900962776903,
+          "route_hash": 14403234483915635656,
+          "construct_ms": 2557
+        },
+        {
+          "id": 16,
+          "valid": true,
+          "surrogate_obj": -799168.3143845343,
+          "edge_hash": 11209840102903471074,
+          "route_hash": 2181579974883038420,
+          "construct_ms": 2500
+        },
+        {
+          "id": 17,
+          "valid": true,
+          "surrogate_obj": -799168.7733554831,
+          "edge_hash": 6295199996952855541,
+          "route_hash": 8251712717760252887,
+          "construct_ms": 2947
+        },
+        {
+          "id": 18,
+          "valid": true,
+          "surrogate_obj": -799169.4336580771,
+          "edge_hash": 17840650365509562642,
+          "route_hash": 8786949015514894220,
+          "construct_ms": 2494
+        },
+        {
+          "id": 19,
+          "valid": true,
+          "surrogate_obj": -799168.4711908174,
+          "edge_hash": 10863970824894589849,
+          "route_hash": 9799874974677085263,
+          "construct_ms": 2523
+        },
+        {
+          "id": 20,
+          "valid": true,
+          "surrogate_obj": -799168.8705122443,
+          "edge_hash": 8571178623399138396,
+          "route_hash": 6264675227936562362,
+          "construct_ms": 2638
+        },
+        {
+          "id": 21,
+          "valid": true,
+          "surrogate_obj": -799169.3478112749,
+          "edge_hash": 14181633427454907535,
+          "route_hash": 8301318446904836394,
+          "construct_ms": 2478
+        },
+        {
+          "id": 22,
+          "valid": true,
+          "surrogate_obj": -799168.7333002497,
+          "edge_hash": 6542539052621112275,
+          "route_hash": 16292613689272362001,
+          "construct_ms": 2945
+        },
+        {
+          "id": 23,
+          "valid": true,
+          "surrogate_obj": -799168.5642870606,
+          "edge_hash": 15995892889336535654,
+          "route_hash": 8593015736012381762,
+          "construct_ms": 2837
+        },
+        {
+          "id": 24,
+          "valid": true,
+          "surrogate_obj": -799169.5529140716,
+          "edge_hash": 1478633877012947477,
+          "route_hash": 6911742117987627398,
+          "construct_ms": 2719
+        },
+        {
+          "id": 25,
+          "valid": true,
+          "surrogate_obj": -799168.747785974,
+          "edge_hash": 8771217513063748026,
+          "route_hash": 15520608593833412454,
+          "construct_ms": 2529
+        },
+        {
+          "id": 26,
+          "valid": true,
+          "surrogate_obj": -799169.5927806539,
+          "edge_hash": 2859708072930977881,
+          "route_hash": 980309563005704186,
+          "construct_ms": 2515
+        },
+        {
+          "id": 27,
+          "valid": true,
+          "surrogate_obj": -799169.3063597189,
+          "edge_hash": 18075381458663351282,
+          "route_hash": 12774643536079666566,
+          "construct_ms": 2501
+        },
+        {
+          "id": 28,
+          "valid": true,
+          "surrogate_obj": -799168.9031098019,
+          "edge_hash": 17248886351526221788,
+          "route_hash": 7243530376204326123,
+          "construct_ms": 2466
+        },
+        {
+          "id": 29,
+          "valid": true,
+          "surrogate_obj": -799169.1883845818,
+          "edge_hash": 9478338623007242863,
+          "route_hash": 1215592249367569011,
+          "construct_ms": 2485
+        },
+        {
+          "id": 30,
+          "valid": true,
+          "surrogate_obj": -799168.5246697277,
+          "edge_hash": 16627853077541870025,
+          "route_hash": 17744496655359287074,
+          "construct_ms": 2612
+        },
+        {
+          "id": 31,
+          "valid": true,
+          "surrogate_obj": -799168.7256835947,
+          "edge_hash": 7486812174147338903,
+          "route_hash": 10382123152973202459,
+          "construct_ms": 2474
+        },
+        {
+          "id": 32,
+          "valid": true,
+          "surrogate_obj": -799169.0523597153,
+          "edge_hash": 9916936742471148266,
+          "route_hash": 12480049697258929558,
+          "construct_ms": 2736
+        },
+        {
+          "id": 33,
+          "valid": true,
+          "surrogate_obj": -799168.8817505571,
+          "edge_hash": 981217551467923282,
+          "route_hash": 17036343902800111295,
+          "construct_ms": 2535
+        },
+        {
+          "id": 34,
+          "valid": true,
+          "surrogate_obj": -799169.0596890447,
+          "edge_hash": 15541932567624526989,
+          "route_hash": 11177124890352518436,
+          "construct_ms": 2473
+        },
+        {
+          "id": 35,
+          "valid": true,
+          "surrogate_obj": -799169.36968606,
+          "edge_hash": 11564181684800126515,
+          "route_hash": 12000946398587742193,
+          "construct_ms": 3164
+        },
+        {
+          "id": 36,
+          "valid": true,
+          "surrogate_obj": -799169.8682962648,
+          "edge_hash": 3890520633948447030,
+          "route_hash": 13633716567626392948,
+          "construct_ms": 2872
+        },
+        {
+          "id": 37,
+          "valid": true,
+          "surrogate_obj": -799169.3334617162,
+          "edge_hash": 18364356791346419350,
+          "route_hash": 13201588570804666113,
+          "construct_ms": 2910
+        },
+        {
+          "id": 38,
+          "valid": true,
+          "surrogate_obj": -799169.1993844633,
+          "edge_hash": 17865633667316484697,
+          "route_hash": 11475052741648588702,
+          "construct_ms": 2478
+        },
+        {
+          "id": 39,
+          "valid": true,
+          "surrogate_obj": -799169.0944278885,
+          "edge_hash": 2906912563225153538,
+          "route_hash": 18382836362804624280,
+          "construct_ms": 2564
+        },
+        {
+          "id": 40,
+          "valid": true,
+          "surrogate_obj": -799169.2072464311,
+          "edge_hash": 9198662089081654206,
+          "route_hash": 17743055227711878738,
+          "construct_ms": 2575
+        },
+        {
+          "id": 41,
+          "valid": true,
+          "surrogate_obj": -799169.2426527453,
+          "edge_hash": 5638047750349442704,
+          "route_hash": 5817915239484374317,
+          "construct_ms": 2673
+        },
+        {
+          "id": 42,
+          "valid": true,
+          "surrogate_obj": -799169.3647905557,
+          "edge_hash": 10977799429368825566,
+          "route_hash": 1781670171719855845,
+          "construct_ms": 2548
+        },
+        {
+          "id": 43,
+          "valid": true,
+          "surrogate_obj": -799168.3142605043,
+          "edge_hash": 17018053828042939725,
+          "route_hash": 9116678357079711446,
+          "construct_ms": 2525
+        },
+        {
+          "id": 44,
+          "valid": true,
+          "surrogate_obj": -799169.1673776235,
+          "edge_hash": 4552245265126241297,
+          "route_hash": 17121928433054050420,
+          "construct_ms": 2476
+        },
+        {
+          "id": 45,
+          "valid": true,
+          "surrogate_obj": -799169.4433598734,
+          "edge_hash": 5129939191679186634,
+          "route_hash": 17165635127646248482,
+          "construct_ms": 2655
+        },
+        {
+          "id": 46,
+          "valid": true,
+          "surrogate_obj": -799169.0601403188,
+          "edge_hash": 6013832999683557864,
+          "route_hash": 1412873245406746681,
+          "construct_ms": 2572
+        },
+        {
+          "id": 47,
+          "valid": true,
+          "surrogate_obj": -799168.9891840627,
+          "edge_hash": 559227720978119844,
+          "route_hash": 2123672090636650523,
+          "construct_ms": 2496
+        },
+        {
+          "id": 48,
+          "valid": true,
+          "surrogate_obj": -799169.2587236445,
+          "edge_hash": 14679039874124889593,
+          "route_hash": 2646092362766004647,
+          "construct_ms": 2566
+        },
+        {
+          "id": 49,
+          "valid": true,
+          "surrogate_obj": -799168.9968160049,
+          "edge_hash": 9439612588944623664,
+          "route_hash": 7843807240072752024,
+          "construct_ms": 3948
+        },
+        {
+          "id": 50,
+          "valid": true,
+          "surrogate_obj": -799168.7193977382,
+          "edge_hash": 18071015775603302199,
+          "route_hash": 6787318340160142074,
+          "construct_ms": 2881
+        },
+        {
+          "id": 51,
+          "valid": true,
+          "surrogate_obj": -799169.3950392681,
+          "edge_hash": 2811571443686929375,
+          "route_hash": 6382478403454974767,
+          "construct_ms": 2495
+        },
+        {
+          "id": 52,
+          "valid": true,
+          "surrogate_obj": -799168.8927652742,
+          "edge_hash": 17481538808483538875,
+          "route_hash": 2821131667749004757,
+          "construct_ms": 2605
+        },
+        {
+          "id": 53,
+          "valid": true,
+          "surrogate_obj": -799169.0857838525,
+          "edge_hash": 13982136963814981240,
+          "route_hash": 2778346198084988876,
+          "construct_ms": 2876
+        },
+        {
+          "id": 54,
+          "valid": true,
+          "surrogate_obj": -799168.9262097713,
+          "edge_hash": 5711809279049425054,
+          "route_hash": 10709773010368581674,
+          "construct_ms": 2700
+        },
+        {
+          "id": 55,
+          "valid": true,
+          "surrogate_obj": -799168.8401808746,
+          "edge_hash": 16131550240707414760,
+          "route_hash": 2291747539584217977,
+          "construct_ms": 2855
+        },
+        {
+          "id": 56,
+          "valid": true,
+          "surrogate_obj": -799168.756168329,
+          "edge_hash": 1172559387789128194,
+          "route_hash": 4146005538965021580,
+          "construct_ms": 6031
+        },
+        {
+          "id": 57,
+          "valid": true,
+          "surrogate_obj": -799168.3663195268,
+          "edge_hash": 12419662168124836438,
+          "route_hash": 2068287347948248962,
+          "construct_ms": 2931
+        },
+        {
+          "id": 58,
+          "valid": true,
+          "surrogate_obj": -799168.3956413645,
+          "edge_hash": 16555534522371096459,
+          "route_hash": 15393431477185081810,
+          "construct_ms": 2474
+        },
+        {
+          "id": 59,
+          "valid": true,
+          "surrogate_obj": -799168.8010768349,
+          "edge_hash": 13455403507166301278,
+          "route_hash": 18040739304790799031,
+          "construct_ms": 2460
+        },
+        {
+          "id": 60,
+          "valid": true,
+          "surrogate_obj": -799168.5829307475,
+          "edge_hash": 10439557491198557976,
+          "route_hash": 14826874704641494878,
+          "construct_ms": 2459
+        },
+        {
+          "id": 61,
+          "valid": true,
+          "surrogate_obj": -799168.496246668,
+          "edge_hash": 12635431522583428942,
+          "route_hash": 5729887285520896293,
+          "construct_ms": 2628
+        },
+        {
+          "id": 62,
+          "valid": true,
+          "surrogate_obj": -799169.100164375,
+          "edge_hash": 17552075677934618572,
+          "route_hash": 15569653370421859372,
+          "construct_ms": 2565
+        },
+        {
+          "id": 63,
+          "valid": true,
+          "surrogate_obj": -799168.3820027193,
+          "edge_hash": 13079953074436407983,
+          "route_hash": 8782739322668344360,
+          "construct_ms": 2562
+        },
+        {
+          "id": 64,
+          "valid": true,
+          "surrogate_obj": -799168.6162506829,
+          "edge_hash": 1651983087881552355,
+          "route_hash": 9852238410462686921,
+          "construct_ms": 2558
+        },
+        {
+          "id": 65,
+          "valid": true,
+          "surrogate_obj": -799169.0948610778,
+          "edge_hash": 10295242557719145992,
+          "route_hash": 2690623968261465929,
+          "construct_ms": 2504
+        },
+        {
+          "id": 66,
+          "valid": true,
+          "surrogate_obj": -799168.9061784593,
+          "edge_hash": 2248195231278185888,
+          "route_hash": 8052525844999578434,
+          "construct_ms": 2553
+        },
+        {
+          "id": 67,
+          "valid": true,
+          "surrogate_obj": -799168.6742878368,
+          "edge_hash": 3780758188660162061,
+          "route_hash": 8452654674708849754,
+          "construct_ms": 2518
+        },
+        {
+          "id": 68,
+          "valid": true,
+          "surrogate_obj": -799169.1966104362,
+          "edge_hash": 13345320090714280403,
+          "route_hash": 6202638361660914823,
+          "construct_ms": 2489
+        },
+        {
+          "id": 69,
+          "valid": true,
+          "surrogate_obj": -799169.0465792115,
+          "edge_hash": 9524130518639420588,
+          "route_hash": 7186302600324301649,
+          "construct_ms": 2537
+        },
+        {
+          "id": 70,
+          "valid": true,
+          "surrogate_obj": -799168.9875636963,
+          "edge_hash": 13071989935726602171,
+          "route_hash": 12721891872492420617,
+          "construct_ms": 2534
+        },
+        {
+          "id": 71,
+          "valid": true,
+          "surrogate_obj": -799168.9308129224,
+          "edge_hash": 2056227311492874795,
+          "route_hash": 8615945250817552935,
+          "construct_ms": 2609
+        },
+        {
+          "id": 72,
+          "valid": true,
+          "surrogate_obj": -799168.7784520827,
+          "edge_hash": 10452674401770202918,
+          "route_hash": 13681876492153867051,
+          "construct_ms": 2668
+        },
+        {
+          "id": 73,
+          "valid": true,
+          "surrogate_obj": -799169.7131475835,
+          "edge_hash": 3597513559877611951,
+          "route_hash": 3974711805805736573,
+          "construct_ms": 2933
+        },
+        {
+          "id": 74,
+          "valid": true,
+          "surrogate_obj": -799168.905614826,
+          "edge_hash": 14587735601737736881,
+          "route_hash": 9486632131475915709,
+          "construct_ms": 2989
+        },
+        {
+          "id": 75,
+          "valid": true,
+          "surrogate_obj": -799169.0393590598,
+          "edge_hash": 6897135281601038565,
+          "route_hash": 3661905747241113260,
+          "construct_ms": 2947
+        },
+        {
+          "id": 76,
+          "valid": true,
+          "surrogate_obj": -799168.6520238445,
+          "edge_hash": 18180122083192036256,
+          "route_hash": 72314759553523489,
+          "construct_ms": 2547
+        },
+        {
+          "id": 77,
+          "valid": true,
+          "surrogate_obj": -799169.0912523778,
+          "edge_hash": 3046537746939730164,
+          "route_hash": 404063963304045399,
+          "construct_ms": 2545
+        },
+        {
+          "id": 78,
+          "valid": true,
+          "surrogate_obj": -799169.4090264397,
+          "edge_hash": 778576866964436479,
+          "route_hash": 7385556101922024553,
+          "construct_ms": 2631
+        },
+        {
+          "id": 79,
+          "valid": true,
+          "surrogate_obj": -799168.7507801154,
+          "edge_hash": 12778502390228658499,
+          "route_hash": 17482203188963045381,
+          "construct_ms": 2906
+        },
+        {
+          "id": 80,
+          "valid": true,
+          "surrogate_obj": -799168.9333986797,
+          "edge_hash": 12939635446602599561,
+          "route_hash": 10296988636111906932,
+          "construct_ms": 2525
+        },
+        {
+          "id": 81,
+          "valid": true,
+          "surrogate_obj": -799168.6595839865,
+          "edge_hash": 6774234805022686650,
+          "route_hash": 6562158146515872710,
+          "construct_ms": 2497
+        },
+        {
+          "id": 82,
+          "valid": true,
+          "surrogate_obj": -799168.6177794543,
+          "edge_hash": 4125123610638855118,
+          "route_hash": 18363875075977683089,
+          "construct_ms": 2564
+        },
+        {
+          "id": 83,
+          "valid": true,
+          "surrogate_obj": -799168.7268093849,
+          "edge_hash": 2472710756351827260,
+          "route_hash": 5778037676911284544,
+          "construct_ms": 2908
+        },
+        {
+          "id": 84,
+          "valid": true,
+          "surrogate_obj": -799168.9143029727,
+          "edge_hash": 16828711946896827252,
+          "route_hash": 17172565697546937108,
+          "construct_ms": 2609
+        },
+        {
+          "id": 85,
+          "valid": true,
+          "surrogate_obj": -799168.511964755,
+          "edge_hash": 6730443857189789005,
+          "route_hash": 5349428124185371151,
+          "construct_ms": 2665
+        },
+        {
+          "id": 86,
+          "valid": true,
+          "surrogate_obj": -799168.8013562686,
+          "edge_hash": 1710996154459220406,
+          "route_hash": 10385903369235879835,
+          "construct_ms": 2745
+        },
+        {
+          "id": 87,
+          "valid": true,
+          "surrogate_obj": -799168.5687421928,
+          "edge_hash": 2088964743833617568,
+          "route_hash": 11337984635640272655,
+          "construct_ms": 2668
+        },
+        {
+          "id": 88,
+          "valid": true,
+          "surrogate_obj": -799169.3043759796,
+          "edge_hash": 8869332137375003300,
+          "route_hash": 9044954355051613215,
+          "construct_ms": 2617
+        },
+        {
+          "id": 89,
+          "valid": true,
+          "surrogate_obj": -799168.7669100903,
+          "edge_hash": 17370121743208838879,
+          "route_hash": 2243246975097038026,
+          "construct_ms": 2579
+        },
+        {
+          "id": 90,
+          "valid": true,
+          "surrogate_obj": -799169.1023867218,
+          "edge_hash": 15028726077599840543,
+          "route_hash": 8836638715629416573,
+          "construct_ms": 2823
+        },
+        {
+          "id": 91,
+          "valid": true,
+          "surrogate_obj": -799168.9778881342,
+          "edge_hash": 15735115897454414785,
+          "route_hash": 14900880027406500989,
+          "construct_ms": 3044
+        },
+        {
+          "id": 92,
+          "valid": true,
+          "surrogate_obj": -799169.1252342805,
+          "edge_hash": 6587937034142348678,
+          "route_hash": 3934785210244034213,
+          "construct_ms": 2569
+        },
+        {
+          "id": 93,
+          "valid": true,
+          "surrogate_obj": -799169.0212668823,
+          "edge_hash": 10552649874027253832,
+          "route_hash": 16516896135325840608,
+          "construct_ms": 2741
+        },
+        {
+          "id": 94,
+          "valid": true,
+          "surrogate_obj": -799169.3168418615,
+          "edge_hash": 5930314519126594163,
+          "route_hash": 5786070617062186950,
+          "construct_ms": 2906
+        },
+        {
+          "id": 95,
+          "valid": true,
+          "surrogate_obj": -799168.8690359129,
+          "edge_hash": 616343261608424663,
+          "route_hash": 342236791733609806,
+          "construct_ms": 2559
+        },
+        {
+          "id": 96,
+          "valid": true,
+          "surrogate_obj": -799169.2324986587,
+          "edge_hash": 1227516236686580782,
+          "route_hash": 1635423672114502213,
+          "construct_ms": 2560
+        },
+        {
+          "id": 97,
+          "valid": true,
+          "surrogate_obj": -799169.3934752005,
+          "edge_hash": 1045437975648232775,
+          "route_hash": 7696915402101825814,
+          "construct_ms": 2488
+        },
+        {
+          "id": 98,
+          "valid": true,
+          "surrogate_obj": -799168.3833620595,
+          "edge_hash": 4073746119196633948,
+          "route_hash": 5939608753410691715,
+          "construct_ms": 2562
+        },
+        {
+          "id": 99,
+          "valid": true,
+          "surrogate_obj": -799169.2414199742,
+          "edge_hash": 6204929243003750328,
+          "route_hash": 16448941708746038948,
+          "construct_ms": 2475
+        }
+      ]
+    }
+  ],
+  "overall_verdict": "FAIL — constructor diversity or validity below threshold; investigate post-submission"
+}

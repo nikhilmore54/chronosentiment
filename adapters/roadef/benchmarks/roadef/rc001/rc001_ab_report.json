@@ -1,0 +1,21 @@
+{
+  "campaign_id": "rc001_ab_v2.3",
+  "timestamp": "2026-08-06T14:04:38.547612+00:00",
+  "hypothesis": "GreedyLoadAware constructor raises IFR and improves final objective vs Random (CB-000)",
+  "arm_a_description": "ConstructionMode::Random — CB-000 baseline (70% ECMP default, 30% random waypoint)",
+  "arm_b_description": "ConstructionMode::GreedyLoadAware — RC-001 candidate (RP-401C volume-sorted load-aware Dijkstra)",
+  "statistical_note": "Single seed (42). Acceptable for engineering gate; multi-seed experiments required for publication.",
+  "total_instances": 0,
+  "arm_a_mean_ifr": 0.0,
+  "arm_b_mean_ifr": 0.0,
+  "ifr_improvement": 0.0,
+  "arm_a_valid_count": 0,
+  "arm_b_valid_count": 0,
+  "arm_b_better_obj_count": 0,
+  "arm_b_better_ifr_count": 0,
+  "invariant_violation_count_a": 0,
+  "invariant_violation_count_b": 0,
+  "comparisons": [],
+  "arm_a_results": [],
+  "arm_b_results": []
+}

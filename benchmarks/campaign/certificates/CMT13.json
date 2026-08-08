@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "certificate_id": "cert-CMT13-d697f946",
+    "certificate_version": "1.0.0",
+    "generated_at": "2026-08-05T12:29:31.561861+00:00",
+    "campaign_id": "campaign_v1.6",
+    "solver_version": "0.1.0"
+  },
+  "instance": {
+    "name": "CMT13",
+    "family": "CMT",
+    "customers": 120,
+    "capacity": 200,
+    "benchmark_vehicles": 11,
+    "vehicle_source": "REGISTRY",
+    "distance_metric": "TspLibEuc2D"
+  },
+  "objective": {
+    "best_distance": 1038.0,
+    "best_distance_float": 1050.3078214856782,
+    "bks": 1541.14,
+    "gap_pct": -32.64726111839288,
+    "gap_fp_pct": -31.848643115766368,
+    "quality_class": "🟢 Near-optimal",
+    "routes_used": 7,
+    "runtime_ms": 45311,
+    "generations": 134,
+    "termination_reason": "NoImprovement(30) at gen 103"
+  },
+  "fcf": {
+    "status": "FEASIBILITY_UNDETERMINED",
+    "confidence_level": 3,
+    "fc1_passed": true,
+    "fc1_reason": "n=120 customers, depot_id=1, capacity=200, metric=TspLibEuc2D",
+    "fc2_5_passed": true,
+    "fc2_5_reason": "Registry consistent: K=11, Q=200, BKS=Some(1541.14), family=CMT",
+    "fc2_passed": true,
+    "fc2_reason": "FC2: D=1375 KQ=2200 K_min=7 K=11 NC1:PASS NC2:PASS NC5:PASS",
+    "fc3_passed": true,
+    "fc3_reason": "FC3-FFD PASS: packed 1375 demand into 7/11 bins of Q=200"
+  },
+  "fcs": {
+    "constraint_type": "UNSPECIFIED",
+    "declared_k": null,
+    "routes_used": 7,
+    "outcome": "PendingVerification",
+    "comparison_valid": false
+  },
+  "fuc": {
+    "avg_utilization": 0.9821428571428571,
+    "median_utilization": 0.995,
+    "cv": 0.02705610943671022,
+    "rcr": 0.64,
+    "packing_classification": "WELL_PACKED",
+    "capacity_violations": 0,
+    "total_demand": 1375,
+    "total_fleet_capacity": 1400,
+    "fleet_capacity_used": 0.9821428571428571
+  },
+  "benchmark_context": {
+    "provenance_registry_version": "1.0",
+    "fleet_semantics_registry_version": "1.0",
+    "qualification_version": "1.0",
+    "bks_source": "CvrplibCatalog",
+    "fleet_semantics_evidence": "Minimum"
+  },
+  "governance": {
+    "fcf_version": "1.0",
+    "fcs_version": "1.0",
+    "fuc_version": "1.0",
+    "status": "UnderInvestigation",
+    "status_reason": "Fleet semantics unspecified for family 'CMT' — gap comparison validity unknown",
+    "content_hash": "ae781d7f7d2bedd2"
+  }
+}

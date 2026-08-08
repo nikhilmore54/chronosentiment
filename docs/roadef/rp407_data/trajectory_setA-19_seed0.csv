@@ -1,0 +1,4 @@
+generation,valid_count,population_size,unique_fitness_count,stagnation,best_obj,best_mlu,best_sdi,crossover_count,mutation_count,gen_moves_peak,gen_moves_shoulder,gen_moves_transition,gen_moves_tail,gen_moves_mixed,gen_moves_neutral
+0,0,50,1,0,,,0.0,0,0,,,,,,
+1,0,50,1,1,,,0.0,0,0,,,,,,
+2,0,50,1,2,,,0.0,0,0,,,,,,

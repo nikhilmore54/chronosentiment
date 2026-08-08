@@ -1,0 +1,5 @@
+operator,peak_generated,peak_valid,peak_won_tournament,peak_global_best,shoulder_generated,shoulder_valid,shoulder_won_tournament,shoulder_global_best
+crossover,122,122,4,4,633,633,62,62
+crossover+mutation,53,53,0,0,248,248,18,18
+elite,30,30,0,0,131,131,0,0
+mutation,48,48,1,1,225,225,11,11

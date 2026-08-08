@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "certificate_id": "cert-E-n13-k4-a553ec16",
+    "certificate_version": "1.0.0",
+    "generated_at": "2026-08-05T12:10:55.832755+00:00",
+    "campaign_id": "campaign_v1.6",
+    "solver_version": "0.1.0"
+  },
+  "instance": {
+    "name": "E-n13-k4",
+    "family": "E",
+    "customers": 12,
+    "capacity": 6000,
+    "benchmark_vehicles": 4,
+    "vehicle_source": "COMMENT",
+    "distance_metric": "ExplicitMatrix"
+  },
+  "objective": {
+    "best_distance": 0.0,
+    "best_distance_float": null,
+    "bks": 247.0,
+    "gap_pct": -100.0,
+    "gap_fp_pct": null,
+    "quality_class": "✅ Solved",
+    "routes_used": 4,
+    "runtime_ms": 94,
+    "generations": 32,
+    "termination_reason": "NoImprovement(30) at gen 1"
+  },
+  "fcf": {
+    "status": "FEASIBILITY_UNDETERMINED",
+    "confidence_level": 3,
+    "fc1_passed": true,
+    "fc1_reason": "n=12 customers, depot_id=1, capacity=6000, metric=ExplicitMatrix",
+    "fc2_5_passed": true,
+    "fc2_5_reason": "No registry entry — BKS and vehicle count from file only",
+    "fc2_passed": true,
+    "fc2_reason": "FC2: D=18200 KQ=24000 K_min=4 K=4 NC1:PASS NC2:PASS NC5:PASS",
+    "fc3_passed": true,
+    "fc3_reason": "FC3-FFD PASS: packed 18200 demand into 4/4 bins of Q=6000"
+  },
+  "fcs": {
+    "constraint_type": "ATMOST",
+    "declared_k": 4,
+    "routes_used": 4,
+    "outcome": "Valid",
+    "comparison_valid": true
+  },
+  "fuc": {
+    "avg_utilization": 0.7583333333333333,
+    "median_utilization": 0.9166666666666666,
+    "cv": 0.431939428726012,
+    "rcr": 0.8275862068965517,
+    "packing_classification": "UNEVEN",
+    "capacity_violations": 0,
+    "total_demand": 18200,
+    "total_fleet_capacity": 24000,
+    "fleet_capacity_used": 0.7583333333333333
+  },
+  "benchmark_context": {
+    "provenance_registry_version": "1.0",
+    "fleet_semantics_registry_version": "1.0",
+    "qualification_version": "1.0",
+    "bks_source": "FileComment",
+    "fleet_semantics_evidence": "Minimum"
+  },
+  "governance": {
+    "fcf_version": "1.0",
+    "fcs_version": "1.0",
+    "fuc_version": "1.0",
+    "status": "UnderInvestigation",
+    "status_reason": "Negative gap -100.00% — comparison validity pending Stage B certificate (P4/P5)",
+    "content_hash": "0d48a2bcf46d8744"
+  }
+}

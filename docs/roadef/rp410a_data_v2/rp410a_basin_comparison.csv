@@ -1,0 +1,3 @@
+instance_class,total_moves,peak,shoulder,transition,tail,mixed,neutral,peak_pct,shoulder_pct,transition_pct,tail_pct,mixed_pct,neutral_pct,avg_sdi,avg_mlu,avg_diversity,avg_stagnation
+collapsed_basin,30,0,6,4,9,11,0,0.0,20.0,13.33,30.0,36.67,0.0,0.799448,0.533641,22.11,4.88
+shape_competition,82,1,20,19,19,21,2,1.22,24.39,23.17,23.17,25.61,2.44,2.035887,0.750547,20.14,3.31

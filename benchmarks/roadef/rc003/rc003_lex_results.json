@@ -1,0 +1,12 @@
+{
+  "campaign_id": "rc003_lex_v1.0",
+  "timestamp": "2026-08-07T07:05:55.290964+00:00",
+  "total_instances": 0,
+  "both_valid_count": 0,
+  "inversion_count": 0,
+  "spearman_rho": null,
+  "verdict": "INSUFFICIENT_DATA",
+  "comparisons": [],
+  "arm_a_results": [],
+  "arm_b_results": []
+}

@@ -1,0 +1,127 @@
+========================================================================
+RP-409B ANALYSIS SUMMARY
+Uniform vs PeakTargeted Mutation Strategy — A/B Experiment
+Seed: 42  |  Instances: 20  |  Date: 2026-08-06
+========================================================================
+
+────────────────────────────────────────────────────────────────────────
+LEVEL 1 — OUTCOME
+────────────────────────────────────────────────────────────────────────
+  Total instances:          20
+  Both valid:               13
+  Both invalid:             5
+  PeakTargeted-only valid:  1  ['setA-07']
+  Uniform-only valid:       1  ['setA-12']
+
+  Among 13 both-valid pairs:
+    PT wins (obj lower):    5  ['setA-03', 'setA-05', 'setA-06', 'setA-10', 'setA-11']
+    U  wins (obj lower):    8  ['setA-01', 'setA-04', 'setA-08', 'setA-09', 'setA-14', 'setA-15', 'setA-17', 'setA-18']
+    Ties:                   0
+
+  Δobj (PT − U) statistics (n=13):
+    mean   = +1.4024
+    median = +0.0934
+    stdev  = 3.5736
+    min    = -3.5665
+    max    = +9.3989
+  Sign test: 5 negative / 8 positive / 13 total
+  (negative = PT better; fraction PT better = 0.38)
+
+  Per-instance Δobj (PT − U, both-valid only):
+    setA-01       Δ=+0.0934  [U]  U=48.8185  PT=48.9120
+    setA-03       Δ=-0.0389  [PT]  U=60.2491  PT=60.2103
+    setA-04       Δ=+0.3319  [U]  U=64.9878  PT=65.3196
+    setA-05       Δ=-0.1801  [PT]  U=13.7221  PT=13.5420
+    setA-06       Δ=-0.7203  [PT]  U=55.1990  PT=54.4787
+    setA-08       Δ=+2.2154  [U]  U=49.7408  PT=51.9562
+    setA-09       Δ=+3.8545  [U]  U=155.4283  PT=159.2828
+    setA-10       Δ=-3.5665  [PT]  U=86.9320  PT=83.3655
+    setA-11       Δ=-1.0093  [PT]  U=113.5833  PT=112.5740
+    setA-14       Δ=+0.3563  [U]  U=94.7706  PT=95.1269
+    setA-15       Δ=+7.4951  [U]  U=242.2205  PT=249.7155
+    setA-17       Δ=+0.0014  [U]  U=60.2456  PT=60.2470
+    setA-18       Δ=+9.3989  [U]  U=799246.2189  PT=799255.6177
+
+────────────────────────────────────────────────────────────────────────
+LEVEL 2 — MECHANISM
+────────────────────────────────────────────────────────────────────────
+
+  Zone APS (mean across all instances, including invalid):
+  Zone             Uniform  PeakTargeted         Δ
+  peak              0.0073        0.0119   +0.0047
+  shoulder          0.0822        0.1252   +0.0430
+  transition        0.1104        0.1153   +0.0049
+  tail              0.2954        0.2139   -0.0816
+  mixed             0.1975        0.1795   -0.0180
+  neutral           0.0071        0.0042   -0.0030
+
+  Mutation Peak ACR (fraction of mutation moves in Peak zone):
+    Uniform      mean=0.0000  median=0.0000
+    PeakTargeted mean=0.0000  median=0.0000
+
+  Mutation Peak absolute count (mean across instances):
+    Uniform      mean=0.00
+    PeakTargeted mean=0.00
+
+  Total mutation count (mean across instances):
+    Uniform      mean=0.5
+    PeakTargeted mean=0.6
+
+────────────────────────────────────────────────────────────────────────
+LEVEL 3 — SAFETY
+────────────────────────────────────────────────────────────────────────
+
+  Valid rate:
+    Uniform      14/20
+    PeakTargeted 14/20
+
+  Construction IFR (should be identical — same seed formula):
+    Uniform      mean=0.1210
+    PeakTargeted mean=0.1210
+
+  Generation count (mean):
+    Uniform      mean=18.8  median=11.0
+    PeakTargeted mean=17.2  median=11.0
+
+  ms/generation (mean, both-valid only):
+    Uniform      mean=31232ms
+    PeakTargeted mean=31100ms
+
+  Max stagnation (mean):
+    Uniform      mean=6.0
+    PeakTargeted mean=5.8
+
+────────────────────────────────────────────────────────────────────────
+FIVE KEY INSTANCES (per reviewer)
+────────────────────────────────────────────────────────────────────────
+  setA-07  nodes=100 links=500 demands=800
+    U:  valid=False  obj=inf  gens=21  ms/gen=3632
+    PT: valid=True  obj=247.9996  gens=16  ms/gen=13376
+    ** PT rescued this instance (U invalid, PT valid) **
+
+  setA-10  nodes=150 links=966 demands=1000
+    U:  valid=True  obj=86.9320  gens=11  ms/gen=29502
+    PT: valid=True  obj=83.3655  gens=11  ms/gen=29489
+    Δobj=-3.5665  peak_aps U=0.0000 PT=0.0000
+    mut_peak_abs U=0 PT=0
+
+  setA-12  nodes=200 links=898 demands=400
+    U:  valid=True  obj=18.4157  gens=19  ms/gen=10433
+    PT: valid=False  obj=inf  gens=21  ms/gen=5647
+    ** PT regressed this instance (U valid, PT invalid) **
+
+  setA-15  nodes=250 links=1250 demands=600
+    U:  valid=True  obj=242.2205  gens=9  ms/gen=36538
+    PT: valid=True  obj=249.7155  gens=8  ms/gen=37768
+    Δobj=+7.4951  peak_aps U=0.0000 PT=0.0000
+    mut_peak_abs U=0 PT=0
+
+  setA-18  nodes=300 links=1500 demands=2000
+    U:  valid=True  obj=799246.2189  gens=6  ms/gen=67718
+    PT: valid=True  obj=799255.6177  gens=5  ms/gen=66047
+    Δobj=+9.3989  peak_aps U=0.0000 PT=0.0000
+    mut_peak_abs U=0 PT=0
+
+========================================================================
+END OF SUMMARY
+========================================================================

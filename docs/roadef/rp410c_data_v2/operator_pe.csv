@@ -1,0 +1,5 @@
+operator,tournament_wins,entered_population,pe_pct
+crossover,8579,6300,73.435
+crossover+mutation,3555,2494,70.155
+elite,1665,664,39.88
+mutation,2851,2107,73.904

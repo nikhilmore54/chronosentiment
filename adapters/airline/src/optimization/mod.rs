@@ -33,4 +33,4 @@ pub mod cost;
 pub mod metrics;
 pub mod neighborhood;
 pub mod objective;
-pub mod search;
+pub mod search;pub mod pairing_generator;

@@ -1,0 +1,7 @@
+from_zone,to_mixed,to_neutral,to_peak,to_shoulder,to_tail,to_transition
+mixed,9,0,1,4,12,6
+neutral,1,0,0,0,0,0
+peak,1,0,0,0,0,1
+shoulder,6,0,1,6,5,7
+tail,10,0,0,3,8,10
+transition,5,0,0,13,7,4

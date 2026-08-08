@@ -1,0 +1,17 @@
+{
+  "lex_wins": 0,
+  "scalar_wins": 13,
+  "ties": 7,
+  "invalid_both": 6,
+  "total_paired": 20,
+  "lex_win_rate": 0.0,
+  "mean_delta_obj_valid_pairs": 7.756107263944471,
+  "scalar_mean_peak_pe": 0.007272727272727273,
+  "lex_mean_peak_pe": 0.052976190476190475,
+  "scalar_mean_shoulder_pe": 0.08221861471861472,
+  "lex_mean_shoulder_pe": 0.11215882694541231,
+  "scalar_mean_peak_osr": 0.004870892018779343,
+  "lex_mean_peak_osr": 0.03321608946608946,
+  "scalar_mean_ifr": 0.0,
+  "lex_mean_ifr": 0.0
+}

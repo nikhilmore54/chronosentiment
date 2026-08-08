@@ -1,0 +1,12 @@
+metric,value
+instance_count,20
+mean_ifr,0.106
+median_ifr,0.07
+min_ifr,0.0
+max_ifr,0.72
+stdev_ifr,0.1624937245751841
+any_feasible_count,14
+all_feasible_count,0
+mean_capacity_violation_count,44.7
+total_capacity_violations,894
+mean_population_size,50

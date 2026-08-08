@@ -1,0 +1,5 @@
+operator,total,valid,accepted,validity_rate,acceptance_rate,peak_generated,peak_valid,peak_accepted,shoulder_generated,shoulder_valid,shoulder_accepted
+crossover,7530,5413,231,71.88579017264276,3.0677290836653386,70,70,3,538,538,41
+crossover+mutation,3232,2237,96,69.21410891089108,2.9702970297029703,35,35,1,216,216,19
+elite,1460,1162,0,79.58904109589041,0.0,14,14,0,112,112,0
+mutation,2378,1691,24,71.11017661900758,1.0092514718250631,14,14,0,157,157,5
