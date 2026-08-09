@@ -5,6 +5,13 @@ use crate::models::{Worker, Shift};
 use crate::optimization::ScheduleContext;
 use crate::ecology::WorkforceEcology;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaveRequest {
+    pub crew_id: u64,
+    pub start_hour: u64,
+    pub end_hour: u64,
+}
+
 /// Domain-independent optimization context supplied by the adapter.
 /// Contains no domain-specific concepts (flights, nurses, trains).
 /// Sits between Coralys (Optimization Engine) and the Solution Engine.
@@ -21,6 +28,8 @@ pub struct Scenario {
     /// Minimum required rest gap between consecutive shifts for a worker.
     /// None means the engine falls back to 10 hours.
     pub minimum_rest_hours: Option<u64>,
+    /// Active leave requests that must be respected as hard constraints.
+    pub leave_requests: Option<Vec<LeaveRequest>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,4 +149,31 @@ pub struct InrcParetoSolution {
 pub struct InrcStartupResult {
     pub schedule: std::collections::HashMap<String, Vec<String>>,
     pub pareto_solutions: Vec<InrcParetoSolution>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisruptionRecoveryRequest {
+    pub base_request: ScheduleRequest,
+    pub existing_assignments: HashMap<u64, u64>,
+    pub disrupted_worker_id: u64,
+    pub disruption_start_hour: u64,
+    pub disruption_end_hour: u64,
+    pub target_shift_id: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoveryScenario {
+    pub title: String,
+    pub description: String,
+    pub cost_penalty: f64,
+    pub delay_hours: u64,
+    pub reserve_used: usize,
+    pub flights_affected: usize,
+    pub assignments: HashMap<u64, u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisruptionRecoveryResult {
+    pub original_penalty: f64,
+    pub recovery_options: Vec<RecoveryScenario>,
 }

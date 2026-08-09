@@ -362,6 +362,7 @@ pub fn export_request_template() -> String {
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(11),
+            leave_requests: None,
         }),
     };
     serde_json::to_string_pretty(&template).unwrap_or_else(|_| "{}".to_string())

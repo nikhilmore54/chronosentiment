@@ -22,6 +22,7 @@ pub struct ConstraintReport {
     pub hc1_violations: usize,
     pub hc2_violations: usize,
     pub hc3_violations: usize,
+    pub hc4_violations: usize,
     pub rest_violations: usize,
     pub fairness_penalty: f64,
     pub fatigue_penalty: f64,
@@ -41,6 +42,7 @@ impl ConstraintEngine {
         let mut hc1_violations = 0;
         let mut hc2_violations = 0;
         let mut hc3_violations = 0;
+        let mut hc4_violations = 0;
         let mut rest_violations = 0;
         let mut fairness_penalty = 0.0;
         let mut fatigue_penalty = 0.0;
@@ -57,6 +59,21 @@ impl ConstraintEngine {
             if !worker.skills.contains(&shift.required_skill) {
                 fitness -= 1000.0;
                 hc1_violations += 1;
+            }
+
+            // HC4: Leave Requests
+            if let Some(ref scenario) = self.context.scenario {
+                if let Some(ref leave_requests) = scenario.leave_requests {
+                    for leave in leave_requests {
+                        if leave.crew_id == *worker_id {
+                            // Check overlap
+                            if shift.start_hour < leave.end_hour && shift.end_hour() > leave.start_hour {
+                                fitness -= 5000.0; // Severe penalty for working during leave
+                                hc4_violations += 1;
+                            }
+                        }
+                    }
+                }
             }
 
             *worker_hours.entry(*worker_id).or_insert(0) += shift.duration_hours;
@@ -215,6 +232,14 @@ impl ConstraintEngine {
             satisfied_constraints.push("HC3".to_string());
         }
 
+        // HC4: Leave Violations
+        constraint_scores.insert("HC4".to_string(), (hc4_violations as f64) * 5000.0);
+        if hc4_violations > 0 {
+            violated_constraints.push("HC4".to_string());
+        } else {
+            satisfied_constraints.push("HC4".to_string());
+        }
+
         // Rest period checks
         constraint_scores.insert("Rest".to_string(), (rest_violations as f64) * 200.0);
         if rest_violations > 0 {
@@ -249,7 +274,7 @@ impl ConstraintEngine {
             warnings.push(format!("High cumulative fatigue penalty: {:.2}", fatigue_penalty));
         }
 
-        let hard_violations = hc1_violations + hc2_violations + hc3_violations + rest_violations;
+        let hard_violations = hc1_violations + hc2_violations + hc3_violations + hc4_violations + rest_violations;
         let soft_violations = if fairness_penalty > 0.0 { 1 } else { 0 } + if fatigue_penalty > 0.0 { 1 } else { 0 };
 
         ConstraintReport {
@@ -264,6 +289,7 @@ impl ConstraintEngine {
             hc1_violations,
             hc2_violations,
             hc3_violations,
+            hc4_violations,
             rest_violations,
             fairness_penalty,
             fatigue_penalty,

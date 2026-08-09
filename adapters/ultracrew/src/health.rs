@@ -142,8 +142,9 @@ fn check_validator() -> bool {
         generation_limit: Some(10),
         scenario: Some(Scenario {
             planning_horizon_hours: Some(168.0),
-            max_hours_per_worker: Some(48.0),
+            max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(10),
+            leave_requests: None,
         }),
     };
     validate_request(&req).is_valid()
