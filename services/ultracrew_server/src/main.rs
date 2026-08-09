@@ -1344,7 +1344,9 @@ async fn pairings_handler(
         if !current_fdp.is_empty() { fdp_groups.push(current_fdp); }
 
         // ── Step 2: group FDPs into pairings ─────────────────────────────────
-        // A new pairing starts when the rest between consecutive FDPs >= HOME_BASE_REST_HOURS.
+        // A new pairing starts when the rest between consecutive FDPs >= HOME_BASE_REST_HOURS,
+        // or if adding the next FDP would exceed the maximum pairing duration of 5 days (120h)
+        // as per Kasirzadeh et al. (2014).
         let mut pairing_fdp_groups: Vec<Vec<Vec<ShiftInput>>> = Vec::new();
         let mut current_pairing: Vec<Vec<ShiftInput>> = Vec::new();
         for fdp in &fdp_groups {
@@ -1355,7 +1357,12 @@ async fn pairings_handler(
                 let prev_release = prev_fdp.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
                 let next_report = fdp.first().map(|s| s.start_hour).unwrap_or(0);
                 let rest_gap = next_report as f64 - prev_release as f64;
-                if rest_gap >= HOME_BASE_REST_HOURS {
+                
+                let pairing_start = current_pairing.first().and_then(|f| f.first()).map(|s| s.start_hour).unwrap_or(0);
+                let next_release = fdp.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
+                let projected_duration = next_release.saturating_sub(pairing_start) as f64;
+                
+                if rest_gap >= HOME_BASE_REST_HOURS || projected_duration > 120.0 {
                     pairing_fdp_groups.push(current_pairing.clone());
                     current_pairing = vec![fdp.clone()];
                 } else {
