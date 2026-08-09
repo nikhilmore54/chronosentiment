@@ -1,5 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GERAD_INSTANCE1_WORKERS, GERAD_INSTANCE1_SHIFTS, GERAD_INSTANCE1_META } from './geradInstance1';
+import { GERAD_INSTANCE2_WORKERS, GERAD_INSTANCE2_SHIFTS, GERAD_INSTANCE2_META } from './geradInstance2';
+import { GERAD_INSTANCE3_WORKERS, GERAD_INSTANCE3_SHIFTS, GERAD_INSTANCE3_META } from './geradInstance3';
+import { GERAD_INSTANCE4_WORKERS, GERAD_INSTANCE4_SHIFTS, GERAD_INSTANCE4_META } from './geradInstance4';
+import { GERAD_INSTANCE5_WORKERS, GERAD_INSTANCE5_SHIFTS, GERAD_INSTANCE5_META } from './geradInstance5';
+import { GERAD_INSTANCE6_WORKERS, GERAD_INSTANCE6_SHIFTS, GERAD_INSTANCE6_META } from './geradInstance6';
+import { GERAD_INSTANCE7_WORKERS, GERAD_INSTANCE7_SHIFTS, GERAD_INSTANCE7_META } from './geradInstance7';
+
+const GERAD_INSTANCES = {
+  'gerad-instance1': { workers: GERAD_INSTANCE1_WORKERS, shifts: GERAD_INSTANCE1_SHIFTS, meta: GERAD_INSTANCE1_META },
+  'gerad-instance2': { workers: GERAD_INSTANCE2_WORKERS, shifts: GERAD_INSTANCE2_SHIFTS, meta: GERAD_INSTANCE2_META },
+  'gerad-instance3': { workers: GERAD_INSTANCE3_WORKERS, shifts: GERAD_INSTANCE3_SHIFTS, meta: GERAD_INSTANCE3_META },
+  'gerad-instance4': { workers: GERAD_INSTANCE4_WORKERS, shifts: GERAD_INSTANCE4_SHIFTS, meta: GERAD_INSTANCE4_META },
+  'gerad-instance5': { workers: GERAD_INSTANCE5_WORKERS, shifts: GERAD_INSTANCE5_SHIFTS, meta: GERAD_INSTANCE5_META },
+  'gerad-instance6': { workers: GERAD_INSTANCE6_WORKERS, shifts: GERAD_INSTANCE6_SHIFTS, meta: GERAD_INSTANCE6_META },
+  'gerad-instance7': { workers: GERAD_INSTANCE7_WORKERS, shifts: GERAD_INSTANCE7_SHIFTS, meta: GERAD_INSTANCE7_META }
+};
 
 const S = {
   app: { minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
@@ -80,17 +96,17 @@ async function fetchCsrfToken() {
 // Workers and shifts are projected from the real instance1 CSVs via gen_gerad_js.py.
 // start_hour and duration_hours are integers (u64-compatible) with hours normalized
 // so the first duty starts at hour 0 (relative timing preserved).
-function buildGeradBenchmarkScenario() {
-  // Project GERAD_INSTANCE1_WORKERS: keep only id and skills (backend contract).
-  // Extra fields (name, base, gerad_id, contract_type) are passed through for UI display.
-  const workers = GERAD_INSTANCE1_WORKERS.map((w, index) => {
+function buildGeradBenchmarkScenario(scenarioId) {
+  const instance = GERAD_INSTANCES[scenarioId];
+  if (!instance) throw new Error(`Unknown scenario: ${scenarioId}`);
+  
+  const workers = instance.workers.map((w, index) => {
     const roleStr = index % 2 === 0 ? '-CPT' : '-FO';
     const roleName = index % 2 === 0 ? 'Captain' : 'First Officer';
     return {
       id: w.id,
       skills: w.skills.map(s => s + roleStr),
       role: roleName,
-      // UI-only metadata (ignored by backend, used for Gantt/table display)
       name: w.name,
       base: w.base,
       gerad_id: w.gerad_id,
@@ -98,14 +114,13 @@ function buildGeradBenchmarkScenario() {
     };
   });
 
-  // Project GERAD_INSTANCE1_SHIFTS: explode each generic duty into a CPT and FO shift
-  const shifts = GERAD_INSTANCE1_SHIFTS.flatMap((s) => {
+  const shifts = instance.shifts.flatMap((s) => {
     const start_hour = Math.round(s.start_hour);
     const duration_hours = Math.max(1, Math.round(s.duration_hours));
     const base = {
       start_hour,
       duration_hours,
-      flight_id: s.gerad_duty_id, // Group shifts by duty ID so backend treats them as the same flight
+      flight_id: s.gerad_duty_id,
       gerad_duty_id: s.gerad_duty_id,
       gerad_crew_id: s.gerad_crew_id,
       flight_ids: s.flight_ids,
@@ -116,21 +131,20 @@ function buildGeradBenchmarkScenario() {
     ];
   });
 
-  // No layover markers for the real instance (duties don't have turnaround data in the CSVs).
   const layoverMarkers = [];
 
   return {
     workers,
     shifts,
     layoverMarkers,
-    horizonHours: GERAD_INSTANCE1_META.horizon_hours,
-    maxHoursPerWorker: GERAD_INSTANCE1_META.max_hours_per_worker,
+    horizonHours: instance.meta.horizon_hours,
+    maxHoursPerWorker: instance.meta.max_hours_per_worker,
   };
 }
 
 async function runOptimizer(scenarioId, generationLimit, seed) {
   const csrfToken = await fetchCsrfToken();
-  const scenarioData = buildGeradBenchmarkScenario();
+  const scenarioData = buildGeradBenchmarkScenario(scenarioId);
   const { workers, shifts, layoverMarkers, horizonHours, maxHoursPerWorker } = scenarioData;
   const res = await fetch(`${API_BASE}/api/schedule`, {
     method: 'POST',
@@ -176,7 +190,7 @@ export default function App() {
   const [csrfError, setCsrfError] = useState('');
   const [dispatcherId, setDispatcherId] = useState('');
   const [dispatcherRole, setDispatcherRole] = useState('');
-  const [scenario, setScenario] = useState('gerad-benchmark');
+  const [scenario, setScenario] = useState('gerad-instance1');
   const [generationLimit, setGenerationLimit] = useState(500);
   const [seed, setSeed] = useState(42);
   const [running, setRunning] = useState(false);
@@ -419,13 +433,18 @@ export default function App() {
             <div style={S.cardSub}>Select a scenario and run the UltraCrew optimizer.</div>
             <label style={S.label}>Scenario</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', borderRadius: '6px', border: `1px solid #3b82f6`, background: '#eff6ff', cursor: 'default' }}>
-                <input type="radio" name="scenario" value="gerad-benchmark" checked={true} readOnly style={{ marginTop: '3px', accentColor: '#3b82f6' }} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>GERAD Benchmark</div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>33 crew · 1,013 flights · 172 pairings · 31-day horizon · real G-2014-22 Instance 1 (Kasirzadeh, Saddoune & Soumis 2014)</div>
-                </div>
-              </label>
+              {Object.keys(GERAD_INSTANCES).map(scId => {
+                const sc = GERAD_INSTANCES[scId];
+                return (
+                  <label key={scId} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', borderRadius: '6px', border: `1px solid ${scenario === scId ? '#3b82f6' : '#e2e8f0'}`, background: scenario === scId ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
+                    <input type="radio" name="scenario" value={scId} checked={scenario === scId} onChange={() => setScenario(scId)} style={{ marginTop: '3px', accentColor: '#3b82f6' }} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>{sc.meta.source.split(' (')[0]}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{sc.meta.total_crew} crew · {sc.meta.total_duties} duties · {sc.meta.horizon_hours}h horizon</div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
             <label style={S.label}>Generation limit</label>
             <input style={S.input} type="number" value={generationLimit} onChange={e => setGenerationLimit(parseInt(e.target.value) || 500)} min={10} max={2000} />
