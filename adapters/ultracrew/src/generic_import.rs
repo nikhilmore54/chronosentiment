@@ -354,13 +354,14 @@ pub fn export_request_template() -> String {
             let mut m = HashMap::new();
             m.insert(1u64, vec![40.0, 38.0]);
             m.insert(2u64, vec![36.0]);
-            m
+                m
         }),
         rng_seed: Some(42),
         generation_limit: Some(200),
         scenario: Some(Scenario {
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
+            minimum_rest_hours: Some(11),
         }),
     };
     serde_json::to_string_pretty(&template).unwrap_or_else(|_| "{}".to_string())

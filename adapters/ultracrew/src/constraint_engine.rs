@@ -97,18 +97,23 @@ impl ConstraintEngine {
                         }
                     }
                 }
+                let min_rest = self.context.scenario
+                    .as_ref()
+                    .and_then(|s| s.minimum_rest_hours)
+                    .unwrap_or(10); // DGCA/EASA default
+
                 // Rest: check only CONSECUTIVE shifts (adjacent in time order)
                 // A rest violation means the gap between the end of shift[i] and
-                // the start of shift[i+1] is less than 10 hours (DGCA/EASA minimum).
+                // the start of shift[i+1] is less than the scenario minimum.
                 for i in 0..sorted_shifts.len().saturating_sub(1) {
                     let s_i = sorted_shifts[i];
                     let s_next = sorted_shifts[i + 1];
                     let gap = if s_next.start_hour >= s_i.end_hour() {
                         s_next.start_hour - s_i.end_hour()
                     } else { 0 };
-                    if gap < 10 {
+                    if gap < min_rest {
                         // Penalty scales with severity: short gaps cost more
-                        let severity = if gap < 4 { 3.0 } else if gap < 8 { 2.0 } else { 1.0 };
+                        let severity = if gap < (min_rest / 2) { 3.0 } else if gap < (min_rest - 2) { 2.0 } else { 1.0 };
                         fitness -= 800.0 * severity;
                         rest_violations += 1;
                     }

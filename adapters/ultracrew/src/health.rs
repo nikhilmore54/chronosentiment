@@ -143,6 +143,7 @@ fn check_validator() -> bool {
         scenario: Some(Scenario {
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(48.0),
+            minimum_rest_hours: Some(10),
         }),
     };
     validate_request(&req).is_valid()

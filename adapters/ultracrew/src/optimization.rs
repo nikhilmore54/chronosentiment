@@ -303,6 +303,11 @@ impl ScheduleOptimizer {
     ) -> u64 {
         let shift_end = shift.start_hour + shift.duration_hours;
 
+        let min_rest = self.context.scenario
+            .as_ref()
+            .and_then(|s| s.minimum_rest_hours)
+            .unwrap_or(10);
+
         let clean: Vec<u64> = self.context.workers.iter()
             .filter(|w| w.skills.contains(&shift.required_skill))
             .filter(|w| {
@@ -313,9 +318,9 @@ impl ScheduleOptimizer {
                         let a_end = a.start_hour + a.duration_hours;
                         // HC2: shifts must not overlap
                         let no_overlap = shift.start_hour >= a_end || a.start_hour >= shift_end;
-                        // HC3/rest: at least 8h gap in both directions
-                        let rest_ok = shift.start_hour >= a_end + 8
-                            || a.start_hour >= shift_end + 8;
+                        // HC3/rest: dynamic gap based on scenario (or DGCA/EASA default)
+                        let rest_ok = shift.start_hour >= a_end + min_rest
+                            || a.start_hour >= shift_end + min_rest;
                         no_overlap && rest_ok
                     }),
                 }

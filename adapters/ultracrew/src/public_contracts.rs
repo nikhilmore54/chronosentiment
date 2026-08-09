@@ -18,6 +18,9 @@ pub struct Scenario {
     /// None means no per-worker upper bound is specified by the dataset;
     /// the engine falls back to DEFAULT_WEEKLY_MAX_HOURS.
     pub max_hours_per_worker: Option<f64>,
+    /// Minimum required rest gap between consecutive shifts for a worker.
+    /// None means the engine falls back to 10 hours.
+    pub minimum_rest_hours: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
