@@ -200,7 +200,7 @@ export default function App() {
   const [shiftsMap, setShiftsMap] = useState({}); // {id → shift metadata}
   const [workersMap, setWorkersMap] = useState({}); // {id → {skills, role, type_rating}}
   const [layoverMarkers, setLayoverMarkers] = useState([]); // [{start_hour, duration_hours, type, label}]
-  const [ganttFilter, setGanttFilter] = useState(null); // shiftId or null
+  const [ganttFilter, setGanttFilter] = useState(null); // flight_id or null
   const [runtimeSecs, setRuntimeSecs] = useState(0);
   const [manualEdits, setManualEdits] = useState([]);
   const [recDecisions, setRecDecisions] = useState([]);
@@ -527,7 +527,7 @@ export default function App() {
                     <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: '8px', background: '#0f172a' }}>
                       {/* When a flight is selected, show only the worker assigned to it */}
                       {(ganttFilter
-                        ? workerIds.filter(wid => Number(result.schedule[ganttFilter]) === wid)
+                        ? workerIds.filter(wid => workerShifts[wid].some(s => (shiftsMap[s.shiftId] || {}).flight_id === ganttFilter))
                         : workerIds
                       ).map(wid => {
                         const wMeta = workersMap[wid] || {};
@@ -559,13 +559,13 @@ export default function App() {
                               const widthPct = (s.duration_hours / HORIZON_HRS) * 100;
                               const slotColors = { Morning: '#3b82f6', Afternoon: '#8b5cf6', Night: '#06b6d4' };
                               const colorKey = s.name.includes('Morning') ? 'Morning' : s.name.includes('Afternoon') ? 'Afternoon' : 'Night';
-                              const isFiltered = ganttFilter === s.shiftId;
-                              const color = isFiltered ? '#f59e0b' : slotColors[colorKey];
                               const shiftMeta = shiftsMap[s.shiftId] || {};
                               const aircraft = shiftMeta.aircraft_type || '';
                               const flightId = shiftMeta.flight_id || '';
                               const route = shiftMeta.route || '';
                               const crewRole = shiftMeta.crew_role || '';
+                              const isFiltered = ganttFilter === flightId;
+                              const color = isFiltered ? '#f59e0b' : slotColors[colorKey];
                               // For GERAD shifts: use required_skill as route descriptor
                               const reqSkill = shiftMeta.required_skill || s.required_skill || '';
                               const routeDisplay = route || (reqSkill ? `Skill: ${reqSkill}` : '');
@@ -580,7 +580,7 @@ export default function App() {
                               ].filter(Boolean).join('\n');
                               return (
                                 <div key={s.shiftId} title={tooltip}
-                                  onClick={() => setGanttFilter(prev => prev === s.shiftId ? null : s.shiftId)}
+                                  onClick={() => setGanttFilter(prev => prev === flightId ? null : flightId)}
                                   style={{
                                     position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`,
                                     top: '3px', bottom: '3px', background: color, borderRadius: '3px',
@@ -646,7 +646,7 @@ export default function App() {
                     </div>
                     {ganttFilter && (
                       <div style={{ marginTop: '6px', fontSize: '11px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Showing crew for {(() => { const sm = shiftsMap[ganttFilter] || {}; return sm.flight_id || `Shift ${ganttFilter}`; })()}</span>
+                        <span>Showing crew for {ganttFilter}</span>
                         <button onClick={() => setGanttFilter(null)} style={{ background: 'none', border: '1px solid #78350f', borderRadius: '4px', color: '#f59e0b', fontSize: '10px', padding: '1px 6px', cursor: 'pointer' }}>Clear filter</button>
                       </div>
                     )}
