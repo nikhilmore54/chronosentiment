@@ -193,28 +193,38 @@ function buildGeradFixtureScenario() {
 function buildGeradBenchmarkScenario() {
   // Project GERAD_INSTANCE1_WORKERS: keep only id and skills (backend contract).
   // Extra fields (name, base, gerad_id, contract_type) are passed through for UI display.
-  const workers = GERAD_INSTANCE1_WORKERS.map(w => ({
-    id: w.id,
-    skills: w.skills,
-    // UI-only metadata (ignored by backend, used for Gantt/table display)
-    name: w.name,
-    base: w.base,
-    gerad_id: w.gerad_id,
-    contract_type: w.contract_type,
-  }));
+  const workers = GERAD_INSTANCE1_WORKERS.map((w, index) => {
+    const roleStr = index % 2 === 0 ? '-CPT' : '-FO';
+    const roleName = index % 2 === 0 ? 'Captain' : 'First Officer';
+    return {
+      id: w.id,
+      skills: w.skills.map(s => s + roleStr),
+      role: roleName,
+      // UI-only metadata (ignored by backend, used for Gantt/table display)
+      name: w.name,
+      base: w.base,
+      gerad_id: w.gerad_id,
+      contract_type: w.contract_type,
+    };
+  });
 
-  // Project GERAD_INSTANCE1_SHIFTS: keep backend-required fields as integers.
-  // Extra fields (gerad_duty_id, gerad_crew_id, flight_ids) are passed through for UI.
-  const shifts = GERAD_INSTANCE1_SHIFTS.map(s => ({
-    id: s.id,
-    start_hour: Math.round(s.start_hour),       // u64: integer hours
-    duration_hours: Math.max(1, Math.round(s.duration_hours)), // u64: min 1h
-    required_skill: s.required_skill,
-    // UI-only metadata
-    gerad_duty_id: s.gerad_duty_id,
-    gerad_crew_id: s.gerad_crew_id,
-    flight_ids: s.flight_ids,
-  }));
+  // Project GERAD_INSTANCE1_SHIFTS: explode each generic duty into a CPT and FO shift
+  const shifts = GERAD_INSTANCE1_SHIFTS.flatMap((s) => {
+    const start_hour = Math.round(s.start_hour);
+    const duration_hours = Math.max(1, Math.round(s.duration_hours));
+    const base = {
+      start_hour,
+      duration_hours,
+      flight_id: s.gerad_duty_id, // Group shifts by duty ID so backend treats them as the same flight
+      gerad_duty_id: s.gerad_duty_id,
+      gerad_crew_id: s.gerad_crew_id,
+      flight_ids: s.flight_ids,
+    };
+    return [
+      { id: s.id * 10 + 1, ...base, required_skill: `${s.required_skill}-CPT`, crew_role: 'Captain' },
+      { id: s.id * 10 + 2, ...base, required_skill: `${s.required_skill}-FO`,  crew_role: 'First Officer' }
+    ];
+  });
 
   // No layover markers for the real instance (duties don't have turnaround data in the CSVs).
   const layoverMarkers = [];
