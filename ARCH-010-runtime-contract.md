@@ -13,6 +13,8 @@ The primary architectural mandate of Coralys is **Separation of Reality from Opt
 - The **Runtime** defines the standard vocabulary for describing Reality and interacting with Optimization.
 - The **Optimization Engine** evolves state toward feasibility and optimality.
 
+**Invariant:** The runtime must never depend on a concrete optimization algorithm. (e.g., GA, MILP, CP-SAT). It must only know the `OptimizationEngine` trait.
+
 ## 2. Runtime Contracts
 
 Every future engine and adapter must adhere to these foundational marker traits:
@@ -51,6 +53,25 @@ When building a new operational domain (e.g., factory scheduling, logistics rout
 
 ## 6. Stability Guarantees
 
-The traits exported in `coralys_moga::runtime` and `coralys_moga::optimization` constitute the permanent ABI of the Coralys ecosystem. They are considered **frozen** as of milestone RP-500.
+The traits exported in `coralys_moga::runtime` and `coralys_moga::optimization` constitute the permanent ABI of the Coralys ecosystem. They are structured in three stability tiers:
 
-Any modifications to these contracts will require a major version bump and a full migration of all existing adapters and engines.
+### Stable
+These are effectively part of Coralys' public platform. Changing these requires a major version bump and architectural review.
+- `OperationalModel`
+- `ConstraintModel`
+- `ObjectiveModel`
+- `OptimizationEngine`
+- `DecisionVector`
+
+### Experimental
+Allowed to evolve without strict versioning.
+- **Reference Operational Model (OEN)**
+- Runtime explanation APIs
+- Lineage internals
+- Graph implementations
+
+### Compatibility
+Temporary structures that can be removed once migration is complete.
+- `ScheduleGenome` (Compatibility Operational Model)
+- Existing UltraCrew adapter
+- Existing ROADEF adapter
