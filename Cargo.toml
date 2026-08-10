@@ -25,6 +25,7 @@ members = [
     "adapters/gerad",
     "coralys-planning",
     "services/ultracrew_server",
-    "services/cvrp_server",
+    "services/chronosentiment_server",
+    "services/cvrp_server", "services/chronosentiment_server",
 ]
 resolver = "2"

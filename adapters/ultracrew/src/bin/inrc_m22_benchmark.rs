@@ -197,7 +197,7 @@ fn run_pilot(seed: u64, mode: Mode, out_csv: &mut File) {
         if mode == Mode::PureSA {
             let mut current_cand = factory.create(&mut rng);
             use coralys_moga::traits::FitnessEvaluator;
-            let mut current_eval = evaluator.evaluate(&current_cand);
+            let mut current_eval = evaluator.evaluate(&current_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
             let mut best_cand = current_cand.clone();
             let mut best_eval = current_eval.clone();
             
@@ -210,7 +210,7 @@ fn run_pilot(seed: u64, mode: Mode, out_csv: &mut File) {
                 global_gen += 1;
                 let mut neighbor = current_cand.clone();
                 mutator.mutate(&mut neighbor, &mut rng);
-                let neighbor_eval = evaluator.evaluate(&neighbor);
+                let neighbor_eval = evaluator.evaluate(&neighbor, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                 let delta = neighbor_eval.fitness() - current_eval.fitness();
                 
                 if delta > 0.0 || rng.gen_range(0.0..1.0) < (delta / t).exp() {
@@ -265,7 +265,7 @@ fn run_pilot(seed: u64, mode: Mode, out_csv: &mut File) {
             for gen in 0..100 {
                 global_gen += 1;
                 let mut evals: Vec<InrcEvaluation> = population.iter()
-                    .map(|g| evaluator.evaluate(g))
+                    .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                     .filter(|e| e.is_valid())
                     .collect();
                 
@@ -395,7 +395,7 @@ fn run_pilot(seed: u64, mode: Mode, out_csv: &mut File) {
                             for _ in 0..sa_steps {
                                 let mut neighbor = current_cand.clone();
                                 mutator.mutate(&mut neighbor, &mut rng);
-                                let neighbor_eval = evaluator.evaluate(&neighbor);
+                                let neighbor_eval = evaluator.evaluate(&neighbor, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                                 let new_fit = neighbor_eval.fitness();
                                 
                                 let delta = new_fit - current_fit;
@@ -412,7 +412,7 @@ fn run_pilot(seed: u64, mode: Mode, out_csv: &mut File) {
                             
                             let score_after_sa = -best_fit;
                             if best_fit > sample.fitness() {
-                                *sample = evaluator.evaluate(&best_cand);
+                                *sample = evaluator.evaluate(&best_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                                 
                                 if best_fit > best_overall.as_ref().unwrap().fitness() {
                                     best_overall = Some(sample.clone());

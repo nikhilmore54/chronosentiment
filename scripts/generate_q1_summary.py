@@ -1,7 +1,7 @@
 """Generate a markdown summary for the Q1 session catalog.
 
 Reads `phase1/analysis/coordinate_audit/session_catalog_q1.json` and produces
-`session_catalog_q1_summary.md` with ranked tables for the same metrics as the
+`archive/research_outputs/session_catalog_q1_summary.md` with ranked tables for the same metrics as the
 pilot summary.
 """
 
@@ -26,7 +26,7 @@ def format_table(df: pd.DataFrame, columns: list) -> str:
 
 def main():
     catalog_path = Path("phase1/analysis/coordinate_audit/session_catalog_q1.json")
-    out_path = Path("session_catalog_q1_summary.md")
+    out_path = Path("archive/research_outputs/session_catalog_q1_summary.md")
     df = load_catalog(catalog_path)
     # Ensure numeric columns are floats
     for col in ["gap_pct", "realized_volatility", "trend_strength",

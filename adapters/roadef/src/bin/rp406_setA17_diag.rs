@@ -12,7 +12,8 @@ use std::cmp::Reverse;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
 use roadef::evaluator::RoadefEvaluator;
-use roadef::ecmp::{Digraph, expand_sr_path};
+use roadef::graph::Digraph;
+use roadef::ecmp::expand_sr_path;
 
 const SET_DIR: &str = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
 

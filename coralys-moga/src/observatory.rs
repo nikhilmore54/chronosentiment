@@ -70,13 +70,14 @@ where
         
         // Measure S1
         let raw_magnitude = self.metric.magnitude(source, &s1);
-        let s1_fitness = self.evaluator.evaluate(&s1).fitness();
+        let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
+        let s1_fitness = self.evaluator.evaluate(&s1, &empty_metrics).fitness();
         
         // 1. Apply local search repair cascade to mutate it to S2
         self.local_search.search(mutated_child);
         
         // Measure S2
-        let s2_fitness = self.evaluator.evaluate(mutated_child).fitness();
+        let s2_fitness = self.evaluator.evaluate(mutated_child, &empty_metrics).fitness();
         let residual_magnitude = self.metric.magnitude(source, mutated_child);
         let repair_delta = self.metric.magnitude(&s1, mutated_child);
         
@@ -133,6 +134,27 @@ impl<G: Genome> ProcessingEvent<G> {
 
 pub trait PipelineObserver<G: Genome>: Send + Sync {
     fn on_event(&self, event: &ProcessingEvent<G>);
+    fn on_repair_event(&self, _event: &RepairEvent) {}
+    fn on_feasibility_report(&self, _report: &FeasibilityReport) {}
+}
+
+#[derive(Debug, Clone)]
+pub struct FeasibilityReport {
+    pub hard_violations_remaining: usize,
+    pub soft_violations_remaining: usize,
+    pub repair_attempts: usize,
+    pub constraint_coverage: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct RepairEvent {
+    pub generation: usize,
+    pub violation_id: String,
+    pub action_description: Option<String>,
+    pub action_payload: Option<serde_json::Value>,
+    pub action_priority: Option<f64>,
+    pub attempts: usize,
+    pub successful: bool,
 }
 
 #[derive(Default)]
@@ -140,6 +162,11 @@ pub struct ProcessingMetricsCollector {
     pub execution_counts: Mutex<HashMap<usize, usize>>,
     pub cumulative_times: Mutex<HashMap<usize, Duration>>,
     pub processed_count: Mutex<usize>,
+    
+    // Repair metrics
+    pub repair_attempts: Mutex<usize>,
+    pub successful_repairs: Mutex<usize>,
+    pub failed_repairs: Mutex<usize>,
 }
 
 impl ProcessingMetricsCollector {
@@ -168,6 +195,19 @@ impl<G: Genome> PipelineObserver<G> for ProcessingMetricsCollector {
         *counts.entry(event.processor_index).or_insert(0) += 1;
         *times.entry(event.processor_index).or_insert(Duration::ZERO) += event.duration;
         *total += 1;
+    }
+
+    fn on_repair_event(&self, event: &RepairEvent) {
+        let mut attempts = self.repair_attempts.lock().unwrap();
+        *attempts += event.attempts;
+        
+        if event.successful {
+            let mut success = self.successful_repairs.lock().unwrap();
+            *success += 1;
+        } else {
+            let mut fail = self.failed_repairs.lock().unwrap();
+            *fail += 1;
+        }
     }
 }
 

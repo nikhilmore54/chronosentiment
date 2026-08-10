@@ -419,7 +419,7 @@ Each crate entry records:
 | `financial/ese` | TBD | Yes | 14 | Research | Workspace (lib + binary) |
 | `financial/strategies` | TBD | Yes | 45 | Research | Workspace (lib + binaries) |
 
-**Note:** Financial programme is a separate research programme from Coralys/UltraCrew. `original_engine.rs` (root-level monolith, ~13,000+ LOC, not a workspace member) is used by financial strategies.
+**Note:** Financial programme is a separate research programme from Coralys/UltraCrew. `archive/research_outputs/original_engine.rs` (root-level monolith, ~13,000+ LOC, not a workspace member) is used by financial strategies.
 
 ---
 
@@ -442,7 +442,7 @@ Each crate entry records:
 
 | File | Lifecycle | Compile Reachability | Note |
 |------|-----------|---------------------|------|
-| `original_engine.rs` | Unknown | None (not in workspace) | Root-level monolith, ~13,000+ LOC. Used by financial strategies via path include or direct compilation. |
+| `archive/research_outputs/original_engine.rs` | Unknown | None (not in workspace) | Root-level monolith, ~13,000+ LOC. Used by financial strategies via path include or direct compilation. |
 | `coralys-policy/src/lib.rs` | Unknown | None | Orphan — not in workspace Cargo.toml |
 
 ---

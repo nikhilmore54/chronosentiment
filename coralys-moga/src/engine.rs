@@ -33,6 +33,8 @@ pub struct EvolutionEngine<
     pub crossover: C,
     pub factory: Factory,
     pub observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
+    pub satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
+    pub metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     metrics: Option<std::sync::Mutex<EvolutionMetrics>>,
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     _marker: std::marker::PhantomData<G>,
@@ -53,6 +55,8 @@ impl<
             crossover,
             factory,
             observer: None,
+            satisfaction_engine: None,
+            metric_engine: None,
             metrics: None,
             processors: Vec::new(),
             _marker: std::marker::PhantomData,
@@ -90,6 +94,8 @@ where
     factory: Option<Factory>,
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
+    satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
+    metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     metrics_enabled: bool,
     _marker: std::marker::PhantomData<G>,
 }
@@ -110,6 +116,8 @@ where
             factory: None,
             processors: Vec::new(),
             observer: None,
+            satisfaction_engine: None,
+            metric_engine: None,
             metrics_enabled: false,
             _marker: std::marker::PhantomData,
         }
@@ -135,13 +143,28 @@ where
         self
     }
 
-    pub fn with_observer(mut self, observer: std::sync::Arc<dyn PipelineObserver<G>>) -> Self {
-        self.observer = Some(observer);
+    pub fn with_processor(mut self, processor: Box<dyn ImprovementOperator<G>>) -> Self {
+        self.processors.push(processor);
         self
     }
 
-    pub fn enable_metrics(mut self) -> Self {
-        self.metrics_enabled = true;
+    pub fn with_satisfaction_engine(mut self, engine: Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>) -> Self {
+        self.satisfaction_engine = Some(engine);
+        self
+    }
+
+    pub fn with_metric_engine(mut self, engine: std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>) -> Self {
+        self.metric_engine = Some(engine);
+        self
+    }
+
+    pub fn enable_metrics(mut self, enable: bool) -> Self {
+        self.metrics_enabled = enable;
+        self
+    }
+
+    pub fn with_observer(mut self, observer: std::sync::Arc<dyn PipelineObserver<G>>) -> Self {
+        self.observer = Some(observer);
         self
     }
 
@@ -183,6 +206,8 @@ where
             crossover,
             factory,
             observer: self.observer,
+            satisfaction_engine: self.satisfaction_engine,
+            metric_engine: self.metric_engine,
             metrics,
             processors: self.processors,
             _marker: std::marker::PhantomData,
@@ -274,7 +299,14 @@ impl<
             let prev_global_best = global_best.clone();
             let mut evals: Vec<F::Evaluation> = population
                 .iter()
-                .map(|c| self.evaluator.evaluate(c))
+                .map(|c| {
+                    let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
+                    let current_metrics = match &self.metric_engine {
+                        Some(engine) => engine.evaluate(c),
+                        None => empty_metrics,
+                    };
+                    self.evaluator.evaluate(c, &current_metrics)
+                })
                 .filter(|e| e.is_valid())
                 .collect::<Vec<_>>();
             if instrument {
@@ -456,6 +488,11 @@ impl<
                 if !crossover_applied && !mutation_applied {
                     self.mutator.mutate(&mut child, &mut rng);
                 }
+                
+                if let Some(ref satisfaction_engine) = self.satisfaction_engine {
+                    let _res = satisfaction_engine.satisfy(&mut child);
+                }
+
                 for (idx, processor) in self.processors.iter().enumerate() {
                     let start_time = std::time::Instant::now();
                     processor.improve(&mut child);
@@ -507,7 +544,8 @@ impl<
                 .into_iter()
                 .next()
                 .unwrap();
-            self.evaluator.evaluate(&dummy)
+            let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
+            self.evaluator.evaluate(&dummy, &empty_metrics)
         });
 
         Ok(GaResult {
@@ -562,7 +600,7 @@ where
 {
     type Evaluation = MogaOutcomeWrapper<G>;
 
-    fn evaluate(&self, genome: &G) -> Self::Evaluation {
+    fn evaluate(&self, genome: &G, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
         let payload = serde_json::to_value(genome).unwrap();
         let proposal = coralys_core::DecisionProposal {
             priority: 1.0,

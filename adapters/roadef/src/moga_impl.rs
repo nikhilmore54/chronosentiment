@@ -823,7 +823,7 @@ impl FitnessEvaluator<RoadefGenome> for RoadefFitnessEvaluator {
     ///
     /// This invariant is enforced here so that fitness() remains trivial (-obj)
     /// and FeasibilityCertificate (M20) maps cleanly to a binary pass/fail.
-    fn evaluate(&self, genome: &RoadefGenome) -> RoadefEvaluation {
+    fn evaluate(&self, genome: &RoadefGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> RoadefEvaluation {
         let solution = genome.to_solution();
         // M20 Phase 3: use cached evaluator as production path (E-001 validated).
         // Timings discarded here; profiling uses eval_profiler binary directly.
@@ -1255,7 +1255,7 @@ where
     let mut n_init_retry_successes: usize = 0;
     for i in 0..config.population_size {
         let g = factory.create(&mut rng);
-        let mut ev = fitness_eval.evaluate(&g);
+        let mut ev = fitness_eval.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         ev.operator = "initial";
 
         // Rejection sampling: retry if invalid and budget allows.
@@ -1267,7 +1267,7 @@ where
                     if t0.elapsed() >= deadline { break; }
                 }
                 let g2 = factory.create(&mut rng);
-                let mut ev2 = fitness_eval.evaluate(&g2);
+                let mut ev2 = fitness_eval.evaluate(&g2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                 ev2.operator = "initial";
                 if ev2.is_valid() {
                     ev = ev2;
@@ -1712,7 +1712,7 @@ where
                 //   4. global_best (always valid if set; survives across generations)
                 //   5. Keep as-is (population fully infeasible, no valid reference exists)
                 // Tag is updated to "crossover_repaired" so the repair rate is observable.
-                let ca_valid = fitness_eval.evaluate(&ca).is_valid();
+                let ca_valid = fitness_eval.evaluate(&ca, &coralys_moga::runtime::optimization::metric::MetricReport::default()).is_valid();
                 if !ca_valid {
                     ca = if evals[pa_idx].is_valid() {
                         pa.clone()
@@ -1727,7 +1727,7 @@ where
                     };
                     ca_tag = "crossover_repaired";
                 }
-                let cb_valid = fitness_eval.evaluate(&cb).is_valid();
+                let cb_valid = fitness_eval.evaluate(&cb, &coralys_moga::runtime::optimization::metric::MetricReport::default()).is_valid();
                 if !cb_valid {
                     cb = if evals[pb_idx].is_valid() {
                         pb.clone()
@@ -1769,7 +1769,7 @@ where
                 //   3. global_best (always valid if set; survives across generations)
                 //   4. Keep as-is (no valid reference exists)
                 let mut child_tag = "mutation";
-                if !fitness_eval.evaluate(&child).is_valid() {
+                if !fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default()).is_valid() {
                     child = if evals[pa_idx].is_valid() {
                         evals[pa_idx].genome().clone()
                     } else if let Some(best_valid) = evals.iter().find(|e| e.is_valid()) {
@@ -1809,7 +1809,7 @@ where
 
         let mut new_evals_with_meta: Vec<(RoadefEvaluation, u64, u64, u64, u64)> =
             next_pop.into_iter().map(|(g, tag, p1, p2, tid, _won)| {
-                let mut ev = fitness_eval.evaluate(&g);
+                let mut ev = fitness_eval.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                 ev.operator = tag;
                 candidate_counter += 1;
                 let cid = candidate_counter;

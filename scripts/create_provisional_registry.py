@@ -1,13 +1,13 @@
 """Generate provisional candidate registry for Q1.
 Select eight seed sessions (date, symbol) and extract their metrics from the session catalog.
-Output: candidate_event_registry_q1_provisional.json
+Output: archive/datasets/candidate_event_registry_q1_provisional.json
 """
 
 import json
 from pathlib import Path
 
 CATALOG_PATH = Path("phase1/analysis/coordinate_audit/session_catalog_q1.json")
-OUT_PATH = Path("candidate_event_registry_q1_provisional.json")
+OUT_PATH = Path("archive/datasets/candidate_event_registry_q1_provisional.json")
 
 # Seed sessions as (date, symbol) pairs
 SEED = [

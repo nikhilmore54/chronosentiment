@@ -10,7 +10,7 @@ def extract_block(text, name, block_type="struct"):
     return None
 
 def main():
-    with open("original_engine.rs", "r") as f:
+    with open("archive/research_outputs/original_engine.rs", "r") as f:
         code = f.read()
     
     # Extract enums

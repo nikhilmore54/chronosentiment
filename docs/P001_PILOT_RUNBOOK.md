@@ -134,8 +134,8 @@ max_hours_per_worker   = 48.0
 To override parameters without editing the file, create a local copy:
 
 ```bash
-cp fixtures/demo/sunair_optimizer.toml my_config.toml
-# Edit my_config.toml as needed
+cp fixtures/demo/sunair_optimizer.toml archive/transient_texts/my_config.toml
+# Edit archive/transient_texts/my_config.toml as needed
 ```
 
 Supported parameters:
@@ -157,7 +157,7 @@ YAML format is also supported (`.yaml` or `.yml` extension).
 ```bash
 ./target/release/ultracrew-cli \
   --input  fixtures/demo/sunair_demo.json \
-  --output sunair_schedule_output.json \
+  --output archive/datasets/sunair_schedule_output.json \
   --profile fixtures/demo/sunair_optimizer.toml
 ```
 
@@ -181,7 +181,7 @@ The CLI prints a KPI summary to stderr during the run. A successful run looks li
 ════════════════════════════════════════
 ```
 
-The output file `sunair_schedule_output.json` contains the full solution.
+The output file `archive/datasets/sunair_schedule_output.json` contains the full solution.
 
 ---
 
@@ -193,7 +193,7 @@ Run the built-in strict validator against the output to confirm it is well-forme
 python3 -c "
 import json, sys
 
-out = json.load(open('sunair_schedule_output.json'))
+out = json.load(open('archive/datasets/sunair_schedule_output.json'))
 inp = json.load(open('fixtures/demo/sunair_demo.json'))
 
 total_shifts   = len(inp['shifts'])
@@ -247,7 +247,7 @@ Logs are written to stderr. To capture them for review:
 ```bash
 ./target/release/ultracrew-cli \
   --input  fixtures/demo/sunair_demo.json \
-  --output sunair_schedule_output.json \
+  --output archive/datasets/sunair_schedule_output.json \
   --profile fixtures/demo/sunair_optimizer.toml \
   2>ultracrew_run.log
 
@@ -291,7 +291,7 @@ Complete this checklist before declaring the pilot successful:
 ```bash
 echo "Date:     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Operator: <your name>"
-echo "Output:   $(shasum -a 256 sunair_schedule_output.json)"
+echo "Output:   $(shasum -a 256 archive/datasets/sunair_schedule_output.json)"
 ```
 
 ---
@@ -331,7 +331,7 @@ If `rng_seed` is set and the score differs by more than ±1.0, the run is not de
 
 Check stderr for a serialisation error (`UC-EXP-001`). Ensure the output path is writable:
 ```bash
-touch sunair_schedule_output.json && echo "writable"
+touch archive/datasets/sunair_schedule_output.json && echo "writable"
 ```
 
 ---

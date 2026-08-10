@@ -76,7 +76,17 @@ pub mod helpers {
         let crossover = ScheduleOptimizer::new(context.clone());
         let evaluator = ScheduleOptimizer::new(context.clone());
 
-        let engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
+        let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
+        engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
+        
+        let mut satisfaction_engine = coralys_moga::runtime::optimization::satisfaction::DefaultRepairEngine::new(
+            coralys_moga::runtime::optimization::constraint::ConstraintSatisfactionConfig::default()
+        ).with_metric_engine(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
+        satisfaction_engine.add_model(Box::new(crate::repair::RestConstraint { context: context.clone() }));
+        satisfaction_engine.add_model(Box::new(crate::repair::SkillConstraint { context: context.clone() }));
+        satisfaction_engine.add_operator(Box::new(crate::repair::ReassignRepairOperator { context: context.clone() }));
+        engine.satisfaction_engine = Some(Box::new(satisfaction_engine));
+
         // Temporary compatibility shim.
         // EvolutionEngine now returns Result to surface configuration validation errors.
         // For the demo/pilot we unwrap here because configs are generated internally.
@@ -99,3 +109,6 @@ pub mod strict_validator;
 pub mod telemetry;
 pub mod errors;
 pub mod health;
+pub mod repair;
+pub mod observability;
+pub mod metrics;

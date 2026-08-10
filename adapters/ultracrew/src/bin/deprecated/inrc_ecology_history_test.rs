@@ -336,7 +336,7 @@ fn run_ablation(seed: u64, arm: Arm, regime: &str, out_csv: &mut File) {
         
         for gen in 0..100 {
             let mut evals: Vec<InrcEvaluation> = population.iter()
-                .map(|g| evaluator.evaluate(g))
+                .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
             

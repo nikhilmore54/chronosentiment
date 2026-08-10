@@ -1,7 +1,7 @@
 import re
 
 def main():
-    with open("original_engine.rs", "r") as f:
+    with open("archive/research_outputs/original_engine.rs", "r") as f:
         code = f.read()
 
     # Extract AssetEvoState

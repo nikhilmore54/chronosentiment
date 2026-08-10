@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Test Zerodha Kite Connect historical candle endpoint.
-Prerequisite: an access token must be present in `kite_access_token.txt`
+Prerequisite: an access token must be present in `archive/transient_texts/kite_access_token.txt`
 (you obtain it by running `scripts/kite_test_auth.py`).
 """
 import os
@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 # Load access token
-TOKEN_FILE = "kite_access_token.txt"
+TOKEN_FILE = "archive/transient_texts/kite_access_token.txt"
 if not os.path.exists(TOKEN_FILE):
     print(f"[!] Access token file '{TOKEN_FILE}' not found. Run kite_test_auth.py first.")
     sys.exit(1)

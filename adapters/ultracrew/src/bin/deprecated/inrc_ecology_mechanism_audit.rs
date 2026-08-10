@@ -352,7 +352,7 @@ fn run_audit(seed: u64, alpha: f64, out_csv: &mut File) {
         
         for gen in 0..100 {
             let mut evals: Vec<InrcEvaluation> = population.iter()
-                .map(|g| evaluator.evaluate(g))
+                .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
             

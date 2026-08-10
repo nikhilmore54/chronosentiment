@@ -1,28 +1,28 @@
 {
-  "campaign_report.md": [],
+  "archive/research_outputs/campaign_report.md": [],
   "ARCH-011-canonical-platform.md": [],
   "DIVERGENCE_WALKTHROUGH.md": [],
   "USER_GUIDE.md": [],
   "inventory_summary.md": [],
   "ARCHITECTURE.md": [],
-  "cluster_validity_report.md": [
-    "cluster_validity_plot.png"
+  "archive/research_outputs/cluster_validity_report.md": [
+    "archive/research_outputs/cluster_validity_plot.png"
   ],
   "ARCH-010-runtime-contract.md": [],
   "review_candidates.md": [],
-  "metric_distribution_report.md": [
-    "hist_realized_volatility.png",
-    "hist_trend_strength.png",
-    "hist_gap_pct.png",
-    "hist_session_range_pct.png",
-    "hist_net_return_pct.png"
+  "archive/research_outputs/metric_distribution_report.md": [
+    "archive/research_outputs/hist_realized_volatility.png",
+    "archive/research_outputs/hist_trend_strength.png",
+    "archive/research_outputs/hist_gap_pct.png",
+    "archive/research_outputs/hist_session_range_pct.png",
+    "archive/research_outputs/hist_net_return_pct.png"
   ],
   "ROADMAP-2026-v1.0.md": [],
   "inventory.md": [],
   "OPERATIONAL_MODEL.md": [],
   "GOVERNANCE.md": [],
   "DEMO_QUICKSTART.md": [],
-  "run_expectancy_mae_mfe_report.md": [],
+  "archive/research_outputs/run_expectancy_mae_mfe_report.md": [],
   "QUICKSTART.md": [],
   "FAQ.md": [],
   "ULTRACREW_PILOT_CHECKLIST.md": [],
@@ -36,8 +36,8 @@
     "docs/governance/DEMO_SCOPE.md",
     "DIVERGENCE_WALKTHROUGH.md"
   ],
-  "cluster_stability_report.md": [],
-  "session_catalog_summary.md": [],
+  "archive/research_outputs/cluster_stability_report.md": [],
+  "archive/research_outputs/session_catalog_summary.md": [],
   "AUTHORITY_MAP.md": [
     "docs/PHASE1_GOVERNANCE_CHECKPOINT.md"
   ],
@@ -50,8 +50,8 @@
     "ARCHITECTURE.md",
     "DISCREPANCY_REPORT.md"
   ],
-  "ecology_cluster_report.md": [
-    "ecology_pca_plot.png"
+  "archive/research_outputs/ecology_cluster_report.md": [
+    "archive/research_outputs/ecology_pca_plot.png"
   ],
   "CONTRIBUTING.md": [],
   "KNOWN_LIMITATIONS.md": [],
@@ -69,7 +69,7 @@
   "clean_inventory.md": [],
   "SECURITY.md": [],
   "WORKFLOW_GUIDE.md": [],
-  "session_catalog_q1_summary.md": [],
+  "archive/research_outputs/session_catalog_q1_summary.md": [],
   "PRODUCT_EVOLUTION_POLICY.md": [],
   "ui/README.md": [],
   "ui/ultracrew/README.md": [],

@@ -16,7 +16,7 @@ impl InrcOptimizer {
 impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
     type Evaluation = InrcEvaluation;
 
-    fn evaluate(&self, genome: &InrcGenome) -> Self::Evaluation {
+    fn evaluate(&self, genome: &InrcGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
         let weights = &self.context.weights;
 
         let mut hc_coverage = 0;

@@ -242,7 +242,7 @@ fn main() {
     let all_instances: Vec<InstanceMetadata> = serde_json::from_str(&metadata_json).expect("Failed to parse instances.json");
     
     let instances_dir = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances";
-    let results_path = "/Users/nikhil/.gemini/antigravity/brain/262ffe5d-aed4-43c6-a002-28b6911113bc/scratch/campaign_results.json";
+    let results_path = "/Users/nikhil/.gemini/antigravity/brain/262ffe5d-aed4-43c6-a002-28b6911113bc/scratch/archive/research_outputs/campaign_results.json";
     
     // Load existing progress if any
     let mut completed_results: HashMap<String, InstanceCampaignResult> = if Path::new(results_path).exists() {

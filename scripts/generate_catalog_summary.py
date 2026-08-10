@@ -1,7 +1,7 @@
 """Generate a markdown summary of the session catalog.
 
 Reads `phase1/analysis/coordinate_audit/session_catalog.json` and produces
-`session_catalog_summary.md` with ranked tables for various metrics.
+`archive/research_outputs/session_catalog_summary.md` with ranked tables for various metrics.
 """
 
 import json
@@ -32,7 +32,7 @@ def format_table(df: pd.DataFrame, columns: list) -> str:
 
 def main():
     catalog_path = Path("phase1/analysis/coordinate_audit/session_catalog.json")
-    out_path = Path("session_catalog_summary.md")
+    out_path = Path("archive/research_outputs/session_catalog_summary.md")
     df = load_catalog(catalog_path)
 
     # Ensure numeric columns are proper floats (some may be None)

@@ -159,7 +159,7 @@ attributed to a specific engine state.
 | **Compiler version** | Rust toolchain version (e.g. `rustc 1.79.0`) |
 | **Platform** | OS, CPU architecture, core count |
 
-*Campaign v1.1 provenance: recorded in `campaign_report.md` header.*
+*Campaign v1.1 provenance: recorded in `archive/research_outputs/campaign_report.md` header.*
 
 ---
 

@@ -14,7 +14,7 @@ from scripts.csv_to_replay_substrate import process_csv
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-CATALOG_FILE = PROJECT_ROOT / "phase4_replay_catalog.json"
+CATALOG_FILE = PROJECT_ROOT / "archive/datasets/phase4_replay_catalog.json"
 OUT_MD = PROJECT_ROOT / "PHASE5B_PERTURBATION_EXPERIMENTS.md"
 BIN_PATH = PROJECT_ROOT / "target/release/execution_replay"
 SUBSTRATE_DIR = PROJECT_ROOT / "state_archive" / "phase5_substrates"

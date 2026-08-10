@@ -12,7 +12,7 @@ import statsmodels.formula.api as smf
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-CATALOG_FILE = PROJECT_ROOT / "phase4_replay_catalog.json"
+CATALOG_FILE = PROJECT_ROOT / "archive/datasets/phase4_replay_catalog.json"
 OUT_MD = PROJECT_ROOT / "PHASE5A_RESPONSE_SURFACE.md"
 
 def main():

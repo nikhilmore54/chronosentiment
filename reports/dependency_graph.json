@@ -69931,7 +69931,7 @@
       "inventory.md",
       "clean_inventory.md",
       "docs/governance/V008_TEST_ASSET_AUTHORITY_SCOPE.md",
-      "run_edge_debug.sh"
+      "scripts/run_edge_debug.sh"
     ],
     "ART-0002": [
       ".github/workflows/determinism-check.yml",
@@ -72444,7 +72444,7 @@
       "docs/governance/V006_PRODUCER_RATIFICATION.md",
       "docs/roadef/RP409A_REPORT.md",
       "fixtures/chronology_serialization/README.md",
-      "run_live.sh",
+      "scripts/run_live.sh",
       ".venv_test/lib/python3.14/site-packages/pygments/lexers/gdscript.py",
       ".venv_test/lib/python3.14/site-packages/pygments/lexers/sophia.py",
       ".venv_test/lib/python3.14/site-packages/google/protobuf/descriptor.py",
@@ -75984,7 +75984,7 @@
     "ART-3851": [
       "inventory.md",
       "clean_inventory.md",
-      "run_live.sh"
+      "scripts/run_live.sh"
     ],
     "ART-3852": [
       "inventory.md",
@@ -76040,7 +76040,7 @@
     "ART-3863": [
       "inventory.md",
       "clean_inventory.md",
-      "run_live.sh"
+      "scripts/run_live.sh"
     ],
     "ART-3864": [
       "inventory.md",
@@ -84824,7 +84824,7 @@
       "inventory.md",
       "clean_inventory.md",
       "docs/research/DISCREPANCY_REPORT.md",
-      "run_live.sh",
+      "scripts/run_live.sh",
       ".venv_test/lib/python3.14/site-packages/click/utils.py",
       ".venv_test/lib/python3.14/site-packages/_pytest/assertion/rewrite.py",
       ".venv-e2e/lib/python3.14/site-packages/_pytest/assertion/rewrite.py"

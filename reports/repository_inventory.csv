@@ -1,9 +1,9 @@
 ID,Path,Type,Category,Owner,Lifecycle,Confidence,Evidence
-ART-0001,run_edge_debug.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 4 files
-ART-0002,verify_api_contract.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 3 files
+ART-0001,scripts/run_edge_debug.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 4 files
+ART-0002,scripts/verify_api_contract.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 3 files
 ART-0003,start-demo.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 7 files
 ART-0004,start-demo.ps1,Executable,Unknown,Unknown,Active,Medium,Invoked by 5 files
-ART-0005,run_live.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 2 files
+ART-0005,scripts/run_live.sh,Executable,Unknown,Unknown,Active,Medium,Invoked by 2 files
 ART-0006,tools/diagnostics/repository_auditor.py,Executable,Diagnostics,Unknown,Active,High,Filename matched Diagnostics; Invoked by 1 files
 ART-0007,financial/strategies/test_yf_session.py,Executable,Experiment,Unknown,Active,High,Filename matched Experiment; Invoked by 2 files
 ART-0008,financial/strategies/scan_semi_gap_fade.py,Executable,Unknown,Unknown,Active,Medium,Invoked by 2 files
@@ -12702,32 +12702,32 @@ ART-12700,services/ultracrew_server/phase_b_test.sh,Executable,Experiment,UltraC
 ART-12701,services/ultracrew_server/static_analysis.py,Executable,Analysis,UltraCrew,Active,High,Filename matched Analysis; Invoked by 2 files
 ART-12702,services/ultracrew_server/m9a_analyze_state.py,Executable,Analysis,UltraCrew,Active,High,Filename matched Analysis; Invoked by 2 files
 ART-12703,services/ultracrew_server/m9a_analyze_1.py,Executable,Analysis,UltraCrew,Active,High,Filename matched Analysis; Invoked by 2 files
-DOC-0001,campaign_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0001,archive/research_outputs/campaign_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
 DOC-0002,ARCH-011-canonical-platform.md,Document,Architecture,Unknown,Active Research,High,Extracted from path
 DOC-0003,DIVERGENCE_WALKTHROUGH.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0004,USER_GUIDE.md,Document,Guide,Unknown,Active Research,High,Extracted from path
 DOC-0005,inventory_summary.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0006,ARCHITECTURE.md,Document,Research,Unknown,Active Research,High,Extracted from path
-DOC-0007,cluster_validity_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0007,archive/research_outputs/cluster_validity_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
 DOC-0008,ARCH-010-runtime-contract.md,Document,Architecture,Unknown,Active Research,High,Extracted from path
 DOC-0009,review_candidates.md,Document,Research,Unknown,Active Research,High,Extracted from path
-DOC-0010,metric_distribution_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0010,archive/research_outputs/metric_distribution_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
 DOC-0011,ROADMAP-2026-v1.0.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0012,inventory.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0013,OPERATIONAL_MODEL.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0014,GOVERNANCE.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0015,DEMO_QUICKSTART.md,Document,Research,Unknown,Active Research,High,Extracted from path
-DOC-0016,run_expectancy_mae_mfe_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0016,archive/research_outputs/run_expectancy_mae_mfe_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
 DOC-0017,QUICKSTART.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0018,FAQ.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0019,ULTRACREW_PILOT_CHECKLIST.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0020,README.md,Document,Guide,Unknown,Active Research,High,Extracted from path
 DOC-0021,GETTING_STARTED.md,Document,Research,Unknown,Active Research,High,Extracted from path
-DOC-0022,cluster_stability_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
-DOC-0023,session_catalog_summary.md,Document,Research,Unknown,Active Research,High,Extracted from path
+DOC-0022,archive/research_outputs/cluster_stability_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0023,archive/research_outputs/session_catalog_summary.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0024,AUTHORITY_MAP.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0025,CALIBRATION_TRANSFER.md,Document,Research,Unknown,Active Research,High,Extracted from path
-DOC-0026,ecology_cluster_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
+DOC-0026,archive/research_outputs/ecology_cluster_report.md,Document,Report,Unknown,Active Research,High,Extracted from path
 DOC-0027,CONTRIBUTING.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0028,KNOWN_LIMITATIONS.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0029,chronosentiment_roadmap_v2.md,Document,Research,Unknown,Active Research,High,Extracted from path
@@ -12736,7 +12736,7 @@ DOC-0031,SEMANTIC_LINT_POSTURE.md,Document,Research,Unknown,Active Research,High
 DOC-0032,clean_inventory.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0033,SECURITY.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0034,WORKFLOW_GUIDE.md,Document,Guide,Unknown,Active Research,High,Extracted from path
-DOC-0035,session_catalog_q1_summary.md,Document,Research,Unknown,Active Research,High,Extracted from path
+DOC-0035,archive/research_outputs/session_catalog_q1_summary.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0036,PRODUCT_EVOLUTION_POLICY.md,Document,Research,Unknown,Active Research,High,Extracted from path
 DOC-0037,ui/README.md,Document,Guide,Unknown,Active Research,High,Extracted from path
 DOC-0038,ui/ultracrew/README.md,Document,Guide,Unknown,Active Research,High,Extracted from path

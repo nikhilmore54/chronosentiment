@@ -37,9 +37,9 @@ try:
     access_token = data["access_token"]
     print("\nSuccess! Your access token is:\n" + access_token)
     # Optionally, store it for later use
-    with open("kite_access_token.txt", "w") as f:
+    with open("archive/transient_texts/kite_access_token.txt", "w") as f:
         f.write(access_token)
-    print("Access token saved to kite_access_token.txt")
+    print("Access token saved to archive/transient_texts/kite_access_token.txt")
 except Exception as e:
     print(f"[ERROR] Failed to generate session: {e}")
     sys.exit(1)

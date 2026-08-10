@@ -8,7 +8,7 @@ import random
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-CATALOG_FILE = PROJECT_ROOT / "phase4_replay_catalog.json"
+CATALOG_FILE = PROJECT_ROOT / "archive/datasets/phase4_replay_catalog.json"
 BIN_PATH = PROJECT_ROOT / "target/release/trace_compiler"
 SUBSTRATE_DIR = PROJECT_ROOT / "state_archive" / "phase6_substrates"
 OUT_DIR = PROJECT_ROOT / "docs" / "certification" / "certified_artifacts"

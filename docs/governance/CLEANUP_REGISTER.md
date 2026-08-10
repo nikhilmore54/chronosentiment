@@ -148,13 +148,13 @@ The following items were identified by read-only scan of all `*.rs` files. No so
 |-------|-------|
 | **ID** | CLN-007 |
 | **Type** | Consolidate |
-| **Asset A** | `original_engine.rs` line 7034 — `fn percentile(mut values: Vec<f64>, p: f64) -> f64` |
+| **Asset A** | `archive/research_outputs/original_engine.rs` line 7034 — `fn percentile(mut values: Vec<f64>, p: f64) -> f64` |
 | **Asset B** | `infrastructure/core/deprecated_examples/live_engine.rs` line 613 — identical signature and body |
 | **Reason** | Two identical implementations; Asset B is in `deprecated_examples/` |
-| **Canonical** | **`original_engine.rs`** — annotated `UTILITY`, deferred wiring. Asset B is in `deprecated_examples/` which has no active Cargo consumers (confirmed 2026-08-01). |
+| **Canonical** | **`archive/research_outputs/original_engine.rs`** — annotated `UTILITY`, deferred wiring. Asset B is in `deprecated_examples/` which has no active Cargo consumers (confirmed 2026-08-01). |
 | **Dependents** | None outside their respective files |
 | **Validation** | Asset B will be removed as part of CLN-013 (deprecated_examples archival). No separate action needed for CLN-007 beyond confirming CLN-013 is complete. |
-| **Status** | **COMPLETE** — canonical is `original_engine.rs`; Asset B removed via CLN-013 (2026-08-01) |
+| **Status** | **COMPLETE** — canonical is `archive/research_outputs/original_engine.rs`; Asset B removed via CLN-013 (2026-08-01) |
 | **Date** | 2026-08-01 |
 
 ---
@@ -165,7 +165,7 @@ The following items were identified by read-only scan of all `*.rs` files. No so
 |-------|-------|
 | **ID** | CLN-008 |
 | **Type** | Consolidate |
-| **Asset A** | `original_engine.rs` line 606 — `fn mean(&self) -> f64` (method on a struct) |
+| **Asset A** | `archive/research_outputs/original_engine.rs` line 606 — `fn mean(&self) -> f64` (method on a struct) |
 | **Asset B** | `adapters/ultracrew/src/bin/config_sweep.rs` line 185 — `fn mean(sum: f64, cnt: usize) -> f64` (free function, different signature) |
 | **Reason** | Both compute arithmetic mean but with different signatures; not true duplicates — different calling conventions |
 | **Canonical** | Not a true duplicate — different signatures. No action required. |

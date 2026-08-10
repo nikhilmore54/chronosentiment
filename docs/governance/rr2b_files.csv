@@ -249,10 +249,10 @@ adapters/ultracrew/src/telemetry.rs,adapters/ultracrew,ultracrew,lib,lib,adapter
 adapters/ultracrew/src/workforce/ecology_adapter.rs,adapters/ultracrew,ultracrew,lib,lib,adapters/ultracrew/src/workforce/mod.rs,crate::workforce::ecology_adapter,True,1,0
 adapters/ultracrew/src/workforce/mod.rs,adapters/ultracrew,ultracrew,lib,lib,adapters/ultracrew/src/lib.rs,crate::workforce,True,1,2
 adapters/ultracrew/src/workforce/workforce_metrics.rs,adapters/ultracrew,ultracrew,lib,lib,adapters/ultracrew/src/workforce/mod.rs,crate::workforce::workforce_metrics,True,1,0
-adapters/ultracrew/tests/calc_coverage.rs,adapters/ultracrew,ultracrew,test,test:calc_coverage,,crate,True,0,0
-adapters/ultracrew/tests/calc_coverage_final.rs,adapters/ultracrew,ultracrew,test,test:calc_coverage_final,,crate,True,0,0
-adapters/ultracrew/tests/calc_coverage_opt_minus_min.rs,adapters/ultracrew,ultracrew,test,test:calc_coverage_opt_minus_min,,crate,True,0,0
-adapters/ultracrew/tests/calc_coverage_zero.rs,adapters/ultracrew,ultracrew,test,test:calc_coverage_zero,,crate,True,0,0
+adapters/ultracrew/tests/archive/research_outputs/calc_coverage.rs,adapters/ultracrew,ultracrew,test,test:archive/research_outputs/calc_coverage,,crate,True,0,0
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_final.rs,adapters/ultracrew,ultracrew,test,test:archive/research_outputs/archive/research_outputs/calc_coverage_final,,crate,True,0,0
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_opt_minus_min.rs,adapters/ultracrew,ultracrew,test,test:archive/research_outputs/archive/research_outputs/calc_coverage_opt_minus_min,,crate,True,0,0
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_zero.rs,adapters/ultracrew,ultracrew,test,test:archive/research_outputs/archive/research_outputs/calc_coverage_zero,,crate,True,0,0
 adapters/ultracrew/tests/create_parity_snapshot.rs,adapters/ultracrew,ultracrew,test,test:create_parity_snapshot,,crate,True,0,0
 adapters/ultracrew/tests/debug_s2_penalties.rs,adapters/ultracrew,ultracrew,test,test:debug_s2_penalties,,crate,True,0,0
 adapters/ultracrew/tests/ecology_endpoint_equivalence.rs,adapters/ultracrew,ultracrew,test,test:ecology_endpoint_equivalence,,crate,True,0,0

@@ -1,8 +1,8 @@
 """Generate ecological clustering for Q1 session catalog.
 Outputs:
-- ecology_cluster_report.json (cluster assignments and metadata)
-- ecology_pca_plot.png (2D PCA scatter colored by cluster)
-- ecology_cluster_report.md (markdown summary)
+- archive/research_outputs/ecology_cluster_report.json (cluster assignments and metadata)
+- archive/research_outputs/ecology_pca_plot.png (2D PCA scatter colored by cluster)
+- archive/research_outputs/ecology_cluster_report.md (markdown summary)
 """
 
 import json
@@ -16,9 +16,9 @@ from sklearn.cluster import AgglomerativeClustering
 
 # Paths
 CATALOG_PATH = Path("phase1/analysis/coordinate_audit/session_catalog_q1.json")
-JSON_OUT = Path("ecology_cluster_report.json")
-MD_OUT = Path("ecology_cluster_report.md")
-PNG_OUT = Path("ecology_pca_plot.png")
+JSON_OUT = Path("archive/research_outputs/ecology_cluster_report.json")
+MD_OUT = Path("archive/research_outputs/ecology_cluster_report.md")
+PNG_OUT = Path("archive/research_outputs/ecology_pca_plot.png")
 
 # Load catalog
 catalog = json.loads(CATALOG_PATH.read_text())

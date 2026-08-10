@@ -3,10 +3,10 @@
 The script follows the plan documented in
 implementation_plan_ecology_validation.md.
 It produces four artifacts in the project root:
-- cluster_stability_report.md
-- cluster_stability_plot.png
-- null_model_comparison.json
-- ecology_certification.json
+- archive/research_outputs/cluster_stability_report.md
+- archive/research_outputs/cluster_stability_plot.png
+- archive/datasets/null_model_comparison.json
+- archive/datasets/ecology_certification.json
 """
 import json
 import os
@@ -172,7 +172,7 @@ def write_report(results, null_collect):
             lines.append(f"- {metric} p‑value: {pval:.4f}\n")
         lines.append("---\n")
     # Write to file
-    report_path = OUTPUT_DIR / "cluster_stability_report.md"
+    report_path = OUTPUT_DIR / "archive/research_outputs/cluster_stability_report.md"
     with open(report_path, "w") as f:
         f.write("\n".join(lines))
 
@@ -195,14 +195,14 @@ def write_report(results, null_collect):
     plt.title("Ecological validation metrics across k")
     plt.legend()
     plt.grid(True, linestyle="--", alpha=0.5)
-    plot_path = OUTPUT_DIR / "cluster_stability_plot.png"
+    plot_path = OUTPUT_DIR / "archive/research_outputs/cluster_stability_plot.png"
     plt.tight_layout()
     plt.savefig(plot_path, dpi=150)
     plt.close()
 
 def write_null_json(null_collect):
     """Save raw null‑model metric arrays for reproducibility."""
-    out_path = OUTPUT_DIR / "null_model_comparison.json"
+    out_path = OUTPUT_DIR / "archive/datasets/null_model_comparison.json"
     # Convert numpy arrays/lists to plain python lists
     serialisable = {
         str(k): {
@@ -240,7 +240,7 @@ def write_certification(results):
         "perturbation_ari_sigma_0.02": results[best_k]["perturbation_ari"].get("0.02"),
         "notes": "Evidence artifact – no hard certification decision applied."
     }
-    out_path = OUTPUT_DIR / "ecology_certification.json"
+    out_path = OUTPUT_DIR / "archive/datasets/ecology_certification.json"
     with open(out_path, "w") as f:
         json.dump(cert, f, indent=2)
 

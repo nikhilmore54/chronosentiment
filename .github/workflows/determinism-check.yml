@@ -43,8 +43,8 @@ jobs:
 
     - name: API Contract Verification
       run: |
-        chmod +x verify_api_contract.sh
-        ./verify_api_contract.sh
+        chmod +x scripts/verify_api_contract.sh
+        ./scripts/verify_api_contract.sh
 
   tier1-alternate-smoke:
     runs-on: ${{ matrix.os }}

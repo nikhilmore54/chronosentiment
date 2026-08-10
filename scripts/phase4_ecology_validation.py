@@ -12,7 +12,7 @@ from sklearn.metrics import adjusted_rand_score
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-CATALOG_FILE = PROJECT_ROOT / "phase4_replay_catalog.json"
+CATALOG_FILE = PROJECT_ROOT / "archive/datasets/phase4_replay_catalog.json"
 
 def main():
     if not CATALOG_FILE.exists():

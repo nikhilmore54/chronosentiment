@@ -108,7 +108,8 @@ pub fn score_inrc_official(
     inrc_optimizer: &InrcOptimizer,
 ) -> InrcScoreComponents {
     let i_genome = to_inrc_genome(genome, scenario);
-    let ev = inrc_optimizer.evaluate(&i_genome);
+    let empty_metrics = coralys_moga::runtime::optimization::metric::MetricReport::default();
+    let ev = inrc_optimizer.evaluate(&i_genome, &empty_metrics);
     let total_hc = ev.hc_coverage + ev.hc_skills
         + ev.hc_one_shift_per_day
         + ev.hc_forbidden_successions;

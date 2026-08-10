@@ -11,7 +11,7 @@ This viewer projects the deterministic Execution-Qualified economic outcomes und
 **NOTE**: Governed by `SURFACE_INTERPRETATION_CONTRACT_v1`. Scalar compression, ranking, and optimization inference are strictly prohibited.
 """)
 
-artifact_path = Path("SURVIVABILITY_SURFACE_ARTIFACT_v1.json")
+artifact_path = Path("archive/datasets/SURVIVABILITY_SURFACE_ARTIFACT_v1.json")
 
 if not artifact_path.exists():
     st.error("Surface Artifact not found. Please compile the surface first.")

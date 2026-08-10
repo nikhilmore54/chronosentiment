@@ -78,10 +78,10 @@ No clustering, bootstrap, null-model, perturbation, or metric logic was altered.
 | Perturbation ARI (single trial) | 0.455 | 0.967 |
 
 **Artifacts:**
-- `phase1/analysis/validation_q2/ecology_certification.json`
-- `phase1/analysis/validation_q2/cluster_stability_report.md`
-- `phase1/analysis/validation_q2/null_model_comparison.json`
-- `phase1/analysis/validation_q2/cluster_stability_plot.png`
+- `phase1/analysis/validation_q2/archive/datasets/ecology_certification.json`
+- `phase1/analysis/validation_q2/archive/research_outputs/cluster_stability_report.md`
+- `phase1/analysis/validation_q2/archive/datasets/null_model_comparison.json`
+- `phase1/analysis/validation_q2/archive/research_outputs/cluster_stability_plot.png`
 
 ---
 

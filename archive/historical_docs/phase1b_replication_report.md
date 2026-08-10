@@ -18,7 +18,7 @@ Validate whether the ecological structure observed in Q1 2025 reproduces in an i
 
 1. Build session catalog using `scripts/build_session_catalog.py` (frozen).
 2. Run `validate_ecologies.py` with default settings (k = 2–10, Ward linkage, 30 permutation nulls, 30 bootstrap repeats, perturbation at σ = {0.005, 0.01, 0.02, 0.05}).
-3. Collect artifacts: `ecology_certification.json`, `cluster_stability_report.md`, `null_model_comparison.json`.
+3. Collect artifacts: `archive/datasets/ecology_certification.json`, `archive/research_outputs/cluster_stability_report.md`, `archive/datasets/null_model_comparison.json`.
 
 ### Code changes
 

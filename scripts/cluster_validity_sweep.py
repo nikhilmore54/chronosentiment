@@ -1,7 +1,7 @@
 """Cluster validity sweep for Q1 session catalog.
 Generates:
-- cluster_validity_report.md (table of scores and embedded plot)
-- cluster_validity_plot.png (k vs Silhouette, Davies‑Bouldin, Calinski‑Harabasz)
+- archive/research_outputs/cluster_validity_report.md (table of scores and embedded plot)
+- archive/research_outputs/cluster_validity_plot.png (k vs Silhouette, Davies‑Bouldin, Calinski‑Harabasz)
 """
 
 import json
@@ -15,8 +15,8 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_har
 
 # Paths
 CATALOG_PATH = Path("phase1/analysis/coordinate_audit/session_catalog_q1.json")
-MD_OUT = Path("cluster_validity_report.md")
-PNG_OUT = Path("cluster_validity_plot.png")
+MD_OUT = Path("archive/research_outputs/cluster_validity_report.md")
+PNG_OUT = Path("archive/research_outputs/cluster_validity_plot.png")
 
 # Load catalog
 catalog = json.loads(CATALOG_PATH.read_text())

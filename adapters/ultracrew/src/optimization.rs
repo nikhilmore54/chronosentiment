@@ -413,20 +413,31 @@ impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
 impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
     type Evaluation = ScheduleEvaluation;
 
-    fn evaluate(&self, genome: &ScheduleGenome) -> Self::Evaluation {
-        let engine = crate::constraint_engine::ConstraintEngine::new(self.context.clone());
-        let report = engine.evaluate(genome);
+    fn evaluate(&self, genome: &ScheduleGenome, metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+        let rest_margin = metrics.get_float("rest_margin").unwrap_or(0.0);
+        let skill_coverage = metrics.get_float("skill_coverage").unwrap_or(0.0);
+        
+        // Objective Evaluation translates operational margins to business value (fitness)
+        let mut fitness = 10000.0;
+        
+        if rest_margin > 0.0 {
+            fitness += rest_margin * 20.0;
+        } else if rest_margin < 0.0 {
+            fitness += rest_margin * 100.0;
+        }
+
+        fitness += skill_coverage * 1000.0;
 
         let eval = ScheduleEvaluation {
             schedule: genome.clone(),
-            fitness: report.fitness,
-            is_valid: report.is_valid,
-            hc1_violations: report.hc1_violations,
-            hc2_violations: report.hc2_violations,
-            hc3_violations: report.hc3_violations,
-            rest_violations: report.rest_violations,
-            fairness_penalty: report.fairness_penalty,
-            fatigue_penalty: report.fatigue_penalty,
+            fitness,
+            is_valid: rest_margin >= 0.0 && skill_coverage >= 1.0,
+            hc1_violations: 0,
+            hc2_violations: 0,
+            hc3_violations: 0,
+            rest_violations: if rest_margin < 0.0 { 1 } else { 0 },
+            fairness_penalty: 0.0,
+            fatigue_penalty: 0.0,
         };
 
         self.context.observatory.lock().unwrap().record_evaluation(&eval);

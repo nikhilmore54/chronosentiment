@@ -1133,12 +1133,12 @@ fn main() {
         results: results.clone(),
         summary: summary.clone(),
     };
-    let json_path = "campaign_results.json";
+    let json_path = "archive/research_outputs/campaign_results.json";
     std::fs::write(json_path, serde_json::to_string_pretty(&report).unwrap()).unwrap();
     eprintln!("JSON written to {}", json_path);
 
     // ── Markdown report ──────────────────────────────────────────────────────
-    let md_path = "campaign_report.md";
+    let md_path = "archive/research_outputs/campaign_report.md";
     let mut md = String::new();
     md.push_str("# Coralys CVRP Optimizer — Qualification Campaign v1.1 Report\n\n");
     md.push_str(&format!("**Generated:** {}  \n", report.timestamp));
@@ -1630,7 +1630,7 @@ fn main() {
     println!("║ Median gap:       {:>7.2}%                                   ║", summary.median_gap_pct);
     println!("║ Avg runtime:      {:>7.0}ms                                  ║", summary.avg_runtime_ms);
     println!("╠══════════════════════════════════════════════════════════════╣");
-    println!("║ JSON:    campaign_results.json                               ║");
-    println!("║ Report:  campaign_report.md                                  ║");
+    println!("║ JSON:    archive/research_outputs/campaign_results.json                               ║");
+    println!("║ Report:  archive/research_outputs/campaign_report.md                                  ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 }

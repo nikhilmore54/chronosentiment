@@ -24,6 +24,14 @@ pub mod hypothesis;
 pub mod timeline;
 pub mod workspace;
 pub mod learning;
+pub mod observation;
+pub mod instrument;
+pub mod ingestion;
+pub mod validation;
+pub mod portfolio;
+pub mod policy;
+pub mod repository;
+pub mod metrics;
 
 // Re-export the most commonly used types for convenience.
 pub use evidence::{EvidenceItem, EvidenceSourceType, EvidenceDossier};

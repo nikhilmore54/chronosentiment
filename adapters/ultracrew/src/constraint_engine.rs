@@ -57,7 +57,7 @@ impl ConstraintEngine {
 
             // HC1: Skill match
             if !worker.skills.contains(&shift.required_skill) {
-                fitness -= 1000.0;
+                fitness -= 100_000.0;
                 hc1_violations += 1;
             }
 
@@ -68,7 +68,7 @@ impl ConstraintEngine {
                         if leave.crew_id == *worker_id {
                             // Check overlap
                             if shift.start_hour < leave.end_hour && shift.end_hour() > leave.start_hour {
-                                fitness -= 5000.0; // Severe penalty for working during leave
+                                fitness -= 100_000.0; // Severe penalty for working during leave
                                 hc4_violations += 1;
                             }
                         }
@@ -95,7 +95,7 @@ impl ConstraintEngine {
                 .map(|h| h as u64)
                 .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
             if hours > hc3_limit {
-                fitness -= 500.0;
+                fitness -= 100_000.0;
                 hc3_violations += 1;
             }
 
@@ -109,7 +109,7 @@ impl ConstraintEngine {
                         let s_i = sorted_shifts[i];
                         let s_j = sorted_shifts[j];
                         if s_i.overlaps_with(s_j) {
-                            fitness -= 1000.0;
+                            fitness -= 100_000.0;
                             hc2_violations += 1;
                         }
                     }
@@ -120,8 +120,6 @@ impl ConstraintEngine {
                     .unwrap_or(10); // DGCA/EASA default
 
                 // Rest: check only CONSECUTIVE shifts (adjacent in time order)
-                // A rest violation means the gap between the end of shift[i] and
-                // the start of shift[i+1] is less than the scenario minimum.
                 for i in 0..sorted_shifts.len().saturating_sub(1) {
                     let s_i = sorted_shifts[i];
                     let s_next = sorted_shifts[i + 1];
@@ -129,12 +127,26 @@ impl ConstraintEngine {
                         s_next.start_hour - s_i.end_hour()
                     } else { 0 };
                     if gap < min_rest {
-                        // Penalty scales with severity: short gaps cost more
-                        let severity = if gap < (min_rest / 2) { 3.0 } else if gap < (min_rest - 2) { 2.0 } else { 1.0 };
-                        fitness -= 800.0 * severity;
+                        fitness -= 100_000.0;
                         rest_violations += 1;
                     }
                 }
+                
+                // Resilience Objective: Reward operational slack > 24h gap
+                let mut base_reserve_blocks = 0;
+                for i in 0..sorted_shifts.len().saturating_sub(1) {
+                    let s_i = sorted_shifts[i];
+                    let s_next = sorted_shifts[i + 1];
+                    let gap = if s_next.start_hour >= s_i.end_hour() {
+                        s_next.start_hour - s_i.end_hour()
+                    } else { 0 };
+                    
+                    if gap >= 24 {
+                        base_reserve_blocks += 1;
+                    }
+                }
+                // Reward +200 for every base reserve block
+                fitness += (base_reserve_blocks as f64) * 200.0;
             }
 
             // SC2: Fatigue (Ecology integration)

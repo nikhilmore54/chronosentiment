@@ -249,10 +249,10 @@ adapters/ultracrew/src/telemetry.rs,adapters/ultracrew,Reachable,lib:module
 adapters/ultracrew/src/workforce/ecology_adapter.rs,adapters/ultracrew,Reachable,lib:module
 adapters/ultracrew/src/workforce/mod.rs,adapters/ultracrew,Reachable,lib:module
 adapters/ultracrew/src/workforce/workforce_metrics.rs,adapters/ultracrew,Reachable,lib:module
-adapters/ultracrew/tests/calc_coverage.rs,adapters/ultracrew,Reachable,test
-adapters/ultracrew/tests/calc_coverage_final.rs,adapters/ultracrew,Reachable,test
-adapters/ultracrew/tests/calc_coverage_opt_minus_min.rs,adapters/ultracrew,Reachable,test
-adapters/ultracrew/tests/calc_coverage_zero.rs,adapters/ultracrew,Reachable,test
+adapters/ultracrew/tests/archive/research_outputs/calc_coverage.rs,adapters/ultracrew,Reachable,test
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_final.rs,adapters/ultracrew,Reachable,test
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_opt_minus_min.rs,adapters/ultracrew,Reachable,test
+adapters/ultracrew/tests/archive/research_outputs/archive/research_outputs/calc_coverage_zero.rs,adapters/ultracrew,Reachable,test
 adapters/ultracrew/tests/create_parity_snapshot.rs,adapters/ultracrew,Reachable,test
 adapters/ultracrew/tests/debug_s2_penalties.rs,adapters/ultracrew,Reachable,test
 adapters/ultracrew/tests/ecology_endpoint_equivalence.rs,adapters/ultracrew,Reachable,test

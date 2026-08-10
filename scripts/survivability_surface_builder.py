@@ -6,9 +6,9 @@ from pathlib import Path
 def build_survivability_surface():
     print("🔬 ECOLOGICAL SURVIVABILITY SURFACE COMPILER")
     
-    atlas_path = Path("ECOLOGY_ATLAS_v1.json")
+    atlas_path = Path("archive/datasets/ECOLOGY_ATLAS_v1.json")
     if not atlas_path.exists():
-        print("❌ ECOLOGY_ATLAS_v1.json not found.")
+        print("❌ archive/datasets/ECOLOGY_ATLAS_v1.json not found.")
         return
         
     with open(atlas_path, 'r') as f:
@@ -110,7 +110,7 @@ def build_survivability_surface():
         "strategies": list(strategies.values())
     }
     
-    out_file = Path("SURVIVABILITY_SURFACE_ARTIFACT_v1.json")
+    out_file = Path("archive/datasets/SURVIVABILITY_SURFACE_ARTIFACT_v1.json")
     with open(out_file, 'w') as f:
         json.dump(surface_artifact, f, indent=2)
         

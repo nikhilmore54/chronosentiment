@@ -24,8 +24,26 @@ Every future engine and adapter must adhere to these foundational marker traits:
 - **ConstraintModel:** The boundaries of physical, legal, and business feasibility.
 - **ObjectiveModel:** The scoring mechanism that defines "goodness" over a feasible state.
 - **OptimizationEngine:** The solver responsible for producing a higher-fitness `OperationalModel`.
+- **ConstraintSatisfactionEngine:** The deterministic subsystem responsible for driving an `OperationalModel` toward feasibility.
+- **PolicyModel:** The operational and regulatory rules defining the context of evaluation.
+- **MetricModel:** Computes numeric indicators of state margin, buffer, and quality.
 
 These contracts contain **no optimization logic** and **no domain logic**.
+
+### Constraint Satisfaction Invariants
+
+1. **Constraint Satisfaction must never optimize.** Its only responsibility is ensuring legality and generating minimal repairs. Objective improvement belongs exclusively to Objective Evaluation.
+2. **Constraint Satisfaction must be deterministic for a given input model, repair policy, and repair engine.** Optimization is stochastic, but constraint satisfaction is not. This guarantees reproducibility, debugging, and clear decision lineage.
+
+### Metric Evaluation Invariants
+
+1. **MetricModels are pure, deterministic computations derived solely from the OperationalModel and PolicyModel. They must not mutate operational state, invoke repair, or embed optimization preferences.**
+
+### Acyclic Information Flow Invariant
+
+1. **Every subsystem consumes artifacts from the preceding subsystem and must not recompute upstream information.**
+   - The runtime pipeline enforces a strict acyclic information flow: `Operational Model` → `Metric Engine` (produces `MetricReport`) → `Constraint Assessment` (produces `ConstraintReport`) → `Constraint Satisfaction` (produces `ConstraintSatisfactionResult`) → `Objective Evaluation` (produces `Fitness`).
+   - Downstream consumers (e.g., Objective Evaluation, Constraint Assessment, Constraint Satisfaction) must rely on the provided artifacts (e.g., `MetricReport`) rather than recalculating upstream facts (e.g., computing rest margins manually).
 
 ## 3. Dependency Rules
 
@@ -59,9 +77,16 @@ The traits exported in `coralys_moga::runtime` and `coralys_moga::optimization` 
 These are effectively part of Coralys' public platform. Changing these requires a major version bump and architectural review.
 - `OperationalModel`
 - `ConstraintModel`
+- `ConstraintAssessment`
 - `ObjectiveModel`
 - `OptimizationEngine`
 - `DecisionVector`
+- `ConstraintSatisfactionEngine`
+- `RepairOperator`
+- `PolicyModel`
+- `MetricEngine`
+- `MetricReport`
+- `PipelineObserver`
 
 ### Experimental
 Allowed to evolve without strict versioning.

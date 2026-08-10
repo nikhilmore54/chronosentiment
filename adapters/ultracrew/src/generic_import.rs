@@ -490,7 +490,7 @@ mod tests {
     #[test]
     fn test_uncovered_skill_rejected() {
         let workers = vec![Worker { id: 1, skills: vec![Skill::new("Nurse")] }];
-        let shifts = vec![Shift { id: 1, start_hour: 0, duration_hours: 8, required_skill: Skill::new("ICU") }];
+        let shifts = vec![Shift { id: 1, start_hour: 0, duration_hours: 8, required_skill: Skill::new("ICU"), crew_role: None, flight_id: None }];
         let result = validate_skill_coverage(&workers, &shifts);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("No worker possesses"));

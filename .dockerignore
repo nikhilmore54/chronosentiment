@@ -60,4 +60,4 @@ test_release/
 # Misc
 *.log
 *.tmp
-calc_coverage_*
+archive/research_outputs/calc_coverage_*

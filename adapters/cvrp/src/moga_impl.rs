@@ -12,7 +12,7 @@ pub struct CvrpEvaluator {
 impl FitnessEvaluator<CvrpCandidate> for CvrpEvaluator {
     type Evaluation = CvrpOutcomeWrapper;
 
-    fn evaluate(&self, candidate: &CvrpCandidate) -> Self::Evaluation {
+    fn evaluate(&self, candidate: &CvrpCandidate, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
         let n = candidate.permutation.len();
         if n == 0 {
             let eval = CvrpEvaluation {
@@ -385,7 +385,7 @@ impl CrossoverOperator<CvrpCandidate> for CvrpCrossoverRoutePreserving {
 
 fn get_routes(candidate: &CvrpCandidate, instance: &crate::CvrpInstance) -> Vec<Vec<usize>> {
     let evaluator = CvrpEvaluator { instance: instance.clone() };
-    let outcome = evaluator.evaluate(candidate);
+    let outcome = evaluator.evaluate(candidate, &crate::runtime::optimization::metric::MetricReport::default());
     let mut routes = Vec::new();
     
     if outcome.eval.routes.is_empty() {
@@ -441,7 +441,7 @@ pub struct CvrpLocalSearch {
 impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
     fn improve(&self, candidate: &mut CvrpCandidate) {
         let evaluator = CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(candidate);
+        let outcome = evaluator.evaluate(candidate, &crate::runtime::optimization::metric::MetricReport::default());
         let mut routes = Vec::new();
 
         if outcome.eval.routes.is_empty() {

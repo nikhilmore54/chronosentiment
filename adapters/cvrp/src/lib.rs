@@ -553,7 +553,7 @@ impl DecisionPlugin for CvrpDecisionPlugin {
         });
 
         let evaluator = moga_impl::CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(&candidate);
+        let outcome = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         
         translate_evaluation(&candidate, &outcome.eval, &self.instance)
     }
@@ -567,7 +567,7 @@ impl DecisionPlugin for CvrpDecisionPlugin {
             .map_err(|e| format!("Failed to deserialize CVRP candidate: {}", e))?;
 
         let evaluator = moga_impl::CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(&candidate);
+        let outcome = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
 
         let mut new_state = state.clone();
         new_state.gen_state.best_distance = outcome.eval.total_distance;

@@ -184,7 +184,7 @@ fn main() {
 
         for _gen in 0..args.generations {
             let evals: Vec<InrcEvaluation> = population.iter()
-                .map(|g| evaluator.evaluate(g))
+                .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
 

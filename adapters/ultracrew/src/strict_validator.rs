@@ -458,13 +458,13 @@ mod tests {
                 Worker { id: 2, skills: vec![Skill::new("CabinCrew")] },
             ],
             shifts: vec![
-                Shift { id: 1, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Captain") },
-                Shift { id: 2, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("CabinCrew") },
+                Shift { id: 1, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Captain"), crew_role: None, flight_id: None },
+                Shift { id: 2, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("CabinCrew"), crew_role: None, flight_id: None },
             ],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(200),
-            scenario: Some(Scenario {
+            scenario: Some(Scenario { leave_requests: None, minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),
@@ -508,7 +508,7 @@ mod tests {
     #[test]
     fn test_v004_duplicate_shift_id() {
         let mut req = minimal_valid();
-        req.shifts.push(Shift { id: 1, start_hour: 20, duration_hours: 8, required_skill: Skill::new("Captain") });
+        req.shifts.push(Shift { id: 1, start_hour: 20, duration_hours: 8, required_skill: Skill::new("Captain"), crew_role: None, flight_id: None });
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-004"));
@@ -550,6 +550,8 @@ mod tests {
             start_hour: 10,
             duration_hours: 8,
             required_skill: Skill::new("FirstOfficer"),
+            crew_role: Some("FirstOfficer".to_string()),
+            flight_id: Some("FL99".to_string()),
         });
         let report = validate_request(&req);
         assert!(!report.is_valid());
@@ -665,12 +667,14 @@ mod tests {
                     start_hour: block_offset + pos * 2,
                     duration_hours: 8,
                     required_skill: Skill::new(skill),
+                    crew_role: Some(skill.to_string()),
+                    flight_id: Some(format!("FL{}", id)),
                 }
             }).collect(),
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(500),
-            scenario: Some(Scenario {
+            scenario: Some(Scenario { leave_requests: None, minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),

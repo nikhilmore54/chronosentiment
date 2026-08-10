@@ -106,7 +106,7 @@ def main():
         catalog.append(entry)
         logging.info(f"Processed {date_str} {symbol} | Trend: {m['trend_strength']:.2f} | Pers_R: {entry['persistence_rolling_50']} | Pers_E: {entry['persistence_event_reset']}")
         
-    out_path = PROJECT_ROOT / "phase4_replay_catalog.json"
+    out_path = PROJECT_ROOT / "archive/datasets/phase4_replay_catalog.json"
     with open(out_path, "w") as f:
         json.dump(catalog, f, indent=2)
         

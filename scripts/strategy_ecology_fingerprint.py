@@ -168,7 +168,7 @@ def run_mapper(batch_id: int = 10000):
     
     metadata_dir = Path(f"state_archive/batches/batch_{batch_id}/runs/live/metadata")
     
-    registry_file = Path("ECOLOGY_ATLAS_v1.json")
+    registry_file = Path("archive/datasets/ECOLOGY_ATLAS_v1.json")
     if registry_file.exists():
         with open(registry_file, 'r') as f:
             registry = json.load(f)
@@ -211,7 +211,7 @@ def run_mapper(batch_id: int = 10000):
             
     with open(registry_file, 'w') as f:
         json.dump(registry, f, indent=2)
-    print(f"\n💾 Saved {len(registry['experiments'])} fingerprints to ECOLOGY_ATLAS_v1.json")
+    print(f"\n💾 Saved {len(registry['experiments'])} fingerprints to archive/datasets/ECOLOGY_ATLAS_v1.json")
 
 if __name__ == "__main__":
     import argparse

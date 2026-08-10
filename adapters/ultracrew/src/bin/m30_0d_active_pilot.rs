@@ -117,7 +117,7 @@ fn run_pilot(use_advisory: bool, seed: u64) -> RunMetrics {
     for gen in 0..generations {
         let mut evals: Vec<EvaluatedOffspring> = population.drain(..)
             .map(|off| EvaluatedOffspring {
-                eval: evaluator.evaluate(&off.genome),
+                eval: evaluator.evaluate(&off.genome, &coralys_moga::runtime::optimization::metric::MetricReport::default()),
                 parent_ctx: off.parent_ctx,
             })
             .filter(|e| e.eval.is_valid())

@@ -1,7 +1,7 @@
 """Generate a metric distribution report for Q1 session catalog.
 
 Outputs:
-- metric_distribution_report.md (markdown report)
+- archive/research_outputs/metric_distribution_report.md (markdown report)
 - PNG histograms for each metric (saved in the same directory)
 """
 
@@ -61,7 +61,7 @@ def plot_histogram(series: pd.Series, metric: str, out_dir: Path):
 
 def main():
     catalog_path = Path("phase1/analysis/coordinate_audit/session_catalog_q1.json")
-    out_md = Path("metric_distribution_report.md")
+    out_md = Path("archive/research_outputs/metric_distribution_report.md")
     out_dir = out_md.parent
     df = load_catalog(catalog_path)
 

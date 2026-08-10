@@ -41,6 +41,8 @@ mod compliance_explainability_tests {
             start_hour: start,
             duration_hours: duration,
             required_skill: Skill(skill.to_string()),
+            crew_role: None,
+            flight_id: None,
         }
     }
 

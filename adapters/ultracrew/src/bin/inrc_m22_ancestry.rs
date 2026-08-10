@@ -162,7 +162,7 @@ fn run_pilot(seed: u64, out_csv: &mut File) {
             global_gen += 1;
             
             let mut evals: Vec<(usize, InrcEvaluation)> = population.into_iter()
-                .map(|(id, g)| (id, evaluator.evaluate(&g)))
+                .map(|(id, g)| (id, evaluator.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default())))
                 .filter(|(_, e)| e.is_valid())
                 .collect();
             
@@ -262,7 +262,7 @@ fn run_pilot(seed: u64, out_csv: &mut File) {
                     for _ in 0..sa_steps {
                         let mut neighbor = current_cand.clone();
                         mutator.mutate(&mut neighbor, &mut rng);
-                        let neighbor_eval = evaluator.evaluate(&neighbor);
+                        let neighbor_eval = evaluator.evaluate(&neighbor, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                         let new_fit = neighbor_eval.fitness();
                         
                         let delta = new_fit - current_fit;
@@ -279,7 +279,7 @@ fn run_pilot(seed: u64, out_csv: &mut File) {
                     
                     if best_fit > sample.fitness() {
                         let new_id = next_id; next_id += 1;
-                        let new_eval = evaluator.evaluate(&best_cand);
+                        let new_eval = evaluator.evaluate(&best_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                         let score = get_score(&new_eval);
                         
                         lineage_tree.insert(new_id, GenomeMetadata {
