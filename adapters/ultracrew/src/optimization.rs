@@ -8,6 +8,12 @@ use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+/// **Compatibility Implementation / Legacy Operational Model**
+/// 
+/// Architecturally, `ScheduleGenome` is no longer the primary structural 
+/// representation of the domain. It serves as a compatibility implementation 
+/// of the Coralys `OperationalModel` during the migration to the Native 
+/// Operational Model (OEN).
 #[derive(Debug, Clone)]
 pub struct ScheduleGenome {
     // Maps shift_id to worker_id
@@ -15,6 +21,8 @@ pub struct ScheduleGenome {
 }
 
 impl Genome for ScheduleGenome {}
+
+impl coralys_moga::runtime::model::network::OperationalModel for ScheduleGenome {}
 
 #[derive(Debug, Clone)]
 pub struct ScheduleEvaluation {

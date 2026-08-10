@@ -15,6 +15,12 @@ pub struct AssignmentSlot {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq)]
+/// **Compatibility Implementation / Legacy Operational Model**
+/// 
+/// Architecturally, `ScheduleGenome` is no longer the primary structural 
+/// representation of the domain. It serves as a compatibility implementation 
+/// of the Coralys `OperationalModel` during the migration to the Native 
+/// Operational Model (OEN).
 pub struct ScheduleGenome {
     pub slots: Vec<AssignmentSlot>,
     pub num_days: usize,

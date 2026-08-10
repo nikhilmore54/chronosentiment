@@ -307,6 +307,7 @@ fn make_dynamic_dashboard(
         hc1_violations: skill_coverage_audit.total_skill_deficits,
         hc2_violations: 0,
         hc3_violations: 0,
+        hc4_violations: 0,
         rest_violations: validation_report.forbidden_successions + validation_report.min_days_off_violations,
         fairness_penalty: 0.0,
         fatigue_penalty: 0.0,
@@ -2291,14 +2292,8 @@ async fn main() {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(Any);
 
-    // ── Lazy initialisation ──────────────────────────────────────────────────
-    // The pilot portal does not require the INRC nurse-scheduling scenario.
-    // Simulation endpoints (/api/state, /api/simulations/*, /api/balance,
-    // /api/dashboard, /api/nurses) return 503 when scenario/baseline_state
-    // are None.  The INRC scenario can be loaded at runtime by a future
-    // endpoint if needed.
-    
     let app_state = Arc::new(Mutex::new(AppState {
+        csrf_token: "".to_string(),
         scenario: None,
         baseline_state: None,
         original_state: None,
@@ -2306,17 +2301,7 @@ async fn main() {
         last_request: None,
         decisions: Vec::new(),
         schedule_versions: Vec::new(),
-        csrf_token: String::new(),
     }));
-
-    // ── DELETED BLOCK (lines removed) ────────────────────────────────────────
-    // The INRC scenario loading, feasibility analysis, schedule construction,
-    // pareto frontier computation, and SimulationState initialisation that
-    // previously lived here have been removed.  The server now starts cleanly
-    // without any test fixture dependency.  Simulation endpoints return 503
-    // until a scenario is loaded at runtime.
-    // ─────────────────────────────────────────────────────────────────────────
-
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
     // 10 requests/second per IP, burst of 20.  Permissive for local dev/demo;
@@ -2447,9 +2432,10 @@ mod server_endpoints_tests {
         };
 
         let app_state = Arc::new(Mutex::new(AppState {
-            scenario,
-            baseline_state: baseline_state.clone(),
-            original_state: baseline_state,
+            csrf_token: "".to_string(),
+            scenario: Some(scenario),
+            baseline_state: Some(baseline_state.clone()),
+            original_state: Some(baseline_state),
             last_solution: None,
             last_request: None,
             decisions: Vec::new(),
@@ -2520,7 +2506,7 @@ mod server_endpoints_tests {
                 Worker { id: 1, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift") }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
             ],
             historical_workloads: None,
             rng_seed: Some(42),
@@ -2561,7 +2547,7 @@ mod server_endpoints_tests {
                 Worker { id: 1, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift") }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
             ],
             historical_workloads: None,
             rng_seed: Some(42),
@@ -2611,8 +2597,8 @@ mod server_endpoints_tests {
                 Worker { id: 2, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift") },
-                Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Forklift") }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None },
+                Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
             ],
             historical_workloads: None,
             rng_seed: Some(42),

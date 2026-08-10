@@ -1,0 +1,56 @@
+# ARCH-010: Coralys Runtime Contract
+
+**Status:** ACTIVE (Frozen as of v1.0)
+**Owner:** Core Architecture Team
+**Scope:** The Operational Decision Runtime
+
+## 1. Architectural Principles
+
+Coralys is a platform for evaluating, evolving, and explaining operational decisions. It is not an airline scheduling tool. 
+
+The primary architectural mandate of Coralys is **Separation of Reality from Optimization**.
+- The **Domain** defines Reality (Time, Events, Resources, Operational Models, Constraints, Objectives).
+- The **Runtime** defines the standard vocabulary for describing Reality and interacting with Optimization.
+- The **Optimization Engine** evolves state toward feasibility and optimality.
+
+## 2. Runtime Contracts
+
+Every future engine and adapter must adhere to these foundational marker traits:
+
+- **OperationalModel:** The structural representation of a state in time.
+- **DecisionVector:** The subset of variables within an `OperationalModel` that engines can mutate.
+- **ConstraintModel:** The boundaries of physical, legal, and business feasibility.
+- **ObjectiveModel:** The scoring mechanism that defines "goodness" over a feasible state.
+- **OptimizationEngine:** The solver responsible for producing a higher-fitness `OperationalModel`.
+
+These contracts contain **no optimization logic** and **no domain logic**.
+
+## 3. Dependency Rules
+
+The platform enforces a strict, acyclic dependency model pointing inward:
+
+1. `Domain Adapters` depend on `Coralys Runtime` and `Coralys Optimization` interfaces.
+2. `Optimization Engines` (e.g., GA, CP-SAT) depend on `Coralys Runtime` interfaces.
+3. `Coralys Core` depends on **nothing**.
+
+It is strictly forbidden for any module within `coralys-moga` or any future engine module to import or reference domain-specific types (e.g., `UltraCrew`, `Shift`, `ScheduleGenome`).
+
+## 4. Ownership Rules
+
+- **Coralys owns the vocabulary (Traits).**
+- **Domains own the representations (Structs).**
+
+If a domain requires a change to the way a decision is represented, it changes its own structs. It **does not** change the Runtime Traits. 
+
+## 5. Extension Rules
+
+When building a new operational domain (e.g., factory scheduling, logistics routing) or a new optimization solver (e.g., MILP, Reinforcement Learning):
+- Implement the Runtime traits for your representations.
+- Connect your domain representation to the Coralys Ecology via the `OptimizationEngine` boundary.
+- Do not bypass the `OperationalModel` abstraction to directly manipulate domain structures from within an engine.
+
+## 6. Stability Guarantees
+
+The traits exported in `coralys_moga::runtime` and `coralys_moga::optimization` constitute the permanent ABI of the Coralys ecosystem. They are considered **frozen** as of milestone RP-500.
+
+Any modifications to these contracts will require a major version bump and a full migration of all existing adapters and engines.

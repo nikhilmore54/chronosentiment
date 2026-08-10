@@ -88,7 +88,6 @@ pub mod helpers {
 
 
 pub mod pipeline;
-pub mod disruption_recovery;
 pub mod decision_intelligence;
 pub mod schedule_solution;
 pub mod public_contracts;
