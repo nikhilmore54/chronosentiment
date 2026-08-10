@@ -294,11 +294,10 @@ impl<
                     .unwrap_or(Ordering::Equal)
             });
             if instrument {
-                // After sorting — show distance (100000 - fitness) for readability
-                let fit_to_dist = |f: f64| 100000.0 - f;
-                let first = evals.first().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
-                let second = evals.get(1).map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
-                let last = evals.last().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
+                // After sorting — print raw fitness
+                let first = evals.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
+                let second = evals.get(1).map(|e| e.fitness()).unwrap_or(f64::NAN);
+                let last = evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
                 eprintln!("[INSTR] Sorted distances: best={:.1}, second={:.1}, worst={:.1}", first, second, last);
             }
             // Top fitness after sort log removed
@@ -321,13 +320,12 @@ impl<
             }
 
             if instrument {
-                let fit_to_dist = |f: f64| 100000.0 - f;
                 let new_global = if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
                     Some(gen_best.clone())
                 } else { global_best.clone() };
-                let prev_dist = prev_global_best.as_ref().map(|g| fit_to_dist(g.fitness())).unwrap_or(f64::NAN);
-                let pop_best_dist = fit_to_dist(evals[0].fitness());
-                let new_dist = new_global.as_ref().map(|g| fit_to_dist(g.fitness())).unwrap_or(f64::NAN);
+                let prev_dist = prev_global_best.as_ref().map(|g| g.fitness()).unwrap_or(f64::NAN);
+                let pop_best_dist = evals[0].fitness();
+                let new_dist = new_global.as_ref().map(|g| g.fitness()).unwrap_or(f64::NAN);
                 eprintln!("[INSTR] Prev Global Best dist: {:.1}", prev_dist);
                 eprintln!("[INSTR] Current Population Best dist: {:.1}", pop_best_dist);
                 eprintln!("[INSTR] New Global Best dist: {:.1}", new_dist);
@@ -384,12 +382,11 @@ impl<
             // Preserve the top elite individuals as defined by config.elite_count.
             elite_preserved = config.elite_count;
             if instrument {
-                let fit_to_dist = |f: f64| 100000.0 - f;
                 let elite_slice = &evals[0..config.elite_count];
-                let elite_best_dist = elite_slice.first().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
-                let elite_worst_dist = elite_slice.last().map(|e| fit_to_dist(e.fitness())).unwrap_or(f64::NAN);
-                let pop_best_dist = fit_to_dist(evals[0].fitness());
-                let pop_worst_dist = fit_to_dist(evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN));
+                let elite_best_dist = elite_slice.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
+                let elite_worst_dist = elite_slice.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
+                let pop_best_dist = evals[0].fitness();
+                let pop_worst_dist = evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
                 // Count unique distances in elite to detect homogeneity
                 let unique_elite = elite_slice.iter()
                     .map(|e| (e.fitness() * 10000.0).round() as i64)
