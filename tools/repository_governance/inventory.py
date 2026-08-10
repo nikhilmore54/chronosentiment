@@ -83,7 +83,7 @@ class Inventory:
                 
             for file in files:
                 ext = os.path.splitext(file)[1]
-                if ext in ['.py', '.sh', '.rs', '.js', '.ts', '.md']:
+                if file not in ['.DS_Store']:
                     rel_path = os.path.relpath(os.path.join(root, file), self.root_dir)
                     if rel_path not in self.file_to_artifact:
                         art_id = f"ART-{artifact_counter:04d}"

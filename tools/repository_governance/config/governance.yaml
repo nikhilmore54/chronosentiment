@@ -2,7 +2,14 @@ excluded_directories:
   - target
   - node_modules
   - .venv
+  - .venv-e2e
+  - .venv_kite
+  - .venv_test
   - venv
+  - .pytest_cache
+  - .lyzo
+  - .cursor
+  - .pw-e2e
   - __pycache__
   - .git
   - archive
@@ -13,6 +20,7 @@ excluded_directories:
   - coverage
   - reports
   - logs
+  - my-chrono-sentiment-ui
 
 research_roots:
   - docs/research

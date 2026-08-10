@@ -1,0 +1,43 @@
+{
+  "id": "DSP-DD9C1DF9",
+  "timestamp": "2026-08-10T03:28:21Z",
+  "dispatcher_id": "D-01",
+  "dispatcher_role": "Senior Dispatcher (5+ years)",
+  "scenario_id": "gerad-instance1",
+  "adapter_version": "0.1.0",
+  "coverage_pct": 100.0,
+  "hard_violations": 0,
+  "rest_violations": 0,
+  "fitness": 0.0,
+  "runtime_secs": 21.218,
+  "disruption_recovery_secs": null,
+  "manual_edits": 0,
+  "recommendations_presented": 4,
+  "recommendations_accepted": 0,
+  "recommendations_rejected": 0,
+  "recommendation_decisions": [
+    {
+      "recommendation_text": "{\"constraint_id\":\"HC2\",\"severity\":\"Hard\",\"explanation\":\"There are 15 instances of overlapping shifts assigned to the same worker (double booking).\",\"recommended_action\":\"Move one of the overlapping shifts to another available worker to resolve the schedule conflict.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    },
+    {
+      "recommendation_text": "{\"constraint_id\":\"HC3\",\"severity\":\"Hard\",\"explanation\":\"There are 33 instances where a worker exceeds the maximum weekly hours limit (40 hours).\",\"recommended_action\":\"Reassign one or more shifts from the overloaded worker to under-utilized workers.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    },
+    {
+      "recommendation_text": "{\"constraint_id\":\"Rest\",\"severity\":\"Hard\",\"explanation\":\"There are 79 instances where a worker has less than the minimum required 8 hours of rest between consecutive shifts.\",\"recommended_action\":\"Adjust shift assignments to ensure there is a gap of at least 8 hours between consecutive shifts for each worker.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    },
+    {
+      "recommendation_text": "{\"constraint_id\":\"SC1\",\"severity\":\"Soft\",\"explanation\":\"High workload imbalance detected (Fairness penalty: 15243.65).\",\"recommended_action\":\"Redistribute shifts to balance working hours more equitably across the workforce.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    }
+  ],
+  "explanation_usefulness": 0,
+  "dispatcher_comments": "",
+  "session_complete": true
+}
