@@ -1,6 +1,6 @@
 // UltraCrew optimisation profiles – translate high‑level policies to the generic EvolutionConfig
 
-use coralys_moga::config::{EvolutionConfig, EvolutionConfig as Config};
+use coralys_moga::config::EvolutionConfig;
 
 /// UltraCrew optimisation profiles.
 #[derive(Debug, Clone, clap::ValueEnum)]

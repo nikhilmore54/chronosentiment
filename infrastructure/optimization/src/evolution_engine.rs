@@ -10,6 +10,7 @@ use coralys_moga::traits::{
 };
 use coralys_moga::engine::{EvolutionEngine, GaResult as CoralysGaResult};
 use coralys_moga::config::EvolutionConfig;
+use coralys_moga::runtime::optimization::metric::MetricReport;
 
 pub trait FitnessEvaluator<T> {
     type Evaluation;
@@ -148,7 +149,7 @@ pub struct GaResult {
 // LEGACY IMPLEMENTATION
 // -----------------------------------------------------------------------------
 
-pub fn random_strategy(config: &GaConfig, rng: &mut StdRng) -> Candidate {
+pub fn random_strategy(_config: &GaConfig, rng: &mut StdRng) -> Candidate {
     Candidate {
         queue_threshold: rng.gen_range(50..5000),
         base_edge: rng.gen_range(5..200),
@@ -324,7 +325,7 @@ pub struct ChronoFitnessEvaluator<'a> {
 }
 impl<'a> CoralysFitnessEvaluator<Candidate> for ChronoFitnessEvaluator<'a> {
     type Evaluation = CandidateEvaluation;
-    fn evaluate(&self, genome: &Candidate) -> CandidateEvaluation {
+    fn evaluate(&self, genome: &Candidate, _metrics: &MetricReport) -> CandidateEvaluation {
         self.legacy_evaluator.evaluate(genome)
     }
 }

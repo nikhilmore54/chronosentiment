@@ -1,7 +1,7 @@
 use crate::optimization::{ScheduleGenome, ScheduleContext};
 use coralys_moga::runtime::optimization::constraint::{ConstraintModel, RepairOperator, ConstraintViolation, ConstraintTier};
 use std::sync::Arc;
-use crate::models::{Worker, Shift};
+use crate::models::Shift;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 

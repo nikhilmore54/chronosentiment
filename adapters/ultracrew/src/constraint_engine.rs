@@ -1,7 +1,7 @@
 // Constraint engine for UltraCrew scheduling
 // Provides validation of input data and constraints checking.
 
-use crate::models::{Worker, Shift};
+use crate::models::Shift;
 use crate::optimization::{ScheduleContext, ScheduleGenome};
 use std::error::Error;
 use std::collections::{HashSet, HashMap};

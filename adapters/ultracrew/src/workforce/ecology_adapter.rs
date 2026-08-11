@@ -1,4 +1,4 @@
-use coralys_moga::ecology::{EcologyMemory, EcologySignal, EcologyPolicy, EcologyGuidanceTarget};
+use coralys_moga::ecology::{EcologyMemory, EcologySignal, EcologyPolicy};
 
 pub type NurseId = usize;
 
