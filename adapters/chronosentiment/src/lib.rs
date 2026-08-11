@@ -32,6 +32,7 @@ pub mod portfolio;
 pub mod policy;
 pub mod repository;
 pub mod metrics;
+pub mod reasoning;
 
 // Re-export the most commonly used types for convenience.
 pub use evidence::{EvidenceItem, EvidenceSourceType, EvidenceDossier};
@@ -45,4 +46,4 @@ pub use learning::{
     PatternMaturity,
     InvestmentInsight,
     QuarterlyReviewReport,
-};
+};pub mod universe;

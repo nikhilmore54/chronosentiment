@@ -1,17 +1,26 @@
 use chrono::{DateTime, Utc};
-use crate::observation::Observation;
+use uuid::Uuid;
+use std::collections::HashMap;
+use crate::observation::ValidatedObservation;
 use crate::portfolio::PortfolioSnapshot;
 use crate::policy::PolicySnapshot;
 
+pub struct InstrumentEvaluationContext {
+    pub instrument_id: Uuid,
+    pub observations: Vec<ValidatedObservation>,
+}
+
 /// The canonical input for every downstream reasoning engine.
-/// Represents exactly what was known on a specific date, enforcing strict
-/// time boundaries and preventing look-ahead bias.
-pub struct EvaluationContext {
+/// Represents exactly what was known on a specific date for an entire universe.
+pub struct MarketEvaluationContext {
     pub evaluation_timestamp: DateTime<Utc>,
-    pub research_session_id: String,
+    pub universe: String,
     
-    /// Observations whose `effective_from` is strictly <= `evaluation_timestamp`
-    pub observations: Vec<Observation>,
+    /// Observations that apply to the entire market (e.g., VIX, breadth, macro data)
+    pub market_observations: Vec<ValidatedObservation>,
+    
+    /// Local contexts for each specific instrument in the universe
+    pub instrument_contexts: HashMap<Uuid, InstrumentEvaluationContext>,
     
     /// The state of the user's portfolio exactly AT the `evaluation_timestamp`
     pub portfolio: Option<PortfolioSnapshot>,

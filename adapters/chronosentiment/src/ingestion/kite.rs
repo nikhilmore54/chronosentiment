@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::error::Error;
 use uuid::Uuid;
 
-use crate::observation::Observation;
+use crate::observation::ValidatedObservation;
 use crate::validation::ValidationEngine;
 
 pub struct KiteGateway {
@@ -34,7 +34,7 @@ impl KiteGateway {
     }
 
     /// Fetches historical data for an instrument token over a specific date range,
-    /// normalises it, and passes it through the Validation Engine to return a Canonical Observation.
+    /// normalises it, and passes it through the Validation Engine to return a Canonical ValidatedObservation.
     pub async fn fetch_historical_candles(
         &self,
         instrument_master_id: Uuid,
@@ -42,7 +42,7 @@ impl KiteGateway {
         from_date: DateTime<Utc>,
         to_date: DateTime<Utc>,
         interval: &str, // e.g. "minute", "day"
-    ) -> Result<Observation, Box<dyn Error>> {
+    ) -> Result<ValidatedObservation, Box<dyn Error>> {
         
         let url = format!(
             "https://api.kite.trade/instruments/historical/{}/{}",
@@ -75,7 +75,7 @@ impl KiteGateway {
         // into a standardized JSON structure.
         let candles = raw_payload["data"]["candles"].as_array().unwrap_or(&vec![]).clone();
         
-        // This acts as the generalized Observation structure.
+        // This acts as the generalized ValidatedObservation structure.
         let normalized_payload = serde_json::json!({
             "interval": interval,
             "candle_count": candles.len(),

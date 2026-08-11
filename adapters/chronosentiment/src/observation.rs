@@ -3,10 +3,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-/// A canonical observation produced by any provider.
-/// It represents a single, immutable fact observed in the world.
+/// A raw observation straight from the translator, before any validation or UUID assignments.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Observation {
+pub struct RawObservation {
+    pub observation_type: String,
+    pub source: String,
+    pub source_identifier: Option<String>,
+    pub observed_at: DateTime<Utc>,
+    pub raw_payload: Value,
+    pub normalized_payload: Value,
+}
+
+/// A canonical observation produced by the validation layer.
+/// It represents a single, immutable, trusted fact observed in the world.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidatedObservation {
     /// Globally unique identifier for this observation
     pub id: Uuid,
     
@@ -55,39 +66,4 @@ pub struct Observation {
 
     /// Schema version for backward compatibility
     pub schema_version: u32,
-}
-
-impl Observation {
-    /// Creates a new observation envelope with default validation states.
-    /// This should be called by the Validation layer after a normalizer produces the raw payload.
-    pub fn new(
-        observation_type: String,
-        source: String,
-        observed_at: DateTime<Utc>,
-        effective_from: DateTime<Utc>,
-        raw_payload: Value,
-        normalized_payload: Value,
-    ) -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            research_session_id: None,
-            instrument_id: None,
-            observation_type,
-            source,
-            source_identifier: None,
-            observed_at,
-            effective_from,
-            effective_to: None,
-            recorded_at: Utc::now(),
-            raw_payload,
-            normalized_payload,
-            confidence: 1.0,
-            freshness: 0.0,
-            coverage: "Complete".to_string(),
-            consistency: None,
-            quality_score: 1.0,
-            provenance_hash: String::new(), // To be filled by Validation layer
-            schema_version: 1,
-        }
-    }
 }

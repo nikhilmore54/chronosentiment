@@ -2,7 +2,7 @@ use chrono::Utc;
 use serde_json::Value;
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
-use crate::observation::Observation;
+use crate::observation::ValidatedObservation;
 
 pub mod context;
 pub mod replay;
@@ -10,7 +10,7 @@ pub mod replay;
 pub struct ValidationEngine;
 
 impl ValidationEngine {
-    /// Enriches a raw observation into a canonical, immutable Observation envelope.
+    /// Enriches a raw observation into a canonical, immutable ValidatedObservation envelope.
     pub fn enrich_observation(
         instrument_id: Uuid,
         observation_type: &str,
@@ -19,10 +19,10 @@ impl ValidationEngine {
         normalized_payload: Value,
         confidence: f64,
         coverage: &str,
-    ) -> Observation {
+    ) -> ValidatedObservation {
         let now = Utc::now();
         
-        let mut obs = Observation {
+        let mut obs = ValidatedObservation {
             id: Uuid::new_v4(),
             research_session_id: None,
             instrument_id: Some(instrument_id),
@@ -49,7 +49,7 @@ impl ValidationEngine {
     }
     
     /// Computes a cryptographic hash to ensure immutability
-    fn compute_hash(obs: &Observation) -> String {
+    fn compute_hash(obs: &ValidatedObservation) -> String {
         let mut hasher = Sha256::new();
         hasher.update(obs.source.as_bytes());
         hasher.update(obs.observation_type.as_bytes());
@@ -59,3 +59,6 @@ impl ValidationEngine {
         format!("{:x}", hasher.finalize())
     }
 }
+pub mod replay_decision;
+pub mod outcome;
+pub mod calibration;

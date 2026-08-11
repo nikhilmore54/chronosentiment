@@ -4,11 +4,12 @@ use uuid::Uuid;
 
 use crate::policy::PolicySnapshot;
 use crate::portfolio::PortfolioSnapshot;
-use crate::repository::ObservationRepository;
-use crate::validation::context::EvaluationContext;
+use crate::repository::observation_repository::ValidatedObservationRepository;
+use crate::validation::context::{MarketEvaluationContext as EvaluationContext, InstrumentEvaluationContext};
 
 pub struct ReplayRequest {
     pub research_session_id: String,
+    pub universe: String,
     pub evaluation_timestamp: DateTime<Utc>,
     pub portfolio_snapshot: Option<PortfolioSnapshot>,
     pub policy_snapshot: Option<PolicySnapshot>,
@@ -23,11 +24,11 @@ pub struct ReplayRequest {
 /// It MUST NOT compute metrics, rank evidence, or make decisions.
 /// It only reconstructs historical state for downstream engines.
 pub struct ReplayEngine<'a> {
-    observation_repo: &'a dyn ObservationRepository,
+    observation_repo: &'a dyn ValidatedObservationRepository,
 }
 
 impl<'a> ReplayEngine<'a> {
-    pub fn new(observation_repo: &'a dyn ObservationRepository) -> Self {
+    pub fn new(observation_repo: &'a dyn ValidatedObservationRepository) -> Self {
         Self { observation_repo }
     }
 
@@ -41,10 +42,16 @@ impl<'a> ReplayEngine<'a> {
             .get_observations_as_of(request.target_instrument_id, request.evaluation_timestamp)
             .await?;
 
+        let mut inst_contexts = std::collections::HashMap::new();
+        inst_contexts.insert(request.target_instrument_id, InstrumentEvaluationContext {
+            instrument_id: request.target_instrument_id,
+            observations: observations.clone(),
+        });
+
         Ok(EvaluationContext {
-            evaluation_timestamp: request.evaluation_timestamp,
-            research_session_id: request.research_session_id,
-            observations,
+            universe: "DefaultUniverse".to_string(), evaluation_timestamp: request.evaluation_timestamp,
+            
+            market_observations: observations, instrument_contexts: inst_contexts,
             portfolio: request.portfolio_snapshot,
             policy: request.policy_snapshot,
         })

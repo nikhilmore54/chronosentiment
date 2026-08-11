@@ -5,26 +5,26 @@ use std::error::Error;
 use uuid::Uuid;
 
 use crate::instrument::Instrument;
-use crate::observation::Observation;
+use crate::observation::ValidatedObservation;
 
 /// The central Persistence Service for the Knowledge Lake.
 /// Enforces the invariants: Time Travel is first class, and raw observations never hit the DB.
 #[async_trait]
-pub trait ObservationRepository: Send + Sync {
+pub trait ValidatedObservationRepository: Send + Sync {
     /// Stores an enriched, validated, canonical observation envelope in the Knowledge Lake.
-    async fn store_observation(&self, observation: &Observation) -> Result<(), Box<dyn Error>>;
+    async fn store_observation(&self, observation: &ValidatedObservation) -> Result<(), Box<dyn Error>>;
 
     /// Time-Travel Query: Retrieves all observations for a specific instrument 
     /// that were known precisely AT or BEFORE the `evaluation_timestamp`.
-    /// Observations whose `effective_from` is after the `evaluation_timestamp` are strictly excluded.
+    /// ValidatedObservations whose `effective_from` is after the `evaluation_timestamp` are strictly excluded.
     async fn get_observations_as_of(
         &self,
         instrument_id: Uuid,
         evaluation_timestamp: DateTime<Utc>,
-    ) -> Result<Vec<Observation>, Box<dyn Error>>;
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>>;
 
     /// Retrieves the full, unredacted historical observation timeline for an instrument.
-    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<Observation>, Box<dyn Error>>;
+    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>>;
 }
 
 /// The Instrument Master Repository.
@@ -51,8 +51,8 @@ impl PostgresRepository {
 }
 
 #[async_trait]
-impl ObservationRepository for PostgresRepository {
-    async fn store_observation(&self, observation: &Observation) -> Result<(), Box<dyn Error>> {
+impl ValidatedObservationRepository for PostgresRepository {
+    async fn store_observation(&self, observation: &ValidatedObservation) -> Result<(), Box<dyn Error>> {
         let raw_payload = sqlx::types::Json(&observation.raw_payload);
         let normalized_payload = sqlx::types::Json(&observation.normalized_payload);
 
@@ -95,7 +95,7 @@ impl ObservationRepository for PostgresRepository {
         &self,
         instrument_id: Uuid,
         evaluation_timestamp: DateTime<Utc>,
-    ) -> Result<Vec<Observation>, Box<dyn Error>> {
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
         let records = sqlx::query(
             r#"
             SELECT 
@@ -115,7 +115,7 @@ impl ObservationRepository for PostgresRepository {
         .await?;
 
         let observations = records.into_iter().map(|rec| {
-            Observation {
+            ValidatedObservation {
                 id: rec.get("id"),
                 research_session_id: None,
                 instrument_id: rec.get("instrument_id"),
@@ -141,7 +141,7 @@ impl ObservationRepository for PostgresRepository {
         Ok(observations)
     }
 
-    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<Observation>, Box<dyn Error>> {
+    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
         let records = sqlx::query(
             r#"
             SELECT 
@@ -159,7 +159,7 @@ impl ObservationRepository for PostgresRepository {
         .await?;
 
         let observations = records.into_iter().map(|rec| {
-            Observation {
+            ValidatedObservation {
                 id: rec.get("id"),
                 research_session_id: None, 
                 instrument_id: rec.get("instrument_id"),
