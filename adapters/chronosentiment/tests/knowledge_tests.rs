@@ -10,6 +10,9 @@ use coralys_moga::runtime::optimization::metric::MetricReport;
 
 #[sqlx::test]
 async fn test_assessment_persistence_and_immutability(pool: sqlx::PgPool) -> Result<(), Box<dyn std::error::Error>> {
+    // Run migrations to create the tables in the isolated test DB
+    sqlx::migrate!("./migrations").run(&pool).await?;
+
     let repo = PostgresKnowledgeRepository::new(pool);
     let engine = AssessmentEngine;
 

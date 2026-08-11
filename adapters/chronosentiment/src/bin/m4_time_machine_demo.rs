@@ -107,7 +107,7 @@ fn main() {
 
     // 3. Outcome Engine
     println!("3. LOOKING FORWARD (OUTCOME ENGINE)");
-    let outcome = OutcomeEngine.measure_outcome(replay.decision_id, evaluation_time, OutcomeHorizon::Swing);
+    let outcome = OutcomeEngine.measure_outcome(&replay.strategy, &[], evaluation_time);
     println!("   Observation End: {}", outcome.observation_end_timestamp);
     println!("   Outcome Return: {:.1}%", outcome.outcome_return * 100.0);
     println!("   Maximum Favourable Excursion (MFE): {:.1}%", outcome.mfe * 100.0);

@@ -1,7 +1,7 @@
 use chronosentiment_adapter::metrics::concepts::Concept;
 use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
 use chronosentiment_adapter::reasoning::evidence::EvidenceEngine;
-use chronosentiment_adapter::reasoning::similarity::HistoricalSimilarityEngine;
+// use chronosentiment_adapter::reasoning::similarity::HistoricalSimilarityEngine;
 use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 
 fn main() {
@@ -28,9 +28,9 @@ fn main() {
     let assessments = assess_engine.assess(&metrics, &active_concepts);
 
     println!("2. Domain Assessments (Analyst Synthesis):");
-    for assessment in &assessments {
+    for assessment in &assessments.assessments {
         println!("   - {:?} is {:?} (Confidence: {:.0}%)", 
-                 assessment.concept, assessment.value, assessment.confidence * 100.0);
+                 assessment.concept, assessment.direction, assessment.confidence * 100.0);
     }
     println!();
 
@@ -39,22 +39,23 @@ fn main() {
     let mut evidence = evidence_engine.evaluate(&assessments);
 
     println!("3. Evidence Statements:");
-    for e in &evidence {
+    for e in &evidence.evidence {
         println!("   - [{:?}] {} (Supports Continuation: {})", e.concept, e.description, e.supports_continuation);
     }
     println!();
 
     // 4. Historical Similarity Engine
-    let similarity_engine = HistoricalSimilarityEngine;
-    let context = similarity_engine.find_similar(&evidence);
+    // (Disabled due to phase 5 architecture refactoring)
+    // let similarity_engine = HistoricalSimilarityEngine;
+    // let context = similarity_engine.find_similar(&evidence);
     
-    let similarity_evidence = similarity_engine.context_to_evidence(&context);
-    evidence.push(similarity_evidence.clone());
+    // let similarity_evidence = similarity_engine.context_to_evidence(&context);
+    // evidence.evidence.push(similarity_evidence.clone());
 
-    println!("4. Historical Similarity Engine:");
-    println!("   - Found {} similar historical decisions.", context.similar_cases_count);
-    println!("   - Added as New Evidence: [{:?}] {} (Supports Continuation: {})", 
-             similarity_evidence.concept, similarity_evidence.description, similarity_evidence.supports_continuation);
+    // println!("4. Historical Similarity Engine:");
+    // println!("   - Found {} similar historical decisions.", context.similar_cases_count);
+    // println!("   - Added as New Evidence: [{:?}] {} (Supports Continuation: {})", 
+    //          similarity_evidence.concept, similarity_evidence.description, similarity_evidence.supports_continuation);
     
     println!("\n=== Pipeline Execution Complete ===");
 }
