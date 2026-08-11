@@ -137,3 +137,25 @@ CREATE TABLE outcomes (
     lessons_learned TEXT,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 10. Knowledge Assessments (Phase 5.1)
+CREATE TABLE knowledge_assessments (
+    id UUID PRIMARY KEY, -- Maps to ArtifactMetadata.artifact_id
+    instrument_id UUID REFERENCES instruments(id),
+    evaluation_timestamp TIMESTAMPTZ NOT NULL,
+    
+    market_assessment_json JSONB DEFAULT '{}'::jsonb,
+    sector_assessment_json JSONB DEFAULT '{}'::jsonb,
+    instrument_assessment_json JSONB DEFAULT '{}'::jsonb,
+    macro_assessment_json JSONB DEFAULT '{}'::jsonb,
+    
+    signature JSONB NOT NULL,
+    signature_hash TEXT NOT NULL,
+    
+    metadata_json JSONB NOT NULL,
+    profile_json JSONB NOT NULL,
+    
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_know_assess_sig ON knowledge_assessments(signature_hash);
+CREATE INDEX idx_know_assess_time ON knowledge_assessments(evaluation_timestamp);

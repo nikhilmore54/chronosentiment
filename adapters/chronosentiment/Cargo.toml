@@ -16,10 +16,4 @@ reqwest = { version = "0.11", features = ["json"] }
 async-trait = "0.1"
 sha2 = "0.10"
 
-[[bin]]
-name = "m1_reliance"
-path = "src/bin/m1_reliance.rs"
 
-[[bin]]
-name = "m5_assessment_predictive_value"
-path = "src/bin/m5_assessment_predictive_value.rs"

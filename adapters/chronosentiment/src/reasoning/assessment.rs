@@ -1,8 +1,11 @@
 use crate::metrics::concepts::Concept;
 use coralys_moga::runtime::optimization::metric::MetricReport;
 use sha2::{Sha256, Digest};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use crate::repository::knowledge::{ArtifactMetadata, KnowledgeArtifact};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Bullish,
     Bearish,
@@ -13,28 +16,28 @@ pub enum Direction {
     Expensive,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Strength {
     Strong,
     Moderate,
     Weak,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Maturity {
     Early,
     Mid,
     Late,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Persistence {
     High,
     Medium,
     Low,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainAssessment {
     pub concept: Concept,
     pub direction: Direction,
@@ -48,9 +51,21 @@ pub struct DomainAssessment {
     pub contradicting_metrics: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssessmentProfile {
+    pub metadata: ArtifactMetadata,
+    pub instrument_id: Option<Uuid>,
     pub assessments: Vec<DomainAssessment>,
+}
+
+impl KnowledgeArtifact for AssessmentProfile {
+    fn metadata(&self) -> &ArtifactMetadata {
+        &self.metadata
+    }
+    
+    fn instrument_id(&self) -> Option<Uuid> {
+        self.instrument_id
+    }
 }
 
 impl AssessmentProfile {
@@ -92,6 +107,10 @@ pub struct AssessmentEngine;
 
 impl AssessmentEngine {
     pub fn assess(&self, metrics: &MetricReport, active_concepts: &[Concept]) -> AssessmentProfile {
+        self.assess_with_metadata(metrics, active_concepts, ArtifactMetadata::mock(), None)
+    }
+
+    pub fn assess_with_metadata(&self, metrics: &MetricReport, active_concepts: &[Concept], mut metadata: ArtifactMetadata, instrument_id: Option<Uuid>) -> AssessmentProfile {
         let mut assessments = Vec::new();
 
         for concept in active_concepts {
@@ -99,8 +118,10 @@ impl AssessmentEngine {
                 assessments.push(assessment);
             }
         }
+        
+        metadata.content_hash = crate::repository::hash::generate_content_hash(&assessments, &metadata);
 
-        AssessmentProfile { assessments }
+        AssessmentProfile { metadata, instrument_id, assessments }
     }
 
     fn assess_concept(&self, concept: &Concept, metrics: &MetricReport) -> Option<DomainAssessment> {
