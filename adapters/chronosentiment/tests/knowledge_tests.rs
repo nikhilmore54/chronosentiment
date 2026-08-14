@@ -13,7 +13,7 @@ async fn test_assessment_persistence_and_immutability(pool: sqlx::PgPool) -> Res
     // Run migrations to create the tables in the isolated test DB
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    let repo = PostgresKnowledgeRepository::new(pool);
+    let repo = PostgresKnowledgeRepository::new(pool.clone());
     let engine = AssessmentEngine;
 
     // 1. Setup mock metric report and concepts
@@ -21,6 +21,14 @@ async fn test_assessment_persistence_and_immutability(pool: sqlx::PgPool) -> Res
     let concepts = vec![Concept::Trend];
     let eval_time = Utc::now();
     let instrument_id = Uuid::new_v4();
+    
+    // Insert mock instrument into DB to satisfy foreign key constraints
+    sqlx::query!(
+        "INSERT INTO instruments (id, exchange, display_symbol) VALUES ($1, 'TEST', 'MOCK_INST')",
+        instrument_id
+    )
+    .execute(&pool)
+    .await?;
 
     // 2. Setup Reproducibility Metadata
     let metadata_a = ArtifactMetadata {

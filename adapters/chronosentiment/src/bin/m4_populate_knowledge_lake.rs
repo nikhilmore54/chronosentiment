@@ -14,8 +14,7 @@ use chronosentiment_adapter::repository::observation_repository::ValidatedObserv
 use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
 use chronosentiment_adapter::metrics::instrument::{InstrumentMetricEngine, SimpleMovingAverageMetric, RateOfChangeMetric, AverageTrueRangeMetric};
 use coralys_moga::runtime::optimization::metric::MetricEngine;
-use chronosentiment_adapter::metrics::concepts::Concept;
-use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
+use chronosentiment_adapter::reasoning::assessment::{AssessmentEngine, ENRICHMENT_CONCEPTS};
 use chronosentiment_adapter::reasoning::evidence::EvidenceEngine;
 use chronosentiment_adapter::reasoning::historical_reasoning::HistoricalReasoningEngine;
 use chronosentiment_adapter::reasoning::hypothesis::HypothesisEngine;
@@ -170,15 +169,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut metric_engine = InstrumentMetricEngine::new();
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(20)));
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(50)));
-    metric_engine.add_model(Box::new(RateOfChangeMetric::new(14)));
+    metric_engine.add_model(Box::new(RateOfChangeMetric::new(20)));
     metric_engine.add_model(Box::new(AverageTrueRangeMetric::new(14)));
     
     let replay_engine = ReplayEngine::new(&repo);
     let decision_engine = DecisionEngine;
     let strategy_engine = StrategyEngine;
     
+    let temporal_log_path = std::env::var("CHRONO_TEMPORAL_LOG").ok();
+    if let Some(path) = &temporal_log_path {
+        if let Some(parent) = std::path::Path::new(path).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, "")?;
+    }
+
     for dt in &timestamps {
-        for (inst_id, _inst) in &instrument_map {
+        for (inst_id, inst) in &instrument_map {
             let req = ReplayRequest {
                 research_session_id: "val_gate".to_string(),
                 universe: "Nifty50".to_string(),
@@ -202,17 +209,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 continue; // Not enough data
             }
 
+            let mut max_effective_from: Option<DateTime<Utc>> = None;
             for obs in &inst_context.observations {
                 if obs.effective_from > *dt {
                     temporal_violations += 1;
                     panic!("TEMPORAL VIOLATION: Observation leaked.");
                 }
+                max_effective_from = Some(max_effective_from.map_or(obs.effective_from, |m| m.max(obs.effective_from)));
+            }
+
+            if let Some(path) = &temporal_log_path {
+                let line = serde_json::json!({
+                    "symbol": inst.display_symbol,
+                    "evaluation_timestamp": dt,
+                    "n_obs": inst_context.observations.len(),
+                    "max_effective_from": max_effective_from,
+                });
+                use std::io::Write;
+                let mut f = std::fs::OpenOptions::new().append(true).open(path)?;
+                writeln!(f, "{line}")?;
             }
             
             let metric_report = metric_engine.evaluate(inst_context);
             let profile = AssessmentEngine.assess_at(
                 &metric_report,
-                &[Concept::Trend, Concept::Momentum, Concept::Volatility],
+                &ENRICHMENT_CONCEPTS,
                 *dt,
                 Some(*inst_id),
             );

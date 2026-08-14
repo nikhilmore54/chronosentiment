@@ -1,0 +1,23 @@
+[
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "research_session_id": null,
+    "instrument_id": "22222222-2222-2222-2222-222222222222",
+    "observation_type": "MarketPrice",
+    "source": "MockProvider",
+    "source_identifier": "price_002",
+    "observed_at": "2026-08-01T11:00:00Z",
+    "effective_from": "2026-08-01T11:00:00Z",
+    "effective_to": null,
+    "recorded_at": "2026-08-01T11:01:00Z",
+    "raw_payload": { "price": 155.0 },
+    "normalized_payload": { "price": 155.0 },
+    "confidence": 0.99,
+    "freshness": 0.0,
+    "coverage": "Complete",
+    "consistency": 1.0,
+    "quality_score": 0.99,
+    "provenance_hash": "ijkl9012mnop3456",
+    "schema_version": 1
+  }
+]

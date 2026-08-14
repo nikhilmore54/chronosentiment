@@ -1,11 +1,15 @@
 use std::error::Error;
+use std::fs;
+use std::path::PathBuf;
 use chrono::{DateTime, Utc, TimeZone};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use async_trait::async_trait;
 use crate::instrument::Instrument;
 use crate::ingestion::provider::{MarketDataProvider, ValidatedObservationTranslator, TimeRange};
 use crate::observation::RawObservation;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct YahooHistoricalBar {
     pub timestamp: i64,
     pub open: f64,
@@ -44,6 +48,10 @@ impl MarketDataProvider for YahooProvider {
     ) -> Result<Vec<Self::RawRecord>, Box<dyn Error>> {
         let ticker = instrument.provider_ids.get("yahoo")
             .ok_or("Instrument missing 'yahoo' identity")?;
+
+        if let Some(cached) = read_yahoo_cache(ticker)? {
+            return Ok(cached);
+        }
             
         let url = format!(
             "https://query1.finance.yahoo.com/v8/finance/chart/{}?range=5y&interval=1d",
@@ -90,8 +98,40 @@ impl MarketDataProvider for YahooProvider {
             });
         }
 
+        write_yahoo_cache(ticker, &bars)?;
         Ok(bars)
     }
+}
+
+fn yahoo_cache_path(ticker: &str) -> Option<PathBuf> {
+    let dir = std::env::var("CHRONO_YAHOO_CACHE_DIR").ok()?;
+    if dir.trim().is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(dir).join(format!("{ticker}.json")))
+}
+
+fn read_yahoo_cache(ticker: &str) -> Result<Option<Vec<YahooHistoricalBar>>, Box<dyn Error>> {
+    let Some(path) = yahoo_cache_path(ticker) else {
+        return Ok(None);
+    };
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = fs::read(&path)?;
+    let bars: Vec<YahooHistoricalBar> = serde_json::from_slice(&bytes)?;
+    Ok(Some(bars))
+}
+
+fn write_yahoo_cache(ticker: &str, bars: &[YahooHistoricalBar]) -> Result<(), Box<dyn Error>> {
+    let Some(path) = yahoo_cache_path(ticker) else {
+        return Ok(());
+    };
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serde_json::to_vec_pretty(bars)?)?;
+    Ok(())
 }
 
 pub struct YahooTranslator;

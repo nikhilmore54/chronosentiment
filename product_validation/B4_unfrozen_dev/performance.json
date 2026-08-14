@@ -1,0 +1,425 @@
+{
+  "schema_version": "csp002.performance.0",
+  "decision_engine_version": "unfrozen-dev",
+  "ledger_identity_hash": "091f241e6557124ea18b25c893d2e6661a0ea16ea890ae38e086eea37f31e5af",
+  "outcome_identity_hash": "b3b3156cf953071f26b14e945096970280f1d477eb2c352eedb6e77570ed86cd",
+  "behavior": {
+    "n_records": 195,
+    "counts": {
+      "long": 110,
+      "short": 85,
+      "no_trade": 0
+    },
+    "first_as_of": "2021-10-31T15:30:00Z",
+    "last_as_of": "2024-12-31T15:30:00Z",
+    "span_calendar_days": 1157,
+    "decisions_per_calendar_day": 0.16853932584269662
+  },
+  "horizons": [
+    {
+      "horizon_days": 5,
+      "trading": {
+        "returns": {
+          "n_decisions": 195,
+          "n_observed": 110,
+          "n_unavailable": 85,
+          "n_win": 51,
+          "n_loss": 58,
+          "n_zero": 1,
+          "mean": -0.002460501918717437,
+          "median": -0.002757018848379739,
+          "cumulative_return": -0.2706552110589181,
+          "win_rate": 0.4636363636363636,
+          "min": -0.06217792485437176,
+          "p25": -0.015665946375229695,
+          "p75": 0.011828705506800359,
+          "max": 0.04628658469006333
+        },
+        "risk": {
+          "max_drawdown": 0.3431254645926079,
+          "volatility": 0.01996081055216038,
+          "downside_volatility": 0.01567101216252748,
+          "worst_outcome": -0.06217792485437176
+        }
+      },
+      "opportunity": {
+        "returns": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "risk": {
+          "max_drawdown": null,
+          "volatility": null,
+          "downside_volatility": null,
+          "worst_outcome": null
+        }
+      },
+      "by_action": {
+        "long": {
+          "n_decisions": 110,
+          "n_observed": 110,
+          "n_unavailable": 0,
+          "n_win": 51,
+          "n_loss": 58,
+          "n_zero": 1,
+          "mean": -0.002460501918717437,
+          "median": -0.002757018848379739,
+          "cumulative_return": -0.2706552110589181,
+          "win_rate": 0.4636363636363636,
+          "min": -0.06217792485437176,
+          "p25": -0.015665946375229695,
+          "p75": 0.011828705506800359,
+          "max": 0.04628658469006333
+        },
+        "short": {
+          "n_decisions": 85,
+          "n_observed": 0,
+          "n_unavailable": 85,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "no_trade": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "horizon_days": 10,
+      "trading": {
+        "returns": {
+          "n_decisions": 195,
+          "n_observed": 110,
+          "n_unavailable": 85,
+          "n_win": 55,
+          "n_loss": 54,
+          "n_zero": 1,
+          "mean": -0.001762725465615562,
+          "median": 0.00042038665947333035,
+          "cumulative_return": -0.19389980121771183,
+          "win_rate": 0.5,
+          "min": -0.06217792485437176,
+          "p25": -0.024097787283883888,
+          "p75": 0.017834355009521644,
+          "max": 0.07253226462065644
+        },
+        "risk": {
+          "max_drawdown": 0.3435999784041883,
+          "volatility": 0.02743168826389083,
+          "downside_volatility": 0.020379743174060525,
+          "worst_outcome": -0.06217792485437176
+        }
+      },
+      "opportunity": {
+        "returns": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "risk": {
+          "max_drawdown": null,
+          "volatility": null,
+          "downside_volatility": null,
+          "worst_outcome": null
+        }
+      },
+      "by_action": {
+        "long": {
+          "n_decisions": 110,
+          "n_observed": 110,
+          "n_unavailable": 0,
+          "n_win": 55,
+          "n_loss": 54,
+          "n_zero": 1,
+          "mean": -0.001762725465615562,
+          "median": 0.00042038665947333035,
+          "cumulative_return": -0.19389980121771183,
+          "win_rate": 0.5,
+          "min": -0.06217792485437176,
+          "p25": -0.024097787283883888,
+          "p75": 0.017834355009521644,
+          "max": 0.07253226462065644
+        },
+        "short": {
+          "n_decisions": 85,
+          "n_observed": 0,
+          "n_unavailable": 85,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "no_trade": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "horizon_days": 20,
+      "trading": {
+        "returns": {
+          "n_decisions": 195,
+          "n_observed": 110,
+          "n_unavailable": 85,
+          "n_win": 44,
+          "n_loss": 65,
+          "n_zero": 1,
+          "mean": -0.005218682098657158,
+          "median": -0.012858758472196277,
+          "cumulative_return": -0.5740550308522874,
+          "win_rate": 0.4,
+          "min": -0.13323096107437093,
+          "p25": -0.03431124378547334,
+          "p75": 0.025191277038899226,
+          "max": 0.11893979174991225
+        },
+        "risk": {
+          "max_drawdown": 0.6305498950408728,
+          "volatility": 0.04204842039113658,
+          "downside_volatility": 0.03107435247156183,
+          "worst_outcome": -0.13323096107437093
+        }
+      },
+      "opportunity": {
+        "returns": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "risk": {
+          "max_drawdown": null,
+          "volatility": null,
+          "downside_volatility": null,
+          "worst_outcome": null
+        }
+      },
+      "by_action": {
+        "long": {
+          "n_decisions": 110,
+          "n_observed": 110,
+          "n_unavailable": 0,
+          "n_win": 44,
+          "n_loss": 65,
+          "n_zero": 1,
+          "mean": -0.005218682098657158,
+          "median": -0.012858758472196277,
+          "cumulative_return": -0.5740550308522874,
+          "win_rate": 0.4,
+          "min": -0.13323096107437093,
+          "p25": -0.03431124378547334,
+          "p75": 0.025191277038899226,
+          "max": 0.11893979174991225
+        },
+        "short": {
+          "n_decisions": 85,
+          "n_observed": 0,
+          "n_unavailable": 85,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "no_trade": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "horizon_days": 60,
+      "trading": {
+        "returns": {
+          "n_decisions": 195,
+          "n_observed": 110,
+          "n_unavailable": 85,
+          "n_win": 41,
+          "n_loss": 68,
+          "n_zero": 1,
+          "mean": -0.009887212401924545,
+          "median": -0.022931048607180513,
+          "cumulative_return": -1.0875933642117,
+          "win_rate": 0.37272727272727274,
+          "min": -0.13323096107437093,
+          "p25": -0.04414563074408629,
+          "p75": 0.026938229997765576,
+          "max": 0.1389368685276617
+        },
+        "risk": {
+          "max_drawdown": 1.201001819363167,
+          "volatility": 0.05816212281902748,
+          "downside_volatility": 0.04382618954935599,
+          "worst_outcome": -0.13323096107437093
+        }
+      },
+      "opportunity": {
+        "returns": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "risk": {
+          "max_drawdown": null,
+          "volatility": null,
+          "downside_volatility": null,
+          "worst_outcome": null
+        }
+      },
+      "by_action": {
+        "long": {
+          "n_decisions": 110,
+          "n_observed": 110,
+          "n_unavailable": 0,
+          "n_win": 41,
+          "n_loss": 68,
+          "n_zero": 1,
+          "mean": -0.009887212401924545,
+          "median": -0.022931048607180513,
+          "cumulative_return": -1.0875933642117,
+          "win_rate": 0.37272727272727274,
+          "min": -0.13323096107437093,
+          "p25": -0.04414563074408629,
+          "p75": 0.026938229997765576,
+          "max": 0.1389368685276617
+        },
+        "short": {
+          "n_decisions": 85,
+          "n_observed": 0,
+          "n_unavailable": 85,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        },
+        "no_trade": {
+          "n_decisions": 0,
+          "n_observed": 0,
+          "n_unavailable": 0,
+          "n_win": 0,
+          "n_loss": 0,
+          "n_zero": 0,
+          "mean": null,
+          "median": null,
+          "cumulative_return": null,
+          "win_rate": null,
+          "min": null,
+          "p25": null,
+          "p75": null,
+          "max": null
+        }
+      }
+    }
+  ],
+  "content_hash": "158416895a7f884a40d157d7eedfa2993a63311f1d4b10251aa602fc5c741cbe"
+}

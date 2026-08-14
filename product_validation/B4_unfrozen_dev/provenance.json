@@ -1,0 +1,20 @@
+{
+  "kind": "product_validation",
+  "not": [
+    "g_gate",
+    "v1.0_freeze",
+    "strategy_score",
+    "parameter_tuning"
+  ],
+  "decision_engine_version": "unfrozen-dev",
+  "decision_engine_v1_frozen": false,
+  "b4_dump_sha256": "f74e576e8e98b24058cc913b14a567d9ff4b3eabc75662ab9a96901b102f8cd6",
+  "database": "chrono_replay_b4_historical",
+  "git_head": "668350e47d002476626cd6f945da85da26d0bd80",
+  "git_dirty": true,
+  "ledger_identity_hash": "091f241e6557124ea18b25c893d2e6661a0ea16ea890ae38e086eea37f31e5af",
+  "outcome_identity_hash": "b3b3156cf953071f26b14e945096970280f1d477eb2c352eedb6e77570ed86cd",
+  "performance_content_hash": "158416895a7f884a40d157d7eedfa2993a63311f1d4b10251aa602fc5c741cbe",
+  "lineage_sha256": "62f4015828fbe8466e36c5d63acb1fdd04019c7260e76233ecf488a601a39181",
+  "n_decisions": 195
+}

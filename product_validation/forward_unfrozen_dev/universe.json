@@ -1,0 +1,18 @@
+{
+  "cadence": "once_per_trading_day",
+  "engine_version": "unfrozen-dev",
+  "exchange": "NSE",
+  "not": [
+    "b4_replay",
+    "broker",
+    "g_gate"
+  ],
+  "source": "YahooFinance",
+  "tickers": [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "INFY.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS"
+  ]
+}

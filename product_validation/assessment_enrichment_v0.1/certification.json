@@ -1,0 +1,159 @@
+{
+  "result": "PASS",
+  "n_profiles": 195,
+  "n_decisions": 195,
+  "orphan_decisions": 0,
+  "assessment_after_decision": 0,
+  "signature_roundtrip_mismatches": 0,
+  "factor_status_mismatches_vs_bars_le_t": 0,
+  "temporal_bar_leaks": 0,
+  "identity_hash": "6e6e1b11f81dbb800d5355cddcae903800ff2dac15e7c2142fa3216632c24982",
+  "failures": [],
+  "factor_availability": {
+    "n_profiles": 195,
+    "by_concept": {
+      "Momentum": {
+        "available": 195,
+        "unavailable": 0
+      },
+      "Trend": {
+        "available": 195,
+        "unavailable": 0
+      },
+      "Volatility": {
+        "available": 195,
+        "unavailable": 0
+      }
+    },
+    "by_instrument": {
+      "HDFCBANK.NS": {
+        "Momentum": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 39,
+          "unavailable": 0
+        }
+      },
+      "ICICIBANK.NS": {
+        "Momentum": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 39,
+          "unavailable": 0
+        }
+      },
+      "INFY.NS": {
+        "Momentum": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 39,
+          "unavailable": 0
+        }
+      },
+      "RELIANCE.NS": {
+        "Momentum": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 39,
+          "unavailable": 0
+        }
+      },
+      "TCS.NS": {
+        "Momentum": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 39,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 39,
+          "unavailable": 0
+        }
+      }
+    },
+    "by_year": {
+      "2021": {
+        "Momentum": {
+          "available": 15,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 15,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 15,
+          "unavailable": 0
+        }
+      },
+      "2022": {
+        "Momentum": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 60,
+          "unavailable": 0
+        }
+      },
+      "2023": {
+        "Momentum": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 60,
+          "unavailable": 0
+        }
+      },
+      "2024": {
+        "Momentum": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Trend": {
+          "available": 60,
+          "unavailable": 0
+        },
+        "Volatility": {
+          "available": 60,
+          "unavailable": 0
+        }
+      }
+    }
+  }
+}

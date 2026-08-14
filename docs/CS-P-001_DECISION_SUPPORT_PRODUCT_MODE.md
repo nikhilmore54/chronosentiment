@@ -88,7 +88,7 @@ Evidence accumulation path (product use, not v1.1):
 
 The next product milestone is **Decision Validation Platform v1**: one Decision Engine, replay vs live adapters, common outcome engine, backtest / walk-forward / holdout / forward paper tests. See `docs/CS-P-002_DECISION_VALIDATION_PLATFORM.md`.
 
-G-GATE v1.1 remains closed. B4 is the certified historical foundation for replay only.
+G-GATE v1.1 remains closed. B4 is the certified historical foundation for replay only. Historical research on that reconstruction is CS-P-004. Forward/paper observation (CS-P-003) is confirmation and may run in parallel; it is not the discovery laboratory.
 
 ## 7. First engineering start
 

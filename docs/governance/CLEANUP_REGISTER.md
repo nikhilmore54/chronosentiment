@@ -264,9 +264,56 @@ The following items were identified by read-only scan of all `*.rs` files. No so
 
 ---
 
+### CLN-014 — Untracked G-GATE / Phase-G working-tree residue
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-014 |
+| **Type** | Inventory then Archive / Delete / gitignore (per class below) |
+| **Asset** | Uncommitted ChronoSentiment residue left after G-GATE v1.1 close (Decision A). Not part of CS-P-001/CS-P-002. |
+| **Reason** | Repeatedly excluding these paths from commits is not governance. RR4 requires Preserve / Archive / Delete / Promote. GOV-CLN-001: never delete while implementing; inventory first; reviewer approval before archive/delete. |
+| **Canonical** | Certified: `r3_evidence/20260813T035739Z_B3/` (committed dump + G-GATE, no copied binaries), `r3_evidence/20260814T023457Z_B4/` (same), EV-GOV-003, CS-P-001, CS-P-002. G-GATE v1.1 remains closed. |
+| **Dependents** | None for product mode. Do not promote `m6_phase_g_experiment.rs` or `src/research/` into the Decision Engine without a new freeze. |
+| **Validation** | Classify every path; no B3/B4 mutation; no G-GATE rerun; `cargo check -p chronosentiment_adapter --lib` still passes after any delete. |
+| **Status** | **Pending — inventory recorded; no deletion until reviewer approval** |
+| **Date** | 2026-08-14 |
+
+Proposed classes (RR4):
+
+| Path | Proposed decision | Heritage | Notes |
+|------|-------------------|----------|-------|
+| `ChronoSentiment_MEGA_FINAL/` nested clone | Delete | Disposable | Accidental tree; not a dataset |
+| `r3_evidence/20260812T*_B2/` | Archive or gitignore | Historical | B2 is not a G-GATE dataset; do not commit as B4-equivalent |
+| `r3_evidence/*/binary/` | Delete (local copies) | Disposable | SHA-256 already in provenance; binaries must not be git history |
+| `r2_evidence/`, `r2_1_evidence/`, `phase_r_baseline/`, `evidence/` | Archive or gitignore | Historical | Pre-B3 experiment dumps |
+| `phase_g_config.json`, `phase_g_output.txt`, `run1.out`, `run2.out`, `*_witness.json` | Delete | Disposable | Local run logs |
+| `run_evidence_R3_1_B2.sh` | Archive with B2 | Historical | B2 restore helper |
+| `adapters/chronosentiment/src/bin/m6_phase_g_experiment.rs`, `src/research/`, related `tests/` | Archive | Historical | Pre-v1.1 lab; not Decision Engine v1.0 |
+| `adapters/chronosentiment/src/lib.rs` `pub mod research` | Revert unless research is archived in-tree | — | Uncommitted; would compile a non-canonical module |
+| `historical_reasoning.rs`, `knowledge_tests.rs` dirty diffs | Inventory separately | Pending | Mixed with B4 persist; do not silently drop temporal-firewall work |
+| roadef / cvrp / ultracrew dirty diffs | Out of this CLN | — | Other research lines; do not mix with ChronoSentiment cleanup |
+
+---
+
+### CLN-015 — Adapter unused imports after B4 persist
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-015 |
+| **Type** | Delete (unused imports / unread locals only) |
+| **Asset** | Warnings on `chronosentiment_adapter`: unused imports in `postgres_knowledge.rs`, `decision.rs`, `ingestion/yahoo.rs`, `fred.rs`, `replay_decision.rs`; unread `ambiguous` in `outcome.rs` |
+| **Reason** | `.cursor/rules/chronosentiment-core.mdc` requires clean DTOs and no unused imports. Render build already compiles; warnings are leftover from the Knowledge Lake persist path. |
+| **Canonical** | Keep the persist and `assess_at` behaviour. Remove unused names only. |
+| **Dependents** | None if removals are unused. |
+| **Validation** | `cargo check -p chronosentiment_adapter --lib` with no new errors; do not change outcome measurement semantics. |
+| **Status** | **Pending — reviewer approval** |
+| **Date** | 2026-08-14 |
+
+---
+
 ## Completed Items
 
-*No items completed yet.*
+CLN-007, CLN-013 completed 2026-08-01 (see entries above). Open: CLN-001–CLN-006, CLN-014, CLN-015.
 
 ---
 
@@ -308,4 +355,4 @@ Workstreams execute in this order:
 
 ---
 
-*Last updated: 2026-08-01 | Maintained by: Repository Governance*
+*Last updated: 2026-08-14 | Maintained by: Repository Governance*

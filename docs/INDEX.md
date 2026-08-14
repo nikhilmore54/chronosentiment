@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.3
+**Version:** 1.11
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -135,6 +135,15 @@ Documents in this section must not be modified except for typographical correcti
 | PRD-002 | `docs/CHRONOSENTIMENT_PRD_V1.md` | ChronoSentiment Product Definition v1.0 (authoritative commercial PRD) |
 | CS-P-001 | `docs/CS-P-001_DECISION_SUPPORT_PRODUCT_MODE.md` | Product mode after G-GATE v1.1 close; co-pilot / paper trading; v1.2 not opened |
 | CS-P-002 | `docs/CS-P-002_DECISION_VALIDATION_PLATFORM.md` | Decision Validation Platform v1: one engine, replay/live adapters, backtest + forward paper |
+| CS-P-002-R1 | `product_validation/B4_unfrozen_dev/HISTORICAL_PERFORMANCE_REPORT.md` | B4 historical product validation baseline (`unfrozen-dev`; not G-GATE; v1.0 not frozen) |
+| CS-P-003 | `docs/CS-P-003_FORWARD_PAPER_VALIDATION.md` | Forward/Paper Validation v0.1: daily tick continues (confirmation, not discovery) |
+| CS-P-004 | `docs/CS-P-004_HISTORICAL_RESEARCH_LABORATORY.md` | Historical Research & Robustness Laboratory: B4 reconstruction, no engine change |
+| CS-P-004-R1 | `product_validation/CS-P-004_unfrozen_dev/HISTORICAL_RESEARCH_SUMMARY.md` | First B4 laboratory reports (`unfrozen-dev`; not a candidate policy; not G-GATE) |
+| CS-P-004-A1 | `product_validation/CS-P-004_adapter_v0.1/HISTORICAL_RESEARCH_SUMMARY.md` | Adapter v0.1 lab re-run: unavailable confidence + preserved evidence; not a candidate policy |
+| CS-P-004-E1 | `docs/CS-P-004_HISTORICAL_RESEARCH_LABORATORY.md` | Assessment Enrichment v0.1: factors at T; code + tests |
+| CS-P-004-E1-S1 | `product_validation/assessment_enrichment_v0.1/` | Information-fidelity snapshot + factor availability (not B5; not a strategy experiment) |
+| CS-P-TEST-001 | `docs/CS-P-TEST-001_DECISION_INTELLIGENCE_VERIFICATION_MATRIX.md` | Decision intelligence verification matrix (vision-level tests; not a snapshot) |
+| CS-P-005 | `docs/CS-P-005_FACTOR_ECOLOGY_ANALYSIS.md` | Factor Ecology Analysis v0.1: states at T; no candidate policy |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -182,6 +191,14 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.11 | 2026-08-14 | Index CS-P-TEST-001 verification matrix and CS-P-005 Factor Ecology (no candidate policy) |
+| 1.10 | 2026-08-14 | Index CS-P-004-E1-S1 information-fidelity snapshot (not B5; factor availability only) |
+| 1.9 | 2026-08-14 | Index CS-P-004-E1 Assessment Enrichment v0.1 (code/tests only; no new dataset) |
+| 1.8 | 2026-08-14 | Index CS-P-004-A1 adapter information-fidelity enhancement |
+| 1.7 | 2026-08-14 | Index CS-P-004-R1 B4 historical laboratory reports |
+| 1.6 | 2026-08-14 | Index CS-P-004 Historical Research Laboratory; CS-P-003 remains confirmation clock |
+| 1.5 | 2026-08-14 | Index CS-P-003 Forward/Paper Validation v0.1 |
+| 1.4 | 2026-08-14 | Index CS-P-002-R1 B4 historical product validation (`unfrozen-dev`) |
 | 1.3 | 2026-08-14 | Index CS-P-002 Decision Validation Platform |
 | 1.2 | 2026-08-14 | Index CS-P-001 product mode; PRD-002 |
 | 1.1 | 2026-08-14 | Index EV-GOV-003 G-GATE v1.1 statistical closure |

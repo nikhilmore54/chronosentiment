@@ -24,9 +24,18 @@ impl InstrumentMetricEngine {
 
 impl MetricEngine<InstrumentEvaluationContext> for InstrumentMetricEngine {
     fn evaluate(&self, context: &InstrumentEvaluationContext) -> MetricReport {
+        let mut observations = context.observations.clone();
+        observations.sort_by_key(|o| (o.effective_from, o.id));
+        observations.dedup_by(|a, b| {
+            a.instrument_id == b.instrument_id && a.effective_from == b.effective_from
+        });
+        let context = InstrumentEvaluationContext {
+            instrument_id: context.instrument_id,
+            observations,
+        };
         let mut report = MetricReport::default();
         for model in &self.models {
-            model.evaluate(context, &mut report);
+            model.evaluate(&context, &mut report);
         }
         report
     }
@@ -136,17 +145,27 @@ impl InstrumentMetricModel for AverageTrueRangeMetric {
             for i in (obs_list.len() - self.window)..obs_list.len() {
                 let current = &obs_list[i];
                 let previous = &obs_list[i - 1];
-                
-                let high = current.normalized_payload.get("high").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let low = current.normalized_payload.get("low").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let prev_close = previous.normalized_payload.get("close").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                
+
+                let high = current.normalized_payload.get("high").and_then(|v| v.as_f64());
+                let low = current.normalized_payload.get("low").and_then(|v| v.as_f64());
+                let prev_close = previous.normalized_payload.get("close").and_then(|v| v.as_f64());
+                let (Some(high), Some(low), Some(prev_close)) = (high, low, prev_close) else {
+                    return;
+                };
+                if !high.is_finite()
+                    || !low.is_finite()
+                    || !prev_close.is_finite()
+                    || high <= 0.0
+                    || low <= 0.0
+                    || high < low
+                {
+                    return;
+                }
+
                 let tr1 = high - low;
                 let tr2 = (high - prev_close).abs();
                 let tr3 = (low - prev_close).abs();
-                
-                let true_range = tr1.max(tr2).max(tr3);
-                true_ranges.push(true_range);
+                true_ranges.push(tr1.max(tr2).max(tr3));
             }
             let atr = true_ranges.iter().sum::<f64>() / self.window as f64;
             report.metrics.insert(self.name().to_string(), MetricValue::Float(atr));

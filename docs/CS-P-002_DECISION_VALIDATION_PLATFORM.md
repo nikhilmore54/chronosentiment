@@ -157,10 +157,84 @@ Dashboard copy is illustrative. It must not invent numbers.
 
 ## 8. First build order
 
-1. Freeze **Decision Engine object** (CS-P-001 deliverable 1): as-of `T`, `NO TRADE` first-class, lineage, bounded fields.
-2. Replay adapter against **B4** (read-only).
-3. Live adapter (delayed/current data; still no brokerage).
-4. Common outcome + metric layers.
-5. Journal + dashboard.
+1. Freeze **Decision Engine object** (CS-P-001 deliverable 1): as-of `T`, `NO TRADE` first-class, lineage, bounded fields. Contract: `adapters/chronosentiment/src/decision_support/` (`TradingDecision`). Decision Engine v1.0 remains unfrozen.
+2. Replay adapter against **B4** (read-only): `decision_support::replay`. Reconstructs inputs with `evaluation_timestamp` / `effective_from` ≤ T; never reads outcomes; engine version stays `unfrozen-dev`. Official SQL proof: `./run_replay_b4_validate.sh` (disposable restore, never `chrono_b4_test`).
+3. Replay/backtest orchestration + immutable decision ledger (`decision_support::backtest`). Iterates T1…Tn → `TradingDecision`. B4 schedule driver: `populate_ledger_from_assessment_schedule`. No scoring, Decision Engine v1.0 unfrozen.
+4. Outcome Engine v0.1 (`decision_support::outcome`): 5/10/20/60D measurement after ledger `as_of`; never mutates decisions; no performance scoring.
+5. Performance Engine v0.1 (`decision_support::performance`): ledger + outcome bundles → reproducible four-layer report. No optimization. Decision Engine v1.0 unfrozen.
+6. Live / forward adapter (CS-P-003): delayed/current data; observation outcomes from raw prices after T; still no brokerage.
+7. Journal + dashboard.
 
 Do not start by designing G-GATE v1.2. Do not mutate B3/B4.
+
+---
+
+## 9. Outcome Engine v0.1 (bounded)
+
+Independent of the Replay Adapter. Official SQL proof remains `./run_replay_b4_validate.sh` (disposable restore `chrono_replay_b4_validate`; never `chrono_b4_test` / `chrono_b3_test`).
+
+```text
+DecisionLedger record
+        │
+        ├── 5D observation
+        ├── 10D observation
+        ├── 20D observation
+        └── 60D observation
+        │
+        ▼
+   DecisionOutcomeBundle
+```
+
+Invariants:
+
+1. Consume only decisions already present in the immutable ledger.
+2. Evaluate after each record’s `as_of_timestamp` (parent lake decision at T; `horizon_expiry_timestamp` > T).
+3. Attach existing B4 `knowledge_outcomes` fields/horizons where supported (`outcome_return`, entry/target/stop, MFE/MAE/drawdown, exit reason). Missing horizon → `available: false`; do not invent returns.
+4. Never modify `TradingDecision` or `DecisionLedger`.
+5. Never call `decide_at` or make another decision from the outcome.
+6. Preserve lineage: ledger `decision_id` → lake `outcome_id` / lake `decision_id`.
+7. Read-only SQL. Knowledge Lake `validation::outcome::OutcomeEngine` is not replaced and is not used here.
+8. Decision Engine v1.0 still unfrozen. NO_TRADE still receives lake outcomes when present; opportunity-cost measurement is Performance Engine v0.1, not trading P&L.
+
+---
+
+## 10. Performance Engine v0.1 (bounded)
+
+Measurement only. Official SQL proof remains `./run_replay_b4_validate.sh` (performance step on the **clean** restore, before mutating outcome/adapter tests).
+
+```text
+DecisionLedger + DecisionOutcomeBundle
+        │
+        ▼
+PerformanceReport
+  ├── trading outcomes     (LONG / SHORT only)
+  ├── risk                 (per trading and opportunity path)
+  ├── decision behavior    (counts, frequency, by action / horizon)
+  └── opportunity cost     (NO_TRADE only)
+```
+
+Invariants:
+
+1. Consume only `DecisionLedger` and `OutcomeReport`. No database writes. No `decide_at`.
+2. Never modify `TradingDecision`, the ledger, or outcome bundles.
+3. Never tune thresholds, search parameters, select a “best” horizon, or change LONG/SHORT/NO_TRADE rules.
+4. Never feed performance back into a decision.
+5. `NO_TRADE` is **not** a zero-return trade. Trading cumulative return / win rate / drawdown use LONG and SHORT only. Opportunity cost uses NO_TRADE attached lake returns separately.
+6. Attached `outcome_return` is reported as stored (B4 lake path). v0.1 does not invent action-signed P&L or recompute prices.
+7. `cumulative_return` is the sum of per-decision attached simple returns in ledger order (overlapping horizons are not a portfolio).
+8. All four horizons are always reported. None is selected.
+9. No freeze of Decision Engine v1.0. No G-GATE reopen. No B5.
+
+---
+
+## 11. First B4 historical product validation (`unfrozen-dev`)
+
+Not G-GATE. Not a v1.0 freeze. Not a strategy score. Runner: `./run_b4_historical_product_validation.sh` (disposable `chrono_replay_b4_historical`; never `chrono_b4_test` / `chrono_b3_test`). Artifact: `product_validation/B4_unfrozen_dev/`.
+
+Pipeline: certified B4 → Replay Adapter → `TradingDecision` → `DecisionLedger` → Outcome Engine v0.1 → Performance Engine v0.1 → historical performance report. Two consecutive runs must match `performance.content_hash`.
+
+Decision Engine version on this report is **`unfrozen-dev`**. Do not present it as a production trading strategy.
+
+**Known limitation (do not mutate B4):** 85 SHORT decisions have no attached lake outcomes; 0 NO_TRADE. The historical report cannot evaluate SHORT. See `product_validation/B4_unfrozen_dev/KNOWN_LIMITATIONS.md` and CS-P-003.
+
+CS-P-002-R1 is the **baseline**, not the research programme. Historical discovery (regime, walk-forward, robustness, decision-vs-baseline) is CS-P-004, using this pipeline with **no engine change**. CS-P-003 remains the forward confirmation clock and may run in parallel. Not G-GATE, not parameter tuning.

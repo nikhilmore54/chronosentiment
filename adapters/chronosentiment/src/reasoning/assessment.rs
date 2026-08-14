@@ -52,11 +52,30 @@ pub struct DomainAssessment {
     pub contradicting_metrics: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FactorAvailability {
+    Available,
+    Unavailable,
+}
+
+/// Independent factor status at T. Missing metrics are UNAVAILABLE, not invented.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FactorStatus {
+    pub concept: Concept,
+    pub availability: FactorAvailability,
+    pub supporting_metrics: Vec<String>,
+    pub missing_metrics: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssessmentProfile {
     pub metadata: ArtifactMetadata,
     pub instrument_id: Option<Uuid>,
     pub assessments: Vec<DomainAssessment>,
+    /// Always one row per requested concept. Empty on pre-enrichment B4 profiles (`serde` default).
+    #[serde(default)]
+    pub factor_status: Vec<FactorStatus>,
 }
 
 impl KnowledgeArtifact for AssessmentProfile {
@@ -88,6 +107,11 @@ impl AssessmentProfile {
             }
             parts.push(s);
         }
+        let mut statuses = self.factor_status.clone();
+        statuses.sort_by_key(|s| format!("{:?}", s.concept));
+        for s in &statuses {
+            parts.push(format!("{:?}:{:?}", s.concept, s.availability));
+        }
         
         if parts.is_empty() {
             "Neutral / Weak".to_string()
@@ -104,15 +128,28 @@ impl AssessmentProfile {
     }
 }
 
+pub const ENRICHMENT_CONCEPTS: [Concept; 3] = [Concept::Trend, Concept::Momentum, Concept::Volatility];
+
 pub struct AssessmentEngine;
 
 impl AssessmentEngine {
+    pub fn required_metrics(concept: &Concept) -> &'static [&'static str] {
+        match concept {
+            Concept::Trend => &["ma_20", "ma_50"],
+            Concept::Momentum => &["roc_20"],
+            Concept::Volatility => &["atr_14"],
+            Concept::Liquidity => &["volume_20d"],
+            _ => &[],
+        }
+    }
+
     /// Demo/test helper. Do not persist: `ArtifactMetadata::mock()` stamps wall-clock time.
     pub fn assess(&self, metrics: &MetricReport, active_concepts: &[Concept]) -> AssessmentProfile {
         self.assess_with_metadata(metrics, active_concepts, ArtifactMetadata::mock(), None)
     }
 
-    /// Population path: `evaluation_timestamp` is the replay as-of time `dt`, not `Utc::now()`.
+    /// Population path: `evaluation_timestamp` is replay as-of `T`.
+    /// `created_at` remains persist wall-clock from `mock()` (recorded_at). Do not use `Utc::now()` as T.
     pub fn assess_at(
         &self,
         metrics: &MetricReport,
@@ -127,31 +164,84 @@ impl AssessmentEngine {
 
     pub fn assess_with_metadata(&self, metrics: &MetricReport, active_concepts: &[Concept], mut metadata: ArtifactMetadata, instrument_id: Option<Uuid>) -> AssessmentProfile {
         let mut assessments = Vec::new();
+        let mut factor_status = Vec::new();
 
         for concept in active_concepts {
-            if let Some(assessment) = self.assess_concept(concept, metrics) {
-                assessments.push(assessment);
+            let required = Self::required_metrics(concept);
+            let missing: Vec<String> = required
+                .iter()
+                .filter(|m| metrics.get_float(*m).is_none())
+                .map(|m| (*m).to_string())
+                .collect();
+            let supporting: Vec<String> = required
+                .iter()
+                .filter(|m| metrics.get_float(*m).is_some())
+                .map(|m| (*m).to_string())
+                .collect();
+
+            if missing.is_empty() && !required.is_empty() {
+                factor_status.push(FactorStatus {
+                    concept: concept.clone(),
+                    availability: FactorAvailability::Available,
+                    supporting_metrics: supporting,
+                    missing_metrics: vec![],
+                });
+                if let Some(assessment) = self.assess_concept(concept, metrics) {
+                    assessments.push(assessment);
+                }
+            } else if required.is_empty() {
+                factor_status.push(FactorStatus {
+                    concept: concept.clone(),
+                    availability: FactorAvailability::Unavailable,
+                    supporting_metrics: vec![],
+                    missing_metrics: vec!["no_certified_metrics".to_string()],
+                });
+            } else {
+                factor_status.push(FactorStatus {
+                    concept: concept.clone(),
+                    availability: FactorAvailability::Unavailable,
+                    supporting_metrics: supporting,
+                    missing_metrics: missing,
+                });
             }
         }
-        
-        metadata.content_hash = crate::repository::hash::generate_content_hash(&assessments, &metadata);
+        factor_status.sort_by_key(|s| format!("{:?}", s.concept));
+        assessments.sort_by_key(|a| format!("{:?}", a.concept));
 
-        AssessmentProfile { metadata, instrument_id, assessments }
+        #[derive(Serialize)]
+        struct Payload<'a> {
+            assessments: &'a [DomainAssessment],
+            factor_status: &'a [FactorStatus],
+        }
+        metadata.content_hash = crate::repository::hash::generate_content_hash(
+            &Payload {
+                assessments: &assessments,
+                factor_status: &factor_status,
+            },
+            &metadata,
+        );
+
+        AssessmentProfile {
+            metadata,
+            instrument_id,
+            assessments,
+            factor_status,
+        }
     }
 
+    /// Semantic direction only when it does not require a new trading threshold.
+    /// Volatility ATR is magnitude-only: AVAILABLE in `factor_status`, no invented High/Low.
     fn assess_concept(&self, concept: &Concept, metrics: &MetricReport) -> Option<DomainAssessment> {
         match concept {
             Concept::Trend => {
                 let ma_20 = metrics.get_float("ma_20");
                 let ma_50 = metrics.get_float("ma_50");
-                
                 if let (Some(m20), Some(m50)) = (ma_20, ma_50) {
                     let (dir, conf, uncert) = if m20 > m50 {
                         (Direction::Bullish, 0.82, 0.18)
                     } else {
                         (Direction::Bearish, 0.82, 0.18)
                     };
-                    
                     Some(DomainAssessment {
                         concept: Concept::Trend,
                         direction: dir,
@@ -167,12 +257,16 @@ impl AssessmentEngine {
                 } else {
                     None
                 }
-            },
+            }
             Concept::Momentum => {
                 let roc_20 = metrics.get_float("roc_20");
-                if let Some(roc) = roc_20 {
-                    let dir = if roc > 0.0 { Direction::Positive } else { Direction::Negative };
-                    Some(DomainAssessment {
+                roc_20.map(|roc| {
+                    let dir = if roc > 0.0 {
+                        Direction::Positive
+                    } else {
+                        Direction::Negative
+                    };
+                    DomainAssessment {
                         concept: Concept::Momentum,
                         direction: dir,
                         strength: Some(Strength::Moderate),
@@ -183,12 +277,10 @@ impl AssessmentEngine {
                         uncertainty_reason: None,
                         supporting_metrics: vec!["roc_20".to_string()],
                         contradicting_metrics: vec![],
-                    })
-                } else {
-                    None
-                }
-            },
-            // ... (other concepts omitted for brevity in mock)
+                    }
+                })
+            }
+            Concept::Volatility => None,
             _ => None,
         }
     }

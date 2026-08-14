@@ -46,4 +46,7 @@ pub use learning::{
     PatternMaturity,
     InvestmentInsight,
     QuarterlyReviewReport,
-};pub mod universe;
+};
+pub mod universe;
+pub mod decision_support;
+pub mod research;
