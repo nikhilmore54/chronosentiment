@@ -1,0 +1,20 @@
+{
+  "B": 10000,
+  "L": 5,
+  "Y_h": "1 iff outcome_return > 0",
+  "binary_sha256": "92269dfdb1325878765f53b741dfeb60518861cbeb86ddf50c84bb225f774959",
+  "candidate": "train-only P(Y_h=1|signature_hash); unseen -> train prevalence",
+  "dataset": "B4",
+  "dataset_sha256": "f74e576e8e98b24058cc913b14a567d9ff4b3eabc75662ab9a96901b102f8cd6",
+  "holm_alpha": 0.05,
+  "methodology": "G_Extension_Methodology_v1.1",
+  "methodology_manifest_sha256": "1604563a0a4516cbe983ef398ad36b6e1daacc8842b7a8daa28812e8ffee958e",
+  "methodology_sha256": "e129d7add66d7f4c12aab14811a3d552abf6b603f012eeb75c99c484e0065e66",
+  "min_test_n": 20,
+  "percentile": "nearest_rank index=round_half_away(p*(B-1))",
+  "prng": "LCG state=(1103515245*state+12345) mod 2^31; draw=state/2^31; first draw after one update from seed",
+  "protocol": "G-GATE v1.1",
+  "seed": 20260813,
+  "split": "ranks 1-55 TRAIN, 56-82 VALIDATION, 83-110 TEST; order evaluation_timestamp ASC, strategy_id ASC",
+  "train_test_split_sha256": "6e9b3405a21b21f6c59cf99c05822c0d20007d335ef38a7bb5a21cf8f79d5691"
+}

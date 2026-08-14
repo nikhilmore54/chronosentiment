@@ -17,6 +17,7 @@ pub enum ArtifactType {
     ObservatorySnapshot,
     ResearchReport,
     Outcome,
+    Strategy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +42,8 @@ pub struct ArtifactMetadata {
 }
 
 impl ArtifactMetadata {
+    /// Placeholder metadata. `evaluation_timestamp` is wall-clock and MUST be
+    /// overwritten with replay `dt` before a Knowledge Lake persist.
     pub fn mock() -> Self {
         Self {
             artifact_id: Uuid::new_v4(),

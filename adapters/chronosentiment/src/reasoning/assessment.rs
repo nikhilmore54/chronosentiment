@@ -3,6 +3,7 @@ use coralys_moga::runtime::optimization::metric::MetricReport;
 use sha2::{Sha256, Digest};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
 use crate::repository::knowledge::{ArtifactMetadata, KnowledgeArtifact};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -106,8 +107,22 @@ impl AssessmentProfile {
 pub struct AssessmentEngine;
 
 impl AssessmentEngine {
+    /// Demo/test helper. Do not persist: `ArtifactMetadata::mock()` stamps wall-clock time.
     pub fn assess(&self, metrics: &MetricReport, active_concepts: &[Concept]) -> AssessmentProfile {
         self.assess_with_metadata(metrics, active_concepts, ArtifactMetadata::mock(), None)
+    }
+
+    /// Population path: `evaluation_timestamp` is the replay as-of time `dt`, not `Utc::now()`.
+    pub fn assess_at(
+        &self,
+        metrics: &MetricReport,
+        active_concepts: &[Concept],
+        evaluation_timestamp: DateTime<Utc>,
+        instrument_id: Option<Uuid>,
+    ) -> AssessmentProfile {
+        let mut metadata = ArtifactMetadata::mock();
+        metadata.evaluation_timestamp = evaluation_timestamp;
+        self.assess_with_metadata(metrics, active_concepts, metadata, instrument_id)
     }
 
     pub fn assess_with_metadata(&self, metrics: &MetricReport, active_concepts: &[Concept], mut metadata: ArtifactMetadata, instrument_id: Option<Uuid>) -> AssessmentProfile {

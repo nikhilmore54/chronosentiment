@@ -1,0 +1,13 @@
+PASS: assessments count 195
+PASS: decisions count 195
+PASS: strategies count 110
+PASS: outcomes count 440
+PASS: orphan decisions 0
+PASS: orphan strategies 0
+PASS: strategy→outcome matches 440
+PASS: all strategies have exactly 4 outcomes
+PASS: horizons 5D/10D/20D/60D
+PASS: assessment.evaluation_timestamp <= decision.evaluation_timestamp (all pairs)
+PASS: outcome timestamps not before decision timestamps
+PASS: outcome evaluation_timestamp < horizon_expiry_timestamp
+All B4 invariants PASS

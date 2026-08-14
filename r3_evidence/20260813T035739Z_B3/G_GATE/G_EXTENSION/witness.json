@@ -1,0 +1,171 @@
+{
+  "b3_dataset_sha256": "af11d318b03fb171207f96348fcf210e1b9149b1ab6e699c06c363faec518788",
+  "boundary_identities_reproduced": true,
+  "classification": "INCONCLUSIVE",
+  "configuration": {
+    "B": 10000,
+    "L": 5,
+    "Y_h": "1 iff outcome_return > 0",
+    "binary_sha256": "49b92e35718400b9900894751e0bfd345d4cc142f2385f7bf6958b5ab7fb683a",
+    "candidate": "train-only P(Y_h=1|signature_hash); unseen -> train prevalence",
+    "dataset": "B3",
+    "dataset_sha256": "af11d318b03fb171207f96348fcf210e1b9149b1ab6e699c06c363faec518788",
+    "holm_alpha": 0.05,
+    "methodology": "G_Extension_Methodology_v1.1",
+    "methodology_manifest_sha256": "1604563a0a4516cbe983ef398ad36b6e1daacc8842b7a8daa28812e8ffee958e",
+    "methodology_sha256": "e129d7add66d7f4c12aab14811a3d552abf6b603f012eeb75c99c484e0065e66",
+    "min_test_n": 20,
+    "percentile": "nearest_rank index=round_half_away(p*(B-1))",
+    "prng": "LCG state=(1103515245*state+12345) mod 2^31; draw=state/2^31; first draw after one update from seed",
+    "protocol": "G-GATE v1.1",
+    "seed": 20260813,
+    "split": "ranks 1-55 TRAIN, 56-82 VALIDATION, 83-110 TEST; order evaluation_timestamp ASC, strategy_id ASC",
+    "train_test_split_sha256": "6e9b3405a21b21f6c59cf99c05822c0d20007d335ef38a7bb5a21cf8f79d5691"
+  },
+  "execution_timestamp": "2026-08-14T02:20:49.658337+00:00",
+  "experiment_binary_sha256": "49b92e35718400b9900894751e0bfd345d4cc142f2385f7bf6958b5ab7fb683a",
+  "horizons": [
+    {
+      "auc": 0.5,
+      "auc_ci": null,
+      "brier": 0.2455726092,
+      "brier_baseline": 0.2455726092,
+      "calibration_intercept": 0.3961038961,
+      "calibration_slope": 0.0714285714,
+      "contribution": "defined=false ΔAUC>0=false CI_lb>0=false holm_p<0.05=false",
+      "delta_auc": 0.0,
+      "delta_auc_ci": null,
+      "delta_brier": 0.0,
+      "holm_adjusted_p": null,
+      "horizon": "5D",
+      "metrics_defined": false,
+      "n": 28,
+      "n_neg": 16,
+      "n_pos": 12,
+      "n_undefined_bootstrap": 6,
+      "observed_rate": 0.4285714286,
+      "p_baseline": 0.4545454545,
+      "p_value": null,
+      "predicted_rate": 0.4545454545,
+      "reliability": [
+        {
+          "mean_p": 0.4545454545,
+          "mean_y": 0.4285714286,
+          "n": 28
+        }
+      ]
+    },
+    {
+      "auc": 0.5,
+      "auc_ci": [
+        0.5,
+        0.5
+      ],
+      "brier": 0.2487839433,
+      "brier_baseline": 0.2487839433,
+      "calibration_intercept": 0.3584415584,
+      "calibration_slope": 0.1428571429,
+      "contribution": "defined=true ΔAUC>0=false CI_lb>0=false holm_p<0.05=false",
+      "delta_auc": 0.0,
+      "delta_auc_ci": [
+        0.0,
+        0.0
+      ],
+      "delta_brier": 0.0,
+      "holm_adjusted_p": null,
+      "horizon": "10D",
+      "metrics_defined": true,
+      "n": 28,
+      "n_neg": 16,
+      "n_pos": 12,
+      "n_undefined_bootstrap": 0,
+      "observed_rate": 0.4285714286,
+      "p_baseline": 0.4909090909,
+      "p_value": 1.0,
+      "predicted_rate": 0.4909090909,
+      "reliability": [
+        {
+          "mean_p": 0.4909090909,
+          "mean_y": 0.4285714286,
+          "n": 28
+        }
+      ]
+    },
+    {
+      "auc": 0.5,
+      "auc_ci": [
+        0.5,
+        0.5
+      ],
+      "brier": 0.237107438,
+      "brier_baseline": 0.237107438,
+      "calibration_intercept": null,
+      "calibration_slope": null,
+      "contribution": "defined=false ΔAUC>0=false CI_lb>0=false holm_p<0.05=false",
+      "delta_auc": 0.0,
+      "delta_auc_ci": [
+        0.0,
+        0.0
+      ],
+      "delta_brier": 0.0,
+      "holm_adjusted_p": null,
+      "horizon": "20D",
+      "metrics_defined": false,
+      "n": 28,
+      "n_neg": 21,
+      "n_pos": 7,
+      "n_undefined_bootstrap": 0,
+      "observed_rate": 0.25,
+      "p_baseline": 0.4727272727,
+      "p_value": 1.0,
+      "predicted_rate": 0.4727272727,
+      "reliability": [
+        {
+          "mean_p": 0.4727272727,
+          "mean_y": 0.25,
+          "n": 28
+        }
+      ]
+    },
+    {
+      "auc": 0.5,
+      "auc_ci": null,
+      "brier": 0.2028571429,
+      "brier_baseline": 0.2028571429,
+      "calibration_intercept": 0.3793650794,
+      "calibration_slope": -0.4126984127,
+      "contribution": "defined=false ΔAUC>0=false CI_lb>0=false holm_p<0.05=false",
+      "delta_auc": 0.0,
+      "delta_auc_ci": null,
+      "delta_brier": 0.0,
+      "holm_adjusted_p": null,
+      "horizon": "60D",
+      "metrics_defined": false,
+      "n": 28,
+      "n_neg": 22,
+      "n_pos": 6,
+      "n_undefined_bootstrap": 4,
+      "observed_rate": 0.2142857143,
+      "p_baseline": 0.4,
+      "p_value": null,
+      "predicted_rate": 0.4,
+      "reliability": [
+        {
+          "mean_p": 0.4,
+          "mean_y": 0.2142857143,
+          "n": 28
+        }
+      ]
+    }
+  ],
+  "leakage_audit_sha256": "ffa48255ee189ab532968a94918a5a0053fe2825cc88a0da6e41baabe48db7a4",
+  "leakage_result": "FAIL",
+  "methodology_manifest_sha256": "1604563a0a4516cbe983ef398ad36b6e1daacc8842b7a8daa28812e8ffee958e",
+  "methodology_split_v1_1_sha256": "6e9b3405a21b21f6c59cf99c05822c0d20007d335ef38a7bb5a21cf8f79d5691",
+  "methodology_v1_1_sha256": "e129d7add66d7f4c12aab14811a3d552abf6b603f012eeb75c99c484e0065e66",
+  "output_sha256": "e5202f510b9f9843c16d9509e3fc19042d9c882b6449373b12c3342e4f2f03a5",
+  "predictive_value_claim": "NOT_ESTABLISHED",
+  "protocol": "G-GATE v1.1",
+  "results_sha256": "61f55816b53c57daa9ed183dda246c0b2e713fc1d933c4c59b067a0f19085cff",
+  "seed": 20260813
+}

@@ -6,7 +6,8 @@ use chronosentiment_adapter::reasoning::hypothesis::HypothesisEngine;
 use chronosentiment_adapter::reasoning::decision::{Decision, Opportunity, ConfidenceDecomposition, ExpectedHorizon as DecExpectedHorizon};
 use chronosentiment_adapter::reasoning::strategy::{OpportunityStrategy, PriceRange, Horizon};
 use chronosentiment_adapter::validation::replay_decision::{TemporalFirewall, DecisionReplay};
-use chronosentiment_adapter::validation::outcome::{OutcomeEngine, Horizon as OutcomeHorizon};
+use chronosentiment_adapter::validation::outcome::OutcomeEngine;
+use chronosentiment_adapter::reasoning::strategy::Horizon as OutcomeHorizon;
 use chronosentiment_adapter::validation::calibration::CalibrationEngine;
 use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 use chrono::{Utc, TimeZone};
@@ -38,39 +39,42 @@ fn main() {
     let hypotheses = HypothesisEngine::new().evaluate(&evidence);
     
     let decision = Decision {
-        decision_id: Uuid::new_v4(),
-        evaluation_timestamp: evaluation_time,
-        instrument_id: Uuid::new_v4(),
-        universe: "NSE500".to_string(),
-        market_context_id: None,
-        evidence_ids: vec![],
-        hypothesis_ids: vec![],
-        scenario_ids: vec![],
-        opportunity: Opportunity::Positive,
-        confidence: ConfidenceDecomposition {
-            evidence_quality: 0.8,
-            evidence_agreement: 0.9,
-            historical_reliability: 0.75,
-            data_completeness: 1.0,
-            model_stability: 0.9,
-        },
-        opportunity_score: 85.0,
-        quality_score: 82.0,
-        expected_horizon: DecExpectedHorizon::Medium,
-        replay_context_hash: "ctx_15mar23".to_string(),
-        knowledge_lake_version: "v1".to_string(),
-        evaluation_profile_version: "v1".to_string(),
-        concept_model_version: "v1".to_string(),
-        metric_model_version: "v1".to_string(),
-        evidence_rule_version: "v1".to_string(),
-        assessment_engine_version: "v1".to_string(),
-        hypothesis_engine_version: "v1".to_string(),
-        validation_engine_version: "v1".to_string(),
-        decision_engine_version: "v1".to_string(),
-        scenario_projection_version: "v1".to_string(),
-    };
+    metadata: chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(),
+    decision_id: Uuid::new_v4(),
+    evaluation_timestamp: evaluation_time,
+    instrument_id: Uuid::new_v4(),
+    assessment_id: profile.metadata.artifact_id,
+    universe: "NSE500".to_string(),
+    market_context_id: None,
+    evidence_ids: vec![],
+    hypothesis_ids: vec![],
+    scenario_ids: vec![],
+    opportunity: Opportunity::Positive,
+    confidence: ConfidenceDecomposition {
+        evidence_quality: 0.8,
+        evidence_agreement: 0.9,
+        historical_reliability: 0.75,
+        data_completeness: 1.0,
+        model_stability: 0.9,
+    },
+    opportunity_score: 85.0,
+    quality_score: 82.0,
+    expected_horizon: DecExpectedHorizon::Medium,
+    replay_context_hash: "ctx_15mar23".to_string(),
+    knowledge_lake_version: "v1".to_string(),
+    evaluation_profile_version: "v1".to_string(),
+    concept_model_version: "v1".to_string(),
+    metric_model_version: "v1".to_string(),
+    evidence_rule_version: "v1".to_string(),
+    assessment_engine_version: "v1".to_string(),
+    hypothesis_engine_version: "v1".to_string(),
+    validation_engine_version: "v1".to_string(),
+    decision_engine_version: "v1".to_string(),
+    scenario_projection_version: "v1".to_string(),
+};
     
     let strategy = OpportunityStrategy {
+        metadata: chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(),
         decision_id: decision.decision_id,
         expected_horizon: Horizon::Swing,
         expected_holding_period_days: (8, 15),
@@ -107,7 +111,7 @@ fn main() {
 
     // 3. Outcome Engine
     println!("3. LOOKING FORWARD (OUTCOME ENGINE)");
-    let outcome = OutcomeEngine.measure_outcome(&replay.strategy, &[], evaluation_time);
+    let outcome = OutcomeEngine.measure_outcome(Uuid::new_v4(), &replay.strategy, &chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(), &[], evaluation_time, 5, None);
     println!("   Observation End: {}", outcome.observation_end_timestamp);
     println!("   Outcome Return: {:.1}%", outcome.outcome_return * 100.0);
     println!("   Maximum Favourable Excursion (MFE): {:.1}%", outcome.mfe * 100.0);

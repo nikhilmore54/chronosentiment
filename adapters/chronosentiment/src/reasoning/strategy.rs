@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::reasoning::decision::{Decision, Opportunity};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Horizon {
     Intraday,
     Swing,
@@ -10,14 +11,15 @@ pub enum Horizon {
     Strategic,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PriceRange {
     pub min: f64,
     pub max: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpportunityStrategy {
+    pub metadata: crate::repository::knowledge::ArtifactMetadata,
     pub decision_id: Uuid,
     pub expected_horizon: Horizon,
     pub expected_holding_period_days: (u32, u32),
@@ -50,7 +52,14 @@ impl StrategyEngine {
         let stop_min = current_close - (atr * 1.1);
         let stop_max = current_close - (atr * 0.9);
         
+        let mut metadata = crate::repository::knowledge::ArtifactMetadata::mock();
+        metadata.artifact_type = crate::repository::knowledge::ArtifactType::Strategy;
+        metadata.evaluation_timestamp = decision.evaluation_timestamp;
+        // Link to decision
+        metadata.lineage.parent_artifacts.push(decision.decision_id);
+        
         Some(OpportunityStrategy {
+            metadata,
             decision_id: decision.decision_id,
             expected_horizon: Horizon::Swing,
             expected_holding_period_days: (10, 20),
@@ -63,5 +72,17 @@ impl StrategyEngine {
             risk_reward_ratio: 2.0,
             confidence: 0.5,
         })
+    }
+}
+
+impl crate::repository::knowledge::KnowledgeArtifact for OpportunityStrategy {
+    fn metadata(&self) -> &crate::repository::knowledge::ArtifactMetadata {
+        &self.metadata
+    }
+
+    fn instrument_id(&self) -> Option<Uuid> {
+        // Strategy doesn't natively carry instrument_id in this struct yet, we can't easily return it here.
+        // Wait, Strategy applies to an instrument, but it's bound via Decision.
+        None 
     }
 }

@@ -38,9 +38,11 @@ impl ConfidenceDecomposition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Decision {
+    pub metadata: crate::repository::knowledge::ArtifactMetadata,
     pub decision_id: Uuid,
     pub evaluation_timestamp: DateTime<Utc>,
     pub instrument_id: Uuid,
+    pub assessment_id: Uuid,
     pub universe: String,
     
     pub market_context_id: Option<Uuid>,
@@ -90,10 +92,18 @@ impl DecisionEngine {
             }
         }
         
+        let decision_id = Uuid::new_v4();
+        let mut metadata = crate::repository::knowledge::ArtifactMetadata::mock();
+        metadata.artifact_type = crate::repository::knowledge::ArtifactType::Decision;
+        metadata.evaluation_timestamp = eval_dt;
+        metadata.artifact_id = decision_id;
+        
         Decision {
-            decision_id: Uuid::new_v4(),
+            metadata,
+            decision_id,
             evaluation_timestamp: eval_dt,
             instrument_id,
+            assessment_id: profile.metadata.artifact_id,
             universe: "Nifty50".to_string(),
             market_context_id: None,
             evidence_ids: vec![],
@@ -122,5 +132,15 @@ impl DecisionEngine {
             decision_engine_version: "baseline-v1.0".to_string(),
             scenario_projection_version: "baseline-v1.0".to_string(),
         }
+    }
+}
+
+impl crate::repository::knowledge::KnowledgeArtifact for Decision {
+    fn metadata(&self) -> &crate::repository::knowledge::ArtifactMetadata {
+        &self.metadata
+    }
+
+    fn instrument_id(&self) -> Option<Uuid> {
+        Some(self.instrument_id)
     }
 }

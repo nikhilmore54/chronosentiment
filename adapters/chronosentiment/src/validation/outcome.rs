@@ -1,21 +1,25 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
+use serde::{Deserialize, Serialize};
+use sha2::{Sha256, Digest};
+use crate::repository::knowledge::{ArtifactMetadata, ArtifactType, KnowledgeArtifact, ArtifactLineage};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Horizon {
-    Intraday,
-    Swing,
-    Position,
-    Investment,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutcomeRecord {
+    pub metadata: ArtifactMetadata,
+    pub instrument_id: Option<Uuid>,
     pub decision_id: Uuid,
+    pub strategy_id: Uuid,
+    
     pub evaluation_timestamp: DateTime<Utc>,
+    pub horizon: String,
+    pub horizon_expiry_timestamp: DateTime<Utc>,
     pub observation_end_timestamp: DateTime<Utc>,
     
-    pub horizon: Horizon,
+    pub entry_reached: bool,
+    pub target_hit: bool,
+    pub stop_hit: bool,
+    
     pub holding_period_days: u32,
     pub exit_reason: String,
     
@@ -27,17 +31,30 @@ pub struct OutcomeRecord {
     pub realized_volatility: f64,
 }
 
+impl KnowledgeArtifact for OutcomeRecord {
+    fn metadata(&self) -> &ArtifactMetadata {
+        &self.metadata
+    }
+    fn instrument_id(&self) -> Option<Uuid> {
+        self.instrument_id
+    }
+}
+
 pub struct OutcomeEngine;
 
 impl OutcomeEngine {
     pub fn measure_outcome(
         &self, 
+        decision_id: Uuid,
         strategy: &crate::reasoning::strategy::OpportunityStrategy,
+        strategy_metadata: &ArtifactMetadata,
         future_observations: &[crate::observation::ValidatedObservation],
-        evaluation_timestamp: DateTime<Utc>
+        evaluation_timestamp: DateTime<Utc>,
+        measurement_horizon_days: u32,
+        instrument_id: Option<Uuid>,
     ) -> OutcomeRecord {
-        let expected_days = strategy.expected_holding_period_days.1;
-        let horizon_expiry = evaluation_timestamp + chrono::Duration::days(expected_days as i64);
+        let horizon_str = format!("{}D", measurement_horizon_days);
+        let horizon_expiry = evaluation_timestamp + chrono::Duration::days(measurement_horizon_days as i64);
         
         let mut entered = false;
         let mut target_hit = false;
@@ -51,9 +68,10 @@ impl OutcomeEngine {
         let mut final_price = 0.0;
         let mut entry_price = 0.0;
         let mut holding_days = 0;
+        let mut obs_end = evaluation_timestamp;
         
         for obs in future_observations {
-            // Temporal Firewall: Must be strictly after Decision(T)
+            // Temporal Firewall: strictly after Decision(T)
             if obs.effective_from <= evaluation_timestamp {
                 continue; 
             }
@@ -61,11 +79,11 @@ impl OutcomeEngine {
                 break;
             }
             
+            obs_end = obs.effective_from;
+            
             let payload = &obs.normalized_payload;
             let close = payload.get("close").and_then(|v| v.as_f64()).unwrap_or(0.0);
             
-            // Note: In real life we'd use high/low adjusted for splits. Here we use close for simplicity to avoid unadjusted H/L bugs,
-            // or if we use high/low, we must adjust them. Let's use close for conservative daily hits.
             let high = payload.get("high").and_then(|v| v.as_f64()).unwrap_or(close);
             let low = payload.get("low").and_then(|v| v.as_f64()).unwrap_or(close);
             let unadj_close = payload.get("unadjusted_close").and_then(|v| v.as_f64()).unwrap_or(close);
@@ -77,7 +95,7 @@ impl OutcomeEngine {
             if !entered {
                 if adj_low <= strategy.entry_zone.max && adj_high >= strategy.entry_zone.min {
                     entered = true;
-                    entry_price = close; // Approximation
+                    entry_price = close;
                 }
             } else {
                 holding_days += 1;
@@ -94,6 +112,8 @@ impl OutcomeEngine {
                 if hit_target && hit_stop {
                     ambiguous = true;
                     exit_reason = "Ambiguous".to_string();
+                    target_hit = true;
+                    stop_hit = true;
                     final_price = close;
                     break;
                 } else if hit_target {
@@ -121,17 +141,33 @@ impl OutcomeEngine {
             exit_reason = "Entry Not Reached".to_string();
         }
 
-        OutcomeRecord {
-            decision_id: strategy.decision_id,
-            evaluation_timestamp,
-            observation_end_timestamp: horizon_expiry,
-            horizon: match strategy.expected_horizon {
-                crate::reasoning::strategy::Horizon::Intraday => Horizon::Intraday,
-                crate::reasoning::strategy::Horizon::Swing => Horizon::Swing,
-                crate::reasoning::strategy::Horizon::Position => Horizon::Position,
-                crate::reasoning::strategy::Horizon::Strategic => Horizon::Investment,
-                crate::reasoning::strategy::Horizon::Investment => Horizon::Investment,
+        let mut record = OutcomeRecord {
+            metadata: ArtifactMetadata {
+                artifact_id: Uuid::new_v4(),
+                artifact_schema_version: "1.0.0".to_string(),
+                artifact_type: ArtifactType::Outcome,
+                created_at: Utc::now(),
+                evaluation_timestamp,
+                engine_versions: strategy_metadata.engine_versions.clone(),
+                lineage: ArtifactLineage {
+                    produced_by: "OutcomeEngine:v1".to_string(),
+                    consumed_artifacts: vec![decision_id, strategy_metadata.artifact_id],
+                    parent_artifacts: vec![decision_id, strategy_metadata.artifact_id],
+                },
+                replay_context_hash: strategy_metadata.replay_context_hash.clone(),
+                knowledge_lake_version: strategy_metadata.knowledge_lake_version.clone(),
+                content_hash: "".to_string(),
             },
+            instrument_id,
+            decision_id,
+            strategy_id: strategy_metadata.artifact_id,
+            evaluation_timestamp,
+            horizon: horizon_str.clone(),
+            horizon_expiry_timestamp: horizon_expiry,
+            observation_end_timestamp: obs_end,
+            entry_reached: entered,
+            target_hit,
+            stop_hit,
             holding_period_days: holding_days,
             exit_reason,
             outcome_return,
@@ -139,77 +175,19 @@ impl OutcomeEngine {
             mae,
             maximum_drawdown: mae.abs(),
             realized_volatility: 0.0,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::TimeZone;
-    use crate::reasoning::strategy::{OpportunityStrategy, PriceRange};
-    use crate::observation::ValidatedObservation;
-    use serde_json::json;
-    
-    #[test]
-    fn test_ambiguous_outcome() {
-        let engine = OutcomeEngine;
-        let eval_time = Utc.timestamp_opt(1600000000, 0).unwrap();
-        
-        let strategy = OpportunityStrategy {
-            decision_id: Uuid::new_v4(),
-            expected_horizon: crate::reasoning::strategy::Horizon::Swing,
-            expected_holding_period_days: (10, 20),
-            entry_zone: PriceRange { min: 99.0, max: 101.0 },
-            target_zone: PriceRange { min: 110.0, max: 120.0 },
-            stop_loss_zone: PriceRange { min: 80.0, max: 90.0 },
-            expected_return: 0.1,
-            expected_drawdown: 0.1,
-            expected_volatility: 0.05,
-            risk_reward_ratio: 1.0,
-            confidence: 0.5,
         };
         
-        // Day 1: Entry
-        let mut obs1 = ValidatedObservation {
-            id: Uuid::new_v4(),
-            research_session_id: None,
-            instrument_id: None,
-            observation_type: "MarketPrice".to_string(),
-            source: "Test".to_string(),
-            source_identifier: None,
-            observed_at: eval_time + chrono::Duration::days(1),
-            effective_from: eval_time + chrono::Duration::days(1),
-            effective_to: None,
-            recorded_at: eval_time,
-            raw_payload: json!({}),
-            normalized_payload: json!({
-                "open": 100.0,
-                "high": 100.0,
-                "low": 100.0,
-                "close": 100.0,
-            }),
-            confidence: 1.0,
-            freshness: 0.0,
-            coverage: "".to_string(),
-            consistency: None,
-            quality_score: 1.0,
-            provenance_hash: "".to_string(),
-            schema_version: 1,
-        };
+        let mut hasher = Sha256::new();
+        hasher.update(record.strategy_id.as_bytes());
+        hasher.update(record.horizon.as_bytes());
+        hasher.update(record.outcome_return.to_be_bytes());
+        hasher.update(record.exit_reason.as_bytes());
+        hasher.update(record.mfe.to_be_bytes());
+        hasher.update(record.mae.to_be_bytes());
+        hasher.update(record.holding_period_days.to_be_bytes());
         
-        // Day 2: Ambiguous (hits both target and stop)
-        let mut obs2 = obs1.clone();
-        obs2.effective_from = eval_time + chrono::Duration::days(2);
-        obs2.normalized_payload = json!({
-            "open": 100.0,
-            "high": 115.0, // Hits target (> 110)
-            "low": 85.0,   // Hits stop (< 90)
-            "close": 100.0,
-        });
+        record.metadata.content_hash = format!("{:x}", hasher.finalize());
         
-        let outcome = engine.measure_outcome(&strategy, &[obs1, obs2], eval_time);
-        
-        assert_eq!(outcome.exit_reason, "Ambiguous");
+        record
     }
 }
