@@ -1,6 +1,7 @@
 use chronosentiment_adapter::decision_support::backtest::populate_ledger_from_assessment_schedule;
 use chronosentiment_adapter::decision_support::outcome::OutcomeEngine;
 use chronosentiment_adapter::decision_support::performance::{measure_performance, SCHEMA_VERSION};
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 
 fn forbidden_db(name: &str) -> bool {
@@ -29,7 +30,7 @@ async fn b4_performance_is_deterministic_and_keeps_no_trade_separate()
 
     let adapter = ReplayAdapter::new(pool.clone());
     let ledger =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION).await?;
+        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
     let outcomes = OutcomeEngine::new(pool).measure_ledger(&ledger).await?;
     let ledger_hash = ledger.identity_hash();
     let outcome_hash = outcomes.identity_hash();

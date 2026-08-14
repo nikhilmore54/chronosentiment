@@ -2,6 +2,7 @@ use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::backtest::{
     run_replay_backtest, DecisionLedger, ReplayTick,
 };
+use chronosentiment_adapter::decision_support::policy::{BaselineTrendMappingPolicy, DecisionPolicy};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, DecideAt, ReplayAssessment, ReplayError, ReplayInputs, ReplayObservation,
     UNFROZEN_ENGINE_VERSION,
@@ -47,8 +48,10 @@ impl DecideAt for InMemoryLake {
         as_of: chrono::DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<chronosentiment_adapter::decision_support::TradingDecision, ReplayError> {
-        decide_from_inputs(ReplayInputs {
+        decide_from_inputs(
+            ReplayInputs {
             instrument_id,
             as_of,
             engine_version: engine_version.to_string(),
@@ -60,7 +63,9 @@ impl DecideAt for InMemoryLake {
                 id: Uuid::from_u128(11),
                 effective_from: t(31),
             }],
-        })
+        },
+            policy,
+        )
     }
 }
 
@@ -82,10 +87,10 @@ async fn iterates_ticks_into_append_only_ledger() {
             instrument_id,
         },
     ];
-    let a = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION)
+    let a = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await
         .unwrap();
-    let b = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION)
+    let b = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await
         .unwrap();
 
@@ -109,7 +114,7 @@ async fn later_ticks_do_not_mutate_earlier_records() {
         as_of: t(31),
         instrument_id,
     }];
-    let prefix = run_replay_backtest(&adapter, &first_tick, UNFROZEN_ENGINE_VERSION)
+    let prefix = run_replay_backtest(&adapter, &first_tick, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await
         .unwrap();
     let all = run_replay_backtest(
@@ -125,6 +130,7 @@ async fn later_ticks_do_not_mutate_earlier_records() {
             },
         ],
         UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
     )
     .await
     .unwrap();
@@ -139,7 +145,7 @@ async fn ledger_is_append_only_sequence() {
     let instrument_id = Uuid::from_u128(7);
     let adapter = lake(instrument_id);
     let decision = adapter
-        .decide_at(t(31), instrument_id, UNFROZEN_ENGINE_VERSION)
+        .decide_at(t(31), instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await
         .unwrap();
     let mut ledger = DecisionLedger::new(UNFROZEN_ENGINE_VERSION);

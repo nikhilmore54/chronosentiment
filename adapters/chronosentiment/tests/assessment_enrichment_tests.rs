@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use chrono::{TimeZone, Utc};
 use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 use chronosentiment_adapter::decision_support::factor_availability::report_factor_availability;
-use chronosentiment_adapter::decision_support::policy::{DecisionPolicy, TrendMappingPolicy};
+use chronosentiment_adapter::decision_support::policy::{DecisionPolicy, BaselineTrendMappingPolicy};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, ReplayAssessment, ReplayInputs, TREND_MAPPING_RULE,
 };
@@ -106,7 +106,7 @@ fn trend_mapping_policy_is_unchanged_when_momentum_is_present() {
         AssessmentEngine.assess_at(&full_metrics(), &ENRICHMENT_CONCEPTS, t(), Some(instrument_id));
     let id = Uuid::from_u128(1);
     profile.metadata.artifact_id = id;
-    let decision = TrendMappingPolicy.decide(&profile, t());
+    let decision = BaselineTrendMappingPolicy.decide(&profile, t());
     assert_eq!(decision.action, DecisionAction::Long);
     assert_eq!(decision.mapping_rule, TREND_MAPPING_RULE);
     let vol = decision
@@ -117,7 +117,8 @@ fn trend_mapping_policy_is_unchanged_when_momentum_is_present() {
     assert!(vol.present);
     assert!(vol.direction.is_none());
 
-    let trading = decide_from_inputs(ReplayInputs {
+    let trading = decide_from_inputs(
+        ReplayInputs {
         instrument_id,
         as_of: t(),
         engine_version: "unfrozen-dev".to_string(),
@@ -130,7 +131,9 @@ fn trend_mapping_policy_is_unchanged_when_momentum_is_present() {
         }],
         lake_decisions: vec![],
         observations: vec![],
-    })
+    },
+        &BaselineTrendMappingPolicy,
+    )
     .unwrap();
     assert_eq!(trading.action, DecisionAction::Long);
     assert!(trading.evidence.diagnostics.contains("Consumed concepts: Trend only"));

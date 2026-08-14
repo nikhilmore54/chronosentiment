@@ -14,7 +14,7 @@ use chronosentiment_adapter::decision_support::outcome::{
     measure_record, DecisionOutcomeBundle, LakeOutcomeRow, OutcomeReport, HORIZON_DAYS,
 };
 use chronosentiment_adapter::decision_support::performance::measure_performance;
-use chronosentiment_adapter::decision_support::policy::{DecisionPolicy, TrendMappingPolicy};
+use chronosentiment_adapter::decision_support::policy::{BaselineTrendMappingPolicy, DecisionPolicy};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, DecideAt, ReplayAssessment, ReplayError, ReplayInputs, ReplayLakeDecision,
     ReplayObservation, UNFROZEN_ENGINE_VERSION,
@@ -88,7 +88,7 @@ fn inputs_from(mut profile: AssessmentProfile) -> ReplayInputs {
 }
 
 fn decide(metrics: &MetricReport) -> TradingDecision {
-    decide_from_inputs(inputs_from(profile_at(metrics, t()))).unwrap()
+    decide_from_inputs(inputs_from(profile_at(metrics, t())), &BaselineTrendMappingPolicy).unwrap()
 }
 
 fn synthetic_bars() -> Vec<YahooHistoricalBar> {
@@ -169,7 +169,7 @@ fn temp_001_future_observation_leaves_decision_bit_identical() {
         id: Uuid::from_u128(99),
         effective_from: t() + chrono::Duration::days(1),
     });
-    let attacked = decide_from_inputs(dirty).unwrap();
+    let attacked = decide_from_inputs(dirty, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(identity_tuple(&clean), identity_tuple(&attacked));
     assert_eq!(clean.action, DecisionAction::Long);
 }
@@ -191,8 +191,8 @@ fn temp_002_future_bar_does_not_enter_factor_or_decision() {
     let (dirty_p, _, max_from) = assess_from_bars_at_t(&attacked, t(), inst());
     assert!(max_from.unwrap() <= t());
     assert_eq!(clean_p.factor_status, dirty_p.factor_status);
-    let a = decide_from_inputs(inputs_from(clean_p)).unwrap();
-    let b = decide_from_inputs(inputs_from(dirty_p)).unwrap();
+    let a = decide_from_inputs(inputs_from(clean_p), &BaselineTrendMappingPolicy).unwrap();
+    let b = decide_from_inputs(inputs_from(dirty_p), &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(a.action, b.action);
     assert_eq!(a.decision_id, b.decision_id);
 }
@@ -207,7 +207,7 @@ fn temp_003_future_assessment_cannot_flip_action() {
         signature_hash: future.to_hash(),
         profile: future,
     });
-    let d = decide_from_inputs(inputs).unwrap();
+    let d = decide_from_inputs(inputs, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(d.action, DecisionAction::Long);
 }
 
@@ -219,7 +219,7 @@ fn temp_004_future_lake_decision_is_not_consumed() {
         id: future_id,
         evaluation_timestamp: t() + chrono::Duration::days(1),
     });
-    let d = decide_from_inputs(inputs).unwrap();
+    let d = decide_from_inputs(inputs, &BaselineTrendMappingPolicy).unwrap();
     assert!(!d.lineage.consumed_artifact_ids.contains(&future_id));
 }
 
@@ -315,7 +315,7 @@ fn fact_005_missing_trend_is_not_invented_bullish() {
         .unwrap();
     assert_eq!(trend.availability, FactorAvailability::Unavailable);
     assert!(!p.assessments.iter().any(|a| a.concept == Concept::Trend));
-    let d = TrendMappingPolicy.decide(&p, t());
+    let d = BaselineTrendMappingPolicy.decide(&p, t());
     assert_eq!(d.action, DecisionAction::NoTrade);
 }
 
@@ -348,9 +348,9 @@ fn dec_003_neutral_and_absent_trend_are_no_trade() {
         .find(|a| a.concept == Concept::Trend)
         .unwrap()
         .direction = Direction::Neutral;
-    assert_eq!(TrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
+    assert_eq!(BaselineTrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
     p.assessments.retain(|a| a.concept != Concept::Trend);
-    assert_eq!(TrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
+    assert_eq!(BaselineTrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
 }
 
 #[test]
@@ -388,6 +388,7 @@ fn lin_001_missing_parent_fails_contract() {
     };
     let draft = DecisionDraft {
         engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
+        policy_name: "baseline.trend_mapping.v0".to_string(),
         instrument_id: inst(),
         as_of_timestamp: t(),
         action: DecisionAction::Long,
@@ -432,8 +433,10 @@ impl DecideAt for Lake {
         as_of: chrono::DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<TradingDecision, ReplayError> {
-        decide_from_inputs(ReplayInputs {
+        decide_from_inputs(
+            ReplayInputs {
             instrument_id,
             as_of,
             engine_version: engine_version.to_string(),
@@ -442,7 +445,9 @@ impl DecideAt for Lake {
             assessments: self.assessments.clone(),
             lake_decisions: vec![],
             observations: vec![],
-        })
+        },
+            policy,
+        )
     }
 }
 
@@ -464,6 +469,7 @@ async fn led_001_later_tick_does_not_mutate_earlier_row() {
             instrument_id: inst(),
         }],
         UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
     )
     .await
     .unwrap();
@@ -480,6 +486,7 @@ async fn led_001_later_tick_does_not_mutate_earlier_row() {
             },
         ],
         UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
     )
     .await
     .unwrap();
@@ -538,9 +545,9 @@ fn out_001_and_perf_001_measurement_cannot_write_upward() {
 #[test]
 fn adv_001_created_at_does_not_change_identity() {
     let mut p = profile_at(&full_metrics(true), t());
-    let a = decide_from_inputs(inputs_from(p.clone())).unwrap();
+    let a = decide_from_inputs(inputs_from(p.clone()), &BaselineTrendMappingPolicy).unwrap();
     p.metadata.created_at = t() + chrono::Duration::days(400);
-    let b = decide_from_inputs(inputs_from(p)).unwrap();
+    let b = decide_from_inputs(inputs_from(p), &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(a.decision_id, b.decision_id);
 }
 
@@ -552,7 +559,7 @@ fn adv_002_other_observation_does_not_change_decision_id() {
         id: Uuid::from_u128(77),
         effective_from: t() - chrono::Duration::days(3),
     });
-    let attacked = decide_from_inputs(dirty).unwrap();
+    let attacked = decide_from_inputs(dirty, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(clean.action, attacked.action);
     assert_eq!(clean.decision_id, attacked.decision_id);
 }
@@ -570,8 +577,8 @@ fn adv_003_shuffled_assessments_are_identical() {
     });
     let mut b = a.clone();
     b.assessments.reverse();
-    let da = decide_from_inputs(a).unwrap();
-    let db = decide_from_inputs(b).unwrap();
+    let da = decide_from_inputs(a, &BaselineTrendMappingPolicy).unwrap();
+    let db = decide_from_inputs(b, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(da.decision_id, db.decision_id);
 }
 
@@ -595,7 +602,7 @@ fn adv_004_duplicate_observation_does_not_silently_alter_metrics_or_decision() {
     let clean = decide(&full_metrics(true));
     let mut dirty = inputs_from(profile_at(&full_metrics(true), t()));
     dirty.observations.push(dirty.observations[0].clone());
-    let attacked = decide_from_inputs(dirty).unwrap();
+    let attacked = decide_from_inputs(dirty, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(clean.decision_id, attacked.decision_id);
 }
 
@@ -606,17 +613,17 @@ fn adv_005_one_at_a_time_identity_changes() {
     later.as_of = t() + chrono::Duration::days(1);
     later.assessments[0].evaluation_timestamp = later.as_of;
     later.assessments[0].profile.metadata.evaluation_timestamp = later.as_of;
-    assert_ne!(base.decision_id, decide_from_inputs(later).unwrap().decision_id);
+    assert_ne!(base.decision_id, decide_from_inputs(later, &BaselineTrendMappingPolicy).unwrap().decision_id);
 
     let mut other_inst = inputs_from(profile_at(&full_metrics(true), t()));
     other_inst.instrument_id = Uuid::from_u128(99);
-    assert_ne!(base.decision_id, decide_from_inputs(other_inst).unwrap().decision_id);
+    assert_ne!(base.decision_id, decide_from_inputs(other_inst, &BaselineTrendMappingPolicy).unwrap().decision_id);
 
     let mut other_engine = inputs_from(profile_at(&full_metrics(true), t()));
     other_engine.engine_version = "unfrozen-dev-2".into();
     assert_ne!(
         base.decision_id,
-        decide_from_inputs(other_engine).unwrap().decision_id
+        decide_from_inputs(other_engine, &BaselineTrendMappingPolicy).unwrap().decision_id
     );
 
     let bear = decide(&full_metrics(false));

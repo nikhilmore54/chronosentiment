@@ -14,6 +14,7 @@ use chronosentiment_adapter::decision_support::forward::{write_progress_report, 
 use chronosentiment_adapter::decision_support::forward_tick::{
     decide_latest_session, instrument_id_for, latest_as_of, price_bars_for, DailyBar, DEFAULT_TICKERS,
 };
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::UNFROZEN_ENGINE_VERSION;
 use chronosentiment_adapter::ingestion::provider::{MarketDataProvider, TimeRange};
 use chronosentiment_adapter::ingestion::yahoo::YahooProvider;
@@ -110,7 +111,7 @@ async fn run_tick(session: &str, now: DateTime<Utc>) -> Result<(), Box<dyn std::
         };
         let prices = price_bars_for(ticker, &bars, now);
         journal.persist_prices(&prices)?;
-        let decision = decide_latest_session(ticker, &bars, now)?;
+        let decision = decide_latest_session(ticker, &bars, now, &BaselineTrendMappingPolicy)?;
         let before = journal.load_ledger()?.records.len();
         let record = journal.persist(decision)?;
         let is_new = journal.load_ledger()?.records.len() > before;

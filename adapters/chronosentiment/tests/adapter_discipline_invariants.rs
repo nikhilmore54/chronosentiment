@@ -1,7 +1,4 @@
-//! CS-P-CLEAN-001 repository invariants.
-//!
-//! These are build/source checks, not a new experiment.
-//! Implicit `TrendMappingPolicy` default is CS-P-CLEAN-002 (PR-2); not asserted here.
+//! CS-P-CLEAN-001 / CS-P-CLEAN-002 repository invariants.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -163,4 +160,35 @@ fn product_src_bin_contains_only_csp_binaries() {
         );
     }
     assert!(!names.is_empty(), "product CS-P binaries must remain in src/bin");
+}
+
+#[test]
+fn product_decide_paths_require_an_explicit_policy_argument() {
+    let replay = read("src/decision_support/replay.rs");
+    assert!(
+        !replay.contains("fn decide_from_inputs(inputs: ReplayInputs)"),
+        "one-argument decide_from_inputs is the implicit-default hole"
+    );
+    assert!(
+        replay.contains("policy: &P") || replay.contains("policy: &dyn DecisionPolicy"),
+        "decide_from_inputs must take a policy"
+    );
+    assert!(
+        replay.contains("policy: &dyn DecisionPolicy"),
+        "DecideAt::decide_at must take &dyn DecisionPolicy"
+    );
+    assert!(
+        !replay.contains("TrendMappingPolicy"),
+        "old implicit TrendMappingPolicy name must not remain on the replay path"
+    );
+    let backtest = read("src/decision_support/backtest.rs");
+    assert!(
+        backtest.contains("policy: &dyn DecisionPolicy"),
+        "backtest must thread an explicit policy"
+    );
+    let forward = read("src/decision_support/forward.rs");
+    assert!(
+        forward.contains("policy: &P") || forward.contains("policy: &dyn DecisionPolicy"),
+        "forward decide must take a policy"
+    );
 }

@@ -1,6 +1,7 @@
 use chrono::Duration;
 use chronosentiment_adapter::decision_support::backtest::populate_ledger_from_assessment_schedule;
 use chronosentiment_adapter::decision_support::outcome::OutcomeEngine;
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 use uuid::Uuid;
 
@@ -30,7 +31,7 @@ async fn b4_outcomes_are_deterministic_and_ignore_future_rows()
 
     let adapter = ReplayAdapter::new(pool.clone());
     let ledger =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION).await?;
+        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
     let engine = OutcomeEngine::new(pool.clone());
     let first = engine.measure_ledger(&ledger).await?;
     let second = engine.measure_ledger(&ledger).await?;

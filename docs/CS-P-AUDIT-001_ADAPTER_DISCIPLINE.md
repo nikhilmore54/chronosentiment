@@ -1,7 +1,7 @@
 # CS-P-AUDIT-001 — ChronoSentiment Adapter Architecture & Discipline Audit
 
 **Document type:** Read-only architecture inventory  
-**Status:** Accepted — PR-1 (CS-P-CLEAN-001) executed; PR-2 not started  
+**Status:** Accepted — PR-1 (CS-P-CLEAN-001) and PR-2 (CS-P-CLEAN-002) executed; PR-3 / CS-P-006 not started  
 **Date:** 2026-08-14  
 **Scope:** `adapters/chronosentiment` (modules, binaries, tests, repositories, migrations)  
 **Does not:** modify code, delete assets, create a candidate policy, run a backtest, reopen G-GATE, freeze v1.0  

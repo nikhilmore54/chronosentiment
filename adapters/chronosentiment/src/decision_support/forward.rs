@@ -1,7 +1,7 @@
 //! Forward/Paper adapter and append-only journal (CS-P-003).
 //!
 //! Observation system only. No broker, no capital, no tuning.
-//! Decision logic is `decide_from_inputs` (same mapping as replay).
+//! Decision logic is `decide_from_inputs` with an explicit `DecisionPolicy`.
 //! Outcomes are measured from raw prices after T, not B4 lake rows.
 
 use std::fs::{self, OpenOptions};
@@ -16,6 +16,7 @@ use super::backtest::{DecisionLedger, LedgerRecord};
 use super::observation_outcome::{measure_ledger_from_prices, PriceBar};
 use super::outcome::OutcomeReport;
 use super::performance::{measure_performance, PerformanceReport};
+use super::policy::DecisionPolicy;
 use super::replay::{decide_from_inputs, DecideAt, ReplayError, ReplayInputs, UNFROZEN_ENGINE_VERSION};
 use super::TradingDecision;
 
@@ -51,21 +52,25 @@ impl DecideAt for ForwardSnapshot {
         t: DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<TradingDecision, ReplayError> {
         let mut inputs = self.inputs.clone();
         inputs.as_of = t;
         inputs.instrument_id = instrument_id;
         inputs.engine_version = engine_version.to_string();
         inputs.produced_by = FORWARD_PRODUCER.to_string();
-        decide_from_inputs(inputs)
+        decide_from_inputs(inputs, policy)
     }
 }
 
-pub fn decide_forward(mut inputs: ReplayInputs) -> Result<TradingDecision, ReplayError> {
+pub fn decide_forward<P: DecisionPolicy + ?Sized>(
+    mut inputs: ReplayInputs,
+    policy: &P,
+) -> Result<TradingDecision, ReplayError> {
     if inputs.produced_by.trim().is_empty() {
         inputs.produced_by = FORWARD_PRODUCER.to_string();
     }
-    decide_from_inputs(inputs)
+    decide_from_inputs(inputs, policy)
 }
 
 /// Append-only JSONL journal. Never rewrites a prior decision row.

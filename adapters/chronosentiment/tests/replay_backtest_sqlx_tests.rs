@@ -1,4 +1,5 @@
 use chronosentiment_adapter::decision_support::backtest::populate_ledger_from_assessment_schedule;
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 
 fn forbidden_db(name: &str) -> bool {
@@ -30,9 +31,9 @@ async fn b4_schedule_populates_deterministic_append_only_ledger()
 
     let adapter = ReplayAdapter::new(pool);
     let first =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION).await?;
+        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
     let second =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION).await?;
+        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
 
     assert!(!first.records.is_empty(), "B4 schedule must not be empty");
     assert_eq!(first.records.len(), second.records.len());

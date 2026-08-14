@@ -1,7 +1,10 @@
-//! Pluggable decision policy. Default is the existing Trend map.
+//! Pluggable decision policy.
 //!
-//! A later candidate policy is a new documented type, not a silent rewrite of this one.
-//! Policy emits action + diagnostics only. Identity, lineage, and temporal firewall stay in the adapter.
+//! ChronoSentiment evaluates a caller-supplied `DecisionPolicy`. It does not
+//! invent or silently select one. Coralys may later supply a discovered
+//! artifact that implements this trait.
+//!
+//! `BaselineTrendMappingPolicy` is a historical fixture, not a promoted strategy.
 
 use chrono::{DateTime, Utc};
 
@@ -10,6 +13,7 @@ use crate::reasoning::assessment::{
     AssessmentProfile, Direction, FactorAvailability, FactorStatus,
 };
 
+pub const BASELINE_TREND_MAPPING_POLICY_NAME: &str = "baseline.trend_mapping.v0";
 pub const TREND_MAPPING_RULE: &str =
     "Trend.Bullish→LONG; Trend.Bearish→SHORT; Trend.other→NO_TRADE; Trend.absent→NO_TRADE";
 
@@ -31,12 +35,16 @@ pub trait DecisionPolicy: Send + Sync {
     fn decide(&self, assessment: &AssessmentProfile, as_of: DateTime<Utc>) -> PolicyDecision;
 }
 
-/// Current product behavior. Not Decision Engine v1.0. Not a scoring formula.
-pub struct TrendMappingPolicy;
+/// Historical/product baseline fixture — not a promoted trading policy.
+///
+/// Reproducible only when the caller selects it explicitly. Not Decision Engine
+/// v1.0. Not a Coralys-discovered candidate. Assessment numeric scores are not
+/// treated as calibrated decision confidence.
+pub struct BaselineTrendMappingPolicy;
 
-impl DecisionPolicy for TrendMappingPolicy {
+impl DecisionPolicy for BaselineTrendMappingPolicy {
     fn name(&self) -> &'static str {
-        "trend_mapping_v0"
+        BASELINE_TREND_MAPPING_POLICY_NAME
     }
 
     fn decide(&self, assessment: &AssessmentProfile, _as_of: DateTime<Utc>) -> PolicyDecision {
@@ -129,14 +137,15 @@ fn factors_from_profile(profile: &AssessmentProfile) -> Vec<EvidenceFactor> {
             existing.present = true;
             existing.direction = Some(format!("{:?}", a.direction));
             existing.strength = a.strength.as_ref().map(|s| format!("{s:?}"));
-            existing.assessment_confidence = Some(a.confidence);
+            // Fabricated assessment scores (e.g. 0.82) are not product evidence.
+            existing.assessment_confidence = None;
         } else {
             out.push(EvidenceFactor {
                 concept: name,
                 present: true,
                 direction: Some(format!("{:?}", a.direction)),
                 strength: a.strength.as_ref().map(|s| format!("{s:?}")),
-                assessment_confidence: Some(a.confidence),
+                assessment_confidence: None,
             });
         }
     }

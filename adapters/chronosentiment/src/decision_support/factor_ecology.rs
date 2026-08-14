@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, Datelike, Utc};
 use serde::Serialize;
 
-use crate::decision_support::policy::{DecisionPolicy, TrendMappingPolicy};
+use crate::decision_support::policy::{BaselineTrendMappingPolicy, DecisionPolicy};
 use crate::decision_support::DecisionAction;
 use crate::metrics::concepts::Concept;
 use crate::reasoning::assessment::{AssessmentProfile, FactorAvailability};
@@ -110,7 +110,7 @@ pub fn row_from_profile(
         .find(|s| s.concept == Concept::Volatility)
         .map(|s| s.availability == FactorAvailability::Available)
         .unwrap_or(false);
-    let action = TrendMappingPolicy.decide(profile, profile.metadata.evaluation_timestamp);
+    let action = BaselineTrendMappingPolicy.decide(profile, profile.metadata.evaluation_timestamp);
     let action = match action.action {
         DecisionAction::Long => "LONG",
         DecisionAction::Short => "SHORT",
@@ -265,7 +265,7 @@ pub fn analyze(rows: &[EcologyRow]) -> FactorEcologyReport {
 fn design_constraints(rows: &[EcologyRow]) -> Vec<String> {
     let mut out = vec![
         "Specify the candidate policy before evaluating it. Do not search thresholds on these outcomes.".into(),
-        "TrendMappingPolicy remains the live default until a candidate is frozen as a new version.".into(),
+        "BaselineTrendMappingPolicy is an explicit fixture, not a promoted ChronoSentiment strategy.".into(),
         "NO_TRADE must be an explicit confluence miss, not an accident of missing Trend.".into(),
         "Volatility may be used only as a magnitude available at T (atr_14). Do not invent High/Low.".into(),
         "atr_14 is in price units and is not comparable across instruments; do not use a global ATR cutoff.".into(),
@@ -282,7 +282,7 @@ fn design_constraints(rows: &[EcologyRow]) -> Vec<String> {
         .filter(|r| r.current_policy_action == "NO_TRADE")
         .count();
     out.push(format!(
-        "Current TrendMappingPolicy NO_TRADE count on this snapshot: {no_trade}/{} (descriptive).",
+        "Current BaselineTrendMappingPolicy NO_TRADE count on this snapshot: {no_trade}/{} (descriptive, explicit fixture).",
         rows.len()
     ));
     out
@@ -316,7 +316,7 @@ pub fn render_ecology(report: &FactorEcologyReport) -> String {
     for (k, n) in &report.availability {
         md.push_str(&format!("- {k}: {n}\n"));
     }
-    md.push_str("\n## Current TrendMappingPolicy actions (descriptive, not a candidate)\n\n");
+    md.push_str("\n## Current BaselineTrendMappingPolicy actions (descriptive fixture, not a candidate)\n\n");
     for (k, n) in &report.current_policy_actions {
         md.push_str(&format!("- {k}: {n}\n"));
     }

@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::reasoning::assessment::AssessmentProfile;
 
-use super::policy::{DecisionPolicy, TrendMappingPolicy};
+use super::policy::DecisionPolicy;
 use super::{
     ConfidenceStatus, DecisionDraft, DecisionEvidence, DecisionLineage, RiskInformation,
     RiskLevel, TradingDecision,
@@ -24,6 +24,7 @@ pub trait DecideAt: Send + Sync {
         t: DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<TradingDecision, ReplayError>;
 }
 
@@ -32,7 +33,9 @@ pub const UNFROZEN_ENGINE_VERSION: &str = "unfrozen-dev";
 pub const REPLAY_PRODUCER: &str = "csp004.adapter.v0.1";
 /// Placeholder horizon until an engine version is frozen. Not a G-GATE parameter.
 const UNFROZEN_HORIZON_DAYS: u32 = 5;
-pub use super::policy::TREND_MAPPING_RULE;
+pub use super::policy::{
+    BASELINE_TREND_MAPPING_POLICY_NAME, TREND_MAPPING_RULE,
+};
 
 #[derive(Debug)]
 pub enum ReplayError {
@@ -119,13 +122,9 @@ pub fn observations_at_or_before(
         .collect()
 }
 
-pub fn decide_from_inputs(inputs: ReplayInputs) -> Result<TradingDecision, ReplayError> {
-    // CS-P-CLEAN-002 (PR-2) will require an explicit policy; do not add a second silent default.
-    decide_from_inputs_with_policy(inputs, &TrendMappingPolicy)
-}
-
-/// Same temporal firewall and identity assembly. Policy only chooses the action.
-pub fn decide_from_inputs_with_policy<P: DecisionPolicy>(
+/// Reconstruct a `TradingDecision` at T using only inputs ≤ T and an explicit policy.
+/// There is no default policy.
+pub fn decide_from_inputs<P: DecisionPolicy + ?Sized>(
     inputs: ReplayInputs,
     policy: &P,
 ) -> Result<TradingDecision, ReplayError> {
@@ -187,6 +186,7 @@ pub fn decide_from_inputs_with_policy<P: DecisionPolicy>(
 
     let draft = DecisionDraft {
         engine_version: inputs.engine_version,
+        policy_name: policy.name().to_string(),
         instrument_id: inputs.instrument_id,
         as_of_timestamp: t,
         action: mapped.action,
@@ -230,6 +230,7 @@ impl ReplayAdapter {
         t: DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<TradingDecision, ReplayError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET TRANSACTION READ ONLY")
@@ -237,7 +238,7 @@ impl ReplayAdapter {
             .await?;
         let inputs = load_inputs(&mut tx, t, instrument_id, engine_version).await?;
         tx.commit().await?;
-        decide_from_inputs(inputs)
+        decide_from_inputs(inputs, policy)
     }
 }
 
@@ -248,8 +249,9 @@ impl DecideAt for ReplayAdapter {
         t: DateTime<Utc>,
         instrument_id: Uuid,
         engine_version: &str,
+        policy: &dyn DecisionPolicy,
     ) -> Result<TradingDecision, ReplayError> {
-        ReplayAdapter::decide_at(self, t, instrument_id, engine_version).await
+        ReplayAdapter::decide_at(self, t, instrument_id, engine_version, policy).await
     }
 }
 

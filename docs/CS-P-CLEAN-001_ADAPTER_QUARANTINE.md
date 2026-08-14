@@ -1,7 +1,7 @@
 # CS-P-CLEAN-001 — Adapter quarantine (PR-1)
 
 **Document type:** Architecture hardening  
-**Status:** Complete — stop; PR-2 not started  
+**Status:** Complete — PR-2 is CS-P-CLEAN-002  
 **Date:** 2026-08-14  
 **Parent:** CS-P-AUDIT-001  
 **Does not:** create a candidate policy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0, start CS-P-006  
@@ -55,7 +55,6 @@ Lake type `reasoning::decision::Decision` remains on the default compile graph s
 
 ## Not done (later PRs)
 
-* PR-2: explicit `DecisionPolicy` argument; rename `TrendMappingPolicy` to baseline fixture
 * PR-3 / CS-P-006: Coralys policy discovery
 
-`decide_from_inputs` still defaults to `TrendMappingPolicy`. That is known debt, not silently accepted as the ChronoSentiment strategy.
+PR-2 (explicit `DecisionPolicy`) is `docs/CS-P-CLEAN-002_EXPLICIT_POLICY_CONTRACT.md`.

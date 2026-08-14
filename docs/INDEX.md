@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.13
+**Version:** 1.14
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -146,6 +146,7 @@ Documents in this section must not be modified except for typographical correcti
 | CS-P-005 | `docs/CS-P-005_FACTOR_ECOLOGY_ANALYSIS.md` | Factor Ecology Analysis v0.1: states at T; no candidate policy |
 | CS-P-AUDIT-001 | `docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md` | Read-only ChronoSentiment adapter discipline inventory (no cleanup) |
 | CS-P-CLEAN-001 | `docs/CS-P-CLEAN-001_ADAPTER_QUARANTINE.md` | PR-1: research/legacy quarantine; B3/B4 generators preserved; no policy change |
+| CS-P-CLEAN-002 | `docs/CS-P-CLEAN-002_EXPLICIT_POLICY_CONTRACT.md` | PR-2: explicit DecisionPolicy required; baseline fixture is not the ChronoSentiment strategy |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -193,6 +194,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.14 | 2026-08-14 | Index CS-P-CLEAN-002 explicit DecisionPolicy contract (PR-2; no CS-P-006) |
 | 1.13 | 2026-08-14 | Index CS-P-CLEAN-001 adapter quarantine (PR-1; no B4 regeneration) |
 | 1.12 | 2026-08-14 | Index CS-P-AUDIT-001 adapter discipline audit (read-only; no cleanup) |
 | 1.11 | 2026-08-14 | Index CS-P-TEST-001 verification matrix and CS-P-005 Factor Ecology (no candidate policy) |

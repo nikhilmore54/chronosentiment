@@ -12,6 +12,7 @@ fn as_of() -> chrono::DateTime<chrono::Utc> {
 fn draft(action: DecisionAction) -> DecisionDraft {
     DecisionDraft {
         engine_version: "unfrozen-dev".to_string(),
+        policy_name: "baseline.trend_mapping.v0".to_string(),
         instrument_id: Uuid::nil(),
         as_of_timestamp: as_of(),
         action,

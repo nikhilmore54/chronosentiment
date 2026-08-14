@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+use super::policy::DecisionPolicy;
 use super::replay::{DecideAt, ReplayAdapter, ReplayError, UNFROZEN_ENGINE_VERSION};
 use super::TradingDecision;
 
@@ -23,6 +24,8 @@ pub struct LedgerRecord {
     pub sequence: u32,
     pub decision_id: Uuid,
     pub engine_version: String,
+    #[serde(default)]
+    pub policy_name: String,
     pub instrument_id: Uuid,
     pub as_of_timestamp: DateTime<Utc>,
     pub decision_timestamp: DateTime<Utc>,
@@ -58,6 +61,7 @@ impl DecisionLedger {
             sequence,
             decision_id: decision.decision_id,
             engine_version: decision.engine_version.clone(),
+            policy_name: decision.policy_name.clone(),
             instrument_id: decision.instrument_id,
             as_of_timestamp: decision.as_of_timestamp,
             decision_timestamp: decision.as_of_timestamp,
@@ -82,6 +86,7 @@ pub async fn run_replay_backtest<D: DecideAt>(
     adapter: &D,
     ticks: &[ReplayTick],
     engine_version: &str,
+    policy: &dyn DecisionPolicy,
 ) -> Result<DecisionLedger, ReplayError> {
     let mut ordered = ticks.to_vec();
     ordered.sort_by(|a, b| {
@@ -93,7 +98,7 @@ pub async fn run_replay_backtest<D: DecideAt>(
     let mut ledger = DecisionLedger::new(engine_version);
     for tick in ordered {
         let decision = adapter
-            .decide_at(tick.as_of, tick.instrument_id, engine_version)
+            .decide_at(tick.as_of, tick.instrument_id, engine_version, policy)
             .await?;
         ledger.append(decision);
     }
@@ -104,6 +109,7 @@ pub async fn run_replay_backtest<D: DecideAt>(
 pub async fn populate_ledger_from_assessment_schedule(
     adapter: &ReplayAdapter,
     engine_version: &str,
+    policy: &dyn DecisionPolicy,
 ) -> Result<DecisionLedger, ReplayError> {
     let schedule = adapter.assessment_schedule().await?;
     let ticks: Vec<ReplayTick> = schedule
@@ -113,7 +119,7 @@ pub async fn populate_ledger_from_assessment_schedule(
             instrument_id,
         })
         .collect();
-    run_replay_backtest(adapter, &ticks, engine_version).await
+    run_replay_backtest(adapter, &ticks, engine_version, policy).await
 }
 
 pub fn unfrozen_engine_version() -> &'static str {

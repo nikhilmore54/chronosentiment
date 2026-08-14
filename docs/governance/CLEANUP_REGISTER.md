@@ -327,9 +327,25 @@ Proposed classes (RR4):
 
 ---
 
+### CLN-017 — Explicit DecisionPolicy contract (CS-P-CLEAN-002 / PR-2)
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-017 |
+| **Type** | Rename + contract harden |
+| **Asset** | `decision_support::{policy,replay,forward,backtest}`; product CS-P binaries |
+| **Reason** | Implicit `TrendMappingPolicy` default was accidental product architecture. ChronoSentiment must not emit a product `TradingDecision` unless an explicit policy is supplied. |
+| **Canonical** | `BaselineTrendMappingPolicy` (`baseline.trend_mapping.v0`) selected explicitly; `TradingDecision.policy_name` required; schema `csp004.decision.1`. |
+| **Dependents** | CS-P-003 forward journal identity changes for new ticks; do not regenerate CS-P-002-R1 / B4 reports. |
+| **Validation** | `cargo test -p chronosentiment_adapter` product tests including `policy_contract_tests` and CS-P-TEST-001 26/26. Do not regenerate B4. |
+| **Status** | **Complete** |
+| **Date** | 2026-08-14 |
+
+---
+
 ## Completed Items
 
-CLN-007, CLN-013 completed 2026-08-01 (see entries above). CLN-016 completed 2026-08-14. Open: CLN-001–CLN-006, CLN-014, CLN-015.
+CLN-007, CLN-013 completed 2026-08-01 (see entries above). CLN-016 and CLN-017 completed 2026-08-14. Open: CLN-001–CLN-006, CLN-014, CLN-015.
 
 ---
 

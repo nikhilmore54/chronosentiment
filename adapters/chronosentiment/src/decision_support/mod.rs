@@ -29,9 +29,9 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 /// DTO schema for this object. Independent of engine version.
-/// `csp004.decision.0` adds unavailable confidence and structured evidence.
-/// Action mapping is unchanged. This is not Decision Engine v1.0.
-pub const OBJECT_SCHEMA_VERSION: &str = "csp004.decision.0";
+/// `csp004.decision.1` requires `policy_name` on the decision object.
+/// Action mapping of the baseline fixture is unchanged. This is not Decision Engine v1.0.
+pub const OBJECT_SCHEMA_VERSION: &str = "csp004.decision.1";
 
 const MIN_HORIZON_DAYS: u32 = 1;
 const MAX_HORIZON_DAYS: u32 = 252;
@@ -119,6 +119,7 @@ impl Default for DecisionEvidence {
 pub struct TradingDecision {
     pub decision_id: Uuid,
     pub engine_version: String,
+    pub policy_name: String,
     pub instrument_id: Uuid,
     pub as_of_timestamp: DateTime<Utc>,
     pub action: DecisionAction,
@@ -136,6 +137,7 @@ pub struct TradingDecision {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DecisionDraft {
     pub engine_version: String,
+    pub policy_name: String,
     pub instrument_id: Uuid,
     pub as_of_timestamp: DateTime<Utc>,
     pub action: DecisionAction,
@@ -152,6 +154,7 @@ pub struct DecisionDraft {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionContractError {
     EmptyEngineVersion,
+    EmptyPolicyName,
     ConfidenceOutOfBounds,
     ConfidenceStatusMismatch,
     HorizonOutOfBounds,
@@ -164,6 +167,7 @@ impl std::fmt::Display for DecisionContractError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptyEngineVersion => write!(f, "engine_version must be non-empty"),
+            Self::EmptyPolicyName => write!(f, "policy_name must be non-empty"),
             Self::ConfidenceOutOfBounds => write!(
                 f,
                 "available confidence must be finite and in [0, 1]"
@@ -191,11 +195,13 @@ impl std::fmt::Display for DecisionContractError {
 impl std::error::Error for DecisionContractError {}
 
 /// Identity is policy consumption, not the full diagnostic evidence blob.
-/// Unused factors, outcomes, and wall-clock persistence are excluded.
+/// Unused factors, outcomes, wall-clock persistence, and fabricated assessment
+/// scores are excluded.
 #[derive(Serialize)]
 struct IdentityPayload<'a> {
     object_schema_version: &'a str,
     engine_version: &'a str,
+    policy_name: &'a str,
     instrument_id: Uuid,
     as_of_timestamp: DateTime<Utc>,
     action: DecisionAction,
@@ -224,12 +230,16 @@ impl TradingDecision {
             .factors
             .iter()
             .filter(|f| draft.evidence.consumed_concepts.iter().any(|c| c == &f.concept))
-            .cloned()
+            .map(|f| EvidenceFactor {
+                assessment_confidence: None,
+                ..f.clone()
+            })
             .collect();
 
         let payload = IdentityPayload {
             object_schema_version: OBJECT_SCHEMA_VERSION,
             engine_version: &draft.engine_version,
+            policy_name: &draft.policy_name,
             instrument_id: draft.instrument_id,
             as_of_timestamp: draft.as_of_timestamp,
             action: draft.action,
@@ -254,6 +264,7 @@ impl TradingDecision {
         Ok(Self {
             decision_id,
             engine_version: draft.engine_version,
+            policy_name: draft.policy_name,
             instrument_id: draft.instrument_id,
             as_of_timestamp: draft.as_of_timestamp,
             action: draft.action,
@@ -276,6 +287,9 @@ impl TradingDecision {
 fn validate(draft: &DecisionDraft) -> Result<(), DecisionContractError> {
     if draft.engine_version.trim().is_empty() {
         return Err(DecisionContractError::EmptyEngineVersion);
+    }
+    if draft.policy_name.trim().is_empty() {
+        return Err(DecisionContractError::EmptyPolicyName);
     }
     match (draft.confidence_status, draft.confidence) {
         (ConfidenceStatus::Unavailable, None) => {}

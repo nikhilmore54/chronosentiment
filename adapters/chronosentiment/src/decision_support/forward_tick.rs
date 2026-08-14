@@ -11,6 +11,7 @@ use crate::reasoning::assessment::{AssessmentEngine, ENRICHMENT_CONCEPTS};
 
 use super::forward::{decide_forward, FORWARD_PRODUCER};
 use super::observation_outcome::PriceBar;
+use super::policy::DecisionPolicy;
 use super::replay::{ReplayAssessment, ReplayInputs, ReplayObservation, UNFROZEN_ENGINE_VERSION};
 use super::TradingDecision;
 
@@ -42,10 +43,11 @@ pub fn latest_as_of(bars: &[DailyBar], now: DateTime<Utc>) -> Option<DateTime<Ut
 }
 
 /// Decide only at the latest session ≤ now. Lookback bars are for MA20/MA50, not extra decisions.
-pub fn decide_latest_session(
+pub fn decide_latest_session<P: DecisionPolicy + ?Sized>(
     ticker: &str,
     bars: &[DailyBar],
     now: DateTime<Utc>,
+    policy: &P,
 ) -> Result<TradingDecision, super::replay::ReplayError> {
     let t = latest_as_of(bars, now).ok_or(super::replay::ReplayError::NoAssessmentAtT)?;
     let instrument_id = instrument_id_for(ticker);
@@ -102,7 +104,7 @@ pub fn decide_latest_session(
         }],
         lake_decisions: vec![],
         observations,
-    })
+    }, policy)
 }
 
 pub fn price_bars_for(ticker: &str, bars: &[DailyBar], now: DateTime<Utc>) -> Vec<PriceBar> {

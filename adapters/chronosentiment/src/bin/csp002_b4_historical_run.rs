@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use chronosentiment_adapter::decision_support::backtest::{
     populate_ledger_from_assessment_schedule, DecisionLedger,
 };
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::outcome::{OutcomeEngine, OutcomeReport};
 use chronosentiment_adapter::decision_support::performance::{
     measure_performance, HorizonPerformance, PerformanceReport, ReturnStats, RiskStats,
@@ -81,7 +82,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let adapter = ReplayAdapter::new(pool.clone());
     let ledger =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION).await?;
+        populate_ledger_from_assessment_schedule(
+            &adapter,
+            UNFROZEN_ENGINE_VERSION,
+            &BaselineTrendMappingPolicy,
+        ).await?;
     let outcomes = OutcomeEngine::new(pool).measure_ledger(&ledger).await?;
     let performance = measure_performance(&ledger, &outcomes);
     if performance.decision_engine_version != UNFROZEN_ENGINE_VERSION {

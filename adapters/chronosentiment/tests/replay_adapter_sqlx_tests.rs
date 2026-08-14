@@ -4,6 +4,7 @@
 //! Official runner: `./run_replay_b4_validate.sh`
 
 use chrono::Duration;
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{
     ReplayAdapter, UNFROZEN_ENGINE_VERSION,
 };
@@ -57,10 +58,10 @@ async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes()
 
     let adapter = ReplayAdapter::new(pool.clone());
     let first = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION)
+        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await?;
     let second = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION)
+        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await?;
 
     assert_eq!(first.as_of_timestamp, t);
@@ -152,7 +153,7 @@ async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes()
     .await?;
 
     let after = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION)
+        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
         .await?;
     assert_eq!(first.decision_id, after.decision_id);
     assert_eq!(first.provenance.content_hash, after.provenance.content_hash);

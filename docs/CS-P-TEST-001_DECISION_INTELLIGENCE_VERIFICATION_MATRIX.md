@@ -91,7 +91,7 @@ Proof: `adapters/chronosentiment/tests/csp_test_001_verification_matrix.rs`
 
 `decision_id` / `content_hash` hash **policy consumption**, not the diagnostic blob.
 
-Included: engine version, instrument, as-of T, action, confidence, mapping rule, **consumed** factors (Trend only under `TrendMappingPolicy`), assessment_id, rationale (`action_reason`).
+Included: engine version, **policy name**, instrument, as-of T, action, confidence, mapping rule, **consumed** factors (Trend only under `BaselineTrendMappingPolicy`), assessment_id, rationale (`action_reason`).
 
 Excluded: unused factor values (Momentum/Volatility under current policy), `knowledge_outcomes`, wall-clock `created_at` / `recorded_at`, `input_set_hash` (audit only), full assessment `to_hash()`.
 

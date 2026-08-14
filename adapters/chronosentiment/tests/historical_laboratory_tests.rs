@@ -31,6 +31,7 @@ fn rec(
         sequence: seq,
         decision_id: Uuid::from_u128(id),
         engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
+        policy_name: "baseline.trend_mapping.v0".to_string(),
         instrument_id: Uuid::from_u128(instrument),
         as_of_timestamp: as_of,
         decision_timestamp: as_of,

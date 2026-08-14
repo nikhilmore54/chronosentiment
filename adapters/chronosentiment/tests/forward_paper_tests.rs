@@ -3,6 +3,7 @@ use chronosentiment_adapter::decision_support::backtest::{DecisionLedger, Ledger
 use chronosentiment_adapter::decision_support::forward::{
     decide_forward, ForwardJournal, FORWARD_PRODUCER,
 };
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::observation_outcome::{
     measure_ledger_from_prices, measure_record_from_prices, PriceBar,
 };
@@ -25,6 +26,7 @@ fn rec(id: u128, day: u32, action: DecisionAction) -> LedgerRecord {
         sequence: 1,
         decision_id: Uuid::from_u128(id),
         engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
+        policy_name: "baseline.trend_mapping.v0".to_string(),
         instrument_id: Uuid::from_u128(3),
         as_of_timestamp: t(day),
         decision_timestamp: t(day),
@@ -153,7 +155,7 @@ fn forward_decide_does_not_consume_future_observations() {
         id: future_id,
         effective_from: t(25) + chrono::Duration::days(1),
     });
-    let d = decide_forward(inputs).unwrap();
+    let d = decide_forward(inputs, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(d.lineage.produced_by, FORWARD_PRODUCER);
     assert_eq!(d.engine_version, UNFROZEN_ENGINE_VERSION);
     assert!(!d.lineage.consumed_artifact_ids.contains(&future_id));
@@ -164,7 +166,7 @@ fn journal_is_append_only_and_idempotent() {
     let dir = std::env::temp_dir().join(format!("csp003-{}", Uuid::from_u128(77)));
     let _ = std::fs::remove_dir_all(&dir);
     let journal = ForwardJournal::open(&dir).unwrap();
-    let decision = decide_forward(bullish_inputs(Uuid::from_u128(7))).unwrap();
+    let decision = decide_forward(bullish_inputs(Uuid::from_u128(7)), &BaselineTrendMappingPolicy).unwrap();
     let first = journal.persist(decision.clone()).unwrap();
     let second = journal.persist(decision).unwrap();
     assert_eq!(first.decision_id, second.decision_id);
@@ -198,8 +200,8 @@ fn tick_decides_only_the_latest_session_not_historical_replay() {
     let now = last;
     let as_of = latest_as_of(&bars, now).unwrap();
     assert_eq!(as_of, last);
-    let a = decide_latest_session("RELIANCE.NS", &bars, now).unwrap();
-    let b = decide_latest_session("RELIANCE.NS", &bars, now).unwrap();
+    let a = decide_latest_session("RELIANCE.NS", &bars, now, &BaselineTrendMappingPolicy).unwrap();
+    let b = decide_latest_session("RELIANCE.NS", &bars, now, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(a.as_of_timestamp, last);
     assert_eq!(a.decision_id, b.decision_id);
     assert_eq!(a.engine_version, UNFROZEN_ENGINE_VERSION);

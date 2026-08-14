@@ -188,7 +188,7 @@ The adapter faithfully showed that B4 assessments do not contain independent Mom
 - Missing factors are **UNAVAILABLE**, not filled.
 - Volatility ATR is magnitude-only: AVAILABLE when `atr_14` exists; no invented High/Low threshold.
 - `evaluation_timestamp = T`; `created_at` remains persist wall-clock.
-- `TrendMappingPolicy` is the default `DecisionPolicy` and keeps the current Trend→action map.
+- `BaselineTrendMappingPolicy` is an explicit fixture (`baseline.trend_mapping.v0`), not a silent default and not a promoted strategy.
 - Factor-availability diagnostics: `decision_support/factor_availability.rs`.
 
 ### 9.1 Information-fidelity snapshot (authorized)

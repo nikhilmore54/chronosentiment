@@ -1,4 +1,5 @@
 use chrono::{TimeZone, Utc};
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, observations_at_or_before, ReplayAssessment, ReplayInputs,
     ReplayLakeDecision, ReplayObservation, UNFROZEN_ENGINE_VERSION,
@@ -61,8 +62,8 @@ fn base_inputs(instrument_id: Uuid) -> ReplayInputs {
 #[test]
 fn replay_is_deterministic_across_two_runs() {
     let instrument_id = Uuid::from_u128(7);
-    let a = decide_from_inputs(base_inputs(instrument_id)).unwrap();
-    let b = decide_from_inputs(base_inputs(instrument_id)).unwrap();
+    let a = decide_from_inputs(base_inputs(instrument_id), &BaselineTrendMappingPolicy).unwrap();
+    let b = decide_from_inputs(base_inputs(instrument_id), &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(a.as_of_timestamp, t0());
     assert_eq!(a.engine_version, UNFROZEN_ENGINE_VERSION);
     assert_eq!(a.action, DecisionAction::Long);
@@ -75,7 +76,7 @@ fn replay_is_deterministic_across_two_runs() {
 #[test]
 fn future_observation_is_excluded_from_input_set() {
     let instrument_id = Uuid::from_u128(7);
-    let without_future = decide_from_inputs(base_inputs(instrument_id)).unwrap();
+    let without_future = decide_from_inputs(base_inputs(instrument_id), &BaselineTrendMappingPolicy).unwrap();
 
     let mut with_future = base_inputs(instrument_id);
     with_future.observations.push(ReplayObservation {
@@ -86,7 +87,7 @@ fn future_observation_is_excluded_from_input_set() {
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].id, Uuid::from_u128(11));
 
-    let with_future_decision = decide_from_inputs(with_future).unwrap();
+    let with_future_decision = decide_from_inputs(with_future, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(without_future.decision_id, with_future_decision.decision_id);
     assert_eq!(
         without_future.provenance.content_hash,
@@ -110,7 +111,7 @@ fn future_assessment_cannot_change_action() {
         signature_hash: future.to_hash(),
         profile: future,
     });
-    let d = decide_from_inputs(inputs).unwrap();
+    let d = decide_from_inputs(inputs, &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(d.action, DecisionAction::Long);
     assert_eq!(d.as_of_timestamp, t0());
 }
@@ -120,7 +121,8 @@ fn no_trade_when_trend_is_absent() {
     let instrument_id = Uuid::from_u128(8);
     let mut profile = bullish_profile(instrument_id, t0());
     profile.assessments.clear();
-    let d = decide_from_inputs(ReplayInputs {
+    let d = decide_from_inputs(
+        ReplayInputs {
         instrument_id,
         as_of: t0(),
         engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
@@ -133,7 +135,9 @@ fn no_trade_when_trend_is_absent() {
         }],
         lake_decisions: vec![],
         observations: vec![],
-    })
+    },
+        &BaselineTrendMappingPolicy,
+    )
     .unwrap();
     assert_eq!(d.action, DecisionAction::NoTrade);
 }
@@ -141,7 +145,7 @@ fn no_trade_when_trend_is_absent() {
 #[test]
 fn adapter_does_not_copy_assessment_confidence_as_decision_confidence() {
     let instrument_id = Uuid::from_u128(7);
-    let d = decide_from_inputs(base_inputs(instrument_id)).unwrap();
+    let d = decide_from_inputs(base_inputs(instrument_id), &BaselineTrendMappingPolicy).unwrap();
     assert_eq!(d.action, DecisionAction::Long);
     assert_eq!(d.confidence, None);
     assert_eq!(
@@ -159,7 +163,7 @@ fn adapter_does_not_copy_assessment_confidence_as_decision_confidence() {
         .find(|f| f.concept == "Trend")
         .unwrap();
     assert!(trend.present);
-    assert_eq!(trend.assessment_confidence, Some(0.82));
+    assert_eq!(trend.assessment_confidence, None);
     let momentum = d
         .evidence
         .factors
@@ -187,6 +191,6 @@ fn lake_decision_after_t_is_not_consumed() {
         id: future_id,
         evaluation_timestamp: t0() + chrono::Duration::days(1),
     });
-    let d = decide_from_inputs(inputs).unwrap();
+    let d = decide_from_inputs(inputs, &BaselineTrendMappingPolicy).unwrap();
     assert!(!d.lineage.consumed_artifact_ids.contains(&future_id));
 }
