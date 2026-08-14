@@ -53,7 +53,7 @@ fn inputs() -> ReplayInputs {
 struct NamedNoTradeA;
 struct NamedNoTradeB;
 
-fn no_trade_decision(name: &'static str) -> PolicyDecision {
+fn no_trade_decision(name: &str) -> PolicyDecision {
     PolicyDecision {
         action: DecisionAction::NoTrade,
         mapping_rule: "always NO_TRADE".to_string(),
@@ -66,7 +66,7 @@ fn no_trade_decision(name: &'static str) -> PolicyDecision {
 }
 
 impl DecisionPolicy for NamedNoTradeA {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "test.fixture_a.v0"
     }
     fn decide(&self, _: &AssessmentProfile, _: chrono::DateTime<Utc>) -> PolicyDecision {
@@ -75,7 +75,7 @@ impl DecisionPolicy for NamedNoTradeA {
 }
 
 impl DecisionPolicy for NamedNoTradeB {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "test.fixture_b.v0"
     }
     fn decide(&self, _: &AssessmentProfile, _: chrono::DateTime<Utc>) -> PolicyDecision {

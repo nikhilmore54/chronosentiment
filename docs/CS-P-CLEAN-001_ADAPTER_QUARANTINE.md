@@ -4,7 +4,7 @@
 **Status:** Complete — PR-2 is CS-P-CLEAN-002  
 **Date:** 2026-08-14  
 **Parent:** CS-P-AUDIT-001  
-**Does not:** create a candidate policy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0, start CS-P-006  
+**Does not:** create a candidate policy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0  
 
 `.cursor/rules/chronosentiment-core.mdc`: deterministic evaluation; no invented methodology.
 
@@ -55,6 +55,6 @@ Lake type `reasoning::decision::Decision` remains on the default compile graph s
 
 ## Not done (later PRs)
 
-* PR-3 / CS-P-006: Coralys policy discovery
+* CS-P-006-B protocol freeze and CS-P-006-C Coralys search (CS-P-006-A is the consumption contract)
 
 PR-2 (explicit `DecisionPolicy`) is `docs/CS-P-CLEAN-002_EXPLICIT_POLICY_CONTRACT.md`.

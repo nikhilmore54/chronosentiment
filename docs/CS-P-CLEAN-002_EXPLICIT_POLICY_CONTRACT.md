@@ -1,10 +1,10 @@
 # CS-P-CLEAN-002 — Explicit DecisionPolicy contract (PR-2)
 
 **Document type:** Architecture hardening  
-**Status:** Complete — stop; PR-3 / CS-P-006 not started  
+**Status:** Complete — CS-P-006-A is the next programme (contract only)  
 **Date:** 2026-08-14  
 **Parent:** CS-P-AUDIT-001, CS-P-CLEAN-001  
-**Does not:** invent a trading strategy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0, start Coralys discovery  
+**Does not:** invent a trading strategy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0  
 
 `.cursor/rules/chronosentiment-core.mdc`: same inputs + same policy version → same decision; no invented methodology.
 
@@ -42,6 +42,7 @@ Identity change is expected: `policy_name` is now a first-class identity field. 
 
 ## Not done
 
-* PR-3 / CS-P-006 Coralys policy discovery
+* CS-P-006-B research protocol freeze (split dates)
+* CS-P-006-C Coralys search / evolution
 * Repairing `StrategyEngine` SHORT omission (B4 provenance)
 * Promoting the baseline fixture

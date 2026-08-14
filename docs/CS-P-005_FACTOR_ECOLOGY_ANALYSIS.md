@@ -26,7 +26,7 @@ Certified enrichment snapshot (not B5)
           ↓
 Factor Ecology v0.1   ← this document
           ↓
-STOP — candidate specification is a later, frozen document
+STOP — CS-P-006-A Policy Discovery Contract; candidate search is CS-P-006-C after protocol freeze
 ```
 
 ---

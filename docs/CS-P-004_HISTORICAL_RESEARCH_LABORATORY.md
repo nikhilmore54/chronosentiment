@@ -39,7 +39,7 @@ CS-P-002-R1 is a **baseline**, not a research programme. One aggregate (e.g. 60D
                     sensitivity / walk-forward / stability
                            │
                            ▼
-                  Candidate policy (human-authored, later)
+                  CS-P-006 Coralys discovery (not a hand-written confluence rule)
                            │
                            ▼
                   PAPER / FORWARD (CS-P-003) — final confirmation

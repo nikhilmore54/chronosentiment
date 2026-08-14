@@ -4,7 +4,8 @@
 //! It is not the Knowledge Lake `reasoning::decision::Decision` artifact (B3/B4 persist).
 //!
 //! ChronoSentiment evaluates a versioned `DecisionPolicy`. It does not discover
-//! policies. Coralys is the learning/search system (CS-P-006, not this cleanup).
+//! policies. Coralys is the learning/search system (CS-P-006). CS-P-006-A is the
+//! consumption contract (`policy_artifact`); search is not this module.
 //!
 //! Decision Engine v1.0 is **not frozen**. `engine_version` is caller-supplied.
 //! Outcomes do not belong on this object.
@@ -19,6 +20,7 @@ pub mod forward_tick;
 pub mod laboratory;
 pub mod lab_context;
 pub mod policy;
+pub mod policy_artifact;
 pub mod factor_availability;
 pub mod enrichment_certify;
 pub mod factor_ecology;

@@ -31,7 +31,7 @@ pub struct PolicyDecision {
 }
 
 pub trait DecisionPolicy: Send + Sync {
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
     fn decide(&self, assessment: &AssessmentProfile, as_of: DateTime<Utc>) -> PolicyDecision;
 }
 
@@ -43,7 +43,7 @@ pub trait DecisionPolicy: Send + Sync {
 pub struct BaselineTrendMappingPolicy;
 
 impl DecisionPolicy for BaselineTrendMappingPolicy {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         BASELINE_TREND_MAPPING_POLICY_NAME
     }
 
@@ -125,7 +125,7 @@ impl DecisionPolicy for BaselineTrendMappingPolicy {
     }
 }
 
-fn factors_from_profile(profile: &AssessmentProfile) -> Vec<EvidenceFactor> {
+pub(super) fn factors_from_profile(profile: &AssessmentProfile) -> Vec<EvidenceFactor> {
     let mut out: Vec<EvidenceFactor> = profile
         .factor_status
         .iter()
@@ -163,7 +163,7 @@ fn status_to_factor(status: &FactorStatus) -> EvidenceFactor {
     }
 }
 
-fn ensure_factor(factors: &mut Vec<EvidenceFactor>, concept: &str) {
+pub(super) fn ensure_factor(factors: &mut Vec<EvidenceFactor>, concept: &str) {
     if factors.iter().any(|f| f.concept == concept) {
         return;
     }

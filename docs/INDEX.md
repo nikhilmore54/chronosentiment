@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.14
+**Version:** 1.15
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -147,6 +147,8 @@ Documents in this section must not be modified except for typographical correcti
 | CS-P-AUDIT-001 | `docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md` | Read-only ChronoSentiment adapter discipline inventory (no cleanup) |
 | CS-P-CLEAN-001 | `docs/CS-P-CLEAN-001_ADAPTER_QUARANTINE.md` | PR-1: research/legacy quarantine; B3/B4 generators preserved; no policy change |
 | CS-P-CLEAN-002 | `docs/CS-P-CLEAN-002_EXPLICIT_POLICY_CONTRACT.md` | PR-2: explicit DecisionPolicy required; baseline fixture is not the ChronoSentiment strategy |
+| CS-P-006 | `docs/CS-P-006_CORALYS_POLICY_DISCOVERY.md` | Coralys discovers; ChronoSentiment evaluates; optimizer not started |
+| CS-P-006-A | `docs/CS-P-006-A_POLICY_DISCOVERY_CONTRACT.md` | PolicyArtifact consumption contract (`csp006a.policy_artifact.1`); no search |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -194,6 +196,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.15 | 2026-08-14 | Index CS-P-006 / CS-P-006-A Policy Discovery Contract (no optimizer; no split dates) |
 | 1.14 | 2026-08-14 | Index CS-P-CLEAN-002 explicit DecisionPolicy contract (PR-2; no CS-P-006) |
 | 1.13 | 2026-08-14 | Index CS-P-CLEAN-001 adapter quarantine (PR-1; no B4 regeneration) |
 | 1.12 | 2026-08-14 | Index CS-P-AUDIT-001 adapter discipline audit (read-only; no cleanup) |

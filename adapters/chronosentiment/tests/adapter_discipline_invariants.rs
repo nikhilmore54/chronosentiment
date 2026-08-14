@@ -15,6 +15,7 @@ fn read(rel: &str) -> String {
 const DECISION_PRODUCERS: &[&str] = &[
     "src/decision_support/mod.rs",
     "src/decision_support/policy.rs",
+    "src/decision_support/policy_artifact.rs",
     "src/decision_support/replay.rs",
     "src/decision_support/forward.rs",
     "src/decision_support/forward_tick.rs",
@@ -26,6 +27,7 @@ const DECISION_PRODUCERS: &[&str] = &[
 /// splitting that is not part of CS-P-CLEAN-001.
 const DECIDE_WITHOUT_EVALUATION: &[&str] = &[
     "src/decision_support/policy.rs",
+    "src/decision_support/policy_artifact.rs",
     "src/decision_support/replay.rs",
     "src/decision_support/forward_tick.rs",
     "src/decision_support/backtest.rs",
@@ -191,4 +193,36 @@ fn product_decide_paths_require_an_explicit_policy_argument() {
         forward.contains("policy: &P") || forward.contains("policy: &dyn DecisionPolicy"),
         "forward decide must take a policy"
     );
+}
+
+#[test]
+fn policy_artifact_is_an_evaluator_not_an_optimizer() {
+    let src = read("src/decision_support/policy_artifact.rs");
+    assert!(
+        !src.contains("EvolutionEngine") && !src.contains("FitnessEvaluator") && !src.contains("rand::"),
+        "CS-P-006-A must not contain a search engine"
+    );
+    assert!(
+        !src.contains("from knowledge_outcomes") && !src.contains("OutcomeReport"),
+        "PolicyArtifact evaluation must not read outcomes"
+    );
+}
+
+#[test]
+fn product_binaries_still_select_the_baseline_fixture_explicitly() {
+    for rel in [
+        "src/bin/csp002_b4_historical_run.rs",
+        "src/bin/csp003_forward_session.rs",
+        "src/bin/csp004_historical_lab.rs",
+    ] {
+        let src = read(rel);
+        assert!(
+            src.contains("BaselineTrendMappingPolicy"),
+            "{rel} must keep explicit baseline fixture; CS-P-006-A does not replace it"
+        );
+        assert!(
+            !src.contains("ArtifactDecisionPolicy"),
+            "{rel} must not switch to a policy artifact in CS-P-006-A"
+        );
+    }
 }
