@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.0
+**Version:** 1.3
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -122,6 +122,7 @@ Documents in this section must not be modified except for typographical correcti
 | STANDARD-003 | `docs/BENCHMARK-REFERENCE-SPECIFICATION-v1.0.md` | Benchmark Reference Specification |
 | EV-GOV-001 | `docs/CHRONOSENTIMENT_EVIDENCE_PROGRAMME.md` | ChronoSentiment Evidence Programme |
 | EV-GOV-002 | `docs/ULTRACREW_WORKFORCE_EVIDENCE.md` | UltraCrew Workforce Evidence |
+| EV-GOV-003 | `G_GATE_v1.1_STATISTICAL_CLOSURE.md` | G-GATE v1.1 closed: B4 INCONCLUSIVE; predictive value not established; Decision A |
 
 ### 9. Product & Strategy
 
@@ -130,7 +131,10 @@ Documents in this section must not be modified except for typographical correcti
 | BLUEPRINT-001 | `docs/ChronoSentiment_Product_Blueprint_v1.md` | ChronoSentiment Product Blueprint |
 | STRATEGY-001 | `docs/CORALYS_PLATFORM_STRATEGY.md` | Coralys Platform Strategy |
 | STRATEGY-002 | `docs/ChronoSentiment_Product_Strategy_v1.md` | ChronoSentiment Product Strategy |
-| PRD-001 | `docs/PRD_v3_3.md` | Product Requirements Document v3.3 |
+| PRD-001 | `docs/PRD_v3_3.md` | Product Requirements Document v3.3 (superseded; historical) |
+| PRD-002 | `docs/CHRONOSENTIMENT_PRD_V1.md` | ChronoSentiment Product Definition v1.0 (authoritative commercial PRD) |
+| CS-P-001 | `docs/CS-P-001_DECISION_SUPPORT_PRODUCT_MODE.md` | Product mode after G-GATE v1.1 close; co-pilot / paper trading; v1.2 not opened |
+| CS-P-002 | `docs/CS-P-002_DECISION_VALIDATION_PLATFORM.md` | Decision Validation Platform v1: one engine, replay/live adapters, backtest + forward paper |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -178,4 +182,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.3 | 2026-08-14 | Index CS-P-002 Decision Validation Platform |
+| 1.2 | 2026-08-14 | Index CS-P-001 product mode; PRD-002 |
+| 1.1 | 2026-08-14 | Index EV-GOV-003 G-GATE v1.1 statistical closure |
 | 1.0 | 2026-08-01 | Initial creation — Repository v2 Governance Artifact 2 |
