@@ -1,5 +1,4 @@
-use crate::validation::outcome::Horizon;
-use uuid::Uuid;
+use crate::reasoning::strategy::Horizon;
 
 #[derive(Debug, Clone)]
 pub struct CalibrationRecord {
