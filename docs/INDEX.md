@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.11
+**Version:** 1.13
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -144,6 +144,8 @@ Documents in this section must not be modified except for typographical correcti
 | CS-P-004-E1-S1 | `product_validation/assessment_enrichment_v0.1/` | Information-fidelity snapshot + factor availability (not B5; not a strategy experiment) |
 | CS-P-TEST-001 | `docs/CS-P-TEST-001_DECISION_INTELLIGENCE_VERIFICATION_MATRIX.md` | Decision intelligence verification matrix (vision-level tests; not a snapshot) |
 | CS-P-005 | `docs/CS-P-005_FACTOR_ECOLOGY_ANALYSIS.md` | Factor Ecology Analysis v0.1: states at T; no candidate policy |
+| CS-P-AUDIT-001 | `docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md` | Read-only ChronoSentiment adapter discipline inventory (no cleanup) |
+| CS-P-CLEAN-001 | `docs/CS-P-CLEAN-001_ADAPTER_QUARANTINE.md` | PR-1: research/legacy quarantine; B3/B4 generators preserved; no policy change |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -191,6 +193,8 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.13 | 2026-08-14 | Index CS-P-CLEAN-001 adapter quarantine (PR-1; no B4 regeneration) |
+| 1.12 | 2026-08-14 | Index CS-P-AUDIT-001 adapter discipline audit (read-only; no cleanup) |
 | 1.11 | 2026-08-14 | Index CS-P-TEST-001 verification matrix and CS-P-005 Factor Ecology (no candidate policy) |
 | 1.10 | 2026-08-14 | Index CS-P-004-E1-S1 information-fidelity snapshot (not B5; factor availability only) |
 | 1.9 | 2026-08-14 | Index CS-P-004-E1 Assessment Enrichment v0.1 (code/tests only; no new dataset) |

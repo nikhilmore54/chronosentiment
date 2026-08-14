@@ -3,7 +3,10 @@ use chrono::{DateTime, Utc, TimeZone, NaiveTime, Datelike};
 use std::collections::HashMap;
 use std::error::Error;
 use uuid::Uuid;
-use sha2::{Sha256, Digest};
+use sqlx::PgPool;
+
+use chronosentiment_adapter::repository::postgres_knowledge::PostgresKnowledgeRepository;
+use chronosentiment_adapter::repository::knowledge::ArtifactRepository;
 
 use chronosentiment_adapter::instrument::Instrument;
 use chronosentiment_adapter::observation::ValidatedObservation;
@@ -11,8 +14,7 @@ use chronosentiment_adapter::repository::observation_repository::ValidatedObserv
 use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
 use chronosentiment_adapter::metrics::instrument::{InstrumentMetricEngine, SimpleMovingAverageMetric, RateOfChangeMetric, AverageTrueRangeMetric};
 use coralys_moga::runtime::optimization::metric::MetricEngine;
-use chronosentiment_adapter::metrics::concepts::Concept;
-use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
+use chronosentiment_adapter::reasoning::assessment::{AssessmentEngine, ENRICHMENT_CONCEPTS};
 use chronosentiment_adapter::reasoning::evidence::EvidenceEngine;
 use chronosentiment_adapter::reasoning::historical_reasoning::HistoricalReasoningEngine;
 use chronosentiment_adapter::reasoning::hypothesis::HypothesisEngine;
@@ -21,6 +23,7 @@ use chronosentiment_adapter::reasoning::strategy::StrategyEngine;
 use chronosentiment_adapter::ingestion::provider::{MarketDataProvider, ValidatedObservationTranslator};
 use chronosentiment_adapter::ingestion::yahoo::{YahooProvider, YahooTranslator};
 use chronosentiment_adapter::validation::outcome::OutcomeEngine;
+use chronosentiment_adapter::decision_support::forward_tick::DEFAULT_TICKERS;
 
 struct InMemoryObservationRepo {
     observations: Vec<ValidatedObservation>,
@@ -60,21 +63,20 @@ impl ValidatedObservationRepository for InMemoryObservationRepo {
     }
 }
 
-fn generate_replay_hash(context_id: &Uuid, profile_version: &str, dt: &DateTime<Utc>) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(context_id.as_bytes());
-    hasher.update(profile_version.as_bytes());
-    hasher.update(dt.timestamp().to_be_bytes());
-    format!("{:x}", hasher.finalize())
-}
+// generate_replay_hash removed
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     println!("============================================================");
-    println!("       CHRONOSENTIMENT — PHASE 4 REAL VALIDATION");
+    println!("       CHRONOSENTIMENT — KNOWLEDGE LAKE POPULATION");
     println!("============================================================\n");
-
-    let tickers = vec!["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS"];
+    
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://nikhil@localhost:5432/postgres".to_string());
+    let pool = PgPool::connect(&db_url).await?;
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    let knowledge_repo = PostgresKnowledgeRepository::new(pool.clone());
+    
+    let tickers = DEFAULT_TICKERS;
     let mut repo = InMemoryObservationRepo::new();
     let mut instrument_map = HashMap::new();
     let yahoo = YahooProvider::new();
@@ -94,6 +96,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
         
         instrument_map.insert(id, instrument.clone());
+        
+        sqlx::query("INSERT INTO instruments (id, exchange, display_symbol) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING")
+            .bind(id)
+            .bind(&instrument.exchange)
+            .bind(&instrument.display_symbol)
+            .execute(&pool)
+            .await?;
         
         let raw_bars = yahoo.fetch_historical(&instrument, chronosentiment_adapter::ingestion::provider::TimeRange::FiveYears).await;
         if let Ok(bars) = raw_bars {
@@ -156,22 +165,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut expired = 0;
     
     let mut win_count = 0;
-    let mut returns = Vec::new();
-    let mut mfes = Vec::new();
-    let mut maes = Vec::new();
+    // Unused metric arrays removed
     
     let mut metric_engine = InstrumentMetricEngine::new();
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(20)));
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(50)));
-    metric_engine.add_model(Box::new(RateOfChangeMetric::new(14)));
+    metric_engine.add_model(Box::new(RateOfChangeMetric::new(20)));
     metric_engine.add_model(Box::new(AverageTrueRangeMetric::new(14)));
     
     let replay_engine = ReplayEngine::new(&repo);
     let decision_engine = DecisionEngine;
     let strategy_engine = StrategyEngine;
     
+    let temporal_log_path = std::env::var("CHRONO_TEMPORAL_LOG").ok();
+    if let Some(path) = &temporal_log_path {
+        if let Some(parent) = std::path::Path::new(path).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, "")?;
+    }
+
     for dt in &timestamps {
-        for (inst_id, _inst) in &instrument_map {
+        for (inst_id, inst) in &instrument_map {
             let req = ReplayRequest {
                 research_session_id: "val_gate".to_string(),
                 universe: "Nifty50".to_string(),
@@ -195,41 +210,40 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 continue; // Not enough data
             }
 
+            let mut max_effective_from: Option<DateTime<Utc>> = None;
             for obs in &inst_context.observations {
                 if obs.effective_from > *dt {
                     temporal_violations += 1;
                     panic!("TEMPORAL VIOLATION: Observation leaked.");
                 }
+                max_effective_from = Some(max_effective_from.map_or(obs.effective_from, |m| m.max(obs.effective_from)));
+            }
+
+            if let Some(path) = &temporal_log_path {
+                let line = serde_json::json!({
+                    "symbol": inst.display_symbol,
+                    "evaluation_timestamp": dt,
+                    "n_obs": inst_context.observations.len(),
+                    "max_effective_from": max_effective_from,
+                });
+                use std::io::Write;
+                let mut f = std::fs::OpenOptions::new().append(true).open(path)?;
+                writeln!(f, "{line}")?;
             }
             
             let metric_report = metric_engine.evaluate(inst_context);
             let profile = AssessmentEngine.assess_at(
                 &metric_report,
-                &[Concept::Trend, Concept::Momentum, Concept::Volatility],
+                &ENRICHMENT_CONCEPTS,
                 *dt,
                 Some(*inst_id),
             );
-            let evidence = EvidenceEngine.evaluate(&profile);
-            let reasoning = HistoricalReasoningEngine.evaluate(&profile);
+            let _evidence = EvidenceEngine.evaluate(&profile);
             
-            for case in &reasoning.cases {
-                if case.historical_date > *dt {
-                    temporal_violations += 1;
-                    panic!("TEMPORAL VIOLATION: Future case leaked.");
-                }
-            }
-            
-            let _hypotheses = HypothesisEngine::new().evaluate(&evidence);
-            
-            let context_id = Uuid::new_v4();
-            let replay_hash = generate_replay_hash(&context_id, "v1.0", dt);
-            let duplicate_hash = generate_replay_hash(&context_id, "v1.0", dt);
-            if replay_hash != duplicate_hash {
-                hash_mismatches += 1;
-                panic!("TEMPORAL VIOLATION: Replay hash is not deterministic.");
-            }
-            
+            knowledge_repo.store(&profile).await?;
+
             let decision = decision_engine.evaluate(&profile, *dt, *inst_id);
+            knowledge_repo.store(&decision).await?;
             decisions_replayed += 1;
             
             match decision.opportunity {
@@ -245,93 +259,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
             
             if let Some(strategy) = strategy_opt {
                 strategies_generated += 1;
+                knowledge_repo.store(&strategy).await?;
                 
                 let full_history = repo.get_complete_history(*inst_id).await.unwrap();
                 let outcome_engine = OutcomeEngine;
-                let outcome = outcome_engine.measure_outcome(uuid::Uuid::new_v4(), &strategy, &chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(), &full_history, *dt, 5, None);
                 
-                if outcome.exit_reason != "Entry Not Reached" {
-                    entry_reached += 1;
-                    if outcome.exit_reason != "Ambiguous" {
-                        outcomes_evaluated += 1;
-                        
-                        if outcome.exit_reason == "Target Hit" {
-                            target_hit += 1;
-                            win_count += 1;
-                        } else if outcome.exit_reason == "Stop Hit" {
-                            stop_hit += 1;
-                        } else {
-                            expired += 1;
-                            if outcome.outcome_return > 0.0 { win_count += 1; }
-                        }
-                        
-                        returns.push(outcome.outcome_return);
-                        mfes.push(outcome.mfe);
-                        maes.push(outcome.mae);
-                    } else {
-                        ambiguous_hit += 1;
-                    }
-                } else {
-                    entry_not_reached += 1;
+                for horizon in [5, 10, 20, 60] {
+                    let outcome = outcome_engine.measure_outcome(
+                        decision.decision_id,
+                        &strategy,
+                        &strategy.metadata,
+                        &full_history,
+                        *dt,
+                        horizon,
+                        None
+                    );
+                    
+                    knowledge_repo.store(&outcome).await?;
+                    outcomes_evaluated += 1;
                 }
             }
         }
     }
     
-    returns.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    mfes.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    maes.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    
-    let median_return = if returns.is_empty() { 0.0 } else { returns[returns.len() / 2] };
-    let median_mfe = if mfes.is_empty() { 0.0 } else { mfes[mfes.len() / 2] };
-    let median_mae = if maes.is_empty() { 0.0 } else { maes[maes.len() / 2] };
-    let win_rate = if outcomes_evaluated > 0 { (win_count as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
-    let target_hit_rate = if outcomes_evaluated > 0 { (target_hit as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
-    let stop_hit_rate = if outcomes_evaluated > 0 { (stop_hit as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
-
-    println!("PHASE 4B BASELINE");
+    println!("PHASE 4 DATA POPULATION");
     println!("────────────────────────────────────");
-    println!("Decision Policy:       baseline-v1.0");
-    println!("Strategy Policy:       baseline-v1.0");
-    println!("Outcome Engine:        v1.0");
-    println!("Knowledge Lake:        version-X");
-    println!("Engine Version:        version-X");
+    println!("Knowledge Lake Populated Successfully.");
+    println!("Outcomes generated per strategy: 4 (5D, 10D, 20D, 60D)");
     println!("────────────────────────────────────\n");
 
-    println!("Temporal Integrity");
-    println!("  Replays:                 {}", decisions_replayed);
-    println!("  Violations:                {}", temporal_violations);
-    println!("  Future observations:       0");
-    println!("  Future historical cases:   0");
-    println!("  Hash mismatches:           {}\n", hash_mismatches);
-    
-    println!("Decision Distribution");
-    println!("  Positive:                 {}", pos_decisions);
-    println!("  Neutral:                  {}", neu_decisions);
-    println!("  Negative:                 {}\n", neg_decisions);
-    
-    println!("Strategy Outcomes");
-    println!("  Strategies generated:     {}", strategies_generated);
-    println!("  Outcomes evaluable:       {}", outcomes_evaluated);
-    println!("  Entry reached:            {}", entry_reached);
-    println!("  Target hit:               {}", target_hit);
-    println!("  Stop hit:                 {}", stop_hit);
-    println!("  Horizon expiry:           {}", expired);
-    println!("  Ambiguous (discarded):    {}", ambiguous_hit);
-    println!("  Entry not reached:        {}\n", entry_not_reached);
-    
-    println!("Actual Performance");
-    println!("  Win rate:                 {:.1}%", win_rate);
-    println!("  Target hit rate:          {:.1}%", target_hit_rate);
-    println!("  Stop hit rate:            {:.1}%", stop_hit_rate);
-    println!("  Median return:            {:.2}%", median_return * 100.0);
-    println!("  Median MFE:               {:.2}%", median_mfe * 100.0);
-    println!("  Median MAE:               {:.2}%", median_mae * 100.0);
+    println!("Total Decisions: {}", decisions_replayed);
+    println!("Total Strategies: {}", strategies_generated);
+    println!("Total Outcomes: {}", outcomes_evaluated);
     
     println!("\n============================================================");
-    println!("TEMPORAL INTEGRITY: PASS");
-    println!("REPLAY DETERMINISM: PASS");
-    println!("REAL STRATEGY VALIDATION: PASS");
+    println!("KNOWLEDGE LAKE POPULATION: COMPLETE");
     println!("============================================================");
 
     Ok(())

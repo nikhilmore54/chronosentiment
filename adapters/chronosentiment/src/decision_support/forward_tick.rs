@@ -14,12 +14,14 @@ use super::observation_outcome::PriceBar;
 use super::replay::{ReplayAssessment, ReplayInputs, ReplayObservation, UNFROZEN_ENGINE_VERSION};
 use super::TradingDecision;
 
-pub const DEFAULT_TICKERS: [&str; 5] = [
+/// Yahoo NSE tickers. `IDEA.NS` is Vodafone Idea.
+pub const DEFAULT_TICKERS: [&str; 6] = [
     "RELIANCE.NS",
     "TCS.NS",
     "INFY.NS",
     "HDFCBANK.NS",
     "ICICIBANK.NS",
+    "IDEA.NS",
 ];
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,23 +1,13 @@
-// ChronoSentiment Adapter — Coralys Platform
-//
-// Shared foundation for ChronoSentiment Enterprise and Personal products.
-//
-// Module structure:
-//   evidence   — EvidenceItem (immutable research sources)
-//   hypothesis — InvestmentThesis (versioned hypothesis)
-//   timeline   — TimelineEvent, TimelineView (research/decision timeline)
-//   workspace  — InvestmentWorkspace (transaction boundary)
-//   learning   — PersonalInvestmentLearningLoop (learning loop + patterns)
-//
-// Platform primitives realised:
-//   Workspace  → InvestmentWorkspace
-//   Evidence   → EvidenceItem (immutable, append-only)
-//   Hypothesis → InvestmentThesis (versioned)
-//   Review     → ThesisReview
-//   Timeline   → TimelineEvent, TimelineView
-//   Outcome    → InvestmentOutcome
-//   Learning   → PersonalInvestmentLearningLoop
-//   Pattern    → InvestmentPattern
+//! ChronoSentiment adapter — trading-domain decision and evaluation.
+//!
+//! ChronoSentiment owns assessments, `TradingDecision`, `DecisionPolicy`,
+//! replay, forward observation, ledger, outcomes, and performance.
+//! Coralys owns policy discovery / MOGA / ecology search. This crate must not
+//! contain a competing policy optimizer on the default product path.
+//!
+//! Default features compile the product adapter only.
+//! `--features legacy-lake` restores B3/B4 Knowledge Lake generators.
+//! `--features research` restores the G-GATE laboratory (implies `legacy-lake`).
 
 pub mod evidence;
 pub mod hypothesis;
@@ -34,7 +24,6 @@ pub mod repository;
 pub mod metrics;
 pub mod reasoning;
 
-// Re-export the most commonly used types for convenience.
 pub use evidence::{EvidenceItem, EvidenceSourceType, EvidenceDossier};
 pub use hypothesis::{InvestmentThesis, ThesisStatus, ThesisReview, ReviewVerdict};
 pub use timeline::{TimelineEvent, TimelineEventKind, TimelineView};
@@ -49,4 +38,7 @@ pub use learning::{
 };
 pub mod universe;
 pub mod decision_support;
+
+#[cfg(feature = "research")]
+#[path = "../research/src/mod.rs"]
 pub mod research;

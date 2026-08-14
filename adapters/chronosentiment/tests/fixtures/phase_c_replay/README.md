@@ -5,6 +5,8 @@ This directory contains the immutable inputs used for proving determinism in Chr
 **CRITICAL RULE: DO NOT AUTO-GENERATE OR OVERWRITE THESE FILES IN TESTS.**
 These files are committed directly to Git as a permanently version-controlled deterministic input. The tests use these inputs to prove that Replay(T) and Outcome measurement are reproducible.
 
+`scripts/phase_c_gate.sh` was removed (CLN-016 / CS-P-CLEAN-001). It printed PASS without executing tests and is not evidence. These fixtures remain.
+
 ### Fixture Manifest
 - **Fixture version**: 1.0
 - **Evaluation timestamp T**: 2026-08-01T12:00:00Z

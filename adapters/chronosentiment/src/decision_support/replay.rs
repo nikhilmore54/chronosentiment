@@ -120,6 +120,7 @@ pub fn observations_at_or_before(
 }
 
 pub fn decide_from_inputs(inputs: ReplayInputs) -> Result<TradingDecision, ReplayError> {
+    // CS-P-CLEAN-002 (PR-2) will require an explicit policy; do not add a second silent default.
     decide_from_inputs_with_policy(inputs, &TrendMappingPolicy)
 }
 

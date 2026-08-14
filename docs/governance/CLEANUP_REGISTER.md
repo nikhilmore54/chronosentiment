@@ -311,9 +311,25 @@ Proposed classes (RR4):
 
 ---
 
+### CLN-016 — ChronoSentiment adapter quarantine (CS-P-CLEAN-001 / PR-1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | CLN-016 |
+| **Type** | Archive (quarantine) + Delete (false gate only) |
+| **Asset** | `adapters/chronosentiment` research/demo/legacy surfaces; `scripts/phase_c_gate.sh`; `tests/week2_tests.rs` |
+| **Reason** | Audit CS-P-AUDIT-001: research/scaffolding had become accidental product architecture. Product builds must not require G-GATE laboratory code. |
+| **Canonical** | Product path: `decision_support` + `src/bin/csp*`. Lake generators: `legacy/bin/m4_populate_knowledge_lake.rs` behind `--features legacy-lake`. Research: `research/` behind `--features research`. |
+| **Dependents** | B3/B4 reproduction requires `m4_populate_knowledge_lake` + `DecisionEngine`/`StrategyEngine` (preserved, not deleted). Phase C fixtures remain. No immutable dump SHA depends on `phase_c_gate.sh`. |
+| **Validation** | `cargo test -p chronosentiment_adapter` (default features) includes `adapter_discipline_invariants`; product CS-P tests pass; `DecisionEngine` still present under `legacy-lake`. Do not regenerate B4. |
+| **Status** | **Complete** |
+| **Date** | 2026-08-14 |
+
+---
+
 ## Completed Items
 
-CLN-007, CLN-013 completed 2026-08-01 (see entries above). Open: CLN-001–CLN-006, CLN-014, CLN-015.
+CLN-007, CLN-013 completed 2026-08-01 (see entries above). CLN-016 completed 2026-08-14. Open: CLN-001–CLN-006, CLN-014, CLN-015.
 
 ---
 

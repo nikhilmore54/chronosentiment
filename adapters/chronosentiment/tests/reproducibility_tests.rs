@@ -1,3 +1,6 @@
+#![cfg(feature = "legacy-lake")]
+//! Heritage lake-generator determinism tests. Not the product TradingDecision path.
+
 use chrono::{DateTime, Utc, TimeZone};
 use uuid::Uuid;
 use std::error::Error;

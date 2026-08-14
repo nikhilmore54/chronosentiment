@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+#[cfg(feature = "legacy-lake")]
 use crate::reasoning::decision::{Decision, Opportunity};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -35,8 +36,13 @@ pub struct OpportunityStrategy {
     pub confidence: f64,
 }
 
+/// B3/B4 strategy generator. Only Positive (LONG-equivalent) opportunities
+/// emit a strategy; hidden +2/−1 ATR thresholds. Compiled only with
+/// `legacy-lake`. Do not repair SHORT omission — that is B4 provenance.
+#[cfg(feature = "legacy-lake")]
 pub struct StrategyEngine;
 
+#[cfg(feature = "legacy-lake")]
 impl StrategyEngine {
     pub fn generate(&self, decision: &Decision, current_close: f64, atr: f64) -> Option<OpportunityStrategy> {
         if decision.opportunity != Opportunity::Positive {

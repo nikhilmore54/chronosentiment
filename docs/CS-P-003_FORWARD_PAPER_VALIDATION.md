@@ -156,7 +156,7 @@ decide_at(latest session ≤ now)   # one decision per ticker per as_of
 product_validation/forward_unfrozen_dev/ledger.jsonl
 ```
 
-- Universe: RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS (Yahoo). Lookback is for MA20/MA50 only; historical dates are not emitted as forward decisions.
+- Universe: RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS, IDEA.NS (Vodafone Idea) (Yahoo). Lookback is for MA20/MA50 only; historical dates are not emitted as forward decisions.
 - Idempotent: same `decision_id` is not duplicated.
 - 5D/10D/20D/60D outcomes mature later from `prices.jsonl`.
 - B4 historical report remains the backtest. Do not treat it as the forward test.

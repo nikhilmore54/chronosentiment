@@ -3,6 +3,9 @@
 //! Both the replay adapter and the live adapter must emit this object.
 //! It is not the Knowledge Lake `reasoning::decision::Decision` artifact (B3/B4 persist).
 //!
+//! ChronoSentiment evaluates a versioned `DecisionPolicy`. It does not discover
+//! policies. Coralys is the learning/search system (CS-P-006, not this cleanup).
+//!
 //! Decision Engine v1.0 is **not frozen**. `engine_version` is caller-supplied.
 //! Outcomes do not belong on this object.
 

@@ -36,6 +36,11 @@ impl ConfidenceDecomposition {
     }
 }
 
+/// Knowledge Lake decision artifact (B3/B4 persist).
+///
+/// This is **not** `decision_support::TradingDecision`. Do not merge the two.
+/// Product paths must emit `TradingDecision` via `DecisionPolicy`.
+/// This type remains so historical dumps can be deserialized.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Decision {
     pub metadata: crate::repository::knowledge::ArtifactMetadata,
@@ -71,11 +76,18 @@ pub struct Decision {
     pub scenario_projection_version: String,
 }
 
+#[cfg(feature = "legacy-lake")]
 use crate::reasoning::assessment::{AssessmentProfile, Direction};
+#[cfg(feature = "legacy-lake")]
 use crate::metrics::concepts::Concept;
 
+/// B3/B4 lake generator. Not a `DecisionPolicy`. Compiled only with `legacy-lake`.
+/// Preserve behaviour (including fabricated 0.5 confidence). Do not repair it
+/// to improve historical SHORT coverage.
+#[cfg(feature = "legacy-lake")]
 pub struct DecisionEngine;
 
+#[cfg(feature = "legacy-lake")]
 impl DecisionEngine {
     pub fn evaluate(&self, profile: &AssessmentProfile, eval_dt: DateTime<Utc>, instrument_id: Uuid) -> Decision {
         // Baseline Decision Policy v1.0

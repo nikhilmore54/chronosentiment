@@ -1,11 +1,13 @@
+//! Reasoning artifacts.
+//!
+//! Product assessments live in `assessment`.
+//! Knowledge Lake `Decision` / `OpportunityStrategy` types remain here so B3/B4
+//! dumps can be read. The *generators* (`DecisionEngine`, `StrategyEngine`) are
+//! compiled only with `--features legacy-lake`.
+
 pub mod scenario;
 pub mod decision;
-// pub mod evidence_engine;
-// pub mod hypothesis_engine;
-// pub mod scenario_engine;
 pub mod policy_engine;
-// pub mod decision_engine;
-// pub mod journal;
 pub mod assessment;
 pub mod evidence;
 pub mod strategy;

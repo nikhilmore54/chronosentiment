@@ -3,6 +3,14 @@ name = "chronosentiment_adapter"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+# B3/B4 Knowledge Lake generators (DecisionEngine / StrategyEngine) and heritage tests.
+# Not the product TradingDecision path. Required to reproduce historical lake population.
+legacy-lake = []
+# G-GATE / predictive-value research laboratory. Not required to compile the product adapter.
+research = ["legacy-lake"]
+
 [dependencies]
 coralys-ecology = { path = "../../coralys-ecology" }
 coralys-moga = { path = "../../coralys-moga" }
@@ -16,4 +24,73 @@ reqwest = { version = "0.11", features = ["json"] }
 async-trait = "0.1"
 sha2 = "0.10"
 
+# ---------------------------------------------------------------------------
+# Legacy B3/B4 generators and demos — not built unless `--features legacy-lake`
+# ---------------------------------------------------------------------------
+[[bin]]
+name = "m4_populate_knowledge_lake"
+path = "legacy/bin/m4_populate_knowledge_lake.rs"
+required-features = ["legacy-lake"]
 
+[[bin]]
+name = "m4_validation_gate"
+path = "legacy/bin/m4_validation_gate.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m4_time_machine_demo"
+path = "legacy/bin/m4_time_machine_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m1_reliance"
+path = "legacy/bin/m1_reliance.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m2_week1_demo"
+path = "legacy/bin/m2_week1_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m2_week2_demo"
+path = "legacy/bin/m2_week2_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m3_reasoning_demo"
+path = "legacy/bin/m3_reasoning_demo.rs"
+required-features = ["legacy-lake"]
+
+# ---------------------------------------------------------------------------
+# G-GATE research binaries — not built unless `--features research`
+# ---------------------------------------------------------------------------
+[[bin]]
+name = "m5_assessment_predictive_value"
+path = "research/bin/m5_assessment_predictive_value.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "m6_predictive_value_experiment"
+path = "research/bin/m6_predictive_value_experiment.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "m6_phase_g_experiment"
+path = "research/bin/m6_phase_g_experiment.rs"
+required-features = ["research"]
+
+[[test]]
+name = "research_dataset_tests"
+path = "research/tests/research_dataset_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "research_laboratory_tests"
+path = "research/tests/research_laboratory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "phase_g_predictive_value_tests"
+path = "research/tests/phase_g_predictive_value_tests.rs"
+required-features = ["research"]
