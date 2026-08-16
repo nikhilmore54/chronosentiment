@@ -1,0 +1,75 @@
+{
+  "schema_version": "csp006a.policy_artifact.1",
+  "policy_id": "coralys.rulelist.discovered",
+  "policy_version": "v0",
+  "discovery_engine": "coralys.moga.rulelist.v0",
+  "discovery_run_id": "coralys.rulelist.6e92ef3e097d52f9",
+  "input_schema": [
+    "Trend",
+    "Momentum",
+    "Volatility"
+  ],
+  "factor_definitions": [
+    {
+      "concept": "Trend",
+      "states": [
+        "Bullish",
+        "Bearish",
+        "Neutral",
+        "absent"
+      ]
+    },
+    {
+      "concept": "Momentum",
+      "states": [
+        "Positive",
+        "Negative",
+        "Neutral",
+        "absent"
+      ]
+    },
+    {
+      "concept": "Volatility",
+      "states": [
+        "present",
+        "absent"
+      ]
+    }
+  ],
+  "action_space": [
+    "LONG",
+    "SHORT",
+    "NO_TRADE"
+  ],
+  "rules": [
+    {
+      "when": [
+        {
+          "concept": "Trend",
+          "present": true,
+          "direction": "Bearish"
+        }
+      ],
+      "action": "LONG"
+    }
+  ],
+  "unmatched_action": "NO_TRADE",
+  "training_provenance": {
+    "protocol_document_id": "CS-P-006-B.1",
+    "train": {
+      "inclusive_start": "2021-10-31T15:30:00Z",
+      "exclusive_end": "2022-11-30T15:30:00Z"
+    },
+    "validation": {
+      "inclusive_start": "2022-11-30T15:30:00Z",
+      "exclusive_end": "2023-12-31T15:30:00Z"
+    },
+    "test": {
+      "inclusive_start": "2023-12-31T15:30:00Z",
+      "exclusive_end": "2024-12-31T15:30:01Z"
+    }
+  },
+  "allowed_information_timestamp": "2022-10-31T15:30:00Z",
+  "artifact_hash": "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0",
+  "methodology_hash": "6e92ef3e097d52f923b6028258f6442bcb5de6163c45a94628dead9aa954e3a5"
+}

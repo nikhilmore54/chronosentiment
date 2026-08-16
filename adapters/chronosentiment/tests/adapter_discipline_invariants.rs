@@ -28,6 +28,8 @@ const DECISION_PRODUCERS: &[&str] = &[
 const DECIDE_WITHOUT_EVALUATION: &[&str] = &[
     "src/decision_support/policy.rs",
     "src/decision_support/policy_artifact.rs",
+    "src/decision_support/csp006_snapshot.rs",
+    "src/decision_support/dataset_partition.rs",
     "src/decision_support/replay.rs",
     "src/decision_support/forward_tick.rs",
     "src/decision_support/backtest.rs",
@@ -225,4 +227,36 @@ fn product_binaries_still_select_the_baseline_fixture_explicitly() {
             "{rel} must not switch to a policy artifact in CS-P-006-A"
         );
     }
+}
+
+#[test]
+fn search_diagnosis_binary_does_not_evolve() {
+    let src = read("src/bin/csp006_search_diagnosis.rs");
+    assert!(
+        src.contains("diagnose_sealed_artifact"),
+        "diagnosis binary must inspect the sealed artifact"
+    );
+    assert!(
+        !src.contains("evolve_on_development") && !src.contains("BaselineTrendMappingPolicy"),
+        "diagnosis must not search or promote the baseline"
+    );
+}
+
+#[test]
+fn policy_discovery_binary_does_not_hand_write_or_promote_the_baseline() {
+    let src = read("src/bin/csp006_policy_discovery.rs");
+    assert!(
+        src.contains("evolve_on_development") && src.contains("evaluate_sealed_candidate"),
+        "discovery binary must run Coralys search then ChronoSentiment handoff"
+    );
+    assert!(
+        !src.contains("BaselineTrendMappingPolicy"),
+        "discovery must not promote the baseline fixture"
+    );
+    assert!(
+        !src.contains("train_policy")
+            && !src.contains("CoralysPhase")
+            && !src.contains("b5_strategy"),
+        "discovery binary must not introduce phase names into the run"
+    );
 }

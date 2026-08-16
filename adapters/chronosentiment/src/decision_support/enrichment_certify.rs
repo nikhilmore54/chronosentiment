@@ -339,6 +339,18 @@ pub fn month_end_1530(year: i32, month: u32) -> DateTime<Utc> {
     Utc.from_utc_datetime(&d.and_time(chrono::NaiveTime::from_hms_opt(15, 30, 0).unwrap()))
 }
 
+/// Month-end 15:30 UTC grid used by CS-P-004-E1 / CS-P-005 (2021-10 through 2024-12).
+pub fn replay_month_ends_2021_10_to_2024_12() -> Vec<DateTime<Utc>> {
+    let mut out = Vec::new();
+    for year in 2021..=2024 {
+        let start_month = if year == 2021 { 10 } else { 1 };
+        for month in start_month..=12 {
+            out.push(month_end_1530(year, month));
+        }
+    }
+    out
+}
+
 pub fn is_replay_month_end(t: DateTime<Utc>) -> bool {
     t.hour() == 15 && t.minute() == 30 && t.second() == 0 && t.year() >= 2021 && t.year() <= 2024
 }

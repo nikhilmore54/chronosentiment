@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-08-13T01:35:19Z",
+  "classification": "INCONCLUSIVE",
+  "reason": "Required predictive-value metrics and horizon-specific analysis are not implemented.",
+  "missing_metrics": [
+    "AUC",
+    "Calibration",
+    "Effect size",
+    "Confidence interval",
+    "p-value",
+    "Baseline comparison"
+  ],
+  "required_horizons": [
+    "5D",
+    "10D",
+    "20D",
+    "60D"
+  ],
+  "experiment_executed": false,
+  "predictive_value_claim": "NOT_ESTABLISHED"
+}
+

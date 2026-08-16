@@ -1,0 +1,991 @@
+{
+  "contract_id": "csp006c3e.rule_persistence.1",
+  "search_two_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "promotion_status": "candidate_research_artifact",
+  "search_three_authorized": false,
+  "used_as_coralys_fitness": false,
+  "pass_threshold_introduced": false,
+  "n_rows": 273,
+  "rules": [
+    {
+      "rule_index": 0,
+      "label": "Bearish → LONG",
+      "action": "LONG",
+      "n": 121,
+      "n_evaluation": 33,
+      "mean_v": 0.0063605476890379545,
+      "evaluation_mean_v": -0.016064089302286366,
+      "unique_best_n": 69,
+      "unique_best_share": 0.5702479338842975,
+      "signed_value_sum": 0.7696262703735925,
+      "contribution_share": 0.4846155562618706,
+      "evaluation_signed_sum": -0.5301149469754501,
+      "evaluation_contribution_share": 1.9650704389990075,
+      "windows": [
+        {
+          "window": "2021–22",
+          "n": 53,
+          "mean_v": 0.010469555455957581,
+          "median_v": 0.015945687977572297,
+          "n_positive": 30,
+          "n_negative": 23,
+          "recommended": 0.010469555455957581,
+          "long": 0.010469555455957581,
+          "short": -0.010469555455957581,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.010469555455957581
+        },
+        {
+          "window": "2022–23",
+          "n": 79,
+          "mean_v": 0.010748410780547921,
+          "median_v": 0.009575313282577326,
+          "n_positive": 45,
+          "n_negative": 34,
+          "recommended": 0.010748410780547921,
+          "long": 0.010748410780547921,
+          "short": -0.010748410780547921,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.010748410780547921
+        },
+        {
+          "window": "2023–24",
+          "n": 68,
+          "mean_v": 0.003157938694232956,
+          "median_v": 0.009574476723917247,
+          "n_positive": 39,
+          "n_negative": 29,
+          "recommended": 0.003157938694232956,
+          "long": 0.003157938694232956,
+          "short": -0.003157938694232956,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.003157938694232956
+        },
+        {
+          "window": "development",
+          "n": 49,
+          "mean_v": 0.014038605742496532,
+          "median_v": 0.017849861739852976,
+          "n_positive": 29,
+          "n_negative": 20,
+          "recommended": 0.014038605742496532,
+          "long": 0.014038605742496532,
+          "short": -0.014038605742496532,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.014038605742496532
+        },
+        {
+          "window": "selection",
+          "n": 39,
+          "mean_v": 0.01568844964017212,
+          "median_v": 0.011744148838816497,
+          "n_positive": 23,
+          "n_negative": 16,
+          "recommended": 0.01568844964017212,
+          "long": 0.01568844964017212,
+          "short": -0.01568844964017212,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.01568844964017212
+        },
+        {
+          "window": "evaluation",
+          "n": 33,
+          "mean_v": -0.016064089302286366,
+          "median_v": 0.007149709409816702,
+          "n_positive": 17,
+          "n_negative": 16,
+          "recommended": -0.016064089302286366,
+          "long": -0.016064089302286366,
+          "short": 0.016064089302286366,
+          "no_trade": 0.0,
+          "vs_no_trade": -0.016064089302286366
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 18,
+          "n_evaluation": 4,
+          "mean_v": 0.015609443088204876,
+          "evaluation_mean_v": 0.0334167702038247,
+          "n_positive": 11,
+          "n_negative": 7,
+          "gain_sum": 0.4744965120609955,
+          "loss_sum": -0.1935265364733078,
+          "long": 0.015609443088204876,
+          "short": -0.015609443088204876,
+          "vs_no_trade": 0.015609443088204876
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 13,
+          "n_evaluation": 1,
+          "mean_v": 0.021096578944976775,
+          "evaluation_mean_v": 0.07541493229465113,
+          "n_positive": 8,
+          "n_negative": 5,
+          "gain_sum": 0.44007573511742554,
+          "loss_sum": -0.1658202088327275,
+          "long": 0.021096578944976775,
+          "short": -0.021096578944976775,
+          "vs_no_trade": 0.021096578944976775
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 17,
+          "n_evaluation": 5,
+          "mean_v": 0.0164654120208419,
+          "evaluation_mean_v": 0.0269744161647746,
+          "n_positive": 12,
+          "n_negative": 5,
+          "gain_sum": 0.5640758327547717,
+          "loss_sum": -0.28416382840045934,
+          "long": 0.0164654120208419,
+          "short": -0.0164654120208419,
+          "vs_no_trade": 0.0164654120208419
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 19,
+          "n_evaluation": 6,
+          "mean_v": -0.002976136925316204,
+          "evaluation_mean_v": -0.02581332658148444,
+          "n_positive": 10,
+          "n_negative": 9,
+          "gain_sum": 0.32024518016802883,
+          "loss_sum": -0.3767917817490367,
+          "long": -0.002976136925316204,
+          "short": 0.002976136925316204,
+          "vs_no_trade": -0.002976136925316204
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 18,
+          "n_evaluation": 5,
+          "mean_v": 0.01282998697681046,
+          "evaluation_mean_v": 0.029177915196766435,
+          "n_positive": 12,
+          "n_negative": 6,
+          "gain_sum": 0.4347475441257318,
+          "loss_sum": -0.20380777854314355,
+          "long": 0.01282998697681046,
+          "short": -0.01282998697681046,
+          "vs_no_trade": 0.01282998697681046
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 22,
+          "n_evaluation": 7,
+          "mean_v": -0.020792499527129988,
+          "evaluation_mean_v": -0.080607659740059,
+          "n_positive": 8,
+          "n_negative": 14,
+          "gain_sum": 0.7510991641619813,
+          "loss_sum": -1.2085341537588412,
+          "long": -0.020792499527129988,
+          "short": 0.020792499527129988,
+          "vs_no_trade": -0.020792499527129988
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 14,
+          "n_evaluation": 5,
+          "mean_v": 0.015537899267298141,
+          "evaluation_mean_v": -0.060165007844757104,
+          "n_positive": 8,
+          "n_negative": 6,
+          "gain_sum": 0.6405787541878156,
+          "loss_sum": -0.42304816444564175,
+          "long": 0.015537899267298141,
+          "short": -0.015537899267298141,
+          "vs_no_trade": 0.015537899267298141
+        }
+      ],
+      "states": [
+        {
+          "trend_state": "Bearish",
+          "momentum_state": "Negative",
+          "volatility_state": "present",
+          "n": 84,
+          "mean_v": 0.0004851054086077654,
+          "evaluation_n": 24,
+          "evaluation_mean_v": -0.026418786282250275,
+          "n_positive": 46,
+          "n_negative": 38
+        },
+        {
+          "trend_state": "Bearish",
+          "momentum_state": "Positive",
+          "volatility_state": "present",
+          "n": 37,
+          "mean_v": 0.019699389622987572,
+          "evaluation_n": 9,
+          "evaluation_mean_v": 0.011548435977617398,
+          "n_positive": 23,
+          "n_negative": 14
+        }
+      ],
+      "action_advantage": {
+        "n": 121,
+        "recommended": 0.0063605476890379545,
+        "long": 0.0063605476890379545,
+        "short": -0.0063605476890379545,
+        "no_trade": 0.0,
+        "vs_long": 0.0,
+        "vs_short": 0.012721095378075909,
+        "vs_no_trade": 0.0063605476890379545
+      },
+      "evaluation_action_advantage": {
+        "n": 33,
+        "recommended": -0.016064089302286366,
+        "long": -0.016064089302286366,
+        "short": 0.016064089302286366,
+        "no_trade": 0.0,
+        "vs_long": 0.0,
+        "vs_short": -0.03212817860457273,
+        "vs_no_trade": -0.016064089302286366
+      },
+      "failures": {
+        "n_gain": 69,
+        "n_loss": 52,
+        "n_zero": 0,
+        "gain_sum": 3.625318722576751,
+        "loss_sum": -2.8556924522031584,
+        "instrument_loss_share": [
+          {
+            "key": "IDEA.NS",
+            "n_loss": 14,
+            "loss_sum": -1.2085341537588412,
+            "share_of_loss_sum": 0.423201788703283
+          },
+          {
+            "key": "MAHABANK.NS",
+            "n_loss": 6,
+            "loss_sum": -0.42304816444564175,
+            "share_of_loss_sum": 0.14814206064776383
+          },
+          {
+            "key": "RELIANCE.NS",
+            "n_loss": 9,
+            "loss_sum": -0.3767917817490367,
+            "share_of_loss_sum": 0.13194410394520703
+          },
+          {
+            "key": "INFY.NS",
+            "n_loss": 5,
+            "loss_sum": -0.28416382840045934,
+            "share_of_loss_sum": 0.09950785427934572
+          },
+          {
+            "key": "TCS.NS",
+            "n_loss": 6,
+            "loss_sum": -0.20380777854314355,
+            "share_of_loss_sum": 0.07136895234845982
+          },
+          {
+            "key": "HDFCBANK.NS",
+            "n_loss": 7,
+            "loss_sum": -0.1935265364733078,
+            "share_of_loss_sum": 0.06776868998060441
+          },
+          {
+            "key": "ICICIBANK.NS",
+            "n_loss": 5,
+            "loss_sum": -0.1658202088327275,
+            "share_of_loss_sum": 0.05806655009533596
+          }
+        ],
+        "year_loss_share": [
+          {
+            "key": "2024",
+            "n_loss": 16,
+            "loss_sum": -1.3846111454050605,
+            "share_of_loss_sum": 0.48486003607875805
+          },
+          {
+            "key": "2022",
+            "n_loss": 21,
+            "loss_sum": -1.0140560429363599,
+            "share_of_loss_sum": 0.35509987854400027
+          },
+          {
+            "key": "2023",
+            "n_loss": 13,
+            "loss_sum": -0.3832353140510524,
+            "share_of_loss_sum": 0.13420048568443968
+          },
+          {
+            "key": "2021",
+            "n_loss": 2,
+            "loss_sum": -0.07378994981068476,
+            "share_of_loss_sum": 0.025839599692801665
+          }
+        ],
+        "slice_loss_share": [
+          {
+            "key": "evaluation",
+            "n_loss": 16,
+            "loss_sum": -1.3846111454050605,
+            "share_of_loss_sum": 0.48486003607875805
+          },
+          {
+            "key": "development",
+            "n_loss": 20,
+            "loss_sum": -0.9284517763642286,
+            "share_of_loss_sum": 0.325123167814493
+          },
+          {
+            "key": "selection",
+            "n_loss": 16,
+            "loss_sum": -0.5426295304338684,
+            "share_of_loss_sum": 0.19001679610674857
+          }
+        ],
+        "largest_loss_instrument": "IDEA.NS",
+        "largest_loss_year": "2024"
+      }
+    },
+    {
+      "rule_index": 1,
+      "label": "Bullish ∧ Positive Momentum → LONG",
+      "action": "LONG",
+      "n": 109,
+      "n_evaluation": 42,
+      "mean_v": 0.005578355241450847,
+      "evaluation_mean_v": 0.0019045663007002192,
+      "unique_best_n": 57,
+      "unique_best_share": 0.5229357798165137,
+      "signed_value_sum": 0.6080407213181424,
+      "contribution_share": 0.3828689374758785,
+      "evaluation_signed_sum": 0.0799917846294092,
+      "evaluation_contribution_share": -0.2965196364201116,
+      "windows": [
+        {
+          "window": "2021–22",
+          "n": 38,
+          "mean_v": -0.005833545138374277,
+          "median_v": 0.007746342068367237,
+          "n_positive": 21,
+          "n_negative": 17,
+          "recommended": -0.005833545138374277,
+          "long": -0.005833545138374277,
+          "short": 0.005833545138374277,
+          "no_trade": 0.0,
+          "vs_no_trade": -0.005833545138374277
+        },
+        {
+          "window": "2022–23",
+          "n": 66,
+          "mean_v": 0.013535335061878125,
+          "median_v": 0.01727484504935647,
+          "n_positive": 40,
+          "n_negative": 26,
+          "recommended": 0.013535335061878125,
+          "long": 0.013535335061878125,
+          "short": -0.013535335061878125,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.013535335061878125
+        },
+        {
+          "window": "2023–24",
+          "n": 71,
+          "mean_v": 0.01168613290952627,
+          "median_v": 0.0023818070397777415,
+          "n_positive": 36,
+          "n_negative": 35,
+          "recommended": 0.01168613290952627,
+          "long": 0.01168613290952627,
+          "short": -0.01168613290952627,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.01168613290952627
+        },
+        {
+          "window": "development",
+          "n": 30,
+          "mean_v": -0.005564500511477883,
+          "median_v": 0.015275265940910662,
+          "n_positive": 17,
+          "n_negative": 13,
+          "recommended": -0.005564500511477883,
+          "long": -0.005564500511477883,
+          "short": 0.005564500511477883,
+          "no_trade": 0.0,
+          "vs_no_trade": -0.005564500511477883
+        },
+        {
+          "window": "selection",
+          "n": 37,
+          "mean_v": 0.01878335005494783,
+          "median_v": 0.014253350576220533,
+          "n_positive": 21,
+          "n_negative": 16,
+          "recommended": 0.01878335005494783,
+          "long": 0.01878335005494783,
+          "short": -0.01878335005494783,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.01878335005494783
+        },
+        {
+          "window": "evaluation",
+          "n": 42,
+          "mean_v": 0.0019045663007002192,
+          "median_v": -0.003629660338003133,
+          "n_positive": 19,
+          "n_negative": 23,
+          "recommended": 0.0019045663007002192,
+          "long": 0.0019045663007002192,
+          "short": -0.0019045663007002192,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.0019045663007002192
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 13,
+          "n_evaluation": 7,
+          "mean_v": -0.0028276729117070803,
+          "evaluation_mean_v": -0.017861684942925896,
+          "n_positive": 8,
+          "n_negative": 5,
+          "gain_sum": 0.19825236564295187,
+          "loss_sum": -0.2350121134951439,
+          "long": -0.0028276729117070803,
+          "short": 0.0028276729117070803,
+          "vs_no_trade": -0.0028276729117070803
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 19,
+          "n_evaluation": 9,
+          "mean_v": -0.006665836929093251,
+          "evaluation_mean_v": 0.0021029689714112706,
+          "n_positive": 8,
+          "n_negative": 11,
+          "gain_sum": 0.2469418902536941,
+          "loss_sum": -0.3735927919064659,
+          "long": -0.006665836929093251,
+          "short": 0.006665836929093251,
+          "vs_no_trade": -0.006665836929093251
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 17,
+          "n_evaluation": 7,
+          "mean_v": 0.0017081560197725462,
+          "evaluation_mean_v": 0.011655243878531462,
+          "n_positive": 9,
+          "n_negative": 8,
+          "gain_sum": 0.4547004551153737,
+          "loss_sum": -0.42566180277924043,
+          "long": 0.0017081560197725462,
+          "short": -0.0017081560197725462,
+          "vs_no_trade": 0.0017081560197725462
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 16,
+          "n_evaluation": 5,
+          "mean_v": 0.0019317824306821839,
+          "evaluation_mean_v": 0.0009222783614674851,
+          "n_positive": 8,
+          "n_negative": 8,
+          "gain_sum": 0.3270895206774414,
+          "loss_sum": -0.2961810017865265,
+          "long": 0.0019317824306821839,
+          "short": -0.0019317824306821839,
+          "vs_no_trade": 0.0019317824306821839
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 13,
+          "n_evaluation": 5,
+          "mean_v": 0.0010328160355182843,
+          "evaluation_mean_v": 0.0031208270285191823,
+          "n_positive": 6,
+          "n_negative": 7,
+          "gain_sum": 0.18546239437711998,
+          "loss_sum": -0.17203578591538227,
+          "long": 0.0010328160355182843,
+          "short": -0.0010328160355182843,
+          "vs_no_trade": 0.0010328160355182843
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 12,
+          "n_evaluation": 3,
+          "mean_v": 0.007831912562145368,
+          "evaluation_mean_v": -0.029286628877526356,
+          "n_positive": 7,
+          "n_negative": 5,
+          "gain_sum": 0.6842375134461436,
+          "loss_sum": -0.5902545627003992,
+          "long": 0.007831912562145368,
+          "short": -0.007831912562145368,
+          "vs_no_trade": 0.007831912562145368
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 19,
+          "n_evaluation": 6,
+          "mean_v": 0.03179445475729346,
+          "evaluation_mean_v": 0.02869241850335243,
+          "n_positive": 11,
+          "n_negative": 8,
+          "gain_sum": 1.1990378210751724,
+          "loss_sum": -0.5949431806865968,
+          "long": 0.03179445475729346,
+          "short": -0.03179445475729346,
+          "vs_no_trade": 0.03179445475729346
+        }
+      ],
+      "states": [
+        {
+          "trend_state": "Bullish",
+          "momentum_state": "Positive",
+          "volatility_state": "present",
+          "n": 109,
+          "mean_v": 0.005578355241450847,
+          "evaluation_n": 42,
+          "evaluation_mean_v": 0.0019045663007002192,
+          "n_positive": 57,
+          "n_negative": 52
+        }
+      ],
+      "action_advantage": {
+        "n": 109,
+        "recommended": 0.005578355241450847,
+        "long": 0.005578355241450847,
+        "short": -0.005578355241450847,
+        "no_trade": 0.0,
+        "vs_long": 0.0,
+        "vs_short": 0.011156710482901695,
+        "vs_no_trade": 0.005578355241450847
+      },
+      "evaluation_action_advantage": {
+        "n": 42,
+        "recommended": 0.0019045663007002192,
+        "long": 0.0019045663007002192,
+        "short": -0.0019045663007002192,
+        "no_trade": 0.0,
+        "vs_long": 0.0,
+        "vs_short": 0.0038091326014004384,
+        "vs_no_trade": 0.0019045663007002192
+      },
+      "failures": {
+        "n_gain": 57,
+        "n_loss": 52,
+        "n_zero": 0,
+        "gain_sum": 3.2957219605878967,
+        "loss_sum": -2.6876812392697547,
+        "instrument_loss_share": [
+          {
+            "key": "MAHABANK.NS",
+            "n_loss": 8,
+            "loss_sum": -0.5949431806865968,
+            "share_of_loss_sum": 0.22135927876932437
+          },
+          {
+            "key": "IDEA.NS",
+            "n_loss": 5,
+            "loss_sum": -0.5902545627003992,
+            "share_of_loss_sum": 0.2196147943722567
+          },
+          {
+            "key": "INFY.NS",
+            "n_loss": 8,
+            "loss_sum": -0.42566180277924043,
+            "share_of_loss_sum": 0.15837510660114335
+          },
+          {
+            "key": "ICICIBANK.NS",
+            "n_loss": 11,
+            "loss_sum": -0.3735927919064659,
+            "share_of_loss_sum": 0.13900189741547303
+          },
+          {
+            "key": "RELIANCE.NS",
+            "n_loss": 8,
+            "loss_sum": -0.2961810017865265,
+            "share_of_loss_sum": 0.11019945276955505
+          },
+          {
+            "key": "HDFCBANK.NS",
+            "n_loss": 5,
+            "loss_sum": -0.2350121134951439,
+            "share_of_loss_sum": 0.08744047101322064
+          },
+          {
+            "key": "TCS.NS",
+            "n_loss": 7,
+            "loss_sum": -0.17203578591538227,
+            "share_of_loss_sum": 0.064008999059027
+          }
+        ],
+        "year_loss_share": [
+          {
+            "key": "2022",
+            "n_loss": 12,
+            "loss_sum": -0.7935917837163657,
+            "share_of_loss_sum": 0.2952700536511485
+          },
+          {
+            "key": "2023",
+            "n_loss": 14,
+            "loss_sum": -0.7684567737201752,
+            "share_of_loss_sum": 0.2859181224663999
+          },
+          {
+            "key": "2024",
+            "n_loss": 21,
+            "loss_sum": -0.6362211651101857,
+            "share_of_loss_sum": 0.23671749306217857
+          },
+          {
+            "key": "2021",
+            "n_loss": 5,
+            "loss_sum": -0.48941151672302835,
+            "share_of_loss_sum": 0.18209433082027313
+          }
+        ],
+        "slice_loss_share": [
+          {
+            "key": "development",
+            "n_loss": 13,
+            "loss_sum": -1.0528378050478324,
+            "share_of_loss_sum": 0.3917271846321662
+          },
+          {
+            "key": "evaluation",
+            "n_loss": 23,
+            "loss_sum": -0.9011474078441392,
+            "share_of_loss_sum": 0.3352880522725164
+          },
+          {
+            "key": "selection",
+            "n_loss": 16,
+            "loss_sum": -0.7336960263777832,
+            "share_of_loss_sum": 0.27298476309531744
+          }
+        ],
+        "largest_loss_instrument": "MAHABANK.NS",
+        "largest_loss_year": "2022"
+      }
+    },
+    {
+      "rule_index": 3,
+      "label": "Bullish ∧ Negative Momentum → SHORT",
+      "action": "SHORT",
+      "n": 43,
+      "n_evaluation": 16,
+      "mean_v": 0.00489418945539806,
+      "evaluation_mean_v": 0.011272139608391064,
+      "unique_best_n": 26,
+      "unique_best_share": 0.6046511627906976,
+      "signed_value_sum": 0.21045014658211658,
+      "contribution_share": 0.13251550626225092,
+      "evaluation_signed_sum": 0.18035423373425702,
+      "evaluation_contribution_share": -0.6685508025788959,
+      "windows": [
+        {
+          "window": "2021–22",
+          "n": 14,
+          "mean_v": -0.0045717935215033294,
+          "median_v": 0.006792361857268692,
+          "n_positive": 8,
+          "n_negative": 6,
+          "recommended": -0.0045717935215033294,
+          "long": 0.0045717935215033294,
+          "short": -0.0045717935215033294,
+          "no_trade": 0.0,
+          "vs_no_trade": -0.0045717935215033294
+        },
+        {
+          "window": "2022–23",
+          "n": 23,
+          "mean_v": 0.0041470204195643975,
+          "median_v": 0.011363679466167807,
+          "n_positive": 13,
+          "n_negative": 10,
+          "recommended": 0.0041470204195643975,
+          "long": -0.0041470204195643975,
+          "short": 0.0041470204195643975,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.0041470204195643975
+        },
+        {
+          "window": "2023–24",
+          "n": 29,
+          "mean_v": 0.00946397434079873,
+          "median_v": 0.012182872565341675,
+          "n_positive": 18,
+          "n_negative": 11,
+          "recommended": 0.00946397434079873,
+          "long": -0.00946397434079873,
+          "short": 0.00946397434079873,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.00946397434079873
+        },
+        {
+          "window": "development",
+          "n": 12,
+          "mean_v": -0.0031239573103804402,
+          "median_v": 0.006792361857268692,
+          "n_positive": 7,
+          "n_negative": 5,
+          "recommended": -0.0031239573103804402,
+          "long": 0.0031239573103804402,
+          "short": -0.0031239573103804402,
+          "no_trade": 0.0,
+          "vs_no_trade": -0.0031239573103804402
+        },
+        {
+          "window": "selection",
+          "n": 15,
+          "mean_v": 0.0045055600381616575,
+          "median_v": 0.012596979523741504,
+          "n_positive": 8,
+          "n_negative": 7,
+          "recommended": 0.0045055600381616575,
+          "long": -0.0045055600381616575,
+          "short": 0.0045055600381616575,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.0045055600381616575
+        },
+        {
+          "window": "evaluation",
+          "n": 16,
+          "mean_v": 0.011272139608391064,
+          "median_v": 0.007600543834697028,
+          "n_positive": 11,
+          "n_negative": 5,
+          "recommended": 0.011272139608391064,
+          "long": -0.011272139608391064,
+          "short": 0.011272139608391064,
+          "no_trade": 0.0,
+          "vs_no_trade": 0.011272139608391064
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 8,
+          "n_evaluation": 2,
+          "mean_v": 0.022466332523394132,
+          "evaluation_mean_v": 0.033680996058178814,
+          "n_positive": 5,
+          "n_negative": 3,
+          "gain_sum": 0.21345184778356996,
+          "loss_sum": -0.03372118759641686,
+          "long": -0.022466332523394132,
+          "short": 0.022466332523394132,
+          "vs_no_trade": 0.022466332523394132
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 7,
+          "n_evaluation": 3,
+          "mean_v": -0.013201210121253108,
+          "evaluation_mean_v": 0.011903077883859303,
+          "n_positive": 2,
+          "n_negative": 5,
+          "gain_sum": 0.06924918526542259,
+          "loss_sum": -0.16165765611419436,
+          "long": 0.013201210121253108,
+          "short": -0.013201210121253108,
+          "vs_no_trade": -0.013201210121253108
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 5,
+          "n_evaluation": 1,
+          "mean_v": 0.03532509788295575,
+          "evaluation_mean_v": 0.012182872565341675,
+          "n_positive": 5,
+          "n_negative": 0,
+          "gain_sum": 0.17662548941477876,
+          "loss_sum": -0.0,
+          "long": -0.03532509788295575,
+          "short": 0.03532509788295575,
+          "vs_no_trade": 0.03532509788295575
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 4,
+          "n_evaluation": 2,
+          "mean_v": 0.02139426425177737,
+          "evaluation_mean_v": 0.011075627269104311,
+          "n_positive": 4,
+          "n_negative": 0,
+          "gain_sum": 0.08557705700710948,
+          "loss_sum": -0.0,
+          "long": -0.02139426425177737,
+          "short": 0.02139426425177737,
+          "vs_no_trade": 0.02139426425177737
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 8,
+          "n_evaluation": 3,
+          "mean_v": -0.0016922478966001494,
+          "evaluation_mean_v": 0.013714271001922742,
+          "n_positive": 4,
+          "n_negative": 4,
+          "gain_sum": 0.1726720824332059,
+          "loss_sum": -0.1862100656060071,
+          "long": 0.0016922478966001494,
+          "short": -0.0016922478966001494,
+          "vs_no_trade": -0.0016922478966001494
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 5,
+          "n_evaluation": 3,
+          "mean_v": -0.017143317438080598,
+          "evaluation_mean_v": 0.004289131699607735,
+          "n_positive": 3,
+          "n_negative": 2,
+          "gain_sum": 0.09391748386232512,
+          "loss_sum": -0.1796340710527281,
+          "long": 0.017143317438080598,
+          "short": -0.017143317438080598,
+          "vs_no_trade": -0.017143317438080598
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 6,
+          "n_evaluation": 2,
+          "mean_v": -0.00663666980249146,
+          "evaluation_mean_v": -0.005530663620910115,
+          "n_positive": 3,
+          "n_negative": 3,
+          "gain_sum": 0.16795915886989254,
+          "loss_sum": -0.2077791776848413,
+          "long": 0.00663666980249146,
+          "short": -0.00663666980249146,
+          "vs_no_trade": -0.00663666980249146
+        }
+      ],
+      "states": [
+        {
+          "trend_state": "Bullish",
+          "momentum_state": "Negative",
+          "volatility_state": "present",
+          "n": 43,
+          "mean_v": 0.00489418945539806,
+          "evaluation_n": 16,
+          "evaluation_mean_v": 0.011272139608391064,
+          "n_positive": 26,
+          "n_negative": 17
+        }
+      ],
+      "action_advantage": {
+        "n": 43,
+        "recommended": 0.00489418945539806,
+        "long": -0.00489418945539806,
+        "short": 0.00489418945539806,
+        "no_trade": 0.0,
+        "vs_long": 0.00978837891079612,
+        "vs_short": 0.0,
+        "vs_no_trade": 0.00489418945539806
+      },
+      "evaluation_action_advantage": {
+        "n": 16,
+        "recommended": 0.011272139608391064,
+        "long": -0.011272139608391064,
+        "short": 0.011272139608391064,
+        "no_trade": 0.0,
+        "vs_long": 0.022544279216782127,
+        "vs_short": 0.0,
+        "vs_no_trade": 0.011272139608391064
+      },
+      "failures": {
+        "n_gain": 26,
+        "n_loss": 17,
+        "n_zero": 0,
+        "gain_sum": 0.9794523046363044,
+        "loss_sum": -0.7690021580541878,
+        "instrument_loss_share": [
+          {
+            "key": "MAHABANK.NS",
+            "n_loss": 3,
+            "loss_sum": -0.2077791776848413,
+            "share_of_loss_sum": 0.2701932309404522
+          },
+          {
+            "key": "TCS.NS",
+            "n_loss": 4,
+            "loss_sum": -0.1862100656060071,
+            "share_of_loss_sum": 0.24214504947187132
+          },
+          {
+            "key": "IDEA.NS",
+            "n_loss": 2,
+            "loss_sum": -0.1796340710527281,
+            "share_of_loss_sum": 0.23359371514282562
+          },
+          {
+            "key": "ICICIBANK.NS",
+            "n_loss": 5,
+            "loss_sum": -0.16165765611419436,
+            "share_of_loss_sum": 0.21021742841819585
+          },
+          {
+            "key": "HDFCBANK.NS",
+            "n_loss": 3,
+            "loss_sum": -0.03372118759641686,
+            "share_of_loss_sum": 0.04385057602665491
+          }
+        ],
+        "year_loss_share": [
+          {
+            "key": "2023",
+            "n_loss": 6,
+            "loss_sum": -0.26102783198997376,
+            "share_of_loss_sum": 0.33943706042445254
+          },
+          {
+            "key": "2022",
+            "n_loss": 4,
+            "loss_sum": -0.2492852250095911,
+            "share_of_loss_sum": 0.32416713321112056
+          },
+          {
+            "key": "2024",
+            "n_loss": 5,
+            "loss_sum": -0.14034216016629456,
+            "share_of_loss_sum": 0.18249904593428376
+          },
+          {
+            "key": "2021",
+            "n_loss": 2,
+            "loss_sum": -0.11834694088832831,
+            "share_of_loss_sum": 0.153896760430143
+          }
+        ],
+        "slice_loss_share": [
+          {
+            "key": "selection",
+            "n_loss": 7,
+            "loss_sum": -0.33343901593835334,
+            "share_of_loss_sum": 0.43359958414428473
+          },
+          {
+            "key": "development",
+            "n_loss": 5,
+            "loss_sum": -0.29522098194953983,
+            "share_of_loss_sum": 0.3839013699214314
+          },
+          {
+            "key": "evaluation",
+            "n_loss": 5,
+            "loss_sum": -0.14034216016629456,
+            "share_of_loss_sum": 0.18249904593428376
+          }
+        ],
+        "largest_loss_instrument": "MAHABANK.NS",
+        "largest_loss_year": "2023"
+      }
+    }
+  ]
+}

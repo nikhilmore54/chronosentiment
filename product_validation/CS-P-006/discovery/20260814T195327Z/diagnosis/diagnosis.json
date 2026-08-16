@@ -1,0 +1,360 @@
+{
+  "artifact_hash": "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0",
+  "genome_identity": "d8363a93e5afe518b7a4cbb8f5c3ac59efcf396f0d318ccdae0dd683e9d730d3",
+  "representation": {
+    "factory_samples_trend": true,
+    "factory_samples_momentum": true,
+    "factory_samples_volatility": true,
+    "factory_samples_conjunctions": true,
+    "factory_samples_long": true,
+    "factory_samples_short": true,
+    "factory_samples_no_trade": true,
+    "selected_uses_trend": true,
+    "selected_uses_momentum": false,
+    "selected_uses_volatility": false,
+    "selected_uses_conjunction": false,
+    "selected_emits_long": true,
+    "selected_emits_short": false,
+    "selected_emits_no_trade": true
+  },
+  "archive": {
+    "n_generation_bests_recorded": 12,
+    "n_unique_generation_best_genomes": 2,
+    "n_candidates_presented_to_selection": 2,
+    "population_median_recorded": false,
+    "population_worst_recorded": false,
+    "population_diversity_recorded": false,
+    "development_best_genome_rules_archived": false,
+    "note": "Search #1 recorded generation-best identity and fitness only. Median, worst, and population diversity were not persisted. The development-best genome rules were not serialized."
+  },
+  "development": {
+    "kind": "development",
+    "n_rows": 91,
+    "actions": {
+      "long": 49,
+      "short": 0,
+      "no_trade": 42
+    },
+    "instruments": [
+      {
+        "instrument": "HDFCBANK.NS",
+        "n_rows": 13,
+        "n_long": 7,
+        "n_short": 0,
+        "n_no_trade": 6,
+        "n_traded": 7,
+        "mean_signed_traded_return": 0.0014013540312884773,
+        "mean_raw_when_bearish": 0.0014013540312884773,
+        "n_bearish": 7
+      },
+      {
+        "instrument": "ICICIBANK.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.024770852362467635,
+        "mean_raw_when_bearish": 0.024770852362467635,
+        "n_bearish": 5
+      },
+      {
+        "instrument": "INFY.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.018261163805460105,
+        "mean_raw_when_bearish": 0.018261163805460105,
+        "n_bearish": 5
+      },
+      {
+        "instrument": "RELIANCE.NS",
+        "n_rows": 13,
+        "n_long": 8,
+        "n_short": 0,
+        "n_no_trade": 5,
+        "n_traded": 8,
+        "mean_signed_traded_return": 0.009300390022776307,
+        "mean_raw_when_bearish": 0.009300390022776307,
+        "n_bearish": 8
+      },
+      {
+        "instrument": "TCS.NS",
+        "n_rows": 13,
+        "n_long": 10,
+        "n_short": 0,
+        "n_no_trade": 3,
+        "n_traded": 10,
+        "mean_signed_traded_return": -0.0011567352597549314,
+        "mean_raw_when_bearish": -0.0011567352597549314,
+        "n_bearish": 10
+      },
+      {
+        "instrument": "IDEA.NS",
+        "n_rows": 13,
+        "n_long": 9,
+        "n_short": 0,
+        "n_no_trade": 4,
+        "n_traded": 9,
+        "mean_signed_traded_return": 0.022897227673831975,
+        "mean_raw_when_bearish": 0.022897227673831975,
+        "n_bearish": 9
+      },
+      {
+        "instrument": "MAHABANK.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.03880226113490463,
+        "mean_raw_when_bearish": 0.03880226113490463,
+        "n_bearish": 5
+      }
+    ],
+    "occupancy": {
+      "trend": {
+        "Bearish": 49,
+        "Bullish": 42
+      },
+      "momentum": {
+        "Negative": 46,
+        "Positive": 45
+      },
+      "volatility": {
+        "present": 91
+      }
+    },
+    "bearish": {
+      "n_bearish": 49,
+      "n_other": 42,
+      "mean_raw_return_when_bearish": 0.014038605742496534,
+      "mean_raw_return_when_other": -0.003082083990946934,
+      "long_payoff_if_bearish": 0.014038605742496534,
+      "short_payoff_if_bearish": -0.014038605742496534
+    },
+    "mean_signed_traded_return": 0.016325216252996315
+  },
+  "selection": {
+    "kind": "selection",
+    "n_rows": 91,
+    "actions": {
+      "long": 39,
+      "short": 0,
+      "no_trade": 52
+    },
+    "instruments": [
+      {
+        "instrument": "HDFCBANK.NS",
+        "n_rows": 13,
+        "n_long": 7,
+        "n_short": 0,
+        "n_no_trade": 6,
+        "n_traded": 7,
+        "mean_signed_traded_return": 0.019641916650481372,
+        "mean_raw_when_bearish": 0.019641916650481372,
+        "n_bearish": 7
+      },
+      {
+        "instrument": "ICICIBANK.NS",
+        "n_rows": 13,
+        "n_long": 7,
+        "n_short": 0,
+        "n_no_trade": 6,
+        "n_traded": 7,
+        "mean_signed_traded_return": 0.010712333168244107,
+        "mean_raw_when_bearish": 0.010712333168244107,
+        "n_bearish": 7
+      },
+      {
+        "instrument": "INFY.NS",
+        "n_rows": 13,
+        "n_long": 7,
+        "n_short": 0,
+        "n_no_trade": 6,
+        "n_traded": 7,
+        "mean_signed_traded_return": 0.007676300643305533,
+        "mean_raw_when_bearish": 0.007676300643305533,
+        "n_bearish": 7
+      },
+      {
+        "instrument": "RELIANCE.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.0047860475451376614,
+        "mean_raw_when_bearish": 0.0047860475451376614,
+        "n_bearish": 5
+      },
+      {
+        "instrument": "TCS.NS",
+        "n_rows": 13,
+        "n_long": 3,
+        "n_short": 0,
+        "n_no_trade": 10,
+        "n_traded": 3,
+        "mean_signed_traded_return": 0.03220584739876848,
+        "mean_raw_when_bearish": 0.03220584739876848,
+        "n_bearish": 3
+      },
+      {
+        "instrument": "IDEA.NS",
+        "n_rows": 13,
+        "n_long": 6,
+        "n_short": 0,
+        "n_no_trade": 7,
+        "n_traded": 6,
+        "mean_signed_traded_return": -0.01654273674682241,
+        "mean_raw_when_bearish": -0.01654273674682241,
+        "n_bearish": 6
+      },
+      {
+        "instrument": "MAHABANK.NS",
+        "n_rows": 13,
+        "n_long": 4,
+        "n_short": 0,
+        "n_no_trade": 9,
+        "n_traded": 4,
+        "mean_signed_traded_return": 0.08108608082285906,
+        "mean_raw_when_bearish": 0.08108608082285906,
+        "n_bearish": 4
+      }
+    ],
+    "occupancy": {
+      "trend": {
+        "Bearish": 39,
+        "Bullish": 52
+      },
+      "momentum": {
+        "Negative": 41,
+        "Positive": 50
+      },
+      "volatility": {
+        "present": 91
+      }
+    },
+    "bearish": {
+      "n_bearish": 39,
+      "n_other": 52,
+      "mean_raw_return_when_bearish": 0.01568844964017212,
+      "mean_raw_return_when_other": 0.012065395220397013,
+      "long_payoff_if_bearish": 0.01568844964017212,
+      "short_payoff_if_bearish": -0.01568844964017212
+    },
+    "mean_signed_traded_return": 0.019937969925996255
+  },
+  "evaluation": {
+    "kind": "evaluation",
+    "n_rows": 91,
+    "actions": {
+      "long": 33,
+      "short": 0,
+      "no_trade": 58
+    },
+    "instruments": [
+      {
+        "instrument": "HDFCBANK.NS",
+        "n_rows": 13,
+        "n_long": 4,
+        "n_short": 0,
+        "n_no_trade": 9,
+        "n_traded": 4,
+        "mean_signed_traded_return": 0.0334167702038247,
+        "mean_raw_when_bearish": 0.0334167702038247,
+        "n_bearish": 4
+      },
+      {
+        "instrument": "ICICIBANK.NS",
+        "n_rows": 13,
+        "n_long": 1,
+        "n_short": 0,
+        "n_no_trade": 12,
+        "n_traded": 1,
+        "mean_signed_traded_return": 0.07541493229465113,
+        "mean_raw_when_bearish": 0.07541493229465113,
+        "n_bearish": 1
+      },
+      {
+        "instrument": "INFY.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.0269744161647746,
+        "mean_raw_when_bearish": 0.0269744161647746,
+        "n_bearish": 5
+      },
+      {
+        "instrument": "RELIANCE.NS",
+        "n_rows": 13,
+        "n_long": 6,
+        "n_short": 0,
+        "n_no_trade": 7,
+        "n_traded": 6,
+        "mean_signed_traded_return": -0.02581332658148444,
+        "mean_raw_when_bearish": -0.02581332658148444,
+        "n_bearish": 6
+      },
+      {
+        "instrument": "TCS.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": 0.029177915196766435,
+        "mean_raw_when_bearish": 0.029177915196766435,
+        "n_bearish": 5
+      },
+      {
+        "instrument": "IDEA.NS",
+        "n_rows": 13,
+        "n_long": 7,
+        "n_short": 0,
+        "n_no_trade": 6,
+        "n_traded": 7,
+        "mean_signed_traded_return": -0.080607659740059,
+        "mean_raw_when_bearish": -0.080607659740059,
+        "n_bearish": 7
+      },
+      {
+        "instrument": "MAHABANK.NS",
+        "n_rows": 13,
+        "n_long": 5,
+        "n_short": 0,
+        "n_no_trade": 8,
+        "n_traded": 5,
+        "mean_signed_traded_return": -0.060165007844757104,
+        "mean_raw_when_bearish": -0.060165007844757104,
+        "n_bearish": 5
+      }
+    ],
+    "occupancy": {
+      "trend": {
+        "Bearish": 33,
+        "Bullish": 58
+      },
+      "momentum": {
+        "Negative": 40,
+        "Positive": 51
+      },
+      "volatility": {
+        "present": 91
+      }
+    },
+    "bearish": {
+      "n_bearish": 33,
+      "n_other": 58,
+      "mean_raw_return_when_bearish": -0.016064089302286366,
+      "mean_raw_return_when_other": -0.0017303870535318592,
+      "long_payoff_if_bearish": -0.016064089302286366,
+      "short_payoff_if_bearish": 0.016064089302286366
+    },
+    "mean_signed_traded_return": -0.00022885147232623977
+  }
+}

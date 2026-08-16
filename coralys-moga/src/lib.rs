@@ -21,7 +21,9 @@ pub use config::EvolutionConfig;
 pub use engine::{MogaOutcomeWrapper, MogaReasoningEngine, PluginFitnessEvaluator, EvolutionEngineBuilder};
 pub use termination::{TerminationPolicy, TerminationState};
 pub use state::{EliteArchive, EvolutionState, GenerationResult, Organism, Population};
-pub use observatory::{PipelineObserver, ProcessingEvent, ProcessingMetricsCollector};
+pub use observatory::{
+    GenerationObserver, PipelineObserver, ProcessingEvent, ProcessingMetricsCollector,
+};
 pub use traits::{
     AssignmentSolver, CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory,
     MutationOperator, SelectionStrategy, ImprovementOperator, NoOpImprovement, LocalSearchOperator,

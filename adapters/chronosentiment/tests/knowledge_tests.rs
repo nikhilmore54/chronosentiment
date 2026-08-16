@@ -23,10 +23,10 @@ async fn test_assessment_persistence_and_immutability(pool: sqlx::PgPool) -> Res
     let instrument_id = Uuid::new_v4();
     
     // Insert mock instrument into DB to satisfy foreign key constraints
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO instruments (id, exchange, display_symbol) VALUES ($1, 'TEST', 'MOCK_INST')",
-        instrument_id
     )
+    .bind(instrument_id)
     .execute(&pool)
     .await?;
 
@@ -55,7 +55,7 @@ async fn test_assessment_persistence_and_immutability(pool: sqlx::PgPool) -> Res
     repo.store(&profile_a).await?;
 
     // Verify it exists
-    let fetched = repo.get(profile_a.metadata.artifact_id).await?.expect("Assessment should be persisted");
+    let fetched: AssessmentProfile = repo.get(profile_a.metadata.artifact_id).await?.expect("Assessment should be persisted");
     assert_eq!(fetched.metadata.artifact_id, profile_a.metadata.artifact_id);
     assert_eq!(fetched.metadata.content_hash, profile_a.metadata.content_hash);
 

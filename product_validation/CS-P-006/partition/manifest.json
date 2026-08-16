@@ -1,0 +1,104 @@
+{
+  "kind": "chronological_partition",
+  "method": "chronological_partition.contiguous_equal_thirds.v1",
+  "atomic_unit": "timestamp",
+  "authorization": "PASS",
+  "protocol_document_id": "CS-P-006-B.1",
+  "protocol_role": {
+    "development": "TRAIN",
+    "selection": "VALIDATION",
+    "evaluation": "TEST"
+  },
+  "snapshot_dir": "product_validation/CS-P-006/snapshot/20260814T183851Z_7instrument",
+  "snapshot_identity_hash": "c21ec256133fb63656b35e68c5e1e72b72751ad2fb45f11c12f99ddb34a628c6",
+  "partition_hash": "4354c81ef546003b1d11ec98cba83dd5f8c56b13c8b6055b8451614abdc4cfca",
+  "instruments": [
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "IDEA.NS",
+    "MAHABANK.NS"
+  ],
+  "n_instruments_per_timestamp": 7,
+  "n_timestamps": 39,
+  "tie_break": "none_applicable",
+  "development": {
+    "n_timestamps": 13,
+    "n_observations": 91,
+    "inclusive_start": "2021-10-31T15:30:00Z",
+    "exclusive_end": "2022-10-31T15:30:01Z",
+    "first_timestamp": "2021-10-31T15:30:00Z",
+    "last_timestamp": "2022-10-31T15:30:00Z",
+    "artifact_exclusive_end": "2022-11-30T15:30:00Z",
+    "timestamps": [
+      "2021-10-31T15:30:00Z",
+      "2021-11-30T15:30:00Z",
+      "2021-12-31T15:30:00Z",
+      "2022-01-31T15:30:00Z",
+      "2022-02-28T15:30:00Z",
+      "2022-03-31T15:30:00Z",
+      "2022-04-30T15:30:00Z",
+      "2022-05-31T15:30:00Z",
+      "2022-06-30T15:30:00Z",
+      "2022-07-31T15:30:00Z",
+      "2022-08-31T15:30:00Z",
+      "2022-09-30T15:30:00Z",
+      "2022-10-31T15:30:00Z"
+    ]
+  },
+  "selection": {
+    "n_timestamps": 13,
+    "n_observations": 91,
+    "inclusive_start": "2022-11-30T15:30:00Z",
+    "exclusive_end": "2023-11-30T15:30:01Z",
+    "first_timestamp": "2022-11-30T15:30:00Z",
+    "last_timestamp": "2023-11-30T15:30:00Z",
+    "artifact_exclusive_end": "2023-12-31T15:30:00Z",
+    "timestamps": [
+      "2022-11-30T15:30:00Z",
+      "2022-12-31T15:30:00Z",
+      "2023-01-31T15:30:00Z",
+      "2023-02-28T15:30:00Z",
+      "2023-03-31T15:30:00Z",
+      "2023-04-30T15:30:00Z",
+      "2023-05-31T15:30:00Z",
+      "2023-06-30T15:30:00Z",
+      "2023-07-31T15:30:00Z",
+      "2023-08-31T15:30:00Z",
+      "2023-09-30T15:30:00Z",
+      "2023-10-31T15:30:00Z",
+      "2023-11-30T15:30:00Z"
+    ]
+  },
+  "evaluation": {
+    "n_timestamps": 13,
+    "n_observations": 91,
+    "inclusive_start": "2023-12-31T15:30:00Z",
+    "exclusive_end": "2024-12-31T15:30:01Z",
+    "first_timestamp": "2023-12-31T15:30:00Z",
+    "last_timestamp": "2024-12-31T15:30:00Z",
+    "artifact_exclusive_end": "2024-12-31T15:30:01Z",
+    "timestamps": [
+      "2023-12-31T15:30:00Z",
+      "2024-01-31T15:30:00Z",
+      "2024-02-29T15:30:00Z",
+      "2024-03-31T15:30:00Z",
+      "2024-04-30T15:30:00Z",
+      "2024-05-31T15:30:00Z",
+      "2024-06-30T15:30:00Z",
+      "2024-07-31T15:30:00Z",
+      "2024-08-31T15:30:00Z",
+      "2024-09-30T15:30:00Z",
+      "2024-10-31T15:30:00Z",
+      "2024-11-30T15:30:00Z",
+      "2024-12-31T15:30:00Z"
+    ]
+  },
+  "search_outcome_access": {
+    "development": "evolution",
+    "selection": "selection_feedback",
+    "evaluation": "forbidden"
+  }
+}

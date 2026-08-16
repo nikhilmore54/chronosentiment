@@ -1,0 +1,168 @@
+warning: unused import: `ConstraintEvaluation`
+ --> coralys-moga/src/runtime/optimization/satisfaction.rs:3:22
+  |
+3 |     ConstraintModel, ConstraintEvaluation, ConstraintViolation, ConstraintTier,
+  |                      ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `model_name`
+   --> coralys-moga/src/runtime/optimization/satisfaction.rs:143:18
+    |
+143 |             for (model_name, tier, violation) in current_target_violations {
+    |                  ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_model_name`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tier`
+   --> coralys-moga/src/runtime/optimization/satisfaction.rs:143:30
+    |
+143 |             for (model_name, tier, violation) in current_target_violations {
+    |                              ^^^^ help: if this is intentional, prefix it with an underscore: `_tier`
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:265:17
+    |
+265 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:266:17
+    |
+266 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:267:17
+    |
+267 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:415:13
+    |
+415 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: call to `.clone()` on a reference in this situation does nothing
+   --> coralys-moga/src/runtime/optimization/satisfaction.rs:106:95
+    |
+106 |             .flat_map(|a| a.violations.iter().map(move |v| (a.constraint_id.clone(), a.tier, v.clone())))
+    |                                                                                               ^^^^^^^^ help: remove this redundant call
+    |
+    = note: the type `V` does not implement `Clone`, so calling `clone` on `&V` copies the reference, which does not do anything and can be removed
+    = note: `#[warn(noop_method_call)]` on by default
+
+warning: call to `.clone()` on a reference in this situation does nothing
+   --> coralys-moga/src/runtime/optimization/satisfaction.rs:136:99
+    |
+136 |                 .flat_map(|a| a.violations.iter().map(move |v| (a.constraint_id.clone(), a.tier, v.clone())))
+    |                                                                                                   ^^^^^^^^ help: remove this redundant call
+    |
+    = note: the type `V` does not implement `Clone`, so calling `clone` on `&V` copies the reference, which does not do anything and can be removed
+
+warning: `coralys-moga` (lib) generated 9 warnings (run `cargo fix --lib -p coralys-moga` to apply 3 suggestions)
+warning: unused import: `DateTime`
+ --> adapters/chronosentiment/src/ingestion/yahoo.rs:2:14
+  |
+2 | use chrono::{DateTime, Utc, TimeZone};
+  |              ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `DateTime` and `Utc`
+ --> adapters/chronosentiment/src/ingestion/fred.rs:2:14
+  |
+2 | use chrono::{DateTime, Utc, NaiveDate};
+  |              ^^^^^^^^  ^^^
+
+warning: unused import: `std::collections::HashSet`
+ --> adapters/chronosentiment/src/validation/replay_decision.rs:2:5
+  |
+2 | use std::collections::HashSet;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> adapters/chronosentiment/src/validation/calibration.rs:2:5
+  |
+2 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: unused imports: `DateTime` and `Utc`
+ --> adapters/chronosentiment/src/repository/postgres_knowledge.rs:5:14
+  |
+5 | use chrono::{DateTime, Utc};
+  |              ^^^^^^^^  ^^^
+
+warning: unused imports: `ArtifactMetadata` and `ArtifactType`
+ --> adapters/chronosentiment/src/repository/postgres_knowledge.rs:8:5
+  |
+8 |     ArtifactMetadata, ArtifactRepository, ArtifactType, AssessmentQueries, KnowledgeArtifact,
+  |     ^^^^^^^^^^^^^^^^                      ^^^^^^^^^^^^
+
+warning: unused import: `crate::reasoning::historical_reasoning::HistoricalReasoningReport`
+ --> adapters/chronosentiment/src/reasoning/decision.rs:4:5
+  |
+4 | use crate::reasoning::historical_reasoning::HistoricalReasoningReport;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable `ambiguous` is assigned to, but never used
+  --> adapters/chronosentiment/src/validation/outcome.rs:62:17
+   |
+62 |         let mut ambiguous = false;
+   |                 ^^^^^^^^^
+   |
+   = note: consider using `_ambiguous` instead
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `ambiguous` is never read
+   --> adapters/chronosentiment/src/validation/outcome.rs:113:21
+    |
+113 |                     ambiguous = true;
+    |                     ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `chronosentiment_adapter` (lib) generated 9 warnings (run `cargo fix --lib -p chronosentiment_adapter` to apply 7 suggestions)
+warning: unused import: `serde_json::Value`
+ --> adapters/chronosentiment/src/bin/m6_phase_g_experiment.rs:2:5
+  |
+2 | use serde_json::Value;
+  |     ^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `uuid::Uuid`
+ --> adapters/chronosentiment/src/bin/m6_phase_g_experiment.rs:5:5
+  |
+5 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: `chronosentiment_adapter` (bin "m6_phase_g_experiment") generated 2 warnings (run `cargo fix --bin "m6_phase_g_experiment"` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.34s
+warning: the following packages contain code that will be rejected by a future version of Rust: sqlx-postgres v0.7.4
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running `target/debug/m6_phase_g_experiment`
+Connecting to database: postgresql://nikhil@localhost:5432/postgres
+Connected! Executing PredictiveValueExperiment...
+
+=== POPULATION ACCOUNTING ===
+| Signature | 5D N | 10D N | 20D N | 60D N | 5D Entry | 10D Entry | 20D Entry | 60D Entry |
+|-----------|-----:|------:|------:|------:|---------:|----------:|----------:|----------:|
+
+=== AGGREGATE MATRIX ===
+| Assessment Signature | Horizon | N | Entry % | Target % | Stop % | Mean Return | Median Return | Median MFE | Median MAE | Median DD |
+|----------------------|--------:|--:|--------:|---------:|-------:|------------:|--------------:|-----------:|-----------:|----------:|
+
+=== RAW EVIDENCE LEDGER (First 5 records) ===
+Total Records: 0

@@ -11,7 +11,9 @@ use chronosentiment_adapter::repository::postgres_knowledge::PostgresKnowledgeRe
 use sqlx::PgPool;
 
 fn get_mock_strategy(decision_id: Uuid) -> OpportunityStrategy {
+    use chronosentiment_adapter::repository::knowledge::ArtifactMetadata;
     OpportunityStrategy {
+        metadata: ArtifactMetadata::mock(),
         decision_id,
         expected_horizon: Horizon::Swing,
         expected_holding_period_days: (5, 20),

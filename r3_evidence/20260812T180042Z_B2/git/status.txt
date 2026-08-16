@@ -1,0 +1,34 @@
+ M .baseline_worktree_cbf0f859
+ M adapters/chronosentiment/migrations/20260811000000_schema.sql
+ M adapters/chronosentiment/src/bin/m4_time_machine_demo.rs
+ M adapters/chronosentiment/src/bin/m4_validation_gate.rs
+ M adapters/chronosentiment/src/lib.rs
+ M adapters/chronosentiment/src/reasoning/decision.rs
+ M adapters/chronosentiment/src/reasoning/historical_reasoning.rs
+ M adapters/chronosentiment/src/reasoning/strategy.rs
+ M adapters/chronosentiment/src/repository/knowledge.rs
+ M adapters/chronosentiment/src/repository/postgres_knowledge.rs
+ M adapters/chronosentiment/src/validation/calibration.rs
+ M adapters/chronosentiment/src/validation/outcome.rs
+ M adapters/chronosentiment/tests/knowledge_tests.rs
+ M adapters/roadef/repo/challenge-roadef-2026-main/networktools
+ M docs/roadef/RP411_412_BASELINE_REPORT.md
+?? adapters/chronosentiment/migrations/20260811000001_add_assessment_fk.sql
+?? adapters/chronosentiment/migrations/20260812000000_reconcile_assessment_fk.sql
+?? adapters/chronosentiment/scripts/
+?? adapters/chronosentiment/src/bin/m4_populate_knowledge_lake.rs
+?? adapters/chronosentiment/src/bin/m6_phase_g_experiment.rs
+?? adapters/chronosentiment/src/research/
+?? adapters/chronosentiment/tests/fixtures/
+?? adapters/chronosentiment/tests/knowledge_outcome_tests.rs
+?? adapters/chronosentiment/tests/outcome_determinism_tests.rs
+?? adapters/chronosentiment/tests/phase_g_predictive_value_tests.rs
+?? adapters/chronosentiment/tests/reproducibility_tests.rs
+?? adapters/chronosentiment/tests/research_dataset_tests.rs
+?? adapters/chronosentiment/tests/research_laboratory_tests.rs
+?? evidence/
+?? phase_g_output.txt
+?? phase_r_baseline/
+?? r2_1_evidence/
+?? r2_evidence/
+?? r3_evidence/

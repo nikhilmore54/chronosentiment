@@ -10,12 +10,15 @@ use sha2::{Digest, Sha256};
 
 use crate::reasoning::assessment::AssessmentProfile;
 
+use super::dataset_partition::ChronologicalPartition;
 use super::policy::{ensure_factor, factors_from_profile, DecisionPolicy, PolicyDecision};
 use super::DecisionAction;
 
 pub const POLICY_ARTIFACT_SCHEMA_VERSION: &str = "csp006a.policy_artifact.1";
 pub const CONTRACT_FIXTURE_ENGINE: &str = "contract.fixture";
 pub const CONTRACT_FIXTURE_METHODOLOGY: &str = "csp006a.contract.pending-protocol";
+/// Schema `.1` certified concepts. Additional families (risk, cost, capital)
+/// require a new schema_version; the evaluator already walks `input_schema`.
 pub const CERTIFIED_INPUT_CONCEPTS: [&str; 3] = ["Trend", "Momentum", "Volatility"];
 
 const FORBIDDEN_ENGINES: [&str; 2] = ["chronosentiment.handwritten", "threshold.grid"];
@@ -32,6 +35,27 @@ pub struct TrainingProvenance {
     pub train: Option<SplitWindow>,
     pub validation: Option<SplitWindow>,
     pub test: Option<SplitWindow>,
+}
+
+impl TrainingProvenance {
+    /// Map domain partitions onto the frozen CS-P-006-A provenance field names.
+    pub fn from_chronological_partition(partition: &ChronologicalPartition) -> Self {
+        Self {
+            protocol_document_id: "CS-P-006-B.1".to_string(),
+            train: Some(SplitWindow {
+                inclusive_start: partition.development.inclusive_start,
+                exclusive_end: partition.selection.inclusive_start,
+            }),
+            validation: Some(SplitWindow {
+                inclusive_start: partition.selection.inclusive_start,
+                exclusive_end: partition.evaluation.inclusive_start,
+            }),
+            test: Some(SplitWindow {
+                inclusive_start: partition.evaluation.inclusive_start,
+                exclusive_end: partition.evaluation.exclusive_end,
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -396,6 +420,62 @@ fn rule_matches(rule: &DecisionRule, factors: &[super::EvidenceFactor]) -> bool 
     rule.when.iter().all(|p| predicate_matches(p, factors))
 }
 
+/// First-match action from the certified TMV strings stored on an observatory record.
+pub fn first_match_action_from_tmv(
+    artifact: &PolicyArtifact,
+    trend: &str,
+    momentum: &str,
+    volatility: &str,
+) -> DecisionAction {
+    let factors = [
+        super::EvidenceFactor {
+            concept: "Trend".into(),
+            present: trend != "absent",
+            direction: (trend != "absent").then(|| trend.to_string()),
+            strength: None,
+            assessment_confidence: None,
+        },
+        super::EvidenceFactor {
+            concept: "Momentum".into(),
+            present: momentum != "absent",
+            direction: (momentum != "absent").then(|| momentum.to_string()),
+            strength: None,
+            assessment_confidence: None,
+        },
+        super::EvidenceFactor {
+            concept: "Volatility".into(),
+            present: volatility == "present",
+            direction: None,
+            strength: None,
+            assessment_confidence: None,
+        },
+    ];
+    for rule in &artifact.rules {
+        if rule_matches(rule, &factors) {
+            return rule.action;
+        }
+    }
+    artifact.unmatched_action
+}
+
+/// First-match action over certified TMV factors. Used by the sealed evaluator and by search.
+pub fn first_match_action(
+    rules: &[DecisionRule],
+    unmatched_action: DecisionAction,
+    profile: &AssessmentProfile,
+) -> DecisionAction {
+    let mut factors = factors_from_profile(profile);
+    for concept in CERTIFIED_INPUT_CONCEPTS {
+        ensure_factor(&mut factors, concept);
+    }
+    for rule in rules {
+        if rule_matches(rule, &factors) {
+            return rule.action;
+        }
+    }
+    unmatched_action
+}
+
 impl DecisionPolicy for ArtifactDecisionPolicy {
     fn name(&self) -> &str {
         &self.policy_name
@@ -408,13 +488,11 @@ impl DecisionPolicy for ArtifactDecisionPolicy {
         }
         factors.sort_by(|a, b| a.concept.cmp(&b.concept));
 
-        let mut matched: Option<&DecisionRule> = None;
-        for rule in &self.artifact.rules {
-            if rule_matches(rule, &factors) {
-                matched = Some(rule);
-                break;
-            }
-        }
+        let matched = self
+            .artifact
+            .rules
+            .iter()
+            .find(|rule| rule_matches(rule, &factors));
 
         let (action, consumed_concepts, action_reason) = match matched {
             Some(rule) => {

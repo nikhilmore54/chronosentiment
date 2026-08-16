@@ -1,0 +1,4 @@
+Historical Replay v1 — 20 Market Session Contract
+This is a new run. Replay v0 is not reinterpreted here.
+Parent: CS-P-006-P.H.2 / P.H.3
+Session counting first. Replay integrity is not strategy validation.

@@ -3,7 +3,7 @@ use crate::traits::{
     CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
     ImprovementOperator,
 };
-use crate::observatory::{PipelineObserver, ProcessingEvent};
+use crate::observatory::{GenerationObserver, PipelineObserver, ProcessingEvent};
 use crate::metrics::evolution::{EvolutionMetrics, ProcessorMetrics};
 use rand::Rng;
 use rand::SeedableRng;
@@ -33,6 +33,7 @@ pub struct EvolutionEngine<
     pub crossover: C,
     pub factory: Factory,
     pub observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
+    pub generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
     pub satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
     pub metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     metrics: Option<std::sync::Mutex<EvolutionMetrics>>,
@@ -55,6 +56,7 @@ impl<
             crossover,
             factory,
             observer: None,
+            generation_observer: None,
             satisfaction_engine: None,
             metric_engine: None,
             metrics: None,
@@ -94,6 +96,7 @@ where
     factory: Option<Factory>,
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
+    generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
     satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
     metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     metrics_enabled: bool,
@@ -116,6 +119,7 @@ where
             factory: None,
             processors: Vec::new(),
             observer: None,
+            generation_observer: None,
             satisfaction_engine: None,
             metric_engine: None,
             metrics_enabled: false,
@@ -168,6 +172,14 @@ where
         self
     }
 
+    pub fn with_generation_observer(
+        mut self,
+        observer: std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>,
+    ) -> Self {
+        self.generation_observer = Some(observer);
+        self
+    }
+
     pub fn with_improvement<I>(mut self, improvement: I) -> Self
     where
         I: ImprovementOperator<G> + 'static,
@@ -206,6 +218,7 @@ where
             crossover,
             factory,
             observer: self.observer,
+            generation_observer: self.generation_observer,
             satisfaction_engine: self.satisfaction_engine,
             metric_engine: self.metric_engine,
             metrics,
@@ -409,6 +422,9 @@ impl<
             average_history.push(avg_fitness);
             final_fitnesses = evals.iter().map(|e| e.fitness()).collect();
             history.push(gen_best.clone());
+            if let Some(ref observer) = self.generation_observer {
+                observer.on_evaluated_generation(_gen, &evals);
+            }
 
             let mut next_gen = Vec::with_capacity(config.population_size);
             // Preserve the top elite individuals as defined by config.elite_count.
@@ -525,6 +541,9 @@ impl<
                         let event = ProcessingEvent::new(idx, duration, _gen);
                         observer.on_event(&event);
                     }
+                }
+                if let Some(ref observer) = self.generation_observer {
+                    observer.on_offspring(_gen, parent1.genome(), parent2.genome(), &child);
                 }
                 next_gen.push(child);
             }

@@ -1,0 +1,9 @@
+{
+  "timestamp": "",
+  "dataset_dump_sha256": "340c100c796b51496289f71355d37a4b4a15c33e2c73cee74dfcdb21a3d0aff0",
+  "binary_sha256": "9ee3f3425cbf7ce9c4f2a9aa6af81325611ff9ab7f94c4a2cc1e4b060db05c10",
+  "config_sha256": "f40365ac82362f750d2eee942e64c40aa9a592fd83c8f5e4a43e4764d85d0882",
+  "run_output_sha256": "4c574ba1a2a14f34ba67b10872f9035541a322931f884bc3786380961806e42f",
+  "exit_code": 0,
+  "combined_sha256": "3b5766ff84efae173add5d4a8a3377dc84eae34a55aded7f214f7c44f6ed3f59"
+}

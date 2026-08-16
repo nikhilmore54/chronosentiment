@@ -1,4 +1,5 @@
 use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, Evaluated, ImprovementOperator};
+use coralys_moga::runtime::optimization::metric::MetricReport;
 use coralys_moga::{ConstraintChecker, RepairHeuristic};
 
 use coralys_core::Outcome;
@@ -385,7 +386,7 @@ impl CrossoverOperator<CvrpCandidate> for CvrpCrossoverRoutePreserving {
 
 fn get_routes(candidate: &CvrpCandidate, instance: &crate::CvrpInstance) -> Vec<Vec<usize>> {
     let evaluator = CvrpEvaluator { instance: instance.clone() };
-    let outcome = evaluator.evaluate(candidate, &crate::runtime::optimization::metric::MetricReport::default());
+    let outcome = evaluator.evaluate(candidate, &MetricReport::default());
     let mut routes = Vec::new();
     
     if outcome.eval.routes.is_empty() {
@@ -441,7 +442,7 @@ pub struct CvrpLocalSearch {
 impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
     fn improve(&self, candidate: &mut CvrpCandidate) {
         let evaluator = CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(candidate, &crate::runtime::optimization::metric::MetricReport::default());
+        let outcome = evaluator.evaluate(candidate, &MetricReport::default());
         let mut routes = Vec::new();
 
         if outcome.eval.routes.is_empty() {

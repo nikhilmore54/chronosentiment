@@ -1,0 +1,47 @@
+{
+  "experiment": "P.E.3",
+  "label": "P.E.3 — coralys-exec-v0 (ATR/TMV Execution)",
+  "execution_contract": "coralys_exec_v0_atr_tmv_20_sessions",
+  "execution_path_kind": "prospective_execution_pe3_v0",
+  "coralys_model_id": "coralys-exec-v0",
+  "coralys_model_version": "0.1.0",
+  "coralys_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "target_rule": "ATR(14) × target_multiplier (coralys-exec-v0, frozen)",
+  "risk_rule": "ATR(14) × risk_multiplier (coralys-exec-v0, frozen)",
+  "maximum_hold_sessions": 20,
+  "decision_policy": "C3-002 (RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH)",
+  "universe": [
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "WIPRO.NS",
+    "ICICIBANK.NS",
+    "KOTAKBANK.NS"
+  ],
+  "replay_started_at": "2026-08-16T06:48:00+00:00",
+  "replay_completed_at": "2026-08-16T06:48:46+00:00",
+  "status": "IMMUTABLE",
+  "purpose": "P.E.3 historical execution replay. This is the current execution history for the product. P.E.2 (historical_runs/pe2_control_2026-08-16/) is the control baseline.",
+  "eligibility_rule": "Positions where ATR(14) > 0 at decision time T. Positions where ATR=0 or unavailable are excluded (CoralysExecutionResult::Invalid). They are NOT replaced with P.E.2 +5% fallback.",
+  "files": {
+    "execution_ledger/pe3_historical_ledger.json": "Full historical replay under P.E.3/coralys-exec-v0 (to be generated)",
+    "decisions/pe3_execution_intents.json": "Sealed execution intents (ATR/TMV targets, to be generated)",
+    "reports/pe3_execution_report.json": "Execution replay report (to be generated)"
+  },
+  "replay_pipeline": [
+    "1. For each historical timestamp T in eligible universe:",
+    "2.   Generate C3-002 direction using bars <= T (frozen implementation)",
+    "3.   Seal direction",
+    "4.   Find next eligible session E",
+    "5.   Obtain historical session-open price at E",
+    "6.   Calculate ATR(14) using bars <= T",
+    "7.   Apply frozen coralys-exec-v0 artifact (hash: 3876ffa2...)",
+    "8.   Generate target_pct, target_price, risk_pct, risk_boundary",
+    "9.   Replay subsequent 20 sessions",
+    "10.  Determine first valid exit: TARGET | RISK | HORIZON | TARGET_GAP_THROUGH | RISK_GAP_THROUGH | AMBIGUOUS",
+    "11.  Write record to P.E.3 historical ledger",
+    "12.  Write feedback record: feedback_available_at, execution_feature_hash, record_hash, learning_scope=ExecutionOnly"
+  ],
+  "immutability_note": "Once replay_completed_at is set, this archive becomes IMMUTABLE. The coralys artifact hash must not change: 3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
+}

@@ -38,6 +38,7 @@ pub use learning::{
 };
 pub mod universe;
 pub mod decision_support;
+pub mod product;
 
 #[cfg(feature = "research")]
 #[path = "../research/src/mod.rs"]

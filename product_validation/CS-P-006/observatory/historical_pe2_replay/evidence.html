@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historical P.E.2 — ChronoSentiment</title>
+<style>
+:root { --ink:#141414; --muted:#5c5c5c; --line:#d8d8d4; --paper:#f4f3ef; --card:#fff; }
+body { margin:0; color:var(--ink); background:var(--paper); font-family:ui-sans-serif,system-ui,sans-serif; }
+main { max-width:880px; margin:0 auto; padding:28px 24px 64px; }
+.brand { font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+h1 { font-size:26px; font-weight:600; margin:6px 0 12px; }
+.note { color:var(--muted); max-width:640px; line-height:1.5; }
+.cohorts { background:var(--card); border:1px solid var(--line); padding:14px 16px; max-width:480px; line-height:1.45; font-size:13px; }
+.card { background:var(--card); border:1px solid var(--line); padding:16px 18px; margin:12px 0; }
+.card.target { border-left:3px solid #1b5e3b; }
+.card.horizon { border-left:3px solid #5c5c5c; }
+.card dl { display:grid; gap:6px; margin:8px 0 0; }
+.card div { display:grid; grid-template-columns:200px 1fr; gap:8px; }
+dt { color:var(--muted); font-size:13px; }
+dd { margin:0; }
+.meta { color:var(--muted); font-size:13px; margin:0 0 8px; }
+</style></head><body>
+<main>
+<p class="brand">ChronoSentiment</p>
+<h1>Historical P.E.2 lifecycle validation</h1>
+<p class="note">Time-machine of the frozen P.E.2 control. Certified T 2026-07-15T03:45:00+00:00. Execution Contract v0 owns target_pct = 5.0%. Historical P.E.2 lifecycle validation: PASS. Statistical strategy backtest: NOT PERFORMED. Live P.E.2 remains AWAITING_NEXT_SESSION. The 14-August cohort stays decision-only. C.3-G is untouched. Search #3 is not authorized.</p>
+<pre class="cohorts">14-Aug live cohort
+Decision only
+UNTOUCHED
+
+Live P.E.2
+AWAITING_NEXT_SESSION
+0 seals
+
+This sidecar
+15 Jul 2026 historical T
+Decision + Execution Intent v0
+lifecycle validation</pre>
+<div class="feed"><article class="card horizon">
+<p class="meta">HDFCBANK.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>LONG</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>HORIZON</dd></div>
+<div><dt>Trigger</dt><dd>SESSION_CLOSE</dd></div>
+<div><dt>Holding period</dt><dd>20 sessions</dd></div>
+</dl>
+</article><article class="card horizon">
+<p class="meta">ICICIBANK.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>LONG</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>HORIZON</dd></div>
+<div><dt>Trigger</dt><dd>SESSION_CLOSE</dd></div>
+<div><dt>Holding period</dt><dd>20 sessions</dd></div>
+</dl>
+</article><article class="card target">
+<p class="meta">INFY.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>LONG</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>TARGET</dd></div>
+<div><dt>Trigger</dt><dd>GAP_THROUGH</dd></div>
+<div><dt>Holding period</dt><dd>10 sessions</dd></div>
+</dl>
+</article><article class="card horizon">
+<p class="meta">RELIANCE.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>LONG</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>HORIZON</dd></div>
+<div><dt>Trigger</dt><dd>SESSION_CLOSE</dd></div>
+<div><dt>Holding period</dt><dd>20 sessions</dd></div>
+</dl>
+</article><article class="card target">
+<p class="meta">TCS.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>LONG</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>TARGET</dd></div>
+<div><dt>Trigger</dt><dd>HIGH_REACHED</dd></div>
+<div><dt>Holding period</dt><dd>8 sessions</dd></div>
+</dl>
+</article><article class="card target">
+<p class="meta">IDEA.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>SHORT</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>TARGET</dd></div>
+<div><dt>Trigger</dt><dd>LOW_REACHED</dd></div>
+<div><dt>Holding period</dt><dd>7 sessions</dd></div>
+</dl>
+</article><article class="card horizon">
+<p class="meta">MAHABANK.NS · 2026-07-15T03:45:00+00:00</p>
+<dl>
+<div><dt>Decision</dt><dd>SHORT</dd></div>
+<div><dt>Target</dt><dd>+5.0%</dd></div>
+<div><dt>Maximum hold</dt><dd>20 sessions</dd></div>
+<div><dt>Exit</dt><dd>HORIZON</dd></div>
+<div><dt>Trigger</dt><dd>SESSION_CLOSE</dd></div>
+<div><dt>Holding period</dt><dd>20 sessions</dd></div>
+</dl>
+</article></div>
+</main>
+</body></html>

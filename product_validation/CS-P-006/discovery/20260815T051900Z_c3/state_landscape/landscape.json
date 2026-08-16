@@ -1,0 +1,439 @@
+{
+  "contract_id": "csp006c3f.state_action.1",
+  "search_one_artifact_hash": "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0",
+  "search_two_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "promotion_status": "candidate_research_artifact",
+  "search_three_authorized": false,
+  "used_as_coralys_fitness": false,
+  "pass_threshold_introduced": false,
+  "product_claim_authorized": false,
+  "n_rows": 273,
+  "occupancy": {
+    "n_observed_states": 4,
+    "n_trend_neutral": 0,
+    "n_momentum_neutral": 0,
+    "n_volatility_absent": 0
+  },
+  "states": [
+    {
+      "trend_state": "Bullish",
+      "momentum_state": "Positive",
+      "volatility_state": "present",
+      "n": 109,
+      "n_evaluation": 42,
+      "overall": {
+        "n": 109,
+        "long": 0.005578355241450847,
+        "short": -0.005578355241450847,
+        "no_trade": 0.0,
+        "median_long": 0.0031687648418106534,
+        "n_up": 57,
+        "n_down": 52
+      },
+      "evaluation": {
+        "n": 42,
+        "long": 0.0019045663007002192,
+        "short": -0.0019045663007002192,
+        "no_trade": 0.0,
+        "median_long": -0.003629660338003133,
+        "n_up": 19,
+        "n_down": 23
+      },
+      "slices": [
+        {
+          "slice": "development",
+          "n": 30,
+          "long": -0.005564500511477883,
+          "short": 0.005564500511477883,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "selection",
+          "n": 37,
+          "long": 0.01878335005494783,
+          "short": -0.01878335005494783,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "evaluation",
+          "n": 42,
+          "long": 0.0019045663007002192,
+          "short": -0.0019045663007002192,
+          "no_trade": 0.0
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 13,
+          "n_evaluation": 7,
+          "long": -0.0028276729117070803,
+          "evaluation_long": -0.017861684942925896
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 19,
+          "n_evaluation": 9,
+          "long": -0.006665836929093251,
+          "evaluation_long": 0.0021029689714112706
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 17,
+          "n_evaluation": 7,
+          "long": 0.0017081560197725462,
+          "evaluation_long": 0.011655243878531462
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 16,
+          "n_evaluation": 5,
+          "long": 0.0019317824306821839,
+          "evaluation_long": 0.0009222783614674851
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 13,
+          "n_evaluation": 5,
+          "long": 0.0010328160355182843,
+          "evaluation_long": 0.0031208270285191823
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 12,
+          "n_evaluation": 3,
+          "long": 0.007831912562145368,
+          "evaluation_long": -0.029286628877526356
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 19,
+          "n_evaluation": 6,
+          "long": 0.03179445475729346,
+          "evaluation_long": 0.02869241850335243
+        }
+      ],
+      "search_one_actions": {
+        "NO_TRADE": 109
+      },
+      "search_two_actions": {
+        "LONG": 109
+      }
+    },
+    {
+      "trend_state": "Bearish",
+      "momentum_state": "Negative",
+      "volatility_state": "present",
+      "n": 84,
+      "n_evaluation": 24,
+      "overall": {
+        "n": 84,
+        "long": 0.0004851054086077654,
+        "short": -0.0004851054086077654,
+        "no_trade": 0.0,
+        "median_long": 0.009124364053387634,
+        "n_up": 46,
+        "n_down": 38
+      },
+      "evaluation": {
+        "n": 24,
+        "long": -0.026418786282250275,
+        "short": 0.026418786282250275,
+        "no_trade": 0.0,
+        "median_long": -0.0018072674008348926,
+        "n_up": 12,
+        "n_down": 12
+      },
+      "slices": [
+        {
+          "slice": "development",
+          "n": 34,
+          "long": 0.014439947419813881,
+          "short": -0.014439947419813881,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "selection",
+          "n": 26,
+          "long": 0.00707082741628412,
+          "short": -0.00707082741628412,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "evaluation",
+          "n": 24,
+          "long": -0.026418786282250275,
+          "short": 0.026418786282250275,
+          "no_trade": 0.0
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 11,
+          "n_evaluation": 3,
+          "long": 0.014994594850339809,
+          "evaluation_long": 0.029752675852842293
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 6,
+          "n_evaluation": 0,
+          "long": 0.010400223260592747,
+          "evaluation_long": null
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 12,
+          "n_evaluation": 3,
+          "long": 0.00587209833487309,
+          "evaluation_long": 0.0032294413309352787
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 17,
+          "n_evaluation": 6,
+          "long": -0.005832907100476579,
+          "evaluation_long": -0.02581332658148444
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 11,
+          "n_evaluation": 3,
+          "long": 0.0022688729112095756,
+          "evaluation_long": 0.023846640759729323
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 16,
+          "n_evaluation": 6,
+          "long": -0.029490567527549843,
+          "evaluation_long": -0.07629904993924942
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 11,
+          "n_evaluation": 3,
+          "long": 0.02627206277389773,
+          "evaluation_long": -0.06395429516004138
+        }
+      ],
+      "search_one_actions": {
+        "LONG": 84
+      },
+      "search_two_actions": {
+        "LONG": 84
+      }
+    },
+    {
+      "trend_state": "Bullish",
+      "momentum_state": "Negative",
+      "volatility_state": "present",
+      "n": 43,
+      "n_evaluation": 16,
+      "overall": {
+        "n": 43,
+        "long": -0.00489418945539806,
+        "short": 0.00489418945539806,
+        "no_trade": 0.0,
+        "median_long": -0.01041683142431553,
+        "n_up": 17,
+        "n_down": 26
+      },
+      "evaluation": {
+        "n": 16,
+        "long": -0.011272139608391064,
+        "short": 0.011272139608391064,
+        "no_trade": 0.0,
+        "median_long": -0.007600543834697028,
+        "n_up": 5,
+        "n_down": 11
+      },
+      "slices": [
+        {
+          "slice": "development",
+          "n": 12,
+          "long": 0.0031239573103804402,
+          "short": -0.0031239573103804402,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "selection",
+          "n": 15,
+          "long": -0.0045055600381616575,
+          "short": 0.0045055600381616575,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "evaluation",
+          "n": 16,
+          "long": -0.011272139608391064,
+          "short": 0.011272139608391064,
+          "no_trade": 0.0
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 8,
+          "n_evaluation": 2,
+          "long": -0.022466332523394132,
+          "evaluation_long": -0.033680996058178814
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 7,
+          "n_evaluation": 3,
+          "long": 0.013201210121253108,
+          "evaluation_long": -0.011903077883859303
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 5,
+          "n_evaluation": 1,
+          "long": -0.03532509788295575,
+          "evaluation_long": -0.012182872565341675
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 4,
+          "n_evaluation": 2,
+          "long": -0.02139426425177737,
+          "evaluation_long": -0.011075627269104311
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 8,
+          "n_evaluation": 3,
+          "long": 0.0016922478966001494,
+          "evaluation_long": -0.013714271001922742
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 5,
+          "n_evaluation": 3,
+          "long": 0.017143317438080598,
+          "evaluation_long": -0.004289131699607735
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 6,
+          "n_evaluation": 2,
+          "long": 0.00663666980249146,
+          "evaluation_long": 0.005530663620910115
+        }
+      ],
+      "search_one_actions": {
+        "NO_TRADE": 43
+      },
+      "search_two_actions": {
+        "SHORT": 43
+      }
+    },
+    {
+      "trend_state": "Bearish",
+      "momentum_state": "Positive",
+      "volatility_state": "present",
+      "n": 37,
+      "n_evaluation": 9,
+      "overall": {
+        "n": 37,
+        "long": 0.019699389622987572,
+        "short": -0.019699389622987572,
+        "no_trade": 0.0,
+        "median_long": 0.02467951796658319,
+        "n_up": 23,
+        "n_down": 14
+      },
+      "evaluation": {
+        "n": 9,
+        "long": 0.011548435977617398,
+        "short": -0.011548435977617398,
+        "no_trade": 0.0,
+        "median_long": 0.03576722916110735,
+        "n_up": 5,
+        "n_down": 4
+      },
+      "slices": [
+        {
+          "slice": "development",
+          "n": 15,
+          "long": 0.013128897940577203,
+          "short": -0.013128897940577203,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "selection",
+          "n": 13,
+          "long": 0.032923694087948124,
+          "short": -0.032923694087948124,
+          "no_trade": 0.0
+        },
+        {
+          "slice": "evaluation",
+          "n": 9,
+          "long": 0.011548435977617398,
+          "short": -0.011548435977617398,
+          "no_trade": 0.0
+        }
+      ],
+      "instruments": [
+        {
+          "instrument": "HDFCBANK.NS",
+          "n": 7,
+          "n_evaluation": 1,
+          "long": 0.01657563317627855,
+          "evaluation_long": 0.04440905325677191
+        },
+        {
+          "instrument": "ICICIBANK.NS",
+          "n": 7,
+          "n_evaluation": 1,
+          "long": 0.030264883817305938,
+          "evaluation_long": 0.07541493229465113
+        },
+        {
+          "instrument": "INFY.NS",
+          "n": 5,
+          "n_evaluation": 2,
+          "long": 0.041889364867167045,
+          "evaluation_long": 0.06259187841553358
+        },
+        {
+          "instrument": "RELIANCE.NS",
+          "n": 2,
+          "n_evaluation": 0,
+          "long": 0.021306409563546985,
+          "evaluation_long": null
+        },
+        {
+          "instrument": "TCS.NS",
+          "n": 7,
+          "n_evaluation": 2,
+          "long": 0.02942602336561185,
+          "evaluation_long": 0.0371748268523221
+        },
+        {
+          "instrument": "IDEA.NS",
+          "n": 6,
+          "n_evaluation": 1,
+          "long": 0.002402348473989631,
+          "evaluation_long": -0.10645931854491653
+        },
+        {
+          "instrument": "MAHABANK.NS",
+          "n": 3,
+          "n_evaluation": 2,
+          "long": -0.023820700256900352,
+          "evaluation_long": -0.05448107687183065
+        }
+      ],
+      "search_one_actions": {
+        "LONG": 37
+      },
+      "search_two_actions": {
+        "LONG": 37
+      }
+    }
+  ]
+}

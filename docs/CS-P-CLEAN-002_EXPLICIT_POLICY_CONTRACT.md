@@ -1,7 +1,7 @@
 # CS-P-CLEAN-002 — Explicit DecisionPolicy contract (PR-2)
 
 **Document type:** Architecture hardening  
-**Status:** Complete — CS-P-006-A is the next programme (contract only)  
+**Status:** Complete — CS-P-006-A committed; CS-P-006-B protocol next  
 **Date:** 2026-08-14  
 **Parent:** CS-P-AUDIT-001, CS-P-CLEAN-001  
 **Does not:** invent a trading strategy, run a backtest, regenerate B3/B4, reopen G-GATE, freeze v1.0  

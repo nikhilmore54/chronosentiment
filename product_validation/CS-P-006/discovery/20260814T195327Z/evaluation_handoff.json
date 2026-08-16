@@ -1,0 +1,11 @@
+{
+  "artifact_hash": "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0",
+  "policy_name": "coralys.rulelist.discovered@v0",
+  "evaluation": {
+    "fitness": -0.00022885147232623977,
+    "n_rows": 91,
+    "n_traded": 33,
+    "n_stood_aside": 58,
+    "n_unavailable": 0
+  }
+}

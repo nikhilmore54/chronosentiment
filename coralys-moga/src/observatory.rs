@@ -138,6 +138,12 @@ pub trait PipelineObserver<G: Genome>: Send + Sync {
     fn on_feasibility_report(&self, _report: &FeasibilityReport) {}
 }
 
+/// Read-only generation hook. Must not consume RNG or alter search order.
+pub trait GenerationObserver<G: Genome, E: Evaluated<Genome = G>>: Send + Sync {
+    fn on_evaluated_generation(&self, generation: usize, evaluations: &[E]);
+    fn on_offspring(&self, generation: usize, parent_a: &G, parent_b: &G, child: &G);
+}
+
 #[derive(Debug, Clone)]
 pub struct FeasibilityReport {
     pub hard_violations_remaining: usize,

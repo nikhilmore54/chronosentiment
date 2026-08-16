@@ -1,0 +1,12 @@
+Connected! Executing PredictiveValueExperiment...
+
+=== POPULATION ACCOUNTING ===
+| Signature | 5D N | 10D N | 20D N | 60D N | 5D Entry | 10D Entry | 20D Entry | 60D Entry |
+|-----------|-----:|------:|------:|------:|---------:|----------:|----------:|----------:|
+
+=== AGGREGATE MATRIX ===
+| Assessment Signature | Horizon | N | Entry % | Target % | Stop % | Mean Return | Median Return | Median MFE | Median MAE | Median DD |
+|----------------------|--------:|--:|--------:|---------:|-------:|------------:|--------------:|-----------:|-----------:|----------:|
+
+=== RAW EVIDENCE LEDGER (First 5 records) ===
+Total Records: 0

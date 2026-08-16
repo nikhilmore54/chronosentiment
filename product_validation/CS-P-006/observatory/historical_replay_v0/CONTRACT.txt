@@ -1,0 +1,3 @@
+Historical Replay v0 — 20 Calendar Day Contract
+Do not reinterpret these outcomes as 20 market-session results.
+Successor: historical_replay_v1 / CS-P-006-P.H.2

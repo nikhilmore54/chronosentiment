@@ -1,0 +1,29 @@
+{
+  "experiment": "P.E.2",
+  "label": "P.E.2 Control — Fixed +5% Execution",
+  "execution_contract": "targeted_execution_v0_fixed_5pct_20_sessions",
+  "execution_path_kind": "prospective_execution_v0",
+  "target_rule": "fixed +5% from entry price",
+  "risk_rule": "none (no stop)",
+  "maximum_hold_sessions": 20,
+  "decision_policy": "C3-002 (RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH)",
+  "universe": [
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "WIPRO.NS",
+    "ICICIBANK.NS",
+    "KOTAKBANK.NS"
+  ],
+  "archived_at": "2026-08-16",
+  "status": "IMMUTABLE",
+  "purpose": "Historical control baseline. Do not modify. Used for P.E.2 vs P.E.3 comparison.",
+  "files": {
+    "execution_ledger/prospective_execution_v0_ledger.json": "Live execution ledger (prospective_execution_v0 path)",
+    "execution_ledger/historical_pe2_replay_ledger.json": "Full historical replay under P.E.2 contract",
+    "decisions/execution_intents.json": "Sealed execution intents (fixed +5% target)",
+    "reports/execution_report.json": "Execution replay report"
+  },
+  "comparison_note": "This dataset is the control for P.E.3. The same historical market data, C3-002 decisions, and universe were used. Only the execution contract differs: P.E.2 uses fixed +5% target with no risk boundary; P.E.3 uses coralys-exec-v0 ATR/TMV target and risk."
+}

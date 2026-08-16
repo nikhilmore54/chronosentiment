@@ -1,0 +1,15 @@
+{
+  "contract_id": "csp006c3i.implementation.1",
+  "evaluation_inaccessible": true,
+  "horizon_days": 20,
+  "living_pool_excludes_unentered_offspring": true,
+  "magnitude_preserved": true,
+  "n_instruments": 7,
+  "post_seal_symbol_matrices_required": true,
+  "result": "PASS",
+  "search_one_artifact_hash": "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0",
+  "search_one_immutable": true,
+  "search_one_selected_policy_sha256": "a973446fb2a62c046a3837898603d71830f6b4daaedf6ce0f7803d5364858c2f",
+  "search_two_run_authorized": false,
+  "seed": 42
+}

@@ -1,4 +1,4 @@
-# CS-P-006-A — Policy Discovery Contract
+    # CS-P-006-A — Policy Discovery Contract
 
 **Document type:** Frozen consumption contract  
 **Status:** Active — contract only; no optimizer  
@@ -92,12 +92,12 @@ VALIDATION   candidate selection
 TEST         untouched evaluation — never participates in evolution
 ```
 
-Exact calendar windows are **not** invented in this contract. They are frozen in **CS-P-006-B** from certified B4 coverage before any search run.
+Exact calendar windows are frozen in **CS-P-006-B.1** from the certified seven-instrument snapshot. This contract does not invent those dates.
 
-Until CS-P-006-B exists:
+Until a Coralys-discovered artifact is sealed:
 
 * Contract fixtures use `discovery_engine = contract.fixture` and empty windows
-* A Coralys-discovered candidate (`discovery_engine` prefix `coralys.`) **must** carry complete windows from a frozen protocol — such an artifact cannot be produced yet
+* A Coralys-discovered candidate (`discovery_engine` prefix `coralys.`) **must** carry complete windows from CS-P-006-B.1
 
 Forbidden `discovery_engine` values: `chronosentiment.handwritten`, `threshold.grid`.
 

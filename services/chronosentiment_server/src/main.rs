@@ -1,3 +1,6 @@
+mod decisions_api;
+mod portfolio_api;
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -7,7 +10,6 @@ use axum::{
 use chrono::Utc;
 use chronosentiment_adapter::evidence::{EvidenceItem, EvidenceSourceType};
 use chronosentiment_adapter::hypothesis::InvestmentThesis;
-use chronosentiment_adapter::observation::Observation;
 use chronosentiment_adapter::workspace::InvestmentWorkspace;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -35,6 +37,16 @@ async fn main() {
         .route("/research-sessions/:id", get(get_session))
         .route("/research-sessions/:id/observations", post(add_observation))
         .route("/research-sessions/:id/hypotheses", post(add_hypothesis))
+        // Product MVP v0.2 — Certified decisions (backend-owned intelligence)
+        .route(
+            "/api/v0/decisions/current",
+            get(decisions_api::get_current_decisions),
+        )
+        // Product MVP v0.2 — Portfolio Recommendations (no decisions[] in body)
+        .route(
+            "/api/v0/portfolio/recommendations",
+            post(portfolio_api::post_recommendations),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -80,16 +92,25 @@ async fn get_session(
 async fn add_observation(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    Json(observation): Json<Observation>,
+    Json(payload): Json<serde_json::Value>,
 ) -> Result<StatusCode, StatusCode> {
     let mut store = state.workspaces.write().await;
     if let Some(ws) = store.get_mut(&id) {
-        // Map observation to evidence
+        let obs_id = payload
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let obs_type = payload
+            .get("observation_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
         let evidence = EvidenceItem::new(
-            observation.id.to_string(),
+            obs_id,
             id.clone(),
-            format!("Observation: {}", observation.observation_type),
-            EvidenceSourceType::MarketData,
+            format!("Observation: {obs_type}"),
+            EvidenceSourceType::FinancialData,
             "Mapped from Observation envelope",
             Utc::now().timestamp() as u64,
         );

@@ -66,7 +66,7 @@ impl ExternalObserver<ScheduleGenome> for InrcExternalScorer {
 impl InrcExternalScorer {
     fn score_with_components(&self, genome: &ScheduleGenome) -> (f64, Vec<f64>) {
         let i_genome = to_inrc_genome(genome, &self.scenario);
-        let off_eval = self.inrc_optimizer.evaluate(&i_genome);
+        let off_eval = self.inrc_optimizer.evaluate(&i_genome, &MetricReport::default());
         let escore = ((off_eval.hc_coverage + off_eval.hc_skills + off_eval.hc_one_shift_per_day + off_eval.hc_forbidden_successions) as i64 + off_eval.soft_report.total_penalty as i64) as f64;
         let ext_objs = vec![
             off_eval.hc_coverage as f64,
@@ -195,7 +195,7 @@ fn main() {
 
     // Baseline Evaluate
     let i_genome = to_inrc_genome(&baseline_genome, &external_scorer.scenario);
-    let off_eval = external_scorer.inrc_optimizer.evaluate(&i_genome);
+    let off_eval = external_scorer.inrc_optimizer.evaluate(&i_genome, &MetricReport::default());
     let base_fitness = engine.evaluator.evaluate(&baseline_genome);
     let base_escore = ((off_eval.hc_coverage + off_eval.hc_skills + off_eval.hc_one_shift_per_day + off_eval.hc_forbidden_successions) as i64 * 100_000 + off_eval.soft_report.total_penalty as i64) as f64;
     let base_external_objs = vec![

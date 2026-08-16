@@ -57,6 +57,7 @@ fn test_c2_outcome_determinism() {
     let decision_id = Uuid::new_v4();
     
     let strategy = OpportunityStrategy {
+        metadata: ArtifactMetadata::mock(),
         decision_id,
         expected_horizon: Horizon::Swing,
         expected_holding_period_days: (10, 20),
@@ -98,6 +99,7 @@ fn test_c2_negative_determinism_fault_injection() {
     let decision_id = Uuid::new_v4();
     
     let strategy = OpportunityStrategy {
+        metadata: ArtifactMetadata::mock(),
         decision_id,
         expected_horizon: Horizon::Swing,
         expected_holding_period_days: (10, 20),

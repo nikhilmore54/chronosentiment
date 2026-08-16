@@ -1,0 +1,6 @@
+Execution Contract v0 — live observation
+C3-002 chooses direction only.
+The 14-August cohort was sealed without an execution intent and remains untouched.
+P.E.2 will attach Execution Contract v0 only to the next eligible cohort at T.
+P.E.1 targeted_execution_v0 is frozen.
+AWAITING_NEXT_SESSION until a certified session after 2026-08-14T03:45:00Z.
