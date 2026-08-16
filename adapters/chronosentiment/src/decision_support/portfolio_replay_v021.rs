@@ -97,41 +97,102 @@ pub struct CapitalContribution {
     pub amount_inr: f64,
 }
 
+// ─── Allocation model ─────────────────────────────────────────────────────────
+
+/// How per-lot capital is determined at the open phase of each session.
+///
+/// `EqualWeight` is the v0.2.1/v0.3 baseline — all available cash is split
+/// equally across every eligible signal in the session.
+///
+/// `MaxPerSymbol` is the v0.4 experiment — each eligible signal receives at most
+/// `max_per_symbol_inr`, leaving the remainder available for future sessions.
+/// This prevents session-1 capital exhaustion when signal density is high.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "model")]
+pub enum AllocationModel {
+    /// v0.2.1/v0.3 baseline: `available_cash / n_eligible_signals`.
+    /// Deploys all available cash in every session that has eligible signals.
+    EqualWeight,
+    /// v0.4 experiment: `min(max_per_symbol_inr, available_cash)` per signal.
+    /// Leaves undeployed capital available for subsequent sessions.
+    MaxPerSymbol {
+        /// Maximum INR to allocate to a single lot.
+        max_per_symbol_inr: f64,
+    },
+}
+
+impl AllocationModel {
+    /// Compute the per-lot allocation given available cash and number of eligible signals.
+    pub fn per_lot_alloc(&self, available_cash: f64, n_eligible: usize) -> f64 {
+        match self {
+            AllocationModel::EqualWeight => {
+                if n_eligible == 0 { 0.0 } else { available_cash / n_eligible as f64 }
+            }
+            AllocationModel::MaxPerSymbol { max_per_symbol_inr } => {
+                available_cash.min(*max_per_symbol_inr)
+            }
+        }
+    }
+}
+
 // ─── Portfolio replay config ──────────────────────────────────────────────────
 
 /// Configuration for a continuous portfolio replay run.
 ///
-/// All execution semantics (C3-002, Coralys v0, stop-loss, target, allocation)
-/// remain frozen. Only the universe is variable — this is the v0.3 design.
+/// Execution semantics (C3-002, Coralys v0, stop-loss, target) remain frozen.
+/// Universe, initial capital, and allocation model are variable.
 ///
 /// The v0.2.1 baseline uses `ContinuousPortfolioConfig::v021_baseline()`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContinuousPortfolioConfig {
     /// Instrument symbols to include. Must be a subset of the bar cache keys.
-    /// All instruments must have bars available in the cache.
     pub universe: Vec<String>,
     /// Human-readable label for this configuration (used in archive metadata).
     pub config_label: String,
     /// Capital contribution schedule. Empty = no contributions beyond initial capital.
     pub contributions: Vec<CapitalContribution>,
+    /// Initial capital in INR. Default: ₹5,000 (v0.2.1/v0.3 baseline).
+    pub initial_capital_inr: f64,
+    /// Allocation model. Default: EqualWeight (v0.2.1/v0.3 baseline).
+    pub allocation_model: AllocationModel,
 }
 
 impl ContinuousPortfolioConfig {
-    /// v0.2.1 baseline: 7-instrument RESEARCH_UNIVERSE, no contributions.
+    /// v0.2.1 baseline: 7-instrument RESEARCH_UNIVERSE, ₹5,000, EqualWeight.
     pub fn v021_baseline() -> Self {
         ContinuousPortfolioConfig {
             universe: RESEARCH_UNIVERSE.iter().map(|s| s.to_string()).collect(),
             config_label: "v021_baseline_7_instruments".to_string(),
             contributions: vec![],
+            initial_capital_inr: 5_000.0,
+            allocation_model: AllocationModel::EqualWeight,
         }
     }
 
-    /// v0.3 config with a custom universe slice.
+    /// v0.3 config with a custom universe slice, ₹5,000, EqualWeight.
     pub fn v03_universe(instruments: &[&str], label: &str) -> Self {
         ContinuousPortfolioConfig {
             universe: instruments.iter().map(|s| s.to_string()).collect(),
             config_label: label.to_string(),
             contributions: vec![],
+            initial_capital_inr: 5_000.0,
+            allocation_model: AllocationModel::EqualWeight,
+        }
+    }
+
+    /// v0.4 MaxPerSymbol config: custom universe, ₹1M initial capital, per-symbol cap.
+    pub fn v04_max_per_symbol(
+        instruments: &[&str],
+        label: &str,
+        initial_capital_inr: f64,
+        max_per_symbol_inr: f64,
+    ) -> Self {
+        ContinuousPortfolioConfig {
+            universe: instruments.iter().map(|s| s.to_string()).collect(),
+            config_label: label.to_string(),
+            contributions: vec![],
+            initial_capital_inr,
+            allocation_model: AllocationModel::MaxPerSymbol { max_per_symbol_inr },
         }
     }
 }
@@ -553,15 +614,23 @@ pub fn run_continuous_portfolio_replay(
     run_continuous_portfolio_replay_with_contributions(artifact, cache, &[])
 }
 
-/// Run with a `ContinuousPortfolioConfig` — the v0.3 entry point.
+/// Run with a `ContinuousPortfolioConfig` — the v0.3/v0.4 entry point.
 ///
-/// Only the universe is variable. All execution semantics remain frozen.
+/// Universe, initial capital, and allocation model are taken from the config.
+/// All execution semantics remain frozen.
 pub fn run_continuous_portfolio_replay_with_config(
     artifact: &PolicyArtifact,
     cache: &BTreeMap<String, Vec<YahooHistoricalBar>>,
     config: &ContinuousPortfolioConfig,
 ) -> Result<ContinuousPortfolioLedger, String> {
-    run_continuous_portfolio_replay_inner(artifact, cache, &config.universe, &config.contributions)
+    run_continuous_portfolio_replay_inner(
+        artifact,
+        cache,
+        &config.universe,
+        &config.contributions,
+        config.initial_capital_inr,
+        &config.allocation_model,
+    )
 }
 
 /// Run with an explicit contribution schedule (v0.2.1 baseline — 7-instrument universe).
@@ -575,10 +644,17 @@ pub fn run_continuous_portfolio_replay_with_contributions(
     contributions: &[CapitalContribution],
 ) -> Result<ContinuousPortfolioLedger, String> {
     let universe: Vec<String> = RESEARCH_UNIVERSE.iter().map(|s| s.to_string()).collect();
-    run_continuous_portfolio_replay_inner(artifact, cache, &universe, contributions)
+    run_continuous_portfolio_replay_inner(
+        artifact,
+        cache,
+        &universe,
+        contributions,
+        INITIAL_CAPITAL_INR,
+        &AllocationModel::EqualWeight,
+    )
 }
 
-/// Inner implementation — accepts explicit universe and contributions.
+/// Inner implementation — accepts explicit universe, contributions, initial capital, and allocation model.
 ///
 /// All callers must go through one of the public wrappers above.
 fn run_continuous_portfolio_replay_inner(
@@ -586,6 +662,8 @@ fn run_continuous_portfolio_replay_inner(
     cache: &BTreeMap<String, Vec<YahooHistoricalBar>>,
     universe: &[String],
     contributions: &[CapitalContribution],
+    initial_capital_inr: f64,
+    allocation_model: &AllocationModel,
 ) -> Result<ContinuousPortfolioLedger, String> {
     // Identity gates
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
@@ -627,9 +705,9 @@ fn run_continuous_portfolio_replay_inner(
         return Err("no sessions found at or after certified_t".into());
     }
 
-    let mut pe2_arm = ContinuousPortfolioArm::new("pe2", PE2_ARM_CONTRACT, INITIAL_CAPITAL_INR);
+    let mut pe2_arm = ContinuousPortfolioArm::new("pe2", PE2_ARM_CONTRACT, initial_capital_inr);
     let mut coralys_arm =
-        ContinuousPortfolioArm::new("coralys_v0", CORALYS_ARM_CONTRACT, INITIAL_CAPITAL_INR);
+        ContinuousPortfolioArm::new("coralys_v0", CORALYS_ARM_CONTRACT, initial_capital_inr);
 
     let n_sessions = session_timestamps.len() as u32;
 
@@ -905,7 +983,7 @@ fn run_continuous_portfolio_replay_inner(
         // ── Open P.E.2 lots ───────────────────────────────────────────────────
         let mut pe2_lots_opened = 0u32;
         if n_eligible > 0 && pe2_arm.cash_inr >= MIN_LOT_ALLOCATION_INR {
-            let alloc = (pe2_arm.cash_inr / n_eligible as f64).max(0.0);
+            let alloc = allocation_model.per_lot_alloc(pe2_arm.cash_inr, n_eligible).max(0.0);
             if alloc >= MIN_LOT_ALLOCATION_INR {
                 for plan in &new_lot_plans {
                     // Build canonical P.E.2 execution intent
@@ -958,7 +1036,7 @@ fn run_continuous_portfolio_replay_inner(
         // ── Open Coralys lots ─────────────────────────────────────────────────
         let mut coralys_lots_opened = 0u32;
         if n_eligible > 0 && coralys_arm.cash_inr >= MIN_LOT_ALLOCATION_INR {
-            let alloc = (coralys_arm.cash_inr / n_eligible as f64).max(0.0);
+            let alloc = allocation_model.per_lot_alloc(coralys_arm.cash_inr, n_eligible).max(0.0);
             if alloc >= MIN_LOT_ALLOCATION_INR {
                 for plan in &new_lot_plans {
                     let coralys_result = match seal_coralys_execution_intent(
