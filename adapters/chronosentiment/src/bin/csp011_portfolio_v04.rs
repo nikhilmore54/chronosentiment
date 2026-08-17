@@ -9,7 +9,7 @@
 //! `cash / n_eligible` deploys 100% of capital in session 1 when signal density is high
 //! (50 signals × 2% each = 100%). No capital remains for subsequent sessions.
 //!
-//! `MaxPerSymbol { max_per_symbol_inr: 20_000 }` caps each lot at ₹20k (2% of ₹1M),
+//! `MaxPerLot { max_per_lot_inr: 20_000 }` caps each lot at ₹20k (2% of ₹1M),
 //! leaving undeployed capital available for future sessions.
 //!
 //! ## Experiment design
@@ -17,8 +17,8 @@
 //! ```text
 //! Capital: ₹1,000,000 (same for all 4 configs)
 //!
-//!                  EqualWeight (control)    MaxPerSymbol ₹20k (experiment)
-//!                  ─────────────────────    ──────────────────────────────
+//!                  EqualWeight (control)    MaxPerLot ₹20k (experiment)
+//!                  ─────────────────────    ───────────────────────────
 //! 25 instruments   v04_A_25_equal           v04_B_25_max
 //! 50 instruments   v04_C_50_equal           v04_D_50_max
 //! ```
@@ -35,7 +35,7 @@
 //!
 //!              CHANGES vs v0.3:
 //!                1. Initial capital: ₹5,000 → ₹1,000,000
-//!                2. Allocation model: EqualWeight (control) vs MaxPerSymbol ₹20k (experiment)
+//!                2. Allocation model: EqualWeight (control) vs MaxPerLot ₹20k (experiment)
 //!                3. Universe: 25 and 50 instruments only (100 excluded — C3-002 scope)
 //! ```
 //!
@@ -87,7 +87,7 @@ use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
 /// Initial capital for all v0.4 configs (₹1,000,000).
 pub const V04_INITIAL_CAPITAL_INR: f64 = 1_000_000.0;
 
-/// MaxPerSymbol cap: ₹20,000 **per lot** = 2% of ₹1M.
+/// MaxPerLot cap: ₹20,000 **per lot** = 2% of ₹1M.
 ///
 /// Semantics: each individual lot opened in a session is capped at ₹20k, regardless of how
 /// many lots are already open for the same instrument (position upgrades are allowed).
@@ -634,17 +634,17 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
 
 // ─── Universe slices ──────────────────────────────────────────────────────────
 
-/// First 25 instruments from the 50-instrument v0.3-B universe.
-/// These are the same instruments used in v0.3-A (25-instrument config).
+/// First 27 instruments — v0.3-A base (25) + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_25: &[&str] = &[
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
     "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
     "LT.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
     "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "NESTLEIND.NS",
     "POWERGRID.NS", "NTPC.NS", "TECHM.NS", "HCLTECH.NS", "ONGC.NS",
+    "MAHABANK.NS", "IDEA.NS",
 ];
 
-/// First 50 instruments — extends UNIVERSE_25 with 25 more.
+/// 52 instruments — extends UNIVERSE_25 with 25 more + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_50: &[&str] = &[
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
     "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
@@ -656,6 +656,7 @@ const UNIVERSE_50: &[&str] = &[
     "HEROMOTOCO.NS", "HINDALCO.NS", "INDUSINDBK.NS", "M&M.NS", "SBILIFE.NS",
     "TATACONSUM.NS", "TATASTEEL.NS", "UPL.NS", "VEDL.NS", "BPCL.NS",
     "CIPLA.NS", "HDFCLIFE.NS", "PIDILITIND.NS", "SHREECEM.NS", "UNITDSPR.NS",
+    "MAHABANK.NS", "IDEA.NS",
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -668,7 +669,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  cache_dir      : {}", args.cache_dir.display());
     println!("  output_base    : {}", args.output_base.display());
     println!("  initial_capital: Rs.{:.0}", V04_INITIAL_CAPITAL_INR);
-    println!("  max_per_symbol : Rs.{:.0}", V04_MAX_PER_LOT_INR);
+    println!("  max_per_lot    : Rs.{:.0}", V04_MAX_PER_LOT_INR);
     println!("  strict         : {}", args.strict);
 
     // ── Load artifact ─────────────────────────────────────────────────────────
@@ -694,7 +695,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  {} instruments loaded", cache.len());
 
     // ── Build configs ─────────────────────────────────────────────────────────
-    // 4 configs: EqualWeight and MaxPerSymbol at 25 and 50 instruments.
+    // 4 configs: EqualWeight and MaxPerLot at 27 and 52 instruments.
     // All use ₹1M initial capital.
     let configs: Vec<(String, String, ContinuousPortfolioConfig)> = vec![
         (
@@ -705,7 +706,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         (
             "v04_B_25_max".to_string(),
-            format!("MaxPerSymbol Rs.{:.0}", V04_MAX_PER_LOT_INR),
+            format!("MaxPerLot Rs.{:.0}", V04_MAX_PER_LOT_INR),
             ContinuousPortfolioConfig::v04_max_per_lot(
                 UNIVERSE_25,
                 "v04_B_25_max",
@@ -721,7 +722,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         (
             "v04_D_50_max".to_string(),
-            format!("MaxPerSymbol Rs.{:.0}", V04_MAX_PER_LOT_INR),
+            format!("MaxPerLot Rs.{:.0}", V04_MAX_PER_LOT_INR),
             ContinuousPortfolioConfig::v04_max_per_lot(
                 UNIVERSE_50,
                 "v04_D_50_max",
