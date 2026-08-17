@@ -672,7 +672,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  strict         : {}", args.strict);
 
     // ── Load artifact ─────────────────────────────────────────────────────────
-    let artifact_path = args.search_two_dir.join("policy_artifact.json");
+    let artifact_path = args.search_two_dir.join("selected_policy.json");
     let artifact_bytes = fs::read(&artifact_path)
         .map_err(|e| format!("cannot read artifact at {}: {e}", artifact_path.display()))?;
     let artifact: PolicyArtifact = serde_json::from_slice(&artifact_bytes)
