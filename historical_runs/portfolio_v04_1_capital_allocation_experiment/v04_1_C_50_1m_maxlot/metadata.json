@@ -1,0 +1,17 @@
+{
+  "allocation_model": {
+    "max_per_lot_inr": 20000.0,
+    "model": "MaxPerLot"
+  },
+  "c3_002_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "certified_t": "2026-07-15T03:45:00+00:00",
+  "config_label": "v04_1_C_50_1m_maxlot",
+  "coralys_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "experiment": "Portfolio Replay v0.4.1 -- Capital x Allocation",
+  "initial_capital_inr": 1000000.0,
+  "n_sessions_simulated": 23,
+  "path_kind": "portfolio_replay_v0_2_1",
+  "start_clock": "2026-07-15T03:45:00+00:00",
+  "universe_available": 52,
+  "universe_requested": 52
+}
