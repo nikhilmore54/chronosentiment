@@ -634,6 +634,12 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
 
 // ─── Universe slices ──────────────────────────────────────────────────────────
 
+/// 7-instrument RESEARCH_UNIVERSE (canonical baseline).
+const UNIVERSE_7: &[&str] = &[
+    "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS",
+    "TCS.NS", "IDEA.NS", "MAHABANK.NS",
+];
+
 /// First 27 instruments — v0.3-A base (25) + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_25: &[&str] = &[
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
@@ -656,6 +662,39 @@ const UNIVERSE_50: &[&str] = &[
     "HEROMOTOCO.NS", "HINDALCO.NS", "INDUSINDBK.NS", "M&M.NS", "SBILIFE.NS",
     "TATACONSUM.NS", "TATASTEEL.NS", "UPL.NS", "VEDL.NS", "BPCL.NS",
     "CIPLA.NS", "HDFCLIFE.NS", "PIDILITIND.NS", "SHREECEM.NS", "UNITDSPR.NS",
+    "MAHABANK.NS", "IDEA.NS",
+];
+
+/// 102 instruments — v0.3-C base (100) + MAHABANK.NS + IDEA.NS.
+const UNIVERSE_100: &[&str] = &[
+    "HDFCBANK.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS",
+    "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS",
+    "KOTAKBANK.NS", "AXISBANK.NS", "SBIN.NS", "BAJFINANCE.NS",
+    "BHARTIARTL.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
+    "SUNPHARMA.NS", "WIPRO.NS", "HCLTECH.NS", "ULTRACEMCO.NS",
+    "NESTLEIND.NS", "POWERGRID.NS", "NTPC.NS", "ONGC.NS",
+    "TMPV.NS", "TATASTEEL.NS",
+    "ADANIENT.NS", "ADANIPORTS.NS", "BAJAJFINSV.NS", "BPCL.NS",
+    "BRITANNIA.NS", "CIPLA.NS", "COALINDIA.NS", "DIVISLAB.NS",
+    "DRREDDY.NS", "EICHERMOT.NS", "GRASIM.NS", "HEROMOTOCO.NS",
+    "HINDALCO.NS", "INDUSINDBK.NS", "JSWSTEEL.NS", "LT.NS",
+    "M&M.NS", "PIDILITIND.NS", "SBILIFE.NS", "SHREECEM.NS",
+    "SIEMENS.NS", "TECHM.NS", "TRENT.NS", "UPL.NS",
+    "VEDL.NS",
+    "ABCAPITAL.NS", "ABFRL.NS", "ACC.NS", "AMBUJACEM.NS",
+    "APOLLOHOSP.NS", "APOLLOTYRE.NS", "AUROPHARMA.NS", "BALKRISIND.NS",
+    "BANDHANBNK.NS", "BANKBARODA.NS", "BERGEPAINT.NS", "BIOCON.NS",
+    "BOSCHLTD.NS", "CANBK.NS", "CHOLAFIN.NS", "COLPAL.NS",
+    "CONCOR.NS", "CUMMINSIND.NS", "DABUR.NS", "DLF.NS",
+    "ESCORTS.NS", "EXIDEIND.NS", "FEDERALBNK.NS", "GAIL.NS",
+    "GODREJCP.NS", "GODREJPROP.NS", "HAVELLS.NS", "HDFCAMC.NS",
+    "HDFCLIFE.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IGL.NS",
+    "INDUSTOWER.NS", "IRCTC.NS", "JUBLFOOD.NS", "LICHSGFIN.NS",
+    "LUPIN.NS", "MARICO.NS", "UNITDSPR.NS", "MFSL.NS",
+    "MPHASIS.NS", "MRF.NS", "MUTHOOTFIN.NS", "NAUKRI.NS",
+    "NMDC.NS", "PAGEIND.NS", "PIIND.NS", "PERSISTENT.NS",
+    "PFC.NS", "PNB.NS",
+    "TATACONSUM.NS",
     "MAHABANK.NS", "IDEA.NS",
 ];
 
@@ -695,9 +734,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  {} instruments loaded", cache.len());
 
     // ── Build configs ─────────────────────────────────────────────────────────
-    // 4 configs: EqualWeight and MaxPerLot at 27 and 52 instruments.
-    // All use ₹1M initial capital.
+    // 8 configs: EqualWeight and MaxPerLot at 7, 27, 52, and 102 instruments.
+    // All use Rs.1M initial capital.
     let configs: Vec<(String, String, ContinuousPortfolioConfig)> = vec![
+        (
+            "v04_G_7_equal".to_string(),
+            "EqualWeight".to_string(),
+            ContinuousPortfolioConfig::v03_universe(UNIVERSE_7, "v04_G_7_equal")
+                .with_capital(V04_INITIAL_CAPITAL_INR),
+        ),
+        (
+            "v04_H_7_max".to_string(),
+            format!("MaxPerLot Rs.{:.0}", V04_MAX_PER_LOT_INR),
+            ContinuousPortfolioConfig::v04_max_per_lot(
+                UNIVERSE_7,
+                "v04_H_7_max",
+                V04_INITIAL_CAPITAL_INR,
+                V04_MAX_PER_LOT_INR,
+            ),
+        ),
         (
             "v04_A_25_equal".to_string(),
             "EqualWeight".to_string(),
@@ -726,6 +781,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ContinuousPortfolioConfig::v04_max_per_lot(
                 UNIVERSE_50,
                 "v04_D_50_max",
+                V04_INITIAL_CAPITAL_INR,
+                V04_MAX_PER_LOT_INR,
+            ),
+        ),
+        (
+            "v04_E_100_equal".to_string(),
+            "EqualWeight".to_string(),
+            ContinuousPortfolioConfig::v03_universe(UNIVERSE_100, "v04_E_100_equal")
+                .with_capital(V04_INITIAL_CAPITAL_INR),
+        ),
+        (
+            "v04_F_100_max".to_string(),
+            format!("MaxPerLot Rs.{:.0}", V04_MAX_PER_LOT_INR),
+            ContinuousPortfolioConfig::v04_max_per_lot(
+                UNIVERSE_100,
+                "v04_F_100_max",
                 V04_INITIAL_CAPITAL_INR,
                 V04_MAX_PER_LOT_INR,
             ),

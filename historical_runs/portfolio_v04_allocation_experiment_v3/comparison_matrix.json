@@ -1,0 +1,234 @@
+[
+  {
+    "allocation_model": "EqualWeight",
+    "config_label": "v04_G_7_equal",
+    "coralys": {
+      "capital_velocity_ratio": 11.173171788034594,
+      "n_horizon": 2,
+      "n_lots_opened": 161,
+      "n_stop": 87,
+      "n_target": 40,
+      "pct_direction_failure": 31.03448275862069,
+      "pct_genuine_adverse": 21.839080459770116,
+      "pct_premature": 8.045977011494253,
+      "pct_stop_too_tight": 6.896551724137931,
+      "pct_temporary_excursion": 32.18390804597701,
+      "stop_rate_pct": 54.037267080745345,
+      "total_realized_pnl_inr": 12819.847437049928,
+      "total_return_pct": 1.2649576790650376
+    },
+    "pe2": {
+      "capital_velocity_ratio": 5.408802869698125,
+      "n_horizon": 12,
+      "n_lots_opened": 84,
+      "n_stop": 0,
+      "n_target": 35,
+      "total_realized_pnl_inr": 87166.65366547012,
+      "total_return_pct": 8.614877870526536
+    },
+    "universe_size": 7
+  },
+  {
+    "allocation_model": "MaxPerLot Rs.20000",
+    "config_label": "v04_H_7_max",
+    "coralys": {
+      "capital_velocity_ratio": 3.22,
+      "n_horizon": 2,
+      "n_lots_opened": 161,
+      "n_stop": 87,
+      "n_target": 40,
+      "pct_direction_failure": 31.03448275862069,
+      "pct_genuine_adverse": 21.839080459770116,
+      "pct_premature": 8.045977011494253,
+      "pct_stop_too_tight": 6.896551724137931,
+      "pct_temporary_excursion": 32.18390804597701,
+      "stop_rate_pct": 54.037267080745345,
+      "total_realized_pnl_inr": -4901.104582761244,
+      "total_return_pct": -0.519396763126587
+    },
+    "pe2": {
+      "capital_velocity_ratio": 2.1,
+      "n_horizon": 12,
+      "n_lots_opened": 105,
+      "n_stop": 0,
+      "n_target": 40,
+      "total_realized_pnl_inr": 34637.93671680653,
+      "total_return_pct": 3.5839544619022985
+    },
+    "universe_size": 7
+  },
+  {
+    "allocation_model": "EqualWeight",
+    "config_label": "v04_A_25_equal",
+    "coralys": {
+      "capital_velocity_ratio": 12.576712293458492,
+      "n_horizon": 3,
+      "n_lots_opened": 594,
+      "n_stop": 295,
+      "n_target": 171,
+      "pct_direction_failure": 34.91525423728813,
+      "pct_genuine_adverse": 20.33898305084746,
+      "pct_premature": 4.745762711864407,
+      "pct_stop_too_tight": 7.457627118644068,
+      "pct_temporary_excursion": 32.54237288135593,
+      "stop_rate_pct": 49.66329966329967,
+      "total_realized_pnl_inr": 87563.39893353348,
+      "total_return_pct": 8.668881129936594
+    },
+    "pe2": {
+      "capital_velocity_ratio": 5.394794828038626,
+      "n_horizon": 40,
+      "n_lots_opened": 297,
+      "n_stop": 0,
+      "n_target": 138,
+      "total_realized_pnl_inr": 101498.13855549991,
+      "total_return_pct": 8.096970205867244
+    },
+    "universe_size": 27
+  },
+  {
+    "allocation_model": "MaxPerLot Rs.20000",
+    "config_label": "v04_B_25_max",
+    "coralys": {
+      "capital_velocity_ratio": 9.72,
+      "n_horizon": 3,
+      "n_lots_opened": 486,
+      "n_stop": 257,
+      "n_target": 165,
+      "pct_direction_failure": 40.07782101167315,
+      "pct_genuine_adverse": 12.45136186770428,
+      "pct_premature": 5.058365758754864,
+      "pct_stop_too_tight": 6.614785992217899,
+      "pct_temporary_excursion": 35.797665369649806,
+      "stop_rate_pct": 52.88065843621399,
+      "total_realized_pnl_inr": 36516.60297625621,
+      "total_return_pct": 3.5095396243136725
+    },
+    "pe2": {
+      "capital_velocity_ratio": 4.32,
+      "n_horizon": 40,
+      "n_lots_opened": 216,
+      "n_stop": 0,
+      "n_target": 113,
+      "total_realized_pnl_inr": 93532.9048696133,
+      "total_return_pct": 7.158364912885287
+    },
+    "universe_size": 27
+  },
+  {
+    "allocation_model": "EqualWeight",
+    "config_label": "v04_C_50_equal",
+    "coralys": {
+      "capital_velocity_ratio": 12.92653676459036,
+      "n_horizon": 3,
+      "n_lots_opened": 1144,
+      "n_stop": 574,
+      "n_target": 329,
+      "pct_direction_failure": 37.10801393728223,
+      "pct_genuine_adverse": 20.73170731707317,
+      "pct_premature": 4.181184668989547,
+      "pct_stop_too_tight": 5.574912891986063,
+      "pct_temporary_excursion": 32.40418118466899,
+      "stop_rate_pct": 50.17482517482518,
+      "total_realized_pnl_inr": 77333.01209398975,
+      "total_return_pct": 8.08812393687896
+    },
+    "pe2": {
+      "capital_velocity_ratio": 5.1155539339220315,
+      "n_horizon": 80,
+      "n_lots_opened": 572,
+      "n_stop": 0,
+      "n_target": 270,
+      "total_realized_pnl_inr": 74411.09111317538,
+      "total_return_pct": 4.3905454379821895
+    },
+    "universe_size": 52
+  },
+  {
+    "allocation_model": "MaxPerLot Rs.20000",
+    "config_label": "v04_D_50_max",
+    "coralys": {
+      "capital_velocity_ratio": 14.56,
+      "n_horizon": 3,
+      "n_lots_opened": 728,
+      "n_stop": 372,
+      "n_target": 288,
+      "pct_direction_failure": 47.31182795698925,
+      "pct_genuine_adverse": 4.838709677419355,
+      "pct_premature": 4.56989247311828,
+      "pct_stop_too_tight": 5.376344086021505,
+      "pct_temporary_excursion": 37.903225806451616,
+      "stop_rate_pct": 51.098901098901095,
+      "total_realized_pnl_inr": 94017.70402786159,
+      "total_return_pct": 9.789691301912303
+    },
+    "pe2": {
+      "capital_velocity_ratio": 6.24,
+      "n_horizon": 80,
+      "n_lots_opened": 312,
+      "n_stop": 0,
+      "n_target": 155,
+      "total_realized_pnl_inr": 104012.74030950059,
+      "total_return_pct": 6.15309755470294
+    },
+    "universe_size": 52
+  },
+  {
+    "allocation_model": "EqualWeight",
+    "config_label": "v04_E_100_equal",
+    "coralys": {
+      "capital_velocity_ratio": 12.774977110418563,
+      "n_horizon": 7,
+      "n_lots_opened": 2266,
+      "n_stop": 1180,
+      "n_target": 617,
+      "pct_direction_failure": 33.813559322033896,
+      "pct_genuine_adverse": 20.33898305084746,
+      "pct_premature": 4.745762711864407,
+      "pct_stop_too_tight": 3.5593220338983054,
+      "pct_temporary_excursion": 37.54237288135593,
+      "stop_rate_pct": 52.07413945278023,
+      "total_realized_pnl_inr": 32075.05090789756,
+      "total_return_pct": 4.055022050326469
+    },
+    "pe2": {
+      "capital_velocity_ratio": 5.0321133238065565,
+      "n_horizon": 158,
+      "n_lots_opened": 1030,
+      "n_stop": 0,
+      "n_target": 506,
+      "total_realized_pnl_inr": 63547.75243357426,
+      "total_return_pct": 2.9161878172358033
+    },
+    "universe_size": 103
+  },
+  {
+    "allocation_model": "MaxPerLot Rs.20000",
+    "config_label": "v04_F_100_max",
+    "coralys": {
+      "capital_velocity_ratio": 24.72,
+      "n_horizon": 7,
+      "n_lots_opened": 1236,
+      "n_stop": 702,
+      "n_target": 452,
+      "pct_direction_failure": 39.31623931623932,
+      "pct_genuine_adverse": 5.555555555555555,
+      "pct_premature": 6.695156695156696,
+      "pct_stop_too_tight": 3.9886039886039883,
+      "pct_temporary_excursion": 44.44444444444444,
+      "stop_rate_pct": 56.79611650485437,
+      "total_realized_pnl_inr": 92567.87594031364,
+      "total_return_pct": 10.659233132588188
+    },
+    "pe2": {
+      "capital_velocity_ratio": 8.24,
+      "n_horizon": 158,
+      "n_lots_opened": 412,
+      "n_stop": 0,
+      "n_target": 197,
+      "total_realized_pnl_inr": 75260.0189233463,
+      "total_return_pct": 3.4051954208631066
+    },
+    "universe_size": 103
+  }
+]
