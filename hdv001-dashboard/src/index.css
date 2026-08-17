@@ -1,0 +1,136 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --bg-card: #1a1d27;
+  --bg-card2: #22263a;
+  --border: #2a2f45;
+  --text: #e8eaf0;
+  --text-muted: #7a8099;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --amber: #f59e0b;
+  --pass: #22c55e;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body { background: var(--bg); min-height: 100vh; }
+
+.dashboard { max-width: 1160px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+.header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header-id { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em; color: var(--blue); text-transform: uppercase; }
+.header-sep { color: var(--border); }
+.header-sub { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 3px; }
+.badge-frozen { color: var(--amber); border: 1px solid var(--amber); }
+.badge-pass { color: var(--pass); border: 1px solid var(--pass); }
+
+.kpi-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.kpi {
+  flex: 1; min-width: 120px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+.kpi-label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.35rem; }
+.kpi-value { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+.kpi-value.blue { color: var(--blue); }
+.kpi-value.green { color: var(--green); }
+.kpi-value.white { color: var(--text); }
+
+.section { margin-bottom: 2.5rem; }
+.section-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+
+.gate-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.gate-card {
+  flex: 1; min-width: 160px;
+  background: #0d2318;
+  border: 1px solid var(--pass);
+  border-radius: 8px;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+.gate-name { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.6rem; }
+.gate-margin { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 0.4rem; }
+.gate-status { font-size: 0.75rem; font-weight: 700; color: var(--pass); }
+
+.determination {
+  background: #0d2318;
+  border: 2px solid var(--pass);
+  border-radius: 8px;
+  padding: 1.1rem 1.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--pass);
+  letter-spacing: 0.04em;
+  margin-bottom: 2.5rem;
+}
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+
+/* State chart */
+.state-group { margin-bottom: 1.25rem; }
+.state-group:last-child { margin-bottom: 0; }
+.state-name { font-size: 0.72rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.state-pass-tag { font-size: 0.6rem; font-weight: 700; color: var(--pass); border: 1px solid var(--pass); padding: 0.1rem 0.35rem; border-radius: 3px; }
+.bar-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem; }
+.bar-label { font-size: 0.6rem; color: var(--text-muted); width: 52px; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; background: var(--bg-card2); border-radius: 3px; height: 16px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 5px; font-size: 0.6rem; font-weight: 700; color: #fff; min-width: 2px; }
+.bar-coralys { background: var(--blue); }
+.bar-random  { background: #6366f1; }
+.bar-inverse { background: #8b5cf6; }
+
+/* Momentum card */
+.momentum-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.momentum-stat { }
+.momentum-value { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+.momentum-sublabel { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+.momentum-note { font-size: 0.7rem; color: var(--text-muted); font-style: italic; max-width: 380px; line-height: 1.5; }
+
+/* Frozen evidence */
+.evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.evidence-stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
+.evidence-num { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+.evidence-lbl { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+.check-list { list-style: none; }
+.check-list li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: var(--text); padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.check-list li:last-child { border-bottom: none; }
+.check-icon { color: var(--pass); font-weight: 700; font-size: 0.8rem; }
+
+/* MFE chart */
+.mfe-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.mfe-session { font-size: 0.6rem; color: var(--text-muted); width: 60px; flex-shrink: 0; }
+.mfe-track { flex: 1; background: var(--bg-card2); border-radius: 3px; height: 16px; overflow: hidden; }
+.mfe-fill { height: 100%; background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-radius: 3px; display: flex; align-items: center; padding-left: 5px; font-size: 0.6rem; font-weight: 700; color: #fff; }
+
+.footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 3rem; }
+.footer-text { font-size: 0.68rem; color: var(--text-muted); line-height: 2; }
+.footer-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; color: var(--blue); }
