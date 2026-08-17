@@ -185,6 +185,8 @@ Documents in this section must not be modified except for typographical correcti
 | CS-P-006-P.E.3 | `docs/CS-P-006-P.E.3_CORALYS_TARGET_DISCOVERY.md` | Coralys target from state at T; waits for CS-P-007; P.E.2 is the control; not started; no Search #3 |
 | CS-P-006-P.E.3.A | `docs/CS-P-006-P.E.3.A_CORALYS_TARGET_ARTIFACT.md` | Coralys Target Artifact contract; no generator, ATR map, or search; waits for CS-P-007; no Search #3 |
 | CS-P-007 | `docs/CS-P-007_STATISTICAL_STRATEGY_VALIDATION.md` | Statistical validation of frozen C3-002 + Execution Contract v0; specified not run; P.E.3 waits; no Search #3 |
+| CDI-MVP-V01 | `docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01.md` | Coralys Decision Intelligence MVP v0.1 — product specification; DecisionRecord schema; user-controlled execution; no allocation; supersedes Observatory product layer |
+| CDI-MVP-V01-DEL | `docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md` | MVP v0.1 deletion/retirement list — Observatory implementation code to retire; evidence archives to keep; dependency grep required before any deletion |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
 
 ### 10. Visualisation
@@ -232,6 +234,8 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.59 | 2026-08-17 | CDI-MVP-V01-DEL deletion/retirement list (Observatory implementation code; evidence archives kept; dependency grep required) |
+| 1.58 | 2026-08-17 | CDI-MVP-V01 Coralys Decision Intelligence MVP v0.1 specification (DecisionRecord schema; user-controlled execution; no allocation; supersedes Observatory product layer) |
 | 1.57 | 2026-08-15 | CS-P-007 Statistical Strategy Validation specified (not run; P.E.3 waits; no Search #3) |
 | 1.56 | 2026-08-15 | CS-P-006-P.E.3.A Coralys Target Artifact contract (P.E.2.H PASS; no target algorithm; no Search #3) |
 | 1.55 | 2026-08-15 | CS-P-006-P.E.2.H historical P.E.2 lifecycle validation (15 Jul clock; live P.E.2 untouched; no Search #3) |
