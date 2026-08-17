@@ -36,8 +36,8 @@ use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVE
 use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_yahoo_cache;
 use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
 use chronosentiment_adapter::decision_support::portfolio_replay_v0::{
-    refuse_portfolio_replay_output, run_portfolio_replay, INITIAL_CAPITAL_INR,
-    PORTFOLIO_REPLAY_EXPERIMENT_ID, PORTFOLIO_REPLAY_PATH_KIND,
+    refuse_portfolio_replay_output, run_portfolio_replay, PortfolioReplayConfig,
+    INITIAL_CAPITAL_INR, PORTFOLIO_REPLAY_EXPERIMENT_ID, PORTFOLIO_REPLAY_PATH_KIND,
     PORTFOLIO_REPLAY_REQUESTED_CLOCK,
 };
 
@@ -75,7 +75,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cache = load_required_yahoo_cache(&args.cache_dir).map_err(|e| e.to_string())?;
 
     // ── Run Portfolio Replay v0.1 ─────────────────────────────────────────────
-    let ledger = run_portfolio_replay(&artifact, &cache)?;
+    let config = PortfolioReplayConfig::v0_1_baseline();
+    let ledger = run_portfolio_replay(&artifact, &cache, &config)?;
 
     // ── Validate output ───────────────────────────────────────────────────────
     if ledger.path_kind != PORTFOLIO_REPLAY_PATH_KIND {

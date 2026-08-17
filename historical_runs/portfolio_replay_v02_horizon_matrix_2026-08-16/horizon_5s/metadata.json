@@ -1,0 +1,19 @@
+{
+  "c3_002_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "coralys_exec_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "evaluation_horizon_sessions": 5,
+  "experiment_label": "v0_2_horizon_5s",
+  "experiment_version": "portfolio_replay_v02_horizon_matrix",
+  "initial_capital_inr": 5000.0,
+  "start_clock": "2026-07-15T03:45:00+00:00",
+  "status": "IMMUTABLE",
+  "universe": [
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "IDEA.NS",
+    "MAHABANK.NS"
+  ]
+}

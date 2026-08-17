@@ -104,8 +104,8 @@ pub struct CapitalContribution {
 /// `EqualWeight` is the v0.2.1/v0.3 baseline — all available cash is split
 /// equally across every eligible signal in the session.
 ///
-/// `MaxPerSymbol` is the v0.4 experiment — each eligible signal receives at most
-/// `max_per_symbol_inr`, leaving the remainder available for future sessions.
+/// `MaxPerLot` is the v0.4 experiment — each eligible signal receives at most
+/// `max_per_lot_inr`, leaving the remainder available for future sessions.
 /// This prevents session-1 capital exhaustion when signal density is high.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "model")]
@@ -113,11 +113,14 @@ pub enum AllocationModel {
     /// v0.2.1/v0.3 baseline: `available_cash / n_eligible_signals`.
     /// Deploys all available cash in every session that has eligible signals.
     EqualWeight,
-    /// v0.4 experiment: `min(max_per_symbol_inr, available_cash)` per signal.
-    /// Leaves undeployed capital available for subsequent sessions.
-    MaxPerSymbol {
-        /// Maximum INR to allocate to a single lot.
-        max_per_symbol_inr: f64,
+    /// v0.4 experiment: `min(max_per_lot_inr, available_cash)` per signal.
+    ///
+    /// This is a **per-lot** cap, not an aggregate per-symbol cap. The engine may open
+    /// multiple lots for the same instrument (position upgrades) — each lot is capped
+    /// independently. Leaves undeployed capital available for subsequent sessions.
+    MaxPerLot {
+        /// Maximum INR to allocate to a single lot (per-lot cap, not aggregate per symbol).
+        max_per_lot_inr: f64,
     },
 }
 
@@ -128,8 +131,8 @@ impl AllocationModel {
             AllocationModel::EqualWeight => {
                 if n_eligible == 0 { 0.0 } else { available_cash / n_eligible as f64 }
             }
-            AllocationModel::MaxPerSymbol { max_per_symbol_inr } => {
-                available_cash.min(*max_per_symbol_inr)
+            AllocationModel::MaxPerLot { max_per_lot_inr } => {
+                available_cash.min(*max_per_lot_inr)
             }
         }
     }
@@ -180,19 +183,29 @@ impl ContinuousPortfolioConfig {
         }
     }
 
-    /// v0.4 MaxPerSymbol config: custom universe, ₹1M initial capital, per-symbol cap.
-    pub fn v04_max_per_symbol(
+    /// Builder: override initial capital on an existing config (used by v0.4 binary).
+    pub fn with_capital(mut self, initial_capital_inr: f64) -> Self {
+        self.initial_capital_inr = initial_capital_inr;
+        self
+    }
+
+    /// v0.4 MaxPerSymbol config: custom universe, configurable capital, per-lot cap.
+    ///
+    /// `max_per_lot_inr` is the maximum INR allocated to a **single lot** opened in a
+    /// session. It is per-lot, not aggregate per symbol — consistent with the engine's
+    /// multi-lot model (position upgrades are allowed).
+    pub fn v04_max_per_lot(
         instruments: &[&str],
         label: &str,
         initial_capital_inr: f64,
-        max_per_symbol_inr: f64,
+        max_per_lot_inr: f64,
     ) -> Self {
         ContinuousPortfolioConfig {
             universe: instruments.iter().map(|s| s.to_string()).collect(),
             config_label: label.to_string(),
             contributions: vec![],
             initial_capital_inr,
-            allocation_model: AllocationModel::MaxPerSymbol { max_per_symbol_inr },
+            allocation_model: AllocationModel::MaxPerLot { max_per_lot_inr },
         }
     }
 }
@@ -1188,8 +1201,8 @@ fn run_continuous_portfolio_replay_inner(
             "Canonical execution pipeline: generate_historical_replay_decision -> ",
             "seal_execution_intent/seal_coralys_execution_intent -> ",
             "first_exit_with_optional_stop. ",
-            "Execution arms frozen: P.E.2 = +5% target / no stop / 20s max; ",
-            "Coralys v0 = ATR/TMV target / risk_boundary stop / 20s max."
+            "Execution arms frozen: P.E.2 = +5% target / no stop / 20 sessions max; ",
+            "Coralys v0 = ATR/TMV target / risk_boundary stop / 20 sessions max."
         ).to_string(),
     })
 }

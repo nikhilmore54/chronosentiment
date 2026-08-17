@@ -26,7 +26,23 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    const data = await upstream.json();
+    // Read the raw text first so we can handle non-JSON responses gracefully.
+    const text = await upstream.text();
+
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Backend returned non-JSON (HTML error page, plain text, etc.)
+      return NextResponse.json(
+        {
+          error: `Backend returned a non-JSON response (status ${upstream.status}). ` +
+            `Is the Rust backend running at ${BACKEND_URL}? ` +
+            `Response preview: ${text.slice(0, 120)}`,
+        },
+        { status: 502 }
+      );
+    }
 
     if (!upstream.ok) {
       return NextResponse.json(data, { status: upstream.status });
@@ -35,7 +51,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
-      { error: `Failed to reach backend: ${String(err)}` },
+      {
+        error:
+          `Cannot reach backend at ${BACKEND_URL}. ` +
+          `Start the Rust server with: cargo run --bin chronosentiment_server. ` +
+          `Detail: ${String(err)}`,
+      },
       { status: 502 }
     );
   }

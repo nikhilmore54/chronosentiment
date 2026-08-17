@@ -49,8 +49,15 @@ async fn main() {
         )
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    println!("ChronoSentiment Research Sessions API running on http://0.0.0.0:3000");
+    // Port is configurable via CHRONOSENTIMENT_PORT env var (default: 8080).
+    // Next.js UI runs on port 3000, so the backend uses 8080 by default.
+    let port = std::env::var("CHRONOSENTIMENT_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(8080);
+    let addr = format!("0.0.0.0:{port}");
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    println!("ChronoSentiment Research Sessions API running on http://{addr}");
     axum::serve(listener, app).await.unwrap();
 }
 

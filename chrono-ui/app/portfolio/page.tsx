@@ -133,6 +133,10 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+function price(n: number): string {
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 // ─── Default holdings (demo) ──────────────────────────────────────────────────
 
 const DEFAULT_HOLDINGS: Holding[] = [
@@ -461,7 +465,7 @@ export default function PortfolioPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      {["Instrument", "Signal", "Action", "Allocate this week", "Target", "Risk", "Max hold"].map((h) => (
+                      {["Instrument", "Signal", "Action", "Allocate this week", "Entry", "Target", "Stop", "Max hold"].map((h) => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -515,14 +519,25 @@ export default function PortfolioPage() {
                           )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          <span style={{ color: "#10b981", fontSize: "13px", fontWeight: "600" }}>
-                            +{pct(rec.target_pct)}
-                          </span>
+                          <div style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: "600" }}>
+                            {price(rec.entry_price)}
+                          </div>
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          <span style={{ color: "#ef4444", fontSize: "13px", fontWeight: "600" }}>
+                          <div style={{ color: "#10b981", fontSize: "13px", fontWeight: "600" }}>
+                            {price(rec.target_price)}
+                          </div>
+                          <div style={{ fontSize: "10px", color: "#10b981", opacity: 0.7 }}>
+                            +{pct(rec.target_pct)}
+                          </div>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: "600" }}>
+                            {price(rec.risk_boundary)}
+                          </div>
+                          <div style={{ fontSize: "10px", color: "#ef4444", opacity: 0.7 }}>
                             −{pct(rec.risk_pct)}
-                          </span>
+                          </div>
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           <span style={{ color: "var(--text-secondary)", fontSize: "13px" }}>

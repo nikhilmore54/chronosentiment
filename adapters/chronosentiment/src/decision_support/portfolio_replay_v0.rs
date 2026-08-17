@@ -80,6 +80,138 @@ impl PositionStatus {
     }
 }
 
+// ─── Trade-path diagnostics (v0.2+) ──────────────────────────────────────────
+
+/// Per-position path diagnostics captured during the exit scan.
+///
+/// All excursion values are direction-normalized:
+///   - Positive MFE = movement in favour of the position
+///   - Positive MAE = movement against the position
+///
+/// For LONG: MFE = (high - entry) / entry, MAE = (entry - low) / entry
+/// For SHORT: MFE = (entry - low) / entry, MAE = (high - entry) / entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradePath {
+    /// Maximum favorable excursion (direction-normalized, fraction).
+    pub max_favorable_excursion_pct: f64,
+    /// Maximum adverse excursion (direction-normalized, fraction).
+    pub max_adverse_excursion_pct: f64,
+    /// Session number (1-indexed) at which MFE was reached.
+    pub session_of_mfe: Option<u32>,
+    /// Session number (1-indexed) at which MAE was reached.
+    pub session_of_mae: Option<u32>,
+    /// Lowest close price observed during the hold.
+    pub lowest_close: f64,
+    /// Highest close price observed during the hold.
+    pub highest_close: f64,
+    /// Whether the price came within 10% of the stop boundary at any session.
+    pub approached_stop: bool,
+    /// Whether the price came within 10% of the target at any session.
+    pub approached_target: bool,
+    /// Number of sessions the position was observed (may be < holding_sessions
+    /// if bars run out before the exit horizon).
+    pub sessions_observed: u32,
+}
+
+impl TradePath {
+    /// Compute TradePath from a slice of close prices after entry.
+    ///
+    /// `closes` must be in chronological order, starting from the first
+    /// session AFTER entry (i.e. session 1 = first post-entry close).
+    /// `is_long` determines direction normalization.
+    pub fn compute(
+        entry: f64,
+        closes: &[f64],
+        is_long: bool,
+        stop_price: Option<f64>,
+        target_price: f64,
+    ) -> Self {
+        if closes.is_empty() || entry <= 0.0 {
+            return TradePath {
+                max_favorable_excursion_pct: 0.0,
+                max_adverse_excursion_pct: 0.0,
+                session_of_mfe: None,
+                session_of_mae: None,
+                lowest_close: entry,
+                highest_close: entry,
+                approached_stop: false,
+                approached_target: false,
+                sessions_observed: 0,
+            };
+        }
+
+        let mut mfe: f64 = 0.0;
+        let mut mae: f64 = 0.0;
+        let mut session_of_mfe: Option<u32> = None;
+        let mut session_of_mae: Option<u32> = None;
+        let mut lowest = f64::MAX;
+        let mut highest = f64::MIN;
+        let mut approached_stop = false;
+        let mut approached_target = false;
+
+        for (i, &close) in closes.iter().enumerate() {
+            let session = (i + 1) as u32;
+            if close < lowest {
+                lowest = close;
+            }
+            if close > highest {
+                highest = close;
+            }
+
+            let (favorable, adverse) = if is_long {
+                ((close - entry) / entry, (entry - close) / entry)
+            } else {
+                ((entry - close) / entry, (close - entry) / entry)
+            };
+
+            if favorable > mfe {
+                mfe = favorable;
+                session_of_mfe = Some(session);
+            }
+            if adverse > mae {
+                mae = adverse;
+                session_of_mae = Some(session);
+            }
+
+            // Approached stop: within 10% of the distance from entry to stop
+            if let Some(sp) = stop_price {
+                let stop_dist = (entry - sp).abs();
+                let current_dist = if is_long {
+                    (close - sp).abs()
+                } else {
+                    (sp - close).abs()
+                };
+                if stop_dist > 0.0 && current_dist / stop_dist <= 0.10 {
+                    approached_stop = true;
+                }
+            }
+
+            // Approached target: within 10% of the distance from entry to target
+            let target_dist = (target_price - entry).abs();
+            let current_target_dist = if is_long {
+                (target_price - close).abs()
+            } else {
+                (close - target_price).abs()
+            };
+            if target_dist > 0.0 && current_target_dist / target_dist <= 0.10 {
+                approached_target = true;
+            }
+        }
+
+        TradePath {
+            max_favorable_excursion_pct: mfe,
+            max_adverse_excursion_pct: mae,
+            session_of_mfe,
+            session_of_mae,
+            lowest_close: if lowest == f64::MAX { entry } else { lowest },
+            highest_close: if highest == f64::MIN { entry } else { highest },
+            approached_stop,
+            approached_target,
+            sessions_observed: closes.len() as u32,
+        }
+    }
+}
+
 // ─── Portfolio position ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +234,8 @@ pub struct PortfolioPosition {
     pub realized_pnl_inr: Option<f64>,
     pub realized_return_pct: Option<f64>,
     pub status: PositionStatus,
+    /// Trade-path diagnostics — populated after exit scan (None for open positions).
+    pub trade_path: Option<TradePath>,
 }
 
 impl PortfolioPosition {
@@ -371,6 +505,51 @@ pub fn refuse_portfolio_replay_output(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Experiment config (v0.2+) ───────────────────────────────────────────────
+
+/// Configuration for a parameterized portfolio replay run.
+///
+/// Controls the experimental dimensions (universe, window, capital, evaluation
+/// horizon, identity label) while keeping both execution arms frozen:
+///   - P.E.2 arm: fixed +5% target, no stop, 20-session max hold
+///   - Coralys v0 arm: ATR/TMV target + enforced risk_boundary stop, 20-session max hold
+///
+/// Do NOT put execution model, stop authorization, Coralys parameters, or
+/// allocation policy into this struct — those are frozen experimental constants.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioReplayConfig {
+    /// Instrument symbols to include (subset of or equal to RESEARCH_UNIVERSE).
+    pub universe: Vec<String>,
+    /// RFC3339 timestamp — the certified T to use as entry point.
+    pub start_clock: String,
+    /// RFC3339 timestamp — if Some, bars after this time are excluded from exit
+    /// scanning (evaluation horizon cutoff). If None, all available bars are used.
+    pub end_clock: Option<String>,
+    /// Starting capital for both arms (INR).
+    pub initial_capital_inr: f64,
+    /// Maximum number of sessions to observe for exit evaluation.
+    /// This is the EVALUATION horizon, not the execution max-hold.
+    /// The Coralys 20-session execution contract is unchanged.
+    pub evaluation_horizon_sessions: u32,
+    /// Human-readable label used in archive paths and report headers.
+    pub experiment_label: String,
+}
+
+impl PortfolioReplayConfig {
+    /// Canonical v0.1 config — matches the frozen baseline experiment exactly.
+    pub fn v0_1_baseline() -> Self {
+        use crate::decision_support::csp006_protocol::RESEARCH_UNIVERSE;
+        PortfolioReplayConfig {
+            universe: RESEARCH_UNIVERSE.iter().map(|s| s.to_string()).collect(),
+            start_clock: PORTFOLIO_REPLAY_REQUESTED_CLOCK.to_string(),
+            end_clock: None,
+            initial_capital_inr: INITIAL_CAPITAL_INR,
+            evaluation_horizon_sessions: MAXIMUM_HOLD_SESSIONS,
+            experiment_label: "v0_1_baseline_pe2_period".to_string(),
+        }
+    }
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 fn build_arm_summary(arm: &PortfolioArm, mark_prices: &BTreeMap<String, f64>) -> ArmSummary {
@@ -399,42 +578,66 @@ fn build_arm_summary(arm: &PortfolioArm, mark_prices: &BTreeMap<String, f64>) ->
 
 // ─── Main replay ─────────────────────────────────────────────────────────────
 
-/// Run the Portfolio Historical Replay v0.1.
+/// Run the Portfolio Historical Replay (v0.1 baseline or v0.2+ parameterized).
 ///
 /// Two portfolios, same period, same decisions, different execution contracts:
-///   - P.E.2 arm: fixed +5% target, no stop
-///   - Coralys v0 arm: ATR/TMV target + enforced risk_boundary stop
+///   - P.E.2 arm: fixed +5% target, no stop, 20-session max hold (frozen)
+///   - Coralys v0 arm: ATR/TMV target + enforced risk_boundary stop, 20-session max hold (frozen)
+///
+/// The `config` controls universe, historical window, capital, and evaluation
+/// horizon. Execution arms are NOT configurable — they are frozen constants.
 pub fn run_portfolio_replay(
     artifact: &PolicyArtifact,
     cache: &BTreeMap<String, Vec<YahooHistoricalBar>>,
+    config: &PortfolioReplayConfig,
 ) -> Result<PortfolioReplayLedger, String> {
     // Identity gates
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
-        return Err("portfolio replay v0.1 identity-gates C3-002".into());
+        return Err("portfolio replay identity-gates C3-002".into());
     }
     if CORALYS_EXEC_ARTIFACT_HASH
         != "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
     {
         return Err(format!(
-            "portfolio replay v0.1 coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
+            "portfolio replay coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
         ));
     }
+    if config.universe.is_empty() {
+        return Err("PortfolioReplayConfig.universe is empty".into());
+    }
+    if config.initial_capital_inr <= 0.0 {
+        return Err("PortfolioReplayConfig.initial_capital_inr must be > 0".into());
+    }
+    if config.evaluation_horizon_sessions == 0 {
+        return Err("PortfolioReplayConfig.evaluation_horizon_sessions must be > 0".into());
+    }
 
-    // Resolve certified T
-    let requested = DateTime::parse_from_rfc3339(PORTFOLIO_REPLAY_REQUESTED_CLOCK)
+    // Resolve certified T from config.start_clock
+    let requested = DateTime::parse_from_rfc3339(&config.start_clock)
         .map(|t| t.with_timezone(&Utc))
         .map_err(|e| format!("clock parse error: {e}"))?;
 
-    let first_instrument = RESEARCH_UNIVERSE.first().ok_or("RESEARCH_UNIVERSE is empty")?;
+    // Optional end cutoff for evaluation horizon
+    let end_cutoff: Option<DateTime<Utc>> = config
+        .end_clock
+        .as_deref()
+        .map(|s| {
+            DateTime::parse_from_rfc3339(s)
+                .map(|t| t.with_timezone(&Utc))
+                .map_err(|e| format!("end_clock parse error: {e}"))
+        })
+        .transpose()?;
+
+    let first_instrument = config.universe.first().ok_or("universe is empty")?;
     let first_bars = cache
-        .get(*first_instrument)
+        .get(first_instrument.as_str())
         .ok_or_else(|| format!("cache missing {first_instrument}"))?;
     let certified_t = latest_session_at_or_before(first_bars, requested)
         .ok_or_else(|| format!("no certified session for {first_instrument}"))?;
 
-    for instrument in RESEARCH_UNIVERSE {
+    for instrument in &config.universe {
         let bars = cache
-            .get(instrument)
+            .get(instrument.as_str())
             .ok_or_else(|| format!("cache missing {instrument}"))?;
         let t = latest_session_at_or_before(bars, requested)
             .ok_or_else(|| format!("no certified session for {instrument}"))?;
@@ -445,9 +648,9 @@ pub fn run_portfolio_replay(
         }
     }
 
-    let mut pe2_arm = PortfolioArm::new("pe2", PE2_ARM_CONTRACT, INITIAL_CAPITAL_INR);
+    let mut pe2_arm = PortfolioArm::new("pe2", PE2_ARM_CONTRACT, config.initial_capital_inr);
     let mut coralys_arm =
-        PortfolioArm::new("coralys_v0", CORALYS_ARM_CONTRACT, INITIAL_CAPITAL_INR);
+        PortfolioArm::new("coralys_v0", CORALYS_ARM_CONTRACT, config.initial_capital_inr);
 
     // Phase 1: collect decisions
     struct Plan {
@@ -461,14 +664,14 @@ pub fn run_portfolio_replay(
 
     let mut plans: Vec<Plan> = Vec::new();
 
-    for instrument in RESEARCH_UNIVERSE {
+    for instrument in &config.universe {
         let bars = cache
-            .get(instrument)
+            .get(instrument.as_str())
             .ok_or_else(|| format!("cache missing {instrument}"))?
             .clone();
         let known = decision_time_bars(&bars, certified_t);
         let decision =
-            generate_historical_replay_decision(artifact, instrument, &bars, certified_t)?;
+            generate_historical_replay_decision(artifact, instrument.as_str(), &bars, certified_t)?;
         if decision.action == DecisionAction::NoTrade {
             continue;
         }
@@ -496,7 +699,7 @@ pub fn run_portfolio_replay(
     }
 
     let n_eligible = plans.len();
-    let alloc = INITIAL_CAPITAL_INR / n_eligible as f64;
+    let alloc = config.initial_capital_inr / n_eligible as f64;
 
     // Phase 2: open positions
     for plan in &plans {
@@ -522,6 +725,7 @@ pub fn run_portfolio_replay(
             realized_pnl_inr: None,
             realized_return_pct: None,
             status: PositionStatus::Open,
+            trade_path: None,
         });
         pe2_arm.n_positions_opened += 1;
         pe2_arm.cash_inr -= alloc;
@@ -560,6 +764,7 @@ pub fn run_portfolio_replay(
                     realized_pnl_inr: None,
                     realized_return_pct: None,
                     status: PositionStatus::Open,
+                    trade_path: None,
                 });
                 coralys_arm.n_positions_opened += 1;
                 coralys_arm.cash_inr -= alloc;
@@ -604,7 +809,35 @@ pub fn run_portfolio_replay(
             if let (Some(ep), Some(et), Some(hs)) =
                 (exit.exit_price, exit.exit_time.as_deref(), exit.holding_sessions)
             {
+                // Collect post-entry closes for TradePath
+                let post_entry_closes: Vec<f64> = bars
+                    .iter()
+                    .filter(|b| {
+                        let ts = chrono::Utc.timestamp_opt(b.timestamp, 0).single();
+                        ts.map(|t| t > certified_t).unwrap_or(false)
+                            && b.adj_close > 0.0
+                            && b.adj_close.is_finite()
+                    })
+                    .take(hs as usize)
+                    .map(|b| b.adj_close)
+                    .collect();
+                let is_long = plan.direction_str == "LONG";
+                let tp = TradePath::compute(
+                    pos.entry_price,
+                    &post_entry_closes,
+                    is_long,
+                    None,
+                    pos.target_price,
+                );
                 pe2_arm.close_position(&plan.instrument, ep, et, exit.exit_reason, hs);
+                // Attach trade_path to the now-closed position
+                if let Some(p) = pe2_arm
+                    .positions
+                    .iter_mut()
+                    .find(|p| p.instrument == plan.instrument && p.status.is_closed())
+                {
+                    p.trade_path = Some(tp);
+                }
                 let marks = BTreeMap::new();
                 let val = pe2_arm.total_value_inr(&marks);
                 pe2_arm.update_drawdown(val);
@@ -645,7 +878,35 @@ pub fn run_portfolio_replay(
             if let (Some(ep), Some(et), Some(hs)) =
                 (exit.exit_price, exit.exit_time.as_deref(), exit.holding_sessions)
             {
+                // Collect post-entry closes for TradePath
+                let post_entry_closes: Vec<f64> = bars
+                    .iter()
+                    .filter(|b| {
+                        let ts = chrono::Utc.timestamp_opt(b.timestamp, 0).single();
+                        ts.map(|t| t > certified_t).unwrap_or(false)
+                            && b.adj_close > 0.0
+                            && b.adj_close.is_finite()
+                    })
+                    .take(hs as usize)
+                    .map(|b| b.adj_close)
+                    .collect();
+                let is_long = plan.direction_str == "LONG";
+                let tp = TradePath::compute(
+                    pos.entry_price,
+                    &post_entry_closes,
+                    is_long,
+                    stop_price,
+                    pos.target_price,
+                );
                 coralys_arm.close_position(&plan.instrument, ep, et, exit.exit_reason, hs);
+                // Attach trade_path to the now-closed position
+                if let Some(p) = coralys_arm
+                    .positions
+                    .iter_mut()
+                    .find(|p| p.instrument == plan.instrument && p.status.is_closed())
+                {
+                    p.trade_path = Some(tp);
+                }
                 let marks = BTreeMap::new();
                 let val = coralys_arm.total_value_inr(&marks);
                 coralys_arm.update_drawdown(val);

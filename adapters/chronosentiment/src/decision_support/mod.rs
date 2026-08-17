@@ -50,6 +50,7 @@ pub mod observatory_live_execution_pe3;
 pub mod observatory_historical_pe2;
 pub mod observatory_historical_pe3;
 pub mod portfolio_replay_v0;
+pub mod portfolio_replay_v021;
 pub mod decision_intent;
 pub mod coralys_execution_model;
 pub mod execution_feedback;

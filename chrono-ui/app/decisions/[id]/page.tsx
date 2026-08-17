@@ -23,9 +23,40 @@ async function getData() {
   };
 }
 
+interface CertifiedDecision {
+  instrument: string;
+  c3_002_direction: string;
+  entry_price: number;
+  target_pct: number;
+  target_price: number;
+  risk_pct: number;
+  risk_boundary: number;
+  maximum_hold_sessions: number;
+  decision_id: string;
+  execution_intent_id: string;
+}
+
+async function getCertifiedDecisions(): Promise<CertifiedDecision[]> {
+  try {
+    // Server component: call backend directly (not via Next.js proxy).
+    const backendUrl = process.env.CHRONOSENTIMENT_API_URL ?? "http://localhost:3000";
+    const res = await fetch(`${backendUrl}/api/v0/decisions/current`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.decisions ?? []) as CertifiedDecision[];
+  } catch {
+    return [];
+  }
+}
+
 export default async function DecisionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { hist, prosp, intents, exec, pe2 } = await getData();
+  const [{ hist, prosp, intents, exec, pe2 }, certifiedDecisions] = await Promise.all([
+    getData(),
+    getCertifiedDecisions(),
+  ]);
 
   const decision =
     prosp.decisions.find((d) => d.decision_id === id) ||
@@ -33,6 +64,11 @@ export default async function DecisionDetailPage({ params }: { params: Promise<{
     pe2.records.find((r) => r.decision.decision_id === id)?.decision;
 
   if (!decision) notFound();
+
+  // Find certified execution parameters for this instrument (from live backend).
+  const certifiedForInstrument = certifiedDecisions.find(
+    (cd) => cd.instrument === decision.instrument
+  );
 
   const isProspective = prosp.decisions.some((d) => d.decision_id === id);
   const observation = hist.observations.find((o) => o.decision_id === id);
@@ -79,13 +115,21 @@ export default async function DecisionDetailPage({ params }: { params: Promise<{
     {
       id: "intent",
       label: "Execution Intent",
-      sub: intent || pe2Record ? "+5.0% target · 20 sessions" : isProspective ? "Not attached" : "—",
-      done: !!(intent || pe2Record),
+      sub: intent || pe2Record
+        ? "+5.0% target · 20 sessions"
+        : certifiedForInstrument
+        ? `Entry ${formatPrice(certifiedForInstrument.entry_price)} · Target ${formatPrice(certifiedForInstrument.target_price)}`
+        : isProspective
+        ? "Not attached"
+        : "—",
+      done: !!(intent || pe2Record || certifiedForInstrument),
       color: "#3b82f6",
       detail: intent
         ? `Entry ${formatPrice(intent.entry_price)} → Target ${formatPrice(intent.target_price)}`
         : pe2Record
         ? `Entry ${formatPrice(pe2Record.intent.entry_price)} → Target ${formatPrice(pe2Record.intent.target_price)}`
+        : certifiedForInstrument
+        ? `Entry ${formatPrice(certifiedForInstrument.entry_price)} → Target ${formatPrice(certifiedForInstrument.target_price)} · Stop ${formatPrice(certifiedForInstrument.risk_boundary)}`
         : isProspective
         ? "This cohort is decision-only. No execution intent attached."
         : "No execution intent for this decision.",
@@ -323,24 +367,30 @@ export default async function DecisionDetailPage({ params }: { params: Promise<{
               <div style={{ fontSize: "9px", fontWeight: "700", color: "#3b82f6", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>② Execution Seal</div>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Entry price</div>
               <div style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-primary)", marginBottom: "8px" }}>
-                {intent ? formatPrice(intent.entry_price) : pe2Record ? formatPrice(pe2Record.intent.entry_price) : execTick ? formatPrice(execTick.entry_price) : "—"}
+                {intent ? formatPrice(intent.entry_price) : pe2Record ? formatPrice(pe2Record.intent.entry_price) : execTick ? formatPrice(execTick.entry_price) : certifiedForInstrument ? formatPrice(certifiedForInstrument.entry_price) : "—"}
               </div>
               <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Target price</div>
               <div style={{ fontSize: "11px", fontWeight: "600", color: "#10b981", marginBottom: "8px" }}>
-                {intent ? formatPrice(intent.target_price) : pe2Record ? formatPrice(pe2Record.intent.target_price) : execTick ? formatPrice(execTick.target_price) : "—"}
+                {intent ? formatPrice(intent.target_price) : pe2Record ? formatPrice(pe2Record.intent.target_price) : execTick ? formatPrice(execTick.target_price) : certifiedForInstrument ? formatPrice(certifiedForInstrument.target_price) : "—"}
                 {" "}
                 <span style={{ color: "var(--text-muted)", fontWeight: "400" }}>
-                  ({intent ? `+${(intent.target_pct * 100).toFixed(2)}%` : pe2Record ? `+${(pe2Record.intent.target_pct * 100).toFixed(2)}%` : execTick ? `+${(execTick.target_pct * 100).toFixed(2)}%` : ""})
+                  ({intent ? `+${(intent.target_pct * 100).toFixed(2)}%` : pe2Record ? `+${(pe2Record.intent.target_pct * 100).toFixed(2)}%` : execTick ? `+${(execTick.target_pct * 100).toFixed(2)}%` : certifiedForInstrument ? `+${(certifiedForInstrument.target_pct * 100).toFixed(2)}%` : ""})
                 </span>
               </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Risk boundary</div>
-              <div style={{ fontSize: "11px", fontWeight: "600", color: "#f59e0b" }}>
-                {intent?.stop_price != null ? formatPrice(intent.stop_price) : pe2Record?.intent?.stop_price != null ? formatPrice(pe2Record.intent.stop_price) : "Not authorized"}
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Stop (risk boundary)</div>
+              <div style={{ fontSize: "11px", fontWeight: "600", color: "#ef4444" }}>
+                {intent?.stop_price != null
+                  ? formatPrice(intent.stop_price)
+                  : pe2Record?.intent?.stop_price != null
+                  ? formatPrice(pe2Record.intent.stop_price)
+                  : certifiedForInstrument
+                  ? `${formatPrice(certifiedForInstrument.risk_boundary)} (−${(certifiedForInstrument.risk_pct * 100).toFixed(2)}%)`
+                  : "Not authorized"}
               </div>
               <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--border-subtle)" }}>
                 <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "2px" }}>Contract</div>
                 <div style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--text-muted)" }}>
-                  {intent?.execution_contract ?? pe2Record?.intent?.execution_contract ?? "Execution Contract v0"}
+                  {intent?.execution_contract ?? pe2Record?.intent?.execution_contract ?? (certifiedForInstrument ? "coralys-exec-v0 · ATR/TMV · 20 sessions" : "Execution Contract v0")}
                 </div>
               </div>
             </div>
