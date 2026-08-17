@@ -1,0 +1,25 @@
+[package]
+name = "coralys_decision_server"
+version = "0.1.0"
+edition = "2024"
+
+# MVP-005/006: Decision Feed and Detail APIs
+# MVP-007/008: User execution and outcome recording
+#
+# Architecture: thin Axum layer over DecisionLedger.
+# The API exposes the ledger record — it does not reconstruct decisions from C3-002.
+
+[dependencies]
+axum = "0.8.9"
+chrono = { version = "0.4", features = ["serde"] }
+coralys-decision = { version = "0.1.0", path = "../../coralys-decision" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.53.1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+axum-test = "21"
