@@ -518,10 +518,15 @@ struct Rec001hRecord {
     volatility: String,
     direction: String,
     relative_volume_20: f64,
-    mfe_pct: Vec<f64>,
-    mae_pct: Vec<f64>,
+    /// MFE percentages at each session checkpoint. Null entries mean the trade
+    /// was still open at that session (incomplete observation window).
+    mfe_pct: Vec<Option<f64>>,
+    /// MAE percentages at each session checkpoint. Null entries mean the trade
+    /// was still open at that session (incomplete observation window).
+    mae_pct: Vec<Option<f64>>,
     outcome: String,
-    sessions_to_outcome: f64,
+    /// Null when the trade is still open (observation window not yet closed).
+    sessions_to_outcome: Option<f64>,
 }
 
 /// Compact in-memory representation of a single analogue (post-parse).
@@ -622,15 +627,29 @@ impl Rec001hStore {
                 if rec.mfe_pct.len() < 5 || rec.mae_pct.len() < 5 {
                     continue;
                 }
+                // Skip records where session-5 MFE/MAE or sessions_to_outcome is null
+                // (open/incomplete trades — observation window not yet closed).
+                let mfe5 = match rec.mfe_pct[4] {
+                    Some(v) => v,
+                    None => continue,
+                };
+                let mae5 = match rec.mae_pct[4] {
+                    Some(v) => v,
+                    None => continue,
+                };
+                let sessions_to_outcome = match rec.sessions_to_outcome {
+                    Some(v) => v,
+                    None => continue,
+                };
                 let vol = VolatilityRegime::from_str(&rec.volatility);
                 let vol_r = VolumeRegime::from_relative_volume(rec.relative_volume_20);
                 let obs = AnalogueObs {
                     vol_regime: vol.clone(),
                     volume_regime: vol_r.clone(),
-                    mfe5: rec.mfe_pct[4],
-                    mae5: rec.mae_pct[4],
+                    mfe5,
+                    mae5,
                     outcome: rec.outcome.clone(),
-                    sessions_to_outcome: rec.sessions_to_outcome,
+                    sessions_to_outcome,
                 };
                 let ticker = rec.ticker.replace(".NS", "_NS");
                 let dir_upper = rec.direction.to_uppercase();
