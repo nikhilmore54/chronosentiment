@@ -1,9 +1,10 @@
 //! Coralys Decision Intelligence API server.
 //!
-//! MVP-005: `GET /decisions`                  — Decision Feed
-//! MVP-006: `GET /decisions/{id}`             — Decision Detail
-//! MVP-009: `GET /recommendations/latest`     — Ranked Recommendation Snapshot (v0, HDV-001)
-//! MVP-010: `GET /recommendations/v1/latest`  — Ranked Recommendation Snapshot (v1, REC-001-H)
+//! MVP-005: `GET /decisions`                   — Decision Feed
+//! MVP-006: `GET /decisions/{id}`              — Decision Detail
+//! MVP-009: `GET /recommendations/latest`      — Ranked Recommendation Snapshot (v0, HDV-001)
+//! MVP-010: `GET /recommendations/v1/latest`   — Latest per ticker (v1, REC-001-H, deduplicated)
+//! MVP-010: `GET /recommendations/v1/history`  — All observations (v1, REC-001-H, full history)
 //!
 //! Architecture:
 //! ```text
@@ -14,10 +15,13 @@
 //!         ▼
 //! Axum router
 //!         │
-//!         ├── GET /decisions                  → feed::get_decisions
-//!         ├── GET /decisions/{id}             → detail::get_decision_by_id
-//!         ├── GET /recommendations/latest     → recommendations::get_recommendations_latest (v0)
-//!         └── GET /recommendations/v1/latest  → recommendations_v1::get_recommendations_v1_latest
+//!         ├── GET /decisions                   → feed::get_decisions
+//!         ├── GET /decisions/{id}              → detail::get_decision_by_id
+//!         ├── GET /recommendations/latest      → recommendations::get_recommendations_latest (v0)
+//!         ├── GET /recommendations/v1/latest   → recommendations_v1::get_recommendations_v1_latest
+//!         │                                       (one per ticker — newest decision wins)
+//!         └── GET /recommendations/v1/history  → recommendations_v1::get_recommendations_v1_history
+//!                                                 (all observations — no deduplication)
 //! ```
 //!
 //! The ledger is the authoritative source. No decisions are reconstructed
@@ -104,6 +108,10 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/recommendations/v1/latest",
             get(api::recommendations_v1::get_recommendations_v1_latest),
+        )
+        .route(
+            "/recommendations/v1/history",
+            get(api::recommendations_v1::get_recommendations_v1_history),
         )
         .with_state(state)
 }
@@ -195,6 +203,28 @@ pub mod test_helpers {
         let state = AppState::new();
         let app = build_router(state.clone());
         (app, state)
+    }
+
+    /// Build a test app with the real REC-001-H evidence store loaded.
+    ///
+    /// Loads from `datasets/recommendation/historical` (relative to workspace
+    /// root). If the directory is not found, the store is `None` and
+    /// `/recommendations/v1/latest` will return 503 — tests using this helper
+    /// should assert 200 only when the store is present.
+    pub async fn make_app_with_rec001h() -> Router {
+        let rec001h_dir = std::env::var("REC001H_DIR")
+            .unwrap_or_else(|_| "datasets/recommendation/historical".to_string());
+        let rec001h_store = Rec001hStore::load_from_dir(&rec001h_dir)
+            .ok()
+            .map(|s| std::sync::Arc::new(s));
+        let state = AppState {
+            ledger: std::sync::Arc::new(tokio::sync::RwLock::new(
+                coralys_decision::DecisionLedger::new(),
+            )),
+            evidence_store: None,
+            rec001h_store,
+        };
+        build_router(state)
     }
 
     /// Seal a sample decision into the ledger for testing.
