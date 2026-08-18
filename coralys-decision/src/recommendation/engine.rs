@@ -59,12 +59,15 @@ const RISK_PCT_MAX: f64 = 0.08;
 
 /// The recommendation action produced by the engine.
 ///
-/// BUY / WATCH / NO_TRADE are the only valid outputs.
+/// BUY / SELL / WATCH / NO_TRADE are the valid outputs.
 /// There is no "STRONG BUY" or confidence score.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationAction {
-    /// Historical evidence is Favourable, or Mixed with acceptable R:R.
+    /// LONG + Favourable evidence, or LONG + Mixed with acceptable R:R.
     Buy,
+    /// SHORT + Favourable evidence (symmetric counterpart to BUY).
+    /// Dormant at REC-BASELINE-001 (2026-08-18): 0 Favourable SHORTs in that snapshot.
+    Sell,
     /// Historical evidence is Mixed but R:R is below threshold.
     Watch,
     /// Evidence is Unfavourable, Insufficient, or direction is NO_TRADE.
@@ -75,6 +78,7 @@ impl RecommendationAction {
     pub fn as_str(&self) -> &'static str {
         match self {
             RecommendationAction::Buy => "BUY",
+            RecommendationAction::Sell => "SELL",
             RecommendationAction::Watch => "WATCH",
             RecommendationAction::NoTrade => "NO_TRADE",
         }
@@ -798,7 +802,15 @@ fn compute_adaptive_geometry(
     (Some(target), Some(risk), Some(upside_pct), Some(downside_pct), Some(rr))
 }
 
-/// Derive action from evidence class and adaptive R:R (v1 rules).
+// Derive action from evidence class and adaptive R:R (v1 rules).
+//
+// Policy mapping (v1):
+//   LONG  + Favourable              -> BUY
+//   SHORT + Favourable              -> SELL  (dormant at REC-BASELINE-001: 0 Favourable SHORTs)
+//   LONG  + Mixed AND rr >= 1.5     -> BUY
+//   SHORT + Mixed AND rr >= 1.5     -> WATCH (SHORT Mixed does not promote to SELL)
+//   any   + Mixed AND rr < 1.5      -> WATCH
+//   any   + Unfavourable/Insufficient -> NO_TRADE
 fn derive_action_v1(
     direction: &str,
     evidence_class: &EvidenceClassV1,
@@ -808,10 +820,16 @@ fn derive_action_v1(
         return RecommendationAction::NoTrade;
     }
     match evidence_class {
-        EvidenceClassV1::Favourable => RecommendationAction::Buy,
+        EvidenceClassV1::Favourable => {
+            if direction == "SHORT" {
+                RecommendationAction::Sell
+            } else {
+                RecommendationAction::Buy
+            }
+        }
         EvidenceClassV1::Mixed => {
             let rr = adaptive_rr.unwrap_or(0.0);
-            if rr >= 1.5 {
+            if rr >= 1.5 && direction != "SHORT" {
                 RecommendationAction::Buy
             } else {
                 RecommendationAction::Watch
