@@ -11239,5 +11239,41 @@
     "close": 5580.0,
     "adj_close": 5580.0,
     "volume": 633514.0
+  },
+  {
+    "timestamp": 1786679100,
+    "open": 5549.0,
+    "high": 5618.5,
+    "low": 5447.0,
+    "close": 5580.0,
+    "adj_close": 5580.0,
+    "volume": 633514.0
+  },
+  {
+    "timestamp": 1786938300,
+    "open": 5580.5,
+    "high": 5613.0,
+    "low": 5520.0,
+    "close": 5570.0,
+    "adj_close": 5570.0,
+    "volume": 398938.0
+  },
+  {
+    "timestamp": 1787024700,
+    "open": 5571.5,
+    "high": 5571.5,
+    "low": 5442.5,
+    "close": 5442.5,
+    "adj_close": 5442.5,
+    "volume": 352861.0
+  },
+  {
+    "timestamp": 1787046297,
+    "open": 5571.5,
+    "high": 5571.5,
+    "low": 5442.5,
+    "close": 5442.5,
+    "adj_close": 5442.5,
+    "volume": 352861.0
   }
 ]
