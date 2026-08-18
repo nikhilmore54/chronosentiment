@@ -136,6 +136,12 @@ pub struct SealedDecisionInput {
     pub reference_risk_boundary_price: Option<f64>,
     /// Boundary type identifier (e.g. `"CORALYS_V0_ATR_TMV"`).
     pub reference_risk_boundary_type: String,
+    /// ATR-14 in price units at decision time T. `None` when unavailable.
+    pub atr_14: Option<f64>,
+    /// Last traded price / previous close at decision time T.
+    pub reference_price: Option<f64>,
+    /// Next NSE trading session date (YYYY-MM-DD) this decision applies to.
+    pub effective_session: Option<String>,
 }
 
 // ─── Builder ─────────────────────────────────────────────────────────────────
@@ -237,6 +243,9 @@ impl DecisionRecordBuilder {
                 momentum: input.momentum,
                 volatility: input.volatility,
                 target_price: input.target_price,
+                atr_14: input.atr_14,
+                reference_price: input.reference_price,
+                effective_session: input.effective_session,
             },
             reference_risk: ReferenceRisk {
                 boundary_price: input.reference_risk_boundary_price,
@@ -290,6 +299,9 @@ mod tests {
             certified_timestamp: decision_ts,
             reference_risk_boundary_price: Some(1180.25),
             reference_risk_boundary_type: "CORALYS_V0_ATR_TMV".into(),
+            atr_14: Some(32.50),
+            reference_price: Some(1210.00),
+            effective_session: Some("2026-08-18".into()),
         }
     }
 
@@ -312,6 +324,9 @@ mod tests {
             certified_timestamp: decision_ts,
             reference_risk_boundary_price: Some(1180.25),
             reference_risk_boundary_type: "CORALYS_V0_ATR_TMV".into(),
+            atr_14: None,
+            reference_price: None,
+            effective_session: None,
         }
     }
 

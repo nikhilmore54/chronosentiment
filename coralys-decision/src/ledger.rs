@@ -431,6 +431,9 @@ mod tests {
                 momentum: "Positive".into(),
                 volatility: "present".into(),
                 target_price: Some(1234.50),
+                atr_14: None,
+                reference_price: None,
+                effective_session: None,
             },
             reference_risk: ReferenceRisk {
                 boundary_price: Some(1180.25),

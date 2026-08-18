@@ -11,9 +11,10 @@ import Link from "next/link";
 import {
   fetchDecisionFeed,
   formatDecisionTime,
-  formatDecisionDate,
   formatPrice,
+  formatPct,
   directionLabel,
+  computeIndicativePrices,
   type FeedEntry,
 } from "@/lib/coralys";
 
@@ -137,12 +138,47 @@ function OutcomeBadge({ status }: { status: string }) {
 
 // ─── Decision card ────────────────────────────────────────────────────────────
 
-function DecisionCard({ entry }: { entry: FeedEntry }) {
+function PriceRow({
+  label,
+  value,
+  sub,
+  muted,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  muted?: boolean;
+}) {
   return (
-    <Link
-      href={`/decisions/${entry.decision_id}`}
-      style={{ textDecoration: "none" }}
-    >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
+      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{label}</span>
+      <span style={{ fontSize: "12px", fontWeight: "600", color: muted ? "var(--text-muted)" : "var(--text-primary)" }}>
+        {value}
+        {sub && (
+          <span style={{ fontSize: "10px", fontWeight: "400", color: "var(--text-muted)", marginLeft: "4px" }}>
+            {sub}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function DecisionCard({ entry }: { entry: FeedEntry }) {
+  const indicative = computeIndicativePrices(
+    entry.reference_price,
+    entry.atr_14,
+    entry.trend ?? "",
+    entry.momentum ?? "",
+    entry.direction,
+  );
+
+  const sessionLabel = entry.effective_session
+    ? `For ${entry.effective_session}`
+    : formatDecisionTime(entry.decision_timestamp);
+
+  return (
+    <Link href={`/decisions/${entry.decision_id}`} style={{ textDecoration: "none" }}>
       <div
         className="card-hover"
         style={{
@@ -153,115 +189,77 @@ function DecisionCard({ entry }: { entry: FeedEntry }) {
           cursor: "pointer",
         }}
       >
-        {/* Header row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}
-        >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
           <div>
-            <div
-              style={{
-                fontSize: "15px",
-                fontWeight: "700",
-                color: "var(--text-primary)",
-              }}
-            >
+            <div style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)" }}>
               {entry.instrument}
             </div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "var(--text-muted)",
-                marginTop: "2px",
-              }}
-            >
-              {formatDecisionTime(entry.decision_timestamp)}
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
+              {sessionLabel}
             </div>
           </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: "4px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
             <DirectionBadge direction={entry.direction} />
-            <span
-              style={{
-                padding: "2px 6px",
-                background: "rgba(16,185,129,0.06)",
-                border: "1px solid rgba(16,185,129,0.15)",
-                borderRadius: "3px",
-                fontSize: "10px",
-                fontWeight: "600",
-                color: "#10b981",
-                letterSpacing: "0.04em",
-              }}
-            >
+            <span style={{
+              padding: "2px 6px",
+              background: "rgba(16,185,129,0.06)",
+              border: "1px solid rgba(16,185,129,0.15)",
+              borderRadius: "3px",
+              fontSize: "10px",
+              fontWeight: "600",
+              color: "#10b981",
+              letterSpacing: "0.04em",
+            }}>
               CERTIFIED ✓
             </span>
           </div>
         </div>
 
-        {/* Price row */}
-        <div style={{ display: "flex", gap: "24px", marginBottom: "10px" }}>
-          <div>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                marginBottom: "2px",
-              }}
-            >
-              Target
-            </div>
-            <div
-              style={{
-                fontSize: "13px",
-                fontWeight: "600",
-                color: "var(--text-primary)",
-              }}
-            >
-              {formatPrice(entry.target_price)}
-            </div>
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                marginBottom: "2px",
-              }}
-            >
-              Reference Risk
-            </div>
-            <div
-              style={{
-                fontSize: "13px",
-                fontWeight: "600",
-                color: "var(--text-secondary)",
-              }}
-            >
-              {formatPrice(entry.reference_risk_boundary_price)}
-            </div>
-          </div>
+        {/* Prices */}
+        <div style={{ marginBottom: "10px" }}>
+          <PriceRow
+            label="Reference Price"
+            value={formatPrice(entry.reference_price)}
+            muted={!entry.reference_price}
+          />
+          {indicative ? (
+            <>
+              <PriceRow
+                label="Indicative Target"
+                value={formatPrice(indicative.indicative_target)}
+                sub={formatPct(entry.direction === "SHORT" ? -indicative.upside_pct : indicative.upside_pct)}
+              />
+              <PriceRow
+                label="Indicative Risk"
+                value={formatPrice(indicative.indicative_risk)}
+                sub={formatPct(entry.direction === "SHORT" ? indicative.downside_pct : -indicative.downside_pct)}
+              />
+            </>
+          ) : (
+            <>
+              <PriceRow label="Indicative Target" value="Awaiting execution" muted />
+              <PriceRow label="Indicative Risk" value="Awaiting execution" muted />
+            </>
+          )}
+          {entry.atr_14 && (
+            <PriceRow label="ATR-14" value={formatPrice(entry.atr_14)} muted />
+          )}
         </div>
 
-        {/* Footer row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingTop: "10px",
-            borderTop: "1px solid var(--border-subtle)",
-          }}
-        >
+        {/* State */}
+        <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "10px" }}>
+          {entry.trend && entry.momentum ? `${entry.trend} · ${entry.momentum}` : ""}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingTop: "10px",
+          borderTop: "1px solid var(--border-subtle)",
+        }}>
           <OutcomeBadge status={entry.outcome_status} />
           <ExecutionBadge status={entry.execution_status} />
         </div>

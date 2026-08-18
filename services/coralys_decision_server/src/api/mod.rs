@@ -10,7 +10,9 @@
 pub mod detail;
 pub mod execution;
 pub mod feed;
+pub mod ingest;
 pub mod outcome;
+pub mod recommendations;
 
 use chrono::{DateTime, Utc};
 use coralys_decision::record::{
@@ -159,6 +161,12 @@ pub struct DecisionCoreResponse {
     pub momentum: String,
     pub volatility: String,
     pub target_price: Option<f64>,
+    /// ATR-14 in price units at decision time T. Null when unavailable.
+    pub atr_14: Option<f64>,
+    /// Last traded price / previous close at decision time T.
+    pub reference_price: Option<f64>,
+    /// Next NSE trading session date (YYYY-MM-DD) this decision applies to.
+    pub effective_session: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -220,6 +228,9 @@ impl From<&DecisionRecord> for DecisionResponse {
                 momentum: r.decision.momentum.clone(),
                 volatility: r.decision.volatility.clone(),
                 target_price: r.decision.target_price,
+                atr_14: r.decision.atr_14,
+                reference_price: r.decision.reference_price,
+                effective_session: r.decision.effective_session.clone(),
             },
             reference_risk: ReferenceRiskResponse {
                 boundary_price: r.reference_risk.boundary_price,

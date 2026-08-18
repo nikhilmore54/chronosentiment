@@ -58,6 +58,9 @@ mod tests {
             certified_timestamp: decision_ts,
             reference_risk_boundary_price: Some(1180.25),
             reference_risk_boundary_type: "CORALYS_V0_ATR_TMV".to_string(),
+            atr_14: None,
+            reference_price: None,
+            effective_session: None,
         }
     }
 

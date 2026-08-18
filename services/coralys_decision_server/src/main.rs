@@ -1,17 +1,20 @@
 //! Coralys Decision Intelligence API server.
 //!
-//! MVP-005: `GET /decisions`       — Decision Feed
-//! MVP-006: `GET /decisions/{id}`  — Decision Detail
+//! MVP-005: `GET /decisions`                — Decision Feed
+//! MVP-006: `GET /decisions/{id}`           — Decision Detail
+//! MVP-009: `GET /recommendations/latest`   — Ranked Recommendation Snapshot
 //!
 //! Architecture:
 //! ```text
 //! DecisionLedger (shared, RwLock-protected)
+//! EvidenceStore  (loaded once at startup from HDV-001 outcomes file)
 //!         │
 //!         ▼
 //! Axum router
 //!         │
-//!         ├── GET /decisions        → feed::get_decisions
-//!         └── GET /decisions/{id}   → detail::get_decision_by_id
+//!         ├── GET /decisions                → feed::get_decisions
+//!         ├── GET /decisions/{id}           → detail::get_decision_by_id
+//!         └── GET /recommendations/latest   → recommendations::get_recommendations_latest
 //! ```
 //!
 //! The ledger is the authoritative source. No decisions are reconstructed
@@ -23,26 +26,39 @@ use std::sync::Arc;
 
 use axum::{Router, routing::{get, post}};
 use coralys_decision::DecisionLedger;
+use coralys_decision::recommendation::EvidenceStore;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing_subscriber::{EnvFilter, fmt};
 
 // ─── Shared state ─────────────────────────────────────────────────────────────
 
-/// Shared application state — the `DecisionLedger` is the single source of
-/// truth for all certified decisions.
+/// Shared application state.
 ///
-/// `RwLock` allows concurrent reads (multiple API requests) with exclusive
-/// writes (sealing new decisions).
+/// - `ledger` — the `DecisionLedger` is the single source of truth for all
+///   certified decisions. `RwLock` allows concurrent reads with exclusive writes.
+/// - `evidence_store` — the frozen HDV-001 analogue index, loaded once at
+///   startup. `None` when the outcomes file is unavailable (server still starts
+///   but `/recommendations/latest` returns 503).
 #[derive(Clone)]
 pub struct AppState {
     pub ledger: Arc<RwLock<DecisionLedger>>,
+    pub evidence_store: Option<Arc<EvidenceStore>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             ledger: Arc::new(RwLock::new(DecisionLedger::new())),
+            evidence_store: None,
+        }
+    }
+
+    /// Build state with a pre-loaded `EvidenceStore`.
+    pub fn with_evidence(evidence_store: EvidenceStore) -> Self {
+        Self {
+            ledger: Arc::new(RwLock::new(DecisionLedger::new())),
+            evidence_store: Some(Arc::new(evidence_store)),
         }
     }
 }
@@ -55,10 +71,13 @@ impl Default for AppState {
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
-/// Build the Axum router with all MVP-005/006 routes.
+/// Build the Axum router with all routes.
 pub fn build_router(state: AppState) -> Router {
     Router::new()
-        .route("/decisions", get(api::feed::get_decisions))
+        .route(
+            "/decisions",
+            get(api::feed::get_decisions).post(api::ingest::ingest_decision),
+        )
         .route(
             "/decisions/{id}",
             get(api::detail::get_decision_by_id),
@@ -71,6 +90,10 @@ pub fn build_router(state: AppState) -> Router {
             "/decisions/{id}/outcome",
             post(api::outcome::record_outcome),
         )
+        .route(
+            "/recommendations/latest",
+            get(api::recommendations::get_recommendations_latest),
+        )
         .with_state(state)
 }
 
@@ -82,7 +105,35 @@ async fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let state = AppState::new();
+    // Load the frozen HDV-001 evidence store.
+    // Path is relative to the workspace root; the server is expected to be
+    // started from the repository root (or the path overridden via env).
+    let outcomes_path = std::env::var("HDV001_OUTCOMES_PATH")
+        .unwrap_or_else(|_| "datasets/hdv001/hdv001_outcomes_v1.json".to_string());
+
+    let evidence_store = match EvidenceStore::load_from_file(&outcomes_path) {
+        Ok(store) => {
+            tracing::info!(
+                path = %outcomes_path,
+                "HDV-001 evidence store loaded"
+            );
+            Some(Arc::new(store))
+        }
+        Err(e) => {
+            tracing::warn!(
+                path = %outcomes_path,
+                error = %e,
+                "HDV-001 outcomes file not found — /recommendations/latest will return 503"
+            );
+            None
+        }
+    };
+
+    let state = AppState {
+        ledger: Arc::new(RwLock::new(DecisionLedger::new())),
+        evidence_store,
+    };
+
     let app = build_router(state);
 
     let listener = TcpListener::bind("0.0.0.0:3001")
@@ -156,6 +207,9 @@ pub mod test_helpers {
             certified_timestamp: decision_ts,
             reference_risk_boundary_price: Some(1180.25),
             reference_risk_boundary_type: "CORALYS_V0_ATR_TMV".to_string(),
+            atr_14: None,
+            reference_price: None,
+            effective_session: None,
         };
 
         let record = DecisionRecordBuilder::build(input).unwrap();

@@ -11,6 +11,8 @@ __pycache__/
 .DS_Store
 
 # Generated Artifacts & Substrates
+# REC-001-H JSONL evidence base — 111MB generated data, reproducible from pipeline
+datasets/recommendation/historical/*.jsonl
 artifacts/
 core/chronology/soak/
 core/elite/

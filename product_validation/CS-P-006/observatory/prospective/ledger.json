@@ -8,9 +8,9 @@
   "regime_persistence_experiment_authorized": false,
   "decisions": [
     {
-      "decision_id": "f3c24baf08615c8f77e9c8a731c3ad447be05d521653ce9fc7c7048f1a2ecb97",
-      "instrument": "HDFCBANK.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_id": "cfa86edff7708f2719a1ee94000507b7f5249ad11b804056b43dcc8c29934831",
+      "instrument": "ADANIENT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bearish",
         "momentum": "Negative",
@@ -31,9 +31,515 @@
       "paper_only": true
     },
     {
-      "decision_id": "1573917317da17079794fcc79a7cb1070d3d672c829837c8246cbe6d70732d25",
+      "decision_id": "e03333f470becf0912e3e6fd20c00b82b84e4a4c8cdafd8daa04c2395ec2b7d2",
+      "instrument": "ADANIPORTS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "2c04fe2bc52bdfd6a8b294c8ef47c5c25c75351103da5035afcabd858e87ef6d",
+      "instrument": "APOLLOHOSP.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e4bc9931fdd169f48e2ae81eb6efd1058cc24de7b01688568382adc5ed502418",
+      "instrument": "ASIANPAINT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "6adcd23f057f9fe7342c12bc30344a7f9154eef4ef6edbed394ce4a237bdb928",
+      "instrument": "AXISBANK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4b20ce479454b661af5da834fe399c73cef42eec8987da698c8786c1192d8229",
+      "instrument": "BAJAJ-AUTO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4fe9e672f741d38830eb69c9b950533c15b364a647cc7f6e25b3af63704d6b5b",
+      "instrument": "BAJAJFINSV.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "75c2e504f0f190520d660a92ba05297beaa105152f7ac71a17348c78f62a944a",
+      "instrument": "BAJFINANCE.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "9ebeef7d4c52421af8895834662841db9c461ec971b3d68abd478b309338fbd1",
+      "instrument": "BHARTIARTL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "3f1fa545aaa9dcf17f39d5021e690e8f0851be16016a306e09665cfb714f5f98",
+      "instrument": "BPCL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "bfab8ba8b21b91a841e6e34511d75ab583eadba8002698bd9e30a10850951096",
+      "instrument": "BRITANNIA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "6491496ef4d4b0530816d7ae7ced96e3446dc350d5cc23141e7096012dca908b",
+      "instrument": "CIPLA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4409b681799ab93f3017a2382735056b8a9afae71ee5f0075d1c2e2da53975a0",
+      "instrument": "COALINDIA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "60a40028f053b1b4481c7cad42d96181a66ae6d4a20300a85f2d1b0b2997c027",
+      "instrument": "DIVISLAB.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4be37bc182f3cc4f7de8c8fd380180e59f5bb2df384091f26e80eed3b7cdb2b6",
+      "instrument": "DRREDDY.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "34cf45b2194a018456dae4f0129d6e1b6837432d85bff0fa5e9c403203ddb88f",
+      "instrument": "EICHERMOT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "89b478ec20b4c90534d275896a93e9ad3e58b5c130edb03da8c54af8dbe7334f",
+      "instrument": "GRASIM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "2c3f5342caa200339aaf296c0168f2ecbd321f1a4d7dd909f2e02ca0eefd94e3",
+      "instrument": "HCLTECH.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "fc2984d4bdd2c47283126d037f90e7dbf801ac4c4d2a927c9a844f25e3fbd925",
+      "instrument": "HDFCBANK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "214ec49ddccce94463c88c3aa77b06e1371718fd0ea5aa2ed914767a658b6d47",
+      "instrument": "HDFCLIFE.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e0bc8026a78bc4c03daa32e6c9ca54675a9343f873c18007ecd3652f6fb0c5f2",
+      "instrument": "HEROMOTOCO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "83495c03c2b8ae18eecf5ccefd09deb95abbb329afbea57bc4d8d163e3093dd8",
+      "instrument": "HINDALCO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "698e7fffa86d61e7a019e536c4c1181b8094b42fb30080fad258aa7eb1109196",
+      "instrument": "HINDUNILVR.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ab5c698191b115a79f54099042274cd8d056ceb5cdaf839c94777126fd535c60",
       "instrument": "ICICIBANK.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bullish",
         "momentum": "Negative",
@@ -54,9 +560,32 @@
       "paper_only": true
     },
     {
-      "decision_id": "12d4a79ee3a526d4170c18f12d637ae060413991ae29d315d0474c98ea6620a5",
+      "decision_id": "a8cede9a597da79846aee0e8101d8d1ee2180a3a46690bc176dd2d6032b6ff7c",
+      "instrument": "INDUSINDBK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f9e69f2f299cf7a894f6efeaa86a675297c2e0fa6b0ca95bf130ddb139c800ed",
       "instrument": "INFY.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bullish",
         "momentum": "Positive",
@@ -77,11 +606,11 @@
       "paper_only": true
     },
     {
-      "decision_id": "2751976823eb79736f5c6c4dab16e830463dc64027486a669880d8af6e9bb519",
-      "instrument": "RELIANCE.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_id": "f67ab83801851de0c718dd83c237afcbb01f25d34d6968b604ee2330d60eed8e",
+      "instrument": "ITC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
-        "trend": "Bullish",
+        "trend": "Bearish",
         "momentum": "Negative",
         "volatility": "present",
         "input_schema": [
@@ -89,9 +618,9 @@
           "Momentum",
           "Volatility"
         ],
-        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
       },
-      "action": "SHORT",
+      "action": "LONG",
       "policy_id": "C3-002",
       "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
       "engine_version": "unfrozen-dev",
@@ -100,9 +629,9 @@
       "paper_only": true
     },
     {
-      "decision_id": "04f130dcb5eff8d2b9daeba357342195bdb97d381f88862a931809bc1b9b3917",
-      "instrument": "TCS.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_id": "a7c2dcbbbd87eb0b276b7f22f76fa2c031c8d2a050a6ecc3e624a1dd654ad8e1",
+      "instrument": "JSWSTEEL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bullish",
         "momentum": "Positive",
@@ -123,9 +652,9 @@
       "paper_only": true
     },
     {
-      "decision_id": "b4894dbbc580cacbb12337dade838c83ed456c058ad8332dfb05efeb7e5f0b81",
-      "instrument": "IDEA.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_id": "61af36845436914d27bf9c6056c48be39265e79c20ecde88f2dacb7908fa0437",
+      "instrument": "KOTAKBANK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bearish",
         "momentum": "Positive",
@@ -146,9 +675,1642 @@
       "paper_only": true
     },
     {
-      "decision_id": "af3094760c91a678942fb826031ff7c5f04f52618ca6db3b09fe958b329fa6e1",
+      "decision_id": "374199673f7a99e6aec1fc8bfc0f43599f5103e9e62ff321c29f71467c8bbc57",
+      "instrument": "LT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e038b40dc57b723ff38362272fc483809fa59d7b80c1ef3290bad9227b257e10",
+      "instrument": "M&M.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "64c263a8b0831871463ad4c8a897a718f52977f0691e682d6fe14e1d164099d4",
+      "instrument": "MARUTI.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "faf065ed3dc5f350207a5a60e3fe276ac00bce927db15da5e37fa11502386fac",
+      "instrument": "NESTLEIND.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "fe2f3d21f642fd49f9986b08c917d062fe38a9aadccfa9d58696d89fa27ada5c",
+      "instrument": "NTPC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "c2d7b3935308b02d495bdb2d665bbb99fc986079c8ab71189327cc936c33f3fe",
+      "instrument": "ONGC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "08742f598ed78724afbec6f32112ab47957f5e75bec59a6aeceb0d1b331c6340",
+      "instrument": "POWERGRID.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e6403add7cfdee19b4a8daa2d8a4eb808cb57246625d4660a29f1f4fbb5f0563",
+      "instrument": "RELIANCE.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "c7662afe19d87945b25f1b48e9fa335213e76d430e7033b85b77cbabf7e7fbf3",
+      "instrument": "SBILIFE.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "8aceff86597e2956e416ca2ce94810ae51acebf1cf332b3841fb91ed0e220357",
+      "instrument": "SBIN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ba25f8e423803e1e0c1b97a2ee6deb973d218221ff0b8bfc536bef10b9769305",
+      "instrument": "SUNPHARMA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "bdb76f59f3b18eebeff1f7b6f6df942d900419426b7d9eb213f9fcb354a53baa",
+      "instrument": "TATACONSUM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "76e1c9af55e2277811b9a421e33f9ad357a801e5079f7ab5b4948d2802ecf1b6",
+      "instrument": "TMCV.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "a57fd15ea01f60edd07aaf9f0afe039c5a466066d37b9e52fbbd1bb8d3c3e849",
+      "instrument": "TATASTEEL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "5a12554dd6a9655ead513dbd2cb22e153b8312044dc92f089ba6199a541f0690",
+      "instrument": "TCS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "7d3fee7b671845a1ab2b2cea435f643fcca7e3d28f7ddb4eb1eebcfaf6233d12",
+      "instrument": "TECHM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "bd7012df7f532cd60d09a199fee84413eee846d2ad2c640fd8145b9a417566d6",
+      "instrument": "TITAN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "0512bfc52a8c6cf2228d54dd5ab30fa9aa84cf4e2ed676ce71795405e887becb",
+      "instrument": "ULTRACEMCO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "d52b667a48216e0169d062d181dfbfabfdaaa463a2726f391b61bab455201b89",
+      "instrument": "UPL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "b239e3e935e7971bdd0885d285959232f5cde77ec27c7627c0e326ee53b2fc59",
+      "instrument": "WIPRO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "c67d158f6b7df8620aec9c29fbb5e75a18c1ed0e93b31894eb079aa6b8917dc2",
+      "instrument": "ADANIGREEN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "227c330349adcc4f8aafe79062a23b984c660673c3cc7b4d89ea8f69d7088aaf",
+      "instrument": "AMBUJACEM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "548e9d252163ab9ce88b9ffeb9d165bed1b77d72218e909e1782a92c9250ce0a",
+      "instrument": "AUROPHARMA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "10d05789b3110f67eb254a5977f99b55d17d9375f7198e76d3c25152d2536e58",
+      "instrument": "BANDHANBNK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e69584e0aa132280310183ddab9ac84e81bf59667a64d3f62314d789ad6afd2a",
+      "instrument": "BANKBARODA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "5733deb156f68339ae54c7ffdc423f20cc37f646c566a49e234c61f9ad77b915",
+      "instrument": "BERGEPAINT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "c90963f08232aa498f1dbb12a43a8b5047ac87cad7d3b54047050a7e69a90f45",
+      "instrument": "BOSCHLTD.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "1a2685ca54d576565579f31a8ee552981d7c584b13fab350dc716d9a39c140ca",
+      "instrument": "CANBK.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ba4f1626775287dc749d9cf5ba2562fecbc3fc08d029d36f38be8765a7af8ae3",
+      "instrument": "CHOLAFIN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "b2fca7d5de2ea966fb6b36b98f156e841af1ef8220f30162bbed5cf031938fd7",
+      "instrument": "COLPAL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "8d3bc36cf377ed96a0602567417f059e3ffc6fab8b742c98dfccb5cce4454a90",
+      "instrument": "DABUR.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "bff9d6a3e5651044c615f18e958f84892a573fd0820f8899909d9986c63ce2d7",
+      "instrument": "DLF.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "04efd649389fbac3b34719935cdc007975ecb8ada67971efaab811a7cd05610e",
+      "instrument": "GAIL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "7a2abdea52b1eb6e9bd30cde1868c17da32e94987e82370731eb0b296044858c",
+      "instrument": "GODREJCP.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "a81b01cfa84140284543e362beb4b0cfaeaa258a421e50f0afe31f0af878f1f1",
+      "instrument": "GODREJPROP.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "686ecc43a2dc3291765af5bfe11ce11f2fbe9572ceb1d567f93e662e6c956fcb",
+      "instrument": "HAVELLS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "8c6833bf9567bf00c789a526a9fa079a22e30514a65eca269aae4dabed57a885",
+      "instrument": "ICICIPRULI.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "740568a81390b3eb2a720a8b679f8a19d758f1c7a49d662e5a7da81c293fa551",
+      "instrument": "IDEA.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f766d2cc9790323a40086f4ce109c552b09cf012f77e7e60e37c4dc44233fc32",
+      "instrument": "IDFCFIRSTB.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "5522c4bd6448af3654c0829f58fd4926f40334f00dfd79369b3bcfbb01d2203c",
+      "instrument": "IGL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "64709b3cb58b2b9784b42d639c4a863375f4adda52a1fdd48aba4474f5414ec3",
+      "instrument": "INDHOTEL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ef16309d332f664a0c6ae699045216df4aafe642ec970c310b9a668ebd313b2b",
+      "instrument": "INDUSTOWER.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f122417160ed15c1ddf3049d0bf5197cd6a7c18a46a5d357665cc78bcf8cb40e",
+      "instrument": "IOC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "8777497ac3e3c2f0734a7a1ca00d60f25b209037e86027beee4c2347b026a053",
+      "instrument": "IRCTC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4b0084acaf0e4fbb6904d110032aa425087248944ce023e3bbc42fc608547e29",
+      "instrument": "JINDALSTEL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "182cd1087d7016b905e0ca77badcc9271a300364de37e08f3dfce52c7f398444",
+      "instrument": "JUBLFOOD.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "aa70d0abee3cbb17ee2c562581c830477aedf56d731540658bdf986509498057",
+      "instrument": "LICI.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "262bd74518308400641923cd1c17ba9795c803000005b63f98923a740289d5bf",
+      "instrument": "LUPIN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "fc81e1ff0f329ae82c3632f6c733eef50c052d7f0ae68d93fc8523a96da9863f",
       "instrument": "MAHABANK.NS",
-      "decision_time": "2026-08-14T03:45:00+00:00",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ec3bbd73132984a12a99d36d1714367847e5fa51f42d1a211ab7c771d5bc8921",
+      "instrument": "MARICO.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "843de85539b4463d51854a5c76be41b899b4c2f39e6f27ae2e05c2638a83a89f",
+      "instrument": "MPHASIS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "3afae0053a9431ca4c68afdf9056afbee4a2a19184e1ab97ba95d74acc84e1d0",
+      "instrument": "MRF.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f3b08a82173f4a84caed7046a4081676142223d157860df8fe1d281cd4721806",
+      "instrument": "MUTHOOTFIN.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "bdc9d0bcea3bf219f1542d84b1bc27472edae0447838d75b70f1b54fa6a5e54a",
+      "instrument": "NAUKRI.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "afbd998f4e023617fd3df73182c7030217c396511b24d85c6f9da875101ae41a",
+      "instrument": "NMDC.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "a80b3dceb32539cda0f3c82760791d82cf3190cd01428624919dfacf35a0b668",
+      "instrument": "OFSS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "98e5b0632f621b5de6e36444885383f8e3f500b493f1d370a8b5350ab0571f7d",
+      "instrument": "PAGEIND.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "1fe355708315a0fad092d795c84853136fd39d65b772168f7cac517838978cad",
+      "instrument": "PERSISTENT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f9734ae1a8f25b57fa201fbe021f970cebbf49fe2401888882d1adedcfe66b4f",
+      "instrument": "PETRONET.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "940ddc3c45d1d5ab5bdc1d870557423272f765a26f2d78720cf83e17110f2bfc",
+      "instrument": "PIDILITIND.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "82751ac900f29526a4e27dafa821dfe58414666d22280547fd0d38ab9666f42a",
+      "instrument": "PNB.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "6d39b3de070f40eca51654cfd936140548d6f18859a343a914de77c720766d72",
+      "instrument": "POLYCAB.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "c3438c74d436b9aabdd23d31b38cba0ad80af5a5fd8aa58509ab5963c00702b8",
+      "instrument": "RECLTD.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "e9f58ac2c105e2b7ab11c1950ead271e9cf94ddee8273acc8da405a9ef790963",
+      "instrument": "SAIL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "9fe24dc2ed30c8f3692edeadc98d9d678f89df9aaed5f44858e01888cbfc1da8",
+      "instrument": "SHREECEM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "45ace106bfe4569f1da17fe7f15ee8cf9c2b9fbe16f975de746aa47d7a7728a3",
+      "instrument": "SIEMENS.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "fdf5d23ac694daf5af41bbc047c7257331a47398db27e7eb9304093d11c1c307",
+      "instrument": "SRF.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "ef4eb04b776ea4eead17d711a81977c708676088fb4692e227aec7f115174abb",
+      "instrument": "TORNTPHARM.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "34b67a2e8ca871817d12f96c6315f3fe156f319fcdf16b7aa797cdf724b00b2a"
+      },
+      "action": "SHORT",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "f49d69b106099281422dd273b2904ca87e70d6585fda1daa4390b2208d7f024a",
+      "instrument": "TRENT.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "5d0ced0fa085f20b2fd5aacb56f3eada0ffa64b5498d49e81511e68e5f30b475"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "4fd1e72daaec359deb1ed4ecf23a118655798ce88b7ba10c1e15d331b8146ce0",
+      "instrument": "TVSMOTOR.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "50a54bd978163dd03f558d11e6003a4032e18f11b1c366cba629a20fe7e97571"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "8be40c967793645c1fce6986f7cfe435b413ddea544d89f20099ac3a1bd93ee1",
+      "instrument": "VBL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
+      "state": {
+        "trend": "Bearish",
+        "momentum": "Negative",
+        "volatility": "present",
+        "input_schema": [
+          "Trend",
+          "Momentum",
+          "Volatility"
+        ],
+        "state_hash": "a47e842d11f6512603590009cdf8f524b4581e6feabe27dfc7252dae75bbac6d"
+      },
+      "action": "LONG",
+      "policy_id": "C3-002",
+      "policy_artifact_sha256": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+      "engine_version": "unfrozen-dev",
+      "horizon_days": 20,
+      "sealed_status": "OPEN",
+      "paper_only": true
+    },
+    {
+      "decision_id": "aba4b286c7f27f88f01e7f0948cdb3b7868d9644d214fb30841373d6f57025fb",
+      "instrument": "VEDL.NS",
+      "decision_time": "2026-08-17T03:45:00+00:00",
       "state": {
         "trend": "Bearish",
         "momentum": "Positive",

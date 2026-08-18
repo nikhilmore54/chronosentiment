@@ -103,6 +103,20 @@ pub struct DecisionCore {
     pub volatility: String,
     /// Target price sealed at decision time. `None` when not yet determined.
     pub target_price: Option<f64>,
+    /// ATR-14 in price units at decision time T (certified from bars ≤ T).
+    /// Used by the execution model at E to compute target/risk from actual fill.
+    /// `None` when not available from the data snapshot.
+    #[serde(default)]
+    pub atr_14: Option<f64>,
+    /// Last traded price / previous close at decision time T.
+    /// This is the reference price for the recommendation — NOT the execution price.
+    /// Label as "LTP / Reference" in the UI until actual execution is recorded.
+    #[serde(default)]
+    pub reference_price: Option<f64>,
+    /// Next NSE trading session date (YYYY-MM-DD) this decision applies to.
+    /// Derived as the next weekday after `decision_timestamp`.
+    #[serde(default)]
+    pub effective_session: Option<String>,
 }
 
 // ─── Reference Risk ──────────────────────────────────────────────────────────
@@ -338,6 +352,9 @@ mod tests {
                 momentum: "Positive".into(),
                 volatility: "present".into(),
                 target_price: Some(1234.50),
+                atr_14: None,
+                reference_price: None,
+                effective_session: None,
             },
             reference_risk: ReferenceRisk {
                 boundary_price: Some(1180.25),

@@ -15,8 +15,10 @@ import {
   formatDecisionTime,
   formatDecisionDate,
   formatPrice,
+  formatPct,
   directionLabel,
   shortHash,
+  computeIndicativePrices,
   type CoralysDecision,
 } from "@/lib/coralys";
 
@@ -166,6 +168,14 @@ export default async function DecisionDetailPage({
 
   const d = decision as CoralysDecision;
 
+  const indicative = computeIndicativePrices(
+    d.decision.reference_price ?? null,
+    d.decision.atr_14 ?? null,
+    d.decision.trend,
+    d.decision.momentum,
+    d.decision.direction,
+  );
+
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "32px 24px" }}>
       {/* Back link */}
@@ -244,13 +254,59 @@ export default async function DecisionDetailPage({
         <Field label="Trend" value={d.decision.trend} />
         <Field label="Momentum" value={d.decision.momentum} />
         <Field label="Volatility" value={d.decision.volatility} />
+        {d.decision.effective_session && (
+          <Field label="For session" value={d.decision.effective_session} />
+        )}
         <Field
-          label="Target"
+          label="Reference Price"
           value={
-            <span
-              style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}
-            >
-              {formatPrice(d.decision.target_price)}
+            <span style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)" }}>
+              {formatPrice(d.decision.reference_price ?? null)}
+            </span>
+          }
+        />
+        {d.decision.atr_14 && (
+          <Field label="ATR-14" value={formatPrice(d.decision.atr_14)} />
+        )}
+        <Field
+          label="Indicative Target"
+          value={
+            indicative ? (
+              <span style={{ fontSize: "15px", fontWeight: "700", color: "#10b981" }}>
+                {formatPrice(indicative.indicative_target)}{" "}
+                <span style={{ fontSize: "11px", fontWeight: "400", color: "#10b981" }}>
+                  {formatPct(d.decision.direction === "SHORT" ? -indicative.upside_pct : indicative.upside_pct)}
+                </span>
+              </span>
+            ) : (
+              <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                Awaiting execution
+              </span>
+            )
+          }
+        />
+        <Field
+          label="Indicative Risk"
+          value={
+            indicative ? (
+              <span style={{ fontSize: "15px", fontWeight: "700", color: "#f59e0b" }}>
+                {formatPrice(indicative.indicative_risk)}{" "}
+                <span style={{ fontSize: "11px", fontWeight: "400", color: "#f59e0b" }}>
+                  {formatPct(d.decision.direction === "SHORT" ? indicative.downside_pct : -indicative.downside_pct)}
+                </span>
+              </span>
+            ) : (
+              <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                Awaiting execution
+              </span>
+            )
+          }
+        />
+        <Field
+          label="Target (sealed)"
+          value={
+            <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+              {d.decision.target_price !== null ? formatPrice(d.decision.target_price) : "Set at execution"}
             </span>
           }
         />

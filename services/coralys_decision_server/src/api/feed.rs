@@ -39,6 +39,16 @@ pub struct FeedEntry {
     pub reference_risk_boundary_type: String,
     pub outcome_status: String,
     pub execution_status: String,
+    /// Trend label from certified TMV state (e.g. "Bullish", "Bearish").
+    pub trend: String,
+    /// Momentum label from certified TMV state (e.g. "Positive", "Negative").
+    pub momentum: String,
+    /// ATR-14 in price units at decision time T. Null when unavailable.
+    pub atr_14: Option<f64>,
+    /// Last traded price / previous close at decision time T.
+    pub reference_price: Option<f64>,
+    /// Next NSE trading session date (YYYY-MM-DD) this decision applies to.
+    pub effective_session: Option<String>,
 }
 
 /// Response envelope for `GET /decisions`.
@@ -75,6 +85,11 @@ pub async fn get_decisions(State(state): State<AppState>) -> Json<FeedResponse> 
             reference_risk_boundary_type: r.reference_risk.boundary_type.clone(),
             outcome_status: format!("{:?}", r.outcome.status),
             execution_status: format!("{:?}", r.execution.status),
+            trend: r.decision.trend.clone(),
+            momentum: r.decision.momentum.clone(),
+            atr_14: r.decision.atr_14,
+            reference_price: r.decision.reference_price,
+            effective_session: r.decision.effective_session.clone(),
         })
         .collect();
 

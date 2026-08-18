@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.57
+**Version:** 1.69
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -24,6 +24,19 @@ This is the single authoritative entry point for the repository. Every canonical
 | Experiment Harness | Stable — all 5 modules complete | 2026-08-01 |
 | GERAD Coralys v1.0 Baseline | **FROZEN** 2026-08-01 | 2026-08-01 |
 | Repository Governance | Active — GOV-001 complete, GOV-002 this document | 2026-08-01 |
+| CDI MVP v0.1 — Decision Server | **Active — 102-stock universe; Recommendation Engine v0 operational** (101 evaluated, BUY=60, NO_TRADE=41; 86 tests pass) | 2026-08-18 |
+| REC-001 — Recommendation Engine Validation | **Active — v0 prospective observation** (state-level HDV-001 evidence; REC-001-H COMPLETE — 101 tickers, 121,805 records) | 2026-08-18 |
+| REC-001-H Evidence Quality | **COMPLETE 2026-08-18** — evidence_quality_report.csv written; C3-002 mapping verified (Bear+Neg→LONG); LONG min-bucket median=170; SHORT min-bucket median=187; LONG target rate 29.6% mean | 2026-08-18 |
+| RecommendationEngine v1 direction | **Locked in 2026-08-18** — Coralys-native; analogue-population-based; adaptive R:R + horizon; MarketDataFetcher refactor prerequisite; see ARCH-006 | 2026-08-18 |
+| HDV-001 — Historical Decision Validation | **FROZEN** 2026-08-17 — all gates PASS | 2026-08-17 |
+| HDV-002 — Risk-Boundary Research | **FROZEN methodology** / validation accumulation active — opens 2026-08-18; independent of REC-001 | 2026-08-18 |
+| 102-stock universe (UNIV-001) | **Versioned / active** — `datasets/universes/coralys_102_v1.json`; frozen 2026-08-18; 101 valid, 1 unavailable (Yahoo) | 2026-08-18 |
+| Recommendation evidence | **HDV-001 state-level evidence (frozen)** — ticker-specific reconstruction pending (REC-001-H) | 2026-08-18 |
+| Recommendation ranking | **v0 frozen — observational only** — R:R always 2.0 (fixed C3-002 geometry); adaptive R:R not authorized | 2026-08-18 |
+| Volume enrichment | **Data capture permitted** — volume/relative_volume_20 to be stored in REC-001-H; recommendation use not yet validated | 2026-08-18 |
+| Adaptive R:R | **Not authorized** — belongs in RecommendationEngine v1 after REC-001-H + prospective validation | 2026-08-18 |
+| chrono-ui — Trading MVP | Active — Next.js 15, port 3000; reads Decision Server at :3001; SHORT direction sign fix applied | 2026-08-18 |
+| hdv001-dashboard — Evidence Dashboard | **FROZEN** 2026-08-17 — Vite/React, port 5174, read-only | 2026-08-17 |
 
 ---
 
@@ -112,6 +125,7 @@ Documents in this section must not be modified except for typographical correcti
 | ARCH-003 | `docs/Service_Boundary_Definition.md` | Service Boundary Definition |
 | ARCH-004 | `docs/Event_Flow_Specification.md` | Event Flow Specification |
 | ARCH-005 | `docs/ARCHITECTURE_GLOSSARY.md` | Architecture Glossary |
+| ARCH-006 | `docs/ARCH-006_RECOMMENDATION_ENGINE_ARCHITECTURE.md` | Recommendation Engine Architecture — v0 vs v1 comparison; locked-in Coralys-native direction; C3-002 mapping verified; analogue-population design; graceful degradation spec; four MVP gates (G1–G4); execution order (v1 first, fetcher parallel); MarketDataFetcher refactor spec |
 
 ### 8. Evidence Governance
 
@@ -188,12 +202,30 @@ Documents in this section must not be modified except for typographical correcti
 | CDI-MVP-V01 | `docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01.md` | Coralys Decision Intelligence MVP v0.1 — product specification; DecisionRecord schema; user-controlled execution; no allocation; supersedes Observatory product layer |
 | CDI-MVP-V01-DEL | `docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md` | MVP v0.1 deletion/retirement list — Observatory implementation code to retire; evidence archives to keep; dependency grep required before any deletion |
 | ROADMAP-001 | `docs/EP-002_ROADMAP.md` | Engineering Programme Roadmap |
+| HDV-001 | `docs/HDV_001_PERIODS.md` | Historical Decision Validation — period definitions, price cache, path extractor, MAE/MFE, outcome classifier, baselines, freeze gate; all gates PASS; **FROZEN** 2026-08-17 |
+| HDV-001-F | `datasets/hdv001/HDV_001_F_DETERMINATION.md` | HDV-001-F official criterion evaluation — Gate1 +6.0pp, Gate2 +12.4pp, Gate3 2/4 segments; PASS; **FROZEN** 2026-08-17 |
+| HDV-002-A | `docs/HDV_002_METHODOLOGY.md` | HDV-002 Risk-Boundary Research — methodology freeze gate; accumulation opens 2026-08-18; **independent of REC-001**: REC-001 cannot modify C3-002 risk boundaries; HDV-002 cannot use REC-001 recommendation outcomes as an optimization feedback loop unless its methodology explicitly authorizes it |
+| UNIV-001 | `datasets/universes/coralys_102_v1.json` | CDI 102-Stock Universe v1 — Nifty 100 + 2 liquid mid-caps; frozen 2026-08-18; 102 instruments; single source of truth for REC-001 v0; versioned stepping stone toward 6,800+ NSE/BSE universe | Active / Frozen for REC-001 v0 |
+| REC-001 | `docs/REC-001_RECOMMENDATION_VALIDATION.md` | Recommendation Engine v0 — Prospective Validation & Policy — defines what REC-001 establishes, v0 policy rules (BUY/WATCH/NO_TRADE), scoring formula, prospective population, evaluation horizon, success/failure criteria; no post-hoc tuning; **independent of HDV-002** | Active — v0 prospective observation |
+| REC-001-B | `datasets/universes/coralys_102_v1.json` | REC-001-B: 102-stock NSE universe (Nifty 100 + 2 liquid mid-caps); frozen 2026-08-18; canonical single source of truth; pipeline emitted 101 decisions (1 skipped: no Yahoo data); evaluated=101, BUY=60, NO_TRADE=41; v0 clustering confirmed — all Favourable/state-bucket stocks share identical scores (0.6211); architectural finding: R:R is always 2.0 in v0 (fixed C3-002 geometry); SHORT sign display bug fixed in /live, /decisions, /decisions/[id] |
+| REC-001-A | (not started) | REC-001-A: Adaptive Opportunity Geometry — superseded by ARCH-006 v1 direction; adaptive R:R now part of RecommendationEngine v1 MVP; do NOT implement as a separate research programme |
+| REC-001-H | `adapters/chronosentiment/src/bin/rec001h_historical_reconstruction.rs` → `datasets/recommendation/historical/` | REC-001-H: Historical Decision Reconstruction — **COMPLETE 2026-08-18**; 101 tickers processed (1 skipped: MCDOWELL-N.NS — no Yahoo data); 121,805 records; leakage-free; schema: ticker, date, direction, trend, momentum, volatility, atr_14, reference_price, open, high, low, volume, relative_volume_20, target/risk geometry, mfe_pct[10], mae_pct[10], outcome, sessions_to_outcome; volume stored but NOT used in recommendation engine v0 |
+| REC-001-H-EQ | `datasets/recommendation/historical/evidence_quality_report.csv` + `scripts/rec001h_evidence_quality.py` | REC-001-H Evidence Quality Report — **COMPLETE 2026-08-18**; C3-002 mapping verified from data: Bear+Neg→LONG (counter-trend), only SHORT state is Bull+Neg; LONG min-bucket median=170 (min=25 TMCV.NS, max=239); SHORT min-bucket median=187 (min=17 TMCV.NS, max=255); LONG target rate 29.6% mean (range 23–39%); per-bucket rates vary meaningfully; evidence sufficient for ticker-specific analogue-based recommendations |
+| ARCH-006 | `docs/ARCH-006_RECOMMENDATION_ENGINE_ARCHITECTURE.md` | Recommendation Engine Architecture — **locked-in 2026-08-18**; v0 vs v1 comparison; Coralys-native design; analogue-population-based evidence; adaptive R:R + horizon; MarketDataFetcher refactor spec; MVP path (not a large research programme) |
 
 ### 10. Visualisation
 
 | ID | Path | Title | Status |
 |----|------|-------|--------|
 | VIZ-001 | `docs/code_map.html` | Code Map | Needs update — Rust-only; does not cover research or governance nodes |
+
+### 11. Services & UI
+
+| ID | Path | Title | Status |
+|----|------|-------|--------|
+| SVC-001 | `services/coralys_decision_server/` | Coralys Decision Intelligence API — Rust/Axum, port 3001; GET /decisions, GET /decisions/{id}, POST /decisions (ingest), POST /decisions/{id}/execution, POST /decisions/{id}/outcome, GET /recommendations/latest (Recommendation Engine v0, HDV-001 evidence) | Active |
+| SVC-002 | `chrono-ui/` | Coralys Trading MVP — Next.js 15, port 3000; Decision Feed, Inspector, Execution, Outcome, Ledger, Audit; reads Decision Server at CORALYS_API_URL (:3001) | Active |
+| SVC-003 | `hdv001-dashboard/` | HDV-001 Evidence Dashboard — Vite/React, port 5174; read-only frozen evidence; KPIs, gates, segmentation, MFE chart | **FROZEN** 2026-08-17 |
 
 ---
 
@@ -234,6 +266,13 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.66 | 2026-08-18 | SVC-001 Recommendation Engine v0 added to coralys-decision (evidence.rs + engine.rs; EvidenceStore::load_from_file; GET /recommendations/latest; /live page replaced with ranked recommendation view; 13 tests pass; policy version v0 frozen with HDV-001) |
+| 1.65 | 2026-08-17 | SVC-001 POST /decisions ingest endpoint added to coralys_decision_server (Rust/Axum; SealedDecisionInput; provenance verified; builds clean) |
+| 1.64 | 2026-08-17 | SVC-001/SVC-002/SVC-003 Services & UI section added to index |
+| 1.63 | 2026-08-17 | HDV-002-A methodology freeze gate — docs/HDV_002_METHODOLOGY.md; forward validation protocol; accumulation opens 2026-08-18 |
+| 1.62 | 2026-08-17 | HDV-001-F official criterion evaluation PASS — Gate1 +6.0pp, Gate2 +12.4pp, Gate3 2/4 segments; frozen 2026-08-17 |
+| 1.61 | 2026-08-17 | HDV-001 all gates PASS — period definitions, price cache (52 instruments), path extractor (1144/1144), MAE/MFE, outcome classifier, baselines, freeze gate; frozen 2026-08-17 |
+| 1.60 | 2026-08-17 | SVC-003 hdv001-dashboard frozen evidence dashboard (Vite/React, port 5174, read-only) |
 | 1.59 | 2026-08-17 | CDI-MVP-V01-DEL deletion/retirement list (Observatory implementation code; evidence archives kept; dependency grep required) |
 | 1.58 | 2026-08-17 | CDI-MVP-V01 Coralys Decision Intelligence MVP v0.1 specification (DecisionRecord schema; user-controlled execution; no allocation; supersedes Observatory product layer) |
 | 1.57 | 2026-08-15 | CS-P-007 Statistical Strategy Validation specified (not run; P.E.3 waits; no Search #3) |
