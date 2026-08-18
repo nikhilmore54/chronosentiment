@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.69
+**Version:** 1.70
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -24,19 +24,21 @@ This is the single authoritative entry point for the repository. Every canonical
 | Experiment Harness | Stable — all 5 modules complete | 2026-08-01 |
 | GERAD Coralys v1.0 Baseline | **FROZEN** 2026-08-01 | 2026-08-01 |
 | Repository Governance | Active — GOV-001 complete, GOV-002 this document | 2026-08-01 |
-| CDI MVP v0.1 — Decision Server | **Active — 102-stock universe; Recommendation Engine v0 operational** (101 evaluated, BUY=60, NO_TRADE=41; 86 tests pass) | 2026-08-18 |
-| REC-001 — Recommendation Engine Validation | **Active — v0 prospective observation** (state-level HDV-001 evidence; REC-001-H COMPLETE — 101 tickers, 121,805 records) | 2026-08-18 |
+| CDI MVP v0.1 — Decision Server | **Active — 102-stock universe; RecommendationEngine v1 OPERATIONAL** (evaluated=101, actionable=63, buy=11, watch=52, no_trade=38; G1–G4 gates pass; 60/60 tests green) | 2026-08-18 |
+| REC-001 — Recommendation Engine Validation | **Active — v1 prospective observation** (REC-001-H COMPLETE — 101 tickers, 121,805 records; v1 engine live; G2 proven: same C3-002 state ≠ same recommendation) | 2026-08-18 |
 | REC-001-H Evidence Quality | **COMPLETE 2026-08-18** — evidence_quality_report.csv written; C3-002 mapping verified (Bear+Neg→LONG); LONG min-bucket median=170; SHORT min-bucket median=187; LONG target rate 29.6% mean | 2026-08-18 |
-| RecommendationEngine v1 direction | **Locked in 2026-08-18** — Coralys-native; analogue-population-based; adaptive R:R + horizon; MarketDataFetcher refactor prerequisite; see ARCH-006 | 2026-08-18 |
+| RecommendationEngine v1 | **COMPLETE 2026-08-18** — Coralys-native; analogue-population-based; adaptive R:R + horizon; first-exit semantics; graceful degradation (Exact→RelaxVol→RelaxBoth→StateOnly→NO_TRADE); see ARCH-006 | 2026-08-18 |
 | HDV-001 — Historical Decision Validation | **FROZEN** 2026-08-17 — all gates PASS | 2026-08-17 |
 | HDV-002 — Risk-Boundary Research | **FROZEN methodology** / validation accumulation active — opens 2026-08-18; independent of REC-001 | 2026-08-18 |
 | 102-stock universe (UNIV-001) | **Versioned / active** — `datasets/universes/coralys_102_v1.json`; frozen 2026-08-18; 101 valid, 1 unavailable (Yahoo) | 2026-08-18 |
-| Recommendation evidence | **HDV-001 state-level evidence (frozen)** — ticker-specific reconstruction pending (REC-001-H) | 2026-08-18 |
-| Recommendation ranking | **v0 frozen — observational only** — R:R always 2.0 (fixed C3-002 geometry); adaptive R:R not authorized | 2026-08-18 |
-| Volume enrichment | **Data capture permitted** — volume/relative_volume_20 to be stored in REC-001-H; recommendation use not yet validated | 2026-08-18 |
-| Adaptive R:R | **Not authorized** — belongs in RecommendationEngine v1 after REC-001-H + prospective validation | 2026-08-18 |
-| chrono-ui — Trading MVP | Active — Next.js 15, port 3000; reads Decision Server at :3001; SHORT direction sign fix applied | 2026-08-18 |
+| Recommendation evidence | **REC-001-H ticker-specific (COMPLETE)** — 101 tickers, 121,805 records; `datasets/recommendation/historical/TICKER_NS.jsonl`; leakage-free | 2026-08-18 |
+| Recommendation ranking | **v1 operational** — adaptive target from 25th-pct MFE; adaptive risk from median MAE; adaptive horizon from median sessions_to_outcome; ticker-specific analogue population | 2026-08-18 |
+| Volume enrichment | **Data capture permitted** — relative_volume_20 stored in REC-001-H; volume regime used in analogue matching (LOW/NORMAL/HIGH); recommendation use not yet prospectively validated | 2026-08-18 |
+| Adaptive R:R | **OPERATIONAL in v1** — derived from first-exit analogue population; requires reference_price from prospective pipeline for absolute price targets | 2026-08-18 |
+| chrono-ui — Trading MVP | Active — Next.js 15, port 3000; v1 endpoint `/api/recommendations/v1/latest`; adaptive geometry + degradation badges displayed | 2026-08-18 |
 | hdv001-dashboard — Evidence Dashboard | **FROZEN** 2026-08-17 — Vite/React, port 5174, read-only | 2026-08-17 |
+| emit_prospective_to_server.py | **Transitional tool 2026-08-18** — `scripts/emit_prospective_to_server.py`; re-emits an already-sealed prospective ledger to the Decision Server without re-fetching Yahoo data; idempotent; canonical path is `csp006_p_prospective --emit-url` which fetches fresh data and emits in one pass | 2026-08-18 |
+| Yahoo incremental fetch | **COMPLETE 2026-08-18** — `adapters/chronosentiment/src/ingestion/yahoo.rs`; `fetch_historical` now checks local cache first, fetches only missing ticks (period1=last_ts+1, period2=now+1d), merges+dedupes+sorts, writes back; no full re-fetch when cache is warm | 2026-08-18 |
 
 ---
 

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use chrono::{DateTime, Utc, TimeZone};
+use chrono::{DateTime, Duration, Utc, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use async_trait::async_trait;
@@ -49,57 +49,91 @@ impl MarketDataProvider for YahooProvider {
         let ticker = instrument.provider_ids.get("yahoo")
             .ok_or("Instrument missing 'yahoo' identity")?;
 
-        if let Some(cached) = read_yahoo_cache(ticker)? {
-            return Ok(cached);
-        }
-            
-        let url = format!(
-            "https://query1.finance.yahoo.com/v8/finance/chart/{}?range=5y&interval=1d",
-            ticker
-        );
+        // Load any bars already on disk.
+        let existing = read_yahoo_cache(ticker)?.unwrap_or_default();
+
+        // Determine the last stored timestamp so we only fetch newer bars.
+        let last_stored_ts: Option<i64> = existing.iter().map(|b| b.timestamp).max();
+
+        // Build the fetch URL. When we have existing data we request only the
+        // period after the last stored bar; otherwise fall back to the full
+        // 5-year range.
+        //
+        // Yahoo daily bars are timestamped at market-open (UTC). We add 1 second
+        // to period1 so we don't re-fetch the last stored bar, and we add 1 day
+        // to period2 to ensure today's bar is included when the market has closed.
+        let url = match last_stored_ts {
+            Some(last_ts) => {
+                let period1 = last_ts + 1;
+                let period2 = (Utc::now() + Duration::days(1)).timestamp();
+                format!(
+                    "https://query1.finance.yahoo.com/v8/finance/chart/{}?period1={}&period2={}&interval=1d",
+                    ticker, period1, period2
+                )
+            }
+            None => format!(
+                "https://query1.finance.yahoo.com/v8/finance/chart/{}?range=5y&interval=1d",
+                ticker
+            ),
+        };
 
         let response = self.client.get(&url).send().await?.json::<Value>().await?;
-
         let result = &response["chart"]["result"][0];
+
+        // Yahoo returns a null result when there are no new bars (e.g. the
+        // symbol is fully up-to-date). In that case return what we already have.
         if result.is_null() {
+            if !existing.is_empty() {
+                return Ok(existing);
+            }
             return Err("No data returned from Yahoo Finance".into());
         }
 
         let timestamps = result["timestamp"].as_array().ok_or("Missing timestamp array")?;
         let quote = &result["indicators"]["quote"][0];
 
-        let opens = quote["open"].as_array().ok_or("Missing opens")?;
-        let highs = quote["high"].as_array().ok_or("Missing highs")?;
-        let lows = quote["low"].as_array().ok_or("Missing lows")?;
-        let closes = quote["close"].as_array().ok_or("Missing closes")?;
-        let volumes = quote["volume"].as_array().ok_or("Missing volumes")?;
+        let opens     = quote["open"].as_array().ok_or("Missing opens")?;
+        let highs     = quote["high"].as_array().ok_or("Missing highs")?;
+        let lows      = quote["low"].as_array().ok_or("Missing lows")?;
+        let closes    = quote["close"].as_array().ok_or("Missing closes")?;
+        let volumes   = quote["volume"].as_array().ok_or("Missing volumes")?;
+        let adj_closes = result["indicators"]["adjclose"][0]["adjclose"]
+            .as_array()
+            .ok_or("Missing adjclose")?;
 
-        let adj_closes = result["indicators"]["adjclose"][0]["adjclose"].as_array().ok_or("Missing adjclose")?;
-
-        let mut bars = Vec::new();
+        let mut new_bars: Vec<YahooHistoricalBar> = Vec::new();
 
         for i in 0..timestamps.len() {
             let ts = timestamps[i].as_i64().unwrap_or(0);
-            let open = opens[i].as_f64().unwrap_or(0.0);
-            let high = highs[i].as_f64().unwrap_or(0.0);
-            let low = lows[i].as_f64().unwrap_or(0.0);
-            let close = closes[i].as_f64().unwrap_or(0.0);
-            let adj_close = adj_closes[i].as_f64().unwrap_or(0.0);
-            let volume = volumes[i].as_f64().unwrap_or(0.0);
 
-            bars.push(YahooHistoricalBar {
+            // Skip any bar whose timestamp is not strictly after the last
+            // stored one (guards against off-by-one or Yahoo overlap).
+            if let Some(last_ts) = last_stored_ts {
+                if ts <= last_ts {
+                    continue;
+                }
+            }
+
+            new_bars.push(YahooHistoricalBar {
                 timestamp: ts,
-                open,
-                high,
-                low,
-                close,
-                adj_close,
-                volume,
+                open:      opens[i].as_f64().unwrap_or(0.0),
+                high:      highs[i].as_f64().unwrap_or(0.0),
+                low:       lows[i].as_f64().unwrap_or(0.0),
+                close:     closes[i].as_f64().unwrap_or(0.0),
+                adj_close: adj_closes[i].as_f64().unwrap_or(0.0),
+                volume:    volumes[i].as_f64().unwrap_or(0.0),
             });
         }
 
-        write_yahoo_cache(ticker, &bars)?;
-        Ok(bars)
+        // Merge: existing bars first, then newly fetched bars (already filtered
+        // to be strictly newer), sorted by timestamp, deduped.
+        let mut merged = existing;
+        merged.extend(new_bars);
+        merged.sort_by_key(|b| b.timestamp);
+        merged.dedup_by_key(|b| b.timestamp);
+
+        write_yahoo_cache(ticker, &merged)?;
+        Ok(merged)
     }
 }
 
