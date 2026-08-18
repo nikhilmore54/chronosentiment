@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.72
+**Version:** 1.73
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -37,7 +37,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | Recommendation ranking | **v1 operational** — adaptive target from 25th-pct MFE; adaptive risk from median MAE; adaptive horizon from median sessions_to_outcome; ticker-specific analogue population | 2026-08-18 |
 | Volume enrichment | **Data capture permitted** — relative_volume_20 stored in REC-001-H; volume regime used in analogue matching (LOW/NORMAL/HIGH); recommendation use not yet prospectively validated | 2026-08-18 |
 | Adaptive R:R | **OPERATIONAL in v1** — derived from first-exit analogue population; requires reference_price from prospective pipeline for absolute price targets | 2026-08-18 |
-| chrono-ui — Trading MVP | Active — Next.js 15, port 3000; v1 endpoint `/api/recommendations/v1/latest`; adaptive geometry + degradation badges displayed | 2026-08-18 |
+| chrono-ui — Trading MVP | Active — Next.js 15, port 3000; v1 endpoint `/api/recommendations/v1/latest`; adaptive geometry + degradation badges displayed; **MVP-CLEANUP-001 applied** — Portfolio removed from nav (AC-08); SHORT % signs corrected on Decision Feed + Detail; "Awaiting prospective observation" on evidence fields; "Not recorded at certification" on Reference Risk boundary; legacy CS-P-006 banners on Observatory/Audit/Provenance; execution note updated; commit 0f962a4de | 2026-08-19 |
 | hdv001-dashboard — Evidence Dashboard | **FROZEN** 2026-08-17 — Vite/React, port 5174, read-only | 2026-08-17 |
 | emit_prospective_to_server.py | **Transitional tool 2026-08-18** — `scripts/emit_prospective_to_server.py`; re-emits an already-sealed prospective ledger to the Decision Server without re-fetching Yahoo data; idempotent; canonical path is `csp006_p_prospective --emit-url` which fetches fresh data and emits in one pass | 2026-08-18 |
 | Yahoo incremental fetch | **COMPLETE 2026-08-18** — `adapters/chronosentiment/src/ingestion/yahoo.rs`; `fetch_historical` now checks local cache first, fetches only missing ticks (period1=last_ts+1, period2=now+1d), merges+dedupes+sorts, writes back; no full re-fetch when cache is warm | 2026-08-18 |
@@ -270,6 +270,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.73 | 2026-08-19 | MVP-CLEANUP-001 browser-regression PASS — all 6 AC fixes verified: (1) Portfolio removed from OPERATE nav (AC-08); (2) SHORT % signs correct on Decision Feed cards and Detail page; (3) "Awaiting prospective observation" on evidence fields; (4) execution note updated (no MVP-007 reference); (5) Reference Risk boundary "Not recorded at certification"; (6) legacy CS-P-006 banners on Observatory, Audit, Provenance; commit 0f962a4de; 202 decisions enriched and confirmed in browser |
 | 1.72 | 2026-08-18 | Algorithm FROZEN — policy reconciliation complete; dormant SELL branch (SHORT+Favourable→SELL, 0 SELLs at baseline); REC-BASELINE-001-RECONCILIATION.md answers all 5 Q/A from source; corrected policy semantics for REC-BASELINE-002; 60/60 tests pass; no further algorithm changes until prospective evidence accumulates |
 | 1.71 | 2026-08-18 | CDI MVP v0.1 FROZEN BASELINE — 101-ticker universe; RecommendationEngine v1 OPERATIONAL; /latest deduplicates by ticker; /history returns all; evaluated=101, Buy=14, Watch=46, NoTrade=41; Prospective Observation Recorder declared NEXT MILESTONE |
 | 1.70 | 2026-08-18 | Yahoo incremental fetch complete — csp006_p_enrich binary; emitted_new=202; coralys_decision_server rebuilt with dedup logic |
