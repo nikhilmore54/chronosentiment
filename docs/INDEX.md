@@ -30,7 +30,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | RecommendationEngine v1 | **COMPLETE 2026-08-18** — Coralys-native; analogue-population-based; adaptive R:R + horizon; first-exit semantics; graceful degradation (Exact→RelaxVol→RelaxBoth→StateOnly→NO_TRADE); see ARCH-006 | 2026-08-18 |
 | HDV-001 — Historical Decision Validation | **FROZEN** 2026-08-17 — all gates PASS | 2026-08-17 |
 | HDV-002 — Risk-Boundary Research | **FROZEN methodology** / validation accumulation active — opens 2026-08-18; independent of REC-001 | 2026-08-18 |
-| 102-stock universe (UNIV-001) | **Versioned / active** — `datasets/universes/coralys_102_v1.json`; frozen 2026-08-18; 101 valid, 1 unavailable (Yahoo) | 2026-08-18 |
+| 102-stock universe (UNIV-001) | **Versioned / active** — `datasets/universes/coralys_102_v2.json` (ACTIVE); v1 frozen/superseded; v2 replaces MCDOWELL-N.NS with UBL.NS; 102 valid tickers, 0 unavailable | 2026-08-18 |
 | Recommendation evidence | **REC-001-H ticker-specific (COMPLETE)** — 101 tickers, 121,805 records; `datasets/recommendation/historical/TICKER_NS.jsonl`; leakage-free | 2026-08-18 |
 | Recommendation ranking | **v1 operational** — adaptive target from 25th-pct MFE; adaptive risk from median MAE; adaptive horizon from median sessions_to_outcome; ticker-specific analogue population | 2026-08-18 |
 | Volume enrichment | **Data capture permitted** — relative_volume_20 stored in REC-001-H; volume regime used in analogue matching (LOW/NORMAL/HIGH); recommendation use not yet prospectively validated | 2026-08-18 |
