@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.70
+**Version:** 1.71
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -24,8 +24,9 @@ This is the single authoritative entry point for the repository. Every canonical
 | Experiment Harness | Stable — all 5 modules complete | 2026-08-01 |
 | GERAD Coralys v1.0 Baseline | **FROZEN** 2026-08-01 | 2026-08-01 |
 | Repository Governance | Active — GOV-001 complete, GOV-002 this document | 2026-08-01 |
-| CDI MVP v0.1 — Decision Server | **Active — 102-stock universe; RecommendationEngine v1 OPERATIONAL** (evaluated=101, actionable=63, buy=11, watch=52, no_trade=38; G1–G4 gates pass; 60/60 tests green) | 2026-08-18 |
-| REC-001 — Recommendation Engine Validation | **Active — v1 prospective observation** (REC-001-H COMPLETE — 101 tickers, 121,805 records; v1 engine live; G2 proven: same C3-002 state ≠ same recommendation) | 2026-08-18 |
+| CDI MVP v0.1 — Decision Server | **FROZEN BASELINE 2026-08-18** — 101-ticker universe; RecommendationEngine v1 OPERATIONAL; `/latest` deduplicates by ticker (newest wins); `/history` returns all observations; evaluated=101, Buy=14, Watch=46, NoTrade=41; 34/34 tests green | 2026-08-18 |
+| REC-001 — Recommendation Engine Validation | **Active — prospective observation phase** (REC-001-H COMPLETE — 101 tickers, 121,805 records; v1 engine live; G2 proven; `/latest` = one per ticker; `/history` = all observations; next: prospective observation recorder) | 2026-08-18 |
+| Prospective Observation Recorder | **NEXT MILESTONE** — record T0 snapshot (ticker, state, action, target, risk, horizon, analogue_n, target_rate, score) + T+h outcome (MFE, MAE, target_reached, risk_reached, first_exit, sessions_to_outcome, outcome); observation_status=OPEN/CLOSED/INCOMPLETE; immutable T0 snapshot — never overwrite; accumulate evidence without contaminating recommendation with future information | 2026-08-18 |
 | REC-001-H Evidence Quality | **COMPLETE 2026-08-18** — evidence_quality_report.csv written; C3-002 mapping verified (Bear+Neg→LONG); LONG min-bucket median=170; SHORT min-bucket median=187; LONG target rate 29.6% mean | 2026-08-18 |
 | RecommendationEngine v1 | **COMPLETE 2026-08-18** — Coralys-native; analogue-population-based; adaptive R:R + horizon; first-exit semantics; graceful degradation (Exact→RelaxVol→RelaxBoth→StateOnly→NO_TRADE); see ARCH-006 | 2026-08-18 |
 | HDV-001 — Historical Decision Validation | **FROZEN** 2026-08-17 — all gates PASS | 2026-08-17 |
