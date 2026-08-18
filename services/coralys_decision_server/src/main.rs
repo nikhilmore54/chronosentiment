@@ -1,20 +1,23 @@
 //! Coralys Decision Intelligence API server.
 //!
-//! MVP-005: `GET /decisions`                — Decision Feed
-//! MVP-006: `GET /decisions/{id}`           — Decision Detail
-//! MVP-009: `GET /recommendations/latest`   — Ranked Recommendation Snapshot
+//! MVP-005: `GET /decisions`                  — Decision Feed
+//! MVP-006: `GET /decisions/{id}`             — Decision Detail
+//! MVP-009: `GET /recommendations/latest`     — Ranked Recommendation Snapshot (v0, HDV-001)
+//! MVP-010: `GET /recommendations/v1/latest`  — Ranked Recommendation Snapshot (v1, REC-001-H)
 //!
 //! Architecture:
 //! ```text
-//! DecisionLedger (shared, RwLock-protected)
-//! EvidenceStore  (loaded once at startup from HDV-001 outcomes file)
+//! DecisionLedger  (shared, RwLock-protected)
+//! EvidenceStore   (v0, HDV-001, loaded once at startup)
+//! Rec001hStore    (v1, REC-001-H JSONL, loaded once at startup)
 //!         │
 //!         ▼
 //! Axum router
 //!         │
-//!         ├── GET /decisions                → feed::get_decisions
-//!         ├── GET /decisions/{id}           → detail::get_decision_by_id
-//!         └── GET /recommendations/latest   → recommendations::get_recommendations_latest
+//!         ├── GET /decisions                  → feed::get_decisions
+//!         ├── GET /decisions/{id}             → detail::get_decision_by_id
+//!         ├── GET /recommendations/latest     → recommendations::get_recommendations_latest (v0)
+//!         └── GET /recommendations/v1/latest  → recommendations_v1::get_recommendations_v1_latest
 //! ```
 //!
 //! The ledger is the authoritative source. No decisions are reconstructed
@@ -26,7 +29,7 @@ use std::sync::Arc;
 
 use axum::{Router, routing::{get, post}};
 use coralys_decision::DecisionLedger;
-use coralys_decision::recommendation::EvidenceStore;
+use coralys_decision::recommendation::{EvidenceStore, Rec001hStore};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing_subscriber::{EnvFilter, fmt};
@@ -37,13 +40,15 @@ use tracing_subscriber::{EnvFilter, fmt};
 ///
 /// - `ledger` — the `DecisionLedger` is the single source of truth for all
 ///   certified decisions. `RwLock` allows concurrent reads with exclusive writes.
-/// - `evidence_store` — the frozen HDV-001 analogue index, loaded once at
-///   startup. `None` when the outcomes file is unavailable (server still starts
-///   but `/recommendations/latest` returns 503).
+/// - `evidence_store` — the frozen HDV-001 analogue index (v0), loaded once at
+///   startup. `None` when the outcomes file is unavailable.
+/// - `rec001h_store` — the REC-001-H ticker-specific analogue store (v1), loaded
+///   once at startup from the JSONL evidence base. `None` when unavailable.
 #[derive(Clone)]
 pub struct AppState {
     pub ledger: Arc<RwLock<DecisionLedger>>,
     pub evidence_store: Option<Arc<EvidenceStore>>,
+    pub rec001h_store: Option<Arc<Rec001hStore>>,
 }
 
 impl AppState {
@@ -51,14 +56,16 @@ impl AppState {
         Self {
             ledger: Arc::new(RwLock::new(DecisionLedger::new())),
             evidence_store: None,
+            rec001h_store: None,
         }
     }
 
-    /// Build state with a pre-loaded `EvidenceStore`.
+    /// Build state with a pre-loaded `EvidenceStore` (v0).
     pub fn with_evidence(evidence_store: EvidenceStore) -> Self {
         Self {
             ledger: Arc::new(RwLock::new(DecisionLedger::new())),
             evidence_store: Some(Arc::new(evidence_store)),
+            rec001h_store: None,
         }
     }
 }
@@ -94,6 +101,10 @@ pub fn build_router(state: AppState) -> Router {
             "/recommendations/latest",
             get(api::recommendations::get_recommendations_latest),
         )
+        .route(
+            "/recommendations/v1/latest",
+            get(api::recommendations_v1::get_recommendations_v1_latest),
+        )
         .with_state(state)
 }
 
@@ -105,18 +116,13 @@ async fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    // Load the frozen HDV-001 evidence store.
-    // Path is relative to the workspace root; the server is expected to be
-    // started from the repository root (or the path overridden via env).
+    // Load the frozen HDV-001 evidence store (v0).
     let outcomes_path = std::env::var("HDV001_OUTCOMES_PATH")
         .unwrap_or_else(|_| "datasets/hdv001/hdv001_outcomes_v1.json".to_string());
 
     let evidence_store = match EvidenceStore::load_from_file(&outcomes_path) {
         Ok(store) => {
-            tracing::info!(
-                path = %outcomes_path,
-                "HDV-001 evidence store loaded"
-            );
+            tracing::info!(path = %outcomes_path, "HDV-001 evidence store loaded (v0)");
             Some(Arc::new(store))
         }
         Err(e) => {
@@ -129,9 +135,29 @@ async fn main() {
         }
     };
 
+    // Load the REC-001-H ticker-specific analogue store (v1).
+    let rec001h_dir = std::env::var("REC001H_DIR")
+        .unwrap_or_else(|_| "datasets/recommendation/historical".to_string());
+
+    let rec001h_store = match Rec001hStore::load_from_dir(&rec001h_dir) {
+        Ok(store) => {
+            tracing::info!(dir = %rec001h_dir, "REC-001-H evidence store loaded (v1)");
+            Some(Arc::new(store))
+        }
+        Err(e) => {
+            tracing::warn!(
+                dir = %rec001h_dir,
+                error = %e,
+                "REC-001-H directory not found — /recommendations/v1/latest will return 503"
+            );
+            None
+        }
+    };
+
     let state = AppState {
         ledger: Arc::new(RwLock::new(DecisionLedger::new())),
         evidence_store,
+        rec001h_store,
     };
 
     let app = build_router(state);

@@ -1,80 +1,59 @@
 "use client";
 
 /**
- * /live — Trading Home Screen
+ * /live — Trading Home Screen (v1)
  *
- * Fetches the ranked RecommendationSnapshot from GET /recommendations/latest
+ * Fetches the ranked RecommendationSnapshotV1 from GET /recommendations/v1/latest
  * (coralys_decision_server :3001) and displays it as the primary trading
  * home screen.
  *
  * Architecture contract:
  * - ALL recommendation logic lives in the Rust engine (coralys-decision).
- * - This page displays RecommendationRecord fields verbatim — no re-ranking,
+ * - This page displays RecommendationRecordV1 fields verbatim — no re-ranking,
  *   no re-scoring, no probability claims.
  * - Historical target-before-risk rates are NOT presented as forward
  *   probabilities of success.
+ * - Adaptive geometry is derived from first-exit analogue population:
+ *   target from winning analogues, risk from losing analogues.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-// ─── Types (mirror RecommendationRecord from the Rust engine) ─────────────────
+// ─── Types (mirror RecommendationRecordV1 from the Rust engine) ───────────────
 
-interface AnalogueKey {
-  direction: string;
-  coralys_state: string;
-  narrow_match: boolean;
-  sample_size: number;
-}
-
-interface HistoricalEvidence {
-  analogue_key: AnalogueKey;
-  sample_size: number;
-  target_before_risk_rate: number;
-  risk_before_target_rate: number;
-  horizon_rate: number;
-  median_mfe: number;
-  median_mae: number;
-  median_sessions_to_target: number | null;
-  evidence_class: "Favourable" | "Mixed" | "Unfavourable" | "Insufficient";
-}
-
-interface ScoreComponents {
-  evidence_weight: number;
-  rr_weight: number;
-  freshness_weight: number;
-  evidence_contribution: number;
-  rr_contribution: number;
-  freshness_contribution: number;
-}
-
-interface RecommendationRecord {
+interface RecommendationRecordV1 {
   decision_id: string;
   instrument: string;
   direction: string;
   trend: string;
   momentum: string;
   reference_price: number | null;
-  atr_14: number | null;
-  indicative_target: number | null;
-  indicative_risk: number | null;
-  upside_pct: number | null;
-  downside_pct: number | null;
-  rr: number | null;
-  horizon_min_sessions: number;
-  horizon_max_sessions: number;
-  effective_session: string | null;
-  evidence: HistoricalEvidence;
+  adaptive_target: number | null;
+  adaptive_risk: number | null;
+  adaptive_upside_pct: number | null;
+  adaptive_downside_pct: number | null;
+  adaptive_rr: number | null;
+  adaptive_horizon_sessions: number | null;
+  degradation_level: string;
+  sample_size: number;
+  target_rate: number;
+  evidence_class: "Favourable" | "Mixed" | "Unfavourable" | "Insufficient";
   action: "Buy" | "Watch" | "NoTrade";
   rank_score: number;
   recommendation_policy_version: string;
-  score_components: ScoreComponents;
+  vol_regime: string;
+  volume_regime: string;
 }
 
-interface RecommendationSnapshot {
+interface RecommendationSnapshotV1 {
   evaluated: number;
   actionable: number;
-  recommendations: RecommendationRecord[];
+  buy: number;
+  watch: number;
+  no_trade: number;
+  policy_version: string;
+  recommendations: RecommendationRecordV1[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -89,7 +68,13 @@ function fmtPct(n: number | null): string {
   return (n * 100).toFixed(2) + "%";
 }
 
-function actionColor(action: RecommendationRecord["action"]): string {
+function fmtPctDirect(n: number | null): string {
+  // For values already in percent (e.g. adaptive_target_pct stored as 3.1 meaning 3.1%)
+  if (n === null || n === undefined) return "—";
+  return n.toFixed(2) + "%";
+}
+
+function actionColor(action: RecommendationRecordV1["action"]): string {
   switch (action) {
     case "Buy": return "#10b981";
     case "Watch": return "#f59e0b";
@@ -97,7 +82,7 @@ function actionColor(action: RecommendationRecord["action"]): string {
   }
 }
 
-function actionLabel(action: RecommendationRecord["action"]): string {
+function actionLabel(action: RecommendationRecordV1["action"]): string {
   switch (action) {
     case "Buy": return "BUY";
     case "Watch": return "WATCH";
@@ -105,7 +90,7 @@ function actionLabel(action: RecommendationRecord["action"]): string {
   }
 }
 
-function evidenceColor(cls: HistoricalEvidence["evidence_class"]): string {
+function evidenceColor(cls: RecommendationRecordV1["evidence_class"]): string {
   switch (cls) {
     case "Favourable": return "#10b981";
     case "Mixed": return "#f59e0b";
@@ -120,13 +105,25 @@ function directionClass(dir: string): string {
   return "badge badge-no-trade";
 }
 
-// ─── Recommendation Card ──────────────────────────────────────────────────────
+function degradationBadge(level: string): { label: string; color: string } {
+  switch (level) {
+    case "Exact":        return { label: "Exact match",    color: "#10b981" };
+    case "RelaxVolume":  return { label: "Relax vol",      color: "#6366f1" };
+    case "RelaxBoth":    return { label: "Relax both",     color: "#f59e0b" };
+    case "StateOnly":    return { label: "State only",     color: "#ef4444" };
+    case "Insufficient": return { label: "Insufficient",   color: "#6b7280" };
+    default:             return { label: level,            color: "#6b7280" };
+  }
+}
 
-function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
+// ─── Recommendation Card (v1) ─────────────────────────────────────────────────
+
+function RecommendationCard({ rec }: { rec: RecommendationRecordV1 }) {
   const ac = actionColor(rec.action);
-  const ec = evidenceColor(rec.evidence.evidence_class);
+  const ec = evidenceColor(rec.evidence_class);
   const isBuy = rec.action === "Buy";
   const isWatch = rec.action === "Watch";
+  const deg = degradationBadge(rec.degradation_level);
 
   return (
     <div style={{
@@ -142,7 +139,9 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)" }}>{rec.instrument}</span>
+            <span style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)" }}>
+              {rec.instrument.replace("_NS", ".NS")}
+            </span>
             <span className={directionClass(rec.direction)}>{rec.direction}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -156,8 +155,8 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
           </div>
         </div>
 
-        {/* State + session */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+        {/* State row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
           <div>
             <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Coralys State</div>
             <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
@@ -165,14 +164,23 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Session</div>
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Vol / Volume</div>
             <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
-              {rec.effective_session ?? "—"}
+              {rec.vol_regime} / {rec.volume_regime}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Analogues</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>n={rec.sample_size}</span>
+              <span style={{ fontSize: "9px", fontWeight: "600", color: deg.color, background: `${deg.color}18`, padding: "1px 5px", borderRadius: "3px" }}>
+                {deg.label}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Geometry row */}
+        {/* Adaptive geometry row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
           <div>
             <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Reference</div>
@@ -181,23 +189,23 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Ind. Target</div>
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Adap. Target</div>
             <div style={{ fontSize: "13px", fontWeight: "700", color: "#10b981" }}>
-              {fmt(rec.indicative_target)}
-              {rec.upside_pct !== null && (
+              {fmt(rec.adaptive_target)}
+              {rec.adaptive_upside_pct !== null && (
                 <span style={{ fontSize: "10px", color: "#10b981", marginLeft: "4px" }}>
-                  {rec.direction === "SHORT" ? "-" : "+"}{fmtPct(rec.upside_pct)}
+                  {rec.direction === "SHORT" ? "-" : "+"}{fmtPct(rec.adaptive_upside_pct)}
                 </span>
               )}
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Ind. Risk</div>
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Adap. Risk</div>
             <div style={{ fontSize: "13px", fontWeight: "700", color: "#ef4444" }}>
-              {fmt(rec.indicative_risk)}
-              {rec.downside_pct !== null && (
+              {fmt(rec.adaptive_risk)}
+              {rec.adaptive_downside_pct !== null && (
                 <span style={{ fontSize: "10px", color: "#ef4444", marginLeft: "4px" }}>
-                  {rec.direction === "SHORT" ? "+" : "-"}{fmtPct(rec.downside_pct)}
+                  {rec.direction === "SHORT" ? "+" : "-"}{fmtPct(rec.adaptive_downside_pct)}
                 </span>
               )}
             </div>
@@ -205,7 +213,7 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
           <div>
             <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>R:R</div>
             <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)" }}>
-              {rec.rr !== null ? rec.rr.toFixed(2) : "—"}
+              {rec.adaptive_rr !== null ? rec.adaptive_rr.toFixed(2) : "—"}
             </div>
           </div>
         </div>
@@ -220,32 +228,23 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
             <span style={{ fontSize: "10px", fontWeight: "700", color: ec, letterSpacing: "0.05em" }}>
-              {rec.evidence.evidence_class.toUpperCase()} EVIDENCE
+              {rec.evidence_class.toUpperCase()} EVIDENCE
             </span>
             <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-              n={rec.evidence.sample_size}
-              {!rec.evidence.analogue_key.narrow_match && (
-                <span style={{ marginLeft: "4px", color: "#f59e0b" }}>(broad)</span>
-              )}
+              Horizon: {rec.adaptive_horizon_sessions !== null ? rec.adaptive_horizon_sessions.toFixed(1) + " sessions" : "—"}
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
             <div>
-              <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "1px" }}>Target rate</div>
+              <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "1px" }}>Target rate (first-exit)</div>
               <div style={{ fontSize: "12px", fontWeight: "700", color: ec }}>
-                {fmtPct(rec.evidence.target_before_risk_rate)}
+                {fmtPct(rec.target_rate)}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "1px" }}>Median MFE</div>
+              <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "1px" }}>Rank score</div>
               <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
-                {fmtPct(rec.evidence.median_mfe)}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: "9px", color: "var(--text-muted)", marginBottom: "1px" }}>Median MAE</div>
-              <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
-                {fmtPct(rec.evidence.median_mae)}
+                {rec.rank_score.toFixed(4)}
               </div>
             </div>
           </div>
@@ -254,11 +253,10 @@ function RecommendationCard({ rec }: { rec: RecommendationRecord }) {
           </div>
         </div>
 
-        {/* Footer: rank score + link */}
+        {/* Footer: policy + link */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-            Rank score: <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>{rec.rank_score.toFixed(4)}</span>
-            <span style={{ marginLeft: "6px" }}>· policy {rec.recommendation_policy_version}</span>
+            policy {rec.recommendation_policy_version}
           </div>
           <Link
             href={`/decisions/${rec.decision_id}`}
@@ -293,16 +291,16 @@ function getMarketStatus() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LivePage() {
-  const [snapshot, setSnapshot] = useState<RecommendationSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<RecommendationSnapshotV1 | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const market = getMarketStatus();
 
   useEffect(() => {
-    fetch("/api/recommendations/latest")
+    fetch("/api/recommendations/v1/latest")
       .then((r) => {
         if (!r.ok) throw new Error(`Server returned ${r.status}`);
-        return r.json() as Promise<RecommendationSnapshot>;
+        return r.json() as Promise<RecommendationSnapshotV1>;
       })
       .then((data) => {
         setSnapshot(data);
@@ -326,7 +324,7 @@ export default function LivePage() {
           <p style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>ChronoSentiment</p>
           <h1 style={{ fontSize: "24px", fontWeight: "700", color: "var(--text-primary)", letterSpacing: "-0.02em", margin: "0 0 6px 0" }}>Recommendations</h1>
           <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-            NSE · Ranked by evidence + geometry · Policy {snapshot?.recommendations[0]?.recommendation_policy_version ?? "v0"}
+            NSE · Ticker-specific analogue population · Adaptive geometry · Policy {snapshot?.policy_version ?? "v1"}
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -345,12 +343,13 @@ export default function LivePage() {
 
       {/* Summary stats */}
       {snapshot && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "28px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "12px", marginBottom: "28px" }}>
           {[
-            { label: "Evaluated", value: snapshot.evaluated, color: "var(--text-secondary)" },
+            { label: "Evaluated",  value: snapshot.evaluated,  color: "var(--text-secondary)" },
             { label: "Actionable", value: snapshot.actionable, color: "#10b981" },
-            { label: "BUY", value: buyRecs.length, color: "#10b981" },
-            { label: "WATCH", value: watchRecs.length, color: "#f59e0b" },
+            { label: "BUY",        value: snapshot.buy,        color: "#10b981" },
+            { label: "WATCH",      value: snapshot.watch,      color: "#f59e0b" },
+            { label: "NO TRADE",   value: snapshot.no_trade,   color: "#6b7280" },
           ].map((s) => (
             <div key={s.label} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "10px", padding: "14px 16px" }}>
               <div style={{ fontSize: "10px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "6px" }}>{s.label}</div>
@@ -363,7 +362,7 @@ export default function LivePage() {
       {/* Loading */}
       {loading && (
         <div style={{ padding: "48px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
-          Loading recommendations from Decision Server…
+          Loading v1 recommendations from Decision Server…
         </div>
       )}
 
@@ -384,7 +383,7 @@ export default function LivePage() {
           <h2 style={{ fontSize: "13px", fontWeight: "600", color: "#10b981", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 12px 0" }}>
             BUY — {buyRecs.length} decision{buyRecs.length !== 1 ? "s" : ""}
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: "12px" }}>
             {buyRecs.map((r) => <RecommendationCard key={r.decision_id} rec={r} />)}
           </div>
         </div>
@@ -396,7 +395,7 @@ export default function LivePage() {
           <h2 style={{ fontSize: "13px", fontWeight: "600", color: "#f59e0b", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 12px 0" }}>
             WATCH — {watchRecs.length} decision{watchRecs.length !== 1 ? "s" : ""}
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: "12px" }}>
             {watchRecs.map((r) => <RecommendationCard key={r.decision_id} rec={r} />)}
           </div>
         </div>
@@ -426,12 +425,13 @@ export default function LivePage() {
 
       {/* Governance footer */}
       <div style={{ marginTop: "16px", padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px" }}>
-        <div style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.6" }}>
-          <strong style={{ color: "var(--text-secondary)" }}>Governance:</strong>{" "}
-          Recommendations are derived from frozen HDV-001 historical evidence (728 COMPLETE decisions).
-          Target-before-risk rates describe what happened in comparable past decisions — they are{" "}
-          <strong>not forward probabilities of success</strong>.
-          Policy version v0 is frozen with HDV-001. HDV-002 opens 2026-08-18 (≥200 COMPLETE decisions required for v1).
+        <div style={{ fontSize: "10px", color: "var(--text-muted)", lineHeight: "1.6" }}>
+          <strong style={{ color: "var(--text-secondary)" }}>Coralys v1 — Analogue-population engine.</strong>{" "}
+          Adaptive target derived from 25th-percentile MFE of winning analogues (TARGET_BEFORE_RISK).
+          Adaptive risk derived from median MAE of losing analogues (RISK_BEFORE_TARGET).
+          Horizon from median sessions_to_outcome. Degradation: Exact → RelaxVolume → RelaxBoth → StateOnly → NO_TRADE.
+          Historical rates describe past analogues — not forward probabilities of success.
+          This system is for paper-trading observation only.
         </div>
       </div>
     </div>

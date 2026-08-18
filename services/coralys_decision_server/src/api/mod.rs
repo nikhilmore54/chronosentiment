@@ -13,6 +13,7 @@ pub mod feed;
 pub mod ingest;
 pub mod outcome;
 pub mod recommendations;
+pub mod recommendations_v1;
 
 use chrono::{DateTime, Utc};
 use coralys_decision::record::{
