@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.71
+**Version:** 1.72
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -25,6 +25,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | GERAD Coralys v1.0 Baseline | **FROZEN** 2026-08-01 | 2026-08-01 |
 | Repository Governance | Active — GOV-001 complete, GOV-002 this document | 2026-08-01 |
 | CDI MVP v0.1 — Decision Server | **FROZEN BASELINE 2026-08-18** — 101-ticker universe; RecommendationEngine v1 OPERATIONAL; `/latest` deduplicates by ticker (newest wins); `/history` returns all observations; evaluated=101, Buy=14, Watch=46, NoTrade=41; 34/34 tests green | 2026-08-18 |
+| CDI MVP v0.1 — Algorithm FROZEN | **ALGORITHM FROZEN 2026-08-18** — policy reconciliation complete; dormant SELL branch added (SHORT+Favourable→SELL; 0 SELLs at baseline); corrected policy semantics in REC-BASELINE-001-RECONCILIATION.md; 60/60 tests pass; no further algorithm changes until prospective evidence accumulates | 2026-08-18 |
 | REC-001 — Recommendation Engine Validation | **Active — prospective observation phase** (REC-001-H COMPLETE — 101 tickers, 121,805 records; v1 engine live; G2 proven; `/latest` = one per ticker; `/history` = all observations; next: prospective observation recorder) | 2026-08-18 |
 | Prospective Observation Recorder | **NEXT MILESTONE** — record T0 snapshot (ticker, state, action, target, risk, horizon, analogue_n, target_rate, score) + T+h outcome (MFE, MAE, target_reached, risk_reached, first_exit, sessions_to_outcome, outcome); observation_status=OPEN/CLOSED/INCOMPLETE; immutable T0 snapshot — never overwrite; accumulate evidence without contaminating recommendation with future information | 2026-08-18 |
 | REC-001-H Evidence Quality | **COMPLETE 2026-08-18** — evidence_quality_report.csv written; C3-002 mapping verified (Bear+Neg→LONG); LONG min-bucket median=170; SHORT min-bucket median=187; LONG target rate 29.6% mean | 2026-08-18 |
@@ -269,6 +270,12 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.72 | 2026-08-18 | Algorithm FROZEN — policy reconciliation complete; dormant SELL branch (SHORT+Favourable→SELL, 0 SELLs at baseline); REC-BASELINE-001-RECONCILIATION.md answers all 5 Q/A from source; corrected policy semantics for REC-BASELINE-002; 60/60 tests pass; no further algorithm changes until prospective evidence accumulates |
+| 1.71 | 2026-08-18 | CDI MVP v0.1 FROZEN BASELINE — 101-ticker universe; RecommendationEngine v1 OPERATIONAL; /latest deduplicates by ticker; /history returns all; evaluated=101, Buy=14, Watch=46, NoTrade=41; Prospective Observation Recorder declared NEXT MILESTONE |
+| 1.70 | 2026-08-18 | Yahoo incremental fetch complete — csp006_p_enrich binary; emitted_new=202; coralys_decision_server rebuilt with dedup logic |
+| 1.69 | 2026-08-18 | Evidence Quality Report; C3-002 mapping verified; ARCH-006 v1.1 |
+| 1.68 | 2026-08-18 | REC-001-H Phase 1–4 complete — RecommendationEngine v1; G1–G4 pass; server wiring; UI wiring; NULL f64 fix; 34/34 tests pass |
+| 1.67 | 2026-08-18 | REC-001-B complete — 101 recommendations emitted; BUY=60, NO_TRADE=41; SHORT sign fix; governance: INDEX.md changes + REC-001_RECOMMENDATION_VALIDATION.md |
 | 1.66 | 2026-08-18 | SVC-001 Recommendation Engine v0 added to coralys-decision (evidence.rs + engine.rs; EvidenceStore::load_from_file; GET /recommendations/latest; /live page replaced with ranked recommendation view; 13 tests pass; policy version v0 frozen with HDV-001) |
 | 1.65 | 2026-08-17 | SVC-001 POST /decisions ingest endpoint added to coralys_decision_server (Rust/Axum; SealedDecisionInput; provenance verified; builds clean) |
 | 1.64 | 2026-08-17 | SVC-001/SVC-002/SVC-003 Services & UI section added to index |
