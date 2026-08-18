@@ -228,12 +228,16 @@ function DecisionCard({ entry }: { entry: FeedEntry }) {
               <PriceRow
                 label="Indicative Target"
                 value={formatPrice(indicative.indicative_target)}
-                sub={formatPct(entry.direction === "SHORT" ? -indicative.upside_pct : indicative.upside_pct)}
+                sub={entry.reference_price
+                  ? formatPct((indicative.indicative_target - entry.reference_price) / entry.reference_price)
+                  : undefined}
               />
               <PriceRow
                 label="Indicative Risk"
                 value={formatPrice(indicative.indicative_risk)}
-                sub={formatPct(entry.direction === "SHORT" ? indicative.downside_pct : -indicative.downside_pct)}
+                sub={entry.reference_price
+                  ? formatPct((indicative.indicative_risk - entry.reference_price) / entry.reference_price)
+                  : undefined}
               />
             </>
           ) : (

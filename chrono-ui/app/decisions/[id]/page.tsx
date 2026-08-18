@@ -146,7 +146,7 @@ function EvidenceField({
           fontStyle: value === null ? "italic" : "normal",
         }}
       >
-        {value !== null ? String(value) : "Evidence enrichment pending"}
+        {value !== null ? String(value) : "Awaiting prospective observation"}
       </span>
     </div>
   );
@@ -275,7 +275,9 @@ export default async function DecisionDetailPage({
               <span style={{ fontSize: "15px", fontWeight: "700", color: "#10b981" }}>
                 {formatPrice(indicative.indicative_target)}{" "}
                 <span style={{ fontSize: "11px", fontWeight: "400", color: "#10b981" }}>
-                  {formatPct(d.decision.direction === "SHORT" ? -indicative.upside_pct : indicative.upside_pct)}
+                  {d.decision.reference_price != null
+                    ? formatPct((indicative.indicative_target - d.decision.reference_price) / d.decision.reference_price)
+                    : ""}
                 </span>
               </span>
             ) : (
@@ -292,7 +294,9 @@ export default async function DecisionDetailPage({
               <span style={{ fontSize: "15px", fontWeight: "700", color: "#f59e0b" }}>
                 {formatPrice(indicative.indicative_risk)}{" "}
                 <span style={{ fontSize: "11px", fontWeight: "400", color: "#f59e0b" }}>
-                  {formatPct(d.decision.direction === "SHORT" ? indicative.downside_pct : -indicative.downside_pct)}
+                  {d.decision.reference_price != null
+                    ? formatPct((indicative.indicative_risk - d.decision.reference_price) / d.decision.reference_price)
+                    : ""}
                 </span>
               </span>
             ) : (
@@ -317,11 +321,15 @@ export default async function DecisionDetailPage({
         <Field
           label="Boundary"
           value={
-            <span
-              style={{ fontSize: "16px", fontWeight: "700", color: "#f59e0b" }}
-            >
-              {formatPrice(d.reference_risk.boundary_price)}
-            </span>
+            d.reference_risk.boundary_price !== null ? (
+              <span style={{ fontSize: "16px", fontWeight: "700", color: "#f59e0b" }}>
+                {formatPrice(d.reference_risk.boundary_price)}
+              </span>
+            ) : (
+              <span style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "13px" }}>
+                Not recorded at certification
+              </span>
+            )
           }
         />
         <Field label="Type" value={d.reference_risk.boundary_type} />
@@ -493,7 +501,7 @@ export default async function DecisionDetailPage({
           marginTop: "8px",
         }}
       >
-        Execution recording available in MVP-007
+        Execution is user-controlled. Recording an action does not place an order.
       </p>
     </div>
   );

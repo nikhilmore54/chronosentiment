@@ -81,6 +81,25 @@ export default async function AuditPage() {
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "32px 24px" }}>
+      {/* Legacy research banner */}
+      <div style={{
+        marginBottom: "24px",
+        padding: "10px 16px",
+        background: "rgba(245,158,11,0.06)",
+        border: "1px solid rgba(245,158,11,0.2)",
+        borderRadius: "6px",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+      }}>
+        <span style={{ fontSize: "11px", fontWeight: "700", color: "#f59e0b", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>
+          Legacy Research View
+        </span>
+        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+          CS-P-006 research observatory — not connected to the current Coralys Decision Intelligence MVP ledger.
+        </span>
+      </div>
+
       {/* Header */}
       <div style={{ marginBottom: "32px" }}>
         <p style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>Observatory</p>

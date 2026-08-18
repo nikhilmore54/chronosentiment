@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 const operateLinks = [
   { href: "/live", label: "Live" },
   { href: "/decisions", label: "Decisions" },
-  { href: "/portfolio", label: "Portfolio" },
+  // Portfolio removed from MVP navigation — AC-08: no capital-allocation mechanism in MVP v0.1
+  // Code preserved at chrono-ui/app/portfolio/page.tsx for future AllocationEngine work
 ];
 
 const proveLinks = [
