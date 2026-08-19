@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.78
+**Version:** 1.79
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -281,6 +281,8 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.79 | 2026-08-19 | LIVE-001 COMPLETE — live001_snapshot binary implemented and verified; UniverseFile struct fixed (Vec<String>); 102-instrument snapshot produced in 57s coherent boundary; n_complete=82, n_incomplete=19, n_error=1 (MCDOWELL-N.NS no data); artifact schema: snapshot_id=LIVE-YYYYMMDD-HHMM, source_type=LIVE, producer=live001_snapshot.v1, per-instrument C3-002 inputs + source_bar_timestamp + acquisition_timestamp; LIVE-002 may now consume |
+| 1.78 | 2026-08-19 | LIVE-001 snapshot artifact schema declared: LiveSnapshot + InstrumentSnapshot structs; source_type=LIVE provenance identity; C3-002 input fields; commit fc8144f56 |
 | 1.77 | 2026-08-19 | OBS-000 COMPLETE — temporal firewall test suite 17/17 pass; 7 invariants proven + future-poison test; coralys-decision/src/temporal_firewall_tests.rs (762 lines); commit 67d99a034; LIVE-001 may now begin |
 | 1.76 | 2026-08-19 | OBS-000 formal temporal firewall spec declared in INDEX.md: 7 invariants + future-poison test; commit c2e5c5c68 |
 | 1.75 | 2026-08-19 | LIVE-004 full invariant text: CERTIFIED = fresh enough data + complete C3-002 input snapshot (all inputs from same timestamp, no mixing) + reproducible pipeline + frozen policy artifact; OBS-001 dependency note: only after LIVE-005 complete; experimental control locked: same frozen algorithm + fresh inputs = live Coralys; distribution changes vs REC-BASELINE-001 attributed to market state not algorithm; commit 8b3311d42 |
