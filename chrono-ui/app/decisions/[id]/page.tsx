@@ -21,6 +21,8 @@ import {
   computeIndicativePrices,
   type CoralysDecision,
 } from "@/lib/coralys";
+import ExecutionRecorder from "@/components/ExecutionRecorder";
+import OutcomeRecorder from "@/components/OutcomeRecorder";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -448,61 +450,19 @@ export default async function DecisionDetailPage({
         />
       </Section>
 
-      {/* Action buttons — MVP-007/008 will wire these up */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginTop: "32px",
-          paddingTop: "24px",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
-        <button
-          disabled
-          style={{
-            flex: 1,
-            padding: "12px 16px",
-            background: "rgba(16,185,129,0.08)",
-            border: "1px solid rgba(16,185,129,0.2)",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontWeight: "600",
-            color: "#10b981",
-            cursor: "not-allowed",
-            opacity: 0.6,
-          }}
-        >
-          I EXECUTED THIS
-        </button>
-        <button
-          disabled
-          style={{
-            flex: 1,
-            padding: "12px 16px",
-            background: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontWeight: "600",
-            color: "var(--text-secondary)",
-            cursor: "not-allowed",
-            opacity: 0.6,
-          }}
-        >
-          IGNORE
-        </button>
-      </div>
-      <p
-        style={{
-          fontSize: "11px",
-          color: "var(--text-muted)",
-          textAlign: "center",
-          marginTop: "8px",
-        }}
-      >
-        Execution is user-controlled. Recording an action does not place an order.
-      </p>
+      {/* Execution Recorder — live, user-controlled */}
+      <ExecutionRecorder
+        decisionId={d.identity.decision_id}
+        currentStatus={d.execution.status}
+      />
+
+      {/* Outcome Recorder — shown when outcome is still OPEN */}
+      {d.outcome.status === "OPEN" && (
+        <OutcomeRecorder
+          decisionId={d.identity.decision_id}
+          currentOutcomeStatus={d.outcome.status}
+        />
+      )}
     </div>
   );
 }
