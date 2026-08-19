@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.74
+**Version:** 1.75
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -281,6 +281,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.75 | 2026-08-19 | LIVE-004 full invariant text: CERTIFIED = fresh enough data + complete C3-002 input snapshot (all inputs from same timestamp, no mixing) + reproducible pipeline + frozen policy artifact; OBS-001 dependency note: only after LIVE-005 complete; experimental control locked: same frozen algorithm + fresh inputs = live Coralys; distribution changes vs REC-BASELINE-001 attributed to market state not algorithm; commit 8b3311d42 |
 | 1.74 | 2026-08-19 | CDI MVP v0.1 Operational Baseline declared — Prospective Observation Recorder LIVE; ExecutionRecorder (USER_EXECUTED/USER_IGNORED, no quantity inference) + OutcomeRecorder (TARGET/REFERENCE_RISK/HORIZON/USER_CLOSED, boundary confirmation hard invariant); Next.js proxy routes; T0 immutable, T+h appended; browser-verified VEDL.NS; commit d0c9b1e2a; algorithm FROZEN — no changes until prospective evidence accumulates; USER_EXECUTED vs USER_IGNORED kept separate from market outcome |
 | 1.73 | 2026-08-19 | MVP-CLEANUP-001 browser-regression PASS — all 6 AC fixes verified: (1) Portfolio removed from OPERATE nav (AC-08); (2) SHORT % signs correct on Decision Feed cards and Detail page; (3) "Awaiting prospective observation" on evidence fields; (4) execution note updated (no MVP-007 reference); (5) Reference Risk boundary "Not recorded at certification"; (6) legacy CS-P-006 banners on Observatory, Audit, Provenance; commit 0f962a4de; 202 decisions enriched and confirmed in browser |
 | 1.72 | 2026-08-18 | Algorithm FROZEN — policy reconciliation complete; dormant SELL branch (SHORT+Favourable→SELL, 0 SELLs at baseline); REC-BASELINE-001-RECONCILIATION.md answers all 5 Q/A from source; corrected policy semantics for REC-BASELINE-002; 60/60 tests pass; no further algorithm changes until prospective evidence accumulates |
