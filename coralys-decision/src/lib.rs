@@ -18,6 +18,7 @@ pub mod integration_tests;
 pub mod ledger;
 pub mod record;
 pub mod recommendation;
+pub mod temporal_firewall_tests;
 pub mod traits;
 
 pub use adapter::{
