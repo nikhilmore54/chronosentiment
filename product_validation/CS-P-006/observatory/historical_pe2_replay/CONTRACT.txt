@@ -1,9 +1,0 @@
-Historical P.E.2 lifecycle validation
-P.E.2 specification remains CLOSED.
-Live P.E.2 remains AWAITING_NEXT_SESSION with 0 seals.
-Requested T: 2026-07-15T03:45:00+00:00
-Execution Contract v0: target_pct = 5.0%, max hold = 20 market sessions.
-C3-002 chooses direction only.
-The 14-August cohort stays decision-only.
-P.E.1 targeted_execution_v0 is frozen.
-Statistical strategy backtest: NOT PERFORMED

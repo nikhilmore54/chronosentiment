@@ -10,6 +10,12 @@ __pycache__/
 .env
 .DS_Store
 
+# Large live-capture and product-validation directories
+# Excluded to prevent Cursor gitWorker from scanning thousands of large JSON files
+# on every file change, which causes git add/commit to hang indefinitely.
+product_validation/
+live_capture/
+
 # Generated Artifacts & Substrates
 # REC-001-H JSONL evidence base — 111MB generated data, reproducible from pipeline
 datasets/recommendation/historical/*.jsonl

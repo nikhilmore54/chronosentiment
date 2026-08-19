@@ -1,4 +1,0 @@
-Execution Contract v0
-C3-002 chooses direction only.
-target_pct = 5.0% belongs to this contract, not to C3-002.
-Target sealed at T. Replay v0/v1 and the 14 August cohort are not rewritten.

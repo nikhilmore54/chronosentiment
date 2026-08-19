@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.80
+**Version:** 1.81
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -281,6 +281,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.81 | 2026-08-19 | LIVE-002 COMPLETE — live002_evaluate binary implemented and verified; reads latest.json (no network); frozen C3-002 artifact hash 5a43b9df verified; eligibility gate tmv_complete=true; n_evaluated=82, n_excluded_incomplete=19, n_excluded_error=1 (MCDOWELL-N.NS); accounting 82+19+1=102/102 PASS; all 82 evaluated → LONG (expected: frozen C3-002 Bearish→LONG rule; all instruments show Available trend); artifact: EVAL-20260819T064643Z.json + latest.json in live_capture/evaluations/; LIVE-003 may now begin |
 | 1.80 | 2026-08-19 | LIVE-002 formal spec declared: pure transformation of latest.json → frozen C3-002 state artifact; no network, no Yahoo fetch, no new indicators, no algorithm changes; eligibility gate: tmv_complete=true only; accounting: 102 input → 82 evaluated + 19 excluded-incomplete + 1 excluded-error; 5 ACs: input fidelity, eligibility fidelity, algorithm fidelity, determinism, accounting; LIVE-002 is NOT a recommendation (that is LIVE-003) |
 | 1.79 | 2026-08-19 | LIVE-001 COMPLETE — live001_snapshot binary implemented and verified; UniverseFile struct fixed (Vec<String>); 102-instrument snapshot produced in 57s coherent boundary; n_complete=82, n_incomplete=19, n_error=1 (MCDOWELL-N.NS no data); artifact schema: snapshot_id=LIVE-YYYYMMDD-HHMM, source_type=LIVE, producer=live001_snapshot.v1, per-instrument C3-002 inputs + source_bar_timestamp + acquisition_timestamp; LIVE-002 may now consume |
 | 1.78 | 2026-08-19 | LIVE-001 snapshot artifact schema declared: LiveSnapshot + InstrumentSnapshot structs; source_type=LIVE provenance identity; C3-002 input fields; commit fc8144f56 |

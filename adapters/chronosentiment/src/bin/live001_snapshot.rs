@@ -234,17 +234,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let atr_14 = metrics.get_float("atr_14");
 
         // TMV assessment (trend, momentum, volatility).
+        //
+        // Architecture note (from assessment.rs):
+        //   - factor_status: availability flags (Available/Unavailable) — always populated
+        //   - assessments: directional values — only populated when assess_concept returns Some
+        //   - Concept::Volatility always returns None from assess_concept (magnitude-only,
+        //     no direction invented). It is Available in factor_status but absent from assessments.
+        //
+        // C3-002 input contract:
+        //   trend      = "Bullish" | "Bearish"   (from assessments.direction)
+        //   momentum   = "Positive" | "Negative" (from assessments.direction)
+        //   volatility = availability flag        (from factor_status.availability — no direction)
+        //
+        // tmv_complete uses factor_status (availability) for all three, which is correct:
+        //   it gates on whether the required metrics were present, not on direction.
         let (profile, _, _) = assess_from_bars_at_t(&bars, t, instrument_id);
+
+        // Trend and Momentum: directional values from assessments
         let trend = profile
-            .factor_status
+            .assessments
             .iter()
-            .find(|s| s.concept == chronosentiment_adapter::metrics::concepts::Concept::Trend)
-            .map(|s| format!("{:?}", s.availability));
+            .find(|a| a.concept == chronosentiment_adapter::metrics::concepts::Concept::Trend)
+            .map(|a| format!("{:?}", a.direction));
         let momentum = profile
-            .factor_status
+            .assessments
             .iter()
-            .find(|s| s.concept == chronosentiment_adapter::metrics::concepts::Concept::Momentum)
-            .map(|s| format!("{:?}", s.availability));
+            .find(|a| a.concept == chronosentiment_adapter::metrics::concepts::Concept::Momentum)
+            .map(|a| format!("{:?}", a.direction));
+
+        // Volatility: availability flag only (no direction in the engine)
         let volatility = profile
             .factor_status
             .iter()
