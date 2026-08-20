@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.90
+**Version:** 1.91
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -15,7 +15,98 @@ This is the single authoritative entry point for the repository. Every canonical
 
 ---
 
-## Current Status
+## Current Architectural Status
+
+**Coralys Operator Contract Migration: COMPLETE**
+
+The operator architecture is frozen.
+
+```text
+Applications / Domain Adapters
+            │
+            ▼
+     coralys-moga
+  evolutionary execution
+            │
+            ▼
+      coralys-core
+ canonical mathematical contract
+```
+
+### Frozen Boundary
+
+* `coralys-core` defines the canonical domain-neutral operator contracts.
+* `coralys-moga` provides evolutionary execution.
+* `adapters/*` own domain-specific models, feasibility, repair, improvement,
+  objectives, and policies.
+* Domain concepts must not leak into `coralys-core`.
+* New shared abstractions require demonstrated reuse across domains.
+* A domain validation failure does not justify reopening `coralys-core`
+  unless a genuine mathematical-contract deficiency is demonstrated.
+
+## Current Work
+
+### ROADEF — Architecture Validation
+
+**Status: ACTIVE**
+
+ROADEF is currently being used to validate whether the frozen Coralys
+contract can absorb a third materially different optimization domain.
+
+The legacy ROADEF implementation remains the control path while the
+`EvolutionaryPipeline` implementation is evaluated as the candidate path.
+
+**Core constraint:** no `coralys-core` modifications unless a genuine
+contract-level mathematical deficiency is demonstrated.
+
+### UltraCrew — MVP
+
+**Status: ACTIVE / CORRECTNESS HARDENING**
+
+UltraCrew remains an MVP-first product/domain implementation.
+
+Current priorities:
+
+1. INRC objective parity
+2. deterministic Level-1 execution
+3. domain benchmark stability
+4. airline MVP capabilities
+
+Research-grade airline optimization is deferred.
+
+### UltraCrew Airline MVP
+
+**Status: MVP v0.1 COMPLETE**
+
+The airline adapter currently contains domain-specific:
+
+* flight model
+* connection graph
+* deterministic duty generation
+
+These remain under:
+
+`adapters/ultracrew/src/airline/`
+
+No airline-specific capability is promoted into `coralys-*` without
+demonstrated cross-domain reuse.
+
+## Deferred
+
+The following are intentionally deferred until MVP correctness and
+cross-domain evidence justify them:
+
+* RCSP / multi-label shortest path research
+* advanced REF framework
+* column generation
+* PBS research
+* advanced resilience optimization
+* airline-specific MOGA integration
+* speculative Coralys capability extraction
+
+---
+
+## Detailed Component Status
 
 | Area | Status | Last Updated |
 |------|--------|-------------|
@@ -41,7 +132,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | OBS-005 — First Evidence Report | **PLANNED** — only after sufficient live prospective observations; by evidence class (Favourable/Mixed/Unfavourable/Insufficient), direction, action, R:R band, degradation level; measure target-before-risk rate, actual MFE/MAE, first-exit distribution; answers: does historical Favourable evidence compensate for lower current R:R? | 2026-08-19 |
 | TIME-001 — Historical Clock | **COMPLETE 2026-08-20** — `HistoricalClock` abstraction committed b0860e545; `ClockMode::Live` → `Utc::now()` (no LIVE-00x regression); `ClockMode::Replay{as_of}` → constant `as_of` (leakage invariant); `from_cli_arg(None)→Live`, `from_cli_arg(Some(s))→Replay`; `now_str()` matches LIVE-00x artifact format; Serde + Display; 12/12 ACs pass; TIME-002 NEXT MILESTONE | 2026-08-20 |
 | TIME-002 — Point-in-Time Data Reconstruction | **COMPLETE 2026-08-20** — `time002_reconstruct` binary operational; `Data(T) = {bar | bar.timestamp ≤ T}` enforced at raw OHLCV layer before any metric computation; `HistoricalClock::replay(T)` — no wall-clock leakage; provenance artifact carries `reconstruction_id`, `as_of`, `universe_id`, `data_source`, `data_boundary_rule`, `source_dataset_hash`, `clock_mode=REPLAY`, `feature_pipeline_id`, `accounting`, `created_at`; first run: total=102, complete=101, incomplete=0, error=1 (MCDOWELL-N.NS → fixed to UNITDSPR.NS); n_excluded=12 future bars correctly excluded per ticker; 7/7 ACs pass: T2-01 temporal boundary, T2-02 derived-feature boundary, T2-03 clock isolation, T2-04 future-cache isolation, T2-05 future-poison (raw OHLCV layer — HARD BLOCKER), T2-06 deterministic reconstruction (hash=1544b532…), T2-07 complete accounting (total=119, complete=119); commits 6d7529867 (AC tests) | 2026-08-20 |
-| TIME-003 — Historical LIVE-001 Replay | **PLANNED** — replay live001_snapshot at historical date T; produces snapshot artifact identical in schema to real LIVE-001; source_type=HISTORICAL | 2026-08-20 |
+| TIME-003 — Frozen Coralys Decision Replay | **COMPLETE 2026-08-20** — `time003_replay.v1` binary operational; sole input: frozen TIME-002 artifact; C3-002 artifact hash verified (5a43b9df); RecommendationEngine v1 + REC-001-H (101 files) applied; no network, no feature recomputation, no algorithm changes; first run: total=102, decided=101, excluded_incomplete=0, excluded_error=1 (MCDOWELL-N.NS); C3-002: long=40, short=61, no_trade=0; recommendation: buy=7, sell=4, watch=44, no_trade_evidence=46; accounting invariant: 101+0+1=102 PASS; identity chain: reconstruction_id→state_id→decision_replay_id preserved; input_artifact_hash=c199da5b; decision_replay_id=TIME003-20260814T101500Z-gen20260820T062544898149Z; artifact: time_machine/decisions/TIME003-20260814T101500Z.json; commit 91b239528 | 2026-08-20 |
 | TIME-004 — Historical LIVE-002 Replay | **PLANNED** — replay live002_evaluate against TIME-003 snapshot; frozen C3-002 artifact hash verified; no algorithm changes | 2026-08-20 |
 | TIME-005 — Historical LIVE-003 Replay | **PLANNED** — replay live003_recommend against TIME-004 state; frozen RecommendationEngine v1 + frozen REC-001-H evidence; no algorithm changes | 2026-08-20 |
 | TIME-006 — Historical LIVE-004 Replay | **PLANNED** — replay live004_certify against TIME-005 recommendations; same 6 gates; historical freshness threshold adjusted for replay context | 2026-08-20 |
