@@ -1,0 +1,26 @@
+{
+  "run_timestamp": "2026-08-20T11:46:16.741769+00:00",
+  "input_csv": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/time_machine/cohorts/aggregate_evidence.csv",
+  "input_rows": 612,
+  "cohorts": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6"
+  ],
+  "rows_per_cohort": 102,
+  "n_eligible": 345,
+  "consistency_threshold": 4,
+  "inconsistency_threshold": 3,
+  "artifacts": [
+    "q1_evidence_class_discrimination.json",
+    "q2_direction_asymmetry.json",
+    "q3_action_vs_decision.json",
+    "q4_rr_interaction.json",
+    "cohort_consistency_summary.json",
+    "analysis_report.md"
+  ],
+  "governing_rule": "Analysis-only. No upstream pipeline changes permitted."
+}

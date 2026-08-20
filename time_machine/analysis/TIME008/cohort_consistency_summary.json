@@ -1,0 +1,38 @@
+{
+  "Q1": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  },
+  "Q2_LONG": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  },
+  "Q2_SHORT": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  },
+  "Q3_specific": {
+    "Favourable_Buy_gt_Watch_target": "insufficient_data",
+    "Mixed_Watch_gt_NoTrade_target": "insufficient_data",
+    "Favourable_Buy_gt_Watch_return": "insufficient_data",
+    "Mixed_Watch_gt_NoTrade_return": "insufficient_data"
+  },
+  "Q4_low": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  },
+  "Q4_medium": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  },
+  "Q4_high": {
+    "target_reached_Fav_gt_Mix_gt_Unf": "inconsistent",
+    "risk_reached_Unf_gt_Mix_gt_Fav": "inconsistent",
+    "realized_return_Fav_gt_Mix_gt_Unf": "inconsistent"
+  }
+}

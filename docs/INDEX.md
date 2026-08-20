@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.95
+**Version:** 1.96
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -77,13 +77,23 @@ Research-grade airline optimization is deferred.
 
 **Status: MVP v0.2 COMPLETE (Stage 2 Frozen)**
 
-The airline adapter currently contains domain-specific:
+The airline adapter is built incrementally as a layered MVP. 
+**v0.2 is a superset of v0.1**, and both sets of capabilities remain under `adapters/ultracrew/src/airline/`.
 
-* flight model
-* connection graph
-* deterministic duty generation
+**v0.1: Legal Duty Generation MVP**
+* Domain representation (`FlightLeg`, `Airport`, `DutyPeriod`, `AirlineRules`)
+* Connection feasibility (with airport continuity and MCT enforcement)
+* Duty legality/resource filtering (DFS-based pairing/duty generation)
+* Deterministic output
+
+**v0.2: Duty Generation + Coverage Baseline MVP (Adds onto v0.1)**
 * `DutyScore` vector (raw measures: duration, flight time, sectors, preserving optimization regime flexibility)
-* `GreedyCoverSolver` (deterministic coverage solver)
+* Coverage formulation with complete / partial solution semantics
+* `GreedyCoverSolver` (deterministic baseline solver with explicit tie-breaking)
+
+**Validation Layers (Frozen)**
+1. **Synthetic validation (`tests/level2_airline_baseline.rs`)**: 20-flight hub-and-spoke fixture asserting 106 generated duties and exactly 6 selected duties for optimal complete coverage.
+2. **Real-data validation (`tests/level2_gerad_greedy.rs`)**: GERAD G2014-22 / Instance 1 asserting correct parsing, 28 flights, 167 duties, and a complete 9-duty greedy cover. Demonstrates MVP topology mapping without architectural changes.
 
 These remain under:
 
@@ -140,7 +150,7 @@ cross-domain evidence justify them:
 | TIME-005 — Forward Observation Replay | **COMPLETE 2026-08-20** — `time005_observe.v1` binary operational; sole input: TIME-004 ledger entries (read-only); temporal firewall: only bars with timestamp > as_of used; direction-aware MFE/MAE (LONG: high/low; SHORT: low/high inverted); first-exit semantics: TARGET/RISK/AMBIGUOUS/GAP_THROUGH/HORIZON/NO_TRADE; first run: total=102 observed=102 no_trade=47 target=8 risk=1 horizon=46 ambiguous=0; idempotency verified (second run n_observed=0 n_duplicate_skipped=102); AC-T5-01 through AC-T5-07 all PASS; run_id=TIME005-20260814T101500Z-gen20260820T082313551186Z; 102 observation JSONs in time_machine/observations/; commit 0d11fdf0f | 2026-08-20 |
 | TIME-006 — Evidence Dataset | **COMPLETE 2026-08-20** — `time006_evidence_dataset.v1` binary operational; pure join of TIME-004 (T0 ledger) + TIME-005 (observations); join key: decision_id; T0 fields copied verbatim (no recomputation); T+h fields copied verbatim (no recomputation); identity chain: reconstruction_id → decision_replay_id → decision_id → observation_id → evidence_row_id; first run: total=102 joined=102 missing=0; output: 102 evidence row JSONs + evidence_dataset.csv (103 lines); AC-T6-01 through AC-T6-06 all PASS; commit fe9b43bf0 | 2026-08-20 |
 | TIME-007 — Multi-Timestamp Cohort Expansion | **COMPLETE 2026-08-20** — `time007_cohort_runner.sh` orchestrates frozen TIME-002→TIME-006 pipeline across pre-specified 20-session grid; T1=2026-08-14 T2=2026-07-17 T3=2026-06-19 T4=2026-05-22 T5=2026-04-24 T6=2026-03-23; each cohort: TIME-002 complete=102, TIME-003 decided=102, TIME-004 admitted=102, TIME-005 observed=102, TIME-006 joined=102; aggregate_evidence.csv: 612 data rows (6 cohorts × 102 decisions); timestamps derived mechanically before looking at outcomes; no algorithm changes; commit ab993bb54 | 2026-08-20 |
-| TIME-008 — Forward Observation | **PLANNED** — for each TIME-007 T0 decision, observe what actually happened in the subsequent N sessions; direction-aware MFE/MAE; target_reached, risk_reached, first_exit, horizon_expiry; uses only data from T+1 onward; same observation schema as OBS-001 | 2026-08-20 |
+| TIME-008 — Discrimination Analysis | **COMPLETE 2026-08-20** — `scripts/time008_analysis.py` runs Q1–Q4 pre-specified analysis against frozen 612-row aggregate_evidence.csv; spec frozen at commit 683dfd11d before examining results; invariants: 612 rows, T1–T6×102, no duplicate evidence_row_id, no duplicate (cohort,ticker); R:R tercile boundaries computed once over all 612 rows (low≤0.9529, medium≤1.1453, high>1.1453); Q1/Q2/Q4 all "inconsistent" (0/6 cohorts hold expected ordering); Q3 "insufficient_data" (pre-specified action pairs don't co-exist: Favourable→Buy/Sell only, Mixed→Buy/Watch only, Unfavourable/Insufficient→NoTrade only); pooled descriptive separation visible (Favourable target 39.3% vs Mixed 28.4%; Favourable return +0.79% vs Mixed +0.64%) but pre-specified ≥4/6 cohort consistency criterion not met; 7 artifacts in time_machine/analysis/TIME008/; bounded conclusion: TIME-008 did not establish consistent cross-cohort discrimination; no algorithm changes; commit TBD | 2026-08-20 |
 | TIME-009 — Time Machine Evidence Dataset | **PLANNED** — join TIME-007 T0 fields (immutable) with TIME-008 observations; produces research dataset in same schema as OBS-004; primary research population for evidence validation | 2026-08-20 |
 | TIME-010 — Time Machine Evidence Report | **PLANNED** — same structure as OBS-005 but over TIME-009 dataset; by evidence class, direction, action, R:R band, degradation level; answers: does Coralys have discriminatory power historically? compare TIME-010 vs OBS-005 as historical vs prospective validation | 2026-08-20 |
 | REC-001-H Evidence Quality | **COMPLETE 2026-08-18** — evidence_quality_report.csv written; C3-002 mapping verified (Bear+Neg→LONG); LONG min-bucket median=170; SHORT min-bucket median=187; LONG target rate 29.6% mean | 2026-08-18 |
@@ -385,7 +395,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.86 | 2026-08-20 | UltraCrew Airline MVP v0.2 COMPLETE — Stage 2 frozen. Baseline explicitly defines GreedyCoverSolver as deterministic, adds deterministic tie-breaking by flight_indices, freezes DutyScore as a vector, and records baseline deterministic metrics for a 20-flight schedule (74 duties, 5 selected) with impossible/overlap coverage failure cases verified. |
+| 1.86 | 2026-08-20 | UltraCrew Airline | **MVP v0.2 COMPLETE** — Stage 2 frozen. v0.2 is a superset of v0.1. (v0.1 = Legal Duty Generation MVP, v0.2 = Duty Generation + Coverage Baseline MVP). Baseline test strictly uses the original v0.1 20-flight hub-and-spoke fixture (yielding 106 duties, 6 selected). DutyScore frozen as a vector, GreedyCoverSolver frozen as deterministic baseline with explicit tie-breaking. impossible/overlap coverage failure cases verified. |
 | 1.85 | 2026-08-20 | LIVE-004 COMPLETE — live004_certify binary implemented and verified; 6 gates: Freshness/Snapshot coherence/Completeness/Recommendation inputs/Reproducibility/Frozen artifacts; statuses CERTIFIED/DEGRADED/STALE/INCOMPLETE; input_integrity (AVAILABLE/SUBSTITUTED/MISSING) is SEPARATE from degradation_level; first run result: STALE (age=964min > 30min) + Gate 4 FAIL (relative_volume_20 SUBSTITUTED neutral=1.0 for all 82 recommendations); gates 2/3/5/6 PASS; determinism invariant: same artifacts → same certification always; artifact: LIVE-004-20260819-0853.json + latest.json in live_capture/certifications/; commit 343744849 (759 insertions) |
 | 1.84 | 2026-08-19 | LIVE-004 formal spec declared: pure certification boundary; 6 gates: Freshness + Snapshot coherence + Completeness + Recommendation inputs (no silent substitution) + Reproducibility + Frozen artifacts identity; statuses: CERTIFIED/DEGRADED/STALE/INCOMPLETE; input_integrity field (AVAILABLE/SUBSTITUTED/MISSING) is SEPARATE from degradation_level; relative_volume_20 substitution → DEGRADED (not buried in degradation_level); determinism invariant: same artifacts → same certification always; NO recalculation, NO new data fetch, NO algorithm changes |
 | 1.83 | 2026-08-19 | LIVE-003 COMPLETE — live003_recommend binary implemented and verified; reads LIVE-002 state artifact (no network); frozen RecommendationEngine v1 + frozen REC-001-H evidence store (101 files); full provenance chain: source_state_id=LIVE-002-20260819-0853, source_snapshot_id=LIVE-20260819-0853, c3_002_artifact_hash=5a43b9df, engine_version=v1, evidence_store_n_files=101; n_recommended=82, n_buy=6, n_sell=4, n_watch=37, n_no_trade_evidence=35; accounting 82+0+20=102/102 PASS; artifact: LIVE-003-20260819-0853.json + latest.json in live_capture/recommendations/; commit 22e9a086e |
