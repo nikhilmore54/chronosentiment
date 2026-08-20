@@ -1042,9 +1042,10 @@ mod tests {
             exit_price: None,
             exit_reason: None,
             holding_sessions: None,
-            realized_pnl_inr: None,
             realized_return_pct: None,
             status: PositionStatus::Open,
+            trade_path: None,
+            realized_pnl_inr: Some(0.0)
         });
         arm.n_positions_opened = 1;
         arm.cash_inr = 4000.0;
@@ -1076,9 +1077,10 @@ mod tests {
             exit_price: None,
             exit_reason: None,
             holding_sessions: None,
-            realized_pnl_inr: None,
             realized_return_pct: None,
             status: PositionStatus::Open,
+            trade_path: None,
+            realized_pnl_inr: Some(0.0)
         });
         arm.cash_inr = 4000.0;
 
