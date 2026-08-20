@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.89
+**Version:** 1.90
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -40,7 +40,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | OBS-004 — Research Dataset Export | **PLANNED** — T0 fields (immutable) + T+h fields (observational); decision_id, ticker, direction, action, reference_price, adaptive_target/risk/rr/horizon, analogue_count, degradation_level, target_rate, user_action, actual_mfe/mae, target_reached, risk_reached, first_exit, sessions_to_outcome, outcome | 2026-08-19 |
 | OBS-005 — First Evidence Report | **PLANNED** — only after sufficient live prospective observations; by evidence class (Favourable/Mixed/Unfavourable/Insufficient), direction, action, R:R band, degradation level; measure target-before-risk rate, actual MFE/MAE, first-exit distribution; answers: does historical Favourable evidence compensate for lower current R:R? | 2026-08-19 |
 | TIME-001 — Historical Clock | **COMPLETE 2026-08-20** — `HistoricalClock` abstraction committed b0860e545; `ClockMode::Live` → `Utc::now()` (no LIVE-00x regression); `ClockMode::Replay{as_of}` → constant `as_of` (leakage invariant); `from_cli_arg(None)→Live`, `from_cli_arg(Some(s))→Replay`; `now_str()` matches LIVE-00x artifact format; Serde + Display; 12/12 ACs pass; TIME-002 NEXT MILESTONE | 2026-08-20 |
-| TIME-002 — Point-in-Time Data Reconstruction | **PLANNED** — reconstruct what LIVE-001 would have seen at any historical date T; uses only data available at T; no look-ahead; leakage boundary enforced by OBS-000 temporal firewall | 2026-08-20 |
+| TIME-002 — Point-in-Time Data Reconstruction | **COMPLETE 2026-08-20** — `time002_reconstruct` binary operational; `Data(T) = {bar | bar.timestamp ≤ T}` enforced at raw OHLCV layer before any metric computation; `HistoricalClock::replay(T)` — no wall-clock leakage; provenance artifact carries `reconstruction_id`, `as_of`, `universe_id`, `data_source`, `data_boundary_rule`, `source_dataset_hash`, `clock_mode=REPLAY`, `feature_pipeline_id`, `accounting`, `created_at`; first run: total=102, complete=101, incomplete=0, error=1 (MCDOWELL-N.NS → fixed to UNITDSPR.NS); n_excluded=12 future bars correctly excluded per ticker; 7/7 ACs pass: T2-01 temporal boundary, T2-02 derived-feature boundary, T2-03 clock isolation, T2-04 future-cache isolation, T2-05 future-poison (raw OHLCV layer — HARD BLOCKER), T2-06 deterministic reconstruction (hash=1544b532…), T2-07 complete accounting (total=119, complete=119); commits 6d7529867 (AC tests) | 2026-08-20 |
 | TIME-003 — Historical LIVE-001 Replay | **PLANNED** — replay live001_snapshot at historical date T; produces snapshot artifact identical in schema to real LIVE-001; source_type=HISTORICAL | 2026-08-20 |
 | TIME-004 — Historical LIVE-002 Replay | **PLANNED** — replay live002_evaluate against TIME-003 snapshot; frozen C3-002 artifact hash verified; no algorithm changes | 2026-08-20 |
 | TIME-005 — Historical LIVE-003 Replay | **PLANNED** — replay live003_recommend against TIME-004 state; frozen RecommendationEngine v1 + frozen REC-001-H evidence; no algorithm changes | 2026-08-20 |
