@@ -39,6 +39,7 @@ pub use learning::{
 pub mod universe;
 pub mod decision_support;
 pub mod product;
+pub mod time_machine;
 
 #[cfg(feature = "research")]
 #[path = "../research/src/mod.rs"]
