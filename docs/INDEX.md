@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.96
+**Version:** 1.97
 **Status:** Active
 **Created:** 2026-08-01
 
