@@ -1,7 +1,7 @@
 {
-  "decision_replay_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z",
-  "reconstruction_id": "TIME002-20260814T101500Z-gen20260820T053248Z",
-  "state_id": "TIME003-STATE-20260814T101500Z-gen20260820T053248Z",
+  "decision_replay_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z",
+  "reconstruction_id": "TIME002-20260814T101500Z-gen20260820T071502Z",
+  "state_id": "TIME003-STATE-20260814T101500Z-gen20260820T071502Z",
   "as_of": "2026-08-14T10:15:00Z",
   "source_type": "HISTORICAL",
   "producer": "time003_replay.v1",
@@ -9,21 +9,21 @@
   "recommendation_engine_version": "v1",
   "evidence_store_dir": "datasets/recommendation/historical",
   "evidence_store_n_files": 101,
-  "input_artifact_hash": "c199da5be966d33a803310f17e52495fa354cde9943594c141ac01867d9936d5",
+  "input_artifact_hash": "81aeb9b4b16d42887496fd9f884c08a94f0978e94a1c0d78ac34dcf4e078ddc1",
   "accounting": {
-    "n_decided": 101,
+    "n_decided": 102,
     "n_excluded_incomplete": 0,
-    "n_excluded_error": 1,
+    "n_excluded_error": 0,
     "n_total": 102,
     "n_long": 40,
-    "n_short": 61,
+    "n_short": 62,
     "n_no_trade": 0,
     "n_buy": 7,
     "n_sell": 4,
     "n_watch": 44,
-    "n_no_trade_evidence": 46
+    "n_no_trade_evidence": 47
   },
-  "created_at": "2026-08-20T06:25:44.898149Z",
+  "created_at": "2026-08-20T07:22:46.895413Z",
   "instruments": [
     {
       "ticker": "ADANIENT.NS",
@@ -36,7 +36,7 @@
       "atr_14": 69.21428571428571,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ADANIENT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ADANIENT.NS",
         "instrument": "ADANIENT_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -70,7 +70,7 @@
       "atr_14": 38.457144601004465,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ADANIPORTS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ADANIPORTS.NS",
         "instrument": "ADANIPORTS_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -104,7 +104,7 @@
       "atr_14": 207.48779296875,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-APOLLOHOSP.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-APOLLOHOSP.NS",
         "instrument": "APOLLOHOSP_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -138,7 +138,7 @@
       "atr_14": 61.73570033482143,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ASIANPAINT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ASIANPAINT.NS",
         "instrument": "ASIANPAINT_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -172,7 +172,7 @@
       "atr_14": 18.650006975446427,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-AXISBANK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-AXISBANK.NS",
         "instrument": "AXISBANK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -206,7 +206,7 @@
       "atr_14": 224.67857142857144,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BAJAJ-AUTO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BAJAJ-AUTO.NS",
         "instrument": "BAJAJ-AUTO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -240,7 +240,7 @@
       "atr_14": 47.9071306501116,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BAJAJFINSV.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BAJAJFINSV.NS",
         "instrument": "BAJAJFINSV_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -274,7 +274,7 @@
       "atr_14": 30.050005231584823,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BAJFINANCE.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BAJFINANCE.NS",
         "instrument": "BAJFINANCE_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -308,7 +308,7 @@
       "atr_14": 43.699986049107146,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BHARTIARTL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BHARTIARTL.NS",
         "instrument": "BHARTIARTL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -342,7 +342,7 @@
       "atr_14": 5.946435110909598,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BPCL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BPCL.NS",
         "instrument": "BPCL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -376,7 +376,7 @@
       "atr_14": 119.90227399553572,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BRITANNIA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BRITANNIA.NS",
         "instrument": "BRITANNIA_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -410,7 +410,7 @@
       "atr_14": 21.850019182477677,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-CIPLA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-CIPLA.NS",
         "instrument": "CIPLA_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -444,7 +444,7 @@
       "atr_14": 5.433055332728786,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-COALINDIA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-COALINDIA.NS",
         "instrument": "COALINDIA_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -478,7 +478,7 @@
       "atr_14": 219.07142857142856,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-DIVISLAB.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-DIVISLAB.NS",
         "instrument": "DIVISLAB_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -512,7 +512,7 @@
       "atr_14": 20.614310128348215,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-DRREDDY.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-DRREDDY.NS",
         "instrument": "DRREDDY_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -546,7 +546,7 @@
       "atr_14": 141.36544363839286,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-EICHERMOT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-EICHERMOT.NS",
         "instrument": "EICHERMOT_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -580,7 +580,7 @@
       "atr_14": 91.18934849330356,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-GRASIM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-GRASIM.NS",
         "instrument": "GRASIM_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -614,7 +614,7 @@
       "atr_14": 31.314287458147323,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HCLTECH.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HCLTECH.NS",
         "instrument": "HCLTECH_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -648,7 +648,7 @@
       "atr_14": 9.117854527064733,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HDFCBANK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HDFCBANK.NS",
         "instrument": "HDFCBANK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -682,7 +682,7 @@
       "atr_14": 8.649998256138392,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HDFCLIFE.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HDFCLIFE.NS",
         "instrument": "HDFCLIFE_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -716,7 +716,7 @@
       "atr_14": 142.31427873883928,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HEROMOTOCO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HEROMOTOCO.NS",
         "instrument": "HEROMOTOCO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -750,7 +750,7 @@
       "atr_14": 26.453578404017833,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HINDALCO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HINDALCO.NS",
         "instrument": "HINDALCO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -784,7 +784,7 @@
       "atr_14": 35.57859584263393,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HINDUNILVR.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HINDUNILVR.NS",
         "instrument": "HINDUNILVR_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -818,7 +818,7 @@
       "atr_14": 24.417776925223215,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ICICIBANK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ICICIBANK.NS",
         "instrument": "ICICIBANK_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -852,7 +852,7 @@
       "atr_14": 18.08571515764509,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-INDUSINDBK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-INDUSINDBK.NS",
         "instrument": "INDUSINDBK_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -886,7 +886,7 @@
       "atr_14": 29.5142822265625,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-INFY.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-INFY.NS",
         "instrument": "INFY_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -920,7 +920,7 @@
       "atr_14": 4.357140677315848,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ITC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ITC.NS",
         "instrument": "ITC_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -954,7 +954,7 @@
       "atr_14": 25.600001743861608,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-JSWSTEEL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-JSWSTEEL.NS",
         "instrument": "JSWSTEEL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -988,7 +988,7 @@
       "atr_14": 5.721431187220994,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-KOTAKBANK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-KOTAKBANK.NS",
         "instrument": "KOTAKBANK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1022,7 +1022,7 @@
       "atr_14": 61.778564453125,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-LT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-LT.NS",
         "instrument": "LT_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1056,7 +1056,7 @@
       "atr_14": 79.02852957589286,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-M&M.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-M&M.NS",
         "instrument": "M&M_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1090,7 +1090,7 @@
       "atr_14": 251.18352399553572,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MARUTI.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MARUTI.NS",
         "instrument": "MARUTI_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1124,7 +1124,7 @@
       "atr_14": 32.78572300502232,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-NESTLEIND.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-NESTLEIND.NS",
         "instrument": "NESTLEIND_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1158,7 +1158,7 @@
       "atr_14": 6.010716029575893,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-NTPC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-NTPC.NS",
         "instrument": "NTPC_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1192,7 +1192,7 @@
       "atr_14": 3.9271436418805865,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ONGC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ONGC.NS",
         "instrument": "ONGC_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1226,7 +1226,7 @@
       "atr_14": 4.850006103515625,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-POWERGRID.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-POWERGRID.NS",
         "instrument": "POWERGRID_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1260,7 +1260,7 @@
       "atr_14": 20.528573172433035,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-RELIANCE.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-RELIANCE.NS",
         "instrument": "RELIANCE_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1294,7 +1294,7 @@
       "atr_14": 33.65000697544643,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SBILIFE.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SBILIFE.NS",
         "instrument": "SBILIFE_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1328,7 +1328,7 @@
       "atr_14": 21.642870221819187,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SBIN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SBIN.NS",
         "instrument": "SBIN_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1362,7 +1362,7 @@
       "atr_14": 31.778573172433035,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SUNPHARMA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SUNPHARMA.NS",
         "instrument": "SUNPHARMA_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1396,7 +1396,7 @@
       "atr_14": 22.307155064174108,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TATACONSUM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TATACONSUM.NS",
         "instrument": "TATACONSUM_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1430,7 +1430,7 @@
       "atr_14": 14.660712105887267,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TMCV.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TMCV.NS",
         "instrument": "TMCV_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1464,7 +1464,7 @@
       "atr_14": 4.279999869210378,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TATASTEEL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TATASTEEL.NS",
         "instrument": "TATASTEEL_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1498,7 +1498,7 @@
       "atr_14": 73.4642333984375,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TCS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TCS.NS",
         "instrument": "TCS_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1532,7 +1532,7 @@
       "atr_14": 36.20001220703125,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TECHM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TECHM.NS",
         "instrument": "TECHM_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1566,7 +1566,7 @@
       "atr_14": 96.90719168526786,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TITAN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TITAN.NS",
         "instrument": "TITAN_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1600,7 +1600,7 @@
       "atr_14": 211.5114397321429,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ULTRACEMCO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ULTRACEMCO.NS",
         "instrument": "ULTRACEMCO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1634,7 +1634,7 @@
       "atr_14": 12.396427699497767,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-UPL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-UPL.NS",
         "instrument": "UPL_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1668,7 +1668,7 @@
       "atr_14": 3.8007114955357224,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-WIPRO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-WIPRO.NS",
         "instrument": "WIPRO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1702,7 +1702,7 @@
       "atr_14": 36.82856968470982,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ADANIGREEN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ADANIGREEN.NS",
         "instrument": "ADANIGREEN_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1736,7 +1736,7 @@
       "atr_14": 9.232149396623912,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-AMBUJACEM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-AMBUJACEM.NS",
         "instrument": "AMBUJACEM_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1770,7 +1770,7 @@
       "atr_14": 42.62858363560268,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-AUROPHARMA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-AUROPHARMA.NS",
         "instrument": "AUROPHARMA_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1804,7 +1804,7 @@
       "atr_14": 3.788568769182478,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BANDHANBNK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BANDHANBNK.NS",
         "instrument": "BANDHANBNK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1838,7 +1838,7 @@
       "atr_14": 4.297138759068086,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BANKBARODA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BANKBARODA.NS",
         "instrument": "BANKBARODA_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1872,7 +1872,7 @@
       "atr_14": 19.884817940848215,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BERGEPAINT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BERGEPAINT.NS",
         "instrument": "BERGEPAINT_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1906,7 +1906,7 @@
       "atr_14": 1186.5756138392858,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-BOSCHLTD.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-BOSCHLTD.NS",
         "instrument": "BOSCHLTD_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -1940,7 +1940,7 @@
       "atr_14": 2.644287109374997,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-CANBK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-CANBK.NS",
         "instrument": "CANBK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -1974,7 +1974,7 @@
       "atr_14": 52.942836216517854,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-CHOLAFIN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-CHOLAFIN.NS",
         "instrument": "CHOLAFIN_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2008,7 +2008,7 @@
       "atr_14": 44.39283970424107,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-COLPAL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-COLPAL.NS",
         "instrument": "COLPAL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2042,7 +2042,7 @@
       "atr_14": 7.932150704520126,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-DABUR.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-DABUR.NS",
         "instrument": "DABUR_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2076,7 +2076,7 @@
       "atr_14": 15.207144601004464,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-DLF.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-DLF.NS",
         "instrument": "DLF_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2110,7 +2110,7 @@
       "atr_14": 4.292142595563616,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-GAIL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-GAIL.NS",
         "instrument": "GAIL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2144,7 +2144,7 @@
       "atr_14": 31.414249965122785,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-GODREJCP.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-GODREJCP.NS",
         "instrument": "GODREJCP_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2178,7 +2178,7 @@
       "atr_14": 58.7071271623884,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-GODREJPROP.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-GODREJPROP.NS",
         "instrument": "GODREJPROP_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2212,7 +2212,7 @@
       "atr_14": 22.614310128348215,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-HAVELLS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-HAVELLS.NS",
         "instrument": "HAVELLS_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2246,7 +2246,7 @@
       "atr_14": 10.507145472935283,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-ICICIPRULI.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-ICICIPRULI.NS",
         "instrument": "ICICIPRULI_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2280,7 +2280,7 @@
       "atr_14": 0.4178570338657919,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-IDEA.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-IDEA.NS",
         "instrument": "IDEA_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2314,7 +2314,7 @@
       "atr_14": 1.3205740792410714,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-IDFCFIRSTB.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-IDFCFIRSTB.NS",
         "instrument": "IDFCFIRSTB_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2348,7 +2348,7 @@
       "atr_14": 2.9085693359375,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-IGL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-IGL.NS",
         "instrument": "IGL_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2382,7 +2382,7 @@
       "atr_14": 12.450007847377233,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-INDHOTEL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-INDHOTEL.NS",
         "instrument": "INDHOTEL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2416,7 +2416,7 @@
       "atr_14": 15.864985874720958,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-INDUSTOWER.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-INDUSTOWER.NS",
         "instrument": "INDUSTOWER_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2450,7 +2450,7 @@
       "atr_14": 2.6651644025530135,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-IOC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-IOC.NS",
         "instrument": "IOC_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2484,7 +2484,7 @@
       "atr_14": 10.96071515764511,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-IRCTC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-IRCTC.NS",
         "instrument": "IRCTC_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2518,7 +2518,7 @@
       "atr_14": 24.342869349888392,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-JINDALSTEL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-JINDALSTEL.NS",
         "instrument": "JINDALSTEL_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2552,7 +2552,7 @@
       "atr_14": 18.74285452706473,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-JUBLFOOD.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-JUBLFOOD.NS",
         "instrument": "JUBLFOOD_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2586,7 +2586,7 @@
       "atr_14": 10.799998692103795,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-LICI.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-LICI.NS",
         "instrument": "LICI_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2620,7 +2620,7 @@
       "atr_14": 52.414254324776785,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-LUPIN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-LUPIN.NS",
         "instrument": "LUPIN_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2654,7 +2654,7 @@
       "atr_14": 1.7764265877859933,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MAHABANK.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MAHABANK.NS",
         "instrument": "MAHABANK_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2688,7 +2688,7 @@
       "atr_14": 16.21785627092634,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MARICO.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MARICO.NS",
         "instrument": "MARICO_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2712,16 +2712,38 @@
       }
     },
     {
-      "ticker": "MCDOWELL-N.NS",
-      "eligibility": "EXCLUDED_ERROR",
-      "c3_002_direction": null,
-      "trend": null,
-      "momentum": null,
-      "volatility": null,
-      "reference_price": null,
-      "atr_14": null,
-      "exclusion_reason": "No data returned from Yahoo Finance",
-      "recommendation": null
+      "ticker": "UNITDSPR.NS",
+      "eligibility": "DECIDED",
+      "c3_002_direction": "SHORT",
+      "trend": "Bullish",
+      "momentum": "Positive",
+      "volatility": "Available",
+      "reference_price": 1536.0,
+      "atr_14": 27.47857666015625,
+      "exclusion_reason": null,
+      "recommendation": {
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-UNITDSPR.NS",
+        "instrument": "UNITDSPR_NS",
+        "direction": "SHORT",
+        "trend": "Bullish",
+        "momentum": "Positive",
+        "reference_price": 1536.0,
+        "adaptive_target": null,
+        "adaptive_risk": null,
+        "adaptive_upside_pct": null,
+        "adaptive_downside_pct": null,
+        "adaptive_rr": null,
+        "adaptive_horizon_sessions": null,
+        "degradation_level": "Insufficient",
+        "sample_size": 0,
+        "target_rate": 0.0,
+        "evidence_class": "Insufficient",
+        "action": "NoTrade",
+        "rank_score": 0.0,
+        "recommendation_policy_version": "v1",
+        "vol_regime": "present",
+        "volume_regime": "Normal"
+      }
     },
     {
       "ticker": "MPHASIS.NS",
@@ -2734,7 +2756,7 @@
       "atr_14": 76.18570382254464,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MPHASIS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MPHASIS.NS",
         "instrument": "MPHASIS_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2768,7 +2790,7 @@
       "atr_14": 2137.8571428571427,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MRF.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MRF.NS",
         "instrument": "MRF_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2802,7 +2824,7 @@
       "atr_14": 86.91427176339286,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-MUTHOOTFIN.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-MUTHOOTFIN.NS",
         "instrument": "MUTHOOTFIN_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2836,7 +2858,7 @@
       "atr_14": 41.12858363560268,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-NAUKRI.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-NAUKRI.NS",
         "instrument": "NAUKRI_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2870,7 +2892,7 @@
       "atr_14": 1.7499989100864954,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-NMDC.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-NMDC.NS",
         "instrument": "NMDC_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2904,7 +2926,7 @@
       "atr_14": 345.5,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-OFSS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-OFSS.NS",
         "instrument": "OFSS_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -2938,7 +2960,7 @@
       "atr_14": 1088.928571428571,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-PAGEIND.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-PAGEIND.NS",
         "instrument": "PAGEIND_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -2972,7 +2994,7 @@
       "atr_14": 163.34287806919642,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-PERSISTENT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-PERSISTENT.NS",
         "instrument": "PERSISTENT_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3006,7 +3028,7 @@
       "atr_14": 6.360713413783482,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-PETRONET.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-PETRONET.NS",
         "instrument": "PETRONET_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3040,7 +3062,7 @@
       "atr_14": 31.300005231584823,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-PIDILITIND.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-PIDILITIND.NS",
         "instrument": "PIDILITIND_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3074,7 +3096,7 @@
       "atr_14": 1.9750006539481009,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-PNB.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-PNB.NS",
         "instrument": "PNB_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3108,7 +3130,7 @@
       "atr_14": 166.17857142857142,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-POLYCAB.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-POLYCAB.NS",
         "instrument": "POLYCAB_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3142,7 +3164,7 @@
       "atr_14": 9.334112984793537,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-RECLTD.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-RECLTD.NS",
         "instrument": "RECLTD_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3176,7 +3198,7 @@
       "atr_14": 6.670712062290737,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SAIL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SAIL.NS",
         "instrument": "SAIL_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3210,7 +3232,7 @@
       "atr_14": 655.7142857142857,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SHREECEM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SHREECEM.NS",
         "instrument": "SHREECEM_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3244,7 +3266,7 @@
       "atr_14": 119.8856898716518,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SIEMENS.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SIEMENS.NS",
         "instrument": "SIEMENS_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3278,7 +3300,7 @@
       "atr_14": 41.835728236607146,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-SRF.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-SRF.NS",
         "instrument": "SRF_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3312,7 +3334,7 @@
       "atr_14": 119.37140764508928,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TORNTPHARM.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TORNTPHARM.NS",
         "instrument": "TORNTPHARM_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3346,7 +3368,7 @@
       "atr_14": 74.8428955078125,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TRENT.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TRENT.NS",
         "instrument": "TRENT_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3380,7 +3402,7 @@
       "atr_14": 93.11429268973214,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-TVSMOTOR.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-TVSMOTOR.NS",
         "instrument": "TVSMOTOR_NS",
         "direction": "SHORT",
         "trend": "Bullish",
@@ -3414,7 +3436,7 @@
       "atr_14": 12.30902535574778,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-VBL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-VBL.NS",
         "instrument": "VBL_NS",
         "direction": "LONG",
         "trend": "Bearish",
@@ -3448,7 +3470,7 @@
       "atr_14": 7.114286150251116,
       "exclusion_reason": null,
       "recommendation": {
-        "decision_id": "TIME003-20260814T101500Z-gen20260820T062544898149Z-VEDL.NS",
+        "decision_id": "TIME003-20260814T101500Z-gen20260820T072246895413Z-VEDL.NS",
         "instrument": "VEDL_NS",
         "direction": "LONG",
         "trend": "Bearish",
