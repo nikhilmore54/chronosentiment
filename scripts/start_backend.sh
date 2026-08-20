@@ -158,6 +158,13 @@ else
   echo "[backend] LIVE-005 complete."
 
   echo "[backend] Ticker fetch pipeline complete. Fresh OHLCV values now reflected."
+
+  echo "[backend] LIVE-006 (TIME-009): running prospective observation tick..."
+  cargo run -p chronosentiment_adapter --bin time009_observe -- \
+    --ledger  "$LIVE_LEDGER_DIR" \
+    --output  "time_machine/analysis/TIME009/observations" \
+    --cache   "$LIVE_YAHOO_CACHE"
+  echo "[backend] LIVE-006 (TIME-009) complete."
 fi
 
 # ── 4. Historical CDI baseline enrichment ────────────────────────────────────
