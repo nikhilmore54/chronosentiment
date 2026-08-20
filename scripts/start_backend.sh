@@ -28,8 +28,8 @@ CMD="${1:-start}"
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 LEDGER_PATH="product_validation/CS-P-006/observatory/prospective/ledger.json"
-OUTCOMES_PATH="product_validation/CS-P-006/observatory/prospective/outcomes.json"
-REC001H_DIR_PATH="product_validation/CS-P-006/observatory/prospective"
+OUTCOMES_PATH="datasets/hdv001/hdv001_outcomes_v1.json"
+REC001H_DIR_PATH="datasets/recommendation/historical"
 YAHOO_CACHE="product_validation/CS-P-006/snapshot/20260814T183851Z_100instrument/yahoo_cache"
 ENRICH_NOW="2026-08-17T03:45:00Z"
 
