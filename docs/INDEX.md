@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.88
+**Version:** 1.89
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -39,7 +39,7 @@ This is the single authoritative entry point for the repository. Every canonical
 | OBS-003 — MFE/MAE Measurement | **PLANNED** — direction-aware excursion; SHORT symmetric with LONG; no absolute-price comparisons without direction | 2026-08-19 |
 | OBS-004 — Research Dataset Export | **PLANNED** — T0 fields (immutable) + T+h fields (observational); decision_id, ticker, direction, action, reference_price, adaptive_target/risk/rr/horizon, analogue_count, degradation_level, target_rate, user_action, actual_mfe/mae, target_reached, risk_reached, first_exit, sessions_to_outcome, outcome | 2026-08-19 |
 | OBS-005 — First Evidence Report | **PLANNED** — only after sufficient live prospective observations; by evidence class (Favourable/Mixed/Unfavourable/Insufficient), direction, action, R:R band, degradation level; measure target-before-risk rate, actual MFE/MAE, first-exit distribution; answers: does historical Favourable evidence compensate for lower current R:R? | 2026-08-19 |
-| TIME-001 — Historical Clock | **PLANNED** — point-in-time clock abstraction; replaces Utc::now() with a deterministic historical timestamp; no future data leakage; prerequisite for all TIME-00x replay stages | 2026-08-20 |
+| TIME-001 — Historical Clock | **COMPLETE 2026-08-20** — `HistoricalClock` abstraction committed b0860e545; `ClockMode::Live` → `Utc::now()` (no LIVE-00x regression); `ClockMode::Replay{as_of}` → constant `as_of` (leakage invariant); `from_cli_arg(None)→Live`, `from_cli_arg(Some(s))→Replay`; `now_str()` matches LIVE-00x artifact format; Serde + Display; 12/12 ACs pass; TIME-002 NEXT MILESTONE | 2026-08-20 |
 | TIME-002 — Point-in-Time Data Reconstruction | **PLANNED** — reconstruct what LIVE-001 would have seen at any historical date T; uses only data available at T; no look-ahead; leakage boundary enforced by OBS-000 temporal firewall | 2026-08-20 |
 | TIME-003 — Historical LIVE-001 Replay | **PLANNED** — replay live001_snapshot at historical date T; produces snapshot artifact identical in schema to real LIVE-001; source_type=HISTORICAL | 2026-08-20 |
 | TIME-004 — Historical LIVE-002 Replay | **PLANNED** — replay live002_evaluate against TIME-003 snapshot; frozen C3-002 artifact hash verified; no algorithm changes | 2026-08-20 |
