@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.92
+**Version:** 1.93
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -61,32 +61,35 @@ contract-level mathematical deficiency is demonstrated.
 
 ### UltraCrew — MVP
 
-**Status: ACTIVE / CORRECTNESS HARDENING**
+**Status: ACTIVE**
 
 UltraCrew remains an MVP-first product/domain implementation.
 
 Current priorities:
 
-1. INRC objective parity
-2. deterministic Level-1 execution
-3. domain benchmark stability
-4. airline MVP capabilities
+1. INRC objective parity (Level-1 determinism COMPLETE)
+2. domain benchmark stability
+3. airline MVP capabilities (Stage 2 COMPLETE)
 
 Research-grade airline optimization is deferred.
 
 ### UltraCrew Airline MVP
 
-**Status: MVP v0.1 COMPLETE**
+**Status: MVP v0.2 COMPLETE (Stage 2 Frozen)**
 
 The airline adapter currently contains domain-specific:
 
 * flight model
 * connection graph
 * deterministic duty generation
+* `DutyScore` vector (raw measures: duration, flight time, sectors, preserving optimization regime flexibility)
+* `GreedyCoverSolver` (deterministic coverage solver)
 
 These remain under:
 
 `adapters/ultracrew/src/airline/`
+
+**Architectural Decision:** The `GreedyCoverSolver` is explicitly a baseline/reference implementation, not the intended production airline optimizer. It provides deterministic behavior, explicit coverage semantics, and a simple correctness oracle for evaluating future solvers. Do not introduce MOGA or reopen `coralys-core` for the airline path until a genuine common mathematical capability is proven.
 
 No airline-specific capability is promoted into `coralys-*` without
 demonstrated cross-domain reuse.
@@ -134,7 +137,7 @@ cross-domain evidence justify them:
 | TIME-002 — Point-in-Time Data Reconstruction | **COMPLETE 2026-08-20** — `time002_reconstruct` binary operational; `Data(T) = {bar | bar.timestamp ≤ T}` enforced at raw OHLCV layer before any metric computation; `HistoricalClock::replay(T)` — no wall-clock leakage; provenance artifact carries `reconstruction_id`, `as_of`, `universe_id`, `data_source`, `data_boundary_rule`, `source_dataset_hash`, `clock_mode=REPLAY`, `feature_pipeline_id`, `accounting`, `created_at`; first run: total=102, complete=101, incomplete=0, error=1 (MCDOWELL-N.NS → fixed to UNITDSPR.NS); n_excluded=12 future bars correctly excluded per ticker; 7/7 ACs pass: T2-01 temporal boundary, T2-02 derived-feature boundary, T2-03 clock isolation, T2-04 future-cache isolation, T2-05 future-poison (raw OHLCV layer — HARD BLOCKER), T2-06 deterministic reconstruction (hash=1544b532…), T2-07 complete accounting (total=119, complete=119); commits 6d7529867 (AC tests) | 2026-08-20 |
 | TIME-003 — Frozen Coralys Decision Replay | **COMPLETE 2026-08-20** — `time003_replay.v1` binary operational; sole input: frozen TIME-002 artifact; C3-002 artifact hash verified (5a43b9df); RecommendationEngine v1 + REC-001-H (101 files) applied; no network, no feature recomputation, no algorithm changes; first run: total=102, decided=101, excluded_incomplete=0, excluded_error=1 (MCDOWELL-N.NS); C3-002: long=40, short=61, no_trade=0; recommendation: buy=7, sell=4, watch=44, no_trade_evidence=46; accounting invariant: 101+0+1=102 PASS; identity chain: reconstruction_id→state_id→decision_replay_id preserved; input_artifact_hash=c199da5b; decision_replay_id=TIME003-20260814T101500Z-gen20260820T062544898149Z; artifact: time_machine/decisions/TIME003-20260814T101500Z.json; commit 91b239528 | 2026-08-20 |
 | TIME-004 — Historical Decision Ledger | **COMPLETE 2026-08-20** — `time004_ledger.v1` binary operational; sole input: frozen TIME-003 artifact; source_type=HISTORICAL guard enforced; deduplication key: decision_replay_id; clean run: total=102 admitted=102 excluded_incomplete=0 excluded_error=0 (UNITDSPR.NS now COMPLETE after universe fix); idempotency verified (second run n_admitted=0 n_duplicate_skipped=102); 7-step provenance chain in every entry; AC-T4-01 through AC-T4-07 all PASS; run_id=TIME004-20260814T101500Z-gen20260820T072246895413Z; 102 entries in time_machine/ledger/entries/; commit 619c34899 | 2026-08-20 |
-| TIME-005 — Historical LIVE-003 Replay | **PLANNED** — replay live003_recommend against TIME-004 state; frozen RecommendationEngine v1 + frozen REC-001-H evidence; no algorithm changes | 2026-08-20 |
+| TIME-005 — Forward Observation Replay | **COMPLETE 2026-08-20** — `time005_observe.v1` binary operational; sole input: TIME-004 ledger entries (read-only); temporal firewall: only bars with timestamp > as_of used; direction-aware MFE/MAE (LONG: high/low; SHORT: low/high inverted); first-exit semantics: TARGET/RISK/AMBIGUOUS/GAP_THROUGH/HORIZON/NO_TRADE; first run: total=102 observed=102 no_trade=47 target=8 risk=1 horizon=46 ambiguous=0; idempotency verified (second run n_observed=0 n_duplicate_skipped=102); AC-T5-01 through AC-T5-07 all PASS; run_id=TIME005-20260814T101500Z-gen20260820T082313551186Z; 102 observation JSONs in time_machine/observations/; commit 0d11fdf0f | 2026-08-20 |
 | TIME-006 — Historical LIVE-004 Replay | **PLANNED** — replay live004_certify against TIME-005 recommendations; same 6 gates; historical freshness threshold adjusted for replay context | 2026-08-20 |
 | TIME-007 — Historical Decision Ledger | **PLANNED** — replay live005_ledger against TIME-006 certification; same 7 ACs; CERTIFIED+DEGRADED admitted; STALE+INCOMPLETE audit-only; idempotency enforced | 2026-08-20 |
 | TIME-008 — Forward Observation | **PLANNED** — for each TIME-007 T0 decision, observe what actually happened in the subsequent N sessions; direction-aware MFE/MAE; target_reached, risk_reached, first_exit, horizon_expiry; uses only data from T+1 onward; same observation schema as OBS-001 | 2026-08-20 |
