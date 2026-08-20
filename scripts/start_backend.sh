@@ -148,12 +148,13 @@ else
     --output   "$LIVE_CERTIFY_DIR"
   echo "[backend] LIVE-004 complete."
 
-  echo "[backend] LIVE-005: admitting to ledger..."
+  echo "[backend] LIVE-005: admitting to ledger and emitting to Decision Server..."
   cargo run -p chronosentiment_adapter --bin live005_ledger -- \
     --certification "$LIVE_CERTIFY_DIR/latest.json" \
     --recommend     "$LIVE_RECOMMEND_DIR/latest.json" \
     --ledger        "$LIVE_LEDGER_DIR" \
-    --audit         "$LIVE_LEDGER_DIR/audit"
+    --audit         "$LIVE_LEDGER_DIR/audit" \
+    --emit-url      "http://localhost:${PORT}"
   echo "[backend] LIVE-005 complete."
 
   echo "[backend] Ticker fetch pipeline complete. Fresh OHLCV values now reflected."

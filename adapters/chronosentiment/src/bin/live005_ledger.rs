@@ -61,7 +61,7 @@
 //!     --ledger         live_capture/ledger/ \
 //!     --audit          live_capture/ledger/audit/
 
-use chrono::Utc;
+use chrono::{DateTime, Datelike, Duration, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -70,6 +70,11 @@ use std::path::PathBuf;
 // ─── LIVE-005 producer identity ───────────────────────────────────────────────
 
 const PRODUCER: &str = "live005_ledger.v1";
+
+// ─── Frozen artifact identity (mirrors csp006_p_enrich.rs) ───────────────────
+
+const CORALYS_EXEC_ARTIFACT_HASH: &str =
+    "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f";
 
 // ─── Admission policy ─────────────────────────────────────────────────────────
 
@@ -311,6 +316,8 @@ struct Args {
     recommend: PathBuf,
     ledger: PathBuf,
     audit: PathBuf,
+    /// Optional: POST each admitted entry to the Coralys Decision Server.
+    emit_url: Option<String>,
 }
 
 fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
@@ -319,6 +326,7 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut recommend = PathBuf::from("live_capture/recommendations/latest.json");
     let mut ledger = PathBuf::from("live_capture/ledger");
     let mut audit = PathBuf::from("live_capture/ledger/audit");
+    let mut emit_url: Option<String> = None;
 
     let mut i = 1;
     while i < args.len() {
@@ -327,12 +335,87 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
             "--recommend"     => { i += 1; recommend = PathBuf::from(&args[i]); }
             "--ledger"        => { i += 1; ledger = PathBuf::from(&args[i]); }
             "--audit"         => { i += 1; audit = PathBuf::from(&args[i]); }
+            "--emit-url"      => { i += 1; emit_url = Some(args[i].clone()); }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { certification, recommend, ledger, audit })
+    Ok(Args { certification, recommend, ledger, audit, emit_url })
+}
+
+// ─── Session helper ───────────────────────────────────────────────────────────
+
+fn next_trading_session(t: &DateTime<Utc>) -> String {
+    let mut d = t.date_naive() + Duration::days(1);
+    loop {
+        match d.weekday() {
+            Weekday::Sat | Weekday::Sun => d += Duration::days(1),
+            _ => break,
+        }
+    }
+    d.format("%Y-%m-%d").to_string()
+}
+
+// ─── Server emission ──────────────────────────────────────────────────────────
+
+/// POST a LIVE-005 ledger entry to `POST /decisions` on the Coralys Decision Server.
+///
+/// Uses the canonical `decision_id` from the ledger entry — does not create a
+/// new ID. 409 = already exists = idempotent success (returns Ok(false)).
+/// Returns Ok(true) on 201 Created, Err on any other failure.
+fn emit_entry_to_server(
+    base_url: &str,
+    entry: &LedgerEntry,
+) -> Result<bool, String> {
+    // Parse recommended_at as the decision_timestamp for the server ledger.
+    let decision_ts: DateTime<Utc> = entry
+        .recommended_at
+        .parse()
+        .map_err(|e| format!("bad recommended_at '{}': {e}", entry.recommended_at))?;
+
+    let effective_session = next_trading_session(&decision_ts);
+
+    // Normalise ticker: TATASTEEL_NS → TATASTEEL.NS (server expects dot notation)
+    let instrument = entry.ticker.replacen('_', ".", 1);
+
+    let body = serde_json::json!({
+        "decision_id":                  entry.decision_id,
+        "instrument":                   instrument,
+        "decision_timestamp":           decision_ts,
+        "direction":                    entry.direction,
+        "trend":                        entry.trend,
+        "momentum":                     entry.momentum,
+        "volatility":                   entry.vol_regime,
+        "target_price":                 entry.adaptive_target,
+        "policy_artifact_hash":         entry.c3_002_artifact_hash,
+        "execution_artifact_hash":      CORALYS_EXEC_ARTIFACT_HASH,
+        "decision_pipeline":            "LIVE-003",
+        "data_snapshot_id":             entry.source_snapshot_id,
+        "certified_timestamp":          entry.certified_at,
+        "reference_risk_boundary_price": entry.adaptive_risk,
+        "reference_risk_boundary_type": "CORALYS_V0_ATR_TMV",
+        "reference_price":              entry.reference_price,
+        "effective_session":            effective_session,
+    });
+
+    let url = format!("{base_url}/decisions");
+    let client = reqwest::blocking::Client::new();
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .map_err(|e| format!("POST {url} failed: {e}"))?;
+
+    let status = resp.status();
+    if status.as_u16() == 409 {
+        return Ok(false); // already exists — idempotent
+    }
+    if status.is_success() {
+        return Ok(true); // newly created
+    }
+    let text = resp.text().unwrap_or_default();
+    Err(format!("POST {url} returned {status}: {text}"))
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -451,6 +534,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ── Admit records to primary ledger (AC-L5-01) ────────────────────────────
+    let mut n_emitted_new = 0usize;
+    let mut n_emitted_already = 0usize;
+    let mut n_emit_errors = 0usize;
+
     if is_admitted && !is_duplicate {
         for rec in &recommend.recommendations {
             // Build decision_id: LIVE-005-{cert_suffix}-{ticker}
@@ -522,9 +609,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let entry_path = entries_dir.join(&entry_filename);
             fs::write(&entry_path, &entry_json)?;
             n_admitted += 1;
+
+            // ── Emit to Decision Server if --emit-url was supplied ────────────
+            if let Some(ref base_url) = args.emit_url {
+                match emit_entry_to_server(base_url, &entry) {
+                    Ok(true) => {
+                        n_emitted_new += 1;
+                        println!(
+                            "[live005] emit ticker={} id={decision_id} status=NEW",
+                            rec.instrument
+                        );
+                    }
+                    Ok(false) => {
+                        n_emitted_already += 1;
+                        println!(
+                            "[live005] emit ticker={} id={decision_id} status=ALREADY_EXISTS",
+                            rec.instrument
+                        );
+                    }
+                    Err(e) => {
+                        n_emit_errors += 1;
+                        eprintln!(
+                            "[live005] emit ticker={} id={decision_id} error={e}",
+                            rec.instrument
+                        );
+                    }
+                }
+            }
         }
 
         println!("[live005] admitted {} T0 decision records to ledger", n_admitted);
+        if args.emit_url.is_some() {
+            println!(
+                "[live005] emit n_new={n_emitted_new} n_already={n_emitted_already} n_errors={n_emit_errors}"
+            );
+        }
     } else if is_duplicate {
         n_duplicate_skipped = recommend.recommendations.len();
         println!("[live005] {} records skipped (duplicate, AC-L5-05)", n_duplicate_skipped);
@@ -567,6 +686,14 @@ ac_l5_06_no_recomputation: true,     // no market data, C3-002, recommendation, 
     println!("[live005] n_admitted={n_admitted}");
     println!("[live005] n_duplicate_skipped={n_duplicate_skipped}");
     println!("[live005] n_total_recommendations={}", recommend.recommendations.len());
+    if args.emit_url.is_some() {
+        println!("[live005] n_emitted_new={n_emitted_new}");
+        println!("[live005] n_emitted_already={n_emitted_already}");
+        println!("[live005] n_emit_errors={n_emit_errors}");
+        if n_emit_errors > 0 {
+            eprintln!("[live005] WARNING: {n_emit_errors} decision(s) failed to emit to Decision Server");
+        }
+    }
     println!("[live005] AC-L5-01 admission_fidelity=PASS");
     println!("[live005] AC-L5-02 status_preservation=PASS (certification_status={} unchanged)", cert.certification_status);
     println!("[live005] AC-L5-03 t0_immutability=PASS (write-once, no modification path)");
