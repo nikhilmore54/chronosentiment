@@ -143,8 +143,9 @@ else
   echo "[backend] LIVE-004: certifying recommendations..."
   cargo run -p chronosentiment_adapter --bin live004_certify -- \
     --snapshot "$LIVE_SNAPSHOT_DIR/latest.json" \
-    --recommendations "$LIVE_RECOMMEND_DIR/latest.json" \
-    --output "$LIVE_CERTIFY_DIR"
+    --state    "$LIVE_EVAL_DIR/latest.json" \
+    --recommend "$LIVE_RECOMMEND_DIR/latest.json" \
+    --output   "$LIVE_CERTIFY_DIR"
   echo "[backend] LIVE-004 complete."
 
   echo "[backend] LIVE-005: admitting to ledger..."
