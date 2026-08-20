@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# start_backend.sh — Start the Coralys Decision Server and run baseline enrichment.
+# start_backend.sh — Start the Coralys Decision Server, run baseline enrichment,
+# and run the LIVE-001→LIVE-005 ticker fetch pipeline so fresh OHLCV values
+# are reflected on the frontend.
 #
 # Usage:
 #   ./scripts/start_backend.sh
@@ -7,13 +9,15 @@
 # What it does:
 #   1. Starts coralys_decision_server on :3001 (background)
 #   2. Waits until the server is accepting connections (up to 60s)
-#   3. Runs csp006_p_enrich to populate the historical CDI baseline (202 decisions)
+#   3. Runs LIVE-001 → LIVE-005 pipeline to fetch fresh OHLCV and emit live decisions
+#   4. Runs csp006_p_enrich to populate the historical CDI baseline (202 decisions)
 #
-# The enrichment uses the CS-P-006 historical snapshot — this is the BASELINE dataset.
-# It is NOT the LIVE-001 path. Live decisions will be a separate pipeline.
+# The ticker fetch (step 3) uses live Yahoo data — LIVE dataset (runs first).
+# The enrichment (step 4) uses the CS-P-006 historical snapshot — BASELINE dataset.
 #
 # Environment:
 #   PORT (optional) — override server port, default 3001
+#   SKIP_LIVE_PIPELINE (optional) — set to 1 to skip step 4 (baseline only)
 
 set -euo pipefail
 
@@ -25,6 +29,15 @@ OUTCOMES_PATH="product_validation/CS-P-006/observatory/prospective/outcomes.json
 REC001H_DIR_PATH="product_validation/CS-P-006/observatory/prospective"
 YAHOO_CACHE="product_validation/CS-P-006/snapshot/20260814T183851Z_100instrument/yahoo_cache"
 ENRICH_NOW="2026-08-17T03:45:00Z"
+
+# LIVE pipeline paths
+LIVE_SNAPSHOT_DIR="live_capture/snapshots"
+LIVE_EVAL_DIR="live_capture/evaluations"
+LIVE_RECOMMEND_DIR="live_capture/recommendations"
+LIVE_CERTIFY_DIR="live_capture/certifications"
+LIVE_LEDGER_DIR="live_capture/ledger"
+LIVE_YAHOO_CACHE="live_capture/yahoo_cache"
+UNIVERSE="datasets/universes/coralys_102_v1.json"
 
 cd "$REPO_ROOT"
 
@@ -58,7 +71,57 @@ done
 
 echo "[start_backend] Server is up after ${WAITED}s."
 
-# ── 3. Check if ledger already has decisions ──────────────────────────────────
+# ── 3. LIVE-001 → LIVE-005 ticker fetch pipeline ─────────────────────────────
+
+if [ "${SKIP_LIVE_PIPELINE:-0}" = "1" ]; then
+  echo "[start_backend] SKIP_LIVE_PIPELINE=1 — skipping ticker fetch."
+else
+  echo "[start_backend] Running LIVE-001 → LIVE-005 ticker fetch pipeline..."
+
+  mkdir -p "$LIVE_SNAPSHOT_DIR" "$LIVE_EVAL_DIR" "$LIVE_RECOMMEND_DIR" \
+           "$LIVE_CERTIFY_DIR" "$LIVE_LEDGER_DIR" "$LIVE_YAHOO_CACHE"
+
+  # LIVE-001: fetch fresh OHLCV snapshot
+  echo "[start_backend] LIVE-001: fetching fresh OHLCV snapshot..."
+  CHRONO_YAHOO_CACHE_DIR="$LIVE_YAHOO_CACHE" \
+    cargo run -p chronosentiment_adapter --bin live001_snapshot -- \
+      --universe "$UNIVERSE" \
+      --output "$LIVE_SNAPSHOT_DIR"
+  echo "[start_backend] LIVE-001 complete."
+
+  # LIVE-002: evaluate snapshot against frozen C3-002 policy
+  echo "[start_backend] LIVE-002: evaluating snapshot..."
+  cargo run -p chronosentiment_adapter --bin live002_evaluate -- \
+    --snapshot "$LIVE_SNAPSHOT_DIR/latest.json" \
+    --output "$LIVE_EVAL_DIR"
+  echo "[start_backend] LIVE-002 complete."
+
+  # LIVE-003: generate recommendations
+  echo "[start_backend] LIVE-003: generating recommendations..."
+  cargo run -p chronosentiment_adapter --bin live003_recommend -- \
+    --state "$LIVE_EVAL_DIR/latest.json" \
+    --output "$LIVE_RECOMMEND_DIR"
+  echo "[start_backend] LIVE-003 complete."
+
+  # LIVE-004: certify recommendations
+  echo "[start_backend] LIVE-004: certifying recommendations..."
+  cargo run -p chronosentiment_adapter --bin live004_certify -- \
+    --snapshot "$LIVE_SNAPSHOT_DIR/latest.json" \
+    --recommendations "$LIVE_RECOMMEND_DIR/latest.json" \
+    --output "$LIVE_CERTIFY_DIR"
+  echo "[start_backend] LIVE-004 complete."
+
+  # LIVE-005: admit certified decisions to ledger
+  echo "[start_backend] LIVE-005: admitting to ledger..."
+  cargo run -p chronosentiment_adapter --bin live005_ledger -- \
+    --certification "$LIVE_CERTIFY_DIR/latest.json" \
+    --ledger-dir "$LIVE_LEDGER_DIR"
+  echo "[start_backend] LIVE-005 complete."
+
+  echo "[start_backend] Ticker fetch pipeline complete. Fresh OHLCV values now reflected."
+fi
+
+# ── 4. Historical CDI baseline enrichment ────────────────────────────────────
 
 TOTAL=$(curl -sf "http://localhost:${PORT}/decisions" | python3 -c "import sys,json; print(json.load(sys.stdin)['total'])" 2>/dev/null || echo "0")
 
