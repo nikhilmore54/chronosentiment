@@ -22,5 +22,15 @@
     "cohort_consistency_summary.json",
     "analysis_report.md"
   ],
-  "governing_rule": "Analysis-only. No upstream pipeline changes permitted."
+  "governing_rule": "Analysis-only. No upstream pipeline changes permitted.",
+  "report_version": "1.1",
+  "report_enhancements": [
+    "Added eligibility accounting table (cohort x evidence_class: N_total, N_eligible, N_ineligible)",
+    "Replaced bounded conclusion with frozen negative/bounded conclusion paragraph",
+    "Added research outcome classification table",
+    "Clarified that primary comparison is Favourable vs Mixed only (Unfavourable: 0 eligible rows)",
+    "Explicitly prohibited three-class discrimination framing for primary outcomes",
+    "Explicitly prohibited retrospective R:R threshold tuning"
+  ],
+  "conclusion_frozen": "TIME-008 did not establish consistent cross-cohort discrimination of forward outcomes by the frozen evidence classification. The pre-specified >=4/6 cohort consistency criterion was not satisfied for any primary Q1 ordering. These findings do not justify modification of Coralys, retrospective threshold selection, or claims of predictive or economic utility."
 }

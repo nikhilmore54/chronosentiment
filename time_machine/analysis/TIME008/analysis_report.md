@@ -211,13 +211,66 @@ R:R tercile boundaries (global, 612 rows): low<=0.9529, medium<=1.1453, high>1.1
 
 ---
 
-## Bounded conclusion
+## Eligibility accounting table
 
-TIME-008 establishes descriptive evidence about discrimination—or lack thereof—within the frozen historical experiment. It does not establish predictive validity, economic utility, or deployment readiness.
+The table below provides the complete audit trail for `eligible_for_primary_comparison` by cohort and evidence class. All Unfavourable and Insufficient rows have N_eligible = 0 because the upstream eligibility rule excludes them; this is not a TIME-008 decision.
 
-TIME-008 may NOT conclude:
+**Consequence for Q1:** The primary comparison is effectively Favourable vs Mixed. The phrase "three-class discrimination" does not apply to the primary outcomes; Unfavourable is available only for secondary outcomes (MFE, MAE).
+
+| Cohort | Evidence Class | N_total | N_eligible | N_ineligible |
+|--------|---------------|---------|-----------|-------------|
+| T1 | Favourable | 10 | 10 | 0 |
+| T1 | Mixed | 45 | 45 | 0 |
+| T1 | Unfavourable | 46 | 0 | 46 |
+| T1 | Insufficient | 1 | 0 | 1 |
+| T2 | Favourable | 12 | 12 | 0 |
+| T2 | Mixed | 43 | 43 | 0 |
+| T2 | Unfavourable | 46 | 0 | 46 |
+| T2 | Insufficient | 1 | 0 | 1 |
+| T3 | Favourable | 13 | 13 | 0 |
+| T3 | Mixed | 42 | 42 | 0 |
+| T3 | Unfavourable | 46 | 0 | 46 |
+| T3 | Insufficient | 1 | 0 | 1 |
+| T4 | Favourable | 13 | 13 | 0 |
+| T4 | Mixed | 41 | 41 | 0 |
+| T4 | Unfavourable | 47 | 0 | 47 |
+| T4 | Insufficient | 1 | 0 | 1 |
+| T5 | Favourable | 22 | 22 | 0 |
+| T5 | Mixed | 42 | 42 | 0 |
+| T5 | Unfavourable | 37 | 0 | 37 |
+| T5 | Insufficient | 1 | 0 | 1 |
+| T6 | Favourable | 14 | 14 | 0 |
+| T6 | Mixed | 48 | 48 | 0 |
+| T6 | Unfavourable | 39 | 0 | 39 |
+| T6 | Insufficient | 1 | 0 | 1 |
+| **Pooled** | **Favourable** | **84** | **84** | **0** |
+| **Pooled** | **Mixed** | **261** | **261** | **0** |
+| **Pooled** | **Unfavourable** | **261** | **0** | **261** |
+| **Pooled** | **Insufficient** | **6** | **0** | **6** |
+
+---
+
+## Frozen conclusion
+
+**TIME-008 did not establish consistent cross-cohort discrimination of forward outcomes by the frozen evidence classification.** Although pooled data exhibit descriptive separation between Favourable and Mixed decisions, including higher target attainment (39.3% vs 28.4%) and realized return (0.79% vs 0.64%) for Favourable decisions, the pre-specified ≥4/6 cohort consistency criterion was not satisfied for any primary Q1 ordering. Directional and R:R-stratified analyses likewise showed descriptive variation but no consistent cross-cohort ordering. Q3 action-specific comparisons were not estimable for the pre-specified comparisons because the required action/evidence cells were absent. These findings do not justify modification of Coralys, retrospective threshold selection, or claims of predictive or economic utility.
+
+### Research outcome classification
+
+| Dimension | Finding |
+|-----------|---------|
+| Robust cross-cohort evidence of discrimination | **NO** |
+| Pooled descriptive separation (Favourable > Mixed) | **YES** |
+| Directional asymmetry (LONG vs SHORT) | **YES, descriptively** |
+| R:R-dependent variation (medium tercile most pronounced) | **YES, descriptively** |
+| Pre-specified ≥4/6 cohort consistency threshold met | **NOT MET** |
+| Evidence sufficient for algorithm modification | **NO** |
+
+### What TIME-008 may NOT conclude
+
 - That Coralys has proven predictive power
 - That the system is economically useful
-- That any threshold should be changed
+- That any threshold should be changed retrospectively
 - That any algorithm should be modified
 - That the evidence is sufficient for live deployment
+- That "three-class discrimination" was tested on primary outcomes (Unfavourable had 0 eligible rows)
+- That the medium R:R tercile defines an optimal operating range (post-hoc optimization is prohibited)
