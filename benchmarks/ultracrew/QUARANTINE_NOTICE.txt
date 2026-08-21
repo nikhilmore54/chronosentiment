@@ -1,0 +1,5 @@
+PRE-FIX
+MODEL INVALID
+NOT PUBLICATION EVIDENCE
+
+The initial optimization experiments were not valid evidence for constraint-aware scheduling because the evolutionary fitness function was disconnected from the canonical constraint engine.
