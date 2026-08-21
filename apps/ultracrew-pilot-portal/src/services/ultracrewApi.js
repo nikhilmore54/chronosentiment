@@ -23,7 +23,7 @@ export async function runOptimization(scenarioData, generationLimit, seed) {
   
   const rawData = await res.json();
   const data = parseOptimizationResponse(rawData);
-  return { data, shifts, workers, layoverMarkers, horizonHours };
+  return { data, shifts, workers, layoverMarkers, horizonHours, scenario: scenarioData };
 }
 
 export async function runReschedule(payload) {
@@ -48,9 +48,9 @@ export async function submitPilotSession(payload) {
   return res.json();
 }
 
-export async function fetchPairingsAndDuties(data, shifts, workers, lm) {
+export async function fetchPairingsAndDuties(data, shifts, workers, lm, scenario) {
   const API_BASE = process.env.REACT_APP_API_URL || '';
-  const analysisBody = JSON.stringify({ schedule: data.schedule, shifts, workers });
+  const analysisBody = JSON.stringify({ schedule: data.schedule, shifts, workers, scenario });
   const [pairRes, dutyRes] = await Promise.all([
     fetch(`${API_BASE}/api/pairings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
     fetch(`${API_BASE}/api/duties`,   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: analysisBody }),
@@ -106,31 +106,6 @@ export async function fetchPairingsAndDuties(data, shifts, workers, lm) {
         }
       });
       
-      if (restMarkers.length > 0) ganttMarkers = restMarkers;
-    } else if (dutyRes.ok) {
-      // Fallback if pairings fail
-      const dutyData = await dutyRes.json();
-      const byWorker = {};
-      (dutyData.duties || []).forEach(d => { (byWorker[d.worker_id] = byWorker[d.worker_id] || []).push(d); });
-      const restMarkers = [];
-      Object.entries(byWorker).forEach(([wid, duties]) => {
-        duties.sort((a, b) => a.report_hour - b.report_hour);
-        for (let i = 0; i < duties.length - 1; i++) {
-          const restStart = duties[i].release_hour;
-          const restEnd   = duties[i + 1].report_hour;
-          const restHrs   = restEnd - restStart;
-          if (restHrs > 0 && restHrs < 72) {
-            restMarkers.push({
-              start_hour: restStart,
-              duration_hours: restHrs,
-              type: restHrs >= 36 ? 'home_base_rest' : 'layover', // Fallback heuristic based on 36h rule
-              label: restHrs >= 36 ? `Home Base Rest ${restHrs}h` : `Layover ${restHrs}h`,
-              worker_id: parseInt(wid),
-              fdp_violation: !duties[i].rest_compliant,
-            });
-          }
-        }
-      });
       if (restMarkers.length > 0) ganttMarkers = restMarkers;
     }
   

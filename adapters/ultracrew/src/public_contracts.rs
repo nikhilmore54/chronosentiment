@@ -12,12 +12,22 @@ pub struct LeaveRequest {
     pub end_hour: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SchedulingDomain {
+    Inrc,
+    Airline,
+}
+
 /// Domain-independent optimization context supplied by the adapter.
 /// Contains no domain-specific concepts (flights, nurses, trains).
 /// Sits between Coralys (Optimization Engine) and the Solution Engine.
 /// All fields are optional so existing callers remain fully compatible.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scenario {
+    /// Explicitly declares the scheduling domain for this scenario.
+    /// If missing, the optimizer MUST reject the dataset.
+    pub domain: Option<SchedulingDomain>,
     /// Total planning horizon in hours (e.g. 744.0 for a 31-day month).
     /// Used for reporting and future horizon-aware constraints.
     pub planning_horizon_hours: Option<f64>,

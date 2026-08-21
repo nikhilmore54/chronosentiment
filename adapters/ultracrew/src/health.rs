@@ -141,6 +141,7 @@ fn check_validator() -> bool {
         rng_seed: Some(42),
         generation_limit: Some(10),
         scenario: Some(Scenario {
+            domain: Some(crate::public_contracts::SchedulingDomain::Airline),
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(10),

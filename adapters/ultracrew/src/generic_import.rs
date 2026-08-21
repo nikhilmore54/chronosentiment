@@ -359,6 +359,7 @@ pub fn export_request_template() -> String {
         rng_seed: Some(42),
         generation_limit: Some(200),
         scenario: Some(Scenario {
+            domain: Some(crate::public_contracts::SchedulingDomain::Inrc),
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(11),

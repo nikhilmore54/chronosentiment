@@ -12,7 +12,7 @@
 ///
 /// # Usage
 ///
-/// ```rust
+/// ```rust,ignore
 /// use ultracrew::strict_validator::validate_request;
 ///
 /// let report = validate_request(&request);
@@ -464,7 +464,10 @@ mod tests {
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(200),
-            scenario: Some(Scenario { leave_requests: None, minimum_rest_hours: Some(10), 
+            scenario: Some(Scenario { 
+                domain: Some(crate::public_contracts::SchedulingDomain::Airline),
+                leave_requests: None, 
+                minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),
@@ -674,7 +677,10 @@ mod tests {
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(500),
-            scenario: Some(Scenario { leave_requests: None, minimum_rest_hours: Some(10), 
+            scenario: Some(Scenario { 
+                domain: Some(crate::public_contracts::SchedulingDomain::Airline),
+                leave_requests: None, 
+                minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),

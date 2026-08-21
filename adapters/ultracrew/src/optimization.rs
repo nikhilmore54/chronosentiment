@@ -220,9 +220,15 @@ impl ScheduleOptimizer {
             }
         }
 
-        // Find most overloaded and most underloaded workers
-        let max_worker = worker_hours.iter().max_by_key(|(_, &h)| h).map(|(&id, _)| id);
-        let min_worker = worker_hours.iter().min_by_key(|(_, &h)| h).map(|(&id, _)| id);
+        // Find most overloaded and most underloaded workers deterministically
+        let max_worker = self.context.workers.iter()
+            .map(|w| (w.id, worker_hours[&w.id]))
+            .max_by_key(|&(id, h)| (h, id)) // Break ties using id
+            .map(|(id, _)| id);
+        let min_worker = self.context.workers.iter()
+            .map(|w| (w.id, worker_hours[&w.id]))
+            .min_by_key(|&(id, h)| (h, id)) // Break ties using id
+            .map(|(id, _)| id);
 
         let (overloaded, underloaded) = match (max_worker, min_worker) {
             (Some(o), Some(u)) if o != u => (o, u),
@@ -413,31 +419,41 @@ impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
 impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
     type Evaluation = ScheduleEvaluation;
 
-    fn evaluate(&self, genome: &ScheduleGenome, metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
-        let rest_margin = metrics.get_float("rest_margin").unwrap_or(0.0);
-        let skill_coverage = metrics.get_float("skill_coverage").unwrap_or(0.0);
-        
-        // Objective Evaluation translates operational margins to business value (fitness)
-        let mut fitness = 10000.0;
-        
-        if rest_margin > 0.0 {
-            fitness += rest_margin * 20.0;
-        } else if rest_margin < 0.0 {
-            fitness += rest_margin * 100.0;
-        }
+    fn evaluate(&self, genome: &ScheduleGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+        use crate::public_contracts::SchedulingDomain;
+        use crate::constraint_engine::{DomainConstraintEvaluator, AirlineConstraintEvaluator, InrcConstraintEvaluator};
 
-        fitness += skill_coverage * 1000.0;
+        let evaluator: Box<dyn DomainConstraintEvaluator> = match self.context.scenario.as_ref().and_then(|s| s.domain.as_ref()) {
+            Some(SchedulingDomain::Airline) => Box::new(AirlineConstraintEvaluator::new(self.context.clone())),
+            Some(SchedulingDomain::Inrc) => Box::new(InrcConstraintEvaluator::new(self.context.clone())),
+            None => {
+                // Return a heavily penalized evaluation for unknown domains to fail closed
+                return ScheduleEvaluation {
+                    schedule: genome.clone(),
+                    fitness: -1_000_000_000.0,
+                    is_valid: false,
+                    hc1_violations: 999,
+                    hc2_violations: 999,
+                    hc3_violations: 999,
+                    rest_violations: 999,
+                    fairness_penalty: 0.0,
+                    fatigue_penalty: 0.0,
+                };
+            }
+        };
 
+        let report = evaluator.evaluate(genome);
+        
         let eval = ScheduleEvaluation {
             schedule: genome.clone(),
-            fitness,
-            is_valid: rest_margin >= 0.0 && skill_coverage >= 1.0,
-            hc1_violations: 0,
-            hc2_violations: 0,
-            hc3_violations: 0,
-            rest_violations: if rest_margin < 0.0 { 1 } else { 0 },
-            fairness_penalty: 0.0,
-            fatigue_penalty: 0.0,
+            fitness: report.fitness,
+            is_valid: report.is_valid && report.hard_violations == 0,
+            hc1_violations: report.hc1_violations,
+            hc2_violations: report.hc2_violations,
+            hc3_violations: report.hc3_violations,
+            rest_violations: report.rest_violations,
+            fairness_penalty: report.fairness_penalty,
+            fatigue_penalty: report.fatigue_penalty,
         };
 
         self.context.observatory.lock().unwrap().record_evaluation(&eval);

@@ -69,7 +69,7 @@ export default function App() {
     const t0 = Date.now();
     try {
       const scenarioDataLocal = buildGeradBenchmarkScenario(scenario);
-      const { data, shifts, workers, layoverMarkers: lm, horizonHours: hz } = await runOptimization(
+      const { data, shifts, workers, layoverMarkers: lm, horizonHours: hz, scenario: optimizedScenario } = await runOptimization(
         scenarioDataLocal,
         generationLimit, 
         seed
@@ -82,7 +82,7 @@ export default function App() {
       const wm = {}; workers.forEach(w => { wm[w.id] = w; }); setWorkersMap(wm);
 
       try {
-        const { ganttMarkers, pairings: p } = await fetchPairingsAndDuties(data, shifts, workers, lm);
+        const { ganttMarkers, pairings: p } = await fetchPairingsAndDuties(data, shifts, workers, lm, optimizedScenario);
         setLayoverMarkers(ganttMarkers);
         setPairings(p);
       } catch (analysisErr) {

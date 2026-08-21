@@ -1,46 +1,27 @@
 use crate::optimization::{ScheduleGenome, ScheduleContext};
-use coralys_moga::runtime::optimization::constraint::{ConstraintModel, RepairOperator, ConstraintViolation, ConstraintTier};
+use coralys_core::operators::{ConstraintModel, RepairOperator, OperatorBudget};
 use std::sync::Arc;
 use crate::models::Shift;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
+#[derive(Debug, Clone)]
 pub enum UltraCrewViolation {
     RestViolation { worker_id: u64, shift_1_id: u64, shift_2_id: u64 },
     OverlapViolation { worker_id: u64, shift_1_id: u64, shift_2_id: u64 },
     SkillViolation { worker_id: u64, shift_id: u64 },
 }
 
-impl ConstraintViolation for UltraCrewViolation {
-    fn description(&self) -> String {
-        match self {
-            Self::RestViolation { worker_id, shift_1_id, shift_2_id } => {
-                format!("Rest violation for worker {} between shifts {} and {}", worker_id, shift_1_id, shift_2_id)
-            },
-            Self::OverlapViolation { worker_id, shift_1_id, shift_2_id } => {
-                format!("Overlap violation for worker {} between shifts {} and {}", worker_id, shift_1_id, shift_2_id)
-            },
-            Self::SkillViolation { worker_id, shift_id } => {
-                format!("Skill mismatch for worker {} on shift {}", worker_id, shift_id)
-            },
-        }
-    }
-}
+
 
 pub struct RestConstraint {
     pub context: Arc<ScheduleContext>,
 }
 
-impl ConstraintModel<ScheduleGenome, UltraCrewViolation> for RestConstraint {
-    fn tier(&self) -> ConstraintTier {
-        ConstraintTier::Safety
-    }
+impl ConstraintModel<ScheduleGenome> for RestConstraint {
+    type Violation = UltraCrewViolation;
 
-    fn name(&self) -> String {
-        "Rest Gap & Overlap".to_string()
-    }
-
-    fn evaluate(&self, genome: &ScheduleGenome, metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> coralys_moga::runtime::optimization::constraint::ConstraintAssessment<UltraCrewViolation> {
+    fn evaluate_violations(&self, genome: &ScheduleGenome) -> Vec<Self::Violation> {
         let mut violations = Vec::new();
         let mut worker_shifts: std::collections::HashMap<u64, Vec<&Shift>> = std::collections::HashMap::new();
 
@@ -55,18 +36,19 @@ impl ConstraintModel<ScheduleGenome, UltraCrewViolation> for RestConstraint {
             .and_then(|s| s.minimum_rest_hours)
             .unwrap_or(10); 
 
-        for (worker_id, shifts) in worker_shifts {
-            let mut sorted_shifts = shifts.clone();
-            sorted_shifts.sort_by_key(|s| s.start_hour);
+        for worker in self.context.workers.iter() {
+            if let Some(shifts) = worker_shifts.get(&worker.id) {
+                let mut sorted_shifts = shifts.clone();
+                sorted_shifts.sort_by_key(|s| s.start_hour);
 
-            // Overlaps
+                // Overlaps
             for i in 0..sorted_shifts.len() {
                 for j in (i + 1)..sorted_shifts.len() {
                     let s_i = sorted_shifts[i];
                     let s_j = sorted_shifts[j];
                     if s_i.overlaps_with(s_j) {
                         violations.push(UltraCrewViolation::OverlapViolation {
-                            worker_id,
+                            worker_id: worker.id,
                             shift_1_id: s_i.id,
                             shift_2_id: s_j.id,
                         });
@@ -83,30 +65,16 @@ impl ConstraintModel<ScheduleGenome, UltraCrewViolation> for RestConstraint {
                 } else { 0 };
                 if gap < min_rest && !s_i.overlaps_with(s_next) {
                     violations.push(UltraCrewViolation::RestViolation {
-                        worker_id,
+                        worker_id: worker.id,
                         shift_1_id: s_i.id,
                         shift_2_id: s_next.id,
                     });
                 }
             }
+            }
         }
 
-        let status = if violations.is_empty() {
-            coralys_moga::runtime::optimization::constraint::AssessmentStatus::Pass
-        } else {
-            coralys_moga::runtime::optimization::constraint::AssessmentStatus::Failed
-        };
-
-        coralys_moga::runtime::optimization::constraint::ConstraintAssessment {
-            constraint_id: self.name(),
-            tier: self.tier(),
-            status,
-            violations,
-            metrics: std::collections::HashMap::new(),
-            margins: std::collections::HashMap::new(),
-            repairability: true,
-            diagnostics: Vec::new(),
-        }
+        violations
     }
 }
 
@@ -114,16 +82,10 @@ pub struct SkillConstraint {
     pub context: Arc<ScheduleContext>,
 }
 
-impl ConstraintModel<ScheduleGenome, UltraCrewViolation> for SkillConstraint {
-    fn tier(&self) -> ConstraintTier {
-        ConstraintTier::Safety
-    }
+impl ConstraintModel<ScheduleGenome> for SkillConstraint {
+    type Violation = UltraCrewViolation;
 
-    fn name(&self) -> String {
-        "Required Skills".to_string()
-    }
-
-    fn evaluate(&self, genome: &ScheduleGenome, metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> coralys_moga::runtime::optimization::constraint::ConstraintAssessment<UltraCrewViolation> {
+    fn evaluate_violations(&self, genome: &ScheduleGenome) -> Vec<Self::Violation> {
         let mut violations = Vec::new();
         for shift in self.context.shifts.iter() {
             if let Some(worker_id) = genome.assignments.get(&shift.id) {
@@ -137,88 +99,156 @@ impl ConstraintModel<ScheduleGenome, UltraCrewViolation> for SkillConstraint {
                 }
             }
         }
-        let status = if violations.is_empty() {
-            coralys_moga::runtime::optimization::constraint::AssessmentStatus::Pass
-        } else {
-            coralys_moga::runtime::optimization::constraint::AssessmentStatus::Failed
-        };
-
-        coralys_moga::runtime::optimization::constraint::ConstraintAssessment {
-            constraint_id: self.name(),
-            tier: self.tier(),
-            status,
-            violations,
-            metrics: std::collections::HashMap::new(),
-            margins: std::collections::HashMap::new(),
-            repairability: true,
-            diagnostics: Vec::new(),
-        }
+        violations
     }
 }
 
 pub struct ReassignRepairOperator {
     pub context: Arc<ScheduleContext>,
+    pub rng: std::sync::Mutex<rand::rngs::StdRng>,
 }
 
-use coralys_moga::runtime::optimization::constraint::RepairAction;
-
-pub struct UltraCrewRepairAction {
-    pub shift_id: u64,
-    pub new_worker_id: u64,
-    pub priority: f64,
+// unified constraint model for ultra crew
+pub struct FdtlConstraintModel {
+    pub rest: RestConstraint,
+    pub skill: SkillConstraint,
 }
 
-impl RepairAction<ScheduleGenome> for UltraCrewRepairAction {
-    fn priority(&self) -> f64 {
-        self.priority
-    }
-
-    fn description(&self) -> String {
-        format!("Reassign shift {} to worker {}", self.shift_id, self.new_worker_id)
-    }
-
-    fn payload(&self) -> Option<serde_json::Value> {
-        Some(serde_json::json!({
-            "action": "reassign_shift",
-            "shift_id": self.shift_id,
-            "new_worker_id": self.new_worker_id
-        }))
-    }
-
-    fn apply(&self, model: &mut ScheduleGenome) -> Result<(), String> {
-        model.assignments.insert(self.shift_id, self.new_worker_id);
-        Ok(())
+impl ConstraintModel<ScheduleGenome> for FdtlConstraintModel {
+    type Violation = UltraCrewViolation;
+    
+    fn evaluate_violations(&self, candidate: &ScheduleGenome) -> Vec<Self::Violation> {
+        let mut v = Vec::new();
+        v.extend(self.rest.evaluate_violations(candidate));
+        v.extend(self.skill.evaluate_violations(candidate));
+        v
     }
 }
 
-impl RepairOperator<ScheduleGenome, UltraCrewViolation> for ReassignRepairOperator {
-    fn repair(&self, _genome: &ScheduleGenome, violation: &UltraCrewViolation) -> Vec<Box<dyn RepairAction<ScheduleGenome>>> {
-        let mut actions: Vec<Box<dyn RepairAction<ScheduleGenome>>> = Vec::new();
-        match violation {
-            UltraCrewViolation::RestViolation { shift_2_id, .. } | 
-            UltraCrewViolation::OverlapViolation { shift_2_id, .. } |
-            UltraCrewViolation::SkillViolation { shift_id: shift_2_id, .. } => {
-                let target_shift = self.context.shifts.iter().find(|s| s.id == *shift_2_id);
-                if let Some(shift) = target_shift {
-                    let mut eligible_workers: Vec<u64> = self.context.workers.iter()
-                        .filter(|w| w.skills.contains(&shift.required_skill))
-                        .map(|w| w.id)
-                        .collect();
-                    
-                    let mut rng = thread_rng();
-                    eligible_workers.shuffle(&mut rng);
+impl RepairOperator<ScheduleGenome, FdtlConstraintModel> for ReassignRepairOperator {
+    type Error = crate::errors::UltraCrewError;
 
-                    // Generate a proposal for each eligible worker (limit to top 3 to avoid explosion)
-                    for worker_id in eligible_workers.into_iter().take(3) {
-                        actions.push(Box::new(UltraCrewRepairAction {
-                            shift_id: *shift_2_id,
-                            new_worker_id: worker_id,
-                            priority: 1.0,
-                        }));
+    fn repair(
+        &self,
+        genome: &mut ScheduleGenome,
+        model: &FdtlConstraintModel,
+        _budget: &OperatorBudget,
+    ) -> Result<bool, Self::Error> {
+        let mut repaired_any = false;
+        let mut rng = self.rng.lock().unwrap();
+        
+        let violations = model.evaluate_violations(genome);
+        if violations.is_empty() {
+            return Ok(true);
+        }
+
+        for violation in violations {
+            match violation {
+                UltraCrewViolation::RestViolation { shift_2_id, .. } | 
+                UltraCrewViolation::OverlapViolation { shift_2_id, .. } |
+                UltraCrewViolation::SkillViolation { shift_id: shift_2_id, .. } => {
+                    let target_shift = self.context.shifts.iter().find(|s| s.id == shift_2_id);
+                    if let Some(shift) = target_shift {
+                        let mut eligible_workers: Vec<u64> = self.context.workers.iter()
+                            .filter(|w| w.skills.contains(&shift.required_skill))
+                            .map(|w| w.id)
+                            .collect();
+                        
+                        if !eligible_workers.is_empty() {
+                            eligible_workers.shuffle(&mut *rng);
+                            let new_worker_id = eligible_workers[0];
+                            genome.assignments.insert(shift_2_id, new_worker_id);
+                            repaired_any = true;
+                        }
                     }
                 }
             }
         }
-        actions
+        
+        Ok(repaired_any)
+    }
+}
+
+#[cfg(test)]
+mod contract_tests {
+    use super::*;
+    use coralys_core::operators::{ConstraintModel, OperatorBudget};
+    use crate::optimization::ScheduleGenome;
+    use crate::models::{Shift, Worker};
+
+    fn dummy_context() -> Arc<ScheduleContext> {
+        let mut workers = Vec::new();
+        let mut shifts = Vec::new();
+        // Create 2 workers
+        workers.push(Worker { id: 1, skills: vec![crate::models::Skill::new("RN")] });
+        workers.push(Worker { id: 2, skills: vec![crate::models::Skill::new("RN")] });
+
+        // Create shifts that violate rest if assigned to same worker
+        shifts.push(Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: crate::models::Skill::new("RN"), flight_id: None, crew_role: None });
+        shifts.push(Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: crate::models::Skill::new("RN"), flight_id: None, crew_role: None }); // 0 gap
+
+        Arc::new(ScheduleContext {
+            workers: Arc::new(workers),
+            shifts: Arc::new(shifts),
+            ecology: crate::ecology::WorkforceEcology::new(),
+            rng_seed: 42,
+            observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
+            locked_assignments: None,
+            scenario: Some(crate::public_contracts::Scenario { domain: Some(crate::public_contracts::SchedulingDomain::Airline), minimum_rest_hours: Some(10), max_hours_per_worker: Some(40.0), planning_horizon_hours: None, leave_requests: None }),
+        })
+    }
+
+    #[test]
+    fn test_repair_contract_moves_to_feasible() {
+        let ctx = dummy_context();
+        let model = FdtlConstraintModel {
+            rest: RestConstraint { context: ctx.clone() },
+            skill: SkillConstraint { context: ctx.clone() },
+        };
+        let repair_op = ReassignRepairOperator { 
+            context: ctx.clone(),
+            rng: std::sync::Mutex::new(rand::SeedableRng::seed_from_u64(42)),
+        };
+
+        let mut genome = ScheduleGenome { assignments: std::collections::HashMap::new() };
+        // Assign both to Alice, causing a RestViolation (0 gap < 10)
+        genome.assignments.insert(101, 1);
+        genome.assignments.insert(102, 1);
+
+        assert!(!model.is_feasible(&genome));
+
+        let budget = OperatorBudget { max_iterations: 10, max_time_ms: 1000 };
+        let repaired = repair_op.repair(&mut genome, &model, &budget).expect("Repair failed");
+        
+        // It should have reassigned one shift to Bob (2)
+        assert!(repaired);
+        assert!(model.is_feasible(&genome));
+    }
+
+    #[test]
+    fn test_feasible_genome_remains_feasible() {
+        let ctx = dummy_context();
+        let model = FdtlConstraintModel {
+            rest: RestConstraint { context: ctx.clone() },
+            skill: SkillConstraint { context: ctx.clone() },
+        };
+        let repair_op = ReassignRepairOperator { 
+            context: ctx.clone(),
+            rng: std::sync::Mutex::new(rand::SeedableRng::seed_from_u64(42)),
+        };
+
+        let mut genome = ScheduleGenome { assignments: std::collections::HashMap::new() };
+        // Feasible assignment
+        genome.assignments.insert(101, 1);
+        genome.assignments.insert(102, 2);
+
+        assert!(model.is_feasible(&genome));
+
+        let budget = OperatorBudget { max_iterations: 10, max_time_ms: 1000 };
+        let repaired = repair_op.repair(&mut genome, &model, &budget).expect("Repair failed");
+        
+        // No repair needed
+        assert!(repaired); // or false if your op returns false when no repair
+        assert!(model.is_feasible(&genome)); // Remains feasible
     }
 }

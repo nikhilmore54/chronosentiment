@@ -1191,6 +1191,8 @@ struct ScheduleAnalysisRequest {
     shifts: Vec<ShiftInput>,
     /// The same workers array sent to /api/schedule
     workers: Vec<WorkerInput>,
+    /// The scenario metadata to identify the domain
+    scenario: Option<Scenario>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -1305,6 +1307,13 @@ struct PairingsResponse {
 async fn pairings_handler(
     Json(req): Json<ScheduleAnalysisRequest>,
 ) -> Result<Json<PairingsResponse>, (StatusCode, String)> {
+    use ultracrew::public_contracts::SchedulingDomain;
+    let is_airline = req.scenario.as_ref().and_then(|s| s.domain.as_ref()) == Some(&SchedulingDomain::Airline);
+    if !is_airline {
+        let domain_str = req.scenario.as_ref().and_then(|s| s.domain.as_ref()).map(|d| format!("{:?}", d)).unwrap_or_else(|| "unknown".to_string());
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("DOMAIN_CONCEPT_NOT_SUPPORTED\ndomain={}\nconcept=pairing", domain_str)));
+    }
+
     let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
     let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
 
@@ -1531,6 +1540,13 @@ struct DutiesResponse {
 async fn duties_handler(
     Json(req): Json<ScheduleAnalysisRequest>,
 ) -> Result<Json<DutiesResponse>, (StatusCode, String)> {
+    use ultracrew::public_contracts::SchedulingDomain;
+    let is_airline = req.scenario.as_ref().and_then(|s| s.domain.as_ref()) == Some(&SchedulingDomain::Airline);
+    if !is_airline {
+        let domain_str = req.scenario.as_ref().and_then(|s| s.domain.as_ref()).map(|d| format!("{:?}", d)).unwrap_or_else(|| "unknown".to_string());
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("DOMAIN_CONCEPT_NOT_SUPPORTED\ndomain={}\nconcept=duty", domain_str)));
+    }
+
     let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
     let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
 

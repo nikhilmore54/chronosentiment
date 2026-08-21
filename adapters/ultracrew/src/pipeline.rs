@@ -28,8 +28,16 @@ pub fn run_pipeline(
     let mut solution = ScheduleSolution::from_evaluation(&best_evaluation);
 
     // Generate recommendations using the ConstraintEngine and RecommendationEngine
-    let constraint_engine = crate::constraint_engine::ConstraintEngine::new(context.clone());
-    let report = constraint_engine.evaluate(&best_evaluation.schedule);
+    use crate::public_contracts::SchedulingDomain;
+    use crate::constraint_engine::{DomainConstraintEvaluator, AirlineConstraintEvaluator, InrcConstraintEvaluator};
+
+    let evaluator: Box<dyn DomainConstraintEvaluator> = match context.scenario.as_ref().and_then(|s| s.domain.as_ref()) {
+        Some(SchedulingDomain::Airline) => Box::new(AirlineConstraintEvaluator::new(context.clone())),
+        Some(SchedulingDomain::Inrc) => Box::new(InrcConstraintEvaluator::new(context.clone())),
+        None => panic!("Cannot evaluate without explicit domain"),
+    };
+    
+    let report = evaluator.evaluate(&best_evaluation.schedule);
     let recommendation_engine = crate::recommendation::RecommendationEngine::new();
     let recs = recommendation_engine.generate_recommendations(&report);
     solution.recommendations = Some(recs);
