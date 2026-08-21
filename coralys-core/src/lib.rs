@@ -24,8 +24,11 @@ pub mod telemetry;
 pub mod memory;
 pub mod models;
 pub mod analysis;
+pub mod operators;
+pub mod pipeline;
 
 pub use models::{Violation, MatchingResult, EvaluationResult, StateReference, DecisionProposal, DecisionLineage};
+pub use pipeline::EvolutionaryPipeline;
 
 pub type SimulationResult<S> = Result<S, String>;
 
