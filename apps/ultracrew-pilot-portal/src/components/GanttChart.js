@@ -108,6 +108,7 @@ export default function GanttChart({
                   if (m.type === 'flight_id') {
                     return workerShifts[wid].some(s => (shiftsMap[s.shiftId] || {}).flight_id === m.flight_id);
                   }
+                  if (m.type === 'home_base_rest') return false;
                   return m.worker_id === wid;
                 }).map((m, i) => {
                   const leftPct = (m.start_hour / HORIZON_HRS) * 100;

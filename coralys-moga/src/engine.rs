@@ -10,6 +10,17 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 use std::cmp::Ordering;
 
+pub trait PipelineAdapter<G> {
+    fn process_offspring(&self, candidate: &mut G) -> Result<bool, Box<dyn std::error::Error + Send + Sync>>;
+}
+
+impl<G: Genome, CM: coralys_core::operators::ConstraintModel<G>, E: std::error::Error + Send + Sync + 'static> PipelineAdapter<G> for coralys_core::pipeline::EvolutionaryPipeline<G, CM, E> {
+    fn process_offspring(&self, candidate: &mut G) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        coralys_core::pipeline::EvolutionaryPipeline::process_offspring(self, candidate)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GaResult<E: Evaluated> {
     pub global_best: E,
@@ -34,8 +45,8 @@ pub struct EvolutionEngine<
     pub factory: Factory,
     pub observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
     pub generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
-    pub satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
     pub metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
+    pub pipeline_adapter: Option<Box<dyn PipelineAdapter<G>>>,
     metrics: Option<std::sync::Mutex<EvolutionMetrics>>,
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     _marker: std::marker::PhantomData<G>,
@@ -57,8 +68,8 @@ impl<
             factory,
             observer: None,
             generation_observer: None,
-            satisfaction_engine: None,
             metric_engine: None,
+            pipeline_adapter: None,
             metrics: None,
             processors: Vec::new(),
             _marker: std::marker::PhantomData,
@@ -97,8 +108,8 @@ where
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
     generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
-    satisfaction_engine: Option<Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>>,
     metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
+    pipeline_adapter: Option<Box<dyn PipelineAdapter<G>>>,
     metrics_enabled: bool,
     _marker: std::marker::PhantomData<G>,
 }
@@ -120,8 +131,8 @@ where
             processors: Vec::new(),
             observer: None,
             generation_observer: None,
-            satisfaction_engine: None,
             metric_engine: None,
+            pipeline_adapter: None,
             metrics_enabled: false,
             _marker: std::marker::PhantomData,
         }
@@ -152,11 +163,6 @@ where
         self
     }
 
-    pub fn with_satisfaction_engine(mut self, engine: Box<dyn crate::runtime::optimization::constraint::ConstraintSatisfactionEngine<G>>) -> Self {
-        self.satisfaction_engine = Some(engine);
-        self
-    }
-
     pub fn with_metric_engine(mut self, engine: std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>) -> Self {
         self.metric_engine = Some(engine);
         self
@@ -164,6 +170,11 @@ where
 
     pub fn enable_metrics(mut self, enable: bool) -> Self {
         self.metrics_enabled = enable;
+        self
+    }
+
+    pub fn with_pipeline_adapter(mut self, adapter: Box<dyn PipelineAdapter<G>>) -> Self {
+        self.pipeline_adapter = Some(adapter);
         self
     }
 
@@ -219,9 +230,9 @@ where
             factory,
             observer: self.observer,
             generation_observer: self.generation_observer,
-            satisfaction_engine: self.satisfaction_engine,
             metric_engine: self.metric_engine,
-            metrics,
+            pipeline_adapter: self.pipeline_adapter,
+            metrics: metrics,
             processors: self.processors,
             _marker: std::marker::PhantomData,
         })
@@ -320,7 +331,6 @@ impl<
                     };
                     self.evaluator.evaluate(c, &current_metrics)
                 })
-                .filter(|e| e.is_valid())
                 .collect::<Vec<_>>();
             if instrument {
                 // After evaluation, before sorting
@@ -504,44 +514,50 @@ impl<
                 if !crossover_applied && !mutation_applied {
                     self.mutator.mutate(&mut child, &mut rng);
                 }
-                
-                if let Some(ref satisfaction_engine) = self.satisfaction_engine {
-                    let _res = satisfaction_engine.satisfy(&mut child);
-                }
 
-                for (idx, processor) in self.processors.iter().enumerate() {
-                    let start_time = std::time::Instant::now();
-                    processor.improve(&mut child);
-                    let duration = start_time.elapsed();
+                let mut pipeline_result = Ok(true);
+                if let Some(ref pipeline) = self.pipeline_adapter {
+                    pipeline_result = pipeline.process_offspring(&mut child);
+                } else {                    for (idx, processor) in self.processors.iter().enumerate() {
+                        let start_time = std::time::Instant::now();
+                        processor.improve(&mut child);
+                        let duration = start_time.elapsed();
 
-                    if let Some(ref m_lock) = self.metrics {
-                        let mut m = m_lock.lock().unwrap();
-                        let proc_m = m.processors.entry(idx).or_insert_with(|| ProcessorMetrics {
-                            processor_name: format!("Processor {}", idx),
-                            invocation_count: 0,
-                            total_runtime: std::time::Duration::ZERO,
-                            average_runtime: std::time::Duration::ZERO,
-                            maximum_runtime: std::time::Duration::ZERO,
-                            minimum_runtime: std::time::Duration::MAX,
-                            candidates_processed: 0,
-                        });
-                        proc_m.invocation_count += 1;
-                        proc_m.candidates_processed += 1;
-                        proc_m.total_runtime += duration;
-                        proc_m.average_runtime = proc_m.total_runtime / proc_m.invocation_count as u32;
-                        if duration > proc_m.maximum_runtime {
-                            proc_m.maximum_runtime = duration;
+                        if let Some(ref m_lock) = self.metrics {
+                            let mut m = m_lock.lock().unwrap();
+                            let proc_m = m.processors.entry(idx).or_insert_with(|| ProcessorMetrics {
+                                processor_name: format!("Processor {}", idx),
+                                invocation_count: 0,
+                                total_runtime: std::time::Duration::ZERO,
+                                average_runtime: std::time::Duration::ZERO,
+                                maximum_runtime: std::time::Duration::ZERO,
+                                minimum_runtime: std::time::Duration::MAX,
+                                candidates_processed: 0,
+                            });
+                            proc_m.invocation_count += 1;
+                            proc_m.candidates_processed += 1;
+                            proc_m.total_runtime += duration;
+                            proc_m.average_runtime = proc_m.total_runtime / proc_m.invocation_count as u32;
+                            if duration > proc_m.maximum_runtime {
+                                proc_m.maximum_runtime = duration;
+                            }
+                            if duration < proc_m.minimum_runtime {
+                                proc_m.minimum_runtime = duration;
+                            }
                         }
-                        if duration < proc_m.minimum_runtime {
-                            proc_m.minimum_runtime = duration;
+
+                        if let Some(ref observer) = self.observer {
+                            let event = ProcessingEvent::new(idx, duration, _gen);
+                            observer.on_event(&event);
                         }
                     }
-
-                    if let Some(ref observer) = self.observer {
-                        let event = ProcessingEvent::new(idx, duration, _gen);
-                        observer.on_event(&event);
-                    }
                 }
+
+                if !pipeline_result.unwrap_or(false) {
+                    // Pipeline failed to repair or dropped candidate; continue to next parent
+                    continue;
+                }
+
                 if let Some(ref observer) = self.generation_observer {
                     observer.on_offspring(_gen, parent1.genome(), parent2.genome(), &child);
                 }
@@ -778,7 +794,7 @@ mod tests {
     struct DummyEvaluator;
     impl FitnessEvaluator<BitGenome> for DummyEvaluator {
         type Evaluation = BitEvaluation;
-        fn evaluate(&self, _candidate: &BitGenome) -> Self::Evaluation {
+        fn evaluate(&self, _candidate: &BitGenome, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
             BitEvaluation {
                 fitness: 1.0,
                 valid: true,
