@@ -1157,6 +1157,9 @@ pub struct GenerationSummary {
     pub cache_hits: usize,
     pub generation_runtime_ms: f64,
     pub evaluation_runtime_ms: f64,
+    pub cache_lookup_ms: f64,
+    pub cache_hit_materialize_ms: f64,
+    pub cache_insert_ms: f64,
 }
 
 pub struct EvolutionRunResult {

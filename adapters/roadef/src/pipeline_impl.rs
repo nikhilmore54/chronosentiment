@@ -51,6 +51,7 @@ where
     
     
     
+    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> = std::collections::HashMap::new();
     let t0 = Instant::now();
 
     let init_budget_fraction = 0.5_f64;
@@ -467,10 +468,6 @@ where
                         decision_stage: "Tournament",
                         reason: Some("LostTournament"),
                     };
-                    let e_start = Instant::now();
-                    let e = fitness_eval.evaluate(&child_genome);
-                    t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
-                    new_pop.push(e);
                     telemetry.emit_candidate(&loser_rec);
                 }
                 (best_idx, winner_cid)
@@ -658,7 +655,7 @@ where
         new_evals_with_meta.sort_by(|(a, ..), (b, ..)| comparator.cmp_evals(b, a).then(
             b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
         ));
-        t_eval_ms += t_eval_start.elapsed().as_secs_f64() * 1000.0;
+
 // RC-002: emit per-generation invalid-by-origin summary when any invalids occurred.
         // Format: [rc002] gen=N  initial: eps=A min=B maj=C str=D  crossover: ...  mutation: ...  elite: ...
         // Only emitted when total invalid count > 0 to keep logs clean for healthy generations.
@@ -1091,12 +1088,20 @@ where
     
     
     
+    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> = std::collections::HashMap::new();
     let t0 = Instant::now();
 
     // Use deterministic provided population
     let mut evals: Vec<RoadefEvaluation> = Vec::with_capacity(config.population_size);
     for g in initial_population.genomes.iter() {
-        let mut ev = fitness_eval.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let ev = if let Some(cached) = evaluation_cache.get(g) {
+            cached.clone()
+        } else {
+            let e = fitness_eval.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+            evaluation_cache.insert(g.clone(), e.clone());
+            e
+        };
+        let mut ev = ev;
         ev.operator = "initial";
         evals.push(ev);
     }
@@ -1160,6 +1165,11 @@ where
     while generations_run < config.generation_limit {
         let gen_start = Instant::now();
         let mut t_eval_ms = 0.0;
+        let mut cache_hits = 0;
+        let mut actual_evals = 0;
+        let mut t_cache_lookup_ms = 0.0;
+        let mut t_cache_hit_materialize_ms = 0.0;
+        let mut t_cache_insert_ms = 0.0;
         
         generations_run += 1;
         if let Some(b) = config.max_runtime {
@@ -1216,6 +1226,7 @@ where
                     let e_start = Instant::now();
                     let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                     t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
+                    actual_evals += 1;
                     e
                 } else {
                     population[p1_idx].clone()
@@ -1244,6 +1255,7 @@ where
                     let e_start = Instant::now();
                     let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                     t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
+                    actual_evals += 1;
                     e
                 } else {
                     population[p1_idx].clone()
@@ -1274,12 +1286,15 @@ where
 
                 trajectory.push(crate::moga_impl::GenerationSummary {
             generation: generations_run,
-            n_eval: population.len(),
+            n_eval: actual_evals,
             generation_runtime_ms: gen_start.elapsed().as_secs_f64() * 1000.0,
             evaluation_runtime_ms: t_eval_ms,
             best_obj: global_best.as_ref().map(|b| b.obj).unwrap_or(f64::INFINITY),
-            duplicate_genomes: 0,
-            cache_hits: 0,
+            duplicate_genomes: cache_hits,
+            cache_hits: cache_hits,
+            cache_lookup_ms: t_cache_lookup_ms,
+            cache_hit_materialize_ms: t_cache_hit_materialize_ms,
+            cache_insert_ms: t_cache_insert_ms,
         });
 
         if generations_run % config.log_interval == 0 {

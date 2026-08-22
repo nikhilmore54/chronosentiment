@@ -1,9 +1,10 @@
 use crate::optimization::{ScheduleGenome, ScheduleContext};
-use coralys_core::operators::{ConstraintModel, RepairOperator, OperatorBudget};
+use coralys_core::operators::{ConstraintModel, OperatorBudget};
+use coralys_core::operators::RepairOperator;
 use std::sync::Arc;
 use crate::models::Shift;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+// use rand::thread_rng; // removed unused import
 
 #[derive(Debug, Clone)]
 pub enum UltraCrewViolation {
