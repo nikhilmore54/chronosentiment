@@ -398,14 +398,23 @@ impl GenomeFactory<CvrpCandidate> for CvrpClusteredGenomeFactory {
         };
 
         // Run feasibility repair on initialization to start GA search from feasible bounds
-        let mut repair_framework = coralys_moga::FeasibilityRepairFramework::new(15);
-        repair_framework.add_checker(Box::new(moga_impl::CvrpConstraintChecker { instance: self.instance.clone() }));
-        repair_framework.add_heuristic(Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: self.instance.clone() }));
-        repair_framework.add_heuristic(Box::new(moga_impl::BinPackingRepairHeuristic { instance: self.instance.clone() }));
-        repair_framework.add_heuristic(Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: self.instance.clone() }));
+        let model = moga_impl::CvrpConstraintModel { instance: self.instance.clone() };
+        let budget = coralys_core::operators::OperatorBudget { max_iterations: 15, max_time_ms: 1000 };
+        use coralys_core::operators::{RepairOperator, ConstraintModel};
 
-        use coralys_moga::traits::ImprovementOperator;
-        repair_framework.improve(&mut candidate);
+        let heuristics: Vec<Box<dyn RepairOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
+            Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: self.instance.clone() }),
+            Box::new(moga_impl::BinPackingRepairHeuristic { instance: self.instance.clone() }),
+            Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: self.instance.clone() }),
+        ];
+
+        for _ in 0..15 {
+            if model.is_feasible(&candidate) { break; }
+            for h in &heuristics {
+                let _ = h.repair(&mut candidate, &model, &budget);
+                if model.is_feasible(&candidate) { break; }
+            }
+        }
 
         candidate
     }
@@ -677,19 +686,29 @@ pub fn solve_auto_config(
     let factory = CvrpClusteredGenomeFactory { instance: instance.clone() };
     let local_search = moga_impl::CvrpLocalSearch { instance: instance.clone() };
 
-    let mut repair_framework = coralys_moga::FeasibilityRepairFramework::new(10);
-    repair_framework.add_checker(Box::new(moga_impl::CvrpConstraintChecker { instance: instance.clone() }));
-    repair_framework.add_heuristic(Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() }));
-    repair_framework.add_heuristic(Box::new(moga_impl::BinPackingRepairHeuristic { instance: instance.clone() }));
-    repair_framework.add_heuristic(Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() }));
+    let model = moga_impl::CvrpConstraintModel { instance: instance.clone() };
+    let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
+        Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() }),
+        Box::new(moga_impl::BinPackingRepairHeuristic { instance: instance.clone() }),
+        Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() }),
+    ];
+    let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
+        Box::new(local_search),
+    ];
+    let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
+        constraint_model: model,
+        repair_operators,
+        improvement_operators,
+        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
+        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+    };
 
     let engine = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator)
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(repair_framework)
-        .add_processor(local_search)
+        .with_pipeline_adapter(Box::new(pipeline))
         .build()
         .map_err(|e| format!("Engine build error: {}", e))?;
 
@@ -765,12 +784,24 @@ mod tests {
             ..Default::default()
         };
 
+        let model = crate::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+        let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<crate::CvrpCandidate, crate::moga_impl::CvrpConstraintModel, Error = crate::moga_impl::CvrpOperatorError>>> = vec![];
+        let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<crate::CvrpCandidate, crate::moga_impl::CvrpConstraintModel, Error = crate::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search)];
+        
+        let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
+            constraint_model: model,
+            repair_operators,
+            improvement_operators,
+            repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
+            improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+        };
+
         let engine = EvolutionEngineBuilder::new()
             .with_evaluator(evaluator)
             .with_mutator(mutator)
             .with_crossover(crossover)
             .with_factory(factory)
-            .with_improvement(local_search)
+            .with_pipeline_adapter(Box::new(pipeline))
             .build()
             .unwrap();
 

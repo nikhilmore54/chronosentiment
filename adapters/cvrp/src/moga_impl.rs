@@ -1,6 +1,26 @@
+use std::sync::OnceLock;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplitStrategy {
+    Greedy,
+    PrinsDP,
+    DPFallbackToGreedy,
+}
+
+pub fn get_split_strategy() -> SplitStrategy {
+    static STRATEGY: OnceLock<SplitStrategy> = OnceLock::new();
+    *STRATEGY.get_or_init(|| {
+        match std::env::var("CVRP_SPLIT_STRATEGY").as_deref() {
+            Ok("GREEDY") => SplitStrategy::Greedy,
+            Ok("PRINS_DP") => SplitStrategy::PrinsDP,
+            _ => SplitStrategy::DPFallbackToGreedy,
+        }
+    })
+}
+
 use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, Evaluated, ImprovementOperator};
 use coralys_moga::runtime::optimization::metric::MetricReport;
-use coralys_moga::{ConstraintChecker, RepairHeuristic};
+use coralys_core::operators::ConstraintModel;
 
 use coralys_core::Outcome;
 use rand::Rng;
@@ -32,71 +52,97 @@ impl FitnessEvaluator<CvrpCandidate> for CvrpEvaluator {
 
         let k_limit = self.instance.max_vehicles.unwrap_or(n);
 
-        // 2D DP Split
-        let mut v = vec![vec![f64::INFINITY; n + 1]; k_limit + 1];
-        let mut parent = vec![vec![0; n + 1]; k_limit + 1];
-        v[0][0] = 0.0;
-
-        for r in 1..=k_limit {
-            for i in 0..n {
-                if v[r - 1][i] == f64::INFINITY { continue; }
-                let mut load = 0;
-                let mut route_dist = 0.0;
-                let mut last_node = &self.instance.depot;
-
-                for j in (i + 1)..=n {
-                    let cust_idx = candidate.permutation[j - 1];
-                    let customer = &self.instance.customers[cust_idx];
-                    load += customer.demand;
-                    if load > self.instance.capacity {
-                        break;
-                    }
-
-                    route_dist += self.instance.distance(last_node, customer);
-                    let total_route_dist = route_dist + self.instance.distance(customer, &self.instance.depot);
-                    let cost = v[r - 1][i] + total_route_dist;
-                    if cost < v[r][j] {
-                        v[r][j] = cost;
-                        parent[r][j] = i;
-                    }
-                    last_node = customer;
-                }
-            }
-        }
-
-        let mut best_r = 0;
-        let mut best_cost = f64::INFINITY;
-        for r in 1..=k_limit {
-            if v[r][n] < best_cost {
-                best_cost = v[r][n];
-                best_r = r;
-            }
-        }
+let strategy = get_split_strategy();
 
         let mut routes = Vec::new();
-        let total_distance;
+        let mut total_distance = 0.0;
+        let mut dp_failed = false;
 
-        if best_cost < f64::INFINITY {
-            // Feasible under k_limit
-            let mut curr = n;
-            let mut curr_r = best_r;
-            while curr > 0 && curr_r > 0 {
-                let prev = parent[curr_r][curr];
-                let mut route = Vec::with_capacity(curr - prev);
-                for k in prev..curr {
-                    let cust_idx = candidate.permutation[k];
-                    route.push(self.instance.customers[cust_idx].id);
+        if strategy == SplitStrategy::PrinsDP || strategy == SplitStrategy::DPFallbackToGreedy {
+            // 2D DP Split
+            let mut v = vec![vec![f64::INFINITY; n + 1]; k_limit + 1];
+            let mut parent = vec![vec![0; n + 1]; k_limit + 1];
+            v[0][0] = 0.0;
+
+            for r in 1..=k_limit {
+                for i in 0..n {
+                    if v[r - 1][i] == f64::INFINITY { continue; }
+                    let mut load = 0;
+                    let mut route_dist = 0.0;
+                    let mut last_node = &self.instance.depot;
+
+                    for j in (i + 1)..=n {
+                        let cust_idx = candidate.permutation[j - 1];
+                        let customer = &self.instance.customers[cust_idx];
+                        load += customer.demand;
+                        if load > self.instance.capacity {
+                            break;
+                        }
+
+                        route_dist += self.instance.distance(last_node, customer);
+                        let total_route_dist = route_dist + self.instance.distance(customer, &self.instance.depot);
+                        let cost = v[r - 1][i] + total_route_dist;
+                        if cost < v[r][j] {
+                            v[r][j] = cost;
+                            parent[r][j] = i;
+                        }
+                        last_node = customer;
+                    }
                 }
-                routes.push(route);
-                curr = prev;
-                curr_r -= 1;
             }
-            routes.reverse();
-            total_distance = best_cost;
-        } else {
-            // Infeasible under k_limit! Return empty routes and apply a massive penalty
-            routes = Vec::new();
-            total_distance = 1000000.0;
+
+            let mut best_r = 0;
+            let mut best_cost = f64::INFINITY;
+            for r in 1..=k_limit {
+                if v[r][n] < best_cost {
+                    best_cost = v[r][n];
+                    best_r = r;
+                }
+            }
+
+            if best_cost < f64::INFINITY {
+                let mut curr = n;
+                let mut curr_r = best_r;
+                while curr > 0 && curr_r > 0 {
+                    let prev = parent[curr_r][curr];
+                    let mut route = Vec::with_capacity(curr - prev);
+                    for k in prev..curr {
+                        let cust_idx = candidate.permutation[k];
+                        route.push(self.instance.customers[cust_idx].id);
+                    }
+                    routes.push(route);
+                    curr = prev;
+                    curr_r -= 1;
+                }
+                routes.reverse();
+                total_distance = best_cost;
+            } else {
+                dp_failed = true;
+                if strategy == SplitStrategy::PrinsDP {
+                    routes = Vec::new();
+                    total_distance = 1000000.0;
+                }
+            }
+        }
+
+        if strategy == SplitStrategy::Greedy || (strategy == SplitStrategy::DPFallbackToGreedy && dp_failed) {
+            routes.clear();
+            let mut current_route = Vec::new();
+            let mut current_load = 0;
+            for &cust_idx in &candidate.permutation {
+                let customer = &self.instance.customers[cust_idx];
+                if current_load + customer.demand > self.instance.capacity {
+                    routes.push(current_route.clone());
+                    current_route = Vec::new();
+                    current_load = 0;
+                }
+                current_route.push(self.instance.customers[cust_idx].id);
+                current_load += customer.demand;
+            }
+            if !current_route.is_empty() {
+                routes.push(current_route);
+            }
+            total_distance = self.instance.evaluate_routes_distance(&routes, crate::DistanceMetric::EuclideanFloat);
         }
 
         let num_vehicles = routes.len();
@@ -389,8 +435,10 @@ fn get_routes(candidate: &CvrpCandidate, instance: &crate::CvrpInstance) -> Vec<
     let outcome = evaluator.evaluate(candidate, &MetricReport::default());
     let mut routes = Vec::new();
     
-    if outcome.eval.routes.is_empty() {
-        // Fallback to greedy
+    let strategy = get_split_strategy();
+    let is_greedy = strategy == SplitStrategy::Greedy || (strategy == SplitStrategy::DPFallbackToGreedy && outcome.eval.routes.is_empty());
+
+    if is_greedy {
         let mut current_route = Vec::new();
         let mut current_load = 0;
         for &cust_idx in &candidate.permutation {
@@ -407,7 +455,6 @@ fn get_routes(candidate: &CvrpCandidate, instance: &crate::CvrpInstance) -> Vec<
             routes.push(current_route);
         }
     } else {
-        // Map node IDs back to indices in instance.customers
         for r in outcome.eval.routes {
             let mut route_indices = Vec::with_capacity(r.len());
             for node_id in r {
@@ -439,14 +486,17 @@ pub struct CvrpLocalSearch {
     pub instance: crate::CvrpInstance,
 }
 
-impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
-    fn improve(&self, candidate: &mut CvrpCandidate) {
+impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintModel> for CvrpLocalSearch {
+    type Error = CvrpOperatorError;
+fn improve(&self, candidate: &mut CvrpCandidate, _model: &CvrpConstraintModel, _budget: &coralys_core::operators::OperatorBudget) -> Result<bool, Self::Error> {
         let evaluator = CvrpEvaluator { instance: self.instance.clone() };
         let outcome = evaluator.evaluate(candidate, &MetricReport::default());
         let mut routes = Vec::new();
+        
+        let strategy = get_split_strategy();
+        let is_greedy = strategy == SplitStrategy::Greedy || (strategy == SplitStrategy::DPFallbackToGreedy && outcome.eval.routes.is_empty());
 
-        if outcome.eval.routes.is_empty() {
-            // Infeasible under k_limit! Fallback to greedy packing split
+        if is_greedy {
             let mut current_route = Vec::new();
             let mut current_load = 0;
             for &cust_idx in &candidate.permutation {
@@ -463,7 +513,6 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
                 routes.push(current_route);
             }
         } else {
-            // Map node IDs back to indices in self.instance.customers
             for r in outcome.eval.routes {
                 let mut route_indices = Vec::with_capacity(r.len());
                 for node_id in r {
@@ -727,6 +776,7 @@ impl ImprovementOperator<CvrpCandidate> for CvrpLocalSearch {
             new_perm.extend(route);
         }
         candidate.permutation = new_perm;
+        Ok(true)
     }
 }
 
@@ -806,18 +856,14 @@ pub enum CvrpViolation {
     VehicleLimitExceeded { actual: usize, limit: usize },
 }
 
-pub struct CvrpConstraintChecker {
+pub struct CvrpConstraintModel {
     pub instance: crate::CvrpInstance,
 }
 
-impl ConstraintChecker<CvrpCandidate> for CvrpConstraintChecker {
+impl coralys_core::operators::ConstraintModel<CvrpCandidate> for CvrpConstraintModel {
     type Violation = CvrpViolation;
 
-    fn name(&self) -> &'static str {
-        "CvrpConstraintChecker"
-    }
-
-    fn check_violations(&self, candidate: &CvrpCandidate) -> Vec<Self::Violation> {
+    fn evaluate_violations(&self, candidate: &CvrpCandidate) -> Vec<Self::Violation> {
         let limit = self.instance.max_vehicles.unwrap_or(999);
         
         let mut actual = 0;
@@ -842,18 +888,25 @@ impl ConstraintChecker<CvrpCandidate> for CvrpConstraintChecker {
     }
 }
 
+#[derive(Debug)]
+pub struct CvrpOperatorError(pub String);
+impl std::fmt::Display for CvrpOperatorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+}
+impl std::error::Error for CvrpOperatorError {}
+
 pub struct VehicleLimitRepairHeuristic {
     pub instance: crate::CvrpInstance,
 }
 
-impl RepairHeuristic<CvrpCandidate, CvrpViolation> for VehicleLimitRepairHeuristic {
-    fn name(&self) -> &'static str {
-        "VehicleLimitRepairHeuristic"
-    }
+impl coralys_core::operators::RepairOperator<CvrpCandidate, CvrpConstraintModel> for VehicleLimitRepairHeuristic {
+    type Error = CvrpOperatorError;
 
-    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
-        match violation {
-            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+    fn repair(&self, candidate: &mut CvrpCandidate, model: &CvrpConstraintModel, _budget: &coralys_core::operators::OperatorBudget) -> Result<bool, Self::Error> {
+        let violations = model.evaluate_violations(candidate);
+        if violations.is_empty() { return Ok(true); }
+
+        if let Some(CvrpViolation::VehicleLimitExceeded { limit, .. }) = violations.first() {
                 let mut routes = Vec::new();
                 let mut current_route = Vec::new();
                 let mut current_load = 0;
@@ -872,7 +925,7 @@ impl RepairHeuristic<CvrpCandidate, CvrpViolation> for VehicleLimitRepairHeurist
                 }
 
                 if routes.len() <= *limit {
-                    return false;
+                    return Ok(false);
                 }
 
                 // Find the route with the smallest load
@@ -910,11 +963,12 @@ impl RepairHeuristic<CvrpCandidate, CvrpViolation> for VehicleLimitRepairHeurist
                         new_perm.extend(r);
                     }
                     candidate.permutation = new_perm;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
-            }
+        } else {
+            Ok(false)
         }
     }
 }
@@ -923,14 +977,14 @@ pub struct BinPackingRepairHeuristic {
     pub instance: crate::CvrpInstance,
 }
 
-impl RepairHeuristic<CvrpCandidate, CvrpViolation> for BinPackingRepairHeuristic {
-    fn name(&self) -> &'static str {
-        "BinPackingRepairHeuristic"
-    }
+impl coralys_core::operators::RepairOperator<CvrpCandidate, CvrpConstraintModel> for BinPackingRepairHeuristic {
+    type Error = CvrpOperatorError;
 
-    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
-        match violation {
-            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+    fn repair(&self, candidate: &mut CvrpCandidate, model: &CvrpConstraintModel, _budget: &coralys_core::operators::OperatorBudget) -> Result<bool, Self::Error> {
+        let violations = model.evaluate_violations(candidate);
+        if violations.is_empty() { return Ok(true); }
+
+        if let Some(CvrpViolation::VehicleLimitExceeded { limit, .. }) = violations.first() {
                 let mut customers_with_demands: Vec<(usize, i32)> = candidate.permutation.iter().map(|&idx| {
                     (idx, self.instance.customers[idx].demand)
                 }).collect();
@@ -967,11 +1021,12 @@ impl RepairHeuristic<CvrpCandidate, CvrpViolation> for BinPackingRepairHeuristic
                         new_perm.extend(b_custs);
                     }
                     candidate.permutation = new_perm;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
-            }
+        } else {
+            Ok(false)
         }
     }
 }
@@ -980,14 +1035,14 @@ pub struct SpatialBinPackingRepairHeuristic {
     pub instance: crate::CvrpInstance,
 }
 
-impl RepairHeuristic<CvrpCandidate, CvrpViolation> for SpatialBinPackingRepairHeuristic {
-    fn name(&self) -> &'static str {
-        "SpatialBinPackingRepairHeuristic"
-    }
+impl coralys_core::operators::RepairOperator<CvrpCandidate, CvrpConstraintModel> for SpatialBinPackingRepairHeuristic {
+    type Error = CvrpOperatorError;
 
-    fn repair_violation(&self, candidate: &mut CvrpCandidate, violation: &CvrpViolation, _rng: &mut rand::rngs::StdRng) -> bool {
-        match violation {
-            CvrpViolation::VehicleLimitExceeded { actual: _, limit } => {
+    fn repair(&self, candidate: &mut CvrpCandidate, model: &CvrpConstraintModel, _budget: &coralys_core::operators::OperatorBudget) -> Result<bool, Self::Error> {
+        let violations = model.evaluate_violations(candidate);
+        if violations.is_empty() { return Ok(true); }
+
+        if let Some(CvrpViolation::VehicleLimitExceeded { limit, .. }) = violations.first() {
                 let mut customers_with_demands: Vec<(usize, i32)> = candidate.permutation.iter().map(|&idx| {
                     (idx, self.instance.customers[idx].demand)
                 }).collect();
@@ -1042,11 +1097,12 @@ impl RepairHeuristic<CvrpCandidate, CvrpViolation> for SpatialBinPackingRepairHe
                         new_perm.extend(b_custs);
                     }
                     candidate.permutation = new_perm;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
-            }
+        } else {
+            Ok(false)
         }
     }
 }
@@ -1073,6 +1129,7 @@ mod evaluator_tests {
             customers,
             distance_metric: DistanceMetric::TspLibEuc2D,
             max_vehicles: Some(2),
+            explicit_matrix: vec![],
         };
 
         let evaluator = CvrpEvaluator { instance: instance.clone() };
@@ -1083,16 +1140,82 @@ mod evaluator_tests {
             route_boundary_changes: None,
         };
 
-        let res = evaluator.evaluate(&candidate);
+        let res = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         // Exceeds max_vehicles (2), so it is infeasible and penalized (returns 0 routes)
         assert!(res.eval.total_distance > 10000.0, "Should apply penalty to infeasible solution");
         assert_eq!(res.eval.num_vehicles, 0);
 
         instance.max_vehicles = Some(3);
         let evaluator2 = CvrpEvaluator { instance };
-        let res2 = evaluator2.evaluate(&candidate);
+        let res2 = evaluator2.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         // Feasible within max_vehicles (3), so no penalty
         assert!(res2.eval.total_distance < 1000.0, "Should be feasible with 3 vehicles");
         assert_eq!(res2.eval.num_vehicles, 3);
+    }
+
+    #[test]
+    fn test_repair_and_improve_contracts() {
+        use coralys_core::operators::{ConstraintModel, RepairOperator, ImprovementOperator, OperatorBudget};
+        
+        let depot = Node { id: 1, x: 0.0, y: 0.0, demand: 0 };
+        let customers = vec![
+            Node { id: 2, x: 10.0, y: 0.0, demand: 60 },
+            Node { id: 3, x: 20.0, y: 0.0, demand: 60 },
+            Node { id: 4, x: 30.0, y: 0.0, demand: 60 },
+            Node { id: 5, x: 40.0, y: 0.0, demand: 10 },
+        ];
+        
+        let instance = CvrpInstance {
+            capacity: 100,
+            depot,
+            customers,
+            distance_metric: DistanceMetric::TspLibEuc2D,
+            max_vehicles: Some(2),
+            explicit_matrix: vec![],
+        };
+
+        let model = CvrpConstraintModel { instance: instance.clone() };
+        let repair_op = BinPackingRepairHeuristic { instance: instance.clone() };
+        let improve_op = CvrpLocalSearch { instance: instance.clone() };
+        let budget = OperatorBudget { max_iterations: 10, max_time_ms: 1000 };
+
+        // 1. Create an INFEASIBLE candidate
+        let mut candidate = CvrpCandidate {
+            permutation: vec![0, 1, 2, 3],
+            last_mutation_op: None,
+            last_mutation_radius: None,
+            route_boundary_changes: None,
+        };
+        
+        assert!(!model.is_feasible(&candidate), "Initial candidate should be infeasible");
+
+        // 2. Repair operator contract: if it returns Ok(true), it MUST be feasible.
+        let repair_result = repair_op.repair(&mut candidate, &model, &budget).unwrap();
+        if repair_result {
+            assert!(model.is_feasible(&candidate), "RepairOperator returned true, candidate MUST be feasible");
+        }
+        
+        // 3. Force feasible
+        let instance_feas = CvrpInstance {
+            max_vehicles: Some(3),
+            ..instance.clone()
+        };
+        let model_feas = CvrpConstraintModel { instance: instance_feas.clone() };
+        let repair_feas = BinPackingRepairHeuristic { instance: instance_feas.clone() };
+        let improve_feas = CvrpLocalSearch { instance: instance_feas.clone() };
+        
+        let mut candidate_feas = CvrpCandidate {
+            permutation: vec![0, 1, 2, 3],
+            last_mutation_op: None,
+            last_mutation_radius: None,
+            route_boundary_changes: None,
+        };
+        let rep = repair_feas.repair(&mut candidate_feas, &model_feas, &budget).unwrap();
+        assert!(rep, "Should successfully repair with 3 vehicles");
+        assert!(model_feas.is_feasible(&candidate_feas), "Candidate is feasible now");
+
+        // 4. Improvement operator contract: feasible in -> feasible out
+        improve_feas.improve(&mut candidate_feas, &model_feas, &budget).unwrap();
+        assert!(model_feas.is_feasible(&candidate_feas), "ImprovementOperator MUST preserve feasibility");
     }
 }

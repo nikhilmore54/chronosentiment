@@ -122,7 +122,7 @@ fn main() {
         
         // 1. Generate random start
         let initial_cand = factory.create(&mut rng);
-        let initial_eval = evaluator.evaluate(&initial_cand);
+        let initial_eval = evaluator.evaluate(&initial_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         
         let mut current_routes = initial_eval.eval.routes.clone();
         let mut current_dist = calc_total_dist(&instance, &current_routes);

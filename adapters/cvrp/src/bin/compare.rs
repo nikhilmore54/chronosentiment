@@ -36,7 +36,6 @@ fn main() {
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(local_search)
         .build()
         .expect("Builder build failed");
 

@@ -94,6 +94,7 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
         customers,
         distance_metric: DistanceMetric::TspLibEuc2D,
         max_vehicles: None,
+        explicit_matrix: vec![],
     }
 }
 
@@ -182,7 +183,6 @@ fn main() {
                     .with_mutator(mutator)
                     .with_crossover(crossover)
                     .with_factory(factory)
-                    .with_improvement(local_search)
                     .build();
                     
                 match engine_res {

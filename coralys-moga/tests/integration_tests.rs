@@ -1,6 +1,6 @@
 use coralys_moga::runtime::model::network::OperationalModel;
 use coralys_moga::runtime::optimization::{
-    ConstraintModel, DecisionVector, ObjectiveModel, OptimizationEngine
+    DecisionVector, ObjectiveModel, OptimizationEngine
 };
 use coralys_moga::traits::{Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator};
 use rand::rngs::StdRng;
@@ -29,6 +29,8 @@ impl DecisionVector for ProductionPlan {}
 pub struct MaxMachineHoursConstraint {
     pub max_hours: f64,
 }
+
+use coralys_core::operators::ConstraintModel;
 
 impl ConstraintModel<FactoryState> for MaxMachineHoursConstraint {}
 
@@ -59,7 +61,7 @@ impl MutationOperator<FactoryState> for FactoryOptimizer {
 impl FitnessEvaluator<FactoryState> for FactoryOptimizer {
     type Evaluation = FactoryFitness;
 
-    fn evaluate(&self, genome: &FactoryState) -> Self::Evaluation {
+    fn evaluate(&self, genome: &FactoryState, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
         // Compute total throughput (more hours = more throughput but penalized if exceeding max hours)
         let total_hours: f64 = genome.machine_hours_assigned.iter().sum();
         let max_hours = 40.0;

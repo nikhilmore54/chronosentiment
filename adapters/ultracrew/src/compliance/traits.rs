@@ -16,7 +16,7 @@ use crate::models::{Shift, Worker};
 // ── Identifiers ──────────────────────────────────────────────────────────────
 
 /// Stable, dot-namespaced rule identifier.
-/// Convention: `<domain>.<category>.<rule>`, e.g. `dgca.fdtl.minimum_rest`.
+/// Convention: `<domain>.<category>.<rule>`, e.g. `generic.workforce.minimum_rest`.
 pub type RuleId = &'static str;
 
 // ── Severity ─────────────────────────────────────────────────────────────────
@@ -39,15 +39,15 @@ pub enum Severity {
 /// dispatcher reports) can always render a complete, actionable explanation.
 #[derive(Debug, Clone)]
 pub struct ViolationExplanation {
-    /// Stable dot-namespaced rule identifier, e.g. `"dgca.fdtl.minimum_rest"`.
+    /// Stable dot-namespaced rule identifier, e.g. `"generic.workforce.minimum_rest"`.
     pub rule_id: &'static str,
-    /// Canonical regulatory citation, e.g. `"CAR S7 J III §6.1"`.
+    /// Canonical regulatory citation, e.g. `"WTD §6.1"`.
     pub regulatory_ref: &'static str,
     /// Severity of this violation.
     pub severity: Severity,
     /// Human-readable description of what was observed and why it violates the rule.
     pub message: String,
-    /// Actionable remediation guidance for the dispatcher or crew planner.
+    /// Actionable remediation guidance for the planner or schedule manager.
     pub remediation: String,
 }
 
@@ -144,7 +144,7 @@ impl<'a> RuleContext<'a> {
 /// Implementors live in `regulatory/`, `company/`, `agreements/`, or
 /// `optimization/`.  The optimizer never imports a concrete implementor.
 pub trait ConstraintRule: Send + Sync {
-    /// Stable identifier, e.g. `"dgca.fdtl.minimum_rest"`.
+    /// Stable identifier, e.g. `"generic.workforce.minimum_rest"`.
     fn id(&self) -> RuleId;
 
     /// Human-readable description of what this rule enforces.
@@ -173,7 +173,7 @@ pub trait ConstraintRule: Send + Sync {
 ///
 /// # Naming convention
 /// Pack structs should be named `<Authority>CompliancePack`, e.g.:
-/// `DgcaCompliancePack`, `FaaCompliancePack`, `IndiGoCompanyPack`.
+/// `EuwtdCompliancePack`, `AcmeCorpCompanyPack`.
 pub trait CompliancePack {
     /// Provenance descriptor for this pack.
     /// Used by the registry to report which packs are active and their versions.

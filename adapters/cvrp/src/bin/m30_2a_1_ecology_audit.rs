@@ -69,7 +69,7 @@ fn main() {
 
     for generation in 0..generations {
         let mut evals: Vec<CvrpEvaluation> = population.drain(..)
-            .map(|g| evaluator.evaluate(&g).eval)
+            .map(|g| evaluator.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval)
             .collect();
             
         // Sort by ascending distance

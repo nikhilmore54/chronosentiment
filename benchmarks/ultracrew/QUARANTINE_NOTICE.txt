@@ -2,4 +2,16 @@ PRE-FIX
 MODEL INVALID
 NOT PUBLICATION EVIDENCE
 
-The initial optimization experiments were not valid evidence for constraint-aware scheduling because the evolutionary fitness function was disconnected from the canonical constraint engine.
+Reason:
+The SunAir optimization was executed using a contaminated scheduling
+model in which generic INRC workforce constraints were represented
+inside an AIRLINE scenario.
+
+Therefore:
+- the optimization model is not a valid airline model;
+- its feasibility result is not an airline feasibility result;
+- its objective is not a clean airline objective baseline;
+- it must not be used as research or commercial evidence.
+
+A new baseline must be generated after ADAPTER-DOMAIN-001
+and COMMON-001 are satisfied.

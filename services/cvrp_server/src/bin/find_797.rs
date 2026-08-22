@@ -8,7 +8,9 @@ use std::time::Instant;
 fn random_ls(instance: &CvrpInstance, ls: &CvrpLocalSearch, rng: &mut rand::rngs::StdRng) -> CvrpCandidate {
     let mut cand = CvrpCandidate { permutation: (0..instance.customers.len()).collect(), last_mutation_op: None, last_mutation_radius: None, route_boundary_changes: None };
     cand.permutation.shuffle(rng);
-    ls.search(&mut cand);
+    let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+    let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+    coralys_core::operators::ImprovementOperator::improve(ls, &mut cand, &model, &budget).unwrap();
     cand
 }
 
@@ -23,7 +25,7 @@ fn main() {
     
     loop {
         let cand = random_ls(&instance, &ls, &mut rng);
-        let eval = evaluator.evaluate(&cand);
+        let eval = evaluator.evaluate(&cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         let dist = eval.eval.total_distance;
         attempts += 1;
         

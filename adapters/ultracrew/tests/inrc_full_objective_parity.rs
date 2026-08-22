@@ -92,7 +92,8 @@ fn test_inrc_full_objective_parity() {
         println!("Testing bucket: {}", bucket);
         for i in 0..count_per_bucket {
             let genome = generator.generate(bucket);
-            let evaluation = optimizer.evaluate(&genome);
+            let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
+            let evaluation = optimizer.evaluate(&genome, &metric_report);
             
             ultracrew::inrc::exporter::export_inrc_solution(&genome, optimizer.context.clone(), 0, &out_path).unwrap();
             

@@ -17,7 +17,7 @@
   "generations": 150,
   "instance": "A-n46-k7",
   "median_distance": 914.0,
-  "runtime_ms": 6292,
+  "runtime_ms": 6985,
   "stagnation_generation": 142,
   "std_dev": 31.26933162061512,
   "worst_distance": 1128.0

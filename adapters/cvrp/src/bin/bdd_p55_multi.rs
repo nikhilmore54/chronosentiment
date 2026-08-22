@@ -64,6 +64,7 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
         customers,
         distance_metric: DistanceMetric::TspLibEuc2D,
         max_vehicles: None,
+        explicit_matrix: vec![],
     }
 }
 
@@ -89,7 +90,7 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
     for _generation in 1..=generation_limit {
         let mut evals = Vec::new();
         for ind in &population {
-            evals.push(evaluator.evaluate(ind));
+            evals.push(evaluator.evaluate(ind, &coralys_moga::runtime::optimization::metric::MetricReport::default()));
         }
 
         for ev in &evals {
@@ -120,7 +121,9 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
                 mutator.mutate(&mut child, &mut rng);
             }
 
-            local_search.improve(&mut child);
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut child, &model, &budget).unwrap();
             next_gen.push(child);
         }
 

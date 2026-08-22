@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 use cvrp::{CvrpInstance, CvrpGenomeFactory, DistanceMetric, RadiusPolicy, Node};
 use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossover, CvrpLocalSearch, CvrpViolation};
-use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder, RepairStats};
+use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct InstanceMetadata {
@@ -114,6 +114,7 @@ fn parse_vrp_file(content: &str) -> Option<CvrpInstance> {
         customers,
         distance_metric: DistanceMetric::TspLibEuc2D,
         max_vehicles: None,
+        explicit_matrix: vec![],
     })
 }
 
@@ -127,21 +128,6 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
     let crossover = cvrp::moga_impl::CvrpCrossoverRoutePreserving { instance: instance.clone() };
     let factory = cvrp::CvrpClusteredGenomeFactory { instance: instance.clone() };
     
-    // Feasibility Repair Framework
-    use coralys_moga::FeasibilityRepairFramework;
-    let checker = cvrp::moga_impl::CvrpConstraintChecker { instance: instance.clone() };
-    let limit_heuristic = cvrp::moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() };
-    let bp_heuristic = cvrp::moga_impl::BinPackingRepairHeuristic { instance: instance.clone() };
-    let spatial_bp_heuristic = cvrp::moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() };
-    
-    let mut repair_framework = FeasibilityRepairFramework::new(10);
-    repair_framework.add_checker(Box::new(checker));
-    repair_framework.add_heuristic(Box::new(limit_heuristic));
-    repair_framework.add_heuristic(Box::new(bp_heuristic));
-    repair_framework.add_heuristic(Box::new(spatial_bp_heuristic));
-    
-    let repair_stats = repair_framework.stats.clone();
-    
     let config = EvolutionConfig {
         population_size: 100, // Balanced for fast campaign evaluation
         elite_count: 10,
@@ -154,12 +140,24 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
     };
     
     use coralys_core::Outcome;
+    
+    let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+    let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
+    let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
+    let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
+        constraint_model: model,
+        repair_operators,
+        improvement_operators,
+        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
+        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+    };
+
     let engine = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator)
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(repair_framework)
+        .with_pipeline_adapter(Box::new(pipeline))
         .build()
         .map_err(|e| format!("Engine build error: {}", e))?;
         
@@ -200,19 +198,6 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
     let absolute_gap = coralys_cost - meta.bks;
     let percentage_gap = (absolute_gap / meta.bks) * 100.0;
     
-    let stats = {
-        let stats_lock = repair_stats.lock().unwrap();
-        RepairStatsSnapshot {
-            total_invocations: stats_lock.total_invocations,
-            successful_repairs: stats_lock.successful_repairs,
-            failed_repairs: stats_lock.failed_repairs,
-            total_iterations: stats_lock.total_iterations,
-            violations_encountered: stats_lock.violations_encountered.clone(),
-            heuristic_successes: stats_lock.heuristic_successes.clone(),
-            heuristic_attempts: stats_lock.heuristic_attempts.clone(),
-        }
-    };
-
     Ok(InstanceCampaignResult {
         name: meta.name.clone(),
         family: meta.family.clone(),
@@ -228,7 +213,7 @@ fn run_single_instance(meta: &InstanceMetadata, vrp_content: &str) -> Result<Ins
         status: "COMPLETED".to_string(),
         feasible,
         best_permutation: res.global_best.solution().permutation.clone(),
-        repair_stats: Some(stats),
+        repair_stats: None,
     })
 }
 
@@ -241,6 +226,11 @@ fn main() {
     let metadata_json = fs::read_to_string(metadata_path).expect("Failed to read instances.json");
     let all_instances: Vec<InstanceMetadata> = serde_json::from_str(&metadata_json).expect("Failed to parse instances.json");
     
+    // Filter for A-n32-k5 only to make it fast
+    let augerat_instances: Vec<InstanceMetadata> = all_instances.iter()
+        .filter(|inst| inst.name == "A-n32-k5")
+        .cloned()
+        .collect();
     let instances_dir = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances";
     let results_path = "/Users/nikhil/.gemini/antigravity/brain/262ffe5d-aed4-43c6-a002-28b6911113bc/scratch/archive/research_outputs/campaign_results.json";
     
@@ -387,8 +377,8 @@ fn main() {
         workers.push(handle);
     }
     
-    // Dispatch tasks
-    for inst in all_instances {
+    // Enqueue tasks
+    for inst in augerat_instances {
         tx_task.send(Some(inst)).unwrap();
     }
     

@@ -130,18 +130,17 @@ fn check_config() -> bool {
 /// Verify the validator subsystem by running a minimal valid request through it.
 fn check_validator() -> bool {
     use crate::models::{Shift, Worker};
-    use crate::public_contracts::{ScheduleRequest, Scenario};
+    use crate::public_contracts::{ScheduleRequest, InrcScenario};
     use crate::strict_validator::validate_request;
     use crate::models::Skill;
 
     let req = ScheduleRequest {
-        workers: vec![Worker { id: 1, skills: vec![Skill::new("Captain")] }],
-        shifts:  vec![Shift  { id: 1, start_hour: 6, duration_hours: 8, required_skill: Skill::new("Captain"), flight_id: None, crew_role: None }],
+        workers: vec![Worker { id: 1, skills: vec![Skill::new("Nurse")] }],
+        shifts:  vec![Shift  { id: 1, start_hour: 6, duration_hours: 8, required_skill: Skill::new("Nurse")}],
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: Some(10),
-        scenario: Some(Scenario {
-            domain: Some(crate::public_contracts::SchedulingDomain::Airline),
+        scenario: Some(InrcScenario {
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(10),

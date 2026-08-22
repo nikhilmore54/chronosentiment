@@ -306,7 +306,7 @@ fn main() {
         for generation in 1..=generations {
             let mut evals: Vec<_> = population
                 .iter()
-                .map(|c| evaluator.evaluate(c))
+                .map(|c| evaluator.evaluate(c, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
 
@@ -431,8 +431,8 @@ fn main() {
                     mutator.mutate(&mut c1, &mut rng);
                     mutator.mutate(&mut c2, &mut rng);
 
-                    let c1_eval = evaluator.evaluate(&c1);
-                    let c2_eval = evaluator.evaluate(&c2);
+                    let c1_eval = evaluator.evaluate(&c1, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                    let c2_eval = evaluator.evaluate(&c2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
 
                     if c1_eval.fitness() > median_fitness { children_better_than_median += 1; }
                     if c2_eval.fitness() > median_fitness { children_better_than_median += 1; }
@@ -510,7 +510,7 @@ fn main() {
                 
                 for &idx in &sampled_indices {
                     let (start_dist, cand, _, _) = &passive_archive[idx];
-                    let mut current_routes = evaluator.evaluate(cand).eval.routes.clone();
+                    let mut current_routes = evaluator.evaluate(cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.routes.clone();
                     let mut current_dist = *start_dist;
                     let mut best_dist = current_dist;
                     let mut best_routes = current_routes.clone();
@@ -556,7 +556,7 @@ fn main() {
                             last_mutation_radius: Some(0),
                             route_boundary_changes: Some(0),
                         };
-                        let reinject_eval = evaluator.evaluate(&reinject_cand);
+                        let reinject_eval = evaluator.evaluate(&reinject_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                         
                         let sa_edges = get_canonical_edges(&best_routes);
                         let ga_edges = get_canonical_edges(&reinject_eval.eval.routes);

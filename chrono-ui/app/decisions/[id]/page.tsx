@@ -282,9 +282,13 @@ export default async function DecisionDetailPage({
                     : ""}
                 </span>
               </span>
+            ) : d.decision.atr_14 == null ? (
+              <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                ATR-14 unavailable
+              </span>
             ) : (
               <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                Awaiting execution
+                Execution not recorded
               </span>
             )
           }
@@ -301,9 +305,13 @@ export default async function DecisionDetailPage({
                     : ""}
                 </span>
               </span>
+            ) : d.decision.atr_14 == null ? (
+              <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                ATR-14 unavailable
+              </span>
             ) : (
               <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
-                Awaiting execution
+                Execution not recorded
               </span>
             )
           }

@@ -144,7 +144,7 @@ fn test_schema_serialization_compliance() {
 
 #[test]
 fn test_constraint_engine_report_details() {
-    use ultracrew::constraint_engine::ConstraintEngine;
+    use ultracrew::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
     use ultracrew::optimization::ScheduleGenome;
     use std::collections::HashMap;
 
@@ -163,7 +163,7 @@ fn test_constraint_engine_report_details() {
         scenario: None,
     };
     let context = request.to_context();
-    let engine = ConstraintEngine::new(context);
+    let engine = InrcConstraintEvaluator::new(context);
 
     let mut assignments = HashMap::new();
     assignments.insert(101, 1);
@@ -180,7 +180,7 @@ fn test_constraint_engine_report_details() {
 
 #[test]
 fn test_recommendation_generation() {
-    use ultracrew::constraint_engine::ConstraintEngine;
+    use ultracrew::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
     use ultracrew::recommendation::RecommendationEngine;
     use ultracrew::optimization::ScheduleGenome;
     use std::collections::HashMap;
@@ -200,7 +200,7 @@ fn test_recommendation_generation() {
         scenario: None,
     };
     let context = request.to_context();
-    let constraint_engine = ConstraintEngine::new(context);
+    let constraint_engine = InrcConstraintEvaluator::new(context);
     
     let mut assignments = HashMap::new();
     assignments.insert(101, 1);

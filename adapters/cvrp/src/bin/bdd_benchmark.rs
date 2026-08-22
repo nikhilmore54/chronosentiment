@@ -61,14 +61,26 @@ fn main() {
     // Attach passive metrics observer
     let observer_metrics = Arc::new(ProcessingMetricsCollector::new());
 
+    let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+    let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
+    let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search)];
+    
+    let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
+        constraint_model: model,
+        repair_operators,
+        improvement_operators,
+        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
+        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+    };
+
     let engine = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator)
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(local_search)
+        .with_pipeline_adapter(Box::new(pipeline))
         .with_observer(observer_metrics.clone())
-        .enable_metrics()
+        .enable_metrics(true)
         .build()
         .expect("Failed to build EvolutionEngine");
 
@@ -226,13 +238,25 @@ fn main() {
     let factory_46 = CvrpGenomeFactory { num_customers: instance_46.customers.len() };
     let local_search_46 = CvrpLocalSearch { instance: instance_46.clone() };
 
+    let model_46 = cvrp::moga_impl::CvrpConstraintModel { instance: instance_46.clone() };
+    let repair_operators_46: Vec<Box<dyn coralys_core::operators::RepairOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
+    let improvement_operators_46: Vec<Box<dyn coralys_core::operators::ImprovementOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search_46)];
+    
+    let pipeline_46 = coralys_core::pipeline::EvolutionaryPipeline {
+        constraint_model: model_46,
+        repair_operators: repair_operators_46,
+        improvement_operators: improvement_operators_46,
+        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
+        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+    };
+
     let engine_46 = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator_46)
         .with_mutator(mutator_46)
         .with_crossover(crossover_46)
         .with_factory(factory_46)
-        .with_improvement(local_search_46)
-        .enable_metrics()
+        .with_pipeline_adapter(Box::new(pipeline_46))
+        .enable_metrics(true)
         .build()
         .expect("Failed to build EvolutionEngine for A-n46-k7");
 

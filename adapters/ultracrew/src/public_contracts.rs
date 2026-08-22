@@ -12,22 +12,11 @@ pub struct LeaveRequest {
     pub end_hour: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum SchedulingDomain {
-    Inrc,
-    Airline,
-}
-
-/// Domain-independent optimization context supplied by the adapter.
-/// Contains no domain-specific concepts (flights, nurses, trains).
+/// Domain-independent optimization context supplied by the INRC adapter.
 /// Sits between Coralys (Optimization Engine) and the Solution Engine.
-/// All fields are optional so existing callers remain fully compatible.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Scenario {
-    /// Explicitly declares the scheduling domain for this scenario.
-    /// If missing, the optimizer MUST reject the dataset.
-    pub domain: Option<SchedulingDomain>,
+#[serde(deny_unknown_fields)]
+pub struct InrcScenario {
     /// Total planning horizon in hours (e.g. 744.0 for a 31-day month).
     /// Used for reporting and future horizon-aware constraints.
     pub planning_horizon_hours: Option<f64>,
@@ -53,7 +42,7 @@ pub struct ScheduleRequest {
     /// When present, the engine uses scenario fields to contextualise constraints.
     /// When absent, engine defaults apply (backward-compatible).
     #[serde(default)]
-    pub scenario: Option<Scenario>,
+    pub scenario: Option<InrcScenario>,
 }
 
 impl Default for ScheduleRequest {
@@ -178,7 +167,7 @@ pub struct RecoveryScenario {
     pub cost_penalty: f64,
     pub delay_hours: u64,
     pub reserve_used: usize,
-    pub flights_affected: usize,
+    pub shifts_affected: usize,
     pub assignments: HashMap<u64, u64>,
 }
 

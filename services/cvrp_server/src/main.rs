@@ -55,7 +55,8 @@ use rand::SeedableRng;
 
 use coralys_ecology::diagnostics::{AccumulationFailureDetector, EcologyLockInDetector, OperatorExpressivenessFailureDetector, DiagnosticDetector, EcologyState, SearchObservation, CandidateObservation, ObjectiveVector, DiagnosticResult};
 use coralys_recommendation::{EcologyRecommender, RecommendationReport};
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, GenomeFactory, Evaluated, Genome};
+use coralys_moga::traits::{FitnessEvaluator, CrossoverOperator, GenomeFactory, Evaluated, Genome, ImprovementOperator};
+use coralys_moga::runtime::optimization::metric::MetricReport;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
@@ -279,7 +280,9 @@ async fn run_evolution_loop(state: AppState) {
     let mut population: Vec<_> = (0..population_size)
         .map(|_| {
             let mut cand = factory.create(&mut rng);
-            coralys_moga::traits::LocalSearchOperator::search(&local_search, &mut cand);
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut cand, &model, &budget).unwrap();
             cand
         })
         .collect();
@@ -312,14 +315,16 @@ async fn run_evolution_loop(state: AppState) {
 
         let mut evals: Vec<_> = population
             .iter()
-            .map(|c| evaluator.evaluate(c))
+            .map(|c| evaluator.evaluate(c, &MetricReport::default()))
             .filter(|e| e.is_valid())
             .collect();
 
         if evals.is_empty() {
             population = (0..population_size).map(|_| {
                 let mut cand = factory.create(&mut rng);
-                coralys_moga::traits::LocalSearchOperator::search(&local_search, &mut cand);
+                let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+                let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+                coralys_core::operators::ImprovementOperator::improve(&local_search, &mut cand, &model, &budget).unwrap();
                 cand
             }).collect();
             generations_since_improvement += 1;
@@ -498,12 +503,12 @@ async fn run_evolution_loop(state: AppState) {
                 num_offspring += 1.0;
             }
 
-            let c1_crossover_dist = evaluator.evaluate(&c1).eval.total_distance;
-            let c2_crossover_dist = evaluator.evaluate(&c2).eval.total_distance;
+            let c1_crossover_dist = evaluator.evaluate(&c1, &MetricReport::default()).eval.total_distance;
+            let c2_crossover_dist = evaluator.evaluate(&c2, &MetricReport::default()).eval.total_distance;
 
-            let mut c1_mut_eval = evaluator.evaluate(&c1);
+            let mut c1_mut_eval = evaluator.evaluate(&c1, &MetricReport::default());
             let mut c1_mutated_dist = c1_mut_eval.eval.total_distance;
-            let mut c2_mut_eval = evaluator.evaluate(&c2);
+            let mut c2_mut_eval = evaluator.evaluate(&c2, &MetricReport::default());
             let mut c2_mutated_dist = c2_mut_eval.eval.total_distance;
             
             let mut c1_p_elite = 0.0;
@@ -519,7 +524,7 @@ async fn run_evolution_loop(state: AppState) {
                 loop {
                     let mut test_child = child.clone();
                     mutator.mutate(&mut test_child, &mut rng);
-                    let mut_eval = evaluator.evaluate(&test_child);
+                    let mut_eval = evaluator.evaluate(&test_child, &MetricReport::default());
                     let mut_dist = mut_eval.eval.total_distance;
                     let damage = mut_dist - p_dist;
                     
@@ -566,12 +571,14 @@ async fn run_evolution_loop(state: AppState) {
             }
 
             // Apply True Local Search exploitation phase
-            coralys_moga::traits::LocalSearchOperator::search(&local_search, &mut c1);
-            coralys_moga::traits::LocalSearchOperator::search(&local_search, &mut c2);
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut c1, &model, &budget).unwrap();
+            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut c2, &model, &budget).unwrap();
 
             // Calculate preservation metrics and local improvements
-            let c1_eval = evaluator.evaluate(&c1);
-            let c2_eval = evaluator.evaluate(&c2);
+            let c1_eval = evaluator.evaluate(&c1, &MetricReport::default());
+            let c2_eval = evaluator.evaluate(&c2, &MetricReport::default());
 
             let c1_opt_dist = c1_eval.eval.total_distance;
             let c2_opt_dist = c2_eval.eval.total_distance;
@@ -732,7 +739,7 @@ async fn run_evolution_loop(state: AppState) {
         let offspring_novelty = if num_offspring > 0.0 { total_offspring_novelty / num_offspring } else { 0.0 };
 
         // Evaluate accepted improving candidates
-        let improving_accepted = next_gen.iter().filter(|g| evaluator.evaluate(g).fitness() > archive_best_before).count();
+        let improving_accepted = next_gen.iter().filter(|g| evaluator.evaluate(g, &MetricReport::default()).fitness() > archive_best_before).count();
         let improving_rejected = global_improving_generated.saturating_sub(improving_accepted);
 
         let mut unique_dists: Vec<_> = evals.iter().map(|e| (e.eval.total_distance * 1000.0).round() as i64).collect();

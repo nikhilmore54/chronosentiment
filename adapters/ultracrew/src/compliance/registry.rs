@@ -15,11 +15,10 @@
 /// # Typical startup sequence
 ///
 /// ```rust
-/// use ultracrew::compliance::{ComplianceRegistry, DgcaCompliancePack, CompliancePack};
+/// use ultracrew::compliance::{ComplianceRegistry, CompliancePack};
 ///
 /// let mut registry = ComplianceRegistry::new();
-/// registry.install(DgcaCompliancePack::default());
-/// // registry.install(IndiGoCompanyPack::new());
+/// // registry.install(AcmeCorpCompanyPack::default());
 /// // registry.install(FairnessOptimizationPack::new());
 /// ```
 

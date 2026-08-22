@@ -156,7 +156,7 @@ pub struct ScheduleContext {
     /// When present, the constraint engine uses scenario fields to contextualise
     /// constraints (e.g. HC3 threshold from scenario.max_hours_per_worker).
     /// When absent, engine defaults apply (backward-compatible).
-    pub scenario: Option<crate::public_contracts::Scenario>,
+    pub scenario: Option<crate::public_contracts::InrcScenario>,
 }
 
 #[derive(Clone)]
@@ -332,7 +332,7 @@ impl ScheduleOptimizer {
                         let a_end = a.start_hour + a.duration_hours;
                         // HC2: shifts must not overlap
                         let no_overlap = shift.start_hour >= a_end || a.start_hour >= shift_end;
-                        // HC3/rest: dynamic gap based on scenario (or DGCA/EASA default)
+                        // HC3/rest: dynamic gap based on scenario (or default policy)
                         let rest_ok = shift.start_hour >= a_end + min_rest
                             || a.start_hour >= shift_end + min_rest;
                         no_overlap && rest_ok
@@ -420,27 +420,10 @@ impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
     type Evaluation = ScheduleEvaluation;
 
     fn evaluate(&self, genome: &ScheduleGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
-        use crate::public_contracts::SchedulingDomain;
-        use crate::constraint_engine::{DomainConstraintEvaluator, AirlineConstraintEvaluator, InrcConstraintEvaluator};
+        use crate::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
 
-        let evaluator: Box<dyn DomainConstraintEvaluator> = match self.context.scenario.as_ref().and_then(|s| s.domain.as_ref()) {
-            Some(SchedulingDomain::Airline) => Box::new(AirlineConstraintEvaluator::new(self.context.clone())),
-            Some(SchedulingDomain::Inrc) => Box::new(InrcConstraintEvaluator::new(self.context.clone())),
-            None => {
-                // Return a heavily penalized evaluation for unknown domains to fail closed
-                return ScheduleEvaluation {
-                    schedule: genome.clone(),
-                    fitness: -1_000_000_000.0,
-                    is_valid: false,
-                    hc1_violations: 999,
-                    hc2_violations: 999,
-                    hc3_violations: 999,
-                    rest_violations: 999,
-                    fairness_penalty: 0.0,
-                    fatigue_penalty: 0.0,
-                };
-            }
-        };
+        let evaluator: Box<dyn DomainConstraintEvaluator> = Box::new(InrcConstraintEvaluator::new(self.context.clone()));
+
 
         let report = evaluator.evaluate(genome);
         

@@ -115,7 +115,7 @@ fn main() {
         for generation in 1..=generations {
             let mut evals: Vec<_> = population
                 .iter()
-                .map(|c| evaluator.evaluate(c))
+                .map(|c| evaluator.evaluate(c, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
 
@@ -208,8 +208,8 @@ fn main() {
                     mutator.mutate(&mut c1, &mut rng);
                     mutator.mutate(&mut c2, &mut rng);
 
-                    let c1_eval = evaluator.evaluate(&c1);
-                    let c2_eval = evaluator.evaluate(&c2);
+                    let c1_eval = evaluator.evaluate(&c1, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                    let c2_eval = evaluator.evaluate(&c2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
 
                     if c1_eval.fitness() > median_fitness { children_better_than_median += 1; }
                     if c2_eval.fitness() > median_fitness { children_better_than_median += 1; }

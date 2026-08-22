@@ -3,10 +3,6 @@
 //! Verifies that within every [`Duty`] in every [`Rotation`], consecutive
 //! flight legs connect geographically: the destination of leg *n* must equal
 //! the origin of leg *n+1*.
-//!
-//! Note: [`Duty::new`] already enforces this invariant at construction time,
-//! so this rule acts as a **defence-in-depth** check for rosters assembled
-//! from external data that bypasses the constructor (e.g. deserialised JSON).
 
 use crate::domain::roster::Roster;
 use crate::legality::{EntityRef, LegalityRule, LegalityViolation, ViolationSeverity};

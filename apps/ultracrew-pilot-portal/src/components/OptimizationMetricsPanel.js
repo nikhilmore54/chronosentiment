@@ -11,11 +11,11 @@ export default function OptimizationMetricsPanel({ result, runtimeSecs }) {
         <div style={S.kpiLabel}>Shifts assigned</div>
       </div>
       <div style={S.kpiCard}>
-        <div style={S.kpiValue}>{result.constraint_report ? result.constraint_report.hard_violations : '—'}</div>
+        <div style={S.kpiValue}>{result.constraintReport ? result.constraintReport.hard_violations : '—'}</div>
         <div style={S.kpiLabel}>Rule violations</div>
       </div>
       <div style={S.kpiCard}>
-        <div style={S.kpiValue}>{result.constraint_report ? result.constraint_report.rest_violations : '—'}</div>
+        <div style={S.kpiValue}>{result.constraintReport ? result.constraintReport.rest_violations : '—'}</div>
         <div style={S.kpiLabel}>Rest violations</div>
       </div>
       <div style={S.kpiCard}>

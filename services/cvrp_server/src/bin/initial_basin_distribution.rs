@@ -50,10 +50,12 @@ fn main() {
         let mut cand = factory.create(&mut rng);
 
         // 2. Exhaustive local search descent
-        coralys_moga::traits::LocalSearchOperator::search(&local_search, &mut cand);
+        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+        coralys_core::operators::ImprovementOperator::improve(&local_search, &mut cand, &model, &budget).unwrap();
 
         // 3. Evaluate final optimum
-        let eval = evaluator.evaluate(&cand);
+        let eval = evaluator.evaluate(&cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         let distance = eval.eval.total_distance;
         let basin_hash = get_canonical_signature(&eval.eval.routes);
 

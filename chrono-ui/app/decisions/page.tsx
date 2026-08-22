@@ -240,10 +240,15 @@ function DecisionCard({ entry }: { entry: FeedEntry }) {
                   : undefined}
               />
             </>
+          ) : entry.atr_14 == null ? (
+            <>
+              <PriceRow label="Indicative Target" value="ATR-14 unavailable" muted />
+              <PriceRow label="Indicative Risk" value="ATR-14 unavailable" muted />
+            </>
           ) : (
             <>
-              <PriceRow label="Indicative Target" value="Awaiting execution" muted />
-              <PriceRow label="Indicative Risk" value="Awaiting execution" muted />
+              <PriceRow label="Indicative Target" value="Execution not recorded" muted />
+              <PriceRow label="Indicative Risk" value="Execution not recorded" muted />
             </>
           )}
           {entry.atr_14 && (

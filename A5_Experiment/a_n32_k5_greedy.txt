@@ -1,0 +1,14 @@
+=== A5 Smoke Test: Single Candidate Evaluation ===
+Instance: /Users/nikhil/ChronoSentiment_MEGA_FINAL/benchmarks/cvrplib/A-n32-k5.vrp
+Strategy: GREEDY
+Seed: 42
+Final Objective: 2081.16
+Feasible: true
+Num Routes: 5
+Runtime: 53.5µs
+Routes:
+  Route 1: [2, 3, 4, 5, 6, 7, 8]
+  Route 2: [9, 10, 11, 12, 13, 14, 15]
+  Route 3: [16, 17, 18, 19, 20, 21]
+  Route 4: [22, 23, 24, 25, 26, 27, 28]
+  Route 5: [29, 30, 31, 32]

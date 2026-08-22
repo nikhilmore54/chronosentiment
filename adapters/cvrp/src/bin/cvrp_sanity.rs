@@ -6,7 +6,7 @@ use std::time::Instant;
 
 fn apply_true_local_search(mut candidate: CvrpCandidate, instance: &CvrpInstance) -> (CvrpCandidate, f64) {
     let eval = CvrpEvaluator { instance: instance.clone() };
-    let mut current_best = eval.evaluate(&candidate).eval.total_distance;
+    let mut current_best = eval.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
     
     let mut improving = true;
     while improving {
@@ -18,7 +18,7 @@ fn apply_true_local_search(mut candidate: CvrpCandidate, instance: &CvrpInstance
             for j in (i+1)..n {
                 let mut test_cand = candidate.clone();
                 test_cand.permutation[i..=j].reverse();
-                let dist = eval.evaluate(&test_cand).eval.total_distance;
+                let dist = eval.evaluate(&test_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
                 if dist < current_best {
                     current_best = dist;
                     candidate = test_cand;
@@ -32,7 +32,7 @@ fn apply_true_local_search(mut candidate: CvrpCandidate, instance: &CvrpInstance
             for j in (i+1)..n {
                 let mut test_cand = candidate.clone();
                 test_cand.permutation.swap(i, j);
-                let dist = eval.evaluate(&test_cand).eval.total_distance;
+                let dist = eval.evaluate(&test_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
                 if dist < current_best {
                     current_best = dist;
                     candidate = test_cand;
@@ -49,7 +49,7 @@ fn apply_true_local_search(mut candidate: CvrpCandidate, instance: &CvrpInstance
                 let val = test_cand.permutation.remove(i);
                 let insert_pos = if j > i { j - 1 } else { j };
                 test_cand.permutation.insert(insert_pos, val);
-                let dist = eval.evaluate(&test_cand).eval.total_distance;
+                let dist = eval.evaluate(&test_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
                 if dist < current_best {
                     current_best = dist;
                     candidate = test_cand;
@@ -71,12 +71,12 @@ fn main() {
     
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut best_cand = coralys_moga::traits::GenomeFactory::create(&factory, &mut rng);
-    let mut best_dist = evaluator.evaluate(&best_cand).eval.total_distance;
+    let mut best_dist = evaluator.evaluate(&best_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
     
     // Quick random search for a decent starting point (e.g. 5000 randoms)
     for _ in 0..5000 {
         let cand = coralys_moga::traits::GenomeFactory::create(&factory, &mut rng);
-        let dist = evaluator.evaluate(&cand).eval.total_distance;
+        let dist = evaluator.evaluate(&cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
         if dist < best_dist {
             best_dist = dist;
             best_cand = cand;

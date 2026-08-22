@@ -7,7 +7,9 @@ use rand::seq::SliceRandom;
 fn random_ls(instance: &CvrpInstance, ls: &CvrpLocalSearch, rng: &mut rand::rngs::StdRng) -> CvrpCandidate {
     let mut cand = CvrpCandidate { permutation: (1..instance.customers.len()).collect(), last_mutation_op: None, last_mutation_radius: None, route_boundary_changes: None };
     cand.permutation.shuffle(rng);
-    ls.search(&mut cand);
+    let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+    let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+    coralys_core::operators::ImprovementOperator::improve(ls, &mut cand, &model, &budget).unwrap();
     cand
 }
 
@@ -22,7 +24,7 @@ fn main() {
     
     for i in 0..1000 {
         let cand = random_ls(&instance, &ls, &mut rng);
-        let eval = evaluator.evaluate(&cand);
+        let eval = evaluator.evaluate(&cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         
         if eval.eval.total_distance < min_dist {
             min_dist = eval.eval.total_distance;

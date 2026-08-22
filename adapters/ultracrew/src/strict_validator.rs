@@ -449,23 +449,22 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use crate::models::{Worker, Shift};
-    use crate::public_contracts::{ScheduleRequest, Scenario};
+    use crate::public_contracts::{ScheduleRequest, InrcScenario};
 
     fn minimal_valid() -> ScheduleRequest {
         ScheduleRequest {
             workers: vec![
-                Worker { id: 1, skills: vec![Skill::new("Captain")] },
-                Worker { id: 2, skills: vec![Skill::new("CabinCrew")] },
+                Worker { id: 1, skills: vec![Skill::new("Nurse")] },
+                Worker { id: 2, skills: vec![Skill::new("Doctor")] },
             ],
             shifts: vec![
-                Shift { id: 1, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Captain"), crew_role: None, flight_id: None },
-                Shift { id: 2, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("CabinCrew"), crew_role: None, flight_id: None },
+                Shift { id: 1, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Nurse")},
+                Shift { id: 2, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Doctor")},
             ],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(200),
-            scenario: Some(Scenario { 
-                domain: Some(crate::public_contracts::SchedulingDomain::Airline),
+            scenario: Some(InrcScenario { 
                 leave_requests: None, 
                 minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
@@ -502,7 +501,7 @@ mod tests {
     #[test]
     fn test_v003_duplicate_worker_id() {
         let mut req = minimal_valid();
-        req.workers.push(Worker { id: 1, skills: vec![Skill::new("Captain")] });
+        req.workers.push(Worker { id: 1, skills: vec![Skill::new("Nurse")] });
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-003"));
@@ -511,7 +510,7 @@ mod tests {
     #[test]
     fn test_v004_duplicate_shift_id() {
         let mut req = minimal_valid();
-        req.shifts.push(Shift { id: 1, start_hour: 20, duration_hours: 8, required_skill: Skill::new("Captain"), crew_role: None, flight_id: None });
+        req.shifts.push(Shift { id: 1, start_hour: 20, duration_hours: 8, required_skill: Skill::new("Nurse")});
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-004"));
@@ -552,9 +551,7 @@ mod tests {
             id: 99,
             start_hour: 10,
             duration_hours: 8,
-            required_skill: Skill::new("FirstOfficer"),
-            crew_role: Some("FirstOfficer".to_string()),
-            flight_id: Some("FL99".to_string()),
+            required_skill: Skill::new("Surgeon"),
         });
         let report = validate_request(&req);
         assert!(!report.is_valid());
@@ -652,8 +649,8 @@ mod tests {
             workers: (1u64..=20).map(|id| Worker {
                 id,
                 skills: vec![Skill::new(match id {
-                    1..=4  => "Captain",
-                    5..=9  => "FirstOfficer",
+                    1..=4  => "Nurse",
+                    5..=9  => "Doctor",
                     _      => "CabinCrew",
                 })],
             }).collect(),
@@ -661,8 +658,8 @@ mod tests {
                 let block_offset: u64 = if id <= 21 { 6 } else { 78 };
                 let pos = (id - 1) % 21;
                 let skill = match pos {
-                    0..=3  => "Captain",
-                    4..=6  => "FirstOfficer",
+                    0..=3  => "Nurse",
+                    4..=6  => "Doctor",
                     _      => "CabinCrew",
                 };
                 Shift {
@@ -670,15 +667,12 @@ mod tests {
                     start_hour: block_offset + pos * 2,
                     duration_hours: 8,
                     required_skill: Skill::new(skill),
-                    crew_role: Some(skill.to_string()),
-                    flight_id: Some(format!("FL{}", id)),
                 }
             }).collect(),
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(500),
-            scenario: Some(Scenario { 
-                domain: Some(crate::public_contracts::SchedulingDomain::Airline),
+            scenario: Some(InrcScenario { 
                 leave_requests: None, 
                 minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),

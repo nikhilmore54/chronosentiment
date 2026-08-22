@@ -153,13 +153,17 @@ fn main() {
     let partition_metric = CvrpPartitionMetric { instance: instance.clone() };
     let edge_metric = CvrpEdgeMetric { instance: instance.clone() };
     let region_id = CvrpRegionIdentifier { instance: instance.clone() };
-    
-    let probe = ReachabilityProbe::new(
+    let probe_ls = |cand: &mut cvrp::CvrpCandidate| {
+        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+        coralys_core::operators::ImprovementOperator::improve(&ls, cand, &model, &budget).unwrap();
+    };
+    let probe = coralys_moga::observatory::ReachabilityProbe::new(
         &evaluator,
-        &ls,
+        probe_ls,
         &partition_metric,
         &region_id,
-        100000.0 - 810.0
+        810.0,
     );
     
     println!("Collecting Parents...");
@@ -172,8 +176,14 @@ fn main() {
     for _ in 0..5000 {
         let mut child = curr_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        ls.search(&mut child);
-        let eval = evaluator.evaluate(&child);
+        
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
+        }
+        
+        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         let d = eval.eval.total_distance;
         
         if d <= 810.0 {

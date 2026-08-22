@@ -38,7 +38,7 @@ use std::path::Path;
 use std::fs;
 
 use crate::models::{Skill, Worker, Shift};
-use crate::public_contracts::{ScheduleRequest, Scenario};
+use crate::public_contracts::{ScheduleRequest, InrcScenario};
 
 // ─── Error type ──────────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ pub fn load_from_json<P: AsRef<Path>>(path: P) -> Result<ScheduleRequest, Import
 pub fn load_from_csv<P: AsRef<Path>>(
     workers_path: P,
     shifts_path: P,
-    scenario: Option<Scenario>,
+    scenario: Option<InrcScenario>,
     rng_seed: Option<u64>,
     generation_limit: Option<usize>,
 ) -> Result<ScheduleRequest, ImportError> {
@@ -253,7 +253,7 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
             )));
         }
 
-        shifts.push(Shift { id, start_hour, duration_hours, required_skill, flight_id: None, crew_role: None });
+        shifts.push(Shift { id, start_hour, duration_hours, required_skill});
     }
 
     Ok(shifts)
@@ -338,16 +338,12 @@ pub fn export_request_template() -> String {
                 start_hour: 0,
                 duration_hours: 8,
                 required_skill: Skill::new("Nurse"),
-                flight_id: None,
-                crew_role: None,
             },
             crate::models::Shift {
                 id: 2,
                 start_hour: 8,
                 duration_hours: 8,
                 required_skill: Skill::new("ICU"),
-                flight_id: None,
-                crew_role: None,
             },
         ],
         historical_workloads: Some({
@@ -358,8 +354,7 @@ pub fn export_request_template() -> String {
         }),
         rng_seed: Some(42),
         generation_limit: Some(200),
-        scenario: Some(Scenario {
-            domain: Some(crate::public_contracts::SchedulingDomain::Inrc),
+        scenario: Some(InrcScenario {
             planning_horizon_hours: Some(168.0),
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(11),
@@ -491,7 +486,7 @@ mod tests {
     #[test]
     fn test_uncovered_skill_rejected() {
         let workers = vec![Worker { id: 1, skills: vec![Skill::new("Nurse")] }];
-        let shifts = vec![Shift { id: 1, start_hour: 0, duration_hours: 8, required_skill: Skill::new("ICU"), crew_role: None, flight_id: None }];
+        let shifts = vec![Shift { id: 1, start_hour: 0, duration_hours: 8, required_skill: Skill::new("ICU")}];
         let result = validate_skill_coverage(&workers, &shifts);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("No worker possesses"));

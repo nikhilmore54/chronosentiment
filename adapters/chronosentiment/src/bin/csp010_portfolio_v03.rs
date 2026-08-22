@@ -583,16 +583,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             universe: filter_to_cache(V03_A_25, &cache, args.strict),
             config_label: "v03_A_25".to_string(),
             contributions: vec![],
+            allocation_model: chronosentiment_adapter::decision_support::portfolio_replay_v021::AllocationModel::EqualWeight,
+            initial_capital_inr: 5000.0,
         }, V03_A_25.len()),
         (ContinuousPortfolioConfig {
             universe: filter_to_cache(V03_B_50, &cache, args.strict),
             config_label: "v03_B_50".to_string(),
             contributions: vec![],
+            allocation_model: chronosentiment_adapter::decision_support::portfolio_replay_v021::AllocationModel::EqualWeight,
+            initial_capital_inr: 5000.0,
         }, V03_B_50.len()),
         (ContinuousPortfolioConfig {
             universe: filter_to_cache(V03_C_100, &cache, args.strict),
             config_label: "v03_C_100".to_string(),
             contributions: vec![],
+            allocation_model: chronosentiment_adapter::decision_support::portfolio_replay_v021::AllocationModel::EqualWeight,
+            initial_capital_inr: 5000.0,
         }, V03_C_100.len()),
     ];
 

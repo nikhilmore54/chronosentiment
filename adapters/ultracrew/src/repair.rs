@@ -109,12 +109,12 @@ pub struct ReassignRepairOperator {
 }
 
 // unified constraint model for ultra crew
-pub struct FdtlConstraintModel {
+pub struct InrcConstraintModel {
     pub rest: RestConstraint,
     pub skill: SkillConstraint,
 }
 
-impl ConstraintModel<ScheduleGenome> for FdtlConstraintModel {
+impl ConstraintModel<ScheduleGenome> for InrcConstraintModel {
     type Violation = UltraCrewViolation;
     
     fn evaluate_violations(&self, candidate: &ScheduleGenome) -> Vec<Self::Violation> {
@@ -125,13 +125,13 @@ impl ConstraintModel<ScheduleGenome> for FdtlConstraintModel {
     }
 }
 
-impl RepairOperator<ScheduleGenome, FdtlConstraintModel> for ReassignRepairOperator {
+impl RepairOperator<ScheduleGenome, InrcConstraintModel> for ReassignRepairOperator {
     type Error = crate::errors::UltraCrewError;
 
     fn repair(
         &self,
         genome: &mut ScheduleGenome,
-        model: &FdtlConstraintModel,
+        model: &InrcConstraintModel,
         _budget: &OperatorBudget,
     ) -> Result<bool, Self::Error> {
         let mut repaired_any = false;
@@ -184,8 +184,8 @@ mod contract_tests {
         workers.push(Worker { id: 2, skills: vec![crate::models::Skill::new("RN")] });
 
         // Create shifts that violate rest if assigned to same worker
-        shifts.push(Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: crate::models::Skill::new("RN"), flight_id: None, crew_role: None });
-        shifts.push(Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: crate::models::Skill::new("RN"), flight_id: None, crew_role: None }); // 0 gap
+        shifts.push(Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: crate::models::Skill::new("RN")});
+        shifts.push(Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: crate::models::Skill::new("RN")}); // 0 gap
 
         Arc::new(ScheduleContext {
             workers: Arc::new(workers),
@@ -194,14 +194,14 @@ mod contract_tests {
             rng_seed: 42,
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: None,
-            scenario: Some(crate::public_contracts::Scenario { domain: Some(crate::public_contracts::SchedulingDomain::Airline), minimum_rest_hours: Some(10), max_hours_per_worker: Some(40.0), planning_horizon_hours: None, leave_requests: None }),
+            scenario: Some(crate::public_contracts::InrcScenario { minimum_rest_hours: Some(10), max_hours_per_worker: Some(40.0), planning_horizon_hours: None, leave_requests: None }),
         })
     }
 
     #[test]
     fn test_repair_contract_moves_to_feasible() {
         let ctx = dummy_context();
-        let model = FdtlConstraintModel {
+        let model = InrcConstraintModel {
             rest: RestConstraint { context: ctx.clone() },
             skill: SkillConstraint { context: ctx.clone() },
         };
@@ -228,7 +228,7 @@ mod contract_tests {
     #[test]
     fn test_feasible_genome_remains_feasible() {
         let ctx = dummy_context();
-        let model = FdtlConstraintModel {
+        let model = InrcConstraintModel {
             rest: RestConstraint { context: ctx.clone() },
             skill: SkillConstraint { context: ctx.clone() },
         };

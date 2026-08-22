@@ -22,7 +22,8 @@ fn test_parity_snapshot() {
     let bits: Vec<bool> = serde_json::from_str(&frozen_bits_json).unwrap();
     
     let genome = InrcGenome { bits };
-    let evaluation = optimizer.evaluate(&genome);
+    let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
+    let evaluation = optimizer.evaluate(&genome, &metric_report);
 
     // Current frozen values
     let expected_days_off = 810;

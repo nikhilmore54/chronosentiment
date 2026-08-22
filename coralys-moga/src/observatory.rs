@@ -16,32 +16,32 @@ pub struct ReachabilityObservation<R> {
     pub s2_fitness: f64,
 }
 
-pub struct ReachabilityProbe<'a, G, E, LS, TM, RI>
+pub struct ReachabilityProbe<'a, G, E, F, TM, RI>
 where
     G: Genome,
     E: Evaluated<Genome = G>,
-    LS: LocalSearchOperator<G>,
+    F: Fn(&mut G),
     TM: ObservedTransitionMetric<G>,
     RI: RegionIdentifier<G>,
 {
     pub evaluator: &'a dyn FitnessEvaluator<G, Evaluation = E>,
-    pub local_search: &'a LS,
+    pub local_search: F,
     pub metric: &'a TM,
     pub region_identifier: &'a RI,
     pub elite_threshold: f64,
 }
 
-impl<'a, G, E, LS, TM, RI> ReachabilityProbe<'a, G, E, LS, TM, RI>
+impl<'a, G, E, F, TM, RI> ReachabilityProbe<'a, G, E, F, TM, RI>
 where
     G: Genome,
     E: Evaluated<Genome = G>,
-    LS: LocalSearchOperator<G>,
+    F: Fn(&mut G),
     TM: ObservedTransitionMetric<G>,
     RI: RegionIdentifier<G>,
 {
     pub fn new(
         evaluator: &'a dyn FitnessEvaluator<G, Evaluation = E>,
-        local_search: &'a LS,
+        local_search: F,
         metric: &'a TM,
         region_identifier: &'a RI,
         elite_threshold: f64,
@@ -74,7 +74,7 @@ where
         let s1_fitness = self.evaluator.evaluate(&s1, &empty_metrics).fitness();
         
         // 1. Apply local search repair cascade to mutate it to S2
-        self.local_search.search(mutated_child);
+        (self.local_search)(mutated_child);
         
         // Measure S2
         let s2_fitness = self.evaluator.evaluate(mutated_child, &empty_metrics).fitness();

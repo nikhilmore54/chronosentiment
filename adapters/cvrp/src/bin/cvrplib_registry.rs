@@ -423,4 +423,4 @@ pub fn qualification_metadata(name: &str) -> QualificationMetadata {
 
     // ── Step 3: Default — validated families (Augerat A/B/E/P, Fisher F, Christofides M) ──
     default_verified()
-}
+}fn main() {}

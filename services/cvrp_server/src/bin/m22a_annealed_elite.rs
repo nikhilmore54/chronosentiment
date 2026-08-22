@@ -154,7 +154,7 @@ fn main() {
         for generation in 1..=generations {
             let mut evals: Vec<_> = population
                 .iter()
-                .map(|c| evaluator.evaluate(c))
+                .map(|c| evaluator.evaluate(c, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
                 .filter(|e| e.is_valid())
                 .collect();
 
@@ -281,8 +281,8 @@ fn main() {
                     mutator.mutate(&mut c1, &mut rng);
                     mutator.mutate(&mut c2, &mut rng);
 
-                    let c1_eval = evaluator.evaluate(&c1);
-                    let c2_eval = evaluator.evaluate(&c2);
+                    let c1_eval = evaluator.evaluate(&c1, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                    let c2_eval = evaluator.evaluate(&c2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
 
                     if c1_eval.fitness() > median_fitness { children_better_than_median += 1; }
                     if c2_eval.fitness() > median_fitness { children_better_than_median += 1; }
@@ -316,7 +316,7 @@ fn main() {
                 for i in 0..next_gen.len() {
                     if elite_count >= 5 { break; }
                     let mut sa_candidate = next_gen[i].clone();
-                    let start_dist = evaluator.evaluate(&sa_candidate).eval.total_distance;
+                    let start_dist = evaluator.evaluate(&sa_candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
                     
                     let mut sa_best_dist = start_dist;
                     let mut sa_best_candidate = sa_candidate.clone();
@@ -347,7 +347,7 @@ fn main() {
                             neighbor.permutation[idx1..=idx2].reverse();
                         }
                         
-                        let neighbor_dist = evaluator.evaluate(&neighbor).eval.total_distance;
+                        let neighbor_dist = evaluator.evaluate(&neighbor, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
                         if neighbor_dist > sa_peak_dist { sa_peak_dist = neighbor_dist; } // Highest distance is the "peak" of worsening
                         
                         let delta = neighbor_dist - curr_dist; // If < 0, it's an improvement (lower distance)

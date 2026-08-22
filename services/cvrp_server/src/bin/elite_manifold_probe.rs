@@ -30,8 +30,14 @@ fn run_bfs_probe(
     
     // Evaluate and local search the root just to be safe
     let mut root_opt = root.clone();
-    ls.search(&mut root_opt);
-    let root_eval = evaluator.evaluate(&root_opt);
+    
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: evaluator.instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(ls, &mut root_opt, &model, &budget).unwrap();
+        }
+        
+    let root_eval = evaluator.evaluate(&root_opt, &coralys_moga::runtime::optimization::metric::MetricReport::default());
     let root_hash = hash_routes(&root_eval.eval.routes);
     
     queue.push_back(root_opt);
@@ -49,7 +55,7 @@ fn run_bfs_probe(
     while let Some(current_cand) = queue.pop_front() {
         if edge_count >= max_edges { break; }
         
-        let current_eval = evaluator.evaluate(&current_cand);
+        let current_eval = evaluator.evaluate(&current_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         let current_hash = hash_routes(&current_eval.eval.routes);
 
         for _ in 0..branching_factor {
@@ -59,9 +65,15 @@ fn run_bfs_probe(
             mutator.mutate(&mut child, rng);
             
             let mut child_opt = child.clone();
-            ls.search(&mut child_opt);
             
-            let child_eval = evaluator.evaluate(&child_opt);
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: evaluator.instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(ls, &mut child_opt, &model, &budget).unwrap();
+        }
+        
+            
+            let child_eval = evaluator.evaluate(&child_opt, &coralys_moga::runtime::optimization::metric::MetricReport::default());
             let child_hash = hash_routes(&child_eval.eval.routes);
             let dist = child_eval.eval.total_distance;
             let is_elite = dist <= 810.0;
@@ -98,8 +110,14 @@ fn main() {
     for _ in 0..2000 {
         let mut child = best_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        ls.search(&mut child);
-        let eval = evaluator.evaluate(&child);
+        
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
+        }
+        
+        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         if eval.eval.total_distance < best_dist {
             best_dist = eval.eval.total_distance;
             best_cand = child;

@@ -120,7 +120,7 @@ fn run_shadow(seed: u64, out_csv: &mut File) {
     for generation in 0..generations {
         let mut evals: Vec<EvaluatedOffspring> = population.drain(..)
             .map(|off| EvaluatedOffspring {
-                eval: evaluator.evaluate(&off.genome).eval,
+                eval: evaluator.evaluate(&off.genome, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval,
                 parent_ctx: off.parent_ctx,
             })
             .collect();

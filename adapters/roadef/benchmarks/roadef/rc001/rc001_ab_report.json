@@ -1,6 +1,6 @@
 {
   "campaign_id": "rc001_ab_v2.3",
-  "timestamp": "2026-08-06T14:04:38.547612+00:00",
+  "timestamp": "2026-08-20T05:03:05.142464+00:00",
   "hypothesis": "GreedyLoadAware constructor raises IFR and improves final objective vs Random (CB-000)",
   "arm_a_description": "ConstructionMode::Random — CB-000 baseline (70% ECMP default, 30% random waypoint)",
   "arm_b_description": "ConstructionMode::GreedyLoadAware — RC-001 candidate (RP-401C volume-sorted load-aware Dijkstra)",

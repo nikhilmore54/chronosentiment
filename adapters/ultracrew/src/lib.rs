@@ -45,8 +45,6 @@ pub mod helpers {
                 start_hour: start as u64,
                 duration_hours: 8,
                 required_skill: all_skills[i % all_skills.len()].clone(),
-                flight_id: None,
-                crew_role: None,
             });
         }
 
@@ -79,13 +77,13 @@ pub mod helpers {
         let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
         engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
         
-        let mut satisfaction_engine = coralys_moga::runtime::optimization::satisfaction::DefaultRepairEngine::new(
-            coralys_moga::runtime::optimization::constraint::ConstraintSatisfactionConfig::default()
-        ).with_metric_engine(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
-        satisfaction_engine.add_model(Box::new(crate::repair::RestConstraint { context: context.clone() }));
-        satisfaction_engine.add_model(Box::new(crate::repair::SkillConstraint { context: context.clone() }));
-        satisfaction_engine.add_operator(Box::new(crate::repair::ReassignRepairOperator { context: context.clone() }));
-        engine.satisfaction_engine = Some(Box::new(satisfaction_engine));
+        // let mut satisfaction_engine = coralys_moga::runtime::optimization::satisfaction::DefaultRepairEngine::new(
+        //     coralys_moga::runtime::optimization::constraint::ConstraintSatisfactionConfig::default()
+        // ).with_metric_engine(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
+        // satisfaction_engine.add_model(Box::new(crate::repair::RestConstraint { context: context.clone() }));
+        // satisfaction_engine.add_model(Box::new(crate::repair::SkillConstraint { context: context.clone() }));
+        // satisfaction_engine.add_operator(Box::new(crate::repair::ReassignRepairOperator { context: context.clone() }));
+        // engine.satisfaction_engine = Some(Box::new(satisfaction_engine));
 
         // Temporary compatibility shim.
         // EvolutionEngine now returns Result to surface configuration validation errors.

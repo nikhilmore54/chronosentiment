@@ -348,10 +348,14 @@ fn load_complete_observation_ids(output_dir: &PathBuf) -> HashSet<String> {
     ids
 }
 
-/// Count trading days (Mon–Fri) strictly after `start` up to and including `end`.
+/// Count trading days (Mon–Fri) from `start` up to and including `end`,
+/// where `start` itself is counted as session 1 (inclusive convention).
+/// This matches the user-facing horizon definition: a 3-session horizon
+/// starting on Aug 20 elapses after Aug 22 (Aug 20 = session 1,
+/// Aug 21 = session 2, Aug 22 = session 3).
 fn trading_days_between(start: NaiveDate, end: NaiveDate) -> usize {
     let mut count = 0usize;
-    let mut d = start + Duration::days(1);
+    let mut d = start;
     while d <= end {
         match d.weekday() {
             Weekday::Sat | Weekday::Sun => {}
@@ -563,8 +567,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let horizon_elapsed = elapsed_sessions >= horizon;
 
         // AC-T9-02: get bars strictly after source_snapshot_timestamp.
-        let ticker_key = &entry.ticker; // LIVE-005 stores as TICKER_NS
-        let all_bars = cache.get(ticker_key);
+        // LIVE-005 stores ticker as TICKER_NS (underscore) but the Yahoo cache
+        // files are named TICKER.NS (dot). Normalize before lookup.
+        let ticker_key_dot = entry.ticker.replace("_NS", ".NS");
+        let all_bars = cache.get(&ticker_key_dot);
 
         let bars_after_t0: Vec<YahooHistoricalBar> = all_bars
             .map(|bars| {

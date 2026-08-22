@@ -1,4 +1,5 @@
 
+use ultracrew::constraint_engine::DomainConstraintEvaluator;
 use axum::{
     routing::{get, post, put, delete},
     Router,
@@ -1026,7 +1027,7 @@ async fn schedule_handler(
     app_state.last_solution = Some(solution.clone());
     app_state.last_request = Some(req);
 
-    let constraint_engine = ultracrew::constraint_engine::ConstraintEngine::new(context);
+    let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
     let genome = ultracrew::optimization::ScheduleGenome { assignments: solution.assignments.clone() };
     let report = constraint_engine.evaluate(&genome);
 
@@ -1065,7 +1066,7 @@ async fn reschedule_handler(
     let mut app_state = state.lock().unwrap();
     app_state.last_solution = Some(solution.clone());
     
-    let constraint_engine = ultracrew::constraint_engine::ConstraintEngine::new(context);
+    let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
     let genome = ultracrew::optimization::ScheduleGenome { assignments: solution.assignments.clone() };
     let report = constraint_engine.evaluate(&genome);
 
@@ -1093,7 +1094,7 @@ async fn validate_handler(
 ) -> Result<Json<ScheduleResponse>, (axum::http::StatusCode, String)> {
     let context = req.request.to_context();
     
-    let constraint_engine = ultracrew::constraint_engine::ConstraintEngine::new(context);
+    let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
     let genome = ultracrew::optimization::ScheduleGenome { assignments: req.assignments.clone() };
     let report = constraint_engine.evaluate(&genome);
 
@@ -1192,7 +1193,7 @@ struct ScheduleAnalysisRequest {
     /// The same workers array sent to /api/schedule
     workers: Vec<WorkerInput>,
     /// The scenario metadata to identify the domain
-    scenario: Option<Scenario>,
+    scenario: Option<ultracrew::public_contracts::InrcScenario>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -1305,207 +1306,11 @@ struct PairingsResponse {
 ///    - Rest compliance: rest_after >= min_rest_after_fdp(fdp_hours).
 ///      (TC CAR 700.17: rest >= max(8h, preceding FDP duration).)
 async fn pairings_handler(
-    Json(req): Json<ScheduleAnalysisRequest>,
-) -> Result<Json<PairingsResponse>, (StatusCode, String)> {
-    use ultracrew::public_contracts::SchedulingDomain;
-    let is_airline = req.scenario.as_ref().and_then(|s| s.domain.as_ref()) == Some(&SchedulingDomain::Airline);
-    if !is_airline {
-        let domain_str = req.scenario.as_ref().and_then(|s| s.domain.as_ref()).map(|d| format!("{:?}", d)).unwrap_or_else(|| "unknown".to_string());
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("DOMAIN_CONCEPT_NOT_SUPPORTED\ndomain={}\nconcept=pairing", domain_str)));
-    }
-
-    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
-    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
-
-    // Group shifts by worker
-    let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
-    for (shift_id, worker_id) in &req.schedule {
-        if let Some(shift) = shift_map.get(shift_id) {
-            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
-        }
-    }
-
-    let mut pairings: Vec<Pairing> = Vec::new();
-    let mut pairing_counter = 0u64;
-
-    for (worker_id, mut shifts) in worker_shifts {
-        shifts.sort_by_key(|s| s.start_hour);
-        let skill = worker_map.get(&worker_id)
-            .and_then(|w| w.skills.first())
-            .cloned()
-            .unwrap_or_default();
-
-        // ── Step 1: group sectors into FDPs ──────────────────────────────────
-        // A new FDP starts when the ground time between consecutive sectors >= LAYOVER_REST_HOURS.
-        let mut fdp_groups: Vec<Vec<ShiftInput>> = Vec::new();
-        let mut current_fdp: Vec<ShiftInput> = Vec::new();
-        for shift in &shifts {
-            if current_fdp.is_empty() {
-                current_fdp.push(shift.clone());
-            } else {
-                let last = current_fdp.last().unwrap();
-                let ground_time = shift.start_hour as f64 - (last.start_hour + last.duration_hours) as f64;
-                if ground_time >= LAYOVER_REST_HOURS {
-                    fdp_groups.push(current_fdp.clone());
-                    current_fdp = vec![shift.clone()];
-                } else {
-                    current_fdp.push(shift.clone());
-                }
-            }
-        }
-        if !current_fdp.is_empty() { fdp_groups.push(current_fdp); }
-
-        // ── Step 2: group FDPs into pairings ─────────────────────────────────
-        // A new pairing starts when the rest between consecutive FDPs >= HOME_BASE_REST_HOURS,
-        // or if adding the next FDP would exceed the maximum pairing duration of 5 days (120h)
-        // as per Kasirzadeh et al. (2014).
-        let mut pairing_fdp_groups: Vec<Vec<Vec<ShiftInput>>> = Vec::new();
-        let mut current_pairing: Vec<Vec<ShiftInput>> = Vec::new();
-        for fdp in &fdp_groups {
-            if current_pairing.is_empty() {
-                current_pairing.push(fdp.clone());
-            } else {
-                let prev_fdp = current_pairing.last().unwrap();
-                let prev_release = prev_fdp.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
-                let next_report = fdp.first().map(|s| s.start_hour).unwrap_or(0);
-                let rest_gap = next_report as f64 - prev_release as f64;
-                
-                let pairing_start = current_pairing.first().and_then(|f| f.first()).map(|s| s.start_hour).unwrap_or(0);
-                let next_release = fdp.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
-                let projected_duration = next_release.saturating_sub(pairing_start) as f64;
-                
-                if rest_gap >= HOME_BASE_REST_HOURS || projected_duration > 120.0 {
-                    pairing_fdp_groups.push(current_pairing.clone());
-                    current_pairing = vec![fdp.clone()];
-                } else {
-                    current_pairing.push(fdp.clone());
-                }
-            }
-        }
-        if !current_pairing.is_empty() { pairing_fdp_groups.push(current_pairing); }
-
-        // ── Step 3: build and validate each pairing ───────────────────────────
-        for (pi, fdp_list) in pairing_fdp_groups.iter().enumerate() {
-            pairing_counter += 1;
-
-            // Compute rest gap to next pairing (home-base rest)
-            let home_base_rest_hours: Option<f64> = pairing_fdp_groups.get(pi + 1).map(|next_pairing| {
-                let this_release = fdp_list.last()
-                    .and_then(|fdp| fdp.last())
-                    .map(|s| s.start_hour + s.duration_hours)
-                    .unwrap_or(0);
-                let next_report = next_pairing.first()
-                    .and_then(|fdp| fdp.first())
-                    .map(|s| s.start_hour)
-                    .unwrap_or(0);
-                next_report as f64 - this_release as f64
-            });
-
-            // Build FdpPeriod structs with compliance checks
-            let mut fdp_periods: Vec<FdpPeriod> = Vec::new();
-            for (fi, fdp_sectors) in fdp_list.iter().enumerate() {
-                let report_hour = fdp_sectors.first().map(|s| s.start_hour).unwrap_or(0);
-                let release_hour = fdp_sectors.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
-                let fdp_hours = (release_hour - report_hour) as f64;
-                let sector_count = fdp_sectors.len();
-                let report_hour_of_day = report_hour % 24;
-                let fdp_limit = max_fdp_hours(sector_count, report_hour_of_day);
-                let fdp_compliant = fdp_hours <= fdp_limit;
-                let fdp_violation = if !fdp_compliant {
-                    Some(format!(
-                        "FDP {:.1}h exceeds limit {:.1}h ({} sector{}, report {:02}:00)",
-                        fdp_hours, fdp_limit, sector_count,
-                        if sector_count == 1 { "" } else { "s" },
-                        report_hour_of_day
-                    ))
-                } else {
-                    None
-                };
-
-                // Rest after this FDP (gap to next FDP within the pairing)
-                let rest_after_hours: Option<f64> = fdp_list.get(fi + 1).map(|next_fdp| {
-                    let next_report = next_fdp.first().map(|s| s.start_hour).unwrap_or(0);
-                    next_report as f64 - release_hour as f64
-                });
-
-                // TC CAR 700.17: rest >= max(8h, preceding FDP duration)
-                let min_rest_required = min_rest_after_fdp(fdp_hours);
-                let rest_compliant = rest_after_hours
-                    .map(|r| r >= min_rest_required)
-                    .unwrap_or(true); // last FDP in pairing: rest compliance is home-base rest (checked separately)
-
-                fdp_periods.push(FdpPeriod {
-                    sectors: fdp_sectors.iter().map(|s| SectorInFdp {
-                        shift_id: s.id,
-                        start_hour: s.start_hour,
-                        end_hour: s.start_hour + s.duration_hours,
-                        duration_hours: s.duration_hours,
-                        required_skill: s.required_skill.clone(),
-                    }).collect(),
-                    report_hour,
-                    release_hour,
-                    fdp_hours,
-                    sector_count,
-                    fdp_limit_hours: fdp_limit,
-                    fdp_compliant,
-                    fdp_violation,
-                    rest_after_hours,
-                    min_rest_required_hours: min_rest_required,
-                    rest_compliant,
-                });
-            }
-
-            let total_block_hours: f64 = fdp_periods.iter()
-                .flat_map(|fp| fp.sectors.iter())
-                .map(|s| s.duration_hours as f64)
-                .sum();
-            let total_layover_hours: f64 = fdp_periods.iter()
-                .filter_map(|fp| fp.rest_after_hours)
-                .sum();
-            let fdp_count = fdp_periods.len();
-            let pairing_fdp_compliant = fdp_periods.iter().all(|fp| fp.fdp_compliant);
-            let pairing_rest_compliant = fdp_periods.iter().all(|fp| fp.rest_compliant);
-            let mut violations: Vec<String> = Vec::new();
-            for fp in &fdp_periods {
-                if let Some(v) = &fp.fdp_violation { violations.push(v.clone()); }
-                if !fp.rest_compliant {
-                    if let Some(r) = fp.rest_after_hours {
-                        violations.push(format!(
-                            "Rest {:.1}h < required {:.1}h (must be >= preceding FDP {:.1}h)",
-                            r, fp.min_rest_required_hours, fp.fdp_hours
-                        ));
-                    }
-                }
-            }
-
-            pairings.push(Pairing {
-                pairing_id: format!("P{:04}", pairing_counter),
-                worker_id,
-                worker_skill: skill.clone(),
-                fdp_periods,
-                total_block_hours,
-                total_layover_hours,
-                fdp_count,
-                home_base_rest_hours,
-                fdp_compliant: pairing_fdp_compliant,
-                rest_compliant: pairing_rest_compliant,
-                violations,
-            });
-        }
-    }
-
-    pairings.sort_by(|a, b| a.worker_id.cmp(&b.worker_id)
-        .then(
-            a.fdp_periods.first().and_then(|fp| fp.sectors.first()).map(|s| s.start_hour).unwrap_or(0)
-            .cmp(&b.fdp_periods.first().and_then(|fp| fp.sectors.first()).map(|s| s.start_hour).unwrap_or(0))
-        ));
-
-    let fdp_violations = pairings.iter().filter(|p| !p.fdp_compliant).count();
-    let rest_violations = pairings.iter().filter(|p| !p.rest_compliant).count();
-    let compliant_pairings = pairings.iter().filter(|p| p.fdp_compliant && p.rest_compliant).count();
-    let total_pairings = pairings.len();
-
-    Ok(Json(PairingsResponse { pairings, total_pairings, fdp_violations, rest_violations, compliant_pairings }))
+    axum::Json(_req): axum::Json<ScheduleAnalysisRequest>,
+) -> Result<axum::Json<PairingsResponse>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::UNPROCESSABLE_ENTITY, "DOMAIN_CONCEPT_NOT_SUPPORTED
+domain=inrc
+concept=pairing".to_string()))
 }
 
 // ─── Duties: per-worker duty periods with FDP compliance ─────────────────────
@@ -1538,121 +1343,11 @@ struct DutiesResponse {
 /// POST /api/duties
 /// Returns per-worker duty periods with full FDP compliance checking.
 async fn duties_handler(
-    Json(req): Json<ScheduleAnalysisRequest>,
-) -> Result<Json<DutiesResponse>, (StatusCode, String)> {
-    use ultracrew::public_contracts::SchedulingDomain;
-    let is_airline = req.scenario.as_ref().and_then(|s| s.domain.as_ref()) == Some(&SchedulingDomain::Airline);
-    if !is_airline {
-        let domain_str = req.scenario.as_ref().and_then(|s| s.domain.as_ref()).map(|d| format!("{:?}", d)).unwrap_or_else(|| "unknown".to_string());
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("DOMAIN_CONCEPT_NOT_SUPPORTED\ndomain={}\nconcept=duty", domain_str)));
-    }
-
-    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
-    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
-
-    let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
-    for (shift_id, worker_id) in &req.schedule {
-        if let Some(shift) = shift_map.get(shift_id) {
-            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
-        }
-    }
-
-    let mut duties: Vec<DutyPeriod> = Vec::new();
-    let mut duty_counter = 0u64;
-
-    for (worker_id, mut shifts) in worker_shifts {
-        shifts.sort_by_key(|s| s.start_hour);
-        let skill = worker_map.get(&worker_id)
-            .and_then(|w| w.skills.first())
-            .cloned()
-            .unwrap_or_default();
-
-        // Group into duty periods (same logic as pairings)
-        let mut groups: Vec<Vec<ShiftInput>> = Vec::new();
-        let mut current: Vec<ShiftInput> = Vec::new();
-        for shift in &shifts {
-            if current.is_empty() {
-                current.push(shift.clone());
-            } else {
-                let last = current.last().unwrap();
-                let gap = shift.start_hour as f64 - (last.start_hour + last.duration_hours) as f64;
-                if gap >= LAYOVER_REST_HOURS {
-                    groups.push(current.clone());
-                    current = vec![shift.clone()];
-                } else {
-                    current.push(shift.clone());
-                }
-            }
-        }
-        if !current.is_empty() { groups.push(current); }
-
-        // Compute weekly hours for this worker
-        let total_hours: f64 = shifts.iter().map(|s| s.duration_hours as f64).sum();
-        let weekly_hours_compliant = total_hours <= MAX_WEEKLY_HOURS;
-
-        for (i, group) in groups.iter().enumerate() {
-            duty_counter += 1;
-            let report_hour = group.first().map(|s| s.start_hour).unwrap_or(0);
-            let release_hour = group.last().map(|s| s.start_hour + s.duration_hours).unwrap_or(0);
-            let fdp_hours = (release_hour - report_hour) as f64;
-            let sector_count = group.len();
-            let report_hour_of_day = report_hour % 24;
-            let fdp_limit = max_fdp_hours(sector_count, report_hour_of_day);
-            let fdp_compliant = fdp_hours <= fdp_limit;
-
-            // Rest after = gap to next duty group
-            let rest_after_hours = groups.get(i + 1).map(|next| {
-                let next_report = next.first().map(|s| s.start_hour).unwrap_or(0);
-                next_report as f64 - release_hour as f64
-            });
-            // TC CAR 700.17: rest >= max(8h, preceding FDP duration)
-            let min_rest_required = min_rest_after_fdp(fdp_hours);
-            let rest_compliant = rest_after_hours.map(|r| r >= min_rest_required).unwrap_or(true);
-
-            let mut violations = Vec::new();
-            if !fdp_compliant {
-                violations.push(format!(
-                    "FDP {:.1}h > limit {:.1}h ({} sector{}, report {:02}:00)",
-                    fdp_hours, fdp_limit, sector_count,
-                    if sector_count == 1 { "" } else { "s" },
-                    report_hour_of_day
-                ));
-            }
-            if !rest_compliant {
-                violations.push(format!(
-                    "Rest {:.1}h < required {:.1}h (>= max(FDP {:.1}h, 10h))",
-                    rest_after_hours.unwrap_or(0.0), min_rest_required, fdp_hours
-                ));
-            }
-            if !weekly_hours_compliant {
-                violations.push(format!("Weekly hours {:.1}h > max {:.1}h", total_hours, MAX_WEEKLY_HOURS));
-            }
-
-            duties.push(DutyPeriod {
-                duty_id: format!("D{:05}", duty_counter),
-                worker_id,
-                worker_skill: skill.clone(),
-                shift_ids: group.iter().map(|s| s.id).collect(),
-                report_hour,
-                release_hour,
-                fdp_hours,
-                rest_after_hours,
-                fdp_compliant,
-                rest_compliant,
-                weekly_hours_compliant,
-                violations,
-            });
-        }
-    }
-
-    duties.sort_by(|a, b| a.worker_id.cmp(&b.worker_id).then(a.report_hour.cmp(&b.report_hour)));
-
-    let fdp_violations = duties.iter().filter(|d| !d.fdp_compliant).count();
-    let rest_violations = duties.iter().filter(|d| !d.rest_compliant).count();
-    let weekly_violations = duties.iter().filter(|d| !d.weekly_hours_compliant).count();
-    let total_duties = duties.len();
-
-    Ok(Json(DutiesResponse { duties, total_duties, fdp_violations, rest_violations, weekly_violations }))
+    axum::Json(_req): axum::Json<ScheduleAnalysisRequest>,
+) -> Result<axum::Json<DutiesResponse>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::UNPROCESSABLE_ENTITY, "DOMAIN_CONCEPT_NOT_SUPPORTED
+domain=inrc
+concept=duty".to_string()))
 }
 
 // ─── Swap Exchanges: feasible worker swaps for a given shift ─────────────────
@@ -2522,7 +2217,7 @@ mod server_endpoints_tests {
                 Worker { id: 1, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")}
             ],
             historical_workloads: None,
             rng_seed: Some(42),
@@ -2563,7 +2258,7 @@ mod server_endpoints_tests {
                 Worker { id: 1, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")}
             ],
             historical_workloads: None,
             rng_seed: Some(42),
@@ -2613,8 +2308,8 @@ mod server_endpoints_tests {
                 Worker { id: 2, skills: vec![Skill::new("Forklift")] }
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None },
-                Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Forklift"), crew_role: None, flight_id: None }
+                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")},
+                Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Forklift")}
             ],
             historical_workloads: None,
             rng_seed: Some(42),

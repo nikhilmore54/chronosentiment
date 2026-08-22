@@ -87,7 +87,13 @@ impl RegionIdentifier<CvrpCandidate> for CvrpRegionIdentifier {
 fn random_ls(instance: &CvrpInstance, ls: &CvrpLocalSearch, rng: &mut rand::rngs::StdRng) -> CvrpCandidate {
     let mut cand = CvrpCandidate { permutation: (0..instance.customers.len()).collect(), last_mutation_op: None, last_mutation_radius: None, route_boundary_changes: None };
     cand.permutation.shuffle(rng);
-    ls.search(&mut cand);
+    
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(ls, &mut cand, &model, &budget).unwrap();
+        }
+        
     cand
 }
 
@@ -108,7 +114,13 @@ fn sweep_ls(instance: &CvrpInstance, ls: &CvrpLocalSearch, rng: &mut rand::rngs:
     });
     
     let mut cand = CvrpCandidate { permutation: angles.into_iter().map(|(i, _)| i).collect(), last_mutation_op: None, last_mutation_radius: None, route_boundary_changes: None };
-    ls.search(&mut cand);
+    
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(ls, &mut cand, &model, &budget).unwrap();
+        }
+        
     cand
 }
 
@@ -186,7 +198,13 @@ fn clarke_wright(instance: &CvrpInstance, rng: &mut rand::rngs::StdRng) -> CvrpC
 fn moga_step(instance: &CvrpInstance, cand: &mut CvrpCandidate, ls: &CvrpLocalSearch, rng: &mut rand::rngs::StdRng) {
     let mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
     mutator.mutate(cand, rng);
-    ls.search(cand);
+    
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(ls, cand, &model, &budget).unwrap();
+        }
+        
 }
 
 fn main() {
@@ -202,7 +220,7 @@ fn main() {
     let target_samples = 1000;
     
     let mut process = |cand: CvrpCandidate, solver: &str| {
-        let dist = evaluator.evaluate(&cand).eval.total_distance;
+        let dist = evaluator.evaluate(&cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
         let basin = region_id.region_of(&cand);
         let routes = decode_routes(&cand, &instance);
         let edges = extract_edges(&routes, &instance);
@@ -239,7 +257,7 @@ fn main() {
         moga_step(&instance, &mut current_cand, &ls, &mut rng);
         // We accept all mutations just to sample the MOGA landscape, or we can use Metropolis-Hastings.
         // Let's use simple SA to stay in elite regions.
-        let dist = evaluator.evaluate(&current_cand).eval.total_distance;
+        let dist = evaluator.evaluate(&current_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.total_distance;
         if dist < 850.0 || rng.gen_bool(0.1) {
             process(current_cand.clone(), "MOGA");
             moga_samples += 1;

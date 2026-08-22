@@ -455,6 +455,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "coralys-decision",
  "coralys-ecology",
  "coralys-moga",
  "rand 0.8.7",

@@ -6,6 +6,9 @@ pub mod ecmp;
 pub mod path;
 pub mod moga_impl;
 pub mod telemetry;
+pub mod constraints;
+pub mod operators;
+pub mod pipeline_impl;
 
 use coralys_core::{
     DecisionPlugin, DecisionProposal, EvaluationResult, Violation,

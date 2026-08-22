@@ -1,0 +1,20 @@
+SOLUTION
+0 n030w4
+ASSIGNMENTS = 17
+HN_2 Mon Early HeadNurse
+CT_22 Mon Late Caretaker
+HN_3 Tue Day Nurse
+NU_4 Tue Night Nurse
+NU_16 Wed Early Nurse
+NU_14 Wed Night Nurse
+NU_9 Thu Early Nurse
+NU_4 Thu Day Caretaker
+NU_16 Thu Day Nurse
+CT_18 Thu Late Caretaker
+NU_12 Fri Late Nurse
+CT_22 Fri Late Caretaker
+TR_29 Fri Night Trainee
+NU_11 Sat Night Nurse
+NU_10 Sun Early Nurse
+CT_23 Sun Early Caretaker
+CT_20 Sun Night Caretaker

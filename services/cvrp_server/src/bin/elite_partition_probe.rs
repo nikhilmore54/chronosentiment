@@ -73,8 +73,14 @@ fn main() {
     for _ in 0..2000 {
         let mut child = best_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        ls.search(&mut child);
-        let eval = evaluator.evaluate(&child);
+        
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
+        }
+        
+        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         if eval.eval.total_distance < best_dist {
             best_dist = eval.eval.total_distance;
             best_cand = child;
@@ -86,7 +92,7 @@ fn main() {
     }
     
     println!("Root Basin Distance: {}", best_dist);
-    let root_eval = evaluator.evaluate(&best_cand);
+    let root_eval = evaluator.evaluate(&best_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
     
     // Decode routes using cust_idx, not customer.id
     let mut root_routes: Vec<Vec<usize>> = Vec::new();
@@ -135,8 +141,14 @@ fn main() {
                     test_cand.permutation = new_perm;
                     
                     // Exhaustive local search
-                    ls.search(&mut test_cand);
-                    let final_eval = evaluator.evaluate(&test_cand);
+                    
+        {
+            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+            coralys_core::operators::ImprovementOperator::improve(&ls, &mut test_cand, &model, &budget).unwrap();
+        }
+        
+                    let final_eval = evaluator.evaluate(&test_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
                     
                     // Decode final_routes using cust_idx
                     let mut final_routes: Vec<Vec<usize>> = Vec::new();

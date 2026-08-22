@@ -98,8 +98,10 @@ fn main() {
     for _ in 0..5000 {
         let mut child = curr_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        ls.search(&mut child);
-        let eval = evaluator.evaluate(&child);
+        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+        coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
+        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         let d = eval.eval.total_distance;
         
         if d <= 810.0 {
@@ -197,8 +199,10 @@ fn main() {
 
         // Repair phase
         let mut s2 = s1.clone();
-        ls.search(&mut s2);
-        let s2_eval = evaluator.evaluate(&s2);
+        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
+        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+        coralys_core::operators::ImprovementOperator::improve(&ls, &mut s2, &model, &budget).unwrap();
+        let s2_eval = evaluator.evaluate(&s2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
         
         // Final State (S2) Measurements
         let s2_routes = decode_routes(&s2, &instance);

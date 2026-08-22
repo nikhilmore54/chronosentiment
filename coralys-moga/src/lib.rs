@@ -8,7 +8,6 @@ pub mod engine_proof;
 pub mod state;
 pub mod traits;
 pub mod metrics;
-pub mod repair;
 pub mod termination;
 
 pub mod observatory;
@@ -29,7 +28,6 @@ pub use traits::{
     MutationOperator, SelectionStrategy, ImprovementOperator, NoOpImprovement, LocalSearchOperator,
     ObservedTransitionMetric, RegionIdentifier,
 };
-pub use repair::{ConstraintChecker, RepairHeuristic, FeasibilityRepairFramework, RepairStats};
 
 #[cfg(test)]
 mod tests {
@@ -64,7 +62,7 @@ mod tests {
     struct DummyEvaluator;
     impl FitnessEvaluator<TestGenome> for DummyEvaluator {
         type Evaluation = TestEvaluation;
-        fn evaluate(&self, genome: &TestGenome) -> Self::Evaluation {
+        fn evaluate(&self, genome: &TestGenome, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
             TestEvaluation {
                 fitness: genome.value,
                 valid: true,
@@ -125,7 +123,7 @@ mod tests {
         assert_eq!(child1.value, 1.0);
         assert_eq!(child2.value, 1.0);
 
-        let pop = vec![evaluator.evaluate(&genome)];
+        let pop = vec![evaluator.evaluate(&genome, &crate::runtime::optimization::metric::MetricReport::default())];
         let selected = selection.select(&pop, 1);
         assert_eq!(selected.len(), 1);
         assert_eq!(selected[0].fitness(), 1.0);
@@ -305,7 +303,7 @@ mod tests {
             .with_factory(DummyGenomeFactory)
             .add_processor(IncrementImprovement)
             .add_processor(DoubleImprovement)
-            .enable_metrics();
+            .enable_metrics(true);
         
         let engine = builder.build().unwrap();
         let config = EvolutionConfig {

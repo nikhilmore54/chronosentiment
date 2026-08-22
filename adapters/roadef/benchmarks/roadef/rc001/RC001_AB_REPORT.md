@@ -1,7 +1,7 @@
 # RC-001 A/B Report: Load-Aware Greedy Constructor
 
 **Campaign:** rc001_ab_v2.3  
-**Timestamp:** 2026-08-06T14:04:38.548454+00:00  
+**Timestamp:** 2026-08-20T05:03:05.143690+00:00  
 **Seed:** 42  Population: 50  Generations: 500  Elite: 5
 
 > **Statistical note:** Single seed. Acceptable for engineering gate; multi-seed experiments (e.g. seeds 42–51) required before paper submission.
@@ -42,4 +42,4 @@ The RP-401C load-aware greedy constructor (volume-sorted, additive saturation pe
 
 RC-001 improves the official ROADEF objective on ≥ 2/3 of instances without runtime regression. Recommend integrating GreedyLoadAware as the default construction mode for the RC integration branch.
 
-*Total campaign runtime: 1ms*
+*Total campaign runtime: 2ms*

@@ -78,7 +78,8 @@ fn test_inrc_multi_week_parity() {
         let optimizer = InrcOptimizer { context: Arc::new(context) };
         
         let genome = generator.generate();
-        let evaluation = optimizer.evaluate(&genome);
+        let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
+        let evaluation = optimizer.evaluate(&genome, &metric_report);
         
         coralys_days_off_total += evaluation.soft_report.day_off_penalty;
         coralys_preferences_total += evaluation.soft_report.preferences_penalty;

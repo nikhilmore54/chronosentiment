@@ -44,6 +44,7 @@ pub mod legality;
 pub mod optimization;
 pub mod resilience;
 pub mod planner;
+pub mod evaluation;
 
 // ── Top-level re-exports ──────────────────────────────────────────────────────
 //

@@ -529,8 +529,6 @@ fn run_instance(instance: CvrpInstance) -> Result<RunResult, String> {
         .with_mutator(mutator)
         .with_crossover(crossover)
         .with_factory(factory)
-        .with_improvement(local_search)
-        .enable_metrics()
         .build()
         .map_err(|e| format!("Engine build error: {}", e))?;
 

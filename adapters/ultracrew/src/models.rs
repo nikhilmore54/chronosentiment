@@ -21,14 +21,6 @@ pub struct Shift {
     pub start_hour: u64, // simplified time: hour of the week (0..168)
     pub duration_hours: u64,
     pub required_skill: Skill,
-    /// Flight identifier — shifts sharing the same flight_id form a pairing.
-    /// Optional: present when the scenario includes flight-level data (GERAD, SunAir).
-    #[serde(default)]
-    pub flight_id: Option<String>,
-    /// Crew role for this shift slot (e.g. "Captain", "First Officer", "Cabin Crew").
-    /// Optional: used by the pairing completion check in the constraint engine.
-    #[serde(default)]
-    pub crew_role: Option<String>,
 }
 
 impl Shift {

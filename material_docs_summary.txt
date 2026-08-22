@@ -1,0 +1,372 @@
+PATH: docs/research/REPLAY_MANIFEST_SPECIFICATION_v1.md
+TITLE: Replay Manifest Specification v1
+CONTEXT: # Replay Manifest Specification v1  **Version:** 1.0.0 **Status:** Active **Date:** 2026-05-25  ## 1. Purpose & Scope This specification defines the deterministic chain-of-custody layer for the ChronoSentiment Replay Observatory. As the archive has reached local morphology saturation, raw descriptor
+--------------------------------------------------------------------------------
+PATH: docs/research/UltraCrew_Layover_Threshold_Experiment.md
+TITLE: UltraCrew — Effect of 8h vs 10h Layover Threshold on Pairing Structure
+CONTEXT: # UltraCrew — Effect of 8h vs 10h Layover Threshold on Pairing Structure  **Status:** Methodology review — experiment scope narrowed **Date:** 2026-07-30 **Relates to:** [UltraCrew vs GENCOL Pipeline Divergence Analysis](UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md), Section 4.1 **Hypothesis und
+--------------------------------------------------------------------------------
+PATH: docs/research/REPAIR_LABORATORY_ISOLATION_PROTOCOL_v1.md
+TITLE: REPAIR LABORATORY ISOLATION PROTOCOL v1
+CONTEXT: # REPAIR LABORATORY ISOLATION PROTOCOL v1  ## 1. Constitutional Authority This protocol governs the introduction, execution, and boundary maintenance of **Adaptive Memory Repair** within the ChronoSentiment Execution Laboratory. Adaptive repair introduces synthetic chronology into stateful memory, p
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-007_Explainability_Research.md
+TITLE: CS-R-007 — Explainability Research
+CONTEXT: # CS-R-007 — Explainability Research ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Rev
+--------------------------------------------------------------------------------
+PATH: docs/research/UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md
+TITLE: UltraCrew vs GENCOL — Pipeline Divergence Analysis
+CONTEXT: # UltraCrew vs GENCOL — Pipeline Divergence Analysis  **Status:** Final (revised) **Date:** 2026-07-30 **Relates to:** GERAD G-2014-22 benchmark **Source code audited:** [`services/ultracrew_server/src/main.rs`](../../services/ultracrew_server/src/main.rs), [`adapters/ultracrew/src/pipeline.rs`](../
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-006_Data_Landscape.md
+TITLE: CS-R-006 — Data Landscape
+CONTEXT: # CS-R-006 — Data Landscape ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Review | Jan
+--------------------------------------------------------------------------------
+PATH: docs/research/REPLAY_EQUIVALENCE_CONTRACT_v1.md
+TITLE: REPLAY EQUIVALENCE CONTRACT v1
+CONTEXT: # REPLAY EQUIVALENCE CONTRACT v1  ## 1. The Core Invariant The Replay Artifact Hash is the constitutional law of the ChronoSentiment execution substrate. Any backtest, simulation, or historical experiment traversing a frozen chronological ledger must produce an identical cryptographic hash to the li
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-010_Investment_Workflow_Evolution.md
+TITLE: CS-R-010 — Investment Workflow Evolution
+CONTEXT: # CS-R-010 — Investment Workflow Evolution ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Ne
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-000_Research_Evidence_Sufficiency_Matrix.md
+TITLE: CS-R-000 — Research Evidence Sufficiency Matrix
+CONTEXT: # CS-R-000 — Research Evidence Sufficiency Matrix ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026
+--------------------------------------------------------------------------------
+PATH: docs/research/DISCREPANCY_REPORT.md
+TITLE: ChronoSentiment — Documentation vs. UI Implementation Discrepancy Report
+CONTEXT: # ChronoSentiment — Documentation vs. UI Implementation Discrepancy Report  **Generated:** 2026-05-23 **Scope:** All `.md` documentation files across the project + all React UI components in `my-chrono-sentiment-ui/src/` **Methodology:** Full read of every doc and every component, cross-referenced a
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-005_Pricing_Analysis.md
+TITLE: CS-R-005 — Pricing Analysis
+CONTEXT: # CS-R-005 — Pricing Analysis ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Review | J
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-009_AI_Adoption_Investment_Management.md
+TITLE: CS-R-009 — AI Adoption in Investment Management
+CONTEXT: # CS-R-009 — AI Adoption in Investment Management ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026
+--------------------------------------------------------------------------------
+PATH: docs/research/ECOLOGY_COMPARISON_PROTOCOL_v1.md
+TITLE: ECOLOGY COMPARISON PROTOCOL v1
+CONTEXT: # ECOLOGY COMPARISON PROTOCOL v1  ## 1. Core Mandate This document governs the scientific comparison of multiple Alpha strategies within the Execution Ecology framework. As ChronoSentiment scales into multi-strategy experimentation, it is prohibited to collapse ecological survivability into single-s
+--------------------------------------------------------------------------------
+PATH: docs/research/UltraCrew_Objective_Function_Alignment.md
+TITLE: UltraCrew — Objective Function Alignment with GERAD
+CONTEXT: # UltraCrew — Objective Function Alignment with GERAD  **Status:** Planned **Date:** — **Relates to:** [UltraCrew vs GENCOL Pipeline Divergence Analysis](UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md), Section 7 Step 3 **Prerequisite:** [Pairing-Topology Mutation Operator Evaluation](UltraCrew_Pa
+--------------------------------------------------------------------------------
+PATH: docs/research/CRYPTO_SUBSTRATE_CONTRACT_v1.md
+TITLE: CRYPTO SUBSTRATE CONTRACT v1
+CONTEXT: # CRYPTO SUBSTRATE CONTRACT v1  ## 1. Constitutional Authority This contract governs the introduction and handling of cryptocurrency market data within the ChronoSentiment Execution Laboratory. Crypto is introduced explicitly and exclusively to study **continuous topology deformation** and **long-ho
+--------------------------------------------------------------------------------
+PATH: docs/research/UltraCrew_Pairing_Topology_Mutation_Evaluation.md
+TITLE: UltraCrew — Pairing-Topology Mutation Operator Evaluation
+CONTEXT: # UltraCrew — Pairing-Topology Mutation Operator Evaluation  **Status:** In progress — architectural analysis complete, implementation pending **Date:** 2026-07-31 **Relates to:** [UltraCrew vs GENCOL Pipeline Divergence Analysis](UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md), Section 7 Step 1 *
+--------------------------------------------------------------------------------
+PATH: docs/research/RESEARCH_LOG.md
+TITLE: ChronoSentiment — Provider Chronology Observatory
+CONTEXT: # ChronoSentiment — Provider Chronology Observatory  This document logs empirical findings regarding provider synchronization, latency, and temporal fragmentation.  It serves as the operational foundation for defining execution constraints and chronology boundaries.  ## Terminology & Execution Const
+--------------------------------------------------------------------------------
+PATH: docs/research/TOPOLOGY_PERTURBATION_CONTRACT_v1.md
+TITLE: TOPOLOGY PERTURBATION CONTRACT v1
+CONTEXT: # TOPOLOGY PERTURBATION CONTRACT v1  ## 1. Core Mandate The Synthetic Fragmentation Injector is exclusively an experimental deformation tool for visibility topology. Its sole purpose is to mutate the temporal visibility metrics (lag, dispersion) in order to stress-test the Execution Physics intersec
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-014_Product_Category_Creation_Study.md
+TITLE: CS-R-014 — Product Category Creation Study
+CONTEXT: # CS-R-014 — Product Category Creation Study ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | 
+--------------------------------------------------------------------------------
+PATH: docs/research/ECONOMIC_SEMANTICS_CONTRACT_v1.md
+TITLE: ECONOMIC SEMANTICS CONTRACT v1
+CONTEXT: # ECONOMIC SEMANTICS CONTRACT v1  ## 1. Constitutional Authority This protocol governs the terminology and semantic framing of the Economic Ecology within the ChronoSentiment Execution Laboratory. As the laboratory transitions into measuring the economic outcomes of topological fracture, it is struc
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-003_Customer_Problem_Evidence.md
+TITLE: CS-R-003 — Customer Problem Evidence
+CONTEXT: # CS-R-003 — Customer Problem Evidence ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next R
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-015A_Executive_Investment_Summary.md
+TITLE: CS-R-015A — Executive Investment Summary
+CONTEXT: # CS-R-015A — Executive Investment Summary ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Ne
+--------------------------------------------------------------------------------
+PATH: docs/research/UltraCrew_Coralys_Native_Scheduler_Section3.md
+TITLE: Section 3 — Characterizing the Coralys Optimizer
+CONTEXT: # Section 3 — Characterizing the Coralys Optimizer  **Status:** Stub — Phase 3 research plan. No experiments have been run yet.  **Depends on:** [`UltraCrew_Pairing_Topology_Mutation_Evaluation.md`](UltraCrew_Pairing_Topology_Mutation_Evaluation.md) Section 2 (frozen 2026-08-01)  **Freeze policy for
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-008_Point_In_Time_Architecture_Review.md
+TITLE: CS-R-008 — Point-in-Time Architecture
+CONTEXT: # CS-R-008 — Point-in-Time Architecture ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next 
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-013_Technology_Readiness_Assessment.md
+TITLE: CS-R-013 — Technology Readiness Assessment
+CONTEXT: # CS-R-013 — Technology Readiness Assessment ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | 
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-004_Regulatory_Landscape.md
+TITLE: CS-R-004 — Regulatory Landscape
+CONTEXT: # CS-R-004 — Regulatory Landscape ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Review
+--------------------------------------------------------------------------------
+PATH: docs/research/ARCHIVE_CURATION_CONTRACT_v1.md
+TITLE: Archive Curation Contract (v1)
+CONTEXT: # Archive Curation Contract (v1)  This contract enforces the "Specimen Archive" philosophy of the ChronoSentiment Observatory, specifically governing the ingestion of new chronological universes during Phase 2B and beyond.  ## Axiom of Specimen Rarity The value of the observatory comes from how care
+--------------------------------------------------------------------------------
+PATH: docs/research/PERSISTENCE_SEMANTICS_CONTRACT_v1.md
+TITLE: PERSISTENCE SEMANTICS CONTRACT v1
+CONTEXT: # PERSISTENCE SEMANTICS CONTRACT v1  ## 1. Constitutional Authority This contract governs the vocabulary and interpretative framing used when analyzing continuous-state memory ecology. As ChronoSentiment scales to evaluate uninterrupted, multi-day topologies, the anthropomorphization of physical mem
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-016_Credit_Framework_Architecture.md
+TITLE: CS-R-016 — Credit Framework Architecture
+CONTEXT: # CS-R-016 — Credit Framework Architecture  **Status:** Draft   **Date:** 2026-07-28   **Author:** UltraCrew Architecture   **Triggered by:** GERAD G-2014-22 benchmark analysis (`benchmarks/gerad-g2014-22/raw/instance1/instance1/creditedHours`)  ---  ## 1. Discovery  Analysis of the GERAD G-2014-22 
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-011_Decision_Governance_Research.md
+TITLE: CS-R-011 — Decision Governance Research
+CONTEXT: # CS-R-011 — Decision Governance Research ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Nex
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-012_Build_vs_Buy_Analysis.md
+TITLE: CS-R-012 — Build vs Buy Analysis
+CONTEXT: # CS-R-012 — Build vs Buy Analysis ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Revie
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-015_Investment_Thesis.md
+TITLE: CS-R-015 — Investment Thesis
+CONTEXT: # CS-R-015 — Investment Thesis ## ChronoSentiment Research Series | v1.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v1.0** | | Evidence Version | v1.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Review | 
+--------------------------------------------------------------------------------
+PATH: docs/research/chrono_sentiment_full_system.md
+TITLE: ChronoSentiment — Master System Documentation
+CONTEXT: # ChronoSentiment — Master System Documentation ## Full Technical Specification | Theoretical Framework | Operational Guide **Version**: 10.9 (Institutional Grade)  ---  ## 📘 1. Executive Overview  **ChronoSentiment** is a high-precision, deterministic trading simulation and strategy discovery engin
+--------------------------------------------------------------------------------
+PATH: docs/research/GENERALIZATION_BOUNDARY_CONTRACT_v1.md
+TITLE: GENERALIZATION BOUNDARY CONTRACT v1
+CONTEXT: # GENERALIZATION BOUNDARY CONTRACT v1  ## 1. Constitutional Authority This contract governs the epistemic boundaries of the ChronoSentiment laboratory. As the system scales to continuous topologies and observes structural memory behavior, the risk of "Theory Drift"—specifically Premature Universalit
+--------------------------------------------------------------------------------
+PATH: docs/research/REPAIR_SEMANTICS_CONTRACT_v1.md
+TITLE: REPAIR SEMANTICS CONTRACT v1
+CONTEXT: # REPAIR SEMANTICS CONTRACT v1  ## 1. Constitutional Authority This protocol governs the terminology and semantic framing of the Synthetic Repair Ecology within the ChronoSentiment Execution Laboratory. It explicitly outlaws the use of evaluative, optimization-focused language when describing adapti
+--------------------------------------------------------------------------------
+PATH: docs/research/EXECUTION_ECOLOGY_SPEC_v1.md
+TITLE: EXECUTION ECOLOGY SPECIFICATION v1
+CONTEXT: # EXECUTION ECOLOGY SPECIFICATION v1  ## 1. Core Mandate This specification governs the classification of Alpha strategies under adversarial observability conditions. ChronoSentiment does not measure "good" vs "bad" Alpha strictly by PnL. It measures **Ecological Survivability**: the degree to which
+--------------------------------------------------------------------------------
+PATH: docs/research/CS-R-002_Competitive_Landscape.md
+TITLE: CS-R-002 — Competitive Landscape
+CONTEXT: # CS-R-002 — Competitive Landscape ## ChronoSentiment Research Series | v2.0  ---  ## Document Governance  | Field | Value | |-------|-------| | Document Status | **Research Baseline v2.0** | | Evidence Version | v2.0 | | Research Date | July 2026 | | Evidence Cut-off Date | July 2026 | | Next Revie
+--------------------------------------------------------------------------------
+PATH: archive/research_outputs/campaign_report.md
+TITLE: Coralys CVRP Optimizer — Qualification Campaign v1.1 Report
+CONTEXT: # Coralys CVRP Optimizer — Qualification Campaign v1.1 Report  **Generated:** 2026-07-09T13:18:57.591302+00:00   **Campaign version:** v1.1   **Instances:** 376 total, 140 ran, 222 skipped, 10 unsupported   **Feasibility:** 131/140 (93.6%)   **BKS matches:** 46   **Median gap (primary):** 0.00%  |  
+--------------------------------------------------------------------------------
+PATH: archive/research_outputs/cluster_stability_report.md
+TITLE: Ecological Structure Validation Report
+CONTEXT: # Ecological Structure Validation Report  This report presents evidence that the Q1 session‑metric space contains non‑random cluster structure. No regime names or interpretations are provided at this stage.  ## Summary Table | k | Silhouette | Silhouette p | Bootstrap ARI (mean±std) | Perturbation A
+--------------------------------------------------------------------------------
+PATH: archive/research_outputs/ecology_cluster_report.md
+TITLE: Q1 Ecological Clustering Report
+CONTEXT: # Q1 Ecological Clustering Report  Generated from `session_catalog_q1.json` – **120 sessions**.  **Number of clusters:** 4  ![PCA plot](ecology_pca_plot.png)  ## Cluster Highlights  ### Cluster 0  * Sessions: 35  * Representative (highest volatility): 2025-02-12 BANKNIFTY  | Metric | Value | |---|--
+--------------------------------------------------------------------------------
+PATH: archive/historical_research/phase0d/host_c_0db_result.md
+TITLE: Phase 0D-B Certification Result — Raspberry Pi 5 (aarch64)
+CONTEXT: # Phase 0D-B Certification Result — Raspberry Pi 5 (aarch64)  ## Environment  | Field | Value | |-------|-------| | Host | Raspberry Pi 5 (LCUtest) | | User | `ultraspeed@192.168.0.3` | | Architecture | `aarch64` | | OS | Linux (aarch64-unknown-linux-gnu) | | Rust toolchain | `1.91.1-aarch64-unknown
+--------------------------------------------------------------------------------
+PATH: archive/historical_research/claims/README.md
+TITLE: Observatory Claims Repository
+CONTEXT: # Observatory Claims Repository  This repository holds the scientific observations of the ChronoSentiment Observatory. It is governed by a strict epistemological structure designed to prevent mythology, unbounded generalization, and narrative-driven conclusions.  **Proof is never "I believe this pat
+--------------------------------------------------------------------------------
+PATH: benchmarks/campaign/capability_promotion_policy.md
+TITLE: Coralys Capability Promotion Policy
+CONTEXT: # Coralys Capability Promotion Policy ## GOV-010 — Platform Normative Document  *Applies to: All Coralys optimization domains and platform capabilities.* *Companion to GOV-008 (Benchmark Qualification) and GOV-009 (Feasibility & Execution Qualification).* *Version: 1.1 — Frozen, 2026-07-08.*  ---  #
+--------------------------------------------------------------------------------
+PATH: benchmarks/roadef/M19-FOUNDATION-REPORT-v1.0.md
+TITLE: M19 Foundation Report — v1.0
+CONTEXT: # M19 Foundation Report — v1.0  **Status:** FROZEN   **Frozen:** 2026-07-10   **Campaign:** `campaign_engine_v1.0_verify` (v3 — full measurement model)   **Baseline:** `BASELINE-v1.0.json`   **Schema:** `BASELINE-v1.0-schema.json`  ---  ## Scope  This report documents the M19 ROADEF 2026 benchmark c
+--------------------------------------------------------------------------------
+PATH: benchmarks/roadef/campaign/EVIDENCE-engine-v1.0.md
+TITLE: ROADEF 2026 — Platform Validation Evidence
+CONTEXT: # ROADEF 2026 — Platform Validation Evidence  **Campaign:** campaign_engine_v1.0_verify   **Engine:** coralys-moga EvolutionEngine (unchanged)   **Timestamp:** 2026-07-11T03:10:46.371453+00:00   **Total runtime:** 3958.2s    ## Platform Evidence  This campaign validates that `coralys-moga EvolutionE
+--------------------------------------------------------------------------------
+PATH: benchmarks/roadef/campaign/EVIDENCE-engine-v1.0_BASELINE_PRE_M20.md
+TITLE: ROADEF 2026 — Platform Validation Evidence
+CONTEXT: # ROADEF 2026 — Platform Validation Evidence  **Campaign:** campaign_engine_v1.0_verify   **Engine:** coralys-moga EvolutionEngine (unchanged)   **Timestamp:** 2026-07-10T17:01:23.300851+00:00   **Total runtime:** 4199.3s    ## Platform Evidence  This campaign validates that `coralys-moga EvolutionE
+--------------------------------------------------------------------------------
+PATH: validation/M6.3_solution_quality.md
+TITLE: M6.3 — Solution Quality Validation Results
+CONTEXT: # M6.3 — Solution Quality Validation Results  **Date:** 2026-07-19 **Commit:** 655dc4fd **Status:** ✅ PASS  ---  ## Hypothesis  > For a representative scheduling instance, Coralys Optimization produces a solution > whose objective value is measurably lower than a deterministic constructive baseline.
+--------------------------------------------------------------------------------
+PATH: validation/M6.5_robustness.md
+TITLE: M6.5 — Robustness Qualification
+CONTEXT: # M6.5 — Robustness Qualification  **Milestone:** M6.5   **Date:** 2026-07-19   **Test file:** `coralys-scheduling/tests/robustness.rs`   **Result:** 3/3 scenarios PASS  ---  ## Hypothesis  The optimizer preserves solution legality and improves objective quality relative to the post-disruption basel
+--------------------------------------------------------------------------------
+PATH: validation/M6.8_evidence_package.md
+TITLE: M6.8 — Evidence Package: Coralys Crew Pairing Optimizer
+CONTEXT: # M6.8 — Evidence Package: Coralys Crew Pairing Optimizer  **Document:** Qualification Evidence Package   **Platform:** Coralys Scheduling Platform — `coralys-scheduling` crate   **Date:** 2026-07-19   **Branch:** `governance-hardening`   **Qualification Verdict:** **QUALIFIED** (see M6.7)  ---  ## 
+--------------------------------------------------------------------------------
+PATH: validation/M6.6_benchmark.md
+TITLE: M6.6 — Benchmark Validation
+CONTEXT: # M6.6 — Benchmark Validation  **Milestone:** M6.6   **Date:** 2026-07-19   **Test file:** `coralys-scheduling/tests/benchmark.rs`   **Result:** 4/4 instances PASS  ---  ## Hypothesis  On representative scheduling instances of varying size and structure, the optimizer consistently reduces workload v
+--------------------------------------------------------------------------------
+PATH: coralys-moga/FOUNDATION_FREEZE.md
+TITLE: Coralys-MOGA Foundation Freeze
+CONTEXT: # Coralys-MOGA Foundation Freeze  **Status:** Frozen  **Date:** 2026-07-05  **Version:** v1.0.0-foundation  **Scope:** The implementation of the Coralys‑MOGA optimization engine is considered complete.  ### Included  - Evolution Engine - Configuration - Mutation - Crossover - Selection - Elitism - V
+--------------------------------------------------------------------------------
+PATH: historical_runs/README.md
+TITLE: Historical Runs
+CONTEXT: # Historical Runs  This directory contains immutable archives of historical execution runs.  Each run is a complete, self-contained snapshot of a specific execution experiment. Runs are **never mixed or overwritten**. Each has its own directory, metadata, and ledger.  ---  ## Structure  ``` historic
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_1_capital_allocation_experiment/COMPARISON_REPORT.md
+TITLE: Portfolio Replay v0.4.1 — Capital × Allocation Controlled Experiment
+CONTEXT: # Portfolio Replay v0.4.1 — Capital × Allocation Controlled Experiment  ## Experiment Design  **Universe:** 52 instruments (UNIVERSE_50, identical across all configs)  **Causal structure:**  ``` Config A: Rs.5,000    EqualWeight    (v0.3 baseline) Config B: Rs.1,000,000 EqualWeight   (capital effect
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/v03_C_100/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_C_100
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_C_100  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size   
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/v03_B_50/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_B_50
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_B_50  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size    
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/v03_A_25/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_A_25
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_A_25  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size    
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/development_partial_2026-08-16/v03_C_100/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_C_100
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_C_100  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size   
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/development_partial_2026-08-16/v03_B_50/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_B_50
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_B_50  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size    
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v03_universe_robustness/development_partial_2026-08-16/v03_A_25/REPORT.md
+TITLE: Portfolio Replay v0.3 — Universe Robustness: v03_A_25
+CONTEXT: # Portfolio Replay v0.3 — Universe Robustness: v03_A_25  **Document type:** Product validation evidence   **Experiment:** Universe robustness — frozen engine, variable universe   **Contract:** Same engine/period/capital/C3-002/Coralys-v0/stop/allocation as v0.2.1   **Only change:** Universe size    
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_comparison_pe2_vs_pe3_2026-08-16/portfolio_REPORT.md
+TITLE: Portfolio Historical Replay v0.1
+CONTEXT: # Portfolio Historical Replay v0.1  **Document type:** Product validation evidence   **Experiment:** Portfolio Replay v0.1 — P.E.2 vs Coralys v0   **Does not:** modify C3-002, modify coralys-exec-v0, touch P.E.2 or P.E.3-B archives    ## Setup  - Certified T: 2026-07-15T03:45:00+00:00 - Initial capi
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_continuous_v021_2026-08-16/continuous_REPORT.md
+TITLE: Portfolio Replay v0.2.1 — Continuous Lifecycle
+CONTEXT: # Portfolio Replay v0.2.1 — Continuous Lifecycle  **Document type:** Product validation evidence   **Experiment:** Continuous portfolio lifecycle with position upgrades   **Design:** Session-by-session loop, capital recycling, multiple lots per instrument   **Does not:** modify C3-002, modify coraly
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v2/v04_A_25_equal/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** EqualWeight   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_A_25_equal` - 
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v2/v04_B_25_max/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** MaxPerLot Rs.20000   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_B_25_max`
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment/v04_A_25_equal/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** EqualWeight   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_A_25_equal` - 
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment/v04_B_25_max/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** MaxPerSymbol Rs.20000   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_B_25_m
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v3/v04_G_7_equal/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_G_7_equal
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_G_7_equal  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** EqualWeight   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_G_7_equal` - Un
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v3/v04_H_7_max/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_H_7_max
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_H_7_max  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** MaxPerLot Rs.20000   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_H_7_max` -
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v3/v04_A_25_equal/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_A_25_equal  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** EqualWeight   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_A_25_equal` - 
+--------------------------------------------------------------------------------
+PATH: historical_runs/portfolio_v04_allocation_experiment_v3/v04_B_25_max/REPORT.md
+TITLE: Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max
+CONTEXT: # Portfolio Replay v0.4 — Allocation Experiment: v04_B_25_max  **Document type:** Product validation evidence   **Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol   **Allocation:** MaxPerLot Rs.20000   **Initial capital:** Rs.1000000    ## Setup  - Config label: `v04_B_25_max`
+--------------------------------------------------------------------------------
+PATH: docs/constitution/architecture.md
+TITLE: Constitutional Architecture of ChronoSentiment
+CONTEXT: # Constitutional Architecture of ChronoSentiment  ## 1. The Core Inversion Principle ChronoSentiment operates on a strict separation between **Mechanical Optimization** and **Semantic Evaluation**. The Genetic Algorithm (GA) is mathematically pure and domain-blind. It knows only bytes, mutations, an
+--------------------------------------------------------------------------------
+PATH: docs/governance/P-001_UltraCrew_MSP_Programme.md
+TITLE: UltraCrew Commercial Execution Charter
+CONTEXT: # UltraCrew Commercial Execution Charter  > **Date**: 2026-07-28 > **Status**: Active > **Type**: Commercial Execution Charter — Governing Document > **Owner**: Programme Leadership > **Predecessors**: Engineering P-001 (closed 2026-07-23), Architecture Programme (closed 2026-07-22) > **Governed by*
+--------------------------------------------------------------------------------
+PATH: docs/governance/V006_SERIALIZATION_LAW_DECLARATION.md
+TITLE: V-006 — Serialization Law Declaration
+CONTEXT: # V-006 — Serialization Law Declaration  **Status:** ACTIVE — constitutional law (no migration authorized)   **Governance class:** replay substrate identity governance   **Evidence basis:** `fixtures/chronology_serialization/ratification_report.json` (Phase B generated proof)   **Prerequisites:** `V
+--------------------------------------------------------------------------------
+PATH: docs/governance/CAPABILITY_REGISTER.md
+TITLE: Coralys Platform Capability Register
+CONTEXT: # Coralys Platform Capability Register  **Document:** GOV-CR-001 **Status:** Active **Version:** 1.3 **Date:** 2026-08-03 **Owner:** Platform Engineering  ---  ## Purpose  This register is the authoritative record of every platform capability in the Coralys system, its current maturity level, its ow
+--------------------------------------------------------------------------------
+PATH: docs/governance/CR-001_Constitutional_Operationalisation_Review.md
+TITLE: CR-001 — Constitutional Operationalisation Review
+CONTEXT: # CR-001 — Constitutional Operationalisation Review  > **Date**: 2026-07-28 > **Status**: Accepted — Pending Ratification > **Type**: Constitutional Precision Review > **Constitution**: [`docs/ARCHITECTURE_EVOLUTION.md`](../ARCHITECTURE_EVOLUTION.md) (frozen 2026-07-22) > **Reviewer**: Programme Arc
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-004_adapter_v0.1/HISTORICAL_RESEARCH_SUMMARY.md
+TITLE: Historical Research Summary
+CONTEXT: # Historical Research Summary  **Engine version: `unfrozen-dev`.** Not G-GATE. Not a v1.0 freeze. Not a strategy score. Not parameter tuning.  `.cursor/rules/chronosentiment-core.mdc`: same input → same output; no invented methodology.  Laboratory hash: `dc3f3bfc39e340d67979622511ebc087882eae03781d7
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-004_adapter_v0.1/DECISION_VS_BASELINE.md
+TITLE: Decision-vs-Baseline Analysis
+CONTEXT: # Decision-vs-Baseline Analysis  **Engine version: `unfrozen-dev`.** Not G-GATE. Not a v1.0 freeze. Not a strategy score. Not parameter tuning.  `.cursor/rules/chronosentiment-core.mdc`: same input → same output; no invented methodology.  Stand-aside baseline is return 0. `mean_vs_stand_aside` is th
+--------------------------------------------------------------------------------
+PATH: product_validation/B4_unfrozen_dev/HISTORICAL_PERFORMANCE_REPORT.md
+TITLE: B4 Historical Product Validation
+CONTEXT: # B4 Historical Product Validation  **Engine version: `unfrozen-dev`.** Decision Engine v1.0 is **not frozen**. This is a product-validation baseline, not a production trading strategy, not a strategy score, and not G-GATE v1.1.  Parent: CS-P-002. Does not reopen EV-GOV-003.  `.cursor/rules/chronose
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/SEARCH.md
+TITLE: CS-P-006-C.3-R Search #2 evidence
+CONTEXT: # CS-P-006-C.3-R Search #2 evidence  Coralys evolved on the development slice with M.1 protocol V. Evaluation was not loaded during search.  - contract: `csp006c3r.search_two.1` - engine: `coralys.moga.rulelist.v0` - seed: 42 - population: 32 - generations: 12 (complete) - horizon_days: 20 - n_instr
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/COMPARISON.md
+TITLE: Search #1 vs Search #2 — protocol comparison
+CONTEXT: # Search #1 vs Search #2 — protocol comparison  Primary comparison is development / selection / evaluation protocol V. Unique-best and SHORT presence are not success criteria.  | Measure | Search #1 | Search #2 | |---|---:|---:| | Development protocol V | 0.007559 | 0.005313 | | Selection protocol V
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/PROVENANCE.md
+TITLE: CS-P-006-C.3-R provenance
+CONTEXT: # CS-P-006-C.3-R provenance  One complete Search #2 experiment. Search #1 was not overwritten. Evaluation was loaded only after seal.  - generated_at_wall_clock: 2026-08-15 05:19:14.123877 UTC - output: /Users/nikhil/ChronoSentiment_MEGA_FINAL/product_validation/CS-P-006/discovery/20260815T051900Z_c
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/SELECTED.md
+TITLE: Selected PolicyArtifact — Search #2
+CONTEXT: # Selected PolicyArtifact — Search #2  Sealed after selection on the selection slice. Not retuned against evaluation.  - artifact_hash: `5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121` - methodology_hash: `eff198957d799419035a5b86f6adceee6233bfa626f5ff2fee39d59132d99a99` - genome i
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/rule_ecology/ECOLOGY.md
+TITLE: CS-P-006-C.3-D — Search #2 live-rule ecology
+CONTEXT: # CS-P-006-C.3-D — Search #2 live-rule ecology  Sealed Search #2 only. Candidate research artifact. Not promoted. Search #3 is not authorized.  - artifact: `5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121` - promotion_status: `candidate_research_artifact` - rows: 273  ## Live rules 
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/ecology/ECOLOGY.md
+TITLE: Search #2 population ecology
+CONTEXT: # Search #2 population ecology  C.3-R living-population archive. Search #1 was not overwritten. The renderer below is the C.2-P ecology contract applied to this archive.  **Verdict:** `SEARCH-SPACE EXPLORED`  Momentum and SHORT were recurrent across generations, and mean unique-genome count stayed h
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260815T051900Z_c3/rule_persistence/PERSISTENCE.md
+TITLE: CS-P-006-C.3-E — Search #2 discovered-rule persistence
+CONTEXT: # CS-P-006-C.3-E — Search #2 discovered-rule persistence  Sealed Search #2 only. Candidate research artifact. Not promoted. No pass/fail threshold. Search #3 is not authorized.  - artifact: `5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121` - promotion_status: `candidate_research_art
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260814T195327Z/SEARCH.md
+TITLE: Policy discovery — search evidence
+CONTEXT: # Policy discovery — search evidence  Coralys evolution on the **development** slice only. Evaluation outcomes were not used.  - engine: `coralys.moga.rulelist.v0` - seed: 42 - population: 32 - generations: 12 - horizon_days: 20 - development best fitness: 0.017399 - candidates for selection: 2 - me
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260814T195327Z/PROVENANCE.md
+TITLE: CS-P-006-C policy discovery provenance
+CONTEXT: # CS-P-006-C policy discovery provenance  Coralys discovered. ChronoSentiment evaluated the sealed artifact independently.  **Not B4. Not B5.** Evaluation outcomes were not used for search.  - generated_at_wall_clock: 2026-08-14 19:53:42.461876 UTC - output: /Users/nikhil/ChronoSentiment_MEGA_FINAL/
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260814T195327Z/SELECTED.md
+TITLE: Selected PolicyArtifact
+CONTEXT: # Selected PolicyArtifact  Sealed after **selection** on the selection slice. Immutable. Not retuned against evaluation.  - policy: `coralys.rulelist.discovered@v0` - discovery_engine: `coralys.moga.rulelist.v0` - discovery_run_id: `coralys.rulelist.6e92ef3e097d52f9` - artifact_hash: `9a887827e8f419
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260814T195327Z/c3i/IMPLEMENTATION.md
+TITLE: CS-P-006-C.3-I implementation verification
+CONTEXT: # CS-P-006-C.3-I implementation verification  **Result:** PASS  Search #1 remains `9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0`. Search #2 was not run. `SEARCH_TWO_RUN_AUTHORIZED` remains false.  Identity lineage (TMV snapshot, 7 instruments, 20D, seed 42, MOGA knobs, Search #1 
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/discovery/20260814T195327Z/ecology/ECOLOGY.md
+TITLE: Search #1 population ecology
+CONTEXT: # Search #1 population ecology  Identity-gated C.2-O replay of Search #1. Not Search #2.  **Verdict:** `SEARCH-SPACE EXPLORED`  Momentum and SHORT were recurrent across generations, and mean unique-genome count stayed high.  Momentum question: `ExploredAndUnusedByWinner`  | Generation | Unique | Bes
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-006/partition/MANIFEST.md
+TITLE: Chronological dataset partition — CS-P-006-B.1
+CONTEXT: # Chronological dataset partition — CS-P-006-B.1  **Authorization:** PASS  Domain kinds: **development / selection / evaluation**.   Protocol mapping (provenance only): development = TRAIN, selection = VALIDATION, evaluation = TEST.  `.cursor/rules/chronosentiment-core.mdc`: same inputs → same parti
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-004_unfrozen_dev/HISTORICAL_RESEARCH_SUMMARY.md
+TITLE: Historical Research Summary
+CONTEXT: # Historical Research Summary  **Engine version: `unfrozen-dev`.** Not G-GATE. Not a v1.0 freeze. Not a strategy score. Not parameter tuning.  `.cursor/rules/chronosentiment-core.mdc`: same input → same output; no invented methodology.  Laboratory hash: `d52a60f7be4db50f1d50740e71bb3c9946860c814a5d6
+--------------------------------------------------------------------------------
+PATH: product_validation/CS-P-004_unfrozen_dev/DECISION_VS_BASELINE.md
+TITLE: Decision-vs-Baseline Analysis
+CONTEXT: # Decision-vs-Baseline Analysis  **Engine version: `unfrozen-dev`.** Not G-GATE. Not a v1.0 freeze. Not a strategy score. Not parameter tuning.  `.cursor/rules/chronosentiment-core.mdc`: same input → same output; no invented methodology.  Stand-aside baseline is return 0. `mean_vs_stand_aside` is th
+--------------------------------------------------------------------------------
+PATH: datasets/recommendation/REC-BASELINE-001.md
+TITLE: REC-BASELINE-001 — Coralys Recommendation MVP v1 Baseline
+CONTEXT: # REC-BASELINE-001 — Coralys Recommendation MVP v1 Baseline  **Document ID:** REC-BASELINE-001 **Version:** 1.0 **Status:** FROZEN **Created:** 2026-08-18 **Snapshot date:** 2026-08-18 (IST ~13:30)  ---  ## Purpose  This is the frozen operational baseline for Coralys RecommendationEngine v1. It reco
+--------------------------------------------------------------------------------

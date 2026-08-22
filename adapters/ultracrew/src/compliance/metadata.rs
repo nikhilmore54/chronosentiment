@@ -10,14 +10,14 @@
 ///   cite the exact regulation and version that triggered it.
 /// - **Audit logs**: evidence records can reference the compliance descriptor
 ///   to prove which rules were active at the time of scheduling.
-/// - **Regulatory upgrades**: when DGCA publishes a new amendment, the old
+/// - **Regulatory upgrades**: when a regulator publishes a new amendment, the old
 ///   descriptor is preserved and the new one supersedes it — no silent changes.
 ///
 /// # Future extensions (do not add yet)
 ///
 /// - `source_documents: Vec<String>` — regulation references, CAR numbers
 /// - `jurisdiction: String`           — ISO 3166-1 alpha-2 country code
-/// - `applicable_domains: Vec<String>`— "airline", "hospital", "railway"
+/// - `applicable_domains: Vec<String>`— "hospital", "factory", "retail"
 /// - `supersedes: Option<String>`     — ID of the pack this version replaces
 /// - `certification_status: String`   — "draft", "approved", "superseded"
 ///
@@ -32,13 +32,13 @@
 /// [`CompliancePack`]: crate::compliance::traits::CompliancePack
 #[derive(Debug, Clone)]
 pub struct ComplianceDescriptor {
-    /// Unique, stable identifier for this pack version, e.g. `"dgca-fdtl-2024"`.
+    /// Unique, stable identifier for this pack version, e.g. `"eu-wtd-2003"`.
     pub id: String,
 
-    /// Human-readable name, e.g. `"DGCA FDTL (CAR Section 7 Series J Part III)"`.
+    /// Human-readable name, e.g. `"EU Working Time Directive (2003/88/EC)"`.
     pub name: String,
 
-    /// Issuing authority, e.g. `"DGCA"`, `"EASA"`, `"FAA"`, `"IndiGo"`, `"ALPA"`.
+    /// Issuing authority, e.g. `"EU"`, `"OSHA"`, `"Ministry of Labour"`.
     pub authority: String,
 
     /// Semantic version of the rule set, e.g. `"2024.1"`.

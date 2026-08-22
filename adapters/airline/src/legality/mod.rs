@@ -29,11 +29,12 @@ pub mod qualification;
 pub mod base_return;
 
 use crate::domain::roster::Roster;
+use serde::{Deserialize, Serialize};
 
 // ── Severity ──────────────────────────────────────────────────────────────────
 
 /// Severity of a legality violation.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ViolationSeverity {
     /// Advisory — informational; does not make the schedule illegal.
     Advisory,
@@ -56,7 +57,7 @@ impl std::fmt::Display for ViolationSeverity {
 // ── Entity reference ──────────────────────────────────────────────────────────
 
 /// A reference to the scheduling entity that caused a violation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EntityRef {
     /// A specific flight leg.
     Leg(String),
@@ -94,7 +95,7 @@ impl std::fmt::Display for EntityRef {
 /// - pinpoint the offending entity (`entity`)
 /// - explain what was found vs. what was required (`observed`, `threshold`)
 /// - provide a human-readable explanation (`message`)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LegalityViolation {
     /// Stable identifier of the rule that produced this violation.
     pub rule_id: String,

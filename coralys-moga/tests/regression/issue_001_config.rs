@@ -34,7 +34,7 @@ impl Evaluated for DummyEval {
 struct DummyEvaluator;
 impl FitnessEvaluator<DummyGenome> for DummyEvaluator {
     type Evaluation = DummyEval;
-    fn evaluate(&self, candidate: &DummyGenome) -> Self::Evaluation {
+    fn evaluate(&self, candidate: &DummyGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
         DummyEval { fitness: 1.0, valid: true, genome: candidate.clone() }
     }
 }

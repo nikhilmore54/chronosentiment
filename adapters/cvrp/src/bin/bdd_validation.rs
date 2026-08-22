@@ -45,7 +45,6 @@ fn main() {
         .with_mutator(mutator_float)
         .with_crossover(crossover_float)
         .with_factory(factory_float)
-        .with_improvement(ls_float)
         .build()
         .expect("Failed to build float engine");
 
@@ -53,7 +52,7 @@ fn main() {
     // Evaluate the best float solution under integer metric
     let best_cand_float = res_float.global_best.eval.candidate.clone();
     let evaluator_for_best = CvrpEvaluator { instance: instance_float.clone() };
-    let best_eval_float = evaluator_for_best.evaluate(&best_cand_float).eval;
+    let best_eval_float = evaluator_for_best.evaluate(&best_cand_float, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval;
     let float_best_as_float = best_eval_float.total_distance_float;
     let float_best_as_integer = best_eval_float.total_distance_integer;
 
@@ -71,14 +70,13 @@ fn main() {
         .with_mutator(mutator_int)
         .with_crossover(crossover_int)
         .with_factory(factory_int)
-        .with_improvement(ls_int)
         .build()
         .expect("Failed to build int engine");
 
     let res_int = engine_int.run_ga_evolution(evo_config).unwrap();
     let best_cand_int = res_int.global_best.eval.candidate.clone();
     let evaluator_for_best_int = CvrpEvaluator { instance: instance_int.clone() };
-    let best_eval_int = evaluator_for_best_int.evaluate(&best_cand_int).eval;
+    let best_eval_int = evaluator_for_best_int.evaluate(&best_cand_int, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval;
     let int_best_as_float = best_eval_int.total_distance_float;
     let int_best_as_integer = best_eval_int.total_distance_integer;
 

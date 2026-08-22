@@ -1,0 +1,53 @@
+Yield Autocorrelation (Persistence)
+Lag 01: Corr=0.1194, N=4382
+Lag 01 Decay: Mean=0.6381, Median=0.0000, P25=0.0000, P75=0.1587
+Lag 02: Corr=0.0503, N=3034
+Lag 02 Decay: Mean=0.3594, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 03: Corr=0.0766, N=2211
+Lag 03 Decay: Mean=0.2862, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 04: Corr=0.0711, N=1636
+Lag 04 Decay: Mean=0.4223, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 05: Corr=0.0632, N=1229
+Lag 05 Decay: Mean=0.1215, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 06: Corr=0.0342, N=918
+Lag 06 Decay: Mean=0.4763, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 07: Corr=0.0661, N=702
+Lag 07 Decay: Mean=0.2068, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 08: Corr=0.1725, N=521
+Lag 08 Decay: Mean=0.4336, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 09: Corr=0.0704, N=391
+Lag 09 Decay: Mean=0.2830, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 10: Corr=0.2288, N=300
+Lag 10 Decay: Mean=0.2968, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 11: Corr=0.2223, N=228
+Lag 11 Decay: Mean=0.2224, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 12: Corr=0.1849, N=177
+Lag 12 Decay: Mean=0.1959, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 13: Corr=0.0422, N=137
+Lag 13 Decay: Mean=0.0496, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 14: Corr=-0.1196, N=105
+Lag 14 Decay: Mean=0.0970, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 15: Corr=0.0126, N=80
+Lag 15 Decay: Mean=0.2255, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 16: Corr=-0.0084, N=58
+Lag 16 Decay: Mean=0.0549, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 17: Corr=-0.0679, N=43
+Lag 17 Decay: Mean=0.0330, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 18: Corr=0.0586, N=34
+Lag 18 Decay: Mean=0.1394, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 19: Corr=0.4262, N=27
+Lag 19 Decay: Mean=0.2873, Median=0.0000, P25=0.0000, P75=0.6000
+Lag 20: Corr=-0.0247, N=20
+Lag 20 Decay: Mean=0.3421, Median=0.0000, P25=0.0000, P75=0.2962
+Lag 21: Corr=0.0885, N=14
+Lag 21 Decay: Mean=0.5597, Median=0.0000, P25=0.0000, P75=0.0000
+Lag 22: Corr=0.3893, N=9
+Lag 22 Decay: Mean=0.3868, Median=0.0000, P25=0.0000, P75=0.8026
+Lag 23: Corr=0.0600, N=5
+Lag 23 Decay: Mean=0.2614, Median=0.0000, P25=0.0000, P75=1.0458
+Lag 24: Corr=0.0000, N=2
+Lag 24 Decay: Mean=0.0000, Median=0.0000, P25=0.0000, P75=0.0000
+
+Survival Probability (Productive 5000 gens later)
+Top 10% Initial Yield: 5.68%
+Bottom 10% Initial Yield: 4.55%

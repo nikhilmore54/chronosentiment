@@ -83,7 +83,7 @@ impl Evaluated for StrategyEvaluation {
 impl FitnessEvaluator<StrategyGenome> for StrategyEvaluator {
     type Evaluation = StrategyEvaluation;
 
-    fn evaluate(&self, genome: &StrategyGenome) -> StrategyEvaluation {
+    fn evaluate(&self, genome: &StrategyGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> StrategyEvaluation {
         let mut capital_allocated = vec![0; self.num_strategies];
         let mut total_expected_return = 0.0;
 
@@ -359,7 +359,7 @@ fn run_falsification(seed: u64, arm: Arm, out_csv: &mut File) {
 
         for _gen in 0..200 {
             let mut evals: Vec<StrategyEvaluation> =
-                population.iter().map(|g| evaluator.evaluate(g)).collect();
+                population.iter().map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default())).collect();
 
             evals.sort_by(|a, b| {
                 b.fitness()

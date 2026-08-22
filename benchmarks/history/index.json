@@ -398,6 +398,13 @@
       "best_distance": 784.0,
       "gap_to_bks": 0.0,
       "runtime_ms": 2912
+    },
+    {
+      "milestone": "milestone-058",
+      "timestamp": "2026-08-19T08:10:30.104234+00:00",
+      "best_distance": 784.0,
+      "gap_to_bks": 0.0,
+      "runtime_ms": 2281
     }
   ]
 }

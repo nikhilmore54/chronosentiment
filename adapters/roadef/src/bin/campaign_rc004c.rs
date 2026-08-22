@@ -199,7 +199,7 @@ fn main() {
             let genome = factory.create(&mut rng);
             let construct_ms = t0.elapsed().as_millis() as u64;
 
-            let ev = fitness_eval.evaluate(&genome);
+            let ev = fitness_eval.evaluate(&genome, &coralys_moga::runtime::optimization::metric::MetricReport::default());
             let (edge_hash, route_hash) = hash_genome(&genome);
 
             records.push(IndividualRecord {

@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use ultracrew::models::{Worker, Shift, Skill};
-use ultracrew::public_contracts::Scenario;
-use ultracrew::constraint_engine::ConstraintEngine;
+use ultracrew::public_contracts::InrcScenario;
+use ultracrew::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
 use ultracrew::optimization::{ScheduleOptimizer, ScheduleContext, ScheduleGenome};
 use coralys_moga::traits::FitnessEvaluator;
 use coralys_moga::runtime::optimization::metric::MetricReport;
 use ultracrew::ecology::WorkforceEcology;
 use ultracrew::optimization::Observatory;
 
-fn build_context(scenario: Option<Scenario>, shifts: Vec<Shift>) -> Arc<ScheduleContext> {
+fn build_context(scenario: Option<InrcScenario>, shifts: Vec<Shift>) -> Arc<ScheduleContext> {
     let workers = vec![
         Worker { id: 1, skills: vec![Skill::new("Pilot")] },
         Worker { id: 2, skills: vec![Skill::new("Copilot")] },
@@ -35,7 +35,7 @@ fn build_genome(assignments: Vec<(u64, u64)>) -> ScheduleGenome {
 }
 
 fn check_evaluation(context: Arc<ScheduleContext>, genome: &ScheduleGenome) -> (usize, bool) {
-    let constraint_engine = ConstraintEngine::new(context.clone());
+    let constraint_engine = InrcConstraintEvaluator::new(context.clone());
     let report = constraint_engine.evaluate(genome);
     
     let optimizer = ScheduleOptimizer::new(context);
@@ -47,8 +47,8 @@ fn check_evaluation(context: Arc<ScheduleContext>, genome: &ScheduleGenome) -> (
 #[test]
 fn case_001_double_booking() {
     let shifts = vec![
-        Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None },
-        Shift { id: 103, start_hour: 4, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None },
+        Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot")},
+        Shift { id: 103, start_hour: 4, duration_hours: 8, required_skill: Skill::new("Pilot")},
     ];
     let context = build_context(None, shifts);
     
@@ -61,10 +61,10 @@ fn case_001_double_booking() {
 
 #[test]
 fn case_002_rest_7h59() {
-    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None };
-    let shift2 = Shift { id: 102, start_hour: 15, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None };
+    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot")};
+    let shift2 = Shift { id: 102, start_hour: 15, duration_hours: 8, required_skill: Skill::new("Pilot")};
     
-    let context = build_context(Some(Scenario {
+    let context = build_context(Some(InrcScenario {
         planning_horizon_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
@@ -80,10 +80,10 @@ fn case_002_rest_7h59() {
 
 #[test]
 fn case_003_rest_8h00() {
-    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None };
-    let shift2 = Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None };
+    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Pilot")};
+    let shift2 = Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Pilot")};
     
-    let context = build_context(Some(Scenario {
+    let context = build_context(Some(InrcScenario {
         planning_horizon_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
@@ -102,11 +102,11 @@ fn case_004_weekly_40h00() {
     let mut shifts = Vec::new();
     let mut assignments = Vec::new();
     for i in 0..5 {
-        shifts.push(Shift { id: 100 + i as u64, start_hour: i * 24, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None });
+        shifts.push(Shift { id: 100 + i as u64, start_hour: i * 24, duration_hours: 8, required_skill: Skill::new("Pilot")});
         assignments.push((100 + i as u64, 1));
     }
     
-    let context = build_context(Some(Scenario {
+    let context = build_context(Some(InrcScenario {
         planning_horizon_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
@@ -125,13 +125,13 @@ fn case_005_weekly_40h01() {
     let mut shifts = Vec::new();
     let mut assignments = Vec::new();
     for i in 0..5 {
-        shifts.push(Shift { id: 100 + i as u64, start_hour: i * 24, duration_hours: 8, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None });
+        shifts.push(Shift { id: 100 + i as u64, start_hour: i * 24, duration_hours: 8, required_skill: Skill::new("Pilot")});
         assignments.push((100 + i as u64, 1));
     }
-    shifts.push(Shift { id: 200, start_hour: 120, duration_hours: 1, required_skill: Skill::new("Pilot"), crew_role: None, flight_id: None });
+    shifts.push(Shift { id: 200, start_hour: 120, duration_hours: 1, required_skill: Skill::new("Pilot")});
     assignments.push((200, 1));
     
-    let context = build_context(Some(Scenario {
+    let context = build_context(Some(InrcScenario {
         planning_horizon_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
@@ -147,7 +147,7 @@ fn case_005_weekly_40h01() {
 
 #[test]
 fn case_006_unqualified_worker() {
-    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Copilot"), crew_role: None, flight_id: None };
+    let shift1 = Shift { id: 101, start_hour: 0, duration_hours: 8, required_skill: Skill::new("Copilot")};
     
     let context = build_context(None, vec![shift1]);
     
