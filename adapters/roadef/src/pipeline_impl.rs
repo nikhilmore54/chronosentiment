@@ -1170,6 +1170,9 @@ where
         let mut t_cache_lookup_ms = 0.0;
         let mut t_cache_hit_materialize_ms = 0.0;
         let mut t_cache_insert_ms = 0.0;
+        let mut t_cache_lookup_ms = 0.0;
+        let mut t_cache_hit_materialize_ms = 0.0;
+        let mut t_cache_insert_ms = 0.0;
         
         generations_run += 1;
         if let Some(b) = config.max_runtime {
@@ -1223,11 +1226,28 @@ where
                 };
                 
                 let mut final_ev = if success {
-                    let e_start = Instant::now();
-                    let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                    t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
-                    actual_evals += 1;
-                    e
+                    let lookup_start = Instant::now();
+                    let cached_opt = evaluation_cache.get(&child);
+                    t_cache_lookup_ms += lookup_start.elapsed().as_secs_f64() * 1000.0;
+                    
+                    if let Some(cached) = cached_opt {
+                        cache_hits += 1;
+                        let mat_start = Instant::now();
+                        let cloned = cached.clone();
+                        t_cache_hit_materialize_ms += mat_start.elapsed().as_secs_f64() * 1000.0;
+                        cloned
+                    } else {
+                        let e_start = Instant::now();
+                        let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                        t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
+                        
+                        let ins_start = Instant::now();
+                        evaluation_cache.insert(child.clone(), e.clone());
+                        t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
+                        
+                        actual_evals += 1;
+                        e
+                    }
                 } else {
                     population[p1_idx].clone()
                 };
@@ -1252,11 +1272,28 @@ where
                 };
 
                 let mut final_ev = if success {
-                    let e_start = Instant::now();
-                    let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                    t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
-                    actual_evals += 1;
-                    e
+                    let lookup_start = Instant::now();
+                    let cached_opt = evaluation_cache.get(&child);
+                    t_cache_lookup_ms += lookup_start.elapsed().as_secs_f64() * 1000.0;
+                    
+                    if let Some(cached) = cached_opt {
+                        cache_hits += 1;
+                        let mat_start = Instant::now();
+                        let cloned = cached.clone();
+                        t_cache_hit_materialize_ms += mat_start.elapsed().as_secs_f64() * 1000.0;
+                        cloned
+                    } else {
+                        let e_start = Instant::now();
+                        let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                        t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
+                        
+                        let ins_start = Instant::now();
+                        evaluation_cache.insert(child.clone(), e.clone());
+                        t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
+                        
+                        actual_evals += 1;
+                        e
+                    }
                 } else {
                     population[p1_idx].clone()
                 };
