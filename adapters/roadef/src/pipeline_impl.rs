@@ -1,22 +1,34 @@
-use std::time::Instant;
-use std::cmp::Ordering;
-use std::io::Write;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
+use std::cmp::Ordering;
+use std::io::Write;
+use std::time::Instant;
 
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, Evaluated, GenomeFactory};
-use crate::moga_impl::{RoadefGenome, EvolutionRunConfig, EvolutionRunResult, RoadefEvaluation, make_comparator, RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefCrossover, update_peak_demands};
-use crate::telemetry::{TelemetrySink, ConstructionRecord, CandidateRecord, ZoneDeltas, MoveRecord, GenerationRecord};
-use crate::telemetry::compute_sdi;
 use crate::constraints::RoadefConstraintModel;
+use crate::moga_impl::{
+    make_comparator, update_peak_demands, EvolutionRunConfig, EvolutionRunResult, RoadefCrossover,
+    RoadefEvaluation, RoadefFitnessEvaluator, RoadefGenome, RoadefGenomeFactory,
+};
+use crate::telemetry::compute_sdi;
+use crate::telemetry::{
+    CandidateRecord, ConstructionRecord, GenerationRecord, MoveRecord, TelemetrySink, ZoneDeltas,
+};
 use coralys_core::operators::ConstraintModel;
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, GenomeFactory, MutationOperator,
+};
 
 pub fn run_pipeline_evolution<M>(
     factory: &RoadefGenomeFactory,
     fitness_eval: &RoadefFitnessEvaluator,
     mutator: &M,
     crossover: &RoadefCrossover,
-    pipeline: &coralys_core::pipeline::EvolutionaryPipeline<RoadefGenome, RoadefConstraintModel, crate::operators::OperatorError>,
+    pipeline: &coralys_core::pipeline::EvolutionaryPipeline<
+        RoadefGenome,
+        RoadefConstraintModel,
+        crate::operators::OperatorError,
+    >,
     config: &EvolutionRunConfig,
     instance_name: &str,
     log_sink: &mut dyn Write,
@@ -47,16 +59,13 @@ where
     };
     let comparator = make_comparator(config.comparator_mode);
 
-    
-    
-    
-    
-    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> = std::collections::HashMap::new();
+    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+        std::collections::HashMap::new();
     let t0 = Instant::now();
 
     let init_budget_fraction = 0.5_f64;
-    let init_deadline: Option<std::time::Duration> = config.max_runtime
-        .map(|b| b.mul_f64(init_budget_fraction));
+    let init_deadline: Option<std::time::Duration> =
+        config.max_runtime.map(|b| b.mul_f64(init_budget_fraction));
     const MAX_INIT_RETRIES: usize = 10;
 
     let mut evals: Vec<RoadefEvaluation> = Vec::with_capacity(config.population_size);
@@ -64,24 +73,34 @@ where
     let mut n_init_retry_successes: usize = 0;
     for i in 0..config.population_size {
         let g = factory.create(&mut rng);
-        let mut ev = fitness_eval.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let mut ev = fitness_eval.evaluate(
+            &g,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
         ev.operator = "initial";
 
         if !ev.is_valid() {
             for _retry in 0..MAX_INIT_RETRIES {
                 n_init_retries += 1;
                 if let Some(deadline) = init_deadline {
-                    if t0.elapsed() >= deadline { break; }
+                    if t0.elapsed() >= deadline {
+                        break;
+                    }
                 }
                 let g2 = factory.create(&mut rng);
-                let mut ev2 = fitness_eval.evaluate(&g2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                let mut ev2 = fitness_eval.evaluate(
+                    &g2,
+                    &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                );
                 ev2.operator = "initial";
                 if ev2.is_valid() {
                     ev = ev2;
                     n_init_retry_successes += 1;
                     break;
                 }
-                if ev2.max_sat < ev.max_sat { ev = ev2; }
+                if ev2.max_sat < ev.max_sat {
+                    ev = ev2;
+                }
             }
         }
         evals.push(ev);
@@ -98,15 +117,26 @@ where
         }
     }
     if n_init_retries > 0 {
-        let _ = writeln!(log_sink,
+        let _ = writeln!(
+            log_sink,
             "[init] rejection sampling: {} retries, {} successes ({:.0}% repair rate)",
-            n_init_retries, n_init_retry_successes,
-            if n_init_retries > 0 { n_init_retry_successes as f64 / n_init_retries as f64 * 100.0 } else { 0.0 });
+            n_init_retries,
+            n_init_retry_successes,
+            if n_init_retries > 0 {
+                n_init_retry_successes as f64 / n_init_retries as f64 * 100.0
+            } else {
+                0.0
+            }
+        );
     }
-    
-    evals.sort_by(|a, b| comparator.cmp_evals(b, a).then(
-        b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
-    ));
+
+    evals.sort_by(|a, b| {
+        comparator.cmp_evals(b, a).then(
+            b.fitness()
+                .partial_cmp(&a.fitness())
+                .unwrap_or(Ordering::Equal),
+        )
+    });
 
     // RP-407: record valid count at generation 0 before any selection or variation.
     // This is the Initial Feasibility Rate metric — evaluates constructor quality.
@@ -122,12 +152,14 @@ where
     // These distinguish "good constructor → good start" from "EA repaired a poor start".
     // evals is sorted best-first (valid before invalid, lower obj before higher).
     let gen0_feasible_count = generation0_valid_count;
-    let gen0_best_obj: f64 = evals.iter()
+    let gen0_best_obj: f64 = evals
+        .iter()
         .find(|e| e.is_valid())
         .map(|e| e.obj)
         .unwrap_or(f64::INFINITY);
     let gen0_mean_obj: f64 = {
-        let valid_objs: Vec<f64> = evals.iter()
+        let valid_objs: Vec<f64> = evals
+            .iter()
             .filter(|e| e.is_valid())
             .map(|e| e.obj)
             .collect();
@@ -177,7 +209,9 @@ where
     // budget_violation_count and repair_* remain 0 — they require evaluator-level instrumentation
     // that is not yet available. This is the honest Phase 2 baseline state.
     {
-        let invalid_count = config.population_size.saturating_sub(generation0_valid_count);
+        let invalid_count = config
+            .population_size
+            .saturating_sub(generation0_valid_count);
         let ifr = initial_feasibility_rate;
         let construction_rec = ConstructionRecord {
             record_type: "construction",
@@ -210,7 +244,7 @@ where
     let mut stagnation = 0usize;
     let mut gen = 0usize;
     let mut termination_reason = String::new(); // set before every break in the loop below
-    // RP-410C: monotonically increasing candidate counter for genealogy reconstruction.
+                                                // RP-410C: monotonically increasing candidate counter for genealogy reconstruction.
     let mut candidate_counter: u64 = 0;
 
     let started = chrono::Utc::now().to_rfc3339();
@@ -224,16 +258,22 @@ where
     let _ = writeln!(log_sink, "Mutation rate : {}", config.mutation_rate);
     let _ = writeln!(log_sink, "Crossover rate: {}", config.crossover_rate);
     let _ = writeln!(log_sink, "Crossover     : Uniform (per-demand)");
-    let _ = writeln!(log_sink, "Seed          : {}", config.seed.map(|s| s.to_string()).unwrap_or("random".to_string()));
+    let _ = writeln!(
+        log_sink,
+        "Seed          : {}",
+        config
+            .seed
+            .map(|s| s.to_string())
+            .unwrap_or("random".to_string())
+    );
     let _ = writeln!(log_sink, "Started       : {}", started);
     let _ = writeln!(log_sink, "=========================================");
     let _ = writeln!(log_sink, "");
 
-    
     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
     loop {
         let gen_start = std::time::Instant::now();
-        
+
         // --- Termination check ---
         if gen >= config.generation_limit {
             termination_reason = format!("GenerationLimit({})", config.generation_limit);
@@ -282,11 +322,20 @@ where
         };
 
         if improved {
-            let prev_obj = global_best.as_ref().map(|g| -g.fitness()).unwrap_or(f64::INFINITY);
-            let new_obj = if gen_best.is_valid() { -gen_best.fitness() } else { f64::INFINITY };
-            let _ = writeln!(log_sink,
+            let prev_obj = global_best
+                .as_ref()
+                .map(|g| -g.fitness())
+                .unwrap_or(f64::INFINITY);
+            let new_obj = if gen_best.is_valid() {
+                -gen_best.fitness()
+            } else {
+                f64::INFINITY
+            };
+            let _ = writeln!(
+                log_sink,
                 "[IMPROVE] Gen {:4}  obj: {:.4} → {:.4}  mlu: {:.4}  valid: {}",
-                gen, prev_obj, new_obj, gen_best.mlu, gen_best.valid);
+                gen, prev_obj, new_obj, gen_best.mlu, gen_best.valid
+            );
             // RP-410: emit MoveRecord for this accepted improvement
             if let Some(ref prev) = global_best {
                 let deltas = ZoneDeltas::compute(&prev.load_vector, &gen_best.load_vector);
@@ -302,20 +351,28 @@ where
                     operator: gen_best.operator,
                     deltas,
                     move_class,
-                    new_obj: if gen_best.is_valid() { -gen_best.fitness() } else { f64::INFINITY },
-                    prev_obj: if prev.is_valid() { -prev.fitness() } else { f64::INFINITY },
+                    new_obj: if gen_best.is_valid() {
+                        -gen_best.fitness()
+                    } else {
+                        f64::INFINITY
+                    },
+                    prev_obj: if prev.is_valid() {
+                        -prev.fitness()
+                    } else {
+                        f64::INFINITY
+                    },
                     new_mlu: gen_best.mlu,
                     new_sdi,
                 };
                 telemetry.emit_move(&move_rec);
                 // Accumulate histogram (use move_rec.move_class since move_class was moved into the struct)
                 match move_rec.move_class.as_str() {
-                    "peak"       => gen_moves_peak += 1,
-                    "shoulder"   => gen_moves_shoulder += 1,
+                    "peak" => gen_moves_peak += 1,
+                    "shoulder" => gen_moves_shoulder += 1,
                     "transition" => gen_moves_transition += 1,
-                    "tail"       => gen_moves_tail += 1,
-                    "mixed"      => gen_moves_mixed += 1,
-                    _            => gen_moves_neutral += 1,
+                    "tail" => gen_moves_tail += 1,
+                    "mixed" => gen_moves_mixed += 1,
+                    _ => gen_moves_neutral += 1,
                 }
             }
             global_best = Some(gen_best.clone());
@@ -331,31 +388,57 @@ where
 
         // --- Progress log (Level 1) ---
         if gen % config.log_interval == 0 {
-            let best_obj = global_best.as_ref()
-                .map(|g| if g.is_valid() { -g.fitness() } else { f64::INFINITY })
+            let best_obj = global_best
+                .as_ref()
+                .map(|g| {
+                    if g.is_valid() {
+                        -g.fitness()
+                    } else {
+                        f64::INFINITY
+                    }
+                })
                 .unwrap_or(f64::INFINITY);
             let best_mlu = global_best.as_ref().map(|g| g.mlu).unwrap_or(f64::INFINITY);
             let valid_count = evals.iter().filter(|e| e.is_valid()).count();
             let elapsed = t0.elapsed().as_secs_f64();
-            let _ = writeln!(log_sink,
+            let _ = writeln!(
+                log_sink,
                 "Gen {:4}/{} | best_obj={:.4} mlu={:.4} | valid={}/{} | stagnation={} | {:.1}s",
-                gen, config.generation_limit,
-                best_obj, best_mlu,
-                valid_count, config.population_size,
-                stagnation, elapsed);
+                gen,
+                config.generation_limit,
+                best_obj,
+                best_mlu,
+                valid_count,
+                config.population_size,
+                stagnation,
+                elapsed
+            );
         }
 
         // --- Population health (Level 4) ---
         if gen % config.health_interval == 0 && gen > 0 {
-            let unique: std::collections::HashSet<String> = evals.iter()
+            let unique: std::collections::HashSet<String> = evals
+                .iter()
                 .map(|e| format!("{:.6}", e.fitness()))
                 .collect();
-            let avg_waypoints: f64 = evals.iter()
-                .map(|e| e.genome().waypoints.iter().filter(|w| !w.is_empty()).count() as f64)
-                .sum::<f64>() / evals.len() as f64;
-            let _ = writeln!(log_sink,
+            let avg_waypoints: f64 = evals
+                .iter()
+                .map(|e| {
+                    e.genome()
+                        .waypoints
+                        .iter()
+                        .filter(|w| !w.is_empty())
+                        .count() as f64
+                })
+                .sum::<f64>()
+                / evals.len() as f64;
+            let _ = writeln!(
+                log_sink,
                 "  [HEALTH] unique_fitness={}/{}  avg_nonempty_waypoints={:.2}",
-                unique.len(), evals.len(), avg_waypoints);
+                unique.len(),
+                evals.len(),
+                avg_waypoints
+            );
         }
 
         // RP-411 Phase 2: GenerationRecord is emitted AFTER the operator and eval phases
@@ -368,7 +451,8 @@ where
         // that sorted into the top slots (due to crossover producing high-fitness-but-invalid
         // offspring) were preserved as elites and re-logged identically every generation.
         // Fix: collect only valid individuals from the sorted population, capped at elite_count.
-        let valid_elites: Vec<&RoadefEvaluation> = evals.iter()
+        let valid_elites: Vec<&RoadefEvaluation> = evals
+            .iter()
             .filter(|e| e.is_valid())
             .take(config.elite_count)
             .collect();
@@ -382,7 +466,14 @@ where
             .iter()
             .map(|e| {
                 candidate_counter += 1;
-                (e.genome().clone(), "elite", candidate_counter, 0u64, 0u64, true)
+                (
+                    e.genome().clone(),
+                    "elite",
+                    candidate_counter,
+                    0u64,
+                    0u64,
+                    true,
+                )
             })
             .collect();
 
@@ -433,7 +524,9 @@ where
                 }
                 // Emit loser records for all non-winner participants.
                 for &idx in &participant_idxs {
-                    if idx == best_idx { continue; }
+                    if idx == best_idx {
+                        continue;
+                    }
                     candidate_counter += 1;
                     let loser_cid = candidate_counter;
                     let ev = &evals[idx];
@@ -442,8 +535,15 @@ where
                         let mc = d.classify(1e-9).to_string();
                         (d, mc)
                     } else {
-                        (ZoneDeltas { delta_rank1: 0.0, delta_2_20: 0.0, delta_21_100: 0.0, delta_tail: 0.0 },
-                         "neutral".to_string())
+                        (
+                            ZoneDeltas {
+                                delta_rank1: 0.0,
+                                delta_2_20: 0.0,
+                                delta_21_100: 0.0,
+                                delta_tail: 0.0,
+                            },
+                            "neutral".to_string(),
+                        )
                     };
                     let loser_rec = CandidateRecord {
                         record_type: "candidate",
@@ -459,7 +559,11 @@ where
                         tournament_id: ($tourn_id as u32),
                         deltas,
                         move_class,
-                        obj: if ev.is_valid() { -ev.fitness() } else { f64::INFINITY },
+                        obj: if ev.is_valid() {
+                            -ev.fitness()
+                        } else {
+                            f64::INFINITY
+                        },
                         valid: ev.is_valid(),
                         won_tournament: false,
                         population_slot: None,
@@ -516,8 +620,11 @@ where
                 let ca_was_feasible = pipeline.constraint_model.is_feasible(&ca);
                 match pipeline.process_offspring(&mut ca) {
                     Ok(true) => {
-                        if !ca_was_feasible { ca_tag = "repair_succeeded"; }
-                        else { ca_tag = "improvement_applied"; }
+                        if !ca_was_feasible {
+                            ca_tag = "repair_succeeded";
+                        } else {
+                            ca_tag = "improvement_applied";
+                        }
                     }
                     Ok(false) => {
                         ca = pa.clone();
@@ -533,8 +640,11 @@ where
                 let cb_was_feasible = pipeline.constraint_model.is_feasible(&cb);
                 match pipeline.process_offspring(&mut cb) {
                     Ok(true) => {
-                        if !cb_was_feasible { cb_tag = "repair_succeeded"; }
-                        else { cb_tag = "improvement_applied"; }
+                        if !cb_was_feasible {
+                            cb_tag = "repair_succeeded";
+                        } else {
+                            cb_tag = "improvement_applied";
+                        }
                     }
                     Ok(false) => {
                         cb = pb.clone();
@@ -571,8 +681,11 @@ where
                 let mut child_tag = "mutation";
                 match pipeline.process_offspring(&mut child) {
                     Ok(true) => {
-                        if !child_was_feasible { child_tag = "repair_succeeded"; }
-                        else { child_tag = "improvement_applied"; }
+                        if !child_was_feasible {
+                            child_tag = "repair_succeeded";
+                        } else {
+                            child_tag = "improvement_applied";
+                        }
                     }
                     Ok(false) => {
                         child = evals[pa_idx].genome().clone();
@@ -607,14 +720,18 @@ where
         //   major:      max_sat > 1.01         (>1% overload, structural capacity violation)
         //   structural: max_sat == 0.0         (compute_loads() returned None — structural failure)
         let mut rc002_inv: [u32; 16] = [0u32; 16]; // [origin*4 + class]: origin=0..3, class=0..3
-        // origin index: 0=initial, 1=crossover, 2=mutation, 3=elite
-        // class index:  0=epsilon, 1=minor, 2=major, 3=structural
+                                                   // origin index: 0=initial, 1=crossover, 2=mutation, 3=elite
+                                                   // class index:  0=epsilon, 1=minor, 2=major, 3=structural
 
         let t_eval_start = std::time::Instant::now();
         let t_eval_start = std::time::Instant::now();
-        let mut new_evals_with_meta: Vec<(RoadefEvaluation, u64, u64, u64, u64)> =
-            next_pop.into_iter().map(|(g, tag, p1, p2, tid, _won)| {
-                let mut ev = fitness_eval.evaluate(&g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let mut new_evals_with_meta: Vec<(RoadefEvaluation, u64, u64, u64, u64)> = next_pop
+            .into_iter()
+            .map(|(g, tag, p1, p2, tid, _won)| {
+                let mut ev = fitness_eval.evaluate(
+                    &g,
+                    &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                );
                 ev.operator = tag;
                 candidate_counter += 1;
                 let cid = candidate_counter;
@@ -633,30 +750,44 @@ where
                             ("major", 2usize)
                         };
                         let solution = ev.genome.to_solution();
-                        let diag_reason = fitness_eval.evaluator.diagnose_failure(&solution)
+                        let diag_reason = fitness_eval
+                            .evaluator
+                            .diagnose_failure(&solution)
                             .unwrap_or_else(|| format!("arc overloaded max_sat={:.9}", sat));
-                        eprintln!("[diag] origin={} overload={} max_sat={:.9} | {}",
-                            tag, overload_class, sat, diag_reason);
+                        eprintln!(
+                            "[diag] origin={} overload={} max_sat={:.9} | {}",
+                            tag, overload_class, sat, diag_reason
+                        );
 
-                        let origin_idx: usize = if tag.starts_with("crossover") { 1 }
-                            else if tag == "mutation" { 2 }
-                            else if tag == "elite"    { 3 }
-                            else                      { 0 };
+                        let origin_idx: usize = if tag.starts_with("crossover") {
+                            1
+                        } else if tag == "mutation" {
+                            2
+                        } else if tag == "elite" {
+                            3
+                        } else {
+                            0
+                        };
                         rc002_inv[origin_idx * 4 + class_idx] += 1;
                     }
                 }
 
                 (ev, cid, p1, p2, tid)
-            }).collect();
+            })
+            .collect();
         let t_eval_ms = t_eval_start.elapsed().as_secs_f64() * 1000.0;
 
         // Sort descending by comparator order (best first).
         // RP-408A: use pluggable comparator instead of raw fitness().
-        new_evals_with_meta.sort_by(|(a, ..), (b, ..)| comparator.cmp_evals(b, a).then(
-            b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
-        ));
+        new_evals_with_meta.sort_by(|(a, ..), (b, ..)| {
+            comparator.cmp_evals(b, a).then(
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal),
+            )
+        });
 
-// RC-002: emit per-generation invalid-by-origin summary when any invalids occurred.
+        // RC-002: emit per-generation invalid-by-origin summary when any invalids occurred.
         // Format: [rc002] gen=N  initial: eps=A min=B maj=C str=D  crossover: ...  mutation: ...  elite: ...
         // Only emitted when total invalid count > 0 to keep logs clean for healthy generations.
         {
@@ -682,8 +813,15 @@ where
                 let mc = d.classify(1e-9).to_string();
                 (d, mc)
             } else {
-                (ZoneDeltas { delta_rank1: 0.0, delta_2_20: 0.0, delta_21_100: 0.0, delta_tail: 0.0 },
-                 "neutral".to_string())
+                (
+                    ZoneDeltas {
+                        delta_rank1: 0.0,
+                        delta_2_20: 0.0,
+                        delta_21_100: 0.0,
+                        delta_tail: 0.0,
+                    },
+                    "neutral".to_string(),
+                )
             };
 
             let became_global_best = match &global_best {
@@ -700,16 +838,15 @@ where
             // GlobalBest  → candidate improved the global best.
             // Elite       → candidate entered the elite archive.
             // Population  → candidate entered the population but not the elite.
-            let (decision_stage, reason): (&'static str, Option<&'static str>) =
-                if !ev.is_valid() {
-                    ("Evaluation", Some("CapacityViolation"))
-                } else if became_global_best {
-                    ("GlobalBest", None)
-                } else if el_slot.is_some() {
-                    ("Elite", Some("EnteredElite"))
-                } else {
-                    ("Population", Some("EnteredPopulation"))
-                };
+            let (decision_stage, reason): (&'static str, Option<&'static str>) = if !ev.is_valid() {
+                ("Evaluation", Some("CapacityViolation"))
+            } else if became_global_best {
+                ("GlobalBest", None)
+            } else if el_slot.is_some() {
+                ("Elite", Some("EnteredElite"))
+            } else {
+                ("Population", Some("EnteredPopulation"))
+            };
 
             let cand_rec = CandidateRecord {
                 record_type: "candidate",
@@ -719,13 +856,17 @@ where
                 seed: config.seed.unwrap_or(0),
                 generation: gen as u32,
                 candidate_id: *cid,
-                parent1: *p1,   // RP-409C: correctly propagated from next_pop build phase
-                parent2: *p2,   // RP-409C: correctly propagated from next_pop build phase
+                parent1: *p1, // RP-409C: correctly propagated from next_pop build phase
+                parent2: *p2, // RP-409C: correctly propagated from next_pop build phase
                 operator: ev.operator,
                 tournament_id: *tid as u32, // RP-409C: correctly propagated from next_pop build phase
                 deltas,
                 move_class,
-                obj: if ev.is_valid() { -ev.fitness() } else { f64::INFINITY },
+                obj: if ev.is_valid() {
+                    -ev.fitness()
+                } else {
+                    f64::INFINITY
+                },
                 valid: ev.is_valid(),
                 won_tournament: true, // all candidates in new_evals_with_meta won their tournament
                 population_slot: pop_slot,
@@ -738,21 +879,25 @@ where
         }
 
         // Extract plain evals for the rest of the loop (GenerationRecord, next iteration).
-        let new_evals: Vec<RoadefEvaluation> = new_evals_with_meta.into_iter().map(|(ev, ..)| ev).collect();
+        let new_evals: Vec<RoadefEvaluation> =
+            new_evals_with_meta.into_iter().map(|(ev, ..)| ev).collect();
 
         // --- RP-410 / RP-411 Phase 2: emit GenerationRecord ---
         // Emitted here (after selection, crossover, mutation, eval, and sort) so that
         // all per-phase timing accumulators are populated with the current generation's
         // measured values. valid_count and unique_fitness_count reflect the new population.
         {
-            let best_sdi = global_best.as_ref()
+            let best_sdi = global_best
+                .as_ref()
                 .map(|g| compute_sdi(&g.load_vector))
                 .unwrap_or(0.0);
-            let top20_prefix: Vec<f64> = global_best.as_ref()
+            let top20_prefix: Vec<f64> = global_best
+                .as_ref()
                 .map(|g| g.load_vector.iter().take(20).cloned().collect())
                 .unwrap_or_default();
             let unique_fitness_count = {
-                let unique: std::collections::HashSet<String> = new_evals.iter()
+                let unique: std::collections::HashSet<String> = new_evals
+                    .iter()
                     .map(|e| format!("{:.6}", e.fitness()))
                     .collect();
                 unique.len()
@@ -771,8 +916,15 @@ where
                 instance: instance_name.to_string(),
                 seed: config.seed.unwrap_or(0),
                 generation: gen as u32,
-                best_obj: global_best.as_ref()
-                    .map(|g| if g.is_valid() { -g.fitness() } else { f64::INFINITY })
+                best_obj: global_best
+                    .as_ref()
+                    .map(|g| {
+                        if g.is_valid() {
+                            -g.fitness()
+                        } else {
+                            f64::INFINITY
+                        }
+                    })
                     .unwrap_or(f64::INFINITY),
                 best_mlu: global_best.as_ref().map(|g| g.mlu).unwrap_or(f64::INFINITY),
                 best_sdi,
@@ -814,7 +966,15 @@ where
 
     // --- Termination summary (Level 3) ---
     let best = global_best.as_ref();
-    let best_obj = best.map(|g| if g.is_valid() { -g.fitness() } else { f64::INFINITY }).unwrap_or(f64::INFINITY);
+    let best_obj = best
+        .map(|g| {
+            if g.is_valid() {
+                -g.fitness()
+            } else {
+                f64::INFINITY
+            }
+        })
+        .unwrap_or(f64::INFINITY);
     let best_mlu = best.map(|g| g.mlu).unwrap_or(f64::INFINITY);
     let valid = best.map(|g| g.is_valid()).unwrap_or(false);
 
@@ -829,7 +989,11 @@ where
     let _ = writeln!(log_sink, "  Runtime      : {}ms", runtime_ms);
     let _ = writeln!(log_sink, "");
     let _ = writeln!(log_sink, "=========================================");
-    let _ = writeln!(log_sink, "Finished      : {}", chrono::Utc::now().to_rfc3339());
+    let _ = writeln!(
+        log_sink,
+        "Finished      : {}",
+        chrono::Utc::now().to_rfc3339()
+    );
     let _ = writeln!(log_sink, "Runtime       : {}ms", runtime_ms);
     let _ = writeln!(log_sink, "Termination   : {}", termination_reason);
     let _ = writeln!(log_sink, "Best Objective: {:.4}", best_obj);
@@ -841,7 +1005,9 @@ where
 
     EvolutionRunResult {
         trajectory: vec![],
-        best_genome: best.map(|g| g.genome().clone()).unwrap_or_else(|| factory.create(&mut rng)),
+        best_genome: best
+            .map(|g| g.genome().clone())
+            .unwrap_or_else(|| factory.create(&mut rng)),
         best_obj,
         best_mlu,
         valid,
@@ -869,15 +1035,22 @@ mod comparator_tests {
     // Helper: construct a minimal RoadefEvaluation with a given load vector and validity.
     // The genome fields are irrelevant for comparator tests.
     fn make_eval(load_vector: Vec<f64>, valid: bool) -> RoadefEvaluation {
-        let obj = if valid { load_vector.first().copied().unwrap_or(0.0) } else { f64::INFINITY };
+        let obj = if valid {
+            load_vector.first().copied().unwrap_or(0.0)
+        } else {
+            f64::INFINITY
+        };
         RoadefEvaluation {
-            genome: RoadefGenome { waypoints: vec![], num_time_slots: 0 },
+            genome: RoadefGenome {
+                waypoints: vec![],
+                num_time_slots: 0,
+            },
             obj,
             valid,
             mlu: load_vector.first().copied().unwrap_or(0.0),
             load_vector,
             operator: "test",
-            max_sat: 0.0
+            max_sat: 0.0,
         }
     }
 
@@ -888,20 +1061,24 @@ mod comparator_tests {
     #[test]
     fn scalar_valid_beats_invalid() {
         let cmp = ScalarComparator;
-        let valid   = make_eval(vec![0.9], true);
+        let valid = make_eval(vec![0.9], true);
         let invalid = make_eval(vec![0.5], false);
-        assert!(cmp.is_better(&valid, &invalid),
-            "valid should beat invalid under ScalarComparator");
-        assert!(!cmp.is_better(&invalid, &valid),
-            "invalid should not beat valid under ScalarComparator");
+        assert!(
+            cmp.is_better(&valid, &invalid),
+            "valid should beat invalid under ScalarComparator"
+        );
+        assert!(
+            !cmp.is_better(&invalid, &valid),
+            "invalid should not beat valid under ScalarComparator"
+        );
     }
 
     #[test]
     fn scalar_lower_obj_wins() {
         let cmp = ScalarComparator;
         // fitness = -obj, so lower obj = higher fitness = better
-        let better = make_eval(vec![0.8], true);  // obj=0.8, fitness=-0.8
-        let worse  = make_eval(vec![0.9], true);  // obj=0.9, fitness=-0.9
+        let better = make_eval(vec![0.8], true); // obj=0.8, fitness=-0.8
+        let worse = make_eval(vec![0.9], true); // obj=0.9, fitness=-0.9
         assert!(cmp.is_better(&better, &worse));
         assert!(!cmp.is_better(&worse, &better));
     }
@@ -921,10 +1098,12 @@ mod comparator_tests {
     #[test]
     fn lex_valid_beats_invalid() {
         let cmp = LexicographicComparator;
-        let valid   = make_eval(vec![0.9, 0.8], true);
+        let valid = make_eval(vec![0.9, 0.8], true);
         let invalid = make_eval(vec![0.1, 0.1], false);
-        assert!(cmp.is_better(&valid, &invalid),
-            "valid should beat invalid under LexicographicComparator");
+        assert!(
+            cmp.is_better(&valid, &invalid),
+            "valid should beat invalid under LexicographicComparator"
+        );
         assert!(!cmp.is_better(&invalid, &valid));
     }
 
@@ -933,8 +1112,11 @@ mod comparator_tests {
         let cmp = LexicographicComparator;
         let a = make_eval(vec![0.9], false);
         let b = make_eval(vec![0.1], false);
-        assert_eq!(cmp.cmp_evals(&a, &b), Ordering::Equal,
-            "two invalid solutions should compare Equal");
+        assert_eq!(
+            cmp.cmp_evals(&a, &b),
+            Ordering::Equal,
+            "two invalid solutions should compare Equal"
+        );
     }
 
     #[test]
@@ -942,9 +1124,11 @@ mod comparator_tests {
         // [100, 80, 70] vs [101, 10, 10]: first has lower rank-1 → first wins
         let cmp = LexicographicComparator;
         let better = make_eval(vec![100.0, 80.0, 70.0], true);
-        let worse  = make_eval(vec![101.0, 10.0, 10.0], true);
-        assert!(cmp.is_better(&better, &worse),
-            "[100,80,70] should beat [101,10,10] (lower rank-1 load)");
+        let worse = make_eval(vec![101.0, 10.0, 10.0], true);
+        assert!(
+            cmp.is_better(&better, &worse),
+            "[100,80,70] should beat [101,10,10] (lower rank-1 load)"
+        );
         assert!(!cmp.is_better(&worse, &better));
     }
 
@@ -953,9 +1137,11 @@ mod comparator_tests {
         // [100, 81, 60] vs [100, 82, 10]: tie at rank-1, first wins at rank-2
         let cmp = LexicographicComparator;
         let better = make_eval(vec![100.0, 81.0, 60.0], true);
-        let worse  = make_eval(vec![100.0, 82.0, 10.0], true);
-        assert!(cmp.is_better(&better, &worse),
-            "[100,81,60] should beat [100,82,10] (lower rank-2 load)");
+        let worse = make_eval(vec![100.0, 82.0, 10.0], true);
+        assert!(
+            cmp.is_better(&better, &worse),
+            "[100,81,60] should beat [100,82,10] (lower rank-2 load)"
+        );
     }
 
     #[test]
@@ -963,8 +1149,11 @@ mod comparator_tests {
         let cmp = LexicographicComparator;
         let a = make_eval(vec![0.9, 0.8, 0.7], true);
         let b = make_eval(vec![0.9, 0.8, 0.7], true);
-        assert_eq!(cmp.cmp_evals(&a, &b), Ordering::Equal,
-            "identical load vectors should compare Equal");
+        assert_eq!(
+            cmp.cmp_evals(&a, &b),
+            Ordering::Equal,
+            "identical load vectors should compare Equal"
+        );
     }
 
     #[test]
@@ -972,10 +1161,12 @@ mod comparator_tests {
         // [0.9] vs [0.9, 0.5]: tie at rank-1, second has 0.5 at rank-2 vs 0.0 → first wins
         let cmp = LexicographicComparator;
         let shorter = make_eval(vec![0.9], true);
-        let longer  = make_eval(vec![0.9, 0.5], true);
+        let longer = make_eval(vec![0.9, 0.5], true);
         // shorter has 0.0 at rank-2 (missing), longer has 0.5 → shorter is better
-        assert!(cmp.is_better(&shorter, &longer),
-            "shorter vector (zero-padded) should beat longer with non-zero tail");
+        assert!(
+            cmp.is_better(&shorter, &longer),
+            "shorter vector (zero-padded) should beat longer with non-zero tail"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -987,32 +1178,40 @@ mod comparator_tests {
     fn scalar_agrees_with_fitness_comparison_valid_vs_valid() {
         let cmp = ScalarComparator;
         let cases: Vec<(f64, f64)> = vec![
-            (0.5, 0.9),   // a better
-            (0.9, 0.5),   // b better
-            (0.7, 0.7),   // equal
-            (0.0, 1.0),   // a much better
-            (1.0, 0.0),   // b much better
+            (0.5, 0.9), // a better
+            (0.9, 0.5), // b better
+            (0.7, 0.7), // equal
+            (0.0, 1.0), // a much better
+            (1.0, 0.0), // b much better
         ];
         for (obj_a, obj_b) in cases {
             let a = make_eval(vec![obj_a], true);
             let b = make_eval(vec![obj_b], true);
             // Pre-RP-408A: a better iff a.fitness() > b.fitness() iff -obj_a > -obj_b iff obj_a < obj_b
             let legacy_a_better = a.fitness() > b.fitness();
-            let cmp_a_better    = cmp.is_better(&a, &b);
-            assert_eq!(cmp_a_better, legacy_a_better,
-                "ScalarComparator disagrees with legacy fitness() for obj_a={obj_a} obj_b={obj_b}");
+            let cmp_a_better = cmp.is_better(&a, &b);
+            assert_eq!(
+                cmp_a_better, legacy_a_better,
+                "ScalarComparator disagrees with legacy fitness() for obj_a={obj_a} obj_b={obj_b}"
+            );
         }
     }
 
     #[test]
     fn scalar_agrees_with_fitness_comparison_valid_vs_invalid() {
         let cmp = ScalarComparator;
-        let valid   = make_eval(vec![0.9], true);
+        let valid = make_eval(vec![0.9], true);
         let invalid = make_eval(vec![0.1], false);
         // Legacy: valid.fitness() = -0.9, invalid.fitness() = -1_000_000.0
         // valid is better
-        assert_eq!(cmp.is_better(&valid, &invalid), valid.fitness() > invalid.fitness());
-        assert_eq!(cmp.is_better(&invalid, &valid), invalid.fitness() > valid.fitness());
+        assert_eq!(
+            cmp.is_better(&valid, &invalid),
+            valid.fitness() > invalid.fitness()
+        );
+        assert_eq!(
+            cmp.is_better(&invalid, &valid),
+            invalid.fitness() > valid.fitness()
+        );
     }
 
     #[test]
@@ -1026,9 +1225,13 @@ mod comparator_tests {
             make_eval(vec![0.1], true),
         ];
         // Sort using ScalarComparator (descending: best first)
-        evals.sort_by(|a, b| cmp.cmp_evals(b, a).then(
-            b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
-        ));
+        evals.sort_by(|a, b| {
+            cmp.cmp_evals(b, a).then(
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal),
+            )
+        });
         let cmp_order: Vec<f64> = evals.iter().map(|e| e.obj).collect();
 
         // Sort using legacy fitness() comparison
@@ -1039,11 +1242,17 @@ mod comparator_tests {
             make_eval(vec![0.3], false),
             make_eval(vec![0.1], true),
         ];
-        legacy.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal));
+        legacy.sort_by(|a, b| {
+            b.fitness()
+                .partial_cmp(&a.fitness())
+                .unwrap_or(Ordering::Equal)
+        });
         let legacy_order: Vec<f64> = legacy.iter().map(|e| e.obj).collect();
 
-        assert_eq!(cmp_order, legacy_order,
-            "ScalarComparator sort order must match legacy fitness() sort order");
+        assert_eq!(
+            cmp_order, legacy_order,
+            "ScalarComparator sort order must match legacy fitness() sort order"
+        );
     }
 }
 
@@ -1052,12 +1261,19 @@ pub fn run_pipeline_evolution_v2<M>(
     fitness_eval: &RoadefFitnessEvaluator,
     mutator: &M,
     crossover: &RoadefCrossover,
-    pipeline_obj: &coralys_core::pipeline::EvolutionaryPipeline<RoadefGenome, RoadefConstraintModel, crate::operators::OperatorError>,
+    pipeline_obj: &coralys_core::pipeline::EvolutionaryPipeline<
+        RoadefGenome,
+        RoadefConstraintModel,
+        crate::operators::OperatorError,
+    >,
     config: &EvolutionRunConfig,
     initial_population: crate::moga_impl::InitialPopulation<RoadefGenome>,
     instance_name: &str,
     log_sink: &mut dyn Write,
     telemetry: &mut dyn TelemetrySink,
+    // Phase 3: when true, cache-miss evaluations are dispatched in parallel via Rayon.
+    // When false, the L1 sequential baseline is used (identical search trajectory).
+    use_rayon: bool,
 ) -> EvolutionRunResult
 where
     M: MutationOperator<RoadefGenome>,
@@ -1084,11 +1300,8 @@ where
     };
     let comparator = make_comparator(config.comparator_mode);
 
-    
-    
-    
-    
-    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> = std::collections::HashMap::new();
+    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+        std::collections::HashMap::new();
     let t0 = Instant::now();
 
     // Use deterministic provided population
@@ -1097,7 +1310,10 @@ where
         let ev = if let Some(cached) = evaluation_cache.get(g) {
             cached.clone()
         } else {
-            let e = fitness_eval.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+            let e = fitness_eval.evaluate(
+                g,
+                &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+            );
             evaluation_cache.insert(g.clone(), e.clone());
             e
         };
@@ -1105,10 +1321,14 @@ where
         ev.operator = "initial";
         evals.push(ev);
     }
-    
-    evals.sort_by(|a, b| comparator.cmp_evals(b, a).then(
-        b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
-    ));
+
+    evals.sort_by(|a, b| {
+        comparator.cmp_evals(b, a).then(
+            b.fitness()
+                .partial_cmp(&a.fitness())
+                .unwrap_or(Ordering::Equal),
+        )
+    });
 
     let generation0_valid_count: usize = evals.iter().filter(|e| e.is_valid()).count();
     let initial_feasibility_rate: f64 = if config.population_size > 0 {
@@ -1118,10 +1338,22 @@ where
     };
 
     let gen0_feasible_count = generation0_valid_count;
-    let gen0_best_obj: f64 = evals.iter().find(|e| e.is_valid()).map(|e| e.obj).unwrap_or(f64::INFINITY);
+    let gen0_best_obj: f64 = evals
+        .iter()
+        .find(|e| e.is_valid())
+        .map(|e| e.obj)
+        .unwrap_or(f64::INFINITY);
     let gen0_mean_obj: f64 = {
-        let valid_objs: Vec<f64> = evals.iter().filter(|e| e.is_valid()).map(|e| e.obj).collect();
-        if valid_objs.is_empty() { f64::INFINITY } else { valid_objs.iter().sum::<f64>() / valid_objs.len() as f64 }
+        let valid_objs: Vec<f64> = evals
+            .iter()
+            .filter(|e| e.is_valid())
+            .map(|e| e.obj)
+            .collect();
+        if valid_objs.is_empty() {
+            f64::INFINITY
+        } else {
+            valid_objs.iter().sum::<f64>() / valid_objs.len() as f64
+        }
     };
     let gen0_unique_obj_count: usize = {
         let mut unq: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -1142,7 +1374,9 @@ where
                 }
                 h.finish()
             };
-            if !seen.insert(wp_hash) { dups += 1; }
+            if !seen.insert(wp_hash) {
+                dups += 1;
+            }
         }
         dups
     };
@@ -1173,7 +1407,7 @@ where
         let mut t_cache_lookup_ms = 0.0;
         let mut t_cache_hit_materialize_ms = 0.0;
         let mut t_cache_insert_ms = 0.0;
-        
+
         generations_run += 1;
         if let Some(b) = config.max_runtime {
             if t0.elapsed() >= b {
@@ -1202,9 +1436,47 @@ where
         let mut n_cross_maj = 0;
         let mut n_mut_maj = 0;
 
+        // -----------------------------------------------------------------------
+        // Phase 3 (Rayon): parallel evaluation of the offspring batch.
+        //
+        // Governance invariant: the search trajectory must be identical to the L1
+        // baseline. This is guaranteed because:
+        //   (a) All RNG-driven operations (selection, crossover, mutation, repair)
+        //       remain sequential in Phase A below — the RNG sequence is unchanged.
+        //   (b) The evaluator (fitness_eval.evaluate) is a pure function of the
+        //       genome: same genome → same result on every call, every thread.
+        //   (c) The L1 cache is consulted sequentially (Phase A) before the
+        //       parallel phase, so cache-hit counts are identical to the baseline.
+        //
+        // Implementation:
+        //   Phase A (sequential): produce all offspring genomes via the existing
+        //     RNG-driven loop. For each offspring, check the L1 cache. If a hit,
+        //     record the cached result immediately. If a miss, record the genome
+        //     for parallel evaluation. Collect into a staging Vec.
+        //   Phase B (parallel): evaluate all cache-miss genomes in parallel using
+        //     rayon::par_iter(). fitness_eval is Arc-wrapped (Send+Sync).
+        //   Phase C (sequential): merge parallel results back into the staging Vec,
+        //     insert new results into the L1 cache, accumulate timing stats.
+        // -----------------------------------------------------------------------
+
+        // Staging entry: one per offspring slot.
+        // Variants:
+        //   CacheHit(ev)          — L1 hit; result already known.
+        //   FallbackClone(ev)     — repair failed; clone of parent used.
+        //   NeedsEval(genome, tag, slot_in_miss_vec) — cache miss; genome queued for parallel eval.
+        enum OffspringStage {
+            CacheHit(RoadefEvaluation),
+            FallbackClone(RoadefEvaluation),
+            NeedsEval(RoadefGenome, &'static str),
+        }
+
         let needed = config.population_size.saturating_sub(next_generation.len());
+
+        // Phase A: sequential RNG loop — produce genomes, check L1 cache.
+        let mut staging: Vec<OffspringStage> = Vec::with_capacity(needed);
+        // Track operator counts and cache stats (same as before).
         for _ in 0..needed {
-            let ev = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+            if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
                 let p1_idx = rng.gen_range(0..population.len());
                 let p2_idx = rng.gen_range(0..population.len());
                 let p1 = &population[p1_idx].genome;
@@ -1213,100 +1485,188 @@ where
                 if rng.gen_bool(config.mutation_rate) {
                     mutator.mutate(&mut child, &mut rng);
                 }
-                
+
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
                 let mut tag = "crossover_mutation";
                 let success = match pipeline_obj.process_offspring(&mut child) {
                     Ok(true) => {
-                        tag = if !was_feasible { "pipeline_repaired" } else { "pipeline_improved" };
+                        tag = if !was_feasible {
+                            "pipeline_repaired"
+                        } else {
+                            "pipeline_improved"
+                        };
                         true
                     }
-                    Ok(false) => { tag = "pipeline_repair_failed"; false }
-                    Err(_) => { tag = "pipeline_operator_error"; false }
+                    Ok(false) => {
+                        tag = "pipeline_repair_failed";
+                        false
+                    }
+                    Err(_) => {
+                        tag = "pipeline_operator_error";
+                        false
+                    }
                 };
-                
-                let mut final_ev = if success {
+
+                n_crossover += 1;
+                if success {
                     let lookup_start = Instant::now();
                     let cached_opt = evaluation_cache.get(&child);
                     t_cache_lookup_ms += lookup_start.elapsed().as_secs_f64() * 1000.0;
-                    
+
                     if let Some(cached) = cached_opt {
                         cache_hits += 1;
                         let mat_start = Instant::now();
-                        let cloned = cached.clone();
+                        let mut cloned = cached.clone();
                         t_cache_hit_materialize_ms += mat_start.elapsed().as_secs_f64() * 1000.0;
-                        cloned
+                        cloned.operator = tag;
+                        staging.push(OffspringStage::CacheHit(cloned));
                     } else {
-                        let e_start = Instant::now();
-                        let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                        t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
-                        
-                        let ins_start = Instant::now();
-                        evaluation_cache.insert(child.clone(), e.clone());
-                        t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
-                        
-                        actual_evals += 1;
-                        e
+                        staging.push(OffspringStage::NeedsEval(child, tag));
                     }
                 } else {
-                    population[p1_idx].clone()
-                };
-                final_ev.operator = tag;
-                n_crossover += 1;
-                final_ev
+                    let mut fallback = population[rng.gen_range(0..population.len())].clone();
+                    fallback.operator = tag;
+                    staging.push(OffspringStage::FallbackClone(fallback));
+                }
             } else {
                 let p1_idx = rng.gen_range(0..population.len());
                 let p = &population[p1_idx].genome;
                 let mut child = p.clone();
                 mutator.mutate(&mut child, &mut rng);
-                
+
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
                 let mut tag = "mutation";
                 let success = match pipeline_obj.process_offspring(&mut child) {
                     Ok(true) => {
-                        tag = if !was_feasible { "pipeline_repaired" } else { "pipeline_improved" };
+                        tag = if !was_feasible {
+                            "pipeline_repaired"
+                        } else {
+                            "pipeline_improved"
+                        };
                         true
                     }
-                    Ok(false) => { tag = "pipeline_repair_failed"; false }
-                    Err(_) => { tag = "pipeline_operator_error"; false }
+                    Ok(false) => {
+                        tag = "pipeline_repair_failed";
+                        false
+                    }
+                    Err(_) => {
+                        tag = "pipeline_operator_error";
+                        false
+                    }
                 };
 
-                let mut final_ev = if success {
+                n_mutation += 1;
+                if success {
                     let lookup_start = Instant::now();
                     let cached_opt = evaluation_cache.get(&child);
                     t_cache_lookup_ms += lookup_start.elapsed().as_secs_f64() * 1000.0;
-                    
+
                     if let Some(cached) = cached_opt {
                         cache_hits += 1;
                         let mat_start = Instant::now();
-                        let cloned = cached.clone();
+                        let mut cloned = cached.clone();
                         t_cache_hit_materialize_ms += mat_start.elapsed().as_secs_f64() * 1000.0;
-                        cloned
+                        cloned.operator = tag;
+                        staging.push(OffspringStage::CacheHit(cloned));
                     } else {
-                        let e_start = Instant::now();
-                        let e = fitness_eval.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                        t_eval_ms += e_start.elapsed().as_secs_f64() * 1000.0;
-                        
-                        let ins_start = Instant::now();
-                        evaluation_cache.insert(child.clone(), e.clone());
-                        t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
-                        
-                        actual_evals += 1;
-                        e
+                        staging.push(OffspringStage::NeedsEval(child, tag));
                     }
                 } else {
-                    population[p1_idx].clone()
-                };
-                final_ev.operator = tag;
-                n_mutation += 1;
-                final_ev
+                    let mut fallback = population[p1_idx].clone();
+                    fallback.operator = tag;
+                    staging.push(OffspringStage::FallbackClone(fallback));
+                }
+            }
+        }
+
+        // Phase B: parallel evaluation of all cache-miss genomes.
+        // Collect (index_in_staging, genome, tag) for every NeedsEval entry.
+        let miss_indices: Vec<usize> = staging
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| {
+                if matches!(s, OffspringStage::NeedsEval(..)) {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Extract genomes for parallel evaluation (avoids borrow of staging).
+        let miss_genomes: Vec<(RoadefGenome, &'static str)> = miss_indices
+            .iter()
+            .map(|&i| {
+                if let OffspringStage::NeedsEval(ref g, tag) = staging[i] {
+                    (g.clone(), tag)
+                } else {
+                    unreachable!()
+                }
+            })
+            .collect();
+
+        // Phase B: evaluate cache-miss genomes.
+        // When use_rayon=true: parallel via rayon::par_iter() — fitness_eval is Arc<RoadefEvaluator> (Send+Sync).
+        // When use_rayon=false: sequential L1 baseline — identical search trajectory, used for A/B comparison.
+        let t_par_eval_start = Instant::now();
+        let parallel_results: Vec<RoadefEvaluation> = if use_rayon {
+            miss_genomes
+                .par_iter()
+                .map(|(genome, tag)| {
+                    let mut ev = fitness_eval.evaluate(
+                        genome,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    );
+                    ev.operator = *tag;
+                    ev
+                })
+                .collect()
+        } else {
+            miss_genomes
+                .iter()
+                .map(|(genome, tag)| {
+                    let mut ev = fitness_eval.evaluate(
+                        genome,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    );
+                    ev.operator = *tag;
+                    ev
+                })
+                .collect()
+        };
+        let t_par_eval_elapsed = t_par_eval_start.elapsed().as_secs_f64() * 1000.0;
+        t_eval_ms += t_par_eval_elapsed;
+        actual_evals += parallel_results.len();
+
+        // Phase C: merge parallel results back into staging, update L1 cache.
+        let ins_start = Instant::now();
+        for (result_idx, &staging_idx) in miss_indices.iter().enumerate() {
+            let ev = parallel_results[result_idx].clone();
+            // Insert into L1 cache (sequential — HashMap is not Send).
+            if let OffspringStage::NeedsEval(ref genome, _) = staging[staging_idx] {
+                evaluation_cache.insert(genome.clone(), ev.clone());
+            }
+            staging[staging_idx] = OffspringStage::CacheHit(ev);
+        }
+        t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
+
+        // Flatten staging into next_generation.
+        for entry in staging {
+            let ev = match entry {
+                OffspringStage::CacheHit(ev) => ev,
+                OffspringStage::FallbackClone(ev) => ev,
+                OffspringStage::NeedsEval(..) => unreachable!("all NeedsEval resolved in Phase C"),
             };
             next_generation.push(ev);
         }
 
-        next_generation.sort_by(|a, b| comparator.cmp_evals(b, a).then(
-            b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal)
-        ));
+        next_generation.sort_by(|a, b| {
+            comparator.cmp_evals(b, a).then(
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal),
+            )
+        });
         population = next_generation;
 
         let cur_best = &population[0];
@@ -1321,7 +1681,7 @@ where
             no_improvement_count += 1;
         }
 
-                trajectory.push(crate::moga_impl::GenerationSummary {
+        trajectory.push(crate::moga_impl::GenerationSummary {
             generation: generations_run,
             n_eval: actual_evals,
             generation_runtime_ms: gen_start.elapsed().as_secs_f64() * 1000.0,
@@ -1342,14 +1702,11 @@ where
                     n_crossover, n_cross_repair, n_cross_maj,
                     n_mutation, n_mut_repair, n_mut_maj);
             }
-
-    }
-
+        }
     }
     let mut result = EvolutionRunResult {
         trajectory,
-        
-        
+
         best_genome: factory.create(&mut rng),
         best_obj: f64::INFINITY,
         best_mlu: f64::INFINITY,
@@ -1373,5 +1730,4 @@ where
         result.valid = true;
     }
     result
-
 }

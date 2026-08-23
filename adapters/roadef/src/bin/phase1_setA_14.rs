@@ -1,20 +1,22 @@
-use std::fs;
-use std::time::Instant;
-use std::sync::Arc;
 use roadef::evaluator::RoadefEvaluator;
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    EvolutionRunConfig, generate_gen0_population, ConstructionMode
+    generate_gen0_population, ConstructionMode, EvolutionRunConfig, RoadefCrossover,
+    RoadefFitnessEvaluator, RoadefGenomeFactory, RoadefMutator,
 };
 use roadef::pipeline_impl::run_pipeline_evolution_v2;
-use roadef::telemetry::{NullTelemetrySink, ComparatorMode};
+use roadef::telemetry::{ComparatorMode, NullTelemetrySink};
+use std::fs;
+use std::sync::Arc;
+use std::time::Instant;
 
 fn load_network(path: &str) -> Result<roadef::models::Network, Box<dyn std::error::Error>> {
     let s = fs::read_to_string(path)?;
     Ok(serde_json::from_str(&s)?)
 }
 
-fn load_traffic_matrix(path: &str) -> Result<roadef::models::TrafficMatrix, Box<dyn std::error::Error>> {
+fn load_traffic_matrix(
+    path: &str,
+) -> Result<roadef::models::TrafficMatrix, Box<dyn std::error::Error>> {
     let s = fs::read_to_string(path)?;
     Ok(serde_json::from_str(&s)?)
 }
@@ -26,10 +28,15 @@ fn load_scenario(path: &str) -> Result<roadef::models::Scenario, Box<dyn std::er
 
 fn main() {
     println!("Loading setA-14...");
-    let net = load_network("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-net.json").unwrap();
-    let tm = load_traffic_matrix("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-tm.json").unwrap();
-    let scenario = load_scenario("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-scenario.json").unwrap();
-    
+    let net = load_network("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-net.json")
+        .unwrap();
+    let tm =
+        load_traffic_matrix("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-tm.json")
+            .unwrap();
+    let scenario =
+        load_scenario("adapters/roadef/repo/challenge-roadef-2026-main/setA/setA-14-scenario.json")
+            .unwrap();
+
     let num_demands = tm.demands.len();
     let num_time_slots = tm.num_time_slots;
     let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
@@ -59,9 +66,13 @@ fn main() {
         mode: ConstructionMode::Random,
         greedy_data: None,
     };
-    
-    let fitness_eval = RoadefFitnessEvaluator { evaluator: Arc::clone(&evaluator) };
-    let mutator = RoadefMutator { node_ids: node_ids.clone() };
+
+    let fitness_eval = RoadefFitnessEvaluator {
+        evaluator: Arc::clone(&evaluator),
+    };
+    let mutator = RoadefMutator {
+        node_ids: node_ids.clone(),
+    };
     let crossover = RoadefCrossover;
 
     let init_pop = generate_gen0_population(&factory, &fitness_eval, Some(42), 50);
@@ -69,15 +80,23 @@ fn main() {
     println!("Running pipeline...");
     let mut null_sink = NullTelemetrySink {};
     let mut log_buf = Vec::new();
-    
+
     let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
-        constraint_model: roadef::constraints::RoadefConstraintModel { evaluator: evaluator.clone() },
+        constraint_model: roadef::constraints::RoadefConstraintModel {
+            evaluator: evaluator.clone(),
+        },
         repair_operators: vec![Box::new(roadef::operators::RoadefRepair)],
         improvement_operators: vec![Box::new(roadef::operators::RoadefImprovement)],
-        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 100 },
-        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 100 },
+        repair_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 10,
+            max_time_ms: 100,
+        },
+        improve_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 10,
+            max_time_ms: 100,
+        },
     };
-    
+
     let t0 = Instant::now();
     let result = run_pipeline_evolution_v2(
         &factory,
@@ -90,6 +109,7 @@ fn main() {
         "setA-14",
         &mut log_buf,
         &mut null_sink,
+        true, // Phase 3: Rayon parallel evaluation enabled
     );
     let dt = t0.elapsed();
 
@@ -101,9 +121,17 @@ fn main() {
         let last_gen = &result.trajectory.last().unwrap();
         println!("Gen 0: {:?}", first_gen);
         println!("Last Gen: {:?}", last_gen);
-        
-        let total_gen_ms: f64 = result.trajectory.iter().map(|g| g.generation_runtime_ms).sum();
-        let total_eval_ms: f64 = result.trajectory.iter().map(|g| g.evaluation_runtime_ms).sum();
+
+        let total_gen_ms: f64 = result
+            .trajectory
+            .iter()
+            .map(|g| g.generation_runtime_ms)
+            .sum();
+        let total_eval_ms: f64 = result
+            .trajectory
+            .iter()
+            .map(|g| g.evaluation_runtime_ms)
+            .sum();
         println!("Total Gen ms: {}", total_gen_ms);
         println!("Total Eval ms: {}", total_eval_ms);
         println!("Eval share: {:.2}%", (total_eval_ms / total_gen_ms) * 100.0);
