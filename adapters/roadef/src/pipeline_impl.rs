@@ -1031,6 +1031,7 @@ where
 mod comparator_tests {
     use super::*;
     use std::cmp::Ordering;
+    use crate::moga_impl::{ScalarComparator, LexicographicComparator, EvalComparator};
 
     // Helper: construct a minimal RoadefEvaluation with a given load vector and validity.
     // The genome fields are irrelevant for comparator tests.
