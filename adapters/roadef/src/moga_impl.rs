@@ -1242,6 +1242,8 @@ pub struct GenerationSummary {
     pub improve_ms: f64,        // time in pipeline_obj.process_offspring() — improve path
     pub sort_ms: f64,           // time in next_generation.sort_by()
     pub selection_ms: f64,      // time in parent selection (tournament/index sampling)
+    pub feasibility_ms: f64,    // time in constraint_model.is_feasible() calls
+    pub staging_ms: f64,        // time in miss_indices/miss_genomes collection + staging flatten
 }
 
 pub struct EvolutionRunResult {

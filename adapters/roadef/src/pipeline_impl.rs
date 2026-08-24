@@ -1412,6 +1412,8 @@ where
         let mut t_improve_ms: f64 = 0.0;
         let mut t_sort_ms: f64 = 0.0;
         let mut t_selection_ms: f64 = 0.0;
+        let mut t_feasibility_ms: f64 = 0.0;
+        let mut t_staging_ms: f64 = 0.0;
 
         generations_run += 1;
         if let Some(b) = config.max_runtime {
@@ -1503,7 +1505,10 @@ where
                     t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
                 }
 
+                // Phase 8: time is_feasible() call.
+                let t_feas_start = Instant::now();
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
+                t_feasibility_ms += t_feas_start.elapsed().as_secs_f64() * 1000.0;
                 let mut tag = "crossover_mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
                 // Attribute to repair_ms or improve_ms based on outcome.
@@ -1568,7 +1573,10 @@ where
                 mutator.mutate(&mut child, &mut rng);
                 t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
 
+                // Phase 8: time is_feasible() call.
+                let t_feas_start = Instant::now();
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
+                t_feasibility_ms += t_feas_start.elapsed().as_secs_f64() * 1000.0;
                 let mut tag = "mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
                 let t_proc_start = Instant::now();
@@ -1623,6 +1631,8 @@ where
 
         // Phase B: parallel evaluation of all cache-miss genomes.
         // Collect (index_in_staging, genome, tag) for every NeedsEval entry.
+        // Phase 8: time staging collection overhead.
+        let t_staging_start = Instant::now();
         let miss_indices: Vec<usize> = staging
             .iter()
             .enumerate()
@@ -1646,6 +1656,7 @@ where
                 }
             })
             .collect();
+        t_staging_ms += t_staging_start.elapsed().as_secs_f64() * 1000.0;
 
         // Phase B: evaluate cache-miss genomes.
         // When use_rayon=true: parallel via rayon::par_iter() — fitness_eval is Arc<RoadefEvaluator> (Send+Sync).
@@ -1693,6 +1704,8 @@ where
         t_cache_insert_ms += ins_start.elapsed().as_secs_f64() * 1000.0;
 
         // Flatten staging into next_generation.
+        // Phase 8: time staging flatten overhead.
+        let t_flatten_start = Instant::now();
         for entry in staging {
             let ev = match entry {
                 OffspringStage::CacheHit(ev) => ev,
@@ -1701,6 +1714,7 @@ where
             };
             next_generation.push(ev);
         }
+        t_staging_ms += t_flatten_start.elapsed().as_secs_f64() * 1000.0;
 
         // Phase 8: time sort.
         let t_sort_start = Instant::now();
@@ -1744,6 +1758,8 @@ where
             improve_ms: t_improve_ms,
             sort_ms: t_sort_ms,
             selection_ms: t_selection_ms,
+            feasibility_ms: t_feasibility_ms,
+            staging_ms: t_staging_ms,
         });
 
         if generations_run % config.log_interval == 0 {

@@ -181,15 +181,16 @@ fn main() {
     // -----------------------------------------------------------------------
     // Per-generation breakdown
     // -----------------------------------------------------------------------
-    println!("gen,gen_ms,eval_ms,non_eval_ms,l1_lookup_ms,l1_materialize_ms,l1_insert_ms,l1_total_ms,unattributed_ms,n_eval,cache_hits,crossover_ms,mutation_ms,repair_ms,improve_ms,sort_ms,selection_ms,attributed_ms,rayon_residual_ms");
+    println!("gen,gen_ms,eval_ms,non_eval_ms,l1_lookup_ms,l1_materialize_ms,l1_insert_ms,l1_total_ms,unattributed_ms,n_eval,cache_hits,crossover_ms,mutation_ms,repair_ms,improve_ms,sort_ms,selection_ms,feasibility_ms,staging_ms,attributed_ms,rayon_residual_ms");
     for g in &result.trajectory {
         let non_eval_ms = g.generation_runtime_ms - g.evaluation_runtime_ms;
         let l1_total_ms = g.cache_lookup_ms + g.cache_hit_materialize_ms + g.cache_insert_ms;
         let unattributed_ms = non_eval_ms - l1_total_ms;
-        let attributed_ms = g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms + g.sort_ms + g.selection_ms;
+        let attributed_ms = g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms
+            + g.sort_ms + g.selection_ms + g.feasibility_ms + g.staging_ms;
         let rayon_residual_ms = unattributed_ms - attributed_ms;
         println!(
-            "{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+            "{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
             g.generation,
             g.generation_runtime_ms,
             g.evaluation_runtime_ms,
@@ -207,6 +208,8 @@ fn main() {
             g.improve_ms,
             g.sort_ms,
             g.selection_ms,
+            g.feasibility_ms,
+            g.staging_ms,
             attributed_ms,
             rayon_residual_ms,
         );
@@ -244,8 +247,11 @@ fn main() {
     let improve_vec: Vec<f64> = traj.iter().map(|g| g.improve_ms).collect();
     let sort_vec: Vec<f64> = traj.iter().map(|g| g.sort_ms).collect();
     let selection_vec: Vec<f64> = traj.iter().map(|g| g.selection_ms).collect();
+    let feasibility_vec: Vec<f64> = traj.iter().map(|g| g.feasibility_ms).collect();
+    let staging_vec: Vec<f64> = traj.iter().map(|g| g.staging_ms).collect();
     let attributed_vec: Vec<f64> = traj.iter().map(|g| {
-        g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms + g.sort_ms + g.selection_ms
+        g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms
+            + g.sort_ms + g.selection_ms + g.feasibility_ms + g.staging_ms
     }).collect();
     let rayon_residual_vec: Vec<f64> = unattributed_vec.iter().zip(attributed_vec.iter())
         .map(|(u, a)| u - a)
@@ -265,6 +271,8 @@ fn main() {
     let total_improve_ms: f64 = improve_vec.iter().sum();
     let total_sort_ms: f64 = sort_vec.iter().sum();
     let total_selection_ms: f64 = selection_vec.iter().sum();
+    let total_feasibility_ms: f64 = feasibility_vec.iter().sum();
+    let total_staging_ms: f64 = staging_vec.iter().sum();
     let total_attributed_ms: f64 = attributed_vec.iter().sum();
     let total_rayon_residual_ms: f64 = rayon_residual_vec.iter().sum();
 
@@ -304,6 +312,8 @@ fn main() {
     row("    Improve (process_offspring)", total_improve_ms, mean(&improve_vec), stddev(&improve_vec));
     row("    Sort", total_sort_ms, mean(&sort_vec), stddev(&sort_vec));
     row("    Selection", total_selection_ms, mean(&selection_vec), stddev(&selection_vec));
+    row("    Feasibility check", total_feasibility_ms, mean(&feasibility_vec), stddev(&feasibility_vec));
+    row("    Staging overhead", total_staging_ms, mean(&staging_vec), stddev(&staging_vec));
     row("    Attributed total", total_attributed_ms, mean(&attributed_vec), stddev(&attributed_vec));
     row("    Rayon residual", total_rayon_residual_ms, mean(&rayon_residual_vec), stddev(&rayon_residual_vec));
 
