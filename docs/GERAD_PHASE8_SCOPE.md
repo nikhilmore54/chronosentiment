@@ -81,8 +81,9 @@ If `rayon_residual` exceeds 20% of `unattributed_ms`, Phase 8 must be extended t
 - All 5 trajectory invariants pass on setA-01 (bit-exact vs Phase 7 baseline)
 - All 5 trajectory invariants pass on setA-14 (bit-exact vs Phase 7 baseline)
 - Per-operator breakdown CSV produced for both instances
-- Accounting closure: `Σ(operator_ms) ≥ 80% of unattributed_ms`
-- Top-1 optimization candidate identified with quantified impact estimate
+- Accounting closure: `attributed_ms ≥ 80% of unattributed_ms`
+- `rayon_residual` explicitly reported (not silently attributed to Rayon)
+- Top operator(s) by measured `attributed_ms` identified — no optimization candidate pre-labelled before measurement
 
 ---
 
