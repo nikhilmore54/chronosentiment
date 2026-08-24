@@ -53,9 +53,17 @@ Wrap each operator call site in [`run_pipeline_evolution_v2`](adapters/roadef/sr
 Update [`phase7_loop_profile.rs`](adapters/roadef/src/bin/phase7_loop_profile.rs) (or create `phase8_operator_profile.rs`) to output the new fields in the CSV and verify the accounting closure:
 
 ```
-repair_ms + improve_ms + crossover_ms + mutation_ms + sort_ms + selection_ms
-  ≈ unattributed_ms  (within 5%)
+attributed_ms  = repair_ms + improve_ms + crossover_ms + mutation_ms + sort_ms + selection_ms
+rayon_residual = unattributed_ms - attributed_ms
 ```
+
+The `rayon_residual` (Rayon spawn/join coordination + any other unmeasured overhead) must be **explicitly reported** in the Phase 8 summary. It is not required to be zero, but it must be quantified. The gate criterion applies to `attributed_ms` only:
+
+```
+attributed_ms >= 0.80 × unattributed_ms
+```
+
+If `rayon_residual` exceeds 20% of `unattributed_ms`, Phase 8 must be extended to instrument Rayon coordination before Phase 9 optimization is scoped.
 
 ---
 
