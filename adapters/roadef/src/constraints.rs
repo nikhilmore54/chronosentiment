@@ -118,4 +118,106 @@ impl ConstraintModel<RoadefGenome> for RoadefConstraintModel {
 
         violations
     }
+
+    // P9-H6: Override is_feasible() to use staged early-exit.
+    // evaluate_violations() is unchanged and still used by the repair operator.
+    fn is_feasible(&self, candidate: &RoadefGenome) -> bool {
+        self.is_feasible_fast(candidate)
+    }
+}
+
+impl RoadefConstraintModel {
+    /// Staged early-exit feasibility check.
+    ///
+    /// Semantically equivalent to `is_feasible()` but avoids the expensive
+    /// Stage 3+4 routing computation (`expand_sr_path` / `backward_dijkstra`)
+    /// when Stage 1 (segment limit) or Stage 2 (budget) violations are present.
+    ///
+    /// MUST NOT be called by the repair operator — use `evaluate_violations()`
+    /// there, which returns all violations needed for demand-level repair decisions.
+    ///
+    /// P9-H6 intervention.
+    pub fn is_feasible_fast(&self, candidate: &RoadefGenome) -> bool {
+        let solution = candidate.to_solution();
+        let scenario = &self.evaluator.scenario;
+
+        // Stage 1: Segment limit — O(D), early exit on first violation.
+        if scenario.max_segments >= 0 {
+            for path in &solution.srpaths {
+                if path.w.len() + 1 > scenario.max_segments as usize {
+                    return false;
+                }
+            }
+        }
+
+        // Stage 2: Budget — O(D×T), early exit on first violation.
+        let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
+        let tm = &self.evaluator.tm;
+        for ts in 0..tm.num_time_slots {
+            let mut budget_cost = 0;
+            let mut curr_paths: HashMap<u64, SrPathBit> = HashMap::new();
+            for (d_id, demand) in tm.demands.iter().enumerate() {
+                let mut bitpath = SrPathBit::new_uninitialized();
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    bitpath = SrPathBit::new_explicit(demand.s, demand.t, &srpath.w);
+                }
+                if ts > 0 {
+                    let uninit = SrPathBit::new_uninitialized();
+                    let prev_bitpath = prev_paths.get(&(d_id as u64)).unwrap_or(&uninit);
+                    budget_cost += bitpath.dist(prev_bitpath);
+                }
+                curr_paths.insert(d_id as u64, bitpath);
+            }
+            if ts > 0 {
+                let budget_val = scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                if budget_cost > budget_val {
+                    return false;
+                }
+            }
+            prev_paths = curr_paths;
+        }
+
+        // Stage 3+4: Routing + Capacity — O(T × D × expand_sr_path).
+        // Only reached if Stage 1 and Stage 2 pass.
+        let mut disabled_arcs = HashSet::new();
+        for ts in 0..tm.num_time_slots {
+            disabled_arcs.clear();
+            if let Some(intervention) = scenario.interventions.iter().find(|i| i.t == ts) {
+                for &link_id in &intervention.links {
+                    disabled_arcs.insert(link_id);
+                }
+            }
+
+            let mut arc_flows: HashMap<u64, f64> = HashMap::new();
+            for arc in &self.evaluator.graph.arcs {
+                arc_flows.insert(arc.id, 0.0);
+            }
+
+            for (d_id, demand) in tm.demands.iter().enumerate() {
+                let flow = demand.v[ts];
+                if flow <= 0.0 { continue; }
+                let mut waypoints: &[u64] = &[];
+                if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
+                    waypoints = &srpath.w;
+                }
+                let ok = expand_sr_path(
+                    &self.evaluator.graph, demand.s, demand.t, waypoints,
+                    &disabled_arcs, flow, &mut arc_flows,
+                );
+                if !ok {
+                    return false; // Connectivity violation
+                }
+            }
+
+            for arc in &self.evaluator.graph.arcs {
+                let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
+                let sat = if arc.capacity > 0.0 { flow / arc.capacity } else { f64::INFINITY };
+                if sat >= 1.0 - 1e-6 {
+                    return false; // Capacity violation
+                }
+            }
+        }
+
+        true
+    }
 }
