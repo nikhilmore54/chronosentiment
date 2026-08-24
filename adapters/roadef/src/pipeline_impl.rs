@@ -1405,9 +1405,13 @@ where
         let mut t_cache_lookup_ms = 0.0;
         let mut t_cache_hit_materialize_ms = 0.0;
         let mut t_cache_insert_ms = 0.0;
-        let mut t_cache_lookup_ms = 0.0;
-        let mut t_cache_hit_materialize_ms = 0.0;
-        let mut t_cache_insert_ms = 0.0;
+        // Phase 8: per-operator timing accumulators.
+        let mut t_crossover_ms: f64 = 0.0;
+        let mut t_mutation_ms: f64 = 0.0;
+        let mut t_repair_ms: f64 = 0.0;
+        let mut t_improve_ms: f64 = 0.0;
+        let mut t_sort_ms: f64 = 0.0;
+        let mut t_selection_ms: f64 = 0.0;
 
         generations_run += 1;
         if let Some(b) = config.max_runtime {
@@ -1478,31 +1482,52 @@ where
         // Track operator counts and cache stats (same as before).
         for _ in 0..needed {
             if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+                // Phase 8: time parent selection (index sampling only — no eval).
+                let t_sel_start = Instant::now();
                 let p1_idx = rng.gen_range(0..population.len());
                 let p2_idx = rng.gen_range(0..population.len());
+                t_selection_ms += t_sel_start.elapsed().as_secs_f64() * 1000.0;
+
                 let p1 = &population[p1_idx].genome;
                 let p2 = &population[p2_idx].genome;
+
+                // Phase 8: time crossover operator call only.
+                let t_xover_start = Instant::now();
                 let (mut child, _child2) = crossover.crossover(p1, p2, &mut rng);
+                t_crossover_ms += t_xover_start.elapsed().as_secs_f64() * 1000.0;
+
                 if rng.gen_bool(config.mutation_rate) {
+                    // Phase 8: time mutation operator call only.
+                    let t_mut_start = Instant::now();
                     mutator.mutate(&mut child, &mut rng);
+                    t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
                 }
 
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
                 let mut tag = "crossover_mutation";
-                let success = match pipeline_obj.process_offspring(&mut child) {
+                // Phase 8: time process_offspring (repair + improve) call only.
+                // Attribute to repair_ms or improve_ms based on outcome.
+                let t_proc_start = Instant::now();
+                let proc_result = pipeline_obj.process_offspring(&mut child);
+                let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
+                let success = match proc_result {
                     Ok(true) => {
                         tag = if !was_feasible {
+                            t_repair_ms += t_proc_elapsed;
                             "pipeline_repaired"
                         } else {
+                            t_improve_ms += t_proc_elapsed;
                             "pipeline_improved"
                         };
                         true
                     }
                     Ok(false) => {
+                        t_repair_ms += t_proc_elapsed; // failed repair still counts as repair time
                         tag = "pipeline_repair_failed";
                         false
                     }
                     Err(_) => {
+                        t_repair_ms += t_proc_elapsed;
                         tag = "pipeline_operator_error";
                         false
                     }
@@ -1530,27 +1555,43 @@ where
                     staging.push(OffspringStage::FallbackClone(fallback));
                 }
             } else {
+                // Phase 8: time parent selection.
+                let t_sel_start = Instant::now();
                 let p1_idx = rng.gen_range(0..population.len());
+                t_selection_ms += t_sel_start.elapsed().as_secs_f64() * 1000.0;
+
                 let p = &population[p1_idx].genome;
                 let mut child = p.clone();
+
+                // Phase 8: time mutation operator call only.
+                let t_mut_start = Instant::now();
                 mutator.mutate(&mut child, &mut rng);
+                t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
 
                 let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
                 let mut tag = "mutation";
-                let success = match pipeline_obj.process_offspring(&mut child) {
+                // Phase 8: time process_offspring (repair + improve) call only.
+                let t_proc_start = Instant::now();
+                let proc_result = pipeline_obj.process_offspring(&mut child);
+                let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
+                let success = match proc_result {
                     Ok(true) => {
                         tag = if !was_feasible {
+                            t_repair_ms += t_proc_elapsed;
                             "pipeline_repaired"
                         } else {
+                            t_improve_ms += t_proc_elapsed;
                             "pipeline_improved"
                         };
                         true
                     }
                     Ok(false) => {
+                        t_repair_ms += t_proc_elapsed;
                         tag = "pipeline_repair_failed";
                         false
                     }
                     Err(_) => {
+                        t_repair_ms += t_proc_elapsed;
                         tag = "pipeline_operator_error";
                         false
                     }
@@ -1661,6 +1702,8 @@ where
             next_generation.push(ev);
         }
 
+        // Phase 8: time sort.
+        let t_sort_start = Instant::now();
         next_generation.sort_by(|a, b| {
             comparator.cmp_evals(b, a).then(
                 b.fitness()
@@ -1668,6 +1711,7 @@ where
                     .unwrap_or(Ordering::Equal),
             )
         });
+        t_sort_ms += t_sort_start.elapsed().as_secs_f64() * 1000.0;
         population = next_generation;
 
         let cur_best = &population[0];
@@ -1689,10 +1733,17 @@ where
             evaluation_runtime_ms: t_eval_ms,
             best_obj: global_best.as_ref().map(|b| b.obj).unwrap_or(f64::INFINITY),
             duplicate_genomes: cache_hits,
-            cache_hits: cache_hits,
+            cache_hits,
             cache_lookup_ms: t_cache_lookup_ms,
             cache_hit_materialize_ms: t_cache_hit_materialize_ms,
             cache_insert_ms: t_cache_insert_ms,
+            // Phase 8: operator timing fields.
+            crossover_ms: t_crossover_ms,
+            mutation_ms: t_mutation_ms,
+            repair_ms: t_repair_ms,
+            improve_ms: t_improve_ms,
+            sort_ms: t_sort_ms,
+            selection_ms: t_selection_ms,
         });
 
         if generations_run % config.log_interval == 0 {

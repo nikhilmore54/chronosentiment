@@ -181,13 +181,15 @@ fn main() {
     // -----------------------------------------------------------------------
     // Per-generation breakdown
     // -----------------------------------------------------------------------
-    println!("gen,gen_ms,eval_ms,non_eval_ms,l1_lookup_ms,l1_materialize_ms,l1_insert_ms,l1_total_ms,unattributed_ms,n_eval,cache_hits");
+    println!("gen,gen_ms,eval_ms,non_eval_ms,l1_lookup_ms,l1_materialize_ms,l1_insert_ms,l1_total_ms,unattributed_ms,n_eval,cache_hits,crossover_ms,mutation_ms,repair_ms,improve_ms,sort_ms,selection_ms,attributed_ms,rayon_residual_ms");
     for g in &result.trajectory {
         let non_eval_ms = g.generation_runtime_ms - g.evaluation_runtime_ms;
         let l1_total_ms = g.cache_lookup_ms + g.cache_hit_materialize_ms + g.cache_insert_ms;
         let unattributed_ms = non_eval_ms - l1_total_ms;
+        let attributed_ms = g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms + g.sort_ms + g.selection_ms;
+        let rayon_residual_ms = unattributed_ms - attributed_ms;
         println!(
-            "{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{}",
+            "{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
             g.generation,
             g.generation_runtime_ms,
             g.evaluation_runtime_ms,
@@ -199,6 +201,14 @@ fn main() {
             unattributed_ms,
             g.n_eval,
             g.cache_hits,
+            g.crossover_ms,
+            g.mutation_ms,
+            g.repair_ms,
+            g.improve_ms,
+            g.sort_ms,
+            g.selection_ms,
+            attributed_ms,
+            rayon_residual_ms,
         );
     }
 
@@ -227,6 +237,20 @@ fn main() {
         .map(|(ne, l1)| ne - l1)
         .collect();
 
+    // Phase 8: operator timing vectors.
+    let crossover_vec: Vec<f64> = traj.iter().map(|g| g.crossover_ms).collect();
+    let mutation_vec: Vec<f64> = traj.iter().map(|g| g.mutation_ms).collect();
+    let repair_vec: Vec<f64> = traj.iter().map(|g| g.repair_ms).collect();
+    let improve_vec: Vec<f64> = traj.iter().map(|g| g.improve_ms).collect();
+    let sort_vec: Vec<f64> = traj.iter().map(|g| g.sort_ms).collect();
+    let selection_vec: Vec<f64> = traj.iter().map(|g| g.selection_ms).collect();
+    let attributed_vec: Vec<f64> = traj.iter().map(|g| {
+        g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms + g.sort_ms + g.selection_ms
+    }).collect();
+    let rayon_residual_vec: Vec<f64> = unattributed_vec.iter().zip(attributed_vec.iter())
+        .map(|(u, a)| u - a)
+        .collect();
+
     let _total_gen_ms: f64 = gen_ms_vec.iter().sum();
     let total_eval_ms: f64 = eval_ms_vec.iter().sum();
     let total_non_eval_ms: f64 = non_eval_ms_vec.iter().sum();
@@ -235,9 +259,17 @@ fn main() {
     let total_l1_ins_ms: f64 = l1_ins_vec.iter().sum();
     let total_l1_total_ms: f64 = l1_total_vec.iter().sum();
     let total_unattributed_ms: f64 = unattributed_vec.iter().sum();
+    let total_crossover_ms: f64 = crossover_vec.iter().sum();
+    let total_mutation_ms: f64 = mutation_vec.iter().sum();
+    let total_repair_ms: f64 = repair_vec.iter().sum();
+    let total_improve_ms: f64 = improve_vec.iter().sum();
+    let total_sort_ms: f64 = sort_vec.iter().sum();
+    let total_selection_ms: f64 = selection_vec.iter().sum();
+    let total_attributed_ms: f64 = attributed_vec.iter().sum();
+    let total_rayon_residual_ms: f64 = rayon_residual_vec.iter().sum();
 
     eprintln!();
-    eprintln!("=== Phase 7 Summary: {} generations on {} ===", generation_limit, instance_name);
+    eprintln!("=== Phase 8 Operator Attribution Summary: {} generations on {} ===", generation_limit, instance_name);
     eprintln!();
     eprintln!("Run result:");
     eprintln!("  best_obj        : {:.10}", result.best_obj);
@@ -264,12 +296,33 @@ fn main() {
     row("    L1 cache insert", total_l1_ins_ms, mean(&l1_ins_vec), stddev(&l1_ins_vec));
     row("    L1 cache total", total_l1_total_ms, mean(&l1_total_vec), stddev(&l1_total_vec));
     row("    Unattributed overhead", total_unattributed_ms, mean(&unattributed_vec), stddev(&unattributed_vec));
+    eprintln!("  {}", "-".repeat(80));
+    eprintln!("  Phase 8 operator breakdown (subset of unattributed):");
+    row("    Crossover", total_crossover_ms, mean(&crossover_vec), stddev(&crossover_vec));
+    row("    Mutation", total_mutation_ms, mean(&mutation_vec), stddev(&mutation_vec));
+    row("    Repair (process_offspring)", total_repair_ms, mean(&repair_vec), stddev(&repair_vec));
+    row("    Improve (process_offspring)", total_improve_ms, mean(&improve_vec), stddev(&improve_vec));
+    row("    Sort", total_sort_ms, mean(&sort_vec), stddev(&sort_vec));
+    row("    Selection", total_selection_ms, mean(&selection_vec), stddev(&selection_vec));
+    row("    Attributed total", total_attributed_ms, mean(&attributed_vec), stddev(&attributed_vec));
+    row("    Rayon residual", total_rayon_residual_ms, mean(&rayon_residual_vec), stddev(&rayon_residual_vec));
 
     eprintln!();
-    eprintln!("Note: 'Unattributed overhead' = non_eval - L1_cache_total.");
-    eprintln!("      Accounting residual. Includes (unmeasured): selection, crossover,");
-    eprintln!("      mutation, repair, sort, Rayon spawn/join, and any other overhead.");
-    eprintln!("      Phase 8 must instrument these individually before attributing causality.");
+    let attribution_pct = if total_unattributed_ms > 0.0 {
+        total_attributed_ms / total_unattributed_ms * 100.0
+    } else {
+        0.0
+    };
+    eprintln!("Phase 8 attribution gate: attributed_ms / unattributed_ms = {:.1}%", attribution_pct);
+    if attribution_pct >= 80.0 {
+        eprintln!("  GATE PASS: >= 80% attribution achieved.");
+    } else {
+        eprintln!("  GATE FAIL: < 80% attribution. Rayon coordination must be instrumented before Phase 9.");
+    }
+    eprintln!();
+    eprintln!("Note: 'Rayon residual' = unattributed_ms - attributed_ms.");
+    eprintln!("      This is an accounting residual, NOT proof of Rayon causality.");
+    eprintln!("      It includes Rayon spawn/join + any other unmeasured overhead.");
     eprintln!();
     eprintln!("Phase 7 baseline invariants:");
     eprintln!("  best_obj       : {:.10}", result.best_obj);

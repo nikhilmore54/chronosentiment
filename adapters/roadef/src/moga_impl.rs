@@ -1231,6 +1231,17 @@ pub struct GenerationSummary {
     pub cache_lookup_ms: f64,
     pub cache_hit_materialize_ms: f64,
     pub cache_insert_ms: f64,
+    // Phase 8: per-operator timing instrumentation.
+    // These fields measure wall-clock time spent in each operator category per generation.
+    // Timers wrap only the operator call itself — no RNG, no cache, no eval.
+    // Governance: timers must not affect RNG sequence or operator logic.
+    // All fields default to 0.0 when not instrumented (e.g. elite copy path).
+    pub crossover_ms: f64,      // time in crossover.crossover() calls
+    pub mutation_ms: f64,       // time in mutator.mutate() calls
+    pub repair_ms: f64,         // time in pipeline_obj.process_offspring() — repair path
+    pub improve_ms: f64,        // time in pipeline_obj.process_offspring() — improve path
+    pub sort_ms: f64,           // time in next_generation.sort_by()
+    pub selection_ms: f64,      // time in parent selection (tournament/index sampling)
 }
 
 pub struct EvolutionRunResult {
