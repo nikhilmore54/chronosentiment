@@ -44,7 +44,7 @@
 use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
-use crate::public_contracts::ScheduleRequest;
+use crate::config::FatigueConfig;
 use crate::models::Skill;
 
 // ─── Severity ────────────────────────────────────────────────────────────────
@@ -468,7 +468,7 @@ mod tests {
                 leave_requests: None, 
                 minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
-                max_hours_per_worker: Some(48.0),
+            fatigue: FatigueConfig::default(),
             }),
         }
     }
@@ -600,7 +600,19 @@ mod tests {
     #[test]
     fn test_multiple_errors_all_collected() {
         // Both V-001 and V-002 must appear — validator must not stop at first error
-        let req = ScheduleRequest {
+            workers: vec![],
+            shifts: vec![],
+            historical_workloads: None,
+            rng_seed: None,
+            generation_limit: None,
+            scenario: None,
+            fatigue: FatigueConfig::default(),
+            shifts: vec![],
+            historical_workloads: None,
+            rng_seed: None,
+            generation_limit: None,
+            scenario: None,
+            fatigue: FatigueConfig::default(),
             workers: vec![],
             shifts: vec![],
             historical_workloads: None,

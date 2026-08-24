@@ -20,7 +20,7 @@ use std::path::{Path as StdPath, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use ultracrew_server::models::{DecisionCase, ScheduleVersion, DecisionLog};
-use ultracrew_server::persistence::{load_collection, save_item, delete_item};
+use crate::config::FatigueConfig;
 use ultracrew::inrc::validator::validate_schedule;
 use ultracrew_server::simulation::{ConstraintAudit, WorkloadAudit, FeasibilityReport, ParetoFrontierSolution, Bottleneck, can_recover, NurseBalance, BalanceChange, SimulationState, Dashboard, Coverage, CoverageAudit, Alert, RosterHealth, BaselineStatus, VerificationReports, RecoveryPlan, CandidateType, BlockedRecovery, RecoveryAudit};
 
@@ -2190,6 +2190,7 @@ mod server_endpoints_tests {
             rng_seed: None,
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
         
         let response = app
@@ -2213,6 +2214,18 @@ mod server_endpoints_tests {
         
         use ultracrew::models::{Worker, Shift, Skill};
         let request = ultracrew::public_contracts::ScheduleRequest {
+    workers: vec![
+        Worker { id: 1, skills: vec![Skill::new("Forklift")] }
+    ],
+    shifts: vec![
+        Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")}
+    ],
+    historical_workloads: None,
+    rng_seed: Some(42),
+    generation_limit: None,
+    scenario: None,
+    fatigue: FatigueConfig::default(),
+};
             workers: vec![
                 Worker { id: 1, skills: vec![Skill::new("Forklift")] }
             ],

@@ -114,6 +114,14 @@ pub fn load_from_csv<P: AsRef<Path>>(
     validate_skill_coverage(&workers, &shifts)?;
 
     Ok(ScheduleRequest {
+    workers,
+    shifts,
+    historical_workloads: if historical_workloads.is_empty() { None } else { Some(historical_workloads) },
+    rng_seed,
+    generation_limit,
+    scenario,
+    fatigue: FatigueConfig::default(),
+})
         workers,
         shifts,
         historical_workloads: if historical_workloads.is_empty() { None } else { Some(historical_workloads) },
