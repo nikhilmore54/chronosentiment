@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use crate::config::FatigueConfig;
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::models::{Worker, Shift};
@@ -43,6 +44,8 @@ pub struct ScheduleRequest {
     /// When absent, engine defaults apply (backward-compatible).
     #[serde(default)]
     pub scenario: Option<InrcScenario>,
+    #[serde(default)]
+    pub fatigue: FatigueConfig,
 }
 
 impl Default for ScheduleRequest {
@@ -54,6 +57,7 @@ impl Default for ScheduleRequest {
             rng_seed: None,
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         }
     }
 }
