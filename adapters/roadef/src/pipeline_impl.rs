@@ -1505,29 +1505,24 @@ where
                     t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
                 }
 
-                // Phase 8: time is_feasible() call.
-                let t_feas_start = Instant::now();
-                let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
-                t_feasibility_ms += t_feas_start.elapsed().as_secs_f64() * 1000.0;
+                // P9-H3: removed standalone is_feasible() pre-check.
+                // process_offspring calls is_feasible() internally as its first action
+                // (coralys-core/src/pipeline.rs line 25), so the pre-check was a
+                // redundant evaluate_violations() call per offspring.
+                // Tag and timing attribution now derived from process_offspring result only.
                 let mut tag = "crossover_mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
-                // Attribute to repair_ms or improve_ms based on outcome.
                 let t_proc_start = Instant::now();
                 let proc_result = pipeline_obj.process_offspring(&mut child);
                 let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
                 let success = match proc_result {
                     Ok(true) => {
-                        tag = if !was_feasible {
-                            t_repair_ms += t_proc_elapsed;
-                            "pipeline_repaired"
-                        } else {
-                            t_improve_ms += t_proc_elapsed;
-                            "pipeline_improved"
-                        };
+                        t_improve_ms += t_proc_elapsed;
+                        tag = "pipeline_improved";
                         true
                     }
                     Ok(false) => {
-                        t_repair_ms += t_proc_elapsed; // failed repair still counts as repair time
+                        t_repair_ms += t_proc_elapsed;
                         tag = "pipeline_repair_failed";
                         false
                     }
@@ -1573,10 +1568,7 @@ where
                 mutator.mutate(&mut child, &mut rng);
                 t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
 
-                // Phase 8: time is_feasible() call.
-                let t_feas_start = Instant::now();
-                let was_feasible = pipeline_obj.constraint_model.is_feasible(&child);
-                t_feasibility_ms += t_feas_start.elapsed().as_secs_f64() * 1000.0;
+                // P9-H3: removed standalone is_feasible() pre-check (same as crossover path).
                 let mut tag = "mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
                 let t_proc_start = Instant::now();
@@ -1584,13 +1576,8 @@ where
                 let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
                 let success = match proc_result {
                     Ok(true) => {
-                        tag = if !was_feasible {
-                            t_repair_ms += t_proc_elapsed;
-                            "pipeline_repaired"
-                        } else {
-                            t_improve_ms += t_proc_elapsed;
-                            "pipeline_improved"
-                        };
+                        t_improve_ms += t_proc_elapsed;
+                        tag = "pipeline_improved";
                         true
                     }
                     Ok(false) => {
