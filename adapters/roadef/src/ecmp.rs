@@ -1,6 +1,6 @@
 use crate::graph::Digraph;
-use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 #[derive(Copy, Clone)]
 struct State {
@@ -21,7 +21,10 @@ impl Ord for State {
         // Notice that the we flip the ordering on costs.
         // In case of a tie we compare positions - this step is necessary
         // to make implementations of `PartialEq` and `Ord` consistent.
-        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
             .then_with(|| self.position.cmp(&other.position))
     }
 }
@@ -31,12 +34,17 @@ impl PartialOrd for State {
     }
 }
 
+#[derive(Clone)]
 pub struct DijkstraResult {
     pub dist: HashMap<u64, f64>,
     pub preds: HashMap<u64, Vec<usize>>, // Array of arc indices
 }
 
-pub fn backward_dijkstra(graph: &Digraph, target: u64, disabled_arcs: &HashSet<u64>) -> DijkstraResult {
+pub fn backward_dijkstra(
+    graph: &Digraph,
+    target: u64,
+    disabled_arcs: &HashSet<u64>,
+) -> DijkstraResult {
     let mut dist: HashMap<u64, f64> = HashMap::new();
     let mut preds: HashMap<u64, Vec<usize>> = HashMap::new();
     let mut heap = BinaryHeap::new();
@@ -46,7 +54,10 @@ pub fn backward_dijkstra(graph: &Digraph, target: u64, disabled_arcs: &HashSet<u
     }
 
     dist.insert(target, 0.0);
-    heap.push(State { cost: 0.0, position: target });
+    heap.push(State {
+        cost: 0.0,
+        position: target,
+    });
 
     while let Some(State { cost, position }) = heap.pop() {
         if cost > *dist.get(&position).unwrap_or(&f64::INFINITY) {
@@ -60,8 +71,11 @@ pub fn backward_dijkstra(graph: &Digraph, target: u64, disabled_arcs: &HashSet<u
                 if disabled_arcs.contains(&arc.id) {
                     continue;
                 }
-                
-                let next = State { cost: cost + arc.metric, position: arc.from };
+
+                let next = State {
+                    cost: cost + arc.metric,
+                    position: arc.from,
+                };
                 let current_dist = *dist.get(&next.position).unwrap_or(&f64::INFINITY);
 
                 if next.cost < current_dist {
@@ -84,7 +98,7 @@ pub fn route_ecmp(
     source: u64,
     target: u64,
     flow: f64,
-    arc_flow: &mut HashMap<u64, f64>
+    arc_flow: &mut HashMap<u64, f64>,
 ) -> bool {
     // If target not reached
     if *dijkstra_result.dist.get(&source).unwrap_or(&f64::INFINITY) == f64::INFINITY {
@@ -97,12 +111,22 @@ pub fn route_ecmp(
     // To process nodes in topological order of the shortest-path DAG,
     // we can process them in order of increasing distance from the target.
     // However, we are pushing flow FORWARD, so we process nodes in decreasing distance from the target.
-    let mut nodes: Vec<u64> = dijkstra_result.dist.keys().cloned()
+    let mut nodes: Vec<u64> = dijkstra_result
+        .dist
+        .keys()
+        .cloned()
         .filter(|&k| *dijkstra_result.dist.get(&k).unwrap() != f64::INFINITY)
         .collect();
-    
+
     // Sort descending by distance from target
-    nodes.sort_by(|a, b| dijkstra_result.dist.get(b).unwrap().partial_cmp(dijkstra_result.dist.get(a).unwrap()).unwrap());
+    nodes.sort_by(|a, b| {
+        dijkstra_result
+            .dist
+            .get(b)
+            .unwrap()
+            .partial_cmp(dijkstra_result.dist.get(a).unwrap())
+            .unwrap()
+    });
 
     for v in nodes {
         let f = *node_flow.get(&v).unwrap_or(&0.0);
@@ -128,7 +152,7 @@ pub fn expand_sr_path(
     waypoints: &[u64],
     disabled_arcs: &HashSet<u64>,
     flow: f64,
-    arc_flow: &mut HashMap<u64, f64>
+    arc_flow: &mut HashMap<u64, f64>,
 ) -> bool {
     // If no waypoints, just route source to target
     if waypoints.is_empty() {
@@ -143,7 +167,7 @@ pub fn expand_sr_path(
 
     for i in 0..path.len() - 1 {
         let u = path[i];
-        let v = path[i+1];
+        let v = path[i + 1];
         if u != v {
             let res = backward_dijkstra(graph, v, disabled_arcs);
             let ok = route_ecmp(graph, &res, u, v, flow, arc_flow);
@@ -159,7 +183,7 @@ pub fn expand_sr_path(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Network, NetworkNode, NetworkLink};
+    use crate::models::{Network, NetworkLink, NetworkNode};
 
     fn make_test_graph() -> Digraph {
         let network = Network {
@@ -172,11 +196,41 @@ mod tests {
                 NetworkNode { id: 3, name: None },
             ],
             links: vec![
-                NetworkLink { id: 10, from: 0, to: 1, metric: 10.0, capacity: 100.0 },
-                NetworkLink { id: 11, from: 0, to: 2, metric: 10.0, capacity: 100.0 },
-                NetworkLink { id: 12, from: 1, to: 3, metric: 10.0, capacity: 100.0 },
-                NetworkLink { id: 13, from: 2, to: 3, metric: 10.0, capacity: 100.0 },
-                NetworkLink { id: 14, from: 0, to: 3, metric: 30.0, capacity: 100.0 },
+                NetworkLink {
+                    id: 10,
+                    from: 0,
+                    to: 1,
+                    metric: 10.0,
+                    capacity: 100.0,
+                },
+                NetworkLink {
+                    id: 11,
+                    from: 0,
+                    to: 2,
+                    metric: 10.0,
+                    capacity: 100.0,
+                },
+                NetworkLink {
+                    id: 12,
+                    from: 1,
+                    to: 3,
+                    metric: 10.0,
+                    capacity: 100.0,
+                },
+                NetworkLink {
+                    id: 13,
+                    from: 2,
+                    to: 3,
+                    metric: 10.0,
+                    capacity: 100.0,
+                },
+                NetworkLink {
+                    id: 14,
+                    from: 0,
+                    to: 3,
+                    metric: 30.0,
+                    capacity: 100.0,
+                },
             ],
         };
         Digraph::new(&network)
@@ -186,7 +240,7 @@ mod tests {
     fn test_ecmp_diamond() {
         let graph = make_test_graph();
         let disabled = HashSet::new();
-        
+
         let mut arc_flow = HashMap::new();
         expand_sr_path(&graph, 0, 3, &[], &disabled, 100.0, &mut arc_flow);
 
@@ -204,7 +258,7 @@ mod tests {
     fn test_sr_path_waypoints() {
         let graph = make_test_graph();
         let disabled = HashSet::new();
-        
+
         let mut arc_flow = HashMap::new();
         // Force flow to go 0 -> 2 -> 1 -> 3
         // Wait, 2 -> 1 doesn't exist.

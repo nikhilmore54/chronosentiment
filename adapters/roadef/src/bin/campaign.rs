@@ -12,23 +12,22 @@
 ///   - MOGA optimizer runs end-to-end for each instance
 ///   - Per-instance objective, MLU, validity, runtime recorded
 ///   - Zero modifications to frozen Qualification Subsystem v1.0
-
 use std::fs;
 use std::io::BufWriter;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
 use roadef::evaluator::RoadefEvaluator;
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    EvolutionRunConfig, run_roadef_evolution,
+    run_roadef_evolution, EvolutionRunConfig, RoadefCrossover, RoadefFitnessEvaluator,
+    RoadefGenomeFactory, RoadefMutator,
 };
-use roadef::telemetry::{NullTelemetrySink, JsonlTelemetrySink, ComparatorMode};
+use roadef::telemetry::{ComparatorMode, JsonlTelemetrySink, NullTelemetrySink};
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -39,7 +38,7 @@ const REPORT_DIR: &str = "benchmarks/roadef/campaign";
 
 // Execution parameters
 const POPULATION_SIZE: usize = 50;
-const GENERATION_LIMIT: usize = 500;   // high ceiling — time budget governs large instances
+const GENERATION_LIMIT: usize = 500; // high ceiling — time budget governs large instances
 const ELITE_COUNT: usize = 5;
 const CAMPAIGN_ID: &str = "campaign_v1.0_verify";
 
@@ -84,12 +83,20 @@ struct CampaignReport {
 // ---------------------------------------------------------------------------
 
 fn classify_obj(obj: f64, valid: bool) -> &'static str {
-    if !valid { return "Invalid"; }
-    if obj < 10.0  { "Excellent" }
-    else if obj < 30.0  { "Good" }
-    else if obj < 60.0  { "Competitive" }
-    else if obj < 100.0 { "Weak" }
-    else               { "Poor" }
+    if !valid {
+        return "Invalid";
+    }
+    if obj < 10.0 {
+        "Excellent"
+    } else if obj < 30.0 {
+        "Good"
+    } else if obj < 60.0 {
+        "Competitive"
+    } else if obj < 100.0 {
+        "Weak"
+    } else {
+        "Poor"
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -101,8 +108,8 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
     let mut instances = Vec::new();
     for i in 1..=20 {
         let name = format!("setA-{:02}", i);
-        let net      = format!("{}/{}-net.json",      INSTANCE_DIR, name);
-        let tm       = format!("{}/{}-tm.json",       INSTANCE_DIR, name);
+        let net = format!("{}/{}-net.json", INSTANCE_DIR, name);
+        let tm = format!("{}/{}-tm.json", INSTANCE_DIR, name);
         let scenario = format!("{}/{}-scenario.json", INSTANCE_DIR, name);
         // Only include if all three files exist
         if Path::new(&net).exists() && Path::new(&tm).exists() && Path::new(&scenario).exists() {
@@ -120,7 +127,10 @@ fn main() {
     let campaign_start = Instant::now();
     eprintln!("=== ROADEF 2026 Campaign Runner — {} ===", CAMPAIGN_ID);
     eprintln!("Instance dir: {}", INSTANCE_DIR);
-    eprintln!("Population: {}  Generations: {}  Elite: {}", POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT);
+    eprintln!(
+        "Population: {}  Generations: {}  Elite: {}",
+        POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT
+    );
     eprintln!();
 
     let instances = discover_instances();
@@ -142,9 +152,15 @@ fn main() {
                 results.push(InstanceResult {
                     instance_id: instance_num,
                     name: name.clone(),
-                    num_demands: 0, num_nodes: 0, num_links: 0, num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, generations: 0,
+                    num_demands: 0,
+                    num_nodes: 0,
+                    num_links: 0,
+                    num_time_slots: 0,
+                    best_obj: f64::INFINITY,
+                    avg_mlu: f64::INFINITY,
+                    valid: false,
+                    runtime_ms: 0,
+                    generations: 0,
                     quality_class: "LoadError".to_string(),
                 });
                 continue;
@@ -157,9 +173,15 @@ fn main() {
                 results.push(InstanceResult {
                     instance_id: instance_num,
                     name: name.clone(),
-                    num_demands: 0, num_nodes: net.nodes.len(), num_links: net.links.len(), num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, generations: 0,
+                    num_demands: 0,
+                    num_nodes: net.nodes.len(),
+                    num_links: net.links.len(),
+                    num_time_slots: 0,
+                    best_obj: f64::INFINITY,
+                    avg_mlu: f64::INFINITY,
+                    valid: false,
+                    runtime_ms: 0,
+                    generations: 0,
                     quality_class: "LoadError".to_string(),
                 });
                 continue;
@@ -172,9 +194,15 @@ fn main() {
                 results.push(InstanceResult {
                     instance_id: instance_num,
                     name: name.clone(),
-                    num_demands: 0, num_nodes: net.nodes.len(), num_links: net.links.len(), num_time_slots: 0,
-                    best_obj: f64::INFINITY, avg_mlu: f64::INFINITY,
-                    valid: false, runtime_ms: 0, generations: 0,
+                    num_demands: 0,
+                    num_nodes: net.nodes.len(),
+                    num_links: net.links.len(),
+                    num_time_slots: 0,
+                    best_obj: f64::INFINITY,
+                    avg_mlu: f64::INFINITY,
+                    valid: false,
+                    runtime_ms: 0,
+                    generations: 0,
                     quality_class: "LoadError".to_string(),
                 });
                 continue;
@@ -187,7 +215,10 @@ fn main() {
         let num_links = net.links.len();
         let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
 
-        eprintln!("  nodes={} links={} demands={} time_slots={}", num_nodes, num_links, num_demands, num_time_slots);
+        eprintln!(
+            "  nodes={} links={} demands={} time_slots={}",
+            num_nodes, num_links, num_demands, num_time_slots
+        );
 
         // Build evaluator
         let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
@@ -202,15 +233,22 @@ fn main() {
         };
         let fitness_eval = RoadefFitnessEvaluator {
             evaluator: Arc::clone(&evaluator),
+            l2_cache: None,
         };
-        let mutator = RoadefMutator { node_ids: node_ids.clone() };
+        let mutator = RoadefMutator {
+            node_ids: node_ids.clone(),
+        };
         let crossover = RoadefCrossover;
 
         // Adaptive time budget: clamp(0.5ms × demands × links, MIN, MAX)
         let raw_budget_ms = (num_demands as u64) * (num_links as u64) / 2;
-        let budget_secs = raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
+        let budget_secs =
+            raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
         let max_runtime = std::time::Duration::from_secs(budget_secs);
-        eprintln!("  budget={}s (demands={} links={})", budget_secs, num_demands, num_links);
+        eprintln!(
+            "  budget={}s (demands={} links={})",
+            budget_secs, num_demands, num_links
+        );
 
         let evo_config = EvolutionRunConfig {
             population_size: POPULATION_SIZE,
@@ -241,33 +279,57 @@ fn main() {
         // Set RP410_TELEMETRY_DIR env var to enable JSONL output.
         // Default: NullTelemetrySink (zero overhead, existing behaviour preserved).
         let telemetry_dir = std::env::var("RP410_TELEMETRY_DIR").ok();
-        let seed_str = evo_config.seed.map(|s| s.to_string()).unwrap_or_else(|| "rand".to_string());
+        let seed_str = evo_config
+            .seed
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "rand".to_string());
         let run_result = if let Some(ref tdir) = telemetry_dir {
             let _ = fs::create_dir_all(tdir);
             let moves_path = format!("{}/rp410_moves_{}_{}.jsonl", tdir, name, seed_str);
-            let gens_path  = format!("{}/rp410_generations_{}_{}.jsonl", tdir, name, seed_str);
+            let gens_path = format!("{}/rp410_generations_{}_{}.jsonl", tdir, name, seed_str);
             let moves_file = fs::File::create(&moves_path).map(|f| BufWriter::new(f));
-            let gens_file  = fs::File::create(&gens_path).map(|f| BufWriter::new(f));
+            let gens_file = fs::File::create(&gens_path).map(|f| BufWriter::new(f));
             match (moves_file, gens_file) {
                 (Ok(mf), Ok(gf)) => {
                     let mut sink = JsonlTelemetrySink::new(mf, gf);
                     run_roadef_evolution(
-                        &factory, &fitness_eval, &mutator, &crossover,
-                        &evo_config, name, &mut *log_buf, &mut sink,
+                        &factory,
+                        &fitness_eval,
+                        &mutator,
+                        &crossover,
+                        &evo_config,
+                        name,
+                        &mut *log_buf,
+                        &mut sink,
                     )
                 }
                 _ => {
-                    eprintln!("  [RP410] Warning: could not create telemetry files in {}", tdir);
+                    eprintln!(
+                        "  [RP410] Warning: could not create telemetry files in {}",
+                        tdir
+                    );
                     run_roadef_evolution(
-                        &factory, &fitness_eval, &mutator, &crossover,
-                        &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+                        &factory,
+                        &fitness_eval,
+                        &mutator,
+                        &crossover,
+                        &evo_config,
+                        name,
+                        &mut *log_buf,
+                        &mut NullTelemetrySink,
                     )
                 }
             }
         } else {
             run_roadef_evolution(
-                &factory, &fitness_eval, &mutator, &crossover,
-                &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+                &factory,
+                &fitness_eval,
+                &mutator,
+                &crossover,
+                &evo_config,
+                name,
+                &mut *log_buf,
+                &mut NullTelemetrySink,
             )
         };
 
@@ -279,23 +341,41 @@ fn main() {
 
         let quality_class = classify_obj(best_obj, valid).to_string();
 
-        eprintln!("  → obj={:.4}  avg_mlu={:.4}  valid={}  [{}]  {}ms  {} gens  (term: {})",
-            best_obj, avg_mlu, valid, quality_class, runtime_ms, generations,
-            run_result.termination_reason);
+        eprintln!(
+            "  → obj={:.4}  avg_mlu={:.4}  valid={}  [{}]  {}ms  {} gens  (term: {})",
+            best_obj,
+            avg_mlu,
+            valid,
+            quality_class,
+            runtime_ms,
+            generations,
+            run_result.termination_reason
+        );
 
         results.push(InstanceResult {
             instance_id: instance_num,
             name: name.clone(),
-            num_demands, num_nodes, num_links, num_time_slots,
-            best_obj, avg_mlu, valid, runtime_ms, generations,
+            num_demands,
+            num_nodes,
+            num_links,
+            num_time_slots,
+            best_obj,
+            avg_mlu,
+            valid,
+            runtime_ms,
+            generations,
             quality_class,
         });
     }
 
     let elapsed_total = campaign_start.elapsed();
     eprintln!();
-    eprintln!("=== Campaign complete: {}/{} instances  {:.1}s ===",
-        results.len(), total, elapsed_total.as_secs_f64());
+    eprintln!(
+        "=== Campaign complete: {}/{} instances  {:.1}s ===",
+        results.len(),
+        total,
+        elapsed_total.as_secs_f64()
+    );
 
     // ── Write reports ────────────────────────────────────────────────────────
     if let Err(e) = fs::create_dir_all(REPORT_DIR) {
@@ -349,14 +429,23 @@ fn build_markdown_report(report: &CampaignReport, total_secs: f64) -> String {
     md.push_str("# ROADEF 2026 — Evidence Report v1.0\n\n");
     md.push_str(&format!("**Campaign:** {}  \n", report.campaign_id));
     md.push_str(&format!("**Timestamp:** {}  \n", report.timestamp));
-    md.push_str(&format!("**Solver version:** {}  \n", report.solver_version));
+    md.push_str(&format!(
+        "**Solver version:** {}  \n",
+        report.solver_version
+    ));
     md.push_str(&format!("**Total runtime:** {:.1}s  \n\n", total_secs));
 
     md.push_str("## Summary\n\n");
     md.push_str(&format!("| Metric | Value |\n|--------|-------|\n"));
-    md.push_str(&format!("| Total instances | {} |\n", report.total_instances));
+    md.push_str(&format!(
+        "| Total instances | {} |\n",
+        report.total_instances
+    ));
     md.push_str(&format!("| Valid solutions | {} |\n", report.valid_count));
-    md.push_str(&format!("| Invalid solutions | {} |\n", report.invalid_count));
+    md.push_str(&format!(
+        "| Invalid solutions | {} |\n",
+        report.invalid_count
+    ));
 
     // Quality class distribution
     let mut class_counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
@@ -365,7 +454,16 @@ fn build_markdown_report(report: &CampaignReport, total_secs: f64) -> String {
     }
     md.push_str("\n## Quality Distribution\n\n");
     md.push_str("| Class | Count |\n|-------|-------|\n");
-    for cls in &["Excellent", "Good", "Competitive", "Weak", "Poor", "Invalid", "LoadError", "EvolutionError"] {
+    for cls in &[
+        "Excellent",
+        "Good",
+        "Competitive",
+        "Weak",
+        "Poor",
+        "Invalid",
+        "LoadError",
+        "EvolutionError",
+    ] {
         if let Some(&count) = class_counts.get(cls) {
             md.push_str(&format!("| {} | {} |\n", cls, count));
         }
@@ -375,25 +473,67 @@ fn build_markdown_report(report: &CampaignReport, total_secs: f64) -> String {
     md.push_str("| # | Instance | Demands | Nodes | Links | Slots | Obj | Avg MLU | Valid | Class | Runtime (ms) | Gens |\n");
     md.push_str("|---|----------|---------|-------|-------|-------|-----|---------|-------|-------|-------------|------|\n");
     for r in &report.results {
-        let obj_str = if r.best_obj.is_finite() { format!("{:.4}", r.best_obj) } else { "∞".to_string() };
-        let mlu_str = if r.avg_mlu.is_finite() { format!("{:.4}", r.avg_mlu) } else { "∞".to_string() };
+        let obj_str = if r.best_obj.is_finite() {
+            format!("{:.4}", r.best_obj)
+        } else {
+            "∞".to_string()
+        };
+        let mlu_str = if r.avg_mlu.is_finite() {
+            format!("{:.4}", r.avg_mlu)
+        } else {
+            "∞".to_string()
+        };
         md.push_str(&format!(
             "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |\n",
-            r.instance_id, r.name, r.num_demands, r.num_nodes, r.num_links,
-            r.num_time_slots, obj_str, mlu_str,
+            r.instance_id,
+            r.name,
+            r.num_demands,
+            r.num_nodes,
+            r.num_links,
+            r.num_time_slots,
+            obj_str,
+            mlu_str,
             if r.valid { "✓" } else { "✗" },
-            r.quality_class, r.runtime_ms, r.generations
+            r.quality_class,
+            r.runtime_ms,
+            r.generations
         ));
     }
 
     md.push_str("\n## M19 Acceptance Criteria\n\n");
     md.push_str("| Criterion | Status |\n|-----------|--------|\n");
-    md.push_str(&format!("| All instances load successfully | {} |\n",
-        if report.results.iter().all(|r| r.quality_class != "LoadError") { "✓ PASS" } else { "✗ FAIL" }));
-    md.push_str(&format!("| MOGA optimizer runs end-to-end | {} |\n",
-        if report.results.iter().all(|r| r.quality_class != "EvolutionError") { "✓ PASS" } else { "✗ FAIL" }));
-    md.push_str(&format!("| Valid solutions produced | {} |\n",
-        if report.valid_count > 0 { "✓ PASS" } else { "✗ FAIL" }));
+    md.push_str(&format!(
+        "| All instances load successfully | {} |\n",
+        if report
+            .results
+            .iter()
+            .all(|r| r.quality_class != "LoadError")
+        {
+            "✓ PASS"
+        } else {
+            "✗ FAIL"
+        }
+    ));
+    md.push_str(&format!(
+        "| MOGA optimizer runs end-to-end | {} |\n",
+        if report
+            .results
+            .iter()
+            .all(|r| r.quality_class != "EvolutionError")
+        {
+            "✓ PASS"
+        } else {
+            "✗ FAIL"
+        }
+    ));
+    md.push_str(&format!(
+        "| Valid solutions produced | {} |\n",
+        if report.valid_count > 0 {
+            "✓ PASS"
+        } else {
+            "✗ FAIL"
+        }
+    ));
     md.push_str("| Zero modifications to Qualification Subsystem v1.0 | ✓ PASS |\n");
 
     md.push_str("\n## Notes\n\n");

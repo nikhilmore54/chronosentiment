@@ -162,6 +162,7 @@ fn run_single_arm(ctx: &RunContext) -> Option<(ArmResult, u64)> {
     let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
     let fitness_eval = RoadefFitnessEvaluator {
         evaluator: Arc::clone(&evaluator),
+        l2_cache: None,
     };
     let mutator = RoadefMutator {
         node_ids: node_ids.clone(),

@@ -18,21 +18,19 @@
 ///   grep '\[diag\]' rc006a_diag.txt | head -50
 ///
 /// Classification: RC-006A Phase 1 diagnostic binary.
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use roadef::evaluator::RoadefEvaluator;
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::Network;
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    EvolutionRunConfig, run_roadef_evolution,
-    ConstructionMode, GreedyConstructorData,
+    run_roadef_evolution, ConstructionMode, EvolutionRunConfig, GreedyConstructorData,
+    RoadefCrossover, RoadefFitnessEvaluator, RoadefGenomeFactory, RoadefMutator,
 };
-use roadef::telemetry::{NullTelemetrySink, ComparatorMode};
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
+use roadef::telemetry::{ComparatorMode, NullTelemetrySink};
 
 const INSTANCE_DIR: &str = "repo/challenge-roadef-2026-main/setA";
 
@@ -47,11 +45,10 @@ const GENERATION_LIMIT: usize = 500;
 const ELITE_COUNT: usize = 5;
 const FIXED_SEED: u64 = 42;
 
-fn build_greedy_data(
-    net: &Network,
-    evaluator: Arc<RoadefEvaluator>,
-) -> Arc<GreedyConstructorData> {
-    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator.tm.demands
+fn build_greedy_data(net: &Network, evaluator: Arc<RoadefEvaluator>) -> Arc<GreedyConstructorData> {
+    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator
+        .tm
+        .demands
         .iter()
         .enumerate()
         .map(|(i, d)| {
@@ -61,7 +58,10 @@ fn build_greedy_data(
         .collect();
     demands_by_volume.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
 
-    let link_capacity: HashMap<u64, f64> = evaluator.graph.arcs.iter()
+    let link_capacity: HashMap<u64, f64> = evaluator
+        .graph
+        .arcs
+        .iter()
         .map(|a| (a.id, a.capacity))
         .collect();
 
@@ -80,8 +80,10 @@ fn main() {
     eprintln!("=== RC-006A Phase 1: Invariant Corruption Diagnostic ===");
     eprintln!("Instances: {:?}", DIAG_INSTANCES);
     eprintln!("Budget: {}s per instance per arm", DIAG_BUDGET_SECS);
-    eprintln!("Seed: {}  Population: {}  Generations: {}",
-        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT);
+    eprintln!(
+        "Seed: {}  Population: {}  Generations: {}",
+        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT
+    );
     eprintln!("---");
     eprintln!("[diag] lines below identify invalid offspring by operator origin.");
     eprintln!("H1 confirmed if: origin=mutation lines appear");
@@ -90,8 +92,8 @@ fn main() {
     eprintln!("---");
 
     for instance_name in DIAG_INSTANCES {
-        let net_path      = format!("{}/{}-net.json",      INSTANCE_DIR, instance_name);
-        let tm_path       = format!("{}/{}-tm.json",       INSTANCE_DIR, instance_name);
+        let net_path = format!("{}/{}-net.json", INSTANCE_DIR, instance_name);
+        let tm_path = format!("{}/{}-tm.json", INSTANCE_DIR, instance_name);
         let scenario_path = format!("{}/{}-scenario.json", INSTANCE_DIR, instance_name);
 
         if !Path::new(&net_path).exists() {
@@ -101,18 +103,23 @@ fn main() {
 
         eprintln!("\n=== {} ===", instance_name);
 
-        let net      = load_network(&net_path).expect("Failed to load network");
-        let tm       = load_traffic_matrix(&tm_path).expect("Failed to load TM");
+        let net = load_network(&net_path).expect("Failed to load network");
+        let tm = load_traffic_matrix(&tm_path).expect("Failed to load TM");
         let scenario = load_scenario(&scenario_path).expect("Failed to load scenario");
 
-        let num_demands    = tm.demands.len();
+        let num_demands = tm.demands.len();
         let num_time_slots = tm.num_time_slots;
         let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
 
-        let evaluator    = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
-        let fitness_eval = RoadefFitnessEvaluator { evaluator: evaluator.clone() };
-        let mutator      = RoadefMutator { node_ids: node_ids.clone() };
-        let crossover    = RoadefCrossover;
+        let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
+        let fitness_eval = RoadefFitnessEvaluator {
+            evaluator: evaluator.clone(),
+            l2_cache: None,
+        };
+        let mutator = RoadefMutator {
+            node_ids: node_ids.clone(),
+        };
+        let crossover = RoadefCrossover;
 
         // Run Arm B (Greedy) only — this is the arm that shows the invariant violation
         let greedy_data = build_greedy_data(&net, evaluator.clone());
@@ -142,8 +149,14 @@ fn main() {
         // Log to stderr (the [diag] lines are already written to stderr by the evolution loop)
         let mut log_buf: Box<dyn std::io::Write> = Box::new(std::io::stderr());
         let result = run_roadef_evolution(
-            &factory, &fitness_eval, &mutator, &crossover,
-            &evo_config, instance_name, &mut *log_buf, &mut NullTelemetrySink,
+            &factory,
+            &fitness_eval,
+            &mutator,
+            &crossover,
+            &evo_config,
+            instance_name,
+            &mut *log_buf,
+            &mut NullTelemetrySink,
         );
 
         eprintln!("--- {} Arm B result ---", instance_name);
@@ -152,8 +165,10 @@ fn main() {
         eprintln!("  best_obj:     {}", result.best_obj);
         eprintln!("  generations:  {}", result.generations_run);
         eprintln!("  termination:  {}", result.termination_reason);
-        eprintln!("  invariant:    IFR=1.0 AND valid=false = {}",
-            result.initial_feasibility_rate >= 1.0 && !result.valid);
+        eprintln!(
+            "  invariant:    IFR=1.0 AND valid=false = {}",
+            result.initial_feasibility_rate >= 1.0 && !result.valid
+        );
     }
 
     eprintln!("\n=== RC-006A Phase 1 complete ===");

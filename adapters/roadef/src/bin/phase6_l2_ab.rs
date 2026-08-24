@@ -1,29 +1,44 @@
-/// phase3_rayon_ab.rs — Phase 3 Rayon A/B Invariant + Performance Harness
+/// phase6_l2_ab.rs — Phase 6 L2 Cross-Evaluation Dijkstra Cache A/B Harness
 ///
 /// Governance protocol:
-///   Arm A (L1 baseline):  run_pipeline_evolution_v2(..., use_rayon=false)
-///   Arm B (Rayon):        run_pipeline_evolution_v2(..., use_rayon=true)
+///   Arm A (Phase 4 baseline): run_pipeline_evolution_v2(..., use_rayon=true, l2_cache=None)
+///   Arm B (Phase 4 + L2):     run_pipeline_evolution_v2(..., use_rayon=true, l2_cache=Some(...))
 ///
 /// Both arms receive the IDENTICAL initial population (same seed, same factory).
 /// The RNG sequence inside the evolution loop is also seeded identically.
 ///
-/// Invariants checked:
-///   1. best_obj identical between A and B (same search trajectory → same result)
-///   2. n_actual_evals identical (Rayon only parallelises; does not skip evaluations)
-///   3. generations_run identical (termination condition unchanged)
+/// Invariants checked (all 5 must be identical):
+///   1. best_obj
+///   2. n_actual_evals
+///   3. generations_run
+///   4. valid
+///   5. cache_hits (L1 genome cache)
 ///
 /// Performance metrics:
 ///   - Wall-clock runtime (ms) for each arm
-///   - Speedup ratio: A_runtime / B_runtime
 ///   - Eval-phase time (ms) from GenerationSummary trajectory
+///   - T_net = eval_time_A - eval_time_B (must be > 0 for promotion)
+///   - L2 cache entries (unique (target_node, time_slot) pairs computed)
+///
+/// Phase 4 baseline (authoritative):
+///   instance      : setA-14
+///   seed          : 42
+///   best_obj      : 86.1250850504
+///   n_actual_evals: 2006
+///   generations   : 50
+///   valid         : true
+///   cache_hits    : 181
+///   eval_time_ms  : 185,159
+///   wall_clock_ms : 1,739,745
+///   commit        : 4a691cdd2
 ///
 /// Usage:
-///   cargo run --release -p roadef --bin phase3_rayon_ab -- [--instance setA-14] [--gens 50] [--seed 42]
-use std::io::BufWriter;
-use std::sync::Arc;
+///   cargo run --release -p roadef --bin phase6_l2_ab -- [--instance setA-01] [--gens 50] [--seed 42]
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-use roadef::evaluator::RoadefEvaluator;
+use roadef::evaluator::{L2DijkstraCache, RoadefEvaluator};
 use roadef::moga_impl::{
     generate_gen0_population, ConstructionMode, EvolutionRunConfig, EvolutionRunResult,
     RoadefCrossover, RoadefFitnessEvaluator, RoadefGenomeFactory, RoadefMutator,
@@ -37,7 +52,7 @@ const ELITE_COUNT: usize = 5;
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let mut instance_name = "setA-14".to_string();
+    let mut instance_name = "setA-01".to_string();
     let mut generation_limit: usize = 50;
     let mut seed: u64 = 42;
 
@@ -66,7 +81,7 @@ fn main() {
     let tm_path = format!("{}/{}-tm.json", INSTANCE_DIR, instance_name);
     let scenario_path = format!("{}/{}-scenario.json", INSTANCE_DIR, instance_name);
 
-    eprintln!("=== Phase 3 Rayon A/B Harness ===");
+    eprintln!("=== Phase 6 L2 Dijkstra Cache A/B Harness ===");
     eprintln!("Instance   : {}", instance_name);
     eprintln!("Generations: {}", generation_limit);
     eprintln!("Seed       : {}", seed);
@@ -81,14 +96,12 @@ fn main() {
     let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
 
     let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
-    let fitness_eval = RoadefFitnessEvaluator {
+
+    // Arm A: Phase 4 baseline — no L2 cache.
+    let fitness_eval_a = RoadefFitnessEvaluator {
         evaluator: Arc::clone(&evaluator),
         l2_cache: None,
     };
-    let mutator = RoadefMutator {
-        node_ids: node_ids.clone(),
-    };
-    let crossover = RoadefCrossover;
 
     let factory = RoadefGenomeFactory {
         num_demands,
@@ -98,12 +111,17 @@ fn main() {
         greedy_data: None,
     };
 
-    // Generate the shared initial population once.
-    let init_pop = generate_gen0_population(&factory, &fitness_eval, Some(seed), POPULATION_SIZE);
+    // Generate the shared initial population once (same seed → same genomes for both arms).
+    let init_pop = generate_gen0_population(&factory, &fitness_eval_a, Some(seed), POPULATION_SIZE);
     eprintln!(
-        "Gen-0 IFR  : {:.4}",
-        init_pop.genomes.len() as f64 / POPULATION_SIZE as f64
+        "Gen-0 pop hash : {}",
+        init_pop.hash
     );
+
+    let mutator = RoadefMutator {
+        node_ids: node_ids.clone(),
+    };
+    let crossover = RoadefCrossover;
 
     let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
         constraint_model: roadef::constraints::RoadefConstraintModel {
@@ -127,7 +145,7 @@ fn main() {
         generation_limit,
         mutation_rate: 0.3,
         crossover_rate: 0.7,
-        no_improvement_limit: generation_limit + 1, // disable stagnation termination for fair comparison
+        no_improvement_limit: generation_limit + 1, // disable stagnation for fair comparison
         seed: Some(seed),
         log_interval: generation_limit + 1, // suppress per-gen logs
         health_interval: generation_limit + 1,
@@ -137,14 +155,14 @@ fn main() {
     };
 
     // -----------------------------------------------------------------------
-    // Arm A: L1 sequential baseline (use_rayon=false)
+    // Arm A: Phase 4 baseline (L1 + Rayon, no L2)
     // -----------------------------------------------------------------------
-    eprintln!("\n--- Arm A: L1 Sequential (use_rayon=false) ---");
+    eprintln!("\n--- Arm A: Phase 4 Baseline (use_rayon=true, l2_cache=None) ---");
     let mut log_a: Vec<u8> = Vec::new();
     let t_a_start = Instant::now();
-    let result_a = run_pipeline_evolution_v2(
+    let result_a: EvolutionRunResult = run_pipeline_evolution_v2(
         &factory,
-        &fitness_eval,
+        &fitness_eval_a,
         &mutator,
         &crossover,
         &pipeline,
@@ -153,7 +171,7 @@ fn main() {
         &instance_name,
         &mut log_a,
         &mut NullTelemetrySink,
-        false, // L1 sequential baseline
+        true, // Rayon parallel evaluation (Phase 4 baseline)
     );
     let t_a_ms = t_a_start.elapsed().as_millis();
 
@@ -174,14 +192,21 @@ fn main() {
     eprintln!("  wall_clock_ms    : {}", t_a_ms);
 
     // -----------------------------------------------------------------------
-    // Arm B: Rayon parallel (use_rayon=true)
+    // Arm B: Phase 4 + L2 cross-evaluation Dijkstra cache
     // -----------------------------------------------------------------------
-    eprintln!("\n--- Arm B: Rayon Parallel (use_rayon=true) ---");
+    eprintln!("\n--- Arm B: Phase 4 + L2 Dijkstra Cache (use_rayon=true, l2_cache=Some) ---");
+
+    let l2_cache_b: L2DijkstraCache = Arc::new(RwLock::new(HashMap::new()));
+    let fitness_eval_b = RoadefFitnessEvaluator {
+        evaluator: Arc::clone(&evaluator),
+        l2_cache: Some(Arc::clone(&l2_cache_b)),
+    };
+
     let mut log_b: Vec<u8> = Vec::new();
     let t_b_start = Instant::now();
-    let result_b = run_pipeline_evolution_v2(
+    let result_b: EvolutionRunResult = run_pipeline_evolution_v2(
         &factory,
-        &fitness_eval,
+        &fitness_eval_b,
         &mutator,
         &crossover,
         &pipeline,
@@ -201,6 +226,7 @@ fn main() {
         .sum();
     let n_eval_b: usize = result_b.trajectory.iter().map(|g| g.n_eval).sum();
     let cache_hits_b: usize = result_b.trajectory.iter().map(|g| g.cache_hits).sum();
+    let l2_entries = l2_cache_b.read().unwrap().len();
 
     eprintln!("  best_obj         : {:.10}", result_b.best_obj);
     eprintln!("  valid            : {}", result_b.valid);
@@ -209,98 +235,77 @@ fn main() {
     eprintln!("  cache_hits       : {}", cache_hits_b);
     eprintln!("  eval_time_ms     : {:.2}", eval_ms_b);
     eprintln!("  wall_clock_ms    : {}", t_b_ms);
+    eprintln!("  l2_cache_entries : {}", l2_entries);
 
     // -----------------------------------------------------------------------
-    // Invariant checks
+    // Invariant verification
     // -----------------------------------------------------------------------
     eprintln!("\n=== Invariant Verification ===");
+    let mut all_pass = true;
 
-    let inv_best_obj = (result_a.best_obj - result_b.best_obj).abs() < 1e-9;
-    let inv_n_evals = n_eval_a == n_eval_b;
-    let inv_gens = result_a.generations_run == result_b.generations_run;
-    let inv_valid = result_a.valid == result_b.valid;
-    let inv_cache = cache_hits_a == cache_hits_b;
+    macro_rules! check {
+        ($label:expr, $a:expr, $b:expr) => {
+            if $a == $b {
+                eprintln!("  [PASS] {} identical: A={}  B={}", $label, $a, $b);
+            } else {
+                eprintln!("  [FAIL] {} MISMATCH: A={}  B={}", $label, $a, $b);
+                all_pass = false;
+            }
+        };
+    }
 
-    eprintln!(
-        "  [{}] best_obj identical: A={:.10}  B={:.10}",
-        if inv_best_obj { "PASS" } else { "FAIL" },
-        result_a.best_obj,
-        result_b.best_obj
-    );
-    eprintln!(
-        "  [{}] n_actual_evals identical: A={}  B={}",
-        if inv_n_evals { "PASS" } else { "FAIL" },
-        n_eval_a,
-        n_eval_b
-    );
-    eprintln!(
-        "  [{}] generations_run identical: A={}  B={}",
-        if inv_gens { "PASS" } else { "FAIL" },
-        result_a.generations_run,
-        result_b.generations_run
-    );
-    eprintln!(
-        "  [{}] valid identical: A={}  B={}",
-        if inv_valid { "PASS" } else { "FAIL" },
-        result_a.valid,
-        result_b.valid
-    );
-    eprintln!(
-        "  [{}] cache_hits identical: A={}  B={}",
-        if inv_cache { "PASS" } else { "FAIL" },
-        cache_hits_a,
-        cache_hits_b
-    );
+    // best_obj: compare bit-exact (f64 must be identical, not just close)
+    check!("best_obj bits", result_a.best_obj.to_bits(), result_b.best_obj.to_bits());
+    check!("n_actual_evals", n_eval_a, n_eval_b);
+    check!("generations_run", result_a.generations_run, result_b.generations_run);
+    check!("valid", result_a.valid, result_b.valid);
+    check!("cache_hits", cache_hits_a, cache_hits_b);
 
-    // -----------------------------------------------------------------------
-    // Performance summary
-    // -----------------------------------------------------------------------
     eprintln!("\n=== Performance Summary ===");
-    let speedup_wall = if t_b_ms > 0 {
-        t_a_ms as f64 / t_b_ms as f64
-    } else {
-        f64::INFINITY
-    };
-    let speedup_eval = if eval_ms_b > 0.0 {
-        eval_ms_a / eval_ms_b
-    } else {
-        f64::INFINITY
-    };
-    let eval_pct_a = if t_a_ms > 0 {
+    eprintln!("  Wall-clock A (Phase 4)    : {}ms", t_a_ms);
+    eprintln!("  Wall-clock B (Phase 4+L2) : {}ms", t_b_ms);
+    if t_a_ms > 0 {
+        eprintln!(
+            "  Wall-clock speedup        : {:.2}x",
+            t_a_ms as f64 / t_b_ms as f64
+        );
+    }
+    eprintln!(
+        "  Eval time A               : {:.2}ms  ({:.1}% of wall)",
+        eval_ms_a,
         eval_ms_a / t_a_ms as f64 * 100.0
-    } else {
-        0.0
-    };
-    let eval_pct_b = if t_b_ms > 0 {
+    );
+    eprintln!(
+        "  Eval time B               : {:.2}ms  ({:.1}% of wall)",
+        eval_ms_b,
         eval_ms_b / t_b_ms as f64 * 100.0
-    } else {
-        0.0
-    };
-
-    eprintln!("  Wall-clock A (L1 seq) : {}ms", t_a_ms);
-    eprintln!("  Wall-clock B (Rayon)  : {}ms", t_b_ms);
-    eprintln!("  Wall-clock speedup    : {:.2}x", speedup_wall);
-    eprintln!(
-        "  Eval time A           : {:.2}ms  ({:.1}% of wall)",
-        eval_ms_a, eval_pct_a
     );
-    eprintln!(
-        "  Eval time B           : {:.2}ms  ({:.1}% of wall)",
-        eval_ms_b, eval_pct_b
-    );
-    eprintln!("  Eval speedup          : {:.2}x", speedup_eval);
+    if eval_ms_a > 0.0 {
+        eprintln!(
+            "  Eval speedup              : {:.2}x",
+            eval_ms_a / eval_ms_b
+        );
+    }
+    let t_net = eval_ms_a - eval_ms_b;
+    eprintln!("  T_net (A_eval - B_eval)   : {:.2}ms", t_net);
+    eprintln!("  L2 cache entries          : {}", l2_entries);
 
-    let all_pass = inv_best_obj && inv_n_evals && inv_gens && inv_valid && inv_cache;
-    eprintln!(
-        "\n=== Overall: {} ===",
-        if all_pass {
-            "ALL INVARIANTS PASS"
+    eprintln!();
+    if all_pass {
+        eprintln!("=== Overall: ALL INVARIANTS PASS ===");
+        if t_net > 0.0 {
+            eprintln!(
+                "=== Phase 6 PROMOTION CRITERION: MET (T_net={:.2}ms > 0) ===",
+                t_net
+            );
         } else {
-            "INVARIANT VIOLATION DETECTED"
+            eprintln!(
+                "=== Phase 6 PROMOTION CRITERION: NOT MET (T_net={:.2}ms <= 0) ===",
+                t_net
+            );
         }
-    );
-
-    if !all_pass {
+    } else {
+        eprintln!("=== Overall: INVARIANT FAILURE — DO NOT PROMOTE ===");
         std::process::exit(1);
     }
 }

@@ -20,23 +20,21 @@
 ///
 /// Primary outcome (RP-409B): Peak OSR ↑ AND final objective ↓.
 /// Zone metrics (Peak ACR, Shoulder ACR) are diagnostic only.
-
 use std::fs;
 use std::io::BufWriter;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
 use roadef::evaluator::RoadefEvaluator;
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    PeakTargetedMutator, MutationStrategy,
-    new_peak_demand_set,
-    EvolutionRunConfig, run_roadef_evolution,
+    new_peak_demand_set, run_roadef_evolution, EvolutionRunConfig, MutationStrategy,
+    PeakTargetedMutator, RoadefCrossover, RoadefFitnessEvaluator, RoadefGenomeFactory,
+    RoadefMutator,
 };
 use roadef::telemetry::{ComparatorMode, FourStreamTelemetrySink, NullTelemetrySink};
 
@@ -75,24 +73,29 @@ fn parse_args() -> Args {
             "--strategy" => {
                 i += 1;
                 strategy = match args.get(i).map(|s| s.as_str()) {
-                    Some("uniform")       => MutationStrategy::Uniform,
+                    Some("uniform") => MutationStrategy::Uniform,
                     Some("peak_targeted") => MutationStrategy::PeakTargeted,
                     other => {
-                        eprintln!("Unknown strategy: {:?}. Use 'uniform' or 'peak_targeted'.", other);
+                        eprintln!(
+                            "Unknown strategy: {:?}. Use 'uniform' or 'peak_targeted'.",
+                            other
+                        );
                         std::process::exit(1);
                     }
                 };
             }
             "--seed" => {
                 i += 1;
-                seed = args.get(i)
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or_else(|| { eprintln!("--seed requires a u64 value"); std::process::exit(1); });
+                seed = args.get(i).and_then(|s| s.parse().ok()).unwrap_or_else(|| {
+                    eprintln!("--seed requires a u64 value");
+                    std::process::exit(1);
+                });
             }
             "--out" => {
                 i += 1;
                 out_dir = args.get(i).cloned().unwrap_or_else(|| {
-                    eprintln!("--out requires a directory path"); std::process::exit(1);
+                    eprintln!("--out requires a directory path");
+                    std::process::exit(1);
                 });
             }
             other => {
@@ -102,13 +105,17 @@ fn parse_args() -> Args {
         }
         i += 1;
     }
-    Args { strategy, seed, out_dir }
+    Args {
+        strategy,
+        seed,
+        out_dir,
+    }
 }
 
 fn strategy_str(s: MutationStrategy) -> &'static str {
     match s {
-        MutationStrategy::Uniform       => "uniform",
-        MutationStrategy::PeakTargeted  => "peak_targeted",
+        MutationStrategy::Uniform => "uniform",
+        MutationStrategy::PeakTargeted => "peak_targeted",
     }
 }
 
@@ -152,8 +159,8 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
     let mut instances = Vec::new();
     for i in 1..=20 {
         let name = format!("setA-{:02}", i);
-        let net      = format!("{}/{}-net.json",      INSTANCE_DIR, name);
-        let tm       = format!("{}/{}-tm.json",       INSTANCE_DIR, name);
+        let net = format!("{}/{}-net.json", INSTANCE_DIR, name);
+        let tm = format!("{}/{}-tm.json", INSTANCE_DIR, name);
         let scenario = format!("{}/{}-scenario.json", INSTANCE_DIR, name);
         if Path::new(&net).exists() && Path::new(&tm).exists() && Path::new(&scenario).exists() {
             instances.push((name, net, tm, scenario));
@@ -185,16 +192,16 @@ fn write_manifest(out_dir: &str, args: &Args, instances: &[(String, String, Stri
          min_budget_secs: {min_b}\n\
          max_budget_secs: {max_b}\n\
          date: {date}\n",
-        strategy   = strat,
-        peak_bias  = PEAK_BIAS,
-        seed       = args.seed,
-        n          = instances.len(),
-        pop        = POPULATION_SIZE,
-        gen        = GENERATION_LIMIT,
-        elite      = ELITE_COUNT,
-        min_b      = MIN_BUDGET_SECS,
-        max_b      = MAX_BUDGET_SECS,
-        date       = Utc::now().to_rfc3339(),
+        strategy = strat,
+        peak_bias = PEAK_BIAS,
+        seed = args.seed,
+        n = instances.len(),
+        pop = POPULATION_SIZE,
+        gen = GENERATION_LIMIT,
+        elite = ELITE_COUNT,
+        min_b = MIN_BUDGET_SECS,
+        max_b = MAX_BUDGET_SECS,
+        date = Utc::now().to_rfc3339(),
     );
     let manifest_path = format!("{}/manifest.yaml", out_dir);
     if let Err(e) = fs::write(&manifest_path, &manifest) {
@@ -222,7 +229,10 @@ fn main() {
     eprintln!("Peak bias  : {} (PeakTargeted only)", PEAK_BIAS);
     eprintln!("Seed       : {}", args.seed);
     eprintln!("Output dir : {}", run_dir);
-    eprintln!("Population : {}  Generations: {}  Elite: {}", POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT);
+    eprintln!(
+        "Population : {}  Generations: {}  Elite: {}",
+        POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT
+    );
     eprintln!();
 
     let instances = discover_instances();
@@ -243,28 +253,41 @@ fn main() {
         // Load instance
         let net = match load_network(net_path) {
             Ok(n) => n,
-            Err(e) => { eprintln!("  ERROR loading network: {}", e); continue; }
+            Err(e) => {
+                eprintln!("  ERROR loading network: {}", e);
+                continue;
+            }
         };
         let tm = match load_traffic_matrix(tm_path) {
             Ok(t) => t,
-            Err(e) => { eprintln!("  ERROR loading traffic matrix: {}", e); continue; }
+            Err(e) => {
+                eprintln!("  ERROR loading traffic matrix: {}", e);
+                continue;
+            }
         };
         let scenario = match load_scenario(scenario_path) {
             Ok(s) => s,
-            Err(e) => { eprintln!("  ERROR loading scenario: {}", e); continue; }
+            Err(e) => {
+                eprintln!("  ERROR loading scenario: {}", e);
+                continue;
+            }
         };
 
-        let num_demands    = tm.demands.len();
+        let num_demands = tm.demands.len();
         let num_time_slots = tm.num_time_slots;
-        let num_nodes      = net.nodes.len();
-        let num_links      = net.links.len();
+        let num_nodes = net.nodes.len();
+        let num_links = net.links.len();
         let node_ids: Vec<u64> = net.nodes.iter().map(|n| n.id).collect();
 
-        eprintln!("  nodes={} links={} demands={}", num_nodes, num_links, num_demands);
+        eprintln!(
+            "  nodes={} links={} demands={}",
+            num_nodes, num_links, num_demands
+        );
 
         // Adaptive time budget (same formula as RP-408B for comparability)
         let raw_budget_ms = (num_demands as u64) * (num_links as u64) / 2;
-        let budget_secs = raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
+        let budget_secs =
+            raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
         eprintln!("  budget={}s", budget_secs);
 
         // Build MOGA components
@@ -276,7 +299,10 @@ fn main() {
             mode: roadef::moga_impl::ConstructionMode::Random,
             greedy_data: None,
         };
-        let fitness_eval = RoadefFitnessEvaluator { evaluator: Arc::clone(&evaluator) };
+        let fitness_eval = RoadefFitnessEvaluator {
+            evaluator: Arc::clone(&evaluator),
+            l2_cache: None,
+        };
         let crossover = RoadefCrossover;
 
         // RP-409B: fixed seed per instance (same formula as RP-408B for comparability)
@@ -287,7 +313,9 @@ fn main() {
         // the mutator and the EvolutionRunConfig so the loop updates it.
         let run_result = match args.strategy {
             MutationStrategy::Uniform => {
-                let mutator = RoadefMutator { node_ids: node_ids.clone() };
+                let mutator = RoadefMutator {
+                    node_ids: node_ids.clone(),
+                };
                 let evo_config = EvolutionRunConfig {
                     population_size: POPULATION_SIZE,
                     elite_count: ELITE_COUNT,
@@ -307,13 +335,13 @@ fn main() {
                 let log_file = fs::File::create(&log_path).ok();
                 let mut log_buf: Box<dyn std::io::Write> = match log_file {
                     Some(f) => Box::new(BufWriter::new(f)),
-                    None    => Box::new(std::io::stderr()),
+                    None => Box::new(std::io::stderr()),
                 };
 
-                let cand_path = format!("{}/rp409b_candidates_{}.jsonl",    run_dir, name);
-                let gen_path  = format!("{}/rp409b_generations_{}.jsonl",   run_dir, name);
-                let move_path = format!("{}/rp409b_moves_{}.jsonl",         run_dir, name);
-                let cons_path = format!("{}/rp409b_construction_{}.jsonl",  run_dir, name);
+                let cand_path = format!("{}/rp409b_candidates_{}.jsonl", run_dir, name);
+                let gen_path = format!("{}/rp409b_generations_{}.jsonl", run_dir, name);
+                let move_path = format!("{}/rp409b_moves_{}.jsonl", run_dir, name);
+                let cons_path = format!("{}/rp409b_construction_{}.jsonl", run_dir, name);
 
                 let cf = fs::File::create(&cand_path).map(|f| BufWriter::new(f));
                 let gf = fs::File::create(&gen_path).map(|f| BufWriter::new(f));
@@ -324,15 +352,27 @@ fn main() {
                     (Ok(cf), Ok(gf), Ok(mf), Ok(nf)) => {
                         let mut sink = FourStreamTelemetrySink::new_full(cf, gf, mf, nf);
                         run_roadef_evolution(
-                            &factory, &fitness_eval, &mutator, &crossover,
-                            &evo_config, name, &mut *log_buf, &mut sink,
+                            &factory,
+                            &fitness_eval,
+                            &mutator,
+                            &crossover,
+                            &evo_config,
+                            name,
+                            &mut *log_buf,
+                            &mut sink,
                         )
                     }
                     _ => {
                         eprintln!("  Warning: could not create telemetry files; running without telemetry");
                         run_roadef_evolution(
-                            &factory, &fitness_eval, &mutator, &crossover,
-                            &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+                            &factory,
+                            &fitness_eval,
+                            &mutator,
+                            &crossover,
+                            &evo_config,
+                            name,
+                            &mut *log_buf,
+                            &mut NullTelemetrySink,
                         )
                     }
                 }
@@ -366,13 +406,13 @@ fn main() {
                 let log_file = fs::File::create(&log_path).ok();
                 let mut log_buf: Box<dyn std::io::Write> = match log_file {
                     Some(f) => Box::new(BufWriter::new(f)),
-                    None    => Box::new(std::io::stderr()),
+                    None => Box::new(std::io::stderr()),
                 };
 
-                let cand_path = format!("{}/rp409b_candidates_{}.jsonl",    run_dir, name);
-                let gen_path  = format!("{}/rp409b_generations_{}.jsonl",   run_dir, name);
-                let move_path = format!("{}/rp409b_moves_{}.jsonl",         run_dir, name);
-                let cons_path = format!("{}/rp409b_construction_{}.jsonl",  run_dir, name);
+                let cand_path = format!("{}/rp409b_candidates_{}.jsonl", run_dir, name);
+                let gen_path = format!("{}/rp409b_generations_{}.jsonl", run_dir, name);
+                let move_path = format!("{}/rp409b_moves_{}.jsonl", run_dir, name);
+                let cons_path = format!("{}/rp409b_construction_{}.jsonl", run_dir, name);
 
                 let cf = fs::File::create(&cand_path).map(|f| BufWriter::new(f));
                 let gf = fs::File::create(&gen_path).map(|f| BufWriter::new(f));
@@ -383,24 +423,42 @@ fn main() {
                     (Ok(cf), Ok(gf), Ok(mf), Ok(nf)) => {
                         let mut sink = FourStreamTelemetrySink::new_full(cf, gf, mf, nf);
                         run_roadef_evolution(
-                            &factory, &fitness_eval, &mutator, &crossover,
-                            &evo_config, name, &mut *log_buf, &mut sink,
+                            &factory,
+                            &fitness_eval,
+                            &mutator,
+                            &crossover,
+                            &evo_config,
+                            name,
+                            &mut *log_buf,
+                            &mut sink,
                         )
                     }
                     _ => {
                         eprintln!("  Warning: could not create telemetry files; running without telemetry");
                         run_roadef_evolution(
-                            &factory, &fitness_eval, &mutator, &crossover,
-                            &evo_config, name, &mut *log_buf, &mut NullTelemetrySink,
+                            &factory,
+                            &fitness_eval,
+                            &mutator,
+                            &crossover,
+                            &evo_config,
+                            name,
+                            &mut *log_buf,
+                            &mut NullTelemetrySink,
                         )
                     }
                 }
             }
         };
 
-        eprintln!("  obj={:.4} mlu={:.4} valid={} gens={} reason={} runtime={}ms",
-            run_result.best_obj, run_result.best_mlu, run_result.valid,
-            run_result.generations_run, run_result.termination_reason, run_result.runtime_ms);
+        eprintln!(
+            "  obj={:.4} mlu={:.4} valid={} gens={} reason={} runtime={}ms",
+            run_result.best_obj,
+            run_result.best_mlu,
+            run_result.valid,
+            run_result.generations_run,
+            run_result.termination_reason,
+            run_result.runtime_ms
+        );
 
         results.push(InstanceResult {
             instance_id: instance_num,
@@ -447,6 +505,9 @@ fn main() {
     eprintln!();
     eprintln!("=== RP-409B Campaign Complete ===");
     eprintln!("Strategy  : {}", strat);
-    eprintln!("Instances : {}/{}", valid_count, campaign_results.total_instances);
+    eprintln!(
+        "Instances : {}/{}",
+        valid_count, campaign_results.total_instances
+    );
     eprintln!("Elapsed   : {:.1}s", elapsed.as_secs_f64());
 }

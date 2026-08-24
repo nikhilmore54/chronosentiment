@@ -44,7 +44,6 @@
 ///   benchmarks/roadef/rc001/RC001_AB_REPORT.md
 ///
 /// Classification: Competition Engineering campaign binary (RC-001).
-
 use std::collections::HashMap;
 use std::fs;
 use std::io::BufWriter;
@@ -52,17 +51,17 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use roadef::evaluator::RoadefEvaluator;
 use roadef::models::Network;
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    EvolutionRunConfig, EvolutionRunResult, run_roadef_evolution,
-    ConstructionMode, GreedyConstructorData,
+    run_roadef_evolution, ConstructionMode, EvolutionRunConfig, EvolutionRunResult,
+    GreedyConstructorData, RoadefCrossover, RoadefFitnessEvaluator, RoadefGenomeFactory,
+    RoadefMutator,
 };
-use roadef::telemetry::{NullTelemetrySink, ComparatorMode};
+use roadef::telemetry::{ComparatorMode, NullTelemetrySink};
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -179,8 +178,8 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
     let mut instances = Vec::new();
     for i in 1..=20 {
         let name = format!("setA-{:02}", i);
-        let net      = format!("{}/{}-net.json",      INSTANCE_DIR, name);
-        let tm       = format!("{}/{}-tm.json",       INSTANCE_DIR, name);
+        let net = format!("{}/{}-net.json", INSTANCE_DIR, name);
+        let tm = format!("{}/{}-tm.json", INSTANCE_DIR, name);
         let scenario = format!("{}/{}-scenario.json", INSTANCE_DIR, name);
         if Path::new(&net).exists() && Path::new(&tm).exists() && Path::new(&scenario).exists() {
             instances.push((name, net, tm, scenario));
@@ -192,12 +191,11 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
 // ---------------------------------------------------------------------------
 // Build GreedyConstructorData from loaded instance components.
 // ---------------------------------------------------------------------------
-fn build_greedy_data(
-    net: &Network,
-    evaluator: Arc<RoadefEvaluator>,
-) -> Arc<GreedyConstructorData> {
+fn build_greedy_data(net: &Network, evaluator: Arc<RoadefEvaluator>) -> Arc<GreedyConstructorData> {
     // Build demands_by_volume: (demand_index, src, dst, max_volume_across_slots)
-    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator.tm.demands
+    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator
+        .tm
+        .demands
         .iter()
         .enumerate()
         .map(|(i, d)| {
@@ -214,7 +212,10 @@ fn build_greedy_data(
     // On topologies where arc IDs ≠ link IDs, link_capacity.get(arc_id) returned None,
     // cap defaulted to 1.0, and sat = flow / 1.0 = flow — causing max_sat = 22.766 on setA-05.
     // Fix: use evaluator.graph.arcs to build the capacity map in the same ID space as arc_flows.
-    let link_capacity: HashMap<u64, f64> = evaluator.graph.arcs.iter()
+    let link_capacity: HashMap<u64, f64> = evaluator
+        .graph
+        .arcs
+        .iter()
         .map(|a| (a.id, a.capacity))
         .collect();
 
@@ -262,14 +263,20 @@ fn run_arm(
 
     let mut log_buf: Box<dyn std::io::Write> = Box::new(std::io::sink());
     let result: EvolutionRunResult = run_roadef_evolution(
-        factory, fitness_eval, mutator, crossover,
-        &evo_config, instance_name, &mut *log_buf, &mut NullTelemetrySink,
+        factory,
+        fitness_eval,
+        mutator,
+        crossover,
+        &evo_config,
+        instance_name,
+        &mut *log_buf,
+        &mut NullTelemetrySink,
     );
 
     // n_eval: initial population (POPULATION_SIZE evals) + per-generation offspring
     // (POPULATION_SIZE - ELITE_COUNT evals per generation, since elites are carried over).
-    let n_eval = POPULATION_SIZE
-        + result.generations_run * (POPULATION_SIZE.saturating_sub(ELITE_COUNT));
+    let n_eval =
+        POPULATION_SIZE + result.generations_run * (POPULATION_SIZE.saturating_sub(ELITE_COUNT));
 
     // Invariant violation detection (issue #9 from review):
     // IFR=1.0 AND valid=false AND obj=inf is a potential correctness failure.
@@ -277,9 +284,7 @@ fn run_arm(
     // This may indicate a mismatch between constructor feasibility and evaluator feasibility,
     // a waypoint conversion bug, or a bug in the GreedyLoadAware path generation.
     let invariant_violation_suspected =
-        result.initial_feasibility_rate >= 1.0
-        && !result.valid
-        && !result.best_obj.is_finite();
+        result.initial_feasibility_rate >= 1.0 && !result.valid && !result.best_obj.is_finite();
 
     ArmResult {
         arm: arm_name.to_string(),
@@ -314,15 +319,19 @@ fn main() {
     eprintln!("Campaign ID: {}", CAMPAIGN_ID);
     eprintln!("Arm A: ConstructionMode::Random (CB-000 baseline)");
     eprintln!("Arm B: ConstructionMode::GreedyLoadAware (RC-001 candidate)");
-    eprintln!("Seed: {}  Population: {}  Generations: {}  Elite: {}",
-        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT);
+    eprintln!(
+        "Seed: {}  Population: {}  Generations: {}  Elite: {}",
+        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT
+    );
     eprintln!("Note: single seed — engineering gate only, not publication-quality evidence.");
     eprintln!();
 
     let instances = discover_instances();
     let total = instances.len();
     eprintln!("Discovered {} instances", total);
-    eprintln!("Execution: serial (one instance at a time) for clean logs and reproducible diagnostics.");
+    eprintln!(
+        "Execution: serial (one instance at a time) for clean logs and reproducible diagnostics."
+    );
     eprintln!();
 
     // Create output directory at startup so incremental writes work even if interrupted.
@@ -345,15 +354,24 @@ fn main() {
             // Load instance.
             let net = match roadef::loader::load_network(net_path) {
                 Ok(n) => n,
-                Err(e) => { eprintln!("[{}] ERROR loading network: {}", name, e); return None; }
+                Err(e) => {
+                    eprintln!("[{}] ERROR loading network: {}", name, e);
+                    return None;
+                }
             };
             let tm = match roadef::loader::load_traffic_matrix(tm_path) {
                 Ok(t) => t,
-                Err(e) => { eprintln!("[{}] ERROR loading TM: {}", name, e); return None; }
+                Err(e) => {
+                    eprintln!("[{}] ERROR loading TM: {}", name, e);
+                    return None;
+                }
             };
             let scenario = match roadef::loader::load_scenario(scenario_path) {
                 Ok(s) => s,
-                Err(e) => { eprintln!("[{}] ERROR loading scenario: {}", name, e); return None; }
+                Err(e) => {
+                    eprintln!("[{}] ERROR loading scenario: {}", name, e);
+                    return None;
+                }
             };
 
             let num_demands = tm.demands.len();
@@ -364,14 +382,22 @@ fn main() {
 
             // Adaptive time budget.
             let raw_budget_ms = (num_demands as u64) * (num_links as u64) / 2;
-            let budget_secs = raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
-            eprintln!("[{}] nodes={} links={} demands={} slots={} budget={}s — starting",
-                name, num_nodes, num_links, num_demands, num_time_slots, budget_secs);
+            let budget_secs =
+                raw_budget_ms.clamp(MIN_BUDGET_SECS * 1000, MAX_BUDGET_SECS * 1000) / 1000;
+            eprintln!(
+                "[{}] nodes={} links={} demands={} slots={} budget={}s — starting",
+                name, num_nodes, num_links, num_demands, num_time_slots, budget_secs
+            );
 
             // Build evaluator (shared between both arms for this instance).
             let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
-            let fitness_eval = RoadefFitnessEvaluator { evaluator: Arc::clone(&evaluator) };
-            let mutator = RoadefMutator { node_ids: node_ids.clone() };
+            let fitness_eval = RoadefFitnessEvaluator {
+                evaluator: Arc::clone(&evaluator),
+                l2_cache: None,
+            };
+            let mutator = RoadefMutator {
+                node_ids: node_ids.clone(),
+            };
             let crossover = RoadefCrossover;
 
             // Arm A: CB-000 Random constructor.
@@ -383,8 +409,17 @@ fn main() {
                 greedy_data: None,
             };
             let result_a = run_arm(
-                "A_Random", name, &factory_a, &fitness_eval, &mutator, &crossover,
-                budget_secs, num_demands, num_nodes, num_links, num_time_slots,
+                "A_Random",
+                name,
+                &factory_a,
+                &fitness_eval,
+                &mutator,
+                &crossover,
+                budget_secs,
+                num_demands,
+                num_nodes,
+                num_links,
+                num_time_slots,
             );
 
             // Arm B: RC-001 Greedy constructor.
@@ -397,12 +432,29 @@ fn main() {
                 greedy_data: Some(greedy_data),
             };
             let result_b = run_arm(
-                "B_GreedyLoadAware", name, &factory_b, &fitness_eval, &mutator, &crossover,
-                budget_secs, num_demands, num_nodes, num_links, num_time_slots,
+                "B_GreedyLoadAware",
+                name,
+                &factory_b,
+                &fitness_eval,
+                &mutator,
+                &crossover,
+                budget_secs,
+                num_demands,
+                num_nodes,
+                num_links,
+                num_time_slots,
             );
 
-            let inv_flag_a = if result_a.invariant_violation_suspected { " ⚠INVARIANT" } else { "" };
-            let inv_flag_b = if result_b.invariant_violation_suspected { " ⚠INVARIANT" } else { "" };
+            let inv_flag_a = if result_a.invariant_violation_suspected {
+                " ⚠INVARIANT"
+            } else {
+                ""
+            };
+            let inv_flag_b = if result_b.invariant_violation_suspected {
+                " ⚠INVARIANT"
+            } else {
+                ""
+            };
             eprintln!(
                 "[{}]\n  A: IFR={:.3} g0best={:.4} g0uniq={} g0dup={} obj={:.4} valid={} {}ms{}\n  \
                  B: IFR={:.3} g0best={:.4} g0uniq={} g0dup={} obj={:.4} valid={} {}ms{}\n  \
@@ -440,8 +492,12 @@ fn main() {
                     let _ = f.write_all(json_str.as_bytes());
                 }
             }
-            eprintln!("[progress] {}/{} instances complete — partial results written to {}",
-                pairs.len(), total, json_path);
+            eprintln!(
+                "[progress] {}/{} instances complete — partial results written to {}",
+                pairs.len(),
+                total,
+                json_path
+            );
         }
     }
 
@@ -457,18 +513,36 @@ fn main() {
     // ---------------------------------------------------------------------------
     let n = arm_a_results.len();
     let arm_a_mean_ifr = if n > 0 {
-        arm_a_results.iter().map(|r| r.initial_feasibility_rate).sum::<f64>() / n as f64
-    } else { 0.0 };
+        arm_a_results
+            .iter()
+            .map(|r| r.initial_feasibility_rate)
+            .sum::<f64>()
+            / n as f64
+    } else {
+        0.0
+    };
     let arm_b_mean_ifr = if n > 0 {
-        arm_b_results.iter().map(|r| r.initial_feasibility_rate).sum::<f64>() / n as f64
-    } else { 0.0 };
+        arm_b_results
+            .iter()
+            .map(|r| r.initial_feasibility_rate)
+            .sum::<f64>()
+            / n as f64
+    } else {
+        0.0
+    };
     let ifr_improvement = arm_b_mean_ifr - arm_a_mean_ifr;
 
     let arm_a_valid_count = arm_a_results.iter().filter(|r| r.valid).count();
     let arm_b_valid_count = arm_b_results.iter().filter(|r| r.valid).count();
 
-    let invariant_violation_count_a = arm_a_results.iter().filter(|r| r.invariant_violation_suspected).count();
-    let invariant_violation_count_b = arm_b_results.iter().filter(|r| r.invariant_violation_suspected).count();
+    let invariant_violation_count_a = arm_a_results
+        .iter()
+        .filter(|r| r.invariant_violation_suspected)
+        .count();
+    let invariant_violation_count_b = arm_b_results
+        .iter()
+        .filter(|r| r.invariant_violation_suspected)
+        .count();
 
     let mut comparisons: Vec<InstanceComparison> = Vec::new();
     let mut arm_b_better_obj_count = 0usize;
@@ -477,8 +551,12 @@ fn main() {
     for (a, b) in arm_a_results.iter().zip(arm_b_results.iter()) {
         let arm_b_better_obj = b.best_obj < a.best_obj;
         let arm_b_better_ifr = b.initial_feasibility_rate > a.initial_feasibility_rate;
-        if arm_b_better_obj { arm_b_better_obj_count += 1; }
-        if arm_b_better_ifr { arm_b_better_ifr_count += 1; }
+        if arm_b_better_obj {
+            arm_b_better_obj_count += 1;
+        }
+        if arm_b_better_ifr {
+            arm_b_better_ifr_count += 1;
+        }
         comparisons.push(InstanceComparison {
             instance: a.instance.clone(),
             arm_a_ifr: a.initial_feasibility_rate,
@@ -503,14 +581,22 @@ fn main() {
     // ---------------------------------------------------------------------------
     eprintln!("=== RC-001 Summary ===");
     eprintln!("Instances: {}", n);
-    eprintln!("Arm A (Random)  mean IFR: {:.3}  valid: {}/{}", arm_a_mean_ifr, arm_a_valid_count, n);
-    eprintln!("Arm B (Greedy)  mean IFR: {:.3}  valid: {}/{}", arm_b_mean_ifr, arm_b_valid_count, n);
+    eprintln!(
+        "Arm A (Random)  mean IFR: {:.3}  valid: {}/{}",
+        arm_a_mean_ifr, arm_a_valid_count, n
+    );
+    eprintln!(
+        "Arm B (Greedy)  mean IFR: {:.3}  valid: {}/{}",
+        arm_b_mean_ifr, arm_b_valid_count, n
+    );
     eprintln!("IFR improvement: {:+.3}", ifr_improvement);
     eprintln!("Arm B better obj: {}/{}", arm_b_better_obj_count, n);
     eprintln!("Arm B better IFR: {}/{}", arm_b_better_ifr_count, n);
     if invariant_violation_count_a > 0 || invariant_violation_count_b > 0 {
-        eprintln!("⚠ INVARIANT VIOLATIONS: A={} B={} — investigate before trusting results",
-            invariant_violation_count_a, invariant_violation_count_b);
+        eprintln!(
+            "⚠ INVARIANT VIOLATIONS: A={} B={} — investigate before trusting results",
+            invariant_violation_count_a, invariant_violation_count_b
+        );
     }
     eprintln!();
 
@@ -557,8 +643,10 @@ fn main() {
     md.push_str("# RC-001 A/B Report: Load-Aware Greedy Constructor\n\n");
     md.push_str(&format!("**Campaign:** {}  \n", CAMPAIGN_ID));
     md.push_str(&format!("**Timestamp:** {}  \n", Utc::now().to_rfc3339()));
-    md.push_str(&format!("**Seed:** {}  Population: {}  Generations: {}  Elite: {}\n\n",
-        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT));
+    md.push_str(&format!(
+        "**Seed:** {}  Population: {}  Generations: {}  Elite: {}\n\n",
+        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT
+    ));
     md.push_str("> **Statistical note:** Single seed. Acceptable for engineering gate; ");
     md.push_str("multi-seed experiments (e.g. seeds 42–51) required before paper submission.\n\n");
 
@@ -572,16 +660,31 @@ fn main() {
     md.push_str("## Summary\n\n");
     md.push_str("| Metric | Arm A (Random / CB-000) | Arm B (Greedy / RC-001) | Delta |\n");
     md.push_str("|--------|------------------------|------------------------|-------|\n");
-    md.push_str(&format!("| Mean IFR | {:.3} | {:.3} | {:+.3} |\n",
-        arm_a_mean_ifr, arm_b_mean_ifr, ifr_improvement));
-    md.push_str(&format!("| Valid instances | {}/{} | {}/{} | {:+} |\n",
-        arm_a_valid_count, n, arm_b_valid_count, n,
-        arm_b_valid_count as i64 - arm_a_valid_count as i64));
-    md.push_str(&format!("| Arm B better obj | — | {}/{} | — |\n", arm_b_better_obj_count, n));
-    md.push_str(&format!("| Arm B better IFR | — | {}/{} | — |\n", arm_b_better_ifr_count, n));
+    md.push_str(&format!(
+        "| Mean IFR | {:.3} | {:.3} | {:+.3} |\n",
+        arm_a_mean_ifr, arm_b_mean_ifr, ifr_improvement
+    ));
+    md.push_str(&format!(
+        "| Valid instances | {}/{} | {}/{} | {:+} |\n",
+        arm_a_valid_count,
+        n,
+        arm_b_valid_count,
+        n,
+        arm_b_valid_count as i64 - arm_a_valid_count as i64
+    ));
+    md.push_str(&format!(
+        "| Arm B better obj | — | {}/{} | — |\n",
+        arm_b_better_obj_count, n
+    ));
+    md.push_str(&format!(
+        "| Arm B better IFR | — | {}/{} | — |\n",
+        arm_b_better_ifr_count, n
+    ));
     if invariant_violation_count_a > 0 || invariant_violation_count_b > 0 {
-        md.push_str(&format!("| ⚠ Invariant violations | {} | {} | — |\n\n",
-            invariant_violation_count_a, invariant_violation_count_b));
+        md.push_str(&format!(
+            "| ⚠ Invariant violations | {} | {} | — |\n\n",
+            invariant_violation_count_a, invariant_violation_count_b
+        ));
     } else {
         md.push_str("\n");
     }
@@ -596,26 +699,52 @@ fn main() {
         md.push_str("- The waypoint conversion produces an invalid representation.\n");
         md.push_str("- The evaluator rejects genomes that the constructor counts as feasible.\n");
         md.push_str("- A bug in the GreedyLoadAware path generation.\n\n");
-        md.push_str("**Investigate before trusting performance conclusions from affected instances.**\n\n");
+        md.push_str(
+            "**Investigate before trusting performance conclusions from affected instances.**\n\n",
+        );
     }
 
     md.push_str("## Per-Instance Results\n\n");
     md.push_str("| Instance | A IFR | B IFR | ΔIFR | A g0best | B g0best | A obj | B obj | Δobj | B better? | Flags |\n");
     md.push_str("|----------|-------|-------|------|----------|----------|-------|-------|------|-----------|-------|\n");
     for c in &report.comparisons {
-        let better = if c.arm_b_better_obj { "✓ obj" } else if c.arm_b_better_ifr { "✓ IFR" } else { "✗" };
+        let better = if c.arm_b_better_obj {
+            "✓ obj"
+        } else if c.arm_b_better_ifr {
+            "✓ IFR"
+        } else {
+            "✗"
+        };
         let flags = match (c.arm_a_invariant_violation, c.arm_b_invariant_violation) {
-            (true, true)  => "⚠A ⚠B",
+            (true, true) => "⚠A ⚠B",
             (true, false) => "⚠A",
             (false, true) => "⚠B",
             (false, false) => "",
         };
-        let g0a = if c.arm_a_gen0_best_obj.is_finite() { format!("{:.4}", c.arm_a_gen0_best_obj) } else { "∞".to_string() };
-        let g0b = if c.arm_b_gen0_best_obj.is_finite() { format!("{:.4}", c.arm_b_gen0_best_obj) } else { "∞".to_string() };
-        md.push_str(&format!("| {} | {:.3} | {:.3} | {:+.3} | {} | {} | {:.4} | {:.4} | {:+.4} | {} | {} |\n",
-            c.instance, c.arm_a_ifr, c.arm_b_ifr, c.ifr_delta,
-            g0a, g0b,
-            c.arm_a_obj, c.arm_b_obj, c.obj_delta, better, flags));
+        let g0a = if c.arm_a_gen0_best_obj.is_finite() {
+            format!("{:.4}", c.arm_a_gen0_best_obj)
+        } else {
+            "∞".to_string()
+        };
+        let g0b = if c.arm_b_gen0_best_obj.is_finite() {
+            format!("{:.4}", c.arm_b_gen0_best_obj)
+        } else {
+            "∞".to_string()
+        };
+        md.push_str(&format!(
+            "| {} | {:.3} | {:.3} | {:+.3} | {} | {} | {:.4} | {:.4} | {:+.4} | {} | {} |\n",
+            c.instance,
+            c.arm_a_ifr,
+            c.arm_b_ifr,
+            c.ifr_delta,
+            g0a,
+            g0b,
+            c.arm_a_obj,
+            c.arm_b_obj,
+            c.obj_delta,
+            better,
+            flags
+        ));
     }
 
     // ---------------------------------------------------------------------------
@@ -625,12 +754,25 @@ fn main() {
     // Regression check: arm B mean runtime must not exceed arm A by > 2×.
     // ---------------------------------------------------------------------------
     let arm_a_mean_runtime = if n > 0 {
-        arm_a_results.iter().map(|r| r.runtime_ms as f64).sum::<f64>() / n as f64
-    } else { 0.0 };
+        arm_a_results
+            .iter()
+            .map(|r| r.runtime_ms as f64)
+            .sum::<f64>()
+            / n as f64
+    } else {
+        0.0
+    };
     let arm_b_mean_runtime = if n > 0 {
-        arm_b_results.iter().map(|r| r.runtime_ms as f64).sum::<f64>() / n as f64
-    } else { 0.0 };
-    let runtime_regression = arm_a_mean_runtime > 0.0 && arm_b_mean_runtime > arm_a_mean_runtime * 2.0;
+        arm_b_results
+            .iter()
+            .map(|r| r.runtime_ms as f64)
+            .sum::<f64>()
+            / n as f64
+    } else {
+        0.0
+    };
+    let runtime_regression =
+        arm_a_mean_runtime > 0.0 && arm_b_mean_runtime > arm_a_mean_runtime * 2.0;
 
     let threshold_2_3 = (n * 2 + 2) / 3; // ceiling of 2n/3
     let obj_gate_passed = arm_b_better_obj_count >= threshold_2_3;
@@ -640,13 +782,22 @@ fn main() {
     md.push_str("**Acceptance criterion:** Arm B wins on official ROADEF objective on ≥ 2/3 of instances.  \n");
     md.push_str("**IFR** is explanatory evidence, not a hard gate.  \n");
     md.push_str("**Regression check:** arm B mean runtime ≤ 2× arm A mean runtime.\n\n");
-    md.push_str(&format!("- Arm B better obj: {}/{} (threshold: {}/{})\n",
-        arm_b_better_obj_count, n, threshold_2_3, n));
-    md.push_str(&format!("- IFR improvement: {:+.3} (explanatory)\n", ifr_improvement));
-    md.push_str(&format!("- Runtime: A={:.0}ms  B={:.0}ms  regression={}\n",
-        arm_a_mean_runtime, arm_b_mean_runtime, runtime_regression));
-    md.push_str(&format!("- Invariant violations: A={}  B={}\n\n",
-        invariant_violation_count_a, invariant_violation_count_b));
+    md.push_str(&format!(
+        "- Arm B better obj: {}/{} (threshold: {}/{})\n",
+        arm_b_better_obj_count, n, threshold_2_3, n
+    ));
+    md.push_str(&format!(
+        "- IFR improvement: {:+.3} (explanatory)\n",
+        ifr_improvement
+    ));
+    md.push_str(&format!(
+        "- Runtime: A={:.0}ms  B={:.0}ms  regression={}\n",
+        arm_a_mean_runtime, arm_b_mean_runtime, runtime_regression
+    ));
+    md.push_str(&format!(
+        "- Invariant violations: A={}  B={}\n\n",
+        invariant_violation_count_a, invariant_violation_count_b
+    ));
 
     if has_correctness_failures {
         md.push_str("**CORRECTNESS FAILURE — RETURN TO IMPLEMENTATION**\n\n");
@@ -664,19 +815,28 @@ fn main() {
         md.push_str("Recommend integrating GreedyLoadAware as the default construction mode for the RC integration branch.\n");
     } else if obj_gate_passed && runtime_regression {
         md.push_str("**ACCEPTED WITH CAUTION**\n\n");
-        md.push_str("RC-001 improves objective on ≥ 2/3 of instances but shows runtime regression (> 2×). ");
+        md.push_str(
+            "RC-001 improves objective on ≥ 2/3 of instances but shows runtime regression (> 2×). ",
+        );
         md.push_str("Investigate constructor cost before integration.\n");
     } else if arm_b_better_obj_count > 0 {
         md.push_str("**REJECTED**\n\n");
-        md.push_str(&format!("RC-001 improves objective on only {}/{} instances (threshold: {}/{}). ",
-            arm_b_better_obj_count, n, threshold_2_3, n));
-        md.push_str("Hypothesis not confirmed at the required threshold. Retain Random constructor.\n");
+        md.push_str(&format!(
+            "RC-001 improves objective on only {}/{} instances (threshold: {}/{}). ",
+            arm_b_better_obj_count, n, threshold_2_3, n
+        ));
+        md.push_str(
+            "Hypothesis not confirmed at the required threshold. Retain Random constructor.\n",
+        );
     } else {
         md.push_str("**REJECTED**\n\n");
         md.push_str("RC-001 does not improve the official ROADEF objective on any instance. ");
         md.push_str("Hypothesis falsified. Retain Random constructor.\n");
     }
-    md.push_str(&format!("\n*Total campaign runtime: {}ms*\n", campaign_start.elapsed().as_millis()));
+    md.push_str(&format!(
+        "\n*Total campaign runtime: {}ms*\n",
+        campaign_start.elapsed().as_millis()
+    ));
 
     if let Ok(mut f) = fs::File::create(&md_path) {
         use std::io::Write;
@@ -684,5 +844,8 @@ fn main() {
         eprintln!("Markdown report: {}", md_path);
     }
 
-    eprintln!("Done. Total runtime: {}ms", campaign_start.elapsed().as_millis());
+    eprintln!(
+        "Done. Total runtime: {}ms",
+        campaign_start.elapsed().as_millis()
+    );
 }

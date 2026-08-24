@@ -25,7 +25,6 @@
 ///   benchmarks/roadef/rc003/RC003_LEX_VALIDATION_REPORT.md (results section)
 ///
 /// Classification: Submission Gate campaign binary (RC-003).
-
 use std::collections::HashMap;
 use std::fs;
 use std::io::BufWriter;
@@ -33,18 +32,18 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use roadef::evaluator::RoadefEvaluator;
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::Network;
 use roadef::moga_impl::{
-    RoadefGenomeFactory, RoadefFitnessEvaluator, RoadefMutator, RoadefCrossover,
-    EvolutionRunConfig, EvolutionRunResult, run_roadef_evolution,
-    ConstructionMode, GreedyConstructorData,
+    run_roadef_evolution, ConstructionMode, EvolutionRunConfig, EvolutionRunResult,
+    GreedyConstructorData, RoadefCrossover, RoadefFitnessEvaluator, RoadefGenomeFactory,
+    RoadefMutator,
 };
-use roadef::telemetry::{NullTelemetrySink, ComparatorMode};
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
+use roadef::telemetry::{ComparatorMode, NullTelemetrySink};
 
 // ---------------------------------------------------------------------------
 // Configuration — identical to campaign_rc001 for reproducibility
@@ -135,7 +134,9 @@ fn spearman_rho(surrogate_ranks: &[f64], lex_ranks: &[f64]) -> f64 {
         return f64::NAN;
     }
     let n_f = n as f64;
-    let d_sq_sum: f64 = surrogate_ranks.iter().zip(lex_ranks.iter())
+    let d_sq_sum: f64 = surrogate_ranks
+        .iter()
+        .zip(lex_ranks.iter())
         .map(|(s, l)| (s - l).powi(2))
         .sum();
     1.0 - (6.0 * d_sq_sum) / (n_f * (n_f * n_f - 1.0))
@@ -148,8 +149,8 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
     let mut instances = Vec::new();
     for i in 1..=20 {
         let name = format!("setA-{:02}", i);
-        let net      = format!("{}/{}-net.json",      INSTANCE_DIR, name);
-        let tm       = format!("{}/{}-tm.json",       INSTANCE_DIR, name);
+        let net = format!("{}/{}-net.json", INSTANCE_DIR, name);
+        let tm = format!("{}/{}-tm.json", INSTANCE_DIR, name);
         let scenario = format!("{}/{}-scenario.json", INSTANCE_DIR, name);
         if Path::new(&net).exists() && Path::new(&tm).exists() && Path::new(&scenario).exists() {
             instances.push((name, net, tm, scenario));
@@ -161,11 +162,10 @@ fn discover_instances() -> Vec<(String, String, String, String)> {
 // ---------------------------------------------------------------------------
 // Build GreedyConstructorData
 // ---------------------------------------------------------------------------
-fn build_greedy_data(
-    net: &Network,
-    evaluator: Arc<RoadefEvaluator>,
-) -> Arc<GreedyConstructorData> {
-    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator.tm.demands
+fn build_greedy_data(net: &Network, evaluator: Arc<RoadefEvaluator>) -> Arc<GreedyConstructorData> {
+    let mut demands_by_volume: Vec<(usize, u64, u64, f64)> = evaluator
+        .tm
+        .demands
         .iter()
         .enumerate()
         .map(|(i, d)| {
@@ -175,7 +175,10 @@ fn build_greedy_data(
         .collect();
     demands_by_volume.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
 
-    let link_capacity: HashMap<u64, f64> = evaluator.graph.arcs.iter()
+    let link_capacity: HashMap<u64, f64> = evaluator
+        .graph
+        .arcs
+        .iter()
         .map(|a| (a.id, a.capacity))
         .collect();
 
@@ -220,8 +223,14 @@ fn run_arm_lex(
 
     let mut log_buf: Box<dyn std::io::Write> = Box::new(std::io::sink());
     let result: EvolutionRunResult = run_roadef_evolution(
-        factory, fitness_eval, mutator, crossover,
-        &evo_config, instance_name, &mut *log_buf, &mut NullTelemetrySink,
+        factory,
+        fitness_eval,
+        mutator,
+        crossover,
+        &evo_config,
+        instance_name,
+        &mut *log_buf,
+        &mut NullTelemetrySink,
     );
 
     // Compute lex vector for the best genome found.
@@ -258,8 +267,10 @@ fn main() {
     let campaign_start = Instant::now();
     eprintln!("=== RC-003: Lexicographic Objective Validation ===");
     eprintln!("Campaign ID: {}", CAMPAIGN_ID);
-    eprintln!("Seed: {}  Population: {}  Generations: {}  Elite: {}",
-        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT);
+    eprintln!(
+        "Seed: {}  Population: {}  Generations: {}  Elite: {}",
+        FIXED_SEED, POPULATION_SIZE, GENERATION_LIMIT, ELITE_COUNT
+    );
 
     let instances = discover_instances();
     eprintln!("Discovered {} instances.", instances.len());
@@ -273,11 +284,11 @@ fn main() {
         eprintln!("\n--- {} ---", name);
 
         let net = load_network(net_path).expect("Failed to load network");
-        let tm  = load_traffic_matrix(tm_path).expect("Failed to load TM");
+        let tm = load_traffic_matrix(tm_path).expect("Failed to load TM");
         let scenario = load_scenario(scenario_path).expect("Failed to load scenario");
 
         let num_demands = tm.demands.len();
-        let num_links   = net.links.len();
+        let num_links = net.links.len();
 
         // Adaptive time budget (same formula as campaign_rc001)
         let budget_secs = {
@@ -286,7 +297,10 @@ fn main() {
         };
 
         let evaluator = Arc::new(RoadefEvaluator::new(&net, tm, scenario));
-        let fitness_eval = RoadefFitnessEvaluator { evaluator: evaluator.clone() };
+        let fitness_eval = RoadefFitnessEvaluator {
+            evaluator: evaluator.clone(),
+            l2_cache: None,
+        };
         let mutator = RoadefMutator {
             node_ids: net.nodes.iter().map(|n| n.id).collect(),
         };
@@ -303,12 +317,25 @@ fn main() {
             mode: ConstructionMode::Random,
             greedy_data: None,
         };
-        let res_a = run_arm_lex("A", name, &factory_a, &fitness_eval, &mutator, &crossover,
-                                &evaluator, budget_secs);
-        eprintln!("  Arm A: valid={} surrogate={:.4} lex_len={} IFR={}/{} ({:.0}%)",
-            res_a.valid, res_a.surrogate_obj, res_a.lex_vector_len,
-            res_a.gen0_feasible_count, POPULATION_SIZE,
-            res_a.initial_feasibility_rate * 100.0);
+        let res_a = run_arm_lex(
+            "A",
+            name,
+            &factory_a,
+            &fitness_eval,
+            &mutator,
+            &crossover,
+            &evaluator,
+            budget_secs,
+        );
+        eprintln!(
+            "  Arm A: valid={} surrogate={:.4} lex_len={} IFR={}/{} ({:.0}%)",
+            res_a.valid,
+            res_a.surrogate_obj,
+            res_a.lex_vector_len,
+            res_a.gen0_feasible_count,
+            POPULATION_SIZE,
+            res_a.initial_feasibility_rate * 100.0
+        );
 
         // Arm B — Greedy constructor
         let greedy_data = build_greedy_data(&net, evaluator.clone());
@@ -319,12 +346,25 @@ fn main() {
             mode: ConstructionMode::GreedyLoadAware,
             greedy_data: Some(greedy_data),
         };
-        let res_b = run_arm_lex("B", name, &factory_b, &fitness_eval, &mutator, &crossover,
-                                &evaluator, budget_secs);
-        eprintln!("  Arm B: valid={} surrogate={:.4} lex_len={} IFR={}/{} ({:.0}%)",
-            res_b.valid, res_b.surrogate_obj, res_b.lex_vector_len,
-            res_b.gen0_feasible_count, POPULATION_SIZE,
-            res_b.initial_feasibility_rate * 100.0);
+        let res_b = run_arm_lex(
+            "B",
+            name,
+            &factory_b,
+            &fitness_eval,
+            &mutator,
+            &crossover,
+            &evaluator,
+            budget_secs,
+        );
+        eprintln!(
+            "  Arm B: valid={} surrogate={:.4} lex_len={} IFR={}/{} ({:.0}%)",
+            res_b.valid,
+            res_b.surrogate_obj,
+            res_b.lex_vector_len,
+            res_b.gen0_feasible_count,
+            POPULATION_SIZE,
+            res_b.initial_feasibility_rate * 100.0
+        );
 
         arm_a_results.push(res_a);
         arm_b_results.push(res_b);
@@ -370,27 +410,34 @@ fn main() {
         } else {
             // Both valid — compare lex vectors
             match lex_cmp(&res_a.lex_top10, &res_b.lex_top10) {
-                std::cmp::Ordering::Less    => "A".to_string(), // A has lower rank-1 → A wins
+                std::cmp::Ordering::Less => "A".to_string(), // A has lower rank-1 → A wins
                 std::cmp::Ordering::Greater => "B".to_string(),
-                std::cmp::Ordering::Equal   => "tie".to_string(),
+                std::cmp::Ordering::Equal => "tie".to_string(),
             }
         };
 
-        let inversion = res_a.valid && res_b.valid
+        let inversion = res_a.valid
+            && res_b.valid
             && surrogate_winner != "tie"
             && lex_winner != "tie"
             && surrogate_winner != lex_winner;
 
         if res_a.valid && res_b.valid {
             both_valid_count += 1;
-            if inversion { inversion_count += 1; }
+            if inversion {
+                inversion_count += 1;
+            }
 
             // Spearman: score = 1.0 if B wins, 0.5 if tie, 0.0 if A wins
             let s_score = match surrogate_winner.as_str() {
-                "B" => 1.0, "tie" => 0.5, _ => 0.0,
+                "B" => 1.0,
+                "tie" => 0.5,
+                _ => 0.0,
             };
             let l_score = match lex_winner.as_str() {
-                "B" => 1.0, "tie" => 0.5, _ => 0.0,
+                "B" => 1.0,
+                "tie" => 0.5,
+                _ => 0.0,
             };
             surrogate_scores.push(s_score);
             lex_scores.push(l_score);
@@ -421,9 +468,13 @@ fn main() {
             let mut i = 0;
             while i < n {
                 let mut j = i;
-                while j < n && (indexed[j].1 - indexed[i].1).abs() < 1e-12 { j += 1; }
+                while j < n && (indexed[j].1 - indexed[i].1).abs() < 1e-12 {
+                    j += 1;
+                }
                 let avg_rank = (i + 1 + j) as f64 / 2.0;
-                for k in i..j { ranks[indexed[k].0] = avg_rank; }
+                for k in i..j {
+                    ranks[indexed[k].0] = avg_rank;
+                }
                 i = j;
             }
             ranks
@@ -447,23 +498,26 @@ fn main() {
 
     let elapsed = campaign_start.elapsed().as_secs_f64();
     eprintln!("\n=== RC-003 Results ===");
-    eprintln!("Both-valid instances: {}/{}", both_valid_count, instances.len());
+    eprintln!(
+        "Both-valid instances: {}/{}",
+        both_valid_count,
+        instances.len()
+    );
     eprintln!("Inversions:           {}", inversion_count);
     eprintln!("Spearman ρ:           {:.4}", spearman_rho);
     eprintln!("Verdict:              {}", verdict);
     eprintln!("Total runtime:        {:.1}s", elapsed);
 
     // Print comparison table
-    eprintln!("\n{:<12} {:>8} {:>8} {:>12} {:>12} {:>10}",
-        "Instance", "A_valid", "B_valid", "Surr.Winner", "Lex.Winner", "Inversion");
+    eprintln!(
+        "\n{:<12} {:>8} {:>8} {:>12} {:>12} {:>10}",
+        "Instance", "A_valid", "B_valid", "Surr.Winner", "Lex.Winner", "Inversion"
+    );
     for c in &comparisons {
-        eprintln!("{:<12} {:>8} {:>8} {:>12} {:>12} {:>10}",
-            c.instance,
-            c.arm_a_valid,
-            c.arm_b_valid,
-            c.surrogate_winner,
-            c.lex_winner,
-            c.inversion);
+        eprintln!(
+            "{:<12} {:>8} {:>8} {:>12} {:>12} {:>10}",
+            c.instance, c.arm_a_valid, c.arm_b_valid, c.surrogate_winner, c.lex_winner, c.inversion
+        );
     }
 
     // Serialize report
@@ -482,7 +536,6 @@ fn main() {
 
     let json_path = format!("{}/rc003_lex_results.json", REPORT_DIR);
     let f = fs::File::create(&json_path).expect("Failed to create JSON output");
-    serde_json::to_writer_pretty(BufWriter::new(f), &report)
-        .expect("Failed to write JSON");
+    serde_json::to_writer_pretty(BufWriter::new(f), &report).expect("Failed to write JSON");
     eprintln!("\nResults written to {}", json_path);
 }
