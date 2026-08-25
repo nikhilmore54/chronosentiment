@@ -2,6 +2,7 @@ use crate::graph::Digraph;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::Arc;
 
 // ---------------------------------------------------------------------------
 // P9-H6-revised: Dijkstra call instrumentation (measurement-only, zero-cost
@@ -15,6 +16,11 @@ thread_local! {
     static DIJKSTRA_TIME_US: Cell<u64> = Cell::new(0);
     /// Unique target node IDs seen since last reset (for observed hit-rate measurement).
     static DIJKSTRA_UNIQUE_TARGETS: RefCell<HashSet<u64>> = RefCell::new(HashSet::new());
+    /// P9-H6-revised cache: (target_node_id, time_slot) -> Arc<DijkstraResult>.
+    /// Keyed on (target, ts) because disabled_arcs is scenario-driven (constant per ts
+    /// across all candidates in a generation). Reset at each generation boundary.
+    static DIJKSTRA_CACHE: RefCell<HashMap<(u64, usize), Arc<DijkstraResult>>> =
+        RefCell::new(HashMap::new());
 }
 
 /// Reset the per-thread Dijkstra instrumentation counters.
@@ -22,6 +28,13 @@ pub fn dijkstra_counters_reset() {
     DIJKSTRA_CALL_COUNT.with(|c| c.set(0));
     DIJKSTRA_TIME_US.with(|c| c.set(0));
     DIJKSTRA_UNIQUE_TARGETS.with(|s| s.borrow_mut().clear());
+}
+
+/// Reset the per-thread Dijkstra result cache.
+/// Must be called at each generation boundary so that stale results from a
+/// previous generation's disabled_arcs set are not reused.
+pub fn dijkstra_cache_reset() {
+    DIJKSTRA_CACHE.with(|c| c.borrow_mut().clear());
 }
 
 /// Read the per-thread Dijkstra instrumentation counters.
@@ -209,6 +222,73 @@ pub fn expand_sr_path(
         let v = path[i + 1];
         if u != v {
             let res = backward_dijkstra(graph, v, disabled_arcs);
+            let ok = route_ecmp(graph, &res, u, v, flow, arc_flow);
+            if !ok {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+/// P9-H6-revised: cached variant of expand_sr_path.
+///
+/// Identical semantics to `expand_sr_path` but looks up each `backward_dijkstra`
+/// result in the per-thread `DIJKSTRA_CACHE` keyed on `(target_node_id, time_slot)`
+/// before computing. On a cache miss the result is stored as `Arc<DijkstraResult>`
+/// so subsequent calls for the same `(target, ts)` within the same generation pay
+/// only an O(1) Arc clone instead of a full O(N log N) Dijkstra traversal.
+///
+/// Safety invariant: `disabled_arcs` must be identical for all calls sharing the
+/// same `time_slot` within a generation. This holds because `disabled_arcs` is
+/// derived solely from `scenario.interventions[ts]`, which is immutable scenario
+/// data — not from the genome. The cache is reset at each generation boundary via
+/// `dijkstra_cache_reset()` called from `pipeline_impl.rs`.
+pub fn expand_sr_path_cached(
+    graph: &Digraph,
+    source: u64,
+    target: u64,
+    waypoints: &[u64],
+    disabled_arcs: &HashSet<u64>,
+    flow: f64,
+    arc_flow: &mut HashMap<u64, f64>,
+    time_slot: usize,
+) -> bool {
+    /// Look up or compute a DijkstraResult for (node, ts), returning Arc.
+    fn cached_dijkstra(
+        graph: &Digraph,
+        node: u64,
+        disabled_arcs: &HashSet<u64>,
+        time_slot: usize,
+    ) -> Arc<DijkstraResult> {
+        // Try cache hit first (borrow scope ends before potential insert).
+        let hit = DIJKSTRA_CACHE.with(|c| c.borrow().get(&(node, time_slot)).cloned());
+        if let Some(arc_result) = hit {
+            return arc_result;
+        }
+        // Cache miss: run Dijkstra and store.
+        let result = Arc::new(backward_dijkstra(graph, node, disabled_arcs));
+        DIJKSTRA_CACHE.with(|c| {
+            c.borrow_mut().insert((node, time_slot), result.clone());
+        });
+        result
+    }
+
+    if waypoints.is_empty() {
+        let res = cached_dijkstra(graph, target, disabled_arcs, time_slot);
+        return route_ecmp(graph, &res, source, target, flow, arc_flow);
+    }
+
+    let mut path = vec![source];
+    path.extend_from_slice(waypoints);
+    path.push(target);
+
+    for i in 0..path.len() - 1 {
+        let u = path[i];
+        let v = path[i + 1];
+        if u != v {
+            let res = cached_dijkstra(graph, v, disabled_arcs, time_slot);
             let ok = route_ecmp(graph, &res, u, v, flow, arc_flow);
             if !ok {
                 return false;

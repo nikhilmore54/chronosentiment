@@ -6,6 +6,7 @@ use std::io::Write;
 use std::time::Instant;
 
 use crate::constraints::RoadefConstraintModel;
+use crate::ecmp::dijkstra_cache_reset;
 use crate::moga_impl::{
     make_comparator, update_peak_demands, EvolutionRunConfig, EvolutionRunResult, RoadefCrossover,
     RoadefEvaluation, RoadefFitnessEvaluator, RoadefGenome, RoadefGenomeFactory,
@@ -289,6 +290,11 @@ where
                 break;
             }
         }
+
+        // P9-H6-revised: reset per-thread Dijkstra cache at each generation boundary.
+        // disabled_arcs is scenario-driven (constant per ts within a generation) so
+        // cached results from the previous generation must not be reused.
+        dijkstra_cache_reset();
 
         // RP-411: per-generation wall-clock timers (milliseconds)
         let gen_start = Instant::now();

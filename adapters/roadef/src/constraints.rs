@@ -4,7 +4,7 @@ use crate::evaluator::RoadefEvaluator;
 use crate::path::SrPathBit;
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
-use crate::ecmp::expand_sr_path;
+use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
 
 #[derive(Debug, Clone)]
 pub enum RoadefViolation {
@@ -91,9 +91,9 @@ impl ConstraintModel<RoadefGenome> for RoadefConstraintModel {
                     waypoints = &srpath.w;
                 }
                 
-                let ok = expand_sr_path(
+                let ok = expand_sr_path_cached(
                     &self.evaluator.graph, demand.s, demand.t, waypoints,
-                    &disabled_arcs, flow, &mut arc_flows,
+                    &disabled_arcs, flow, &mut arc_flows, ts,
                 );
                 
                 if !ok {
@@ -200,9 +200,9 @@ impl RoadefConstraintModel {
                 if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
                     waypoints = &srpath.w;
                 }
-                let ok = expand_sr_path(
+                let ok = expand_sr_path_cached(
                     &self.evaluator.graph, demand.s, demand.t, waypoints,
-                    &disabled_arcs, flow, &mut arc_flows,
+                    &disabled_arcs, flow, &mut arc_flows, ts,
                 );
                 if !ok {
                     return false; // Connectivity violation

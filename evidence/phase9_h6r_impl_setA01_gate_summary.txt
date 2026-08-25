@@ -1,0 +1,457 @@
+   Compiling coralys-core v0.1.0 (/Users/nikhil/ChronoSentiment_MEGA_FINAL/coralys-core)
+   Compiling coralys-ecology v0.1.0 (/Users/nikhil/ChronoSentiment_MEGA_FINAL/coralys-ecology)
+   Compiling coralys-moga v0.1.0 (/Users/nikhil/ChronoSentiment_MEGA_FINAL/coralys-moga)
+warning: unused import: `LocalSearchOperator`
+ --> coralys-moga/src/observatory.rs:1:58
+  |
+1 | use crate::traits::{Genome, Evaluated, FitnessEvaluator, LocalSearchOperator, ObservedTransitionMetric, RegionIdentifier};
+  |                                                          ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:289:17
+    |
+289 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:290:17
+    |
+290 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:291:17
+    |
+291 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:441:13
+    |
+441 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling roadef v0.1.0 (/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/roadef)
+warning: unused import: `expand_sr_path`
+ --> adapters/roadef/src/constraints.rs:7:19
+  |
+7 | use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+  |                   ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `coralys-moga` (lib) generated 5 warnings (run `cargo fix --lib -p coralys-moga` to apply 1 suggestion)
+warning: value assigned to `termination_reason` is never read
+    --> adapters/roadef/src/moga_impl.rs:1532:13
+     |
+1532 |     let mut termination_reason = String::new(); // set before every break in the loop below
+     |             ^^^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+    --> adapters/roadef/src/moga_impl.rs:1582:17
+     |
+1582 |         let mut t_telemetry_ms: f64 = 0.0;
+     |                 ^^^^^^^^^^^^^^
+     |
+     = note: consider using `_t_telemetry_ms` instead
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/moga_impl.rs:2253:13
+     |
+2253 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/moga_impl.rs:2636:9
+     |
+2636 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `g`
+    --> adapters/roadef/src/moga_impl.rs:2770:21
+     |
+2770 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     ^
+     |
+help: if this is intentional, prefix it with an underscore
+     |
+2770 |             let mut _g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     +
+help: you might have meant to pattern match on the similarly named constant `_`
+     |
+2770 -             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+2770 +             let mut telemetry::_ = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2790:29
+     |
+2790 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2833:29
+     |
+2833 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/moga_impl.rs:2626:5
+     |
+2626 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2770:17
+     |
+2770 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                 ----^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2773:22
+     |
+2773 |                 let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+     |                      ----^^^^^^
+     |                      |
+     |                      help: remove this `mut`
+
+warning: unused variable: `evaluation_cache`
+  --> adapters/roadef/src/pipeline_impl.rs:63:13
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_evaluation_cache`
+
+warning: value assigned to `termination_reason` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:247:13
+    |
+247 |     let mut termination_reason = String::new(); // set before every break in the loop below
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `trajectory`
+   --> adapters/roadef/src/pipeline_impl.rs:274:13
+    |
+274 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trajectory`
+
+warning: unused variable: `gen_start`
+   --> adapters/roadef/src/pipeline_impl.rs:276:13
+    |
+276 |         let gen_start = std::time::Instant::now();
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gen_start`
+
+warning: unused variable: `t_eval_ms`
+   --> adapters/roadef/src/pipeline_impl.rs:304:17
+    |
+304 |         let mut t_eval_ms: f64 = 0.0;
+    |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_ms`
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+   --> adapters/roadef/src/pipeline_impl.rs:305:17
+    |
+305 |         let mut t_telemetry_ms: f64 = 0.0;
+    |                 ^^^^^^^^^^^^^^
+    |
+    = note: consider using `_t_telemetry_ms` instead
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:612:25
+    |
+612 |                 let mut ca_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:613:25
+    |
+613 |                 let mut cb_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:618:21
+    |
+618 |                     ca_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:622:21
+    |
+622 |                     cb_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `child_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:687:25
+    |
+687 |                 let mut child_tag = "mutation";
+    |                         ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `t_eval_start`
+   --> adapters/roadef/src/pipeline_impl.rs:716:13
+    |
+716 |         let t_eval_start = Instant::now();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: unused variable: `t_eval_start`
+   --> adapters/roadef/src/pipeline_impl.rs:732:13
+    |
+732 |         let t_eval_start = std::time::Instant::now();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: value assigned to `t_telemetry_ms` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:963:13
+    |
+963 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+    |             ^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+  --> adapters/roadef/src/pipeline_impl.rs:63:9
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:274:9
+    |
+274 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:304:13
+    |
+304 |         let mut t_eval_ms: f64 = 0.0;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/pipeline_impl.rs:1293:9
+     |
+1293 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `t_health`
+    --> adapters/roadef/src/pipeline_impl.rs:1397:13
+     |
+1397 |     let mut t_health = Instant::now();
+     |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_health`
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1519:25
+     |
+1519 |                 let mut tag = "crossover_mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1578:25
+     |
+1578 |                 let mut tag = "mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/pipeline_impl.rs:1280:5
+     |
+1280 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1397:9
+     |
+1397 |     let mut t_health = Instant::now();
+     |         ----^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1421:13
+     |
+1421 |         let mut t_feasibility_ms: f64 = 0.0;
+     |             ----^^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1447:13
+     |
+1447 |         let mut n_cross_repair = 0;
+     |             ----^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1448:13
+     |
+1448 |         let mut n_mut_repair = 0;
+     |             ----^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1449:13
+     |
+1449 |         let mut n_cross_maj = 0;
+     |             ----^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1450:13
+     |
+1450 |         let mut n_mut_maj = 0;
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: `roadef` (lib) generated 39 warnings (run `cargo fix --lib -p roadef` to apply 13 suggestions)
+    Finished `release` profile [optimized] target(s) in 6.40s
+     Running `target/release/phase7_loop_profile --instance setA-01 --gens 50 --seed 42`
+=== Phase 7 Evolution Loop Overhead Profile ===
+Instance   : setA-01
+Generations: 50
+Seed       : 42
+Pop size   : 50
+
+Gen-0 IFR  : 1.0000
+gen,gen_ms,eval_ms,non_eval_ms,l1_lookup_ms,l1_materialize_ms,l1_insert_ms,l1_total_ms,unattributed_ms,n_eval,cache_hits,crossover_ms,mutation_ms,repair_ms,improve_ms,sort_ms,selection_ms,feasibility_ms,staging_ms,attributed_ms,rayon_residual_ms
+1,43.245,12.733,30.512,0.013,0.006,0.156,0.175,30.338,22,3,0.092,0.004,16.040,14.087,0.005,0.003,0.000,0.020,30.249,0.089
+2,44.253,14.872,29.381,0.017,0.008,0.085,0.109,29.272,23,6,0.091,0.002,12.706,16.366,0.007,0.003,0.000,0.021,29.195,0.077
+3,44.721,14.858,29.864,0.018,0.002,0.168,0.188,29.676,29,2,0.129,0.003,11.731,17.696,0.004,0.006,0.000,0.020,29.590,0.085
+4,44.221,17.544,26.676,0.017,0.001,0.116,0.134,26.542,38,1,0.090,0.003,4.860,21.488,0.005,0.004,0.000,0.029,26.478,0.064
+5,43.302,16.257,27.045,0.022,0.006,0.104,0.132,26.913,32,7,0.081,0.004,4.770,21.955,0.004,0.003,0.000,0.026,26.844,0.070
+6,51.341,24.394,26.946,0.031,0.010,0.275,0.315,26.631,33,7,0.070,0.003,4.104,22.348,0.005,0.003,0.000,0.027,26.560,0.071
+7,47.985,18.844,29.141,0.023,0.008,0.111,0.141,29.000,34,4,0.138,0.004,5.717,23.032,0.004,0.005,0.000,0.025,28.925,0.074
+8,43.732,17.010,26.721,0.021,0.004,0.119,0.143,26.578,37,4,0.107,0.003,3.229,23.136,0.004,0.005,0.000,0.026,26.510,0.067
+9,44.287,17.920,26.367,0.022,0.005,0.120,0.147,26.221,36,5,0.106,0.002,3.218,22.806,0.005,0.002,0.000,0.023,26.162,0.058
+10,42.004,15.639,26.364,0.024,0.010,0.110,0.144,26.221,35,6,0.079,0.003,3.457,22.577,0.004,0.004,0.000,0.029,26.155,0.066
+11,45.397,19.385,26.012,0.019,0.001,0.125,0.145,25.867,42,1,0.088,0.002,1.628,24.048,0.005,0.001,0.000,0.036,25.808,0.058
+12,43.910,17.937,25.973,0.021,0.002,0.324,0.346,25.627,39,3,0.073,0.003,2.470,22.999,0.003,0.003,0.000,0.026,25.578,0.049
+13,109.312,44.569,64.743,0.025,0.004,0.154,0.183,64.560,37,3,0.104,0.005,4.076,60.251,0.008,0.003,0.000,0.043,64.489,0.071
+14,44.383,18.906,25.477,0.019,0.003,0.127,0.149,25.329,41,3,0.089,0.003,0.789,24.361,0.004,0.005,0.000,0.026,25.277,0.052
+15,44.963,18.051,26.912,0.020,0.003,0.136,0.158,26.754,37,2,0.083,0.005,5.261,21.304,0.005,0.003,0.000,0.024,26.684,0.070
+16,43.319,17.477,25.841,0.023,0.006,0.130,0.159,25.682,39,5,0.090,0.004,0.933,24.538,0.004,0.004,0.000,0.036,25.609,0.073
+17,43.643,17.660,25.983,0.020,0.003,0.121,0.143,25.839,39,3,0.077,0.003,2.403,23.254,0.005,0.003,0.000,0.032,25.777,0.062
+18,43.278,17.549,25.730,0.021,0.004,0.113,0.137,25.593,38,4,0.093,0.003,2.506,22.889,0.005,0.002,0.000,0.034,25.532,0.060
+19,47.211,21.356,25.855,0.022,0.004,0.110,0.136,25.719,37,4,0.087,0.002,3.168,22.377,0.004,0.005,0.000,0.022,25.666,0.054
+20,46.039,21.074,24.965,0.023,0.014,0.117,0.154,24.811,39,6,0.078,0.003,0.000,24.639,0.004,0.004,0.000,0.026,24.753,0.058
+21,43.755,17.731,26.023,0.020,0.001,0.122,0.144,25.880,40,1,0.084,0.003,3.276,22.418,0.005,0.003,0.000,0.033,25.821,0.059
+22,44.041,17.870,26.171,0.022,0.006,0.108,0.137,26.034,36,5,0.098,0.004,3.368,22.468,0.005,0.005,0.000,0.027,25.974,0.060
+23,43.293,18.738,24.555,0.031,0.003,0.141,0.175,24.380,42,3,0.081,0.003,0.000,24.188,0.006,0.004,0.000,0.036,24.317,0.063
+24,42.019,17.407,24.612,0.035,0.015,0.608,0.657,23.955,39,6,0.075,0.003,0.000,23.786,0.005,0.003,0.000,0.029,23.902,0.053
+25,41.713,16.166,25.547,0.021,0.002,0.116,0.139,25.408,37,3,0.079,0.007,4.021,21.195,0.004,0.003,0.000,0.033,25.342,0.066
+26,41.479,16.810,24.669,0.023,0.006,0.102,0.131,24.538,37,6,0.060,0.005,1.611,22.769,0.005,0.002,0.000,0.028,24.480,0.059
+27,40.679,15.627,25.052,0.022,0.006,0.104,0.132,24.920,35,7,0.064,0.004,2.597,22.166,0.004,0.003,0.000,0.027,24.867,0.053
+28,42.714,18.244,24.470,0.019,0.002,0.114,0.135,24.336,42,2,0.081,0.003,0.855,23.315,0.004,0.002,0.000,0.025,24.286,0.050
+29,41.817,16.744,25.072,0.020,0.003,0.115,0.138,24.934,38,4,0.075,0.003,2.487,22.279,0.004,0.003,0.000,0.022,24.873,0.061
+30,40.721,14.812,25.909,0.024,0.005,0.107,0.136,25.773,34,6,0.071,0.003,4.061,21.536,0.005,0.008,0.000,0.026,25.710,0.063
+31,41.491,15.651,25.840,0.022,0.006,0.117,0.146,25.694,34,6,0.080,0.002,4.049,21.474,0.004,0.005,0.000,0.023,25.638,0.057
+32,42.859,18.407,24.452,0.021,0.004,0.114,0.139,24.314,40,4,0.076,0.003,0.756,23.387,0.004,0.003,0.000,0.029,24.257,0.057
+33,41.128,16.306,24.823,0.019,0.003,0.107,0.130,24.693,38,3,0.075,0.002,2.933,21.605,0.004,0.002,0.000,0.020,24.640,0.053
+34,42.330,17.989,24.341,0.021,0.007,0.100,0.129,24.212,36,7,0.074,0.003,1.550,22.502,0.004,0.002,0.000,0.026,24.161,0.052
+35,50.061,24.231,25.830,0.025,0.007,0.098,0.130,25.701,36,7,0.084,0.004,1.593,23.926,0.005,0.007,0.000,0.029,25.648,0.053
+36,64.855,38.671,26.184,0.025,0.003,0.225,0.253,25.931,42,3,0.095,0.003,0.000,25.742,0.005,0.006,0.000,0.026,25.876,0.055
+37,64.440,21.548,42.893,0.039,0.016,0.303,0.358,42.534,36,7,0.108,0.007,3.076,39.171,0.005,0.005,0.000,0.027,42.400,0.134
+38,56.327,31.647,24.680,0.025,0.008,0.135,0.168,24.512,39,5,0.084,0.004,0.800,23.533,0.005,0.005,0.000,0.030,24.460,0.052
+39,41.801,16.931,24.870,0.024,0.018,0.096,0.138,24.732,33,10,0.084,0.002,1.460,23.096,0.005,0.005,0.000,0.025,24.676,0.056
+40,39.684,14.848,24.836,0.024,0.008,0.092,0.124,24.712,32,8,0.073,0.003,3.775,20.777,0.005,0.002,0.000,0.025,24.659,0.053
+41,39.700,14.386,25.313,0.027,0.007,0.090,0.124,25.189,32,7,0.076,0.004,4.591,20.427,0.004,0.002,0.000,0.027,25.132,0.057
+42,41.663,16.325,25.338,0.022,0.005,0.103,0.130,25.208,36,6,0.085,0.002,2.443,22.599,0.004,0.004,0.000,0.022,25.159,0.049
+43,39.293,14.320,24.973,0.027,0.007,0.090,0.124,24.850,34,7,0.077,0.002,3.024,21.657,0.005,0.003,0.000,0.027,24.796,0.054
+44,37.522,11.674,25.849,0.027,0.008,0.078,0.113,25.736,28,10,0.088,0.002,5.583,19.975,0.004,0.005,0.000,0.022,25.677,0.059
+45,41.387,16.782,24.605,0.029,0.004,0.105,0.138,24.467,38,4,0.075,0.003,2.648,21.652,0.005,0.004,0.000,0.025,24.412,0.056
+46,42.102,17.553,24.548,0.027,0.004,0.104,0.134,24.414,38,4,0.075,0.002,2.218,22.020,0.005,0.002,0.000,0.022,24.343,0.071
+47,39.347,14.742,24.605,0.023,0.006,0.101,0.130,24.475,34,8,0.067,0.003,2.195,22.090,0.004,0.002,0.000,0.027,24.389,0.086
+48,120.690,24.434,96.256,0.035,0.008,0.103,0.146,96.110,35,7,0.102,0.007,2.557,93.337,0.005,0.004,0.000,0.027,96.038,0.071
+49,42.391,16.945,25.446,0.028,0.009,1.182,1.219,24.226,36,8,0.083,0.002,0.754,23.282,0.004,0.003,0.000,0.039,24.168,0.058
+50,42.259,18.095,24.164,0.031,0.015,0.113,0.159,24.005,38,7,0.073,0.003,0.000,23.839,0.004,0.003,0.000,0.026,23.949,0.056
+
+=== Phase 8 Operator Attribution Summary: 50 generations on setA-01 ===
+
+Run result:
+  best_obj        : 51.0126807372
+  valid           : true
+  generations_run : 50
+  wall_clock_ms   : 2468
+
+Component breakdown (totals across 50 generations):
+
+  Component                             Total (ms)   % wall    Mean/gen      Stddev
+  --------------------------------------------------------------------------------
+  Wall-clock (total)                        2468.0   100.0%        49.4         0.0
+    Eval (Phase B parallel)                  935.7    37.9%        18.7         5.8
+    Non-eval overhead                       1418.4    57.5%        28.4        11.5
+      L1 cache lookup                          1.2     0.0%         0.0         0.0
+      L1 cache materialize                     0.3     0.0%         0.0         0.0
+      L1 cache insert                          7.9     0.3%         0.2         0.2
+      L1 cache total                           9.4     0.4%         0.2         0.2
+      Unattributed overhead                 1409.0    57.1%        28.2        11.6
+  --------------------------------------------------------------------------------
+  Phase 8 operator breakdown (subset of unattributed):
+      Crossover                                4.2     0.2%         0.1         0.0
+      Mutation                                 0.2     0.0%         0.0         0.0
+      Repair (process_offspring)             161.3     6.5%         3.2         3.1
+      Improve (process_offspring)           1238.4    50.2%        24.8        11.7
+      Sort                                     0.2     0.0%         0.0         0.0
+      Selection                                0.2     0.0%         0.0         0.0
+      Feasibility check                        0.0     0.0%         0.0         0.0
+      Staging overhead                         1.4     0.1%         0.0         0.0
+      Attributed total                      1405.9    57.0%        28.1        11.5
+      Rayon residual                           3.2     0.1%         0.1         0.0
+
+Phase 8 attribution gate: attributed_ms / unattributed_ms = 99.8%
+  GATE PASS: >= 80% attribution achieved.
+
+Note: 'Rayon residual' = unattributed_ms - attributed_ms.
+      This is an accounting residual, NOT proof of Rayon causality.
+      It includes Rayon spawn/join + any other unmeasured overhead.
+
+Phase 7 baseline invariants:
+  best_obj       : 51.0126807372
+  n_actual_evals : 1802
+  generations    : 50
+  valid          : true
+  cache_hits     : 250
