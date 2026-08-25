@@ -1,6 +1,37 @@
 use crate::graph::Digraph;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
+
+// ---------------------------------------------------------------------------
+// P9-H6-revised: Dijkstra call instrumentation (measurement-only, zero-cost
+// when counters are not read). Thread-local to avoid synchronization overhead.
+// ---------------------------------------------------------------------------
+
+thread_local! {
+    /// Total number of backward_dijkstra() calls since last reset.
+    static DIJKSTRA_CALL_COUNT: Cell<u64> = Cell::new(0);
+    /// Total wall-clock time spent inside backward_dijkstra() in microseconds.
+    static DIJKSTRA_TIME_US: Cell<u64> = Cell::new(0);
+    /// Unique target node IDs seen since last reset (for observed hit-rate measurement).
+    static DIJKSTRA_UNIQUE_TARGETS: RefCell<HashSet<u64>> = RefCell::new(HashSet::new());
+}
+
+/// Reset the per-thread Dijkstra instrumentation counters.
+pub fn dijkstra_counters_reset() {
+    DIJKSTRA_CALL_COUNT.with(|c| c.set(0));
+    DIJKSTRA_TIME_US.with(|c| c.set(0));
+    DIJKSTRA_UNIQUE_TARGETS.with(|s| s.borrow_mut().clear());
+}
+
+/// Read the per-thread Dijkstra instrumentation counters.
+/// Returns (total_calls, total_time_us, unique_target_count).
+pub fn dijkstra_counters_read() -> (u64, u64, u64) {
+    let calls = DIJKSTRA_CALL_COUNT.with(|c| c.get());
+    let us = DIJKSTRA_TIME_US.with(|c| c.get());
+    let unique = DIJKSTRA_UNIQUE_TARGETS.with(|s| s.borrow().len() as u64);
+    (calls, us, unique)
+}
 
 #[derive(Copy, Clone)]
 struct State {
@@ -45,6 +76,11 @@ pub fn backward_dijkstra(
     target: u64,
     disabled_arcs: &HashSet<u64>,
 ) -> DijkstraResult {
+    // P9-H6-revised instrumentation: count calls, time, and unique targets.
+    let _t_start = std::time::Instant::now();
+    DIJKSTRA_CALL_COUNT.with(|c| c.set(c.get() + 1));
+    DIJKSTRA_UNIQUE_TARGETS.with(|s| { s.borrow_mut().insert(target); });
+
     let mut dist: HashMap<u64, f64> = HashMap::new();
     let mut preds: HashMap<u64, Vec<usize>> = HashMap::new();
     let mut heap = BinaryHeap::new();
@@ -88,6 +124,9 @@ pub fn backward_dijkstra(
             }
         }
     }
+
+    let elapsed_us = _t_start.elapsed().as_micros() as u64;
+    DIJKSTRA_TIME_US.with(|c| c.set(c.get() + elapsed_us));
 
     DijkstraResult { dist, preds }
 }

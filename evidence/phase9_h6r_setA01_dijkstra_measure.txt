@@ -1,0 +1,39 @@
+=== Phase 9 H6-revised: Dijkstra Precondition Measurements ===
+Instance: setA-01  gens=50  seed=42
+  nodes=20, time_slots=2, demands=40
+
+--- PC1: Dijkstra call volume ---
+  total backward_dijkstra() calls  : 233216
+  calls per generation (avg)        : 4664.3
+
+--- PC2: Dijkstra timing share ---
+  dijkstra_ms (instrumented)        : 1533.8
+  improve_ms  (process_offspring)   : 2543.1
+  repair_ms   (process_offspring)   : 379.1
+  feasibility_ms (pre-check)        : 0.0  (should be 0 post-H3)
+  wall_ms (measured)                : 3766.0
+  dijkstra_ms / improve_ms          : 60.3%
+  dijkstra_ms / wall_ms             : 40.7%
+
+--- PC3: Cache hit potential ---
+  max unique (target,slot)/gen      : 40 (N=20 × T=2)
+  observed unique target IDs (run)  : 20
+  total calls over 50 gens           : 233216
+  upper bound reuse (theoretical)   : 99.1%  (if all unique entries queried each gen)
+  observed reuse lower bound        : 100.0%  ((calls - unique_targets) / calls)
+  calls / (max_unique × gens)       : 116.61x
+  calls saved per unique target     : 11659
+
+--- PC4: Memory footprint ---
+  DijkstraResult size estimate      : 896 bytes/entry
+  worst-case cache (N×T entries)    : 35840 bytes (0.03 MB)
+  NOTE: actual cache holds only queried targets, not all N×T
+  Clone cost: DijkstraResult contains 2 HashMaps — O(N) clone per hit
+  Arc<DijkstraResult> would reduce clone to O(1) pointer copy
+
+--- Trajectory invariants ---
+  best_obj       : 51.01268073724039
+  n_eval         : 38
+  cache_hits     : 7
+  valid          : true
+  generations    : 50
