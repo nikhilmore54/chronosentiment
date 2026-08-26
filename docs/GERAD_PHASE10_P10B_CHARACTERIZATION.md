@@ -341,6 +341,25 @@ This is a larger intervention and requires separate characterization.
 **Governance note:** P10-C selection requires explicit authorization after P10-B evidence review.
 The current document presents the evidence; hypothesis selection is deferred to the user.
 
+**Critical distinction before P10-C authorization:**
+
+P10-B has established *that* repair fails and *how much* it costs. It has not established *why*
+repair fails. The following questions remain open:
+
+1. Is the repair algorithm fundamentally incapable of repairing these offspring (representation mismatch)?
+2. Is the failure caused by constraint interactions that the waypoint-clearing strategy cannot resolve?
+3. Is the infeasibility structure of large-instance offspring qualitatively different from small-instance offspring?
+4. Would eliminating repair (H-SKIP) produce better or worse evolutionary performance, or no change?
+
+H-SKIP is the most consequential candidate because it changes evolutionary behavior, not just
+runtime. It therefore requires stronger evidence than H-EARLY (which preserves repair semantics
+while eliminating redundant evaluation calls). H-EARLY is the lower-risk intervention: it reduces
+the 3× `evaluate_violations()` overhead to 1× without changing what the EA does with infeasible
+offspring.
+
+**Recommended P10-C decision point:** Choose ONE hypothesis to investigate. Do not implement
+multiple interventions simultaneously.
+
 ---
 
 ## G. Governance
