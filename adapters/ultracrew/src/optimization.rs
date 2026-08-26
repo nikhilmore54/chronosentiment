@@ -157,6 +157,9 @@ pub struct ScheduleContext {
     /// constraints (e.g. HC3 threshold from scenario.max_hours_per_worker).
     /// When absent, engine defaults apply (backward-compatible).
     pub scenario: Option<crate::public_contracts::InrcScenario>,
+    // Fatigue M2 Integration
+    pub enable_fatigue: bool,
+    pub fatigue_weight: f64,
 }
 
 #[derive(Clone)]

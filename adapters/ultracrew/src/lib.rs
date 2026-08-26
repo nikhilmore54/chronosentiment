@@ -62,6 +62,8 @@ pub mod helpers {
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: None,
             scenario: None,
+            enable_fatigue: false,
+            fatigue_weight: 0.0,
         })
     }
 

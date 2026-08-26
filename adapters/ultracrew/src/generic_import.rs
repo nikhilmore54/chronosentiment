@@ -33,6 +33,7 @@
 /// All functions return `ImportError` with a descriptive message.
 /// No `unwrap()` or `expect()` calls — all errors are propagated.
 
+use crate::config::FatigueConfig;
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs;
@@ -114,20 +115,13 @@ pub fn load_from_csv<P: AsRef<Path>>(
     validate_skill_coverage(&workers, &shifts)?;
 
     Ok(ScheduleRequest {
-    workers,
-    shifts,
-    historical_workloads: if historical_workloads.is_empty() { None } else { Some(historical_workloads) },
-    rng_seed,
-    generation_limit,
-    scenario,
-    fatigue: FatigueConfig::default(),
-})
         workers,
         shifts,
         historical_workloads: if historical_workloads.is_empty() { None } else { Some(historical_workloads) },
         rng_seed,
         generation_limit,
         scenario,
+        fatigue: FatigueConfig::default(),
     })
 }
 
@@ -368,6 +362,7 @@ pub fn export_request_template() -> String {
             minimum_rest_hours: Some(11),
             leave_requests: None,
         }),
+        fatigue: FatigueConfig::default(),
     };
     serde_json::to_string_pretty(&template).unwrap_or_else(|_| "{}".to_string())
 }

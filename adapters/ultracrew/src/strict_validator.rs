@@ -46,6 +46,7 @@ use serde::Serialize;
 
 use crate::config::FatigueConfig;
 use crate::models::Skill;
+use crate::public_contracts::ScheduleRequest;
 
 // ─── Severity ────────────────────────────────────────────────────────────────
 
@@ -600,6 +601,7 @@ mod tests {
     #[test]
     fn test_multiple_errors_all_collected() {
         // Both V-001 and V-002 must appear — validator must not stop at first error
+        let req = ScheduleRequest {
             workers: vec![],
             shifts: vec![],
             historical_workloads: None,
@@ -607,19 +609,6 @@ mod tests {
             generation_limit: None,
             scenario: None,
             fatigue: FatigueConfig::default(),
-            shifts: vec![],
-            historical_workloads: None,
-            rng_seed: None,
-            generation_limit: None,
-            scenario: None,
-            fatigue: FatigueConfig::default(),
-            workers: vec![],
-            shifts: vec![],
-            historical_workloads: None,
-            rng_seed: None,
-            generation_limit: None,
-            scenario: None,
-            // ScheduleRequest has exactly these 6 fields
         };
         let report = validate_request(&req);
         assert!(!report.is_valid());

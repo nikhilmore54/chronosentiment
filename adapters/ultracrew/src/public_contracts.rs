@@ -80,6 +80,8 @@ impl ScheduleRequest {
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: None,
             scenario: self.scenario.clone(),
+            enable_fatigue: self.fatigue.enable_fatigue,
+            fatigue_weight: self.fatigue.fatigue_weight,
         })
     }
 }
@@ -123,6 +125,8 @@ impl RescheduleRequest {
             observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
             locked_assignments: Some(locked_assignments),
             scenario: self.request.scenario.clone(),
+            enable_fatigue: self.request.fatigue.enable_fatigue,
+            fatigue_weight: self.request.fatigue.fatigue_weight,
         })
     }
 }
