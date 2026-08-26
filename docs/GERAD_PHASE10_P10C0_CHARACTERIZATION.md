@@ -301,24 +301,60 @@ every single offspring pays the full cost of two redundant `evaluate_violations(
 
 ## F. P10-C1 Research Questions (Bottleneck Arc Characterization)
 
-P10-C1 must distinguish four hypotheses before any construction/repair implementation:
+P10-C1 is a **forensic lineage experiment**, not a repair implementation. The goal is causal discrimination across five hypotheses before any behavioral intervention.
 
-**F.0 Is the bottleneck actually unavoidable?**
-For each dominant arc (968, 658, 303, 606): does the demand volume mathematically require that much traffic through the arc, or do alternative feasible paths exist? If unavoidable, rerouting cannot fix it. If alternatives exist, the current construction/representation is failing to exploit them.
+### F.0 Causal hypotheses to discriminate
 
-**F.1 If alternatives exist, why aren't they being selected?**
-Characterize for each bottleneck arc: current route → bottleneck arc vs. alternative routes → available capacity. This discriminates: constructor, crossover, mutation, route representation, selection pressure, or repair.
-
-**F.2 What happens immediately before the bottleneck appears?**
-For each dominant bottleneck: generation of first appearance; parent genomes; operation producing offspring (crossover vs. mutation); capacity utilization before/after; whether the offending route was already present in a parent; whether alternative routes existed; whether the offspring inherited a structurally bad routing combination.
-
-This separates:
-- A. Bad initial construction
-- B. Good construction → destructive crossover/mutation
-- C. Insufficient representation of alternative routes
-- D. Genuinely constrained topology
+1. **Topology-constrained bottleneck** — most/all relevant demand genuinely has to traverse that arc.
+2. **Construction bias** — alternatives exist, but the initial constructor overwhelmingly chooses the bottleneck.
+3. **Representation limitation** — the genome cannot adequately express the useful alternatives.
+4. **Variation destruction** — useful alternatives exist initially but crossover/mutation destroys or fails to preserve them.
+5. **Selection dynamics** — alternatives exist but are systematically eliminated by other objectives.
 
 **Do not assume "constructor" yet.** H-CONSTRUCT is the hypothesis family, not the conclusion.
+
+### F.1 Lineage record structure (per dominant arc: 968/658/303/606)
+
+| Field | Question |
+|-------|----------|
+| First appearance | At what generation does the arc become overloaded? |
+| Origin | Initial / crossover / mutation / inherited |
+| Parent 1 | What genome produced it? |
+| Parent 2 | If crossover, what was the other parent? |
+| Parent bottleneck state | Did either parent already use the arc? |
+| Child bottleneck state | Did the operation introduce/increase its use? |
+| Demand set | Which demands contribute to the arc load? |
+| Alternative paths | What alternative topology exists for those demands? |
+| Representation | Can those alternatives actually be represented in the genome? |
+| Persistence | Does the bottleneck survive selection across generations? |
+
+### F.2 Transition classification (for each first-appearance event)
+
+```
+A. parent already overloaded → inheritance / selection question
+B. neither parent overloaded → crossover/mutation/construction representation question
+C. parent had alternative → child lost alternative → destructive variation candidate
+D. alternative is representable but never appears → construction / exploration candidate
+E. alternative cannot be represented → representation gap
+F. alternative exists topologically but cannot satisfy constraints → constrained topology
+```
+
+### F.3 P10-C1 execution order
+
+- **C1-A** — Bottleneck census: exact frequency/load contribution of 968/658/303/606
+- **C1-B** — First-appearance lineage: capture first genome and generation for each dominant bottleneck
+- **C1-C** — Parent comparison: compare parent genomes and offspring around first appearance
+- **C1-D** — Alternative-path availability: determine whether viable alternatives exist for the affected demand set (without implementing rerouting)
+- **C1-E** — Representation test: determine whether those alternatives can be expressed by the existing genome
+- **C1-F** — Causal classification: assign evidence-supported classification (construction / crossover / mutation / representation / topology)
+
+Only after C1-F should a behavioral intervention be authorized.
+
+### F.4 Scope constraints
+
+- Compiler warnings (unused telemetry variables, unused imports) are non-blocking technical debt. Do not clean them during P10-C1 — behavioral code must remain frozen during the causal experiment.
+- Do not implement Dijkstra, ECMP, constructor changes, or operator changes during P10-C1.
+- P10-C1 is observational lineage tracing only.
 
 ---
 
