@@ -261,10 +261,13 @@ every single offspring pays the full cost of two redundant `evaluate_violations(
 
 **H-SKIP (repair produces no useful evolutionary progress; removing it is justified):**
 - SUPPORTED by P10-C0 evidence. Repair makes zero genome changes, zero violation improvement,
-  zero saturation improvement. Skipping repair for Capacity-violated offspring would eliminate
-  calls #2 and #3 with no loss of evolutionary information.
-- However: skipping repair does not address the root cause (infeasible offspring are still
-  produced and discarded). It reduces waste but does not improve solution quality.
+  zero saturation improvement. Bypassing repair for Capacity-violated offspring eliminates
+  loop overhead with no loss of evolutionary information.
+- Quantitative timing benefit not yet characterized — a pre/post A/B runtime measurement
+  (same 7 instances × same seeds × same optimizer settings) would be required to claim a
+  specific speedup. The 40.63s build time is compilation time, not execution time.
+- Skipping repair does not address the root cause (infeasible offspring are still produced
+  and discarded). It reduces waste but does not improve solution quality.
 
 **H-CONSTRUCT (the dominant problem is production of infeasible offspring):**
 - SUPPORTED by P10-B + P10-C0 combined. The infeasibility rate scales from 0.9% to 100%
@@ -284,7 +287,7 @@ every single offspring pays the full cost of two redundant `evaluate_violations(
 | H-CONSTRUCT     | ✅ Authorized as investigation | Evidence identifies a structural feasibility problem; P10-C1 must determine which intervention is correct. |
 | H-SKIP+CONSTRUCT| ✅ Authorized                | Immediate safe cleanup + properly governed investigation. |
 
-**Authorized immediately:** H-SKIP — remove/bypass the demonstrated no-op Capacity repair path, with observational telemetry preserved.
+**Authorized immediately:** H-SKIP — bypass the demonstrated no-op Capacity repair path, with observational telemetry preserved. Implemented in `1ddc6fa84`. Timing benefit not yet quantified — a pre/post A/B runtime measurement would be required to claim a specific speedup.
 
 **Authorized next:** P10-C1 — Bottleneck Arc Characterization.
 
@@ -384,7 +387,7 @@ Only after C1-F should a behavioral intervention be authorized.
 - P10-B: CLOSED (commits `3a07aa6f0` + `570805df7` + `0c0dd14eb`)
 - P10-C0: CLOSED (commit `66674fc96`; all 7 instances; 559 total failed repairs; 0% genome change; 100% violation unchanged)
 - P10-C hypothesis selection: CLOSED — H-SKIP+CONSTRUCT authorized 2026-08-26
-- H-SKIP: AUTHORIZED — remove demonstrated no-op Capacity repair path (keep telemetry)
-- P10-C1: AUTHORIZED — Bottleneck Arc Characterization (after H-SKIP)
+- H-SKIP: CLOSED (`1ddc6fa84`) — performance correction implemented and behaviorally safe; quantitative timing benefit not yet characterized (no A/B runtime measurement exists)
+- P10-C1: AUTHORIZED — Bottleneck Arc Characterization (C1-A through C1-F, observational only)
 - P10-C2+: LOCKED — requires P10-C1 evidence and explicit hypothesis discrimination
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
