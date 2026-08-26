@@ -725,6 +725,24 @@ where
                             if max_sat_after.is_finite() {
                                 p10c0_sum_max_sat_after += max_sat_after;
                             }
+                            // C1-B: emit [c1b] for target arcs (968/658/606/303) — observational only.
+                            // Captures generation, arc, load, capacity, saturation, violation count,
+                            // and origin tag for forensic lineage tracing. No genome modification.
+                            const C1B_TARGET_ARCS: &[u64] = &[968, 658, 606, 303];
+                            for v in &vv_before {
+                                if let crate::constraints::RoadefViolation::Capacity {
+                                    arc_id, flow, capacity, sat, ..
+                                } = v
+                                {
+                                    if C1B_TARGET_ARCS.contains(arc_id) {
+                                        let _ = writeln!(
+                                            log_sink,
+                                            "[c1b] gen={} origin=crossover_ca arc={} flow={:.9} cap={:.9} sat={:.9} viol_count={}",
+                                            gen, arc_id, flow, capacity, sat, vv_before.len()
+                                        );
+                                    }
+                                }
+                            }
                         }
                         ca = pa.clone();
                         ca_tag = "repair_failed";
@@ -826,6 +844,22 @@ where
                             }
                             if max_sat_after.is_finite() {
                                 p10c0_sum_max_sat_after += max_sat_after;
+                            }
+                            // C1-B: emit [c1b] for target arcs (968/658/606/303) — observational only.
+                            const C1B_TARGET_ARCS_CB: &[u64] = &[968, 658, 606, 303];
+                            for v in &vv_before {
+                                if let crate::constraints::RoadefViolation::Capacity {
+                                    arc_id, flow, capacity, sat, ..
+                                } = v
+                                {
+                                    if C1B_TARGET_ARCS_CB.contains(arc_id) {
+                                        let _ = writeln!(
+                                            log_sink,
+                                            "[c1b] gen={} origin=crossover_cb arc={} flow={:.9} cap={:.9} sat={:.9} viol_count={}",
+                                            gen, arc_id, flow, capacity, sat, vv_before.len()
+                                        );
+                                    }
+                                }
                             }
                         }
                         cb = pb.clone();
@@ -949,6 +983,22 @@ where
                             }
                             if max_sat_after.is_finite() {
                                 p10c0_sum_max_sat_after += max_sat_after;
+                            }
+                            // C1-B: emit [c1b] for target arcs (968/658/606/303) — observational only.
+                            const C1B_TARGET_ARCS_CHILD: &[u64] = &[968, 658, 606, 303];
+                            for v in &vv_before {
+                                if let crate::constraints::RoadefViolation::Capacity {
+                                    arc_id, flow, capacity, sat, ..
+                                } = v
+                                {
+                                    if C1B_TARGET_ARCS_CHILD.contains(arc_id) {
+                                        let _ = writeln!(
+                                            log_sink,
+                                            "[c1b] gen={} origin=mutation arc={} flow={:.9} cap={:.9} sat={:.9} viol_count={}",
+                                            gen, arc_id, flow, capacity, sat, vv_before.len()
+                                        );
+                                    }
+                                }
                             }
                         }
                         child = evals[pa_idx].genome().clone();
