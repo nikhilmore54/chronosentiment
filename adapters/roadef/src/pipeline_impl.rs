@@ -315,6 +315,26 @@ where
         let mut gen_crossover_count: u32 = 0;
         let mut gen_mutation_count: u32 = 0;
 
+        // P10-B: per-generation repair decomposition counters (reset each generation).
+        // These are observational only — no repair behavior is changed.
+        let mut p10b_infeasible_entering_repair: u32 = 0;
+        let mut p10b_feasible_entering_repair: u32 = 0;
+        let mut p10b_repair_attempts: u32 = 0;
+        let mut p10b_repair_successes: u32 = 0;
+        let mut p10b_repair_failures: u32 = 0;
+        let mut p10b_repair_ms: f64 = 0.0;
+        let mut p10b_improve_ms: f64 = 0.0;
+
+        // P10-C0: per-generation repair-effectiveness counters (reset each generation).
+        // These are observational only — no repair behavior is changed.
+        let mut p10c0_genome_changed_count: u32 = 0;
+        let mut p10c0_genome_unchanged_count: u32 = 0;
+        let mut p10c0_violation_count_improved: u32 = 0;
+        let mut p10c0_violation_count_unchanged: u32 = 0;
+        let mut p10c0_violation_count_worsened: u32 = 0;
+        let mut p10c0_sum_max_sat_before: f64 = 0.0;
+        let mut p10c0_sum_max_sat_after: f64 = 0.0;
+
         // `evals` is pre-populated and sorted:
         //   gen 0  → initialized before the loop, tagged "initial"
         //   gen N+1 → replaced at the bottom of each iteration, tagged with operator
@@ -624,42 +644,210 @@ where
 
                 // Step 2: repair — evaluate after all destructive operators using pipeline.
                 let ca_was_feasible = pipeline.constraint_model.is_feasible(&ca);
+                // P10-C0: snapshot pre-repair state for infeasible offspring (observational only).
+                let (ca_waypoints_before, ca_violations_before) = if !ca_was_feasible {
+                    let wp = ca.waypoints.clone();
+                    let vv = pipeline.constraint_model.evaluate_violations(&ca);
+                    (Some(wp), Some(vv))
+                } else {
+                    (None, None)
+                };
+                // P10-B: count and time process_offspring separately for infeasible vs feasible paths.
+                let t_proc_ca = Instant::now();
                 match pipeline.process_offspring(&mut ca) {
                     Ok(true) => {
                         if !ca_was_feasible {
                             ca_tag = "repair_succeeded";
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_successes += 1;
+                            p10b_repair_ms += t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                         } else {
                             ca_tag = "improvement_applied";
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                         }
                     }
                     Ok(false) => {
+                        // P10-C0: measure repair effectiveness BEFORE resetting ca to pa.
+                        // This is the only window where the post-repair genome is accessible.
+                        if let (Some(wp_before), Some(vv_before)) =
+                            (ca_waypoints_before, ca_violations_before)
+                        {
+                            let vv_after =
+                                pipeline.constraint_model.evaluate_violations(&ca);
+                            // Genome changed? Compare waypoint fingerprints.
+                            if ca.waypoints != wp_before {
+                                p10c0_genome_changed_count += 1;
+                            } else {
+                                p10c0_genome_unchanged_count += 1;
+                            }
+                            // Violation count delta.
+                            let v_before = vv_before.len();
+                            let v_after = vv_after.len();
+                            if v_after < v_before {
+                                p10c0_violation_count_improved += 1;
+                            } else if v_after == v_before {
+                                p10c0_violation_count_unchanged += 1;
+                            } else {
+                                p10c0_violation_count_worsened += 1;
+                            }
+                            // Max capacity saturation before/after (for Capacity violations).
+                            let max_sat_before = vv_before
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            let max_sat_after = vv_after
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            if max_sat_before.is_finite() {
+                                p10c0_sum_max_sat_before += max_sat_before;
+                            }
+                            if max_sat_after.is_finite() {
+                                p10c0_sum_max_sat_after += max_sat_after;
+                            }
+                        }
                         ca = pa.clone();
                         ca_tag = "repair_failed";
+                        p10b_infeasible_entering_repair += 1;
+                        p10b_repair_attempts += 1;
+                        p10b_repair_failures += 1;
+                        p10b_repair_ms += t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                     }
                     Err(e) => {
                         let _ = writeln!(log_sink, "[pipeline] operator error on ca: {}", e);
                         ca = pa.clone();
                         ca_tag = "operator_error";
+                        if !ca_was_feasible {
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_failures += 1;
+                            p10b_repair_ms += t_proc_ca.elapsed().as_secs_f64() * 1000.0;
+                        } else {
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_ca.elapsed().as_secs_f64() * 1000.0;
+                        }
                     }
                 }
 
                 let cb_was_feasible = pipeline.constraint_model.is_feasible(&cb);
+                // P10-C0: snapshot pre-repair state for infeasible offspring (observational only).
+                let (cb_waypoints_before, cb_violations_before) = if !cb_was_feasible {
+                    let wp = cb.waypoints.clone();
+                    let vv = pipeline.constraint_model.evaluate_violations(&cb);
+                    (Some(wp), Some(vv))
+                } else {
+                    (None, None)
+                };
+                // P10-B: count and time process_offspring separately for infeasible vs feasible paths.
+                let t_proc_cb = Instant::now();
                 match pipeline.process_offspring(&mut cb) {
                     Ok(true) => {
                         if !cb_was_feasible {
                             cb_tag = "repair_succeeded";
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_successes += 1;
+                            p10b_repair_ms += t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                         } else {
                             cb_tag = "improvement_applied";
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                         }
                     }
                     Ok(false) => {
+                        // P10-C0: measure repair effectiveness BEFORE resetting cb to pb.
+                        if let (Some(wp_before), Some(vv_before)) =
+                            (cb_waypoints_before, cb_violations_before)
+                        {
+                            let vv_after =
+                                pipeline.constraint_model.evaluate_violations(&cb);
+                            if cb.waypoints != wp_before {
+                                p10c0_genome_changed_count += 1;
+                            } else {
+                                p10c0_genome_unchanged_count += 1;
+                            }
+                            let v_before = vv_before.len();
+                            let v_after = vv_after.len();
+                            if v_after < v_before {
+                                p10c0_violation_count_improved += 1;
+                            } else if v_after == v_before {
+                                p10c0_violation_count_unchanged += 1;
+                            } else {
+                                p10c0_violation_count_worsened += 1;
+                            }
+                            let max_sat_before = vv_before
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            let max_sat_after = vv_after
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            if max_sat_before.is_finite() {
+                                p10c0_sum_max_sat_before += max_sat_before;
+                            }
+                            if max_sat_after.is_finite() {
+                                p10c0_sum_max_sat_after += max_sat_after;
+                            }
+                        }
                         cb = pb.clone();
                         cb_tag = "repair_failed";
+                        p10b_infeasible_entering_repair += 1;
+                        p10b_repair_attempts += 1;
+                        p10b_repair_failures += 1;
+                        p10b_repair_ms += t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                     }
                     Err(e) => {
                         let _ = writeln!(log_sink, "[pipeline] operator error on cb: {}", e);
                         cb = pb.clone();
                         cb_tag = "operator_error";
+                        if !cb_was_feasible {
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_failures += 1;
+                            p10b_repair_ms += t_proc_cb.elapsed().as_secs_f64() * 1000.0;
+                        } else {
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_cb.elapsed().as_secs_f64() * 1000.0;
+                        }
                     }
                 }
                 t_crossover_ms += t_xo.elapsed().as_secs_f64() * 1000.0;
@@ -684,23 +872,105 @@ where
 
                 // pipeline repair/improvement
                 let child_was_feasible = pipeline.constraint_model.is_feasible(&child);
+                // P10-C0: snapshot pre-repair state for infeasible offspring (observational only).
+                let (child_waypoints_before, child_violations_before) = if !child_was_feasible {
+                    let wp = child.waypoints.clone();
+                    let vv = pipeline.constraint_model.evaluate_violations(&child);
+                    (Some(wp), Some(vv))
+                } else {
+                    (None, None)
+                };
                 let mut child_tag = "mutation";
+                // P10-B: count and time process_offspring separately for infeasible vs feasible paths.
+                let t_proc_child = Instant::now();
                 match pipeline.process_offspring(&mut child) {
                     Ok(true) => {
                         if !child_was_feasible {
                             child_tag = "repair_succeeded";
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_successes += 1;
+                            p10b_repair_ms += t_proc_child.elapsed().as_secs_f64() * 1000.0;
                         } else {
                             child_tag = "improvement_applied";
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_child.elapsed().as_secs_f64() * 1000.0;
                         }
                     }
                     Ok(false) => {
+                        // P10-C0: measure repair effectiveness BEFORE resetting child to parent.
+                        if let (Some(wp_before), Some(vv_before)) =
+                            (child_waypoints_before, child_violations_before)
+                        {
+                            let vv_after =
+                                pipeline.constraint_model.evaluate_violations(&child);
+                            if child.waypoints != wp_before {
+                                p10c0_genome_changed_count += 1;
+                            } else {
+                                p10c0_genome_unchanged_count += 1;
+                            }
+                            let v_before = vv_before.len();
+                            let v_after = vv_after.len();
+                            if v_after < v_before {
+                                p10c0_violation_count_improved += 1;
+                            } else if v_after == v_before {
+                                p10c0_violation_count_unchanged += 1;
+                            } else {
+                                p10c0_violation_count_worsened += 1;
+                            }
+                            let max_sat_before = vv_before
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            let max_sat_after = vv_after
+                                .iter()
+                                .filter_map(|v| {
+                                    if let crate::constraints::RoadefViolation::Capacity {
+                                        sat, ..
+                                    } = v
+                                    {
+                                        Some(*sat)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .fold(f64::NEG_INFINITY, f64::max);
+                            if max_sat_before.is_finite() {
+                                p10c0_sum_max_sat_before += max_sat_before;
+                            }
+                            if max_sat_after.is_finite() {
+                                p10c0_sum_max_sat_after += max_sat_after;
+                            }
+                        }
                         child = evals[pa_idx].genome().clone();
                         child_tag = "repair_failed";
+                        p10b_infeasible_entering_repair += 1;
+                        p10b_repair_attempts += 1;
+                        p10b_repair_failures += 1;
+                        p10b_repair_ms += t_proc_child.elapsed().as_secs_f64() * 1000.0;
                     }
                     Err(e) => {
                         let _ = writeln!(log_sink, "[pipeline] operator error on mut: {}", e);
                         child = evals[pa_idx].genome().clone();
                         child_tag = "operator_error";
+                        if !child_was_feasible {
+                            p10b_infeasible_entering_repair += 1;
+                            p10b_repair_attempts += 1;
+                            p10b_repair_failures += 1;
+                            p10b_repair_ms += t_proc_child.elapsed().as_secs_f64() * 1000.0;
+                        } else {
+                            p10b_feasible_entering_repair += 1;
+                            p10b_improve_ms += t_proc_child.elapsed().as_secs_f64() * 1000.0;
+                        }
                     }
                 }
 
@@ -953,11 +1223,33 @@ where
                 eval_time_ms: t_eval_ms,
                 crossover_time_ms: t_crossover_ms,
                 mutation_time_ms: t_mutation_ms,
-                repair_time_ms: 0.0, // repair is not yet a separate phase in this harness
+                // P10-B: repair_time_ms is now measured directly from process_offspring calls
+                // for infeasible individuals. Previously 0.0 (placeholder).
+                repair_time_ms: p10b_repair_ms,
                 selection_time_ms: t_selection_ms,
                 telemetry_time_ms: 0.0, // approximation: emit cost not yet measured
                 other_time_ms: other_ms,
                 total_gen_time_ms: total_so_far_ms,
+                // P10-B repair decomposition counters.
+                p10b_infeasible_entering_repair,
+                p10b_feasible_entering_repair,
+                p10b_repair_attempts,
+                p10b_repair_successes,
+                p10b_repair_failures,
+                p10b_repair_ms,
+                p10b_improve_ms,
+                p10b_repair_ms_per_infeasible: if p10b_infeasible_entering_repair > 0 {
+                    p10b_repair_ms / p10b_infeasible_entering_repair as f64
+                } else {
+                    f64::NAN
+                },
+                p10c0_genome_changed_count,
+                p10c0_genome_unchanged_count,
+                p10c0_violation_count_improved,
+                p10c0_violation_count_unchanged,
+                p10c0_violation_count_worsened,
+                p10c0_sum_max_sat_before,
+                p10c0_sum_max_sat_after,
             };
             telemetry.emit_generation(&gen_rec);
             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
@@ -1036,8 +1328,8 @@ where
 #[cfg(test)]
 mod comparator_tests {
     use super::*;
+    use crate::moga_impl::{EvalComparator, LexicographicComparator, ScalarComparator};
     use std::cmp::Ordering;
-    use crate::moga_impl::{ScalarComparator, LexicographicComparator, EvalComparator};
 
     // Helper: construct a minimal RoadefEvaluation with a given load vector and validity.
     // The genome fields are irrelevant for comparator tests.

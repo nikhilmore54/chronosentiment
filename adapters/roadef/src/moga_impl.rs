@@ -1236,14 +1236,14 @@ pub struct GenerationSummary {
     // Timers wrap only the operator call itself — no RNG, no cache, no eval.
     // Governance: timers must not affect RNG sequence or operator logic.
     // All fields default to 0.0 when not instrumented (e.g. elite copy path).
-    pub crossover_ms: f64,      // time in crossover.crossover() calls
-    pub mutation_ms: f64,       // time in mutator.mutate() calls
-    pub repair_ms: f64,         // time in pipeline_obj.process_offspring() — repair path
-    pub improve_ms: f64,        // time in pipeline_obj.process_offspring() — improve path
-    pub sort_ms: f64,           // time in next_generation.sort_by()
-    pub selection_ms: f64,      // time in parent selection (tournament/index sampling)
-    pub feasibility_ms: f64,    // time in constraint_model.is_feasible() calls
-    pub staging_ms: f64,        // time in miss_indices/miss_genomes collection + staging flatten
+    pub crossover_ms: f64,   // time in crossover.crossover() calls
+    pub mutation_ms: f64,    // time in mutator.mutate() calls
+    pub repair_ms: f64,      // time in pipeline_obj.process_offspring() — repair path
+    pub improve_ms: f64,     // time in pipeline_obj.process_offspring() — improve path
+    pub sort_ms: f64,        // time in next_generation.sort_by()
+    pub selection_ms: f64,   // time in parent selection (tournament/index sampling)
+    pub feasibility_ms: f64, // time in constraint_model.is_feasible() calls
+    pub staging_ms: f64,     // time in miss_indices/miss_genomes collection + staging flatten
 }
 
 pub struct EvolutionRunResult {
@@ -2248,6 +2248,25 @@ where
                 telemetry_time_ms: 0.0, // approximation: emit cost not yet measured
                 other_time_ms: other_ms,
                 total_gen_time_ms: total_so_far_ms,
+                // P10-B: not instrumented in this code path (moga_impl trajectory function).
+                // All P10-B fields are zero/NaN to satisfy the struct definition.
+                p10b_infeasible_entering_repair: 0,
+                p10b_feasible_entering_repair: 0,
+                p10b_repair_attempts: 0,
+                p10b_repair_successes: 0,
+                p10b_repair_failures: 0,
+                p10b_repair_ms: 0.0,
+                p10b_improve_ms: 0.0,
+                p10b_repair_ms_per_infeasible: f64::NAN,
+                // P10-C0: not instrumented in this code path (moga_impl trajectory function).
+                // All P10-C0 fields are zero to satisfy the struct definition.
+                p10c0_genome_changed_count: 0,
+                p10c0_genome_unchanged_count: 0,
+                p10c0_violation_count_improved: 0,
+                p10c0_violation_count_unchanged: 0,
+                p10c0_violation_count_worsened: 0,
+                p10c0_sum_max_sat_before: 0.0,
+                p10c0_sum_max_sat_after: 0.0,
             };
             telemetry.emit_generation(&gen_rec);
             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;

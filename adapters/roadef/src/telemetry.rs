@@ -31,7 +31,6 @@
 /// improvement. Mixed improvements (multiple zones improve by comparable amounts)
 /// are recorded as `mixed`. Neutral moves (no zone improves by more than ε) are
 /// recorded as `neutral`.
-
 use std::io::Write;
 
 // ---------------------------------------------------------------------------
@@ -120,15 +119,24 @@ impl ZoneDeltas {
             // lo and hi are 1-indexed rank bounds (inclusive).
             let start = lo.saturating_sub(1);
             let end = hi.min(v.len());
-            if start >= end { 0.0 } else { v[start..end].iter().sum() }
+            if start >= end {
+                0.0
+            } else {
+                v[start..end].iter().sum()
+            }
         };
 
-        let delta_rank1   = zone_sum(new, 1, 1)    - zone_sum(old, 1, 1);
-        let delta_2_20    = zone_sum(new, 2, 20)   - zone_sum(old, 2, 20);
-        let delta_21_100  = zone_sum(new, 21, 100) - zone_sum(old, 21, 100);
-        let delta_tail    = zone_sum(new, 101, usize::MAX) - zone_sum(old, 101, usize::MAX);
+        let delta_rank1 = zone_sum(new, 1, 1) - zone_sum(old, 1, 1);
+        let delta_2_20 = zone_sum(new, 2, 20) - zone_sum(old, 2, 20);
+        let delta_21_100 = zone_sum(new, 21, 100) - zone_sum(old, 21, 100);
+        let delta_tail = zone_sum(new, 101, usize::MAX) - zone_sum(old, 101, usize::MAX);
 
-        Self { delta_rank1, delta_2_20, delta_21_100, delta_tail }
+        Self {
+            delta_rank1,
+            delta_2_20,
+            delta_21_100,
+            delta_tail,
+        }
     }
 
     /// Classify the move based on which zone shows the largest absolute improvement.
@@ -136,14 +144,15 @@ impl ZoneDeltas {
     /// Returns one of: "peak", "shoulder", "transition", "tail", "mixed", "neutral".
     pub fn classify(&self, epsilon: f64) -> &'static str {
         let improvements = [
-            ("peak",       -self.delta_rank1),
-            ("shoulder",   -self.delta_2_20),
+            ("peak", -self.delta_rank1),
+            ("shoulder", -self.delta_2_20),
             ("transition", -self.delta_21_100),
-            ("tail",       -self.delta_tail),
+            ("tail", -self.delta_tail),
         ];
 
         // Count zones that improved by more than epsilon
-        let improved: Vec<(&str, f64)> = improvements.iter()
+        let improved: Vec<(&str, f64)> = improvements
+            .iter()
             .filter(|(_, imp)| *imp > epsilon)
             .cloned()
             .collect();
@@ -153,12 +162,20 @@ impl ZoneDeltas {
             1 => improved[0].0,
             _ => {
                 // Multiple zones improved — find the dominant one
-                let max_imp = improved.iter().map(|(_, v)| *v).fold(f64::NEG_INFINITY, f64::max);
-                let dominant: Vec<&str> = improved.iter()
+                let max_imp = improved
+                    .iter()
+                    .map(|(_, v)| *v)
+                    .fold(f64::NEG_INFINITY, f64::max);
+                let dominant: Vec<&str> = improved
+                    .iter()
                     .filter(|(_, v)| *v >= max_imp * 0.5) // within 50% of max
                     .map(|(name, _)| *name)
                     .collect();
-                if dominant.len() == 1 { dominant[0] } else { "mixed" }
+                if dominant.len() == 1 {
+                    dominant[0]
+                } else {
+                    "mixed"
+                }
             }
         }
     }
@@ -274,6 +291,50 @@ pub struct GenerationRecord {
     pub other_time_ms: f64,
     /// Total wall-clock time for this generation (milliseconds).
     pub total_gen_time_ms: f64,
+    // --- P10-B repair decomposition counters ---
+    /// Number of offspring that were infeasible before process_offspring() was called.
+    /// These are the individuals that triggered the repair path.
+    pub p10b_infeasible_entering_repair: u32,
+    /// Number of offspring that were already feasible before process_offspring() was called.
+    /// These went directly to the improvement path (no repair invoked).
+    pub p10b_feasible_entering_repair: u32,
+    /// Number of repair attempts (= infeasible_entering_repair, since repair is called once per infeasible individual).
+    pub p10b_repair_attempts: u32,
+    /// Number of repair attempts that succeeded (process_offspring returned Ok(true) for a previously-infeasible individual).
+    pub p10b_repair_successes: u32,
+    /// Number of repair attempts that failed (process_offspring returned Ok(false) for a previously-infeasible individual).
+    pub p10b_repair_failures: u32,
+    /// Total wall-clock time spent in process_offspring() for infeasible individuals only (milliseconds).
+    /// This isolates repair cost from improvement cost.
+    pub p10b_repair_ms: f64,
+    /// Total wall-clock time spent in process_offspring() for feasible individuals only (milliseconds).
+    /// This isolates improvement cost from repair cost.
+    pub p10b_improve_ms: f64,
+    /// Repair work per infeasible individual: p10b_repair_ms / p10b_infeasible_entering_repair.
+    /// NaN when p10b_infeasible_entering_repair == 0.
+    pub p10b_repair_ms_per_infeasible: f64,
+    // --- P10-C0 repair-effectiveness counters ---
+    // These are observational only — no repair behavior is changed.
+    // Measured by calling evaluate_violations() before and after process_offspring()
+    // on infeasible offspring, and comparing waypoint fingerprints.
+    /// Number of failed repair attempts where the genome waypoints changed.
+    /// A changed genome means repair made structural modifications (SegmentLimit/Connectivity path).
+    pub p10c0_genome_changed_count: u32,
+    /// Number of failed repair attempts where the genome waypoints were identical before and after.
+    /// An unchanged genome means repair made no structural modifications (Capacity-only path).
+    pub p10c0_genome_unchanged_count: u32,
+    /// Number of failed repair attempts where violation count decreased after repair.
+    pub p10c0_violation_count_improved: u32,
+    /// Number of failed repair attempts where violation count was unchanged after repair.
+    pub p10c0_violation_count_unchanged: u32,
+    /// Number of failed repair attempts where violation count increased after repair.
+    pub p10c0_violation_count_worsened: u32,
+    /// Sum of max capacity saturation (flow/capacity) across all failed repairs, before repair.
+    /// Divide by p10b_repair_failures to get mean. NaN when p10b_repair_failures == 0.
+    pub p10c0_sum_max_sat_before: f64,
+    /// Sum of max capacity saturation (flow/capacity) across all failed repairs, after repair.
+    /// Divide by p10b_repair_failures to get mean. NaN when p10b_repair_failures == 0.
+    pub p10c0_sum_max_sat_after: f64,
 }
 
 // ---------------------------------------------------------------------------
@@ -544,13 +605,13 @@ impl<W1: Write, W2: Write> TelemetrySink for JsonlTelemetrySink<W1, W2> {
 /// This is the preferred sink for RP-408B and later campaigns where per-stream
 /// files are required for efficient post-hoc analysis.
 pub struct FourStreamTelemetrySink<W1: Write, W2: Write, W3: Write, W4: Write> {
-    candidates_sink:   W1,
-    generations_sink:  W2,
-    moves_sink:        W3,
+    candidates_sink: W1,
+    generations_sink: W2,
+    moves_sink: W3,
     construction_sink: W4,
-    pub candidates_written:   u64,
-    pub generations_written:  u64,
-    pub moves_written:        u64,
+    pub candidates_written: u64,
+    pub generations_written: u64,
+    pub moves_written: u64,
     pub construction_written: u64,
 }
 
@@ -559,9 +620,9 @@ impl<W1: Write, W2: Write, W3: Write, W4: Write> FourStreamTelemetrySink<W1, W2,
     ///
     /// Argument order: `new_full(candidates, generations, moves, construction)`.
     pub fn new_full(
-        candidates_sink:   W1,
-        generations_sink:  W2,
-        moves_sink:        W3,
+        candidates_sink: W1,
+        generations_sink: W2,
+        moves_sink: W3,
         construction_sink: W4,
     ) -> Self {
         Self {
@@ -569,9 +630,9 @@ impl<W1: Write, W2: Write, W3: Write, W4: Write> FourStreamTelemetrySink<W1, W2,
             generations_sink,
             moves_sink,
             construction_sink,
-            candidates_written:   0,
-            generations_written:  0,
-            moves_written:        0,
+            candidates_written: 0,
+            generations_written: 0,
+            moves_written: 0,
             construction_written: 0,
         }
     }
@@ -649,7 +710,12 @@ mod tests {
         let v = vec![0.5f64; 20];
         let expected: f64 = (2..=20usize).map(|i| 0.5 / (i - 1) as f64).sum();
         let got = compute_sdi(&v);
-        assert!((got - expected).abs() < 1e-10, "got={} expected={}", got, expected);
+        assert!(
+            (got - expected).abs() < 1e-10,
+            "got={} expected={}",
+            got,
+            expected
+        );
     }
 
     #[test]
@@ -657,7 +723,9 @@ mod tests {
         // Old: uniform 0.5 across 30 ranks. New: shoulder (ranks 2–20) drops to 0.3.
         let old: Vec<f64> = vec![0.5; 30];
         let mut new = old.clone();
-        for i in 1..20 { new[i] = 0.3; } // ranks 2–20 (0-indexed 1..20)
+        for i in 1..20 {
+            new[i] = 0.3;
+        } // ranks 2–20 (0-indexed 1..20)
         let d = ZoneDeltas::compute(&old, &new);
         assert_eq!(d.delta_rank1, 0.0);
         assert!(d.delta_2_20 < 0.0, "shoulder should improve");
@@ -684,7 +752,12 @@ mod tests {
             seed: 42,
             generation: 0,
             operator: "evolution",
-            deltas: ZoneDeltas { delta_rank1: 0.0, delta_2_20: -0.1, delta_21_100: 0.0, delta_tail: 0.0 },
+            deltas: ZoneDeltas {
+                delta_rank1: 0.0,
+                delta_2_20: -0.1,
+                delta_21_100: 0.0,
+                delta_tail: 0.0,
+            },
             move_class: "shoulder".to_string(),
             new_obj: 1.0,
             prev_obj: 1.1,
@@ -709,7 +782,12 @@ mod tests {
                 seed: 99,
                 generation: 5,
                 operator: "evolution",
-                deltas: ZoneDeltas { delta_rank1: -0.05, delta_2_20: -0.2, delta_21_100: 0.0, delta_tail: 0.0 },
+                deltas: ZoneDeltas {
+                    delta_rank1: -0.05,
+                    delta_2_20: -0.2,
+                    delta_21_100: 0.0,
+                    delta_tail: 0.0,
+                },
                 move_class: "shoulder".to_string(),
                 new_obj: 0.9,
                 prev_obj: 1.1,

@@ -1,0 +1,907 @@
+warning: unused import: `LocalSearchOperator`
+ --> coralys-moga/src/observatory.rs:2:42
+  |
+2 |     Evaluated, FitnessEvaluator, Genome, LocalSearchOperator, ObservedTransitionMetric,
+  |                                          ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:312:17
+    |
+312 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:313:17
+    |
+313 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:314:17
+    |
+314 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:488:13
+    |
+488 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `coralys-moga` (lib) generated 5 warnings (run `cargo fix --lib -p coralys-moga` to apply 1 suggestion)
+warning: unused import: `expand_sr_path`
+ --> adapters/roadef/src/constraints.rs:1:19
+  |
+1 | use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+  |                   ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `termination_reason` is never read
+    --> adapters/roadef/src/moga_impl.rs:1532:13
+     |
+1532 |     let mut termination_reason = String::new(); // set before every break in the loop below
+     |             ^^^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+    --> adapters/roadef/src/moga_impl.rs:1582:17
+     |
+1582 |         let mut t_telemetry_ms: f64 = 0.0;
+     |                 ^^^^^^^^^^^^^^
+     |
+     = note: consider using `_t_telemetry_ms` instead
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/moga_impl.rs:2272:13
+     |
+2272 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/moga_impl.rs:2655:9
+     |
+2655 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `g`
+    --> adapters/roadef/src/moga_impl.rs:2789:21
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     ^
+     |
+help: if this is intentional, prefix it with an underscore
+     |
+2789 |             let mut _g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     +
+help: you might have meant to pattern match on the similarly named constant `_`
+     |
+2789 -             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+2789 +             let mut telemetry::_ = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2809:29
+     |
+2809 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2852:29
+     |
+2852 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/moga_impl.rs:2645:5
+     |
+2645 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2789:17
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                 ----^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2792:22
+     |
+2792 |                 let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+     |                      ----^^^^^^
+     |                      |
+     |                      help: remove this `mut`
+
+warning: unused variable: `evaluation_cache`
+  --> adapters/roadef/src/pipeline_impl.rs:63:13
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_evaluation_cache`
+
+warning: value assigned to `termination_reason` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:247:13
+    |
+247 |     let mut termination_reason = String::new(); // set before every break in the loop below
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `trajectory`
+   --> adapters/roadef/src/pipeline_impl.rs:274:13
+    |
+274 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trajectory`
+
+warning: unused variable: `gen_start`
+   --> adapters/roadef/src/pipeline_impl.rs:276:13
+    |
+276 |         let gen_start = std::time::Instant::now();
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gen_start`
+
+warning: unused variable: `t_eval_ms`
+   --> adapters/roadef/src/pipeline_impl.rs:304:17
+    |
+304 |         let mut t_eval_ms: f64 = 0.0;
+    |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_ms`
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+   --> adapters/roadef/src/pipeline_impl.rs:305:17
+    |
+305 |         let mut t_telemetry_ms: f64 = 0.0;
+    |                 ^^^^^^^^^^^^^^
+    |
+    = note: consider using `_t_telemetry_ms` instead
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:632:25
+    |
+632 |                 let mut ca_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:633:25
+    |
+633 |                 let mut cb_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:638:21
+    |
+638 |                     ca_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:642:21
+    |
+642 |                     cb_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `child_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:883:25
+    |
+883 |                 let mut child_tag = "mutation";
+    |                         ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `t_eval_start`
+   --> adapters/roadef/src/pipeline_impl.rs:986:13
+    |
+986 |         let t_eval_start = Instant::now();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: unused variable: `t_eval_start`
+    --> adapters/roadef/src/pipeline_impl.rs:1002:13
+     |
+1002 |         let t_eval_start = std::time::Instant::now();
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1255:13
+     |
+1255 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+  --> adapters/roadef/src/pipeline_impl.rs:63:9
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:274:9
+    |
+274 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:304:13
+    |
+304 |         let mut t_eval_ms: f64 = 0.0;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/pipeline_impl.rs:1585:9
+     |
+1585 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `t_health`
+    --> adapters/roadef/src/pipeline_impl.rs:1689:13
+     |
+1689 |     let mut t_health = Instant::now();
+     |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_health`
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1811:25
+     |
+1811 |                 let mut tag = "crossover_mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1870:25
+     |
+1870 |                 let mut tag = "mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/pipeline_impl.rs:1572:5
+     |
+1572 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1689:9
+     |
+1689 |     let mut t_health = Instant::now();
+     |         ----^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1713:13
+     |
+1713 |         let mut t_feasibility_ms: f64 = 0.0;
+     |             ----^^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1739:13
+     |
+1739 |         let mut n_cross_repair = 0;
+     |             ----^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1740:13
+     |
+1740 |         let mut n_mut_repair = 0;
+     |             ----^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1741:13
+     |
+1741 |         let mut n_cross_maj = 0;
+     |             ----^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1742:13
+     |
+1742 |         let mut n_mut_maj = 0;
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: `roadef` (lib) generated 39 warnings (run `cargo fix --lib -p roadef` to apply 13 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.25s
+     Running `target/release/phase10c0_repair_effectiveness --gens 5 --seed 42`
+=== P10-C0 Repair-Effectiveness Characterization Sweep ===
+Governance: OBSERVATIONAL — no behavioral changes
+Generations: 5
+Seed       : 42
+Instances  : setA-04, setA-06, setA-10, setA-13, setA-14, setA-16, setA-19
+Question   : What actually happens inside a failed repair attempt?
+
+=== setA-04 ===
+=== setA-04 ===  nodes=50, demands=200, wall_ms=19150
+  P10-B (repair scaling):
+    infeasible=2/225 (0.9%), repair_ms=40.4, ms/repair=20.205, repair_share=0.2%
+    repair_attempts=2, successes=0, failures=2
+    improve_ms=1677.2
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/2 (0.0%)
+    genome_unchanged=2/2 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=2 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.0380  mean_max_sat_after=1.0380  delta=0.0000
+
+=== setA-06 ===
+[diag] origin=repair_failed overload=major max_sat=1.014084300 | arc_overloaded: t=1 arc=353 flow=1014.084300000 cap=1000.000000000 sat=1.014084300
+[rc002] gen=   0  initial: eps=0 min=0 maj=1 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+=== setA-06 ===  nodes=100, demands=500, wall_ms=113556
+  P10-B (repair scaling):
+    infeasible=24/225 (10.7%), repair_ms=2713.1, ms/repair=113.048, repair_share=2.4%
+    repair_attempts=24, successes=0, failures=24
+    improve_ms=8546.7
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/24 (0.0%)
+    genome_unchanged=24/24 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=24 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.0499  mean_max_sat_after=1.0499  delta=0.0000
+
+=== setA-10 ===
+[diag] origin=repair_failed overload=epsilon max_sat=1.000000000 | arc_overloaded: t=0 arc=963 flow=1000.000000000 cap=1000.000000000 sat=1.000000000
+[diag] origin=repair_failed overload=major max_sat=1.108695800 | arc_overloaded: t=0 arc=963 flow=1108.695800000 cap=1000.000000000 sat=1.108695800
+[diag] origin=repair_failed overload=major max_sat=1.152174100 | arc_overloaded: t=0 arc=599 flow=1076.087100000 cap=1000.000000000 sat=1.076087100
+[diag] origin=repair_failed overload=major max_sat=1.195652300 | arc_overloaded: t=0 arc=962 flow=1130.435000000 cap=1000.000000000 sat=1.130435000
+[rc002] gen=   0  initial: eps=1 min=0 maj=3 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+=== setA-10 ===  nodes=150, demands=1000, wall_ms=361458
+  P10-B (repair scaling):
+    infeasible=33/225 (14.7%), repair_ms=10376.0, ms/repair=314.423, repair_share=2.9%
+    repair_attempts=33, successes=0, failures=33
+    improve_ms=22848.3
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/33 (0.0%)
+    genome_unchanged=33/33 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=33 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.0609  mean_max_sat_after=1.0609  delta=0.0000
+
+=== setA-13 ===
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.166665500 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.153845000 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.081195500 | arc_overloaded: t=0 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.153845000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.051281000 | arc_overloaded: t=0 arc=659 flow=1038.460500000 cap=1000.000000000 sat=1.038460500
+[diag] origin=repair_failed overload=major max_sat=1.205127000 | arc_overloaded: t=0 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.111110000 | arc_overloaded: t=0 arc=659 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.029913500 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.051281000 | arc_overloaded: t=0 arc=659 flow=1038.460500000 cap=1000.000000000 sat=1.038460500
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1260.682500000 cap=1000.000000000 sat=1.260682500
+[diag] origin=repair_failed overload=major max_sat=1.235041500 | arc_overloaded: t=0 arc=658 flow=1200.853500000 cap=1000.000000000 sat=1.200853500
+[diag] origin=repair_failed overload=major max_sat=1.136751000 | arc_overloaded: t=0 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.094016000 | arc_overloaded: t=0 arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000
+[diag] origin=repair_failed overload=major max_sat=1.115383500 | arc_overloaded: t=0 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.217947500 | arc_overloaded: t=0 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.123930500 | arc_overloaded: t=0 arc=658 flow=1055.554500000 cap=1000.000000000 sat=1.055554500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.209400500 | arc_overloaded: t=0 arc=658 flow=1098.289500000 cap=1000.000000000 sat=1.098289500
+[diag] origin=repair_failed overload=major max_sat=1.029913500 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.222221000 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.102563000 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.102563000 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[rc002] gen=   0  initial: eps=0 min=0 maj=46 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.115383500 | arc_overloaded: t=0 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.081195500 | arc_overloaded: t=0 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.115383500 | arc_overloaded: t=0 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.205127000 | arc_overloaded: t=0 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.222221000 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.153845000 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.123930500 | arc_overloaded: t=0 arc=658 flow=1055.554500000 cap=1000.000000000 sat=1.055554500
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[rc002] gen=   1  initial: eps=0 min=0 maj=34 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.081195500 | arc_overloaded: t=0 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.115383500 | arc_overloaded: t=0 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.205127000 | arc_overloaded: t=0 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000
+[rc002] gen=   2  initial: eps=0 min=0 maj=11 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[rc002] gen=   3  initial: eps=0 min=0 maj=1 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+=== setA-13 ===  nodes=200, demands=2000, wall_ms=1311098
+  P10-B (repair scaling):
+    infeasible=131/230 (57.0%), repair_ms=130635.1, ms/repair=997.215, repair_share=10.0%
+    repair_attempts=131, successes=0, failures=131
+    improve_ms=35487.6
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/131 (0.0%)
+    genome_unchanged=131/131 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=131 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.1226  mean_max_sat_after=1.1226  delta=0.0000
+
+=== setA-14 ===
+=== setA-14 ===  nodes=250, demands=600, wall_ms=357091
+  P10-B (repair scaling):
+    infeasible=9/225 (4.0%), repair_ms=2869.5, ms/repair=318.836, repair_share=0.8%
+    repair_attempts=9, successes=0, failures=9
+    improve_ms=26108.0
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/9 (0.0%)
+    genome_unchanged=9/9 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=9 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.0319  mean_max_sat_after=1.0319  delta=0.0000
+
+=== setA-16 ===
+[diag] origin=repair_failed overload=major max_sat=1.155737500 | arc_overloaded: t=0 arc=606 flow=1073.770100000 cap=1000.000000000 sat=1.073770100
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.303278500 | arc_overloaded: t=0 arc=303 flow=1028.688800000 cap=1000.000000000 sat=1.028688800
+[diag] origin=repair_failed overload=major max_sat=1.389344100 | arc_overloaded: t=0 arc=606 flow=1327.868400000 cap=1000.000000000 sat=1.327868400
+[diag] origin=repair_failed overload=major max_sat=1.229508000 | arc_overloaded: t=0 arc=606 flow=1229.508000000 cap=1000.000000000 sat=1.229508000
+[diag] origin=repair_failed overload=major max_sat=1.221311700 | arc_overloaded: t=0 arc=302 flow=1028.688200000 cap=1000.000000000 sat=1.028688200
+[diag] origin=repair_failed overload=major max_sat=1.303278500 | arc_overloaded: t=0 arc=303 flow=1028.688800000 cap=1000.000000000 sat=1.028688800
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.180327700 | arc_overloaded: t=0 arc=303 flow=1016.393500000 cap=1000.000000000 sat=1.016393500
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.295081800 | arc_overloaded: t=0 arc=303 flow=1184.426400000 cap=1000.000000000 sat=1.184426400
+[diag] origin=repair_failed overload=major max_sat=1.229508000 | arc_overloaded: t=0 arc=606 flow=1229.508000000 cap=1000.000000000 sat=1.229508000
+[diag] origin=repair_failed overload=major max_sat=1.262294700 | arc_overloaded: t=0 arc=303 flow=1012.295300000 cap=1000.000000000 sat=1.012295300
+[diag] origin=repair_failed overload=major max_sat=1.295081800 | arc_overloaded: t=0 arc=303 flow=1184.426400000 cap=1000.000000000 sat=1.184426400
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.204917700 | arc_overloaded: t=0 arc=303 flow=1024.590400000 cap=1000.000000000 sat=1.024590400
+[diag] origin=repair_failed overload=major max_sat=1.245901100 | arc_overloaded: t=0 arc=606 flow=1172.130800000 cap=1000.000000000 sat=1.172130800
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.204917700 | arc_overloaded: t=0 arc=303 flow=1024.590400000 cap=1000.000000000 sat=1.024590400
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.086065300 | arc_overloaded: t=0 arc=303 flow=1032.787000000 cap=1000.000000000 sat=1.032787000
+[diag] origin=repair_failed overload=major max_sat=1.192622500 | arc_overloaded: t=0 arc=303 flow=1016.393600000 cap=1000.000000000 sat=1.016393600
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.237704700 | arc_overloaded: t=0 arc=303 flow=1012.295300000 cap=1000.000000000 sat=1.012295300
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.139344000 | arc_overloaded: t=0 arc=606 flow=1139.344000000 cap=1000.000000000 sat=1.139344000
+[diag] origin=repair_failed overload=major max_sat=1.086065300 | arc_overloaded: t=0 arc=303 flow=1032.787000000 cap=1000.000000000 sat=1.032787000
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.237704700 | arc_overloaded: t=0 arc=303 flow=1012.295300000 cap=1000.000000000 sat=1.012295300
+[diag] origin=repair_failed overload=major max_sat=1.245901100 | arc_overloaded: t=0 arc=606 flow=1172.130800000 cap=1000.000000000 sat=1.172130800
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.204917800 | arc_overloaded: t=0 arc=606 flow=1147.540800000 cap=1000.000000000 sat=1.147540800
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.245901100 | arc_overloaded: t=0 arc=606 flow=1172.130800000 cap=1000.000000000 sat=1.172130800
+[rc002] gen=   0  initial: eps=0 min=0 maj=50 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.139344000 | arc_overloaded: t=0 arc=606 flow=1139.344000000 cap=1000.000000000 sat=1.139344000
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.245901100 | arc_overloaded: t=0 arc=606 flow=1172.130800000 cap=1000.000000000 sat=1.172130800
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.303278500 | arc_overloaded: t=0 arc=303 flow=1028.688800000 cap=1000.000000000 sat=1.028688800
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.229508000 | arc_overloaded: t=0 arc=606 flow=1229.508000000 cap=1000.000000000 sat=1.229508000
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.139344000 | arc_overloaded: t=0 arc=606 flow=1139.344000000 cap=1000.000000000 sat=1.139344000
+[diag] origin=repair_failed overload=major max_sat=1.389344100 | arc_overloaded: t=0 arc=606 flow=1327.868400000 cap=1000.000000000 sat=1.327868400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.237704700 | arc_overloaded: t=0 arc=303 flow=1012.295300000 cap=1000.000000000 sat=1.012295300
+[diag] origin=repair_failed overload=major max_sat=1.245901300 | arc_overloaded: t=0 arc=606 flow=1200.819600000 cap=1000.000000000 sat=1.200819600
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.295081800 | arc_overloaded: t=0 arc=303 flow=1184.426400000 cap=1000.000000000 sat=1.184426400
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.389344100 | arc_overloaded: t=0 arc=606 flow=1327.868400000 cap=1000.000000000 sat=1.327868400
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[rc002] gen=   1  initial: eps=0 min=0 maj=50 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.389344100 | arc_overloaded: t=0 arc=606 flow=1327.868400000 cap=1000.000000000 sat=1.327868400
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.139344000 | arc_overloaded: t=0 arc=606 flow=1139.344000000 cap=1000.000000000 sat=1.139344000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.139344200 | arc_overloaded: t=0 arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[rc002] gen=   2  initial: eps=0 min=0 maj=50 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.389344100 | arc_overloaded: t=0 arc=606 flow=1327.868400000 cap=1000.000000000 sat=1.327868400
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[rc002] gen=   3  initial: eps=0 min=0 maj=50 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.282786900 | arc_overloaded: t=0 arc=606 flow=1282.786900000 cap=1000.000000000 sat=1.282786900
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.196721000 | arc_overloaded: t=0 arc=302 flow=1053.278500000 cap=1000.000000000 sat=1.053278500
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.200819600 | arc_overloaded: t=0 arc=303 flow=1045.082300000 cap=1000.000000000 sat=1.045082300
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.221311200 | arc_overloaded: t=0 arc=606 flow=1176.229400000 cap=1000.000000000 sat=1.176229400
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[diag] origin=repair_failed overload=major max_sat=1.106557100 | arc_overloaded: t=0 arc=606 flow=1045.082000000 cap=1000.000000000 sat=1.045082000
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.172131000 | arc_overloaded: t=0 arc=606 flow=1172.131000000 cap=1000.000000000 sat=1.172131000
+[diag] origin=repair_failed overload=major max_sat=1.307376300 | arc_overloaded: t=0 arc=303 flow=999.999900000 cap=1000.000000000 sat=0.999999900
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.307376400 | arc_overloaded: t=0 arc=606 flow=1200.819700000 cap=1000.000000000 sat=1.200819700
+[diag] origin=repair_failed overload=major max_sat=1.213114500 | arc_overloaded: t=0 arc=303 flow=1053.278800000 cap=1000.000000000 sat=1.053278800
+[diag] origin=repair_failed overload=major max_sat=1.225409500 | arc_overloaded: t=0 arc=606 flow=1209.016200000 cap=1000.000000000 sat=1.209016200
+[diag] origin=repair_failed overload=major max_sat=1.241802900 | arc_overloaded: t=0 arc=414 flow=1004.098200000 cap=1000.000000000 sat=1.004098200
+[diag] origin=repair_failed overload=major max_sat=1.286884800 | arc_overloaded: t=0 arc=606 flow=1192.622800000 cap=1000.000000000 sat=1.192622800
+[diag] origin=repair_failed overload=major max_sat=1.221311100 | arc_overloaded: t=0 arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100
+[diag] origin=repair_failed overload=major max_sat=1.184425800 | arc_overloaded: t=0 arc=606 flow=1168.032700000 cap=1000.000000000 sat=1.168032700
+[rc002] gen=   4  initial: eps=0 min=0 maj=50 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+=== setA-16 ===  nodes=250, demands=4800, wall_ms=4222269
+  P10-B (repair scaling):
+    infeasible=250/250 (100.0%), repair_ms=672441.1, ms/repair=2689.764, repair_share=15.9%
+    repair_attempts=250, successes=0, failures=250
+    improve_ms=0.0
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/250 (0.0%)
+    genome_unchanged=250/250 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=250 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.2354  mean_max_sat_after=1.2354  delta=0.0000
+
+=== setA-19 ===
+[diag] origin=repair_failed overload=major max_sat=1.093676550 | arc_overloaded: t=0 arc=968 flow=2084.308900000 cap=2000.000000000 sat=1.042154450
+[diag] origin=repair_failed overload=major max_sat=1.114753900 | arc_overloaded: t=0 arc=968 flow=2229.507800000 cap=2000.000000000 sat=1.114753900
+[diag] origin=repair_failed overload=major max_sat=1.091334800 | arc_overloaded: t=0 arc=968 flow=2182.669600000 cap=2000.000000000 sat=1.091334800
+[diag] origin=repair_failed overload=major max_sat=1.103044150 | arc_overloaded: t=0 arc=968 flow=2177.985300000 cap=2000.000000000 sat=1.088992650
+[diag] origin=repair_failed overload=major max_sat=1.093676650 | arc_overloaded: t=0 arc=968 flow=2032.786400000 cap=2000.000000000 sat=1.016393200
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=epsilon max_sat=1.000000000 | arc_overloaded: t=0 arc=968 flow=2000.000000000 cap=2000.000000000 sat=1.000000000
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.063231700 | arc_overloaded: t=0 arc=968 flow=2126.463400000 cap=2000.000000000 sat=1.063231700
+[diag] origin=repair_failed overload=major max_sat=1.168618000 | arc_overloaded: t=0 arc=968 flow=2337.236000000 cap=2000.000000000 sat=1.168618000
+[diag] origin=repair_failed overload=major max_sat=1.152224550 | arc_overloaded: t=0 arc=968 flow=2304.449100000 cap=2000.000000000 sat=1.152224550
+[diag] origin=repair_failed overload=major max_sat=1.107728200 | arc_overloaded: t=0 arc=968 flow=2215.456100000 cap=2000.000000000 sat=1.107728050
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.107728100 | arc_overloaded: t=0 arc=968 flow=2032.786200000 cap=2000.000000000 sat=1.016393100
+[diag] origin=repair_failed overload=major max_sat=1.156908550 | arc_overloaded: t=0 arc=968 flow=2313.817100000 cap=2000.000000000 sat=1.156908550
+[diag] origin=repair_failed overload=major max_sat=1.121779750 | arc_overloaded: t=0 arc=968 flow=2243.559500000 cap=2000.000000000 sat=1.121779750
+[diag] origin=repair_failed overload=major max_sat=1.074941400 | arc_overloaded: t=0 arc=968 flow=2149.882800000 cap=2000.000000000 sat=1.074941400
+[diag] origin=repair_failed overload=major max_sat=1.107728000 | arc_overloaded: t=0 arc=968 flow=2215.456000000 cap=2000.000000000 sat=1.107728000
+[diag] origin=repair_failed overload=major max_sat=1.107728200 | arc_overloaded: t=0 arc=968 flow=2215.456100000 cap=2000.000000000 sat=1.107728050
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.093676700 | arc_overloaded: t=0 arc=968 flow=2187.353400000 cap=2000.000000000 sat=1.093676700
+[diag] origin=repair_failed overload=major max_sat=1.098360450 | arc_overloaded: t=0 arc=968 flow=2187.353300000 cap=2000.000000000 sat=1.093676650
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.093676550 | arc_overloaded: t=0 arc=968 flow=2084.308900000 cap=2000.000000000 sat=1.042154450
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[diag] origin=repair_failed overload=major max_sat=1.168618000 | arc_overloaded: t=0 arc=968 flow=2337.236000000 cap=2000.000000000 sat=1.168618000
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.077283200 | arc_overloaded: t=0 arc=969 flow=2032.786700000 cap=2000.000000000 sat=1.016393350
+[diag] origin=repair_failed overload=major max_sat=1.121779750 | arc_overloaded: t=0 arc=968 flow=2243.559500000 cap=2000.000000000 sat=1.121779750
+[diag] origin=repair_failed overload=major max_sat=1.107728100 | arc_overloaded: t=0 arc=968 flow=2032.786200000 cap=2000.000000000 sat=1.016393100
+[diag] origin=repair_failed overload=major max_sat=1.053863950 | arc_overloaded: t=0 arc=968 flow=2107.727900000 cap=2000.000000000 sat=1.053863950
+[diag] origin=repair_failed overload=major max_sat=1.084309000 | arc_overloaded: t=0 arc=968 flow=2168.618000000 cap=2000.000000000 sat=1.084309000
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.046838350 | arc_overloaded: t=0 arc=968 flow=2042.154200000 cap=2000.000000000 sat=1.021077100
+[diag] origin=repair_failed overload=major max_sat=1.044496150 | arc_overloaded: t=0 arc=968 flow=2056.205800000 cap=2000.000000000 sat=1.028102900
+[diag] origin=repair_failed overload=major max_sat=1.131147300 | arc_overloaded: t=0 arc=968 flow=2262.294600000 cap=2000.000000000 sat=1.131147300
+[diag] origin=repair_failed overload=major max_sat=1.053863900 | arc_overloaded: t=0 arc=1374 flow=1053.863900000 cap=1000.000000000 sat=1.053863900
+[diag] origin=repair_failed overload=major max_sat=1.107728000 | arc_overloaded: t=0 arc=968 flow=2215.456000000 cap=2000.000000000 sat=1.107728000
+[diag] origin=repair_failed overload=major max_sat=1.128805500 | arc_overloaded: t=0 arc=968 flow=2187.353200000 cap=2000.000000000 sat=1.093676600
+[diag] origin=repair_failed overload=major max_sat=1.098360450 | arc_overloaded: t=0 arc=968 flow=2187.353300000 cap=2000.000000000 sat=1.093676650
+[diag] origin=repair_failed overload=major max_sat=1.044496150 | arc_overloaded: t=0 arc=968 flow=2056.205800000 cap=2000.000000000 sat=1.028102900
+[diag] origin=repair_failed overload=major max_sat=1.103044150 | arc_overloaded: t=0 arc=968 flow=2177.985300000 cap=2000.000000000 sat=1.088992650
+[rc002] gen=   0  initial: eps=1 min=0 maj=45 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.107728200 | arc_overloaded: t=0 arc=968 flow=2215.456100000 cap=2000.000000000 sat=1.107728050
+[diag] origin=repair_failed overload=major max_sat=1.114753900 | arc_overloaded: t=0 arc=968 flow=2229.507800000 cap=2000.000000000 sat=1.114753900
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.074941400 | arc_overloaded: t=0 arc=968 flow=2149.882800000 cap=2000.000000000 sat=1.074941400
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.044496150 | arc_overloaded: t=0 arc=968 flow=2056.205800000 cap=2000.000000000 sat=1.028102900
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.093676650 | arc_overloaded: t=0 arc=968 flow=2032.786400000 cap=2000.000000000 sat=1.016393200
+[diag] origin=repair_failed overload=major max_sat=1.053863950 | arc_overloaded: t=0 arc=968 flow=2107.727900000 cap=2000.000000000 sat=1.053863950
+[diag] origin=repair_failed overload=major max_sat=1.093676550 | arc_overloaded: t=0 arc=968 flow=2084.308900000 cap=2000.000000000 sat=1.042154450
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.107728100 | arc_overloaded: t=0 arc=968 flow=2032.786200000 cap=2000.000000000 sat=1.016393100
+[diag] origin=repair_failed overload=major max_sat=1.103044150 | arc_overloaded: t=0 arc=968 flow=2177.985300000 cap=2000.000000000 sat=1.088992650
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[diag] origin=repair_failed overload=major max_sat=1.121779750 | arc_overloaded: t=0 arc=968 flow=2243.559500000 cap=2000.000000000 sat=1.121779750
+[diag] origin=repair_failed overload=major max_sat=1.103044150 | arc_overloaded: t=0 arc=968 flow=2177.985300000 cap=2000.000000000 sat=1.088992650
+[diag] origin=repair_failed overload=major max_sat=1.074941400 | arc_overloaded: t=0 arc=968 flow=2149.882800000 cap=2000.000000000 sat=1.074941400
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.107728100 | arc_overloaded: t=0 arc=968 flow=2032.786200000 cap=2000.000000000 sat=1.016393100
+[diag] origin=repair_failed overload=major max_sat=1.107728000 | arc_overloaded: t=0 arc=968 flow=2215.456000000 cap=2000.000000000 sat=1.107728000
+[diag] origin=repair_failed overload=major max_sat=1.023418900 | arc_overloaded: t=0 arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.091334800 | arc_overloaded: t=0 arc=968 flow=2182.669600000 cap=2000.000000000 sat=1.091334800
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[rc002] gen=   1  initial: eps=0 min=0 maj=31 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.107728200 | arc_overloaded: t=0 arc=968 flow=2215.456100000 cap=2000.000000000 sat=1.107728050
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.096018650 | arc_overloaded: t=0 arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650
+[diag] origin=repair_failed overload=major max_sat=1.173301850 | arc_overloaded: t=0 arc=968 flow=2346.603700000 cap=2000.000000000 sat=1.173301850
+[diag] origin=repair_failed overload=major max_sat=1.114753900 | arc_overloaded: t=0 arc=968 flow=2229.507800000 cap=2000.000000000 sat=1.114753900
+[diag] origin=repair_failed overload=major max_sat=1.107728000 | arc_overloaded: t=0 arc=968 flow=2215.456000000 cap=2000.000000000 sat=1.107728000
+[diag] origin=repair_failed overload=major max_sat=1.121779750 | arc_overloaded: t=0 arc=968 flow=2243.559500000 cap=2000.000000000 sat=1.121779750
+[diag] origin=repair_failed overload=major max_sat=1.079625200 | arc_overloaded: t=0 arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100
+[diag] origin=repair_failed overload=major max_sat=1.107728000 | arc_overloaded: t=0 arc=968 flow=2215.456000000 cap=2000.000000000 sat=1.107728000
+[diag] origin=repair_failed overload=major max_sat=1.084308850 | arc_overloaded: t=0 arc=969 flow=2121.779700000 cap=2000.000000000 sat=1.060889850
+[diag] origin=repair_failed overload=major max_sat=1.093676650 | arc_overloaded: t=0 arc=968 flow=2032.786400000 cap=2000.000000000 sat=1.016393200
+[rc002] gen=   2  initial: eps=0 min=0 maj=12 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+[diag] origin=repair_failed overload=major max_sat=1.093676650 | arc_overloaded: t=0 arc=968 flow=2032.786400000 cap=2000.000000000 sat=1.016393200
+[rc002] gen=   3  initial: eps=0 min=0 maj=1 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+=== setA-19 ===  nodes=300, demands=6000, wall_ms=6259775
+  P10-B (repair scaling):
+    infeasible=110/230 (47.8%), repair_ms=431563.5, ms/repair=3923.305, repair_share=6.9%
+    repair_attempts=110, successes=0, failures=110
+    improve_ms=193942.6
+  P10-C0 (repair effectiveness — failed repairs only):
+    genome_changed=0/110 (0.0%)
+    genome_unchanged=110/110 (100.0%)
+    violation_count_improved=0 (0.0%)
+    violation_count_unchanged=110 (100.0%)
+    violation_count_worsened=0 (0.0%)
+    mean_max_sat_before=1.0877  mean_max_sat_after=1.0877  delta=0.0000
+
+=== P10-C0 sweep complete ===
+Governance: P10-C hypothesis selection LOCKED — review evidence before proceeding.
