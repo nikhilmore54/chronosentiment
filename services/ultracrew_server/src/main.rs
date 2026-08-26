@@ -2236,6 +2236,7 @@ mod server_endpoints_tests {
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
         
         let response = app
@@ -2277,6 +2278,7 @@ mod server_endpoints_tests {
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
         
         let mut assignments = std::collections::HashMap::new();
@@ -2328,6 +2330,7 @@ mod server_endpoints_tests {
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
         
         let mut existing_assignments = std::collections::HashMap::new();
