@@ -1,6 +1,8 @@
-use coralys_core::operators::{RepairOperator, ImprovementOperator, OperatorBudget, ConstraintModel};
-use crate::moga_impl::RoadefGenome;
 use crate::constraints::{RoadefConstraintModel, RoadefViolation};
+use crate::moga_impl::RoadefGenome;
+use coralys_core::operators::{
+    ConstraintModel, ImprovementOperator, OperatorBudget, RepairOperator,
+};
 use std::fmt;
 
 #[derive(Debug)]
@@ -30,33 +32,40 @@ impl RepairOperator<RoadefGenome, RoadefConstraintModel> for RoadefRepair {
             return Ok(true); // Already feasible
         }
 
-        // TODO: Implement a load-aware Dijkstra rerouting for demands involved in violations.
-        // For now, if there is a violation, we fallback to ECMP (empty waypoints) as a naive repair,
-        // which might still be infeasible. True repair will involve identifying congested arcs and rerouting.
-        
-        let mut needs_ecmp_fallback = false;
+        // H-SKIP (P10-C0 authorized 2026-08-26):
+        // P10-C0 established that the Capacity repair path is structurally inert:
+        //   - 559 failed repairs across 7 instances, 0% genome change, 0% violation improvement.
+        //   - The needs_ecmp_fallback flag was set but the clearing code was commented out.
+        //   - Repair was paying the full evaluate_violations() cost to produce a violation list
+        //     it then discarded without making any genome modification.
+        //
+        // Fast path: if all violations are Capacity type, return Ok(false) immediately.
+        // This makes the no-op explicit and avoids the loop overhead for the dominant case.
+        // SegmentLimit and Connectivity violations still proceed to the clearing path below.
+        //
+        // P10-C1 (bottleneck arc characterization) is authorized next to determine the correct
+        // repair/construction intervention. Do not implement Dijkstra/ECMP here until P10-C1
+        // evidence is reviewed.
+        let all_capacity = violations
+            .iter()
+            .all(|v| matches!(v, RoadefViolation::Capacity { .. }));
+        if all_capacity {
+            return Ok(false);
+        }
+
+        // SegmentLimit / Connectivity violations: clear waypoints for affected demands.
+        // These are the only violation types where the current repair makes a genome change.
         for v in violations {
             match v {
-                RoadefViolation::SegmentLimit { demand_id, .. } |
-                RoadefViolation::Connectivity { demand_id, .. } => {
-                    // Truncate waypoints for this demand to force ECMP fallback
+                RoadefViolation::SegmentLimit { demand_id, .. }
+                | RoadefViolation::Connectivity { demand_id, .. } => {
                     candidate.waypoints[demand_id].clear();
-                    needs_ecmp_fallback = true;
-                }
-                RoadefViolation::Capacity { .. } => {
-                    needs_ecmp_fallback = true;
                 }
                 _ => {}
             }
         }
 
-        if needs_ecmp_fallback {
-            // Very naive repair: clear waypoints to fallback to default path.
-            // In a complete implementation, this should use greedy_load_aware_dijkstra.
-            // candidate.waypoints.iter_mut().for_each(|wps| wps.clear());
-        }
-
-        // Return false as this naive repair isn't guaranteed to reach the feasible space.
+        // Return false: clearing waypoints may not restore feasibility.
         // We rely on the feasibility gate in EvolutionaryPipeline.
         Ok(false)
     }
