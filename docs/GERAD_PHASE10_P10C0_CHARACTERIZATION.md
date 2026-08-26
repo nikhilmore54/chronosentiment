@@ -1,7 +1,7 @@
 # GERAD Phase 10 — P10-C0: Repair-Effectiveness Characterization
 
 **Status:** SWEEP COMPLETE (7/7 instances: setA-04/06/10/13/14/16/19)
-**Governance:** OBSERVATIONAL — no behavioral changes. P10-C hypothesis selection LOCKED.
+**Governance:** OBSERVATIONAL — no behavioral changes. P10-C hypothesis selection: **H-SKIP+CONSTRUCT AUTHORIZED** (2026-08-26).
 **Date:** 2026-08-26
 **Baseline commits:** `3a07aa6f0` + `570805df7` + `0c0dd14eb` (P10-B complete)
 
@@ -273,49 +273,82 @@ every single offspring pays the full cost of two redundant `evaluate_violations(
   mechanism to fix them.
 - This hypothesis targets the root cause rather than the symptom.
 
-### E.2 Governance gate
+### E.2 Hypothesis Selection Decision (2026-08-26)
 
-**P10-C hypothesis selection is LOCKED pending:**
-1. ~~Completion of the 7-instance sweep~~ — **DONE** (all 7 instances complete, 559 total failures)
-2. User review of this characterization document
-3. Explicit hypothesis selection by the user
+**H-SKIP+CONSTRUCT AUTHORIZED.**
 
-Do not implement H-EARLY, H-SKIP, H-CONSTRUCT, or any Coralys change until authorized.
+| Hypothesis      | Decision                     | Reason |
+|-----------------|------------------------------|--------|
+| H-EARLY         | ❌ Rejected                  | Repair is not useful — zero genome changes. No useful work to preserve. |
+| H-SKIP          | ✅ Authorized immediately    | Repair is provably a no-op for Capacity violations; continuing to execute it wastes compute. |
+| H-CONSTRUCT     | ✅ Authorized as investigation | Evidence identifies a structural feasibility problem; P10-C1 must determine which intervention is correct. |
+| H-SKIP+CONSTRUCT| ✅ Authorized                | Immediate safe cleanup + properly governed investigation. |
 
----
+**Authorized immediately:** H-SKIP — remove/bypass the demonstrated no-op Capacity repair path, with observational telemetry preserved.
 
-## F. Open Questions for P10-C Hypothesis Selection
+**Authorized next:** P10-C1 — Bottleneck Arc Characterization.
 
-**F.1** Does the pattern hold at large instances (setA-13/14/16/19)?
-- Expected: yes, based on structural analysis. The repair operator code is the same regardless
-  of instance size. Capacity violations dominate at large instances.
+**Not yet authorized:**
+- Implementing Dijkstra rerouting or ECMP fallback
+- Changing crossover, mutation, or selection
+- Changing Coralys-core interfaces
+- Declaring the constructor the root cause
 
-**F.2** If H-SKIP is selected: what is the expected wall-time saving?
-- Upper bound: eliminate calls #2 and #3 per infeasible offspring.
-- At setA-16 (100% infeasibility, 1453 ms/repair): potentially ~2/3 of repair_ms saved.
-- But: infeasible offspring are still discarded (reset to parent). No improvement in solution
-  quality. The evolutionary search still wastes population slots on infeasible offspring.
-
-**F.3** If H-CONSTRUCT is selected: what is the intervention?
-- Option A: Improve the constructor to produce fewer infeasible offspring (reduce infeasibility
-  rate at source).
-- Option B: Implement actual repair logic for Capacity violations (rerouting via Dijkstra).
-- Option C: Change selection pressure to avoid producing infeasible offspring (EA-level change).
-- These options have different scopes: A/B are repair/constructor changes; C may require
-  Coralys/MOGA capability changes.
-
-**F.4** Is there a Coralys capability gap?
-- The current MOGA has no mechanism to exploit partially-improved-but-still-infeasible
-  candidates. If repair could reduce violations without achieving feasibility, those candidates
-  are discarded. This is a structural limitation of the current feasibility gate.
-- P10-C0 evidence shows repair makes zero improvement, so this gap is currently moot.
-  If a real repair implementation is added (H-CONSTRUCT option B), this gap becomes relevant.
+**Governance language:**
+> P10-C0 establishes that the current ROADEF Capacity repair path is structurally inert. P10-C1 is authorized to determine where the actual feasibility loss originates. No substantive repair/construction/operator behavior is to be changed until that characterization is complete.
 
 ---
 
-## G. Governance
+## F. P10-C1 Research Questions (Bottleneck Arc Characterization)
+
+P10-C1 must distinguish four hypotheses before any construction/repair implementation:
+
+**F.0 Is the bottleneck actually unavoidable?**
+For each dominant arc (968, 658, 303, 606): does the demand volume mathematically require that much traffic through the arc, or do alternative feasible paths exist? If unavoidable, rerouting cannot fix it. If alternatives exist, the current construction/representation is failing to exploit them.
+
+**F.1 If alternatives exist, why aren't they being selected?**
+Characterize for each bottleneck arc: current route → bottleneck arc vs. alternative routes → available capacity. This discriminates: constructor, crossover, mutation, route representation, selection pressure, or repair.
+
+**F.2 What happens immediately before the bottleneck appears?**
+For each dominant bottleneck: generation of first appearance; parent genomes; operation producing offspring (crossover vs. mutation); capacity utilization before/after; whether the offending route was already present in a parent; whether alternative routes existed; whether the offspring inherited a structurally bad routing combination.
+
+This separates:
+- A. Bad initial construction
+- B. Good construction → destructive crossover/mutation
+- C. Insufficient representation of alternative routes
+- D. Genuinely constrained topology
+
+**Do not assume "constructor" yet.** H-CONSTRUCT is the hypothesis family, not the conclusion.
+
+---
+
+## G. Open Questions (Pre-P10-C1)
+
+**G.1** H-SKIP expected wall-time saving:
+- Upper bound: eliminate `evaluate_violations()` calls #2 and #3 per infeasible offspring.
+- At setA-16 (100% infeasibility, 2690 ms/repair): potentially ~2/3 of repair_ms recovered.
+- Infeasible offspring are still discarded (reset to parent). No improvement in solution quality.
+- H-SKIP is a performance correction, not a solution to the feasibility problem.
+
+**G.2** Coralys capability gap (currently moot, relevant if H-CONSTRUCT option B is implemented):
+- The current MOGA has no mechanism to exploit partially-improved-but-still-infeasible candidates.
+- P10-C0 shows repair makes zero improvement, so this gap is moot for now.
+- If a real repair implementation is added, this gap becomes relevant.
+
+**G.3** Architectural boundary (confirmed by P10-C0):
+- MOGA is excellent at exploiting/diversifying a good foothold.
+- MOGA is not demonstrated to discover feasibility from pathological infeasible starting populations.
+- Domain intelligence (construction, repair) belongs below the factory boundary.
+- `SeededScheduleFactory` abstraction earns its keep: UltraCrew can evolve from 1 seed → portfolio of domain-generated seeds without contaminating Coralys-core.
+
+---
+
+## H. Governance
 
 - P10-B: CLOSED (commits `3a07aa6f0` + `570805df7` + `0c0dd14eb`)
-- P10-C0: COMPLETE (all 7 instances; 559 total failed repairs; 0% genome change; 100% violation unchanged)
-- P10-C: LOCKED — requires P10-C0 evidence review and explicit hypothesis selection
+- P10-C0: CLOSED (commit `66674fc96`; all 7 instances; 559 total failed repairs; 0% genome change; 100% violation unchanged)
+- P10-C hypothesis selection: CLOSED — H-SKIP+CONSTRUCT authorized 2026-08-26
+- H-SKIP: AUTHORIZED — remove demonstrated no-op Capacity repair path (keep telemetry)
+- P10-C1: AUTHORIZED — Bottleneck Arc Characterization (after H-SKIP)
+- P10-C2+: LOCKED — requires P10-C1 evidence and explicit hypothesis discrimination
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
