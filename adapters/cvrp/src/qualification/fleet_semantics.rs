@@ -7,7 +7,6 @@
 ///
 /// Reference: benchmarks/campaign/QDR-FINAL.md §6.2
 ///            benchmarks/campaign/qualification_decision_register.md §Category A
-
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -46,7 +45,9 @@ impl FleetConstraint {
     /// Returns the declared vehicle count K, if applicable.
     pub fn declared_k(&self) -> Option<usize> {
         match self {
-            FleetConstraint::Exact(k) | FleetConstraint::AtMost(k) | FleetConstraint::AtLeast(k) => Some(*k),
+            FleetConstraint::Exact(k)
+            | FleetConstraint::AtMost(k)
+            | FleetConstraint::AtLeast(k) => Some(*k),
             FleetConstraint::Variable | FleetConstraint::Unspecified => None,
         }
     }
@@ -87,9 +88,13 @@ impl FleetConstraint {
         match self {
             FleetConstraint::Exact(k) => format!("EXACT({}) — exactly {} vehicles required", k, k),
             FleetConstraint::AtMost(k) => format!("ATMOST({}) — up to {} vehicles permitted", k, k),
-            FleetConstraint::AtLeast(k) => format!("ATLEAST({}) — at least {} vehicles required", k, k),
+            FleetConstraint::AtLeast(k) => {
+                format!("ATLEAST({}) — at least {} vehicles required", k, k)
+            }
             FleetConstraint::Variable => "VARIABLE — fleet size is a decision variable".to_string(),
-            FleetConstraint::Unspecified => "UNSPECIFIED — fleet semantics not declared".to_string(),
+            FleetConstraint::Unspecified => {
+                "UNSPECIFIED — fleet semantics not declared".to_string()
+            }
         }
     }
 }

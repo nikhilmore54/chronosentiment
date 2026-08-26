@@ -13,14 +13,15 @@ use chronosentiment_adapter::decision_support::csp006_protocol::{
     RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH, RESEARCH_DISCOVERY_TWO_DIR, RESEARCH_SNAPSHOT_DIR,
 };
 use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_yahoo_cache;
-use chronosentiment_adapter::decision_support::observatory_live_execution::{
-    refuse_live_execution_output, render_live_execution_html, render_live_execution_report,
-    run_live_execution, CONTINUOUS_SESSION_SEAL_AUTHORIZED, FOURTEEN_AUG_COHORT_MUTATION_AUTHORIZED,
-    LIVE_YAHOO_FETCH_AUTHORIZED, PE1_SIDECAR_MUTATION_AUTHORIZED,
-};
 use chronosentiment_adapter::decision_support::observatory_execution::{
     C3G_EXPERIMENT_AUTHORIZED, SEARCH_THREE_AUTHORIZED, STOP_EXIT_AUTHORIZED,
     TARGET_PATH_OPTIMIZATION_AUTHORIZED,
+};
+use chronosentiment_adapter::decision_support::observatory_live_execution::{
+    refuse_live_execution_output, render_live_execution_html, render_live_execution_report,
+    run_live_execution, CONTINUOUS_SESSION_SEAL_AUTHORIZED,
+    FOURTEEN_AUG_COHORT_MUTATION_AUTHORIZED, LIVE_YAHOO_FETCH_AUTHORIZED,
+    PE1_SIDECAR_MUTATION_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
 
@@ -40,17 +41,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || SEARCH_THREE_AUTHORIZED
         || C3G_EXPERIMENT_AUTHORIZED
     {
-        return Err("refusing a live execution run that opens research or mutates protected ledgers".into());
+        return Err(
+            "refusing a live execution run that opens research or mutates protected ledgers".into(),
+        );
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(args.search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        args.search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
     let cache = load_required_yahoo_cache(&args.cache_dir).map_err(|e| e.to_string())?;
     let existing = if args.output.join("ledger.json").exists() {
-        Some(serde_json::from_str(&fs::read_to_string(args.output.join("ledger.json"))?)?)
+        Some(serde_json::from_str(&fs::read_to_string(
+            args.output.join("ledger.json"),
+        )?)?)
     } else {
         None
     };
@@ -81,7 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("observing={}", ledger.n_observing);
     println!("target={}", ledger.n_target);
     println!("horizon={}", ledger.n_horizon);
-    println!("fourteen_aug_cohort_mutated={}", ledger.fourteen_aug_cohort_mutated);
+    println!(
+        "fourteen_aug_cohort_mutated={}",
+        ledger.fourteen_aug_cohort_mutated
+    );
     println!("pe1_sidecar_mutated={}", ledger.pe1_sidecar_mutated);
     println!("output={}", args.output.display());
     Ok(())
@@ -103,7 +112,9 @@ fn parse_args() -> Result<LiveArgs, Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(args.next().ok_or("missing --yahoo-cache")?))
@@ -117,12 +128,15 @@ fn parse_args() -> Result<LiveArgs, Box<dyn std::error::Error>> {
         }
     }
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
     Ok(LiveArgs {
         search_two: search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        cache_dir: cache.unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
+        cache_dir: cache
+            .unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
         output: output.unwrap_or_else(|| {
             PathBuf::from("product_validation/CS-P-006/observatory/prospective_execution_v0")
         }),

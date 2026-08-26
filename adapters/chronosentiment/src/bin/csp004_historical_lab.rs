@@ -9,10 +9,12 @@ use std::fs;
 use std::path::PathBuf;
 
 use chronosentiment_adapter::decision_support::backtest::populate_ledger_from_assessment_schedule;
-use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::lab_context::load_decision_context;
-use chronosentiment_adapter::decision_support::laboratory::{render_reports, run_laboratory, LaboratoryInput};
+use chronosentiment_adapter::decision_support::laboratory::{
+    render_reports, run_laboratory, LaboratoryInput,
+};
 use chronosentiment_adapter::decision_support::outcome::OutcomeEngine;
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 
 #[tokio::main]
@@ -28,13 +30,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let adapter = ReplayAdapter::new(pool.clone());
-    let ledger =
-        populate_ledger_from_assessment_schedule(
-            &adapter,
-            UNFROZEN_ENGINE_VERSION,
-            &BaselineTrendMappingPolicy,
-        ).await?;
-    let outcomes = OutcomeEngine::new(pool.clone()).measure_ledger(&ledger).await?;
+    let ledger = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
+    let outcomes = OutcomeEngine::new(pool.clone())
+        .measure_ledger(&ledger)
+        .await?;
     let context = load_decision_context(&pool, &ledger).await?;
     let report = run_laboratory(LaboratoryInput {
         ledger: &ledger,

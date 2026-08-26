@@ -12,8 +12,7 @@ use super::csp006_protocol::{
 
 pub const OBSERVATORY_REGISTRY_CONTRACT_ID: &str = "csp006p.policy_registry.1";
 pub const CANDIDATE_C3_002: &str = "C3-002";
-pub const CANDIDATE_C3_002_LABEL: &str =
-    "ChronoSentiment Research Policy — Candidate C3-002";
+pub const CANDIDATE_C3_002_LABEL: &str = "ChronoSentiment Research Policy — Candidate C3-002";
 pub const OBSERVATORY_P2_STARTED: bool = false;
 pub const OBSERVATORY_VERTICAL_SLICE_STARTED: bool = true;
 

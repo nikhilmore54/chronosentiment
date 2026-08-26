@@ -26,10 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to overwrite selected_policy.json".into());
     }
 
-    let one_art: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_one.join("selected_policy.json"))?)?;
-    let two_art: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_two.join("selected_policy.json"))?)?;
+    let one_art: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_one.join("selected_policy.json"),
+    )?)?;
+    let two_art: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_two.join("selected_policy.json"),
+    )?)?;
     if one_art.artifact_hash != RESEARCH_DISCOVERY_ARTIFACT_HASH {
         return Err("refusing a left artifact that is not Search #1".into());
     }
@@ -38,16 +40,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let one_recs: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_one.join("recommendations").join("recommendations.json"),
+        search_one
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
     let two_recs: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_two.join("recommendations").join("recommendations.json"),
+        search_two
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
 
     let report = compare_sealed_recommendations(&one_recs, &two_recs, &two_art)?;
 
     fs::create_dir_all(&output)?;
-    fs::write(output.join("comparison.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        output.join("comparison.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
     fs::write(output.join("REVIEW.md"), render_comparison(&report))?;
     fs::write(
         output.join("pairwise_rows.json"),
@@ -89,10 +98,14 @@ fn parse_args() -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn std::error::Error
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-one-dir" => {
-                search_one = Some(PathBuf::from(args.next().ok_or("missing --search-one-dir")?))
+                search_one = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-one-dir")?,
+                ))
             }
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--output" => output = Some(PathBuf::from(args.next().ok_or("missing --output")?)),
             other => return Err(format!("unknown argument {other}").into()),

@@ -16,14 +16,14 @@
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BenchmarkFamily {
-    Augerat,       // A, B, E, P
-    Fisher,        // F
-    Christofides,  // M
-    CMT,           // Christofides, Mingozzi, Toth (1979)
-    Taillard,      // Tai
-    Golden,        // Golden et al (1998)
-    Li,            // Li et al (2005)
-    Uchoa,         // X — Uchoa et al (2017)
+    Augerat,      // A, B, E, P
+    Fisher,       // F
+    Christofides, // M
+    CMT,          // Christofides, Mingozzi, Toth (1979)
+    Taillard,     // Tai
+    Golden,       // Golden et al (1998)
+    Li,           // Li et al (2005)
+    Uchoa,        // X — Uchoa et al (2017)
     Unknown,
 }
 
@@ -48,80 +48,431 @@ static REGISTRY: &[BenchmarkMetadata] = &[
     // CMT — Christofides, Mingozzi, Toth (1979)
     // 14 instances in two sets (CMT1-5 and CMT6-10 are paired, CMT11-14 extra)
     // =========================================================================
-    BenchmarkMetadata { name: "CMT1",  vehicles: 5,  bks: 524.61,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT2",  vehicles: 10, bks: 835.26,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT3",  vehicles: 8,  bks: 826.14,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT4",  vehicles: 12, bks: 1028.42, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT5",  vehicles: 17, bks: 1291.29, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT6",  vehicles: 6,  bks: 555.43,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT7",  vehicles: 11, bks: 909.68,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT8",  vehicles: 9,  bks: 865.94,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT9",  vehicles: 14, bks: 1162.55, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT10", vehicles: 18, bks: 1395.85, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT11", vehicles: 11, bks: 1042.11, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT12", vehicles: 10, bks: 819.56,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT13", vehicles: 11, bks: 1541.14, family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-    BenchmarkMetadata { name: "CMT14", vehicles: 10, bks: 866.37,  family: BenchmarkFamily::CMT, source: "Christofides et al. 1979" },
-
+    BenchmarkMetadata {
+        name: "CMT1",
+        vehicles: 5,
+        bks: 524.61,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT2",
+        vehicles: 10,
+        bks: 835.26,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT3",
+        vehicles: 8,
+        bks: 826.14,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT4",
+        vehicles: 12,
+        bks: 1028.42,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT5",
+        vehicles: 17,
+        bks: 1291.29,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT6",
+        vehicles: 6,
+        bks: 555.43,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT7",
+        vehicles: 11,
+        bks: 909.68,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT8",
+        vehicles: 9,
+        bks: 865.94,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT9",
+        vehicles: 14,
+        bks: 1162.55,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT10",
+        vehicles: 18,
+        bks: 1395.85,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT11",
+        vehicles: 11,
+        bks: 1042.11,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT12",
+        vehicles: 10,
+        bks: 819.56,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT13",
+        vehicles: 11,
+        bks: 1541.14,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
+    BenchmarkMetadata {
+        name: "CMT14",
+        vehicles: 10,
+        bks: 866.37,
+        family: BenchmarkFamily::CMT,
+        source: "Christofides et al. 1979",
+    },
     // =========================================================================
     // Tai — Taillard (1993)
     // Per-instance vehicle counts differ within size groups
     // =========================================================================
-    BenchmarkMetadata { name: "Tai75a",  vehicles: 10, bks: 1618.36, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai75b",  vehicles: 9,  bks: 1407.89, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai75c",  vehicles: 10, bks: 1166.69, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai75d",  vehicles: 9,  bks: 1468.73, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai100a", vehicles: 11, bks: 2141.07, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai100b", vehicles: 11, bks: 1940.55, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai100c", vehicles: 11, bks: 1406.94, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai100d", vehicles: 11, bks: 1575.03, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai150a", vehicles: 12, bks: 2470.47, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai150b", vehicles: 12, bks: 2197.45, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai150c", vehicles: 12, bks: 2097.04, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai150d", vehicles: 12, bks: 2222.35, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-    BenchmarkMetadata { name: "Tai385",  vehicles: 24, bks: 24420.0, family: BenchmarkFamily::Taillard, source: "Taillard 1993" },
-
+    BenchmarkMetadata {
+        name: "Tai75a",
+        vehicles: 10,
+        bks: 1618.36,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai75b",
+        vehicles: 9,
+        bks: 1407.89,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai75c",
+        vehicles: 10,
+        bks: 1166.69,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai75d",
+        vehicles: 9,
+        bks: 1468.73,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai100a",
+        vehicles: 11,
+        bks: 2141.07,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai100b",
+        vehicles: 11,
+        bks: 1940.55,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai100c",
+        vehicles: 11,
+        bks: 1406.94,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai100d",
+        vehicles: 11,
+        bks: 1575.03,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai150a",
+        vehicles: 12,
+        bks: 2470.47,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai150b",
+        vehicles: 12,
+        bks: 2197.45,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai150c",
+        vehicles: 12,
+        bks: 2097.04,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai150d",
+        vehicles: 12,
+        bks: 2222.35,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
+    BenchmarkMetadata {
+        name: "Tai385",
+        vehicles: 24,
+        bks: 24420.0,
+        family: BenchmarkFamily::Taillard,
+        source: "Taillard 1993",
+    },
     // =========================================================================
     // Golden — Golden et al (1998)
     // All instances have >200 customers; will be skipped by MAX_CUSTOMERS limit.
     // =========================================================================
-    BenchmarkMetadata { name: "Golden_1",  vehicles: 9,  bks: 5623.47,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_2",  vehicles: 9,  bks: 8404.61,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_3",  vehicles: 10, bks: 11036.22, family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_4",  vehicles: 11, bks: 13624.55, family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_5",  vehicles: 5,  bks: 6460.98,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_6",  vehicles: 6,  bks: 8404.26,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_7",  vehicles: 7,  bks: 10102.68, family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_8",  vehicles: 8,  bks: 11635.34, family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_9",  vehicles: 14, bks: 579.71,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_10", vehicles: 16, bks: 736.26,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_11", vehicles: 18, bks: 912.84,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_12", vehicles: 20, bks: 1102.69,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_13", vehicles: 22, bks: 857.19,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_14", vehicles: 24, bks: 1080.55,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_15", vehicles: 26, bks: 1337.92,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_16", vehicles: 28, bks: 1612.50,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_17", vehicles: 22, bks: 707.76,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_18", vehicles: 26, bks: 995.13,   family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_19", vehicles: 30, bks: 1365.60,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-    BenchmarkMetadata { name: "Golden_20", vehicles: 34, bks: 1818.32,  family: BenchmarkFamily::Golden, source: "Golden et al. 1998" },
-
+    BenchmarkMetadata {
+        name: "Golden_1",
+        vehicles: 9,
+        bks: 5623.47,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_2",
+        vehicles: 9,
+        bks: 8404.61,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_3",
+        vehicles: 10,
+        bks: 11036.22,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_4",
+        vehicles: 11,
+        bks: 13624.55,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_5",
+        vehicles: 5,
+        bks: 6460.98,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_6",
+        vehicles: 6,
+        bks: 8404.26,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_7",
+        vehicles: 7,
+        bks: 10102.68,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_8",
+        vehicles: 8,
+        bks: 11635.34,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_9",
+        vehicles: 14,
+        bks: 579.71,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_10",
+        vehicles: 16,
+        bks: 736.26,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_11",
+        vehicles: 18,
+        bks: 912.84,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_12",
+        vehicles: 20,
+        bks: 1102.69,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_13",
+        vehicles: 22,
+        bks: 857.19,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_14",
+        vehicles: 24,
+        bks: 1080.55,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_15",
+        vehicles: 26,
+        bks: 1337.92,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_16",
+        vehicles: 28,
+        bks: 1612.50,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_17",
+        vehicles: 22,
+        bks: 707.76,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_18",
+        vehicles: 26,
+        bks: 995.13,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_19",
+        vehicles: 30,
+        bks: 1365.60,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
+    BenchmarkMetadata {
+        name: "Golden_20",
+        vehicles: 34,
+        bks: 1818.32,
+        family: BenchmarkFamily::Golden,
+        source: "Golden et al. 1998",
+    },
     // =========================================================================
     // Li — Li et al (2005)
     // All instances have >200 customers; will be skipped by MAX_CUSTOMERS limit.
     // =========================================================================
-    BenchmarkMetadata { name: "Li_21", vehicles: 10, bks: 21532.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_22", vehicles: 10, bks: 22814.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_23", vehicles: 10, bks: 24613.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_24", vehicles: 10, bks: 27591.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_25", vehicles: 10, bks: 29368.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_26", vehicles: 10, bks: 31742.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_27", vehicles: 10, bks: 33609.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_28", vehicles: 10, bks: 35627.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_29", vehicles: 10, bks: 39360.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_30", vehicles: 10, bks: 31742.51, family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_31", vehicles: 10, bks: 43748.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
-    BenchmarkMetadata { name: "Li_32", vehicles: 10, bks: 48217.0,  family: BenchmarkFamily::Li, source: "Li et al. 2005" },
+    BenchmarkMetadata {
+        name: "Li_21",
+        vehicles: 10,
+        bks: 21532.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_22",
+        vehicles: 10,
+        bks: 22814.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_23",
+        vehicles: 10,
+        bks: 24613.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_24",
+        vehicles: 10,
+        bks: 27591.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_25",
+        vehicles: 10,
+        bks: 29368.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_26",
+        vehicles: 10,
+        bks: 31742.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_27",
+        vehicles: 10,
+        bks: 33609.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_28",
+        vehicles: 10,
+        bks: 35627.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_29",
+        vehicles: 10,
+        bks: 39360.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_30",
+        vehicles: 10,
+        bks: 31742.51,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_31",
+        vehicles: 10,
+        bks: 43748.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
+    BenchmarkMetadata {
+        name: "Li_32",
+        vehicles: 10,
+        bks: 48217.0,
+        family: BenchmarkFamily::Li,
+        source: "Li et al. 2005",
+    },
 ];
 
 // =============================================================================
@@ -423,4 +774,5 @@ pub fn qualification_metadata(name: &str) -> QualificationMetadata {
 
     // ── Step 3: Default — validated families (Augerat A/B/E/P, Fisher F, Christofides M) ──
     default_verified()
-}fn main() {}
+}
+fn main() {}

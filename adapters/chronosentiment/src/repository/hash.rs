@@ -1,8 +1,11 @@
 use serde::Serialize;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Generates a deterministic content hash for an artifact following ARCH-012.
-pub fn generate_content_hash<T: Serialize>(payload: &T, metadata: &crate::repository::knowledge::ArtifactMetadata) -> String {
+pub fn generate_content_hash<T: Serialize>(
+    payload: &T,
+    metadata: &crate::repository::knowledge::ArtifactMetadata,
+) -> String {
     #[derive(Serialize)]
     struct HashEnvelope<'a, P> {
         artifact_schema_version: &'a str,

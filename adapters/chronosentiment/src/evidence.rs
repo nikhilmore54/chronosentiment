@@ -155,12 +155,19 @@ pub struct EvidenceDossier<'a> {
 
 impl<'a> EvidenceDossier<'a> {
     pub fn new(workspace_id: &'a str, subject: &'a str, items: &'a [EvidenceItem]) -> Self {
-        Self { workspace_id, subject, items }
+        Self {
+            workspace_id,
+            subject,
+            items,
+        }
     }
 
     /// Return all evidence items of a specific source type.
     pub fn by_type(&self, source_type: &EvidenceSourceType) -> Vec<&EvidenceItem> {
-        self.items.iter().filter(|e| &e.source_type == source_type).collect()
+        self.items
+            .iter()
+            .filter(|e| &e.source_type == source_type)
+            .collect()
     }
 
     /// Return all current (non-superseded) evidence items.

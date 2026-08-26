@@ -2,14 +2,13 @@
 
 use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
+use chronosentiment_adapter::decision_support::observatory_execution::ExitReason;
 use chronosentiment_adapter::decision_support::observatory_execution::{
     first_exit, first_exit_with_optional_stop, refuse_protected_output, render_execution_report,
     replay_targeted_execution, seal_execution_intent, C3G_EXPERIMENT_AUTHORIZED,
-    EXECUTION_CONTRACT_ID, EXECUTION_TARGET_PCT, SEARCH_THREE_AUTHORIZED,
-    STOP_EXIT_AUTHORIZED, TARGETED_EXECUTION_STARTED, TARGETED_EXECUTION_V0_FROZEN,
-    TARGET_PATH_OPTIMIZATION_AUTHORIZED,
+    EXECUTION_CONTRACT_ID, EXECUTION_TARGET_PCT, SEARCH_THREE_AUTHORIZED, STOP_EXIT_AUTHORIZED,
+    TARGETED_EXECUTION_STARTED, TARGETED_EXECUTION_V0_FROZEN, TARGET_PATH_OPTIMIZATION_AUTHORIZED,
 };
-use chronosentiment_adapter::decision_support::observatory_execution::ExitReason;
 use chronosentiment_adapter::decision_support::observatory_slice::SealedDecisionRecord;
 use chronosentiment_adapter::decision_support::DecisionAction;
 use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
@@ -20,9 +19,7 @@ fn paper_decision(action: DecisionAction, time: &str) -> SealedDecisionRecord {
         instrument: "INFY.NS".into(),
         decision_time: time.into(),
         state: chronosentiment_adapter::decision_support::observatory_slice::certified_tmv_state(
-            "Bullish",
-            "Positive",
-            "present",
+            "Bullish", "Positive", "present",
         ),
         action,
         policy_id: "C3-002".into(),
@@ -34,7 +31,15 @@ fn paper_decision(action: DecisionAction, time: &str) -> SealedDecisionRecord {
     }
 }
 
-fn bar(year: i32, month: u32, day: u32, open: f64, high: f64, low: f64, close: f64) -> YahooHistoricalBar {
+fn bar(
+    year: i32,
+    month: u32,
+    day: u32,
+    open: f64,
+    high: f64,
+    low: f64,
+    close: f64,
+) -> YahooHistoricalBar {
     let ts = Utc
         .with_ymd_and_hms(year, month, day, 3, 45, 0)
         .unwrap()
@@ -58,10 +63,9 @@ fn execution_protections_stay_closed() {
     assert!(!SEARCH_THREE_AUTHORIZED);
     assert!(!C3G_EXPERIMENT_AUTHORIZED);
     assert_eq!(EXECUTION_TARGET_PCT, 0.05);
-    assert!(refuse_protected_output(
-        "product_validation/CS-P-006/observatory/prospective"
-    )
-    .is_err());
+    assert!(
+        refuse_protected_output("product_validation/CS-P-006/observatory/prospective").is_err()
+    );
     assert!(refuse_protected_output(
         "product_validation/CS-P-006/observatory/historical_replay_v1"
     )
@@ -263,7 +267,10 @@ fn replay_report_names_the_contract() {
     assert!(md.contains("Execution Contract v0"));
     assert!(md.contains("C3-002 chooses direction only"));
     assert!(md.contains("C3-002 does not have a 5% target"));
-    let html = chronosentiment_adapter::decision_support::observatory_execution::render_execution_html(&report);
+    let html =
+        chronosentiment_adapter::decision_support::observatory_execution::render_execution_html(
+            &report,
+        );
     assert!(html.contains("Execution Contract v0"));
     assert!(html.contains("<dt>Decision</dt>"));
     assert!(html.contains("<dt>Target</dt>"));
@@ -285,7 +292,9 @@ fn replay_uses_c3_002_and_does_not_touch_prospective() {
     let Some(cache) = load_cache() else {
         return;
     };
-    let clocks = chronosentiment_adapter::decision_support::observatory_execution::default_execution_clocks()
+    let clocks =
+        chronosentiment_adapter::decision_support::observatory_execution::default_execution_clocks(
+        )
         .unwrap();
     let now = Utc.with_ymd_and_hms(2026, 8, 15, 6, 30, 0).unwrap();
     let (intents, report) = replay_targeted_execution(&artifact, &cache, &clocks, now).unwrap();
@@ -295,19 +304,23 @@ fn replay_uses_c3_002_and_does_not_touch_prospective() {
     assert!(!report.peeked_returns_at_seal);
     assert!(!report.prospective_cohort_mutated);
     assert!(!report.statistical_backtest);
-    assert!(intents.iter().all(|i| i.sealed_at_t && i.target_pct == 0.05));
+    assert!(intents
+        .iter()
+        .all(|i| i.sealed_at_t && i.target_pct == 0.05));
     assert!(intents.iter().any(|i| i.instrument == "IDEA.NS"));
     assert!(intents.iter().any(|i| i.instrument == "MAHABANK.NS"));
 }
 
-fn load_c3_002() -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact>
-{
+fn load_c3_002(
+) -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact> {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
         .unwrap()
-        .join(chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_DIR)
+        .join(
+            chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_DIR,
+        )
         .join("selected_policy.json");
     if !path.exists() {
         return None;

@@ -28,11 +28,9 @@ mod tests {
     use serde_json;
 
     use crate::{
-        C3_002_POLICY_ARTIFACT_HASH, CORALYS_EXEC_ARTIFACT_HASH,
-        DecisionLedger, DecisionRecordBuilder, LedgerError, SealedDecisionInput,
-        record::{
-            ExecutionRecord, ExecutionStatus, OutcomeRecord, OutcomeStatus,
-        },
+        C3_002_POLICY_ARTIFACT_HASH, CORALYS_EXEC_ARTIFACT_HASH, DecisionLedger,
+        DecisionRecordBuilder, LedgerError, SealedDecisionInput,
+        record::{ExecutionRecord, ExecutionStatus, OutcomeRecord, OutcomeStatus},
     };
 
     // ─── Test fixture ─────────────────────────────────────────────────────────
@@ -504,5 +502,4 @@ mod tests {
             "certified portion must be byte-identical before and after the full lifecycle"
         );
     }
-
 }

@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use crate::reasoning::historical_reasoning::HistoricalReasoningReport;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Opportunity {
@@ -28,11 +28,12 @@ pub struct ConfidenceDecomposition {
 
 impl ConfidenceDecomposition {
     pub fn derived_overall(&self) -> f64 {
-        (self.evidence_quality + 
-         self.evidence_agreement + 
-         self.historical_reliability + 
-         self.data_completeness + 
-         self.model_stability) / 5.0
+        (self.evidence_quality
+            + self.evidence_agreement
+            + self.historical_reliability
+            + self.data_completeness
+            + self.model_stability)
+            / 5.0
     }
 }
 
@@ -49,22 +50,22 @@ pub struct Decision {
     pub instrument_id: Uuid,
     pub assessment_id: Uuid,
     pub universe: String,
-    
+
     pub market_context_id: Option<Uuid>,
     pub evidence_ids: Vec<Uuid>,
     pub hypothesis_ids: Vec<Uuid>,
     pub scenario_ids: Vec<Uuid>,
-    
+
     pub opportunity: Opportunity,
     pub confidence: ConfidenceDecomposition,
-    
+
     pub opportunity_score: f64,
     pub quality_score: f64,
     pub expected_horizon: ExpectedHorizon,
-    
+
     pub replay_context_hash: String,
     pub knowledge_lake_version: String,
-    
+
     pub evaluation_profile_version: String,
     pub concept_model_version: String,
     pub metric_model_version: String,
@@ -77,9 +78,9 @@ pub struct Decision {
 }
 
 #[cfg(feature = "legacy-lake")]
-use crate::reasoning::assessment::{AssessmentProfile, Direction};
-#[cfg(feature = "legacy-lake")]
 use crate::metrics::concepts::Concept;
+#[cfg(feature = "legacy-lake")]
+use crate::reasoning::assessment::{AssessmentProfile, Direction};
 
 /// B3/B4 lake generator. Not a `DecisionPolicy`. Compiled only with `legacy-lake`.
 /// Preserve behaviour (including fabricated 0.5 confidence). Do not repair it
@@ -89,27 +90,34 @@ pub struct DecisionEngine;
 
 #[cfg(feature = "legacy-lake")]
 impl DecisionEngine {
-    pub fn evaluate(&self, profile: &AssessmentProfile, eval_dt: DateTime<Utc>, instrument_id: Uuid) -> Decision {
+    pub fn evaluate(
+        &self,
+        profile: &AssessmentProfile,
+        eval_dt: DateTime<Utc>,
+        instrument_id: Uuid,
+    ) -> Decision {
         // Baseline Decision Policy v1.0
         // A simple rule: if Trend is Bullish, opportunity is Positive.
-        
+
         let mut opp = Opportunity::Neutral;
         for assessment in &profile.assessments {
             if assessment.concept == Concept::Trend && assessment.direction == Direction::Bullish {
                 opp = Opportunity::Positive;
                 break;
-            } else if assessment.concept == Concept::Trend && assessment.direction == Direction::Bearish {
+            } else if assessment.concept == Concept::Trend
+                && assessment.direction == Direction::Bearish
+            {
                 opp = Opportunity::Negative;
                 break;
             }
         }
-        
+
         let decision_id = Uuid::new_v4();
         let mut metadata = crate::repository::knowledge::ArtifactMetadata::mock();
         metadata.artifact_type = crate::repository::knowledge::ArtifactType::Decision;
         metadata.evaluation_timestamp = eval_dt;
         metadata.artifact_id = decision_id;
-        
+
         Decision {
             metadata,
             decision_id,

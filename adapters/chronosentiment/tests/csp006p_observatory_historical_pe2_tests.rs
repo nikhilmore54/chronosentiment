@@ -14,10 +14,10 @@ use chronosentiment_adapter::decision_support::DecisionAction;
 
 #[test]
 fn refuses_protected_outputs() {
-    assert!(refuse_historical_pe2_output(
-        "product_validation/CS-P-006/observatory/prospective"
-    )
-    .is_err());
+    assert!(
+        refuse_historical_pe2_output("product_validation/CS-P-006/observatory/prospective")
+            .is_err()
+    );
     assert!(refuse_historical_pe2_output(
         "product_validation/CS-P-006/observatory/prospective_execution_v0"
     )
@@ -53,7 +53,12 @@ fn july_fifteen_lifecycle_validates_without_lookahead() {
     assert_eq!(ledger.lifecycle_validation, "PASS");
     assert_eq!(ledger.path_kind, HISTORICAL_PE2_PATH_KIND);
     assert!(ledger.certified_t.starts_with("2026-07-15T03:45:00"));
-    assert_eq!(ledger.requested_clock, Utc.with_ymd_and_hms(2026, 7, 15, 3, 45, 0).unwrap().to_rfc3339());
+    assert_eq!(
+        ledger.requested_clock,
+        Utc.with_ymd_and_hms(2026, 7, 15, 3, 45, 0)
+            .unwrap()
+            .to_rfc3339()
+    );
     assert_eq!(ledger.n_decisions, 7);
     assert_eq!(ledger.n_execution_intents, 7);
     assert_eq!(ledger.n_target + ledger.n_horizon, 7);
@@ -80,9 +85,21 @@ fn july_fifteen_lifecycle_validates_without_lookahead() {
             && !matches!(r.exit.exit_reason, ExitReason::Observing)
     }));
     for record in &ledger.records {
-        match (record.decision.action, record.exit.exit_reason, record.exit.trigger_type) {
-            (DecisionAction::Long, ExitReason::Target, Some(TriggerType::HighReached | TriggerType::GapThrough)) => {}
-            (DecisionAction::Short, ExitReason::Target, Some(TriggerType::LowReached | TriggerType::GapThrough)) => {}
+        match (
+            record.decision.action,
+            record.exit.exit_reason,
+            record.exit.trigger_type,
+        ) {
+            (
+                DecisionAction::Long,
+                ExitReason::Target,
+                Some(TriggerType::HighReached | TriggerType::GapThrough),
+            ) => {}
+            (
+                DecisionAction::Short,
+                ExitReason::Target,
+                Some(TriggerType::LowReached | TriggerType::GapThrough),
+            ) => {}
             (_, ExitReason::Horizon, Some(TriggerType::SessionClose)) => {
                 assert_eq!(record.exit.holding_sessions, Some(20));
             }
@@ -90,17 +107,36 @@ fn july_fifteen_lifecycle_validates_without_lookahead() {
         }
     }
     assert_eq!(
-        ledger.n_gap_through + ledger.n_high_reached + ledger.n_low_reached + ledger.n_session_close,
+        ledger.n_gap_through
+            + ledger.n_high_reached
+            + ledger.n_low_reached
+            + ledger.n_session_close,
         7
     );
     assert_eq!(ledger.n_decisions, again.n_decisions);
     assert_eq!(
-        ledger.records.iter().map(|r| r.decision.decision_id.clone()).collect::<Vec<_>>(),
-        again.records.iter().map(|r| r.decision.decision_id.clone()).collect::<Vec<_>>()
+        ledger
+            .records
+            .iter()
+            .map(|r| r.decision.decision_id.clone())
+            .collect::<Vec<_>>(),
+        again
+            .records
+            .iter()
+            .map(|r| r.decision.decision_id.clone())
+            .collect::<Vec<_>>()
     );
     assert_eq!(
-        ledger.records.iter().map(|r| r.intent.intent_hash.clone()).collect::<Vec<_>>(),
-        again.records.iter().map(|r| r.intent.intent_hash.clone()).collect::<Vec<_>>()
+        ledger
+            .records
+            .iter()
+            .map(|r| r.intent.intent_hash.clone())
+            .collect::<Vec<_>>(),
+        again
+            .records
+            .iter()
+            .map(|r| r.intent.intent_hash.clone())
+            .collect::<Vec<_>>()
     );
 
     let html = render_historical_pe2_html(&ledger);
@@ -159,9 +195,9 @@ fn protected_objects_remain_byte_for_byte() {
         sha256("product_validation/CS-P-006/observatory/targeted_execution_v0/report.json"),
         "e90d23ca40a283e985bdf37f972b537a925dc71e17b0a05fad0c8227255ec3cb"
     );
-    let live = std::fs::read_to_string(
-        repo("product_validation/CS-P-006/observatory/prospective_execution_v0/ledger.json"),
-    )
+    let live = std::fs::read_to_string(repo(
+        "product_validation/CS-P-006/observatory/prospective_execution_v0/ledger.json",
+    ))
     .unwrap();
     let live_json: serde_json::Value = serde_json::from_str(&live).unwrap();
     assert_eq!(live_json["seal_status"], LIVE_EXECUTION_STATUS_AWAITING);
@@ -191,8 +227,8 @@ fn repo(rel: &str) -> std::path::PathBuf {
         .join(rel)
 }
 
-fn load_c3_002() -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact>
-{
+fn load_c3_002(
+) -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact> {
     let path = repo(
         chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_DIR,
     )
@@ -209,10 +245,9 @@ fn load_cache() -> Option<
         Vec<chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar>,
     >,
 > {
-    let cache_dir = repo(
-        chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_SNAPSHOT_DIR,
-    )
-    .join("yahoo_cache");
+    let cache_dir =
+        repo(chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_SNAPSHOT_DIR)
+            .join("yahoo_cache");
     if !cache_dir.exists() {
         return None;
     }

@@ -23,8 +23,8 @@ use super::policy_artifact::{
     CONTRACT_FIXTURE_ENGINE, POLICY_ARTIFACT_SCHEMA_VERSION,
 };
 use super::policy_discovery::{
-    frozen_evolution_config, methodology_hash, SelectedCandidate, FROZEN_SEED, DISCOVERY_ENGINE,
-    DISCOVERY_POLICY_ID, DISCOVERY_POLICY_VERSION,
+    frozen_evolution_config, methodology_hash, SelectedCandidate, DISCOVERY_ENGINE,
+    DISCOVERY_POLICY_ID, DISCOVERY_POLICY_VERSION, FROZEN_SEED,
 };
 use super::policy_genome::{RuleListCrossover, RuleListFactory, RuleListGenome, RuleListMutation};
 use super::search_observability::{RecordingObserver, SearchArchive};
@@ -52,11 +52,17 @@ pub fn decision_value_methodology_hash() -> String {
         "snapshot": RESEARCH_SNAPSHOT_IDENTITY_HASH,
         "partition": CHRONOLOGICAL_PARTITION_HASH,
     });
-    format!("{:x}", Sha256::digest(serde_json::to_vec(&payload).unwrap()))
+    format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&payload).unwrap())
+    )
 }
 
 pub fn decision_value_run_id() -> String {
-    format!("coralys.rulelist.dv.{}", &decision_value_methodology_hash()[..16])
+    format!(
+        "coralys.rulelist.dv.{}",
+        &decision_value_methodology_hash()[..16]
+    )
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -226,11 +232,7 @@ pub fn refuse_search_one_output(output: &Path) -> Result<(), String> {
     if output.ends_with("selected_policy.json") {
         return Err("refusing to overwrite a selected_policy.json path directly".into());
     }
-    if output
-        .file_name()
-        .and_then(|n| n.to_str())
-        == Some("20260814T195327Z")
-    {
+    if output.file_name().and_then(|n| n.to_str()) == Some("20260814T195327Z") {
         return Err("refusing to write into the Search #1 stamp directory".into());
     }
     Ok(())

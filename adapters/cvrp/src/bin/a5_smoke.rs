@@ -1,6 +1,6 @@
 use coralys_moga::traits::{Evaluated, FitnessEvaluator};
 use cvrp::moga_impl::CvrpEvaluator;
-use cvrp::{CvrpInstance, CvrpCandidate, DistanceMetric, Node};
+use cvrp::{CvrpCandidate, CvrpInstance, DistanceMetric, Node};
 use std::env;
 use std::fs;
 use std::time::Instant;
@@ -9,11 +9,13 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
     let mut capacity = 0;
     let mut coords = Vec::new();
     let mut demands = Vec::new();
-    
+
     let mut section = "";
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         if line.starts_with("CAPACITY") {
             let parts: Vec<&str> = line.split(':').collect();
             capacity = parts[1].trim().parse().unwrap();
@@ -27,7 +29,7 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
             section = "";
             continue;
         }
-        
+
         if section == "coords" {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 3 {
@@ -45,18 +47,30 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
             }
         }
     }
-    
+
     let depot_coord = coords.iter().find(|(id, _, _)| *id == 1).unwrap();
     let depot_demand = demands.iter().find(|(id, _)| *id == 1).unwrap();
-    let depot = Node { id: depot_coord.0, x: depot_coord.1, y: depot_coord.2, demand: depot_demand.1 };
-    
+    let depot = Node {
+        id: depot_coord.0,
+        x: depot_coord.1,
+        y: depot_coord.2,
+        demand: depot_demand.1,
+    };
+
     let mut customers = Vec::new();
     for coord in coords {
-        if coord.0 == 1 { continue; }
+        if coord.0 == 1 {
+            continue;
+        }
         let demand = demands.iter().find(|(id, _)| *id == coord.0).unwrap();
-        customers.push(Node { id: coord.0, x: coord.1, y: coord.2, demand: demand.1 });
+        customers.push(Node {
+            id: coord.0,
+            x: coord.1,
+            y: coord.2,
+            demand: demand.1,
+        });
     }
-    
+
     CvrpInstance {
         capacity,
         depot,
@@ -75,7 +89,7 @@ fn main() {
     }
     let instance_path = &args[1];
     let content = fs::read_to_string(instance_path).unwrap();
-    
+
     let mut instance = parse_vrp_file(&content);
     if instance_path.contains("k5") {
         instance.max_vehicles = Some(5);
@@ -83,7 +97,8 @@ fn main() {
         instance.max_vehicles = Some(6);
     }
 
-    let strategy_str = env::var("CVRP_SPLIT_STRATEGY").unwrap_or_else(|_| "DPFallbackToGreedy".to_string());
+    let strategy_str =
+        env::var("CVRP_SPLIT_STRATEGY").unwrap_or_else(|_| "DPFallbackToGreedy".to_string());
 
     let seed = 42;
     let n = instance.customers.len();
@@ -97,8 +112,13 @@ fn main() {
     };
 
     let start = Instant::now();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
-    let outcome = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
+    let outcome = evaluator.evaluate(
+        &candidate,
+        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+    );
     let elapsed = start.elapsed();
 
     let final_objective = 100000.0 - outcome.fitness();
@@ -115,6 +135,6 @@ fn main() {
     println!("Runtime: {:?}", elapsed);
     println!("Routes:");
     for (i, r) in outcome.eval.routes.iter().enumerate() {
-        println!("  Route {}: {:?}", i+1, r);
+        println!("  Route {}: {:?}", i + 1, r);
     }
 }

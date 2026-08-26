@@ -8,8 +8,8 @@ use chronosentiment_adapter::decision_support::observatory_maturity::{
     append_matured_observation, days_remaining, nth_market_session_after, observation_due_at,
     observation_window_closed, require_window_closed, ui_lifecycle_status,
     INTERMEDIATE_INTERPRETATION_AUTHORIZED, OBSERVATORY_MATURITY_STARTED,
-    POLICY_RETUNE_FROM_PROSPECTIVE_AUTHORIZED, UNIVERSE_EXPANSION_AUTHORIZED,
-    UI_STATUS_OUTCOME_DUE,
+    POLICY_RETUNE_FROM_PROSPECTIVE_AUTHORIZED, UI_STATUS_OUTCOME_DUE,
+    UNIVERSE_EXPANSION_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::observatory_slice::{
     empty_ledger, observe_outcome, seal_into_ledger, SealedDecisionRecord, UI_STATUS_OBSERVING,
@@ -22,9 +22,7 @@ fn paper_decision(time: &str) -> SealedDecisionRecord {
         instrument: "INFY.NS".into(),
         decision_time: time.into(),
         state: chronosentiment_adapter::decision_support::observatory_slice::certified_tmv_state(
-            "Bullish",
-            "Positive",
-            "present",
+            "Bullish", "Positive", "present",
         ),
         action: DecisionAction::Long,
         policy_id: "C3-002".into(),
@@ -86,7 +84,10 @@ fn window_closed_becomes_outcome_due_and_may_append() {
     let observation = observe_outcome(&decision, "2026-09-03T03:45:00Z", -0.012).unwrap();
     append_matured_observation(&mut ledger, &decision, observation, now).unwrap();
     assert_eq!(ledger.decisions[0].sealed_status, "OPEN");
-    assert_eq!(ledger.decisions[0].policy_artifact_sha256, RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH);
+    assert_eq!(
+        ledger.decisions[0].policy_artifact_sha256,
+        RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH
+    );
 }
 
 #[test]
@@ -108,7 +109,9 @@ fn document_records_maturity_and_three_layers() {
     assert!(doc.contains("Intelligence") || doc.contains("three"));
     assert!(doc.contains("No early peek. No retrospective edits."));
     assert!(doc.contains("evidence dashboard"));
-    assert!(doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered"));
+    assert!(
+        doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered")
+    );
 }
 
 #[test]

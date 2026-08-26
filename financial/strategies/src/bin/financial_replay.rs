@@ -1,14 +1,16 @@
-use std::fs::File;
-use std::io::{Write, BufRead, BufReader};
-use std::path::PathBuf;
 use clap::Parser;
-use sha2::{Sha256, Digest};
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 
-use coralys_ecology::models::TopologyField;
-use coralys_ecology::models::CognitionGeometry;
 use chronosentiment_core::morphology::{generate_occupancy_traces, TraceArtifactV1};
-use chronosentiment_core::observatory::{ObservatoryManifestV1, ChronologyBounds, resolve_git_commit_hash};
+use chronosentiment_core::observatory::{
+    resolve_git_commit_hash, ChronologyBounds, ObservatoryManifestV1,
+};
+use coralys_ecology::models::CognitionGeometry;
+use coralys_ecology::models::TopologyField;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser, Debug)]
@@ -37,14 +39,25 @@ fn parse_topology(ident: &str) -> TopologyField {
     match ident {
         "baseline" => TopologyField::Baseline,
         "plateau_low" => TopologyField::PlateauLow { occupancy: 0.2 },
-        "impulse_shock" => TopologyField::ImpulseShock { at_tick: 2000, magnitude: 1.0 },
-        "drift_field" => TopologyField::DriftField { min_acceptance: 0.1 },
+        "impulse_shock" => TopologyField::ImpulseShock {
+            at_tick: 2000,
+            magnitude: 1.0,
+        },
+        "drift_field" => TopologyField::DriftField {
+            min_acceptance: 0.1,
+        },
         "fragmented_regime" => TopologyField::FragmentedRegime { switch_period: 10 },
         osc if osc.starts_with("osc_") => {
             let parts: Vec<&str> = osc.split('_').collect();
             let period = parts.get(1).map_or(50, |p| p.parse().unwrap_or(50));
-            let amplitude = parts.get(2).map_or(1.0, |a| a.parse::<f64>().unwrap_or(1.0));
-            TopologyField::Oscillatory { period, amplitude, noise: 0.0 }
+            let amplitude = parts
+                .get(2)
+                .map_or(1.0, |a| a.parse::<f64>().unwrap_or(1.0));
+            TopologyField::Oscillatory {
+                period,
+                amplitude,
+                noise: 0.0,
+            }
         }
         _ => {
             eprintln!("[FAIL] Unknown topology identifier: {}", ident);
@@ -58,7 +71,9 @@ fn parse_cognition(ident: &str) -> CognitionGeometry {
     match ident {
         "rolling_50" => CognitionGeometry::RollingBounded { window: 50 },
         "rolling_100" => CognitionGeometry::RollingBounded { window: 100 },
-        "event_reset" => CognitionGeometry::EventReset { drop_threshold_pct: 0.005 },
+        "event_reset" => CognitionGeometry::EventReset {
+            drop_threshold_pct: 0.005,
+        },
         "accumulator" => CognitionGeometry::Accumulator,
         _ => {
             eprintln!("[FAIL] Unknown cognition identifier: {}", ident);
@@ -72,7 +87,7 @@ fn main() {
     let args = Args::parse();
 
     let mut prices = Vec::new();
-    
+
     if let Some(file_path) = &args.substrate_file {
         let file = File::open(file_path).unwrap_or_else(|e| {
             eprintln!("[FAIL] Failed to open substrate file: {}", e);
@@ -90,7 +105,9 @@ fn main() {
             let p = event.price.unwrap_or_else(|| {
                 event.close.unwrap_or_else(|| {
                     eprintln!("[FAIL] Missing both price and close fields in event.");
-                    eprintln!("       Remediation: Ensure events have 'price' or 'close' float fields.");
+                    eprintln!(
+                        "       Remediation: Ensure events have 'price' or 'close' float fields."
+                    );
                     std::process::exit(1);
                 })
             });
@@ -110,10 +127,16 @@ fn main() {
     for p in &prices {
         hasher.update(p.to_bits().to_le_bytes());
     }
-    let substrate_hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let substrate_hash = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
 
     if std::env::var("CHRONO_INJECT_FLOAT_COERCION").unwrap_or_else(|_| "0".to_string()) == "1" {
-        println!("[WARN] Experimental divergence injection enabled (CHRONO_INJECT_FLOAT_COERCION=1)");
+        println!(
+            "[WARN] Experimental divergence injection enabled (CHRONO_INJECT_FLOAT_COERCION=1)"
+        );
         for (i, p) in prices.iter_mut().enumerate() {
             if i >= 10 {
                 *p += 0.000001;
@@ -135,7 +158,10 @@ fn main() {
     };
 
     let out_json = serde_json::to_string_pretty(&artifact).unwrap();
-    let artifact_hash = Sha256::digest(out_json.as_bytes()).iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let artifact_hash = Sha256::digest(out_json.as_bytes())
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
 
     let manifest = ObservatoryManifestV1 {
         replay_version: "v1".to_string(),
@@ -143,7 +169,10 @@ fn main() {
         cognition_version: "v1".to_string(),
         commit_hash: resolve_git_commit_hash(),
         artifact_hash,
-        generation_timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+        generation_timestamp: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         chronology_bounds: ChronologyBounds {
             start_tick: 0,
             end_tick: artifact.total_ticks as u64 - 1,
@@ -155,10 +184,12 @@ fn main() {
         .join(&args.substrate)
         .join(&args.topology)
         .join(&args.cognition);
-    
+
     std::fs::create_dir_all(&base_dir).unwrap_or_else(|e| {
         eprintln!("[FAIL] Failed to create output directory: {}", e);
-        eprintln!("       Remediation: Ensure write permissions are available in the artifact path.");
+        eprintln!(
+            "       Remediation: Ensure write permissions are available in the artifact path."
+        );
         std::process::exit(1);
     });
 
@@ -171,13 +202,28 @@ fn main() {
         });
         file.write_all(out_json.as_bytes()).unwrap();
     }
-    
+
     let sum_occupancy: f64 = artifact.traces.iter().map(|t| t.occupancy).sum();
-    let mean_occupancy = if artifact.total_ticks > 0 { sum_occupancy / artifact.total_ticks as f64 } else { 0.0 };
-    let max_occupancy = artifact.traces.iter().map(|t| t.occupancy).fold(0.0, f64::max);
-    let persistence = artifact.traces.iter().filter(|t| t.occupancy > mean_occupancy).count();
-    
-    let summary = format!("{{\"max\": {}, \"persistence\": {}}}", max_occupancy, persistence);
+    let mean_occupancy = if artifact.total_ticks > 0 {
+        sum_occupancy / artifact.total_ticks as f64
+    } else {
+        0.0
+    };
+    let max_occupancy = artifact
+        .traces
+        .iter()
+        .map(|t| t.occupancy)
+        .fold(0.0, f64::max);
+    let persistence = artifact
+        .traces
+        .iter()
+        .filter(|t| t.occupancy > mean_occupancy)
+        .count();
+
+    let summary = format!(
+        "{{\"max\": {}, \"persistence\": {}}}",
+        max_occupancy, persistence
+    );
     let summary_path = base_dir.join("trace_summary.json");
     let mut sum_file = File::create(&summary_path).unwrap();
     sum_file.write_all(summary.as_bytes()).unwrap();

@@ -1,16 +1,16 @@
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
 use std::time::Instant;
-use std::collections::HashMap;
-use chrono::Utc;
-use serde::{Serialize, Deserialize};
 
-use cvrp::{CvrpInstance, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpMutator, CvrpCrossoverRoutePreserving, CvrpLocalSearch, CvrpEvaluator};
 use coralys_moga::{
-    EvolutionConfig, EvolutionEngineBuilder, ProcessingMetricsCollector, MogaBenchmarkReport,
-    SolutionQuality, ExecutionMetrics, EngineMetrics, ConvergenceMetrics,
+    ConvergenceMetrics, EngineMetrics, EvolutionConfig, EvolutionEngineBuilder, ExecutionMetrics,
+    MogaBenchmarkReport, ProcessingMetricsCollector, SolutionQuality,
 };
+use cvrp::moga_impl::{CvrpCrossoverRoutePreserving, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpGenomeFactory, CvrpInstance};
 
 const BKS_DISTANCE: f64 = 784.0;
 const BENCHMARK_DIR: &str = "benchmarks/history";
@@ -41,11 +41,19 @@ fn main() {
     // 1. Setup the Canonical CVRP A-n32-k5 Instance with Official TSPLIB metric
     let mut instance = CvrpInstance::a_n32_k5();
     instance.distance_metric = cvrp::DistanceMetric::TspLibEuc2D;
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
-    let crossover = CvrpCrossoverRoutePreserving { instance: instance.clone() };
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    let local_search = CvrpLocalSearch { instance: instance.clone() };
+    let crossover = CvrpCrossoverRoutePreserving {
+        instance: instance.clone(),
+    };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+    let local_search = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
 
     let evo_config = EvolutionConfig {
         population_size: 200,
@@ -61,16 +69,40 @@ fn main() {
     // Attach passive metrics observer
     let observer_metrics = Arc::new(ProcessingMetricsCollector::new());
 
-    let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-    let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
-    let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search)];
-    
+    let model = cvrp::moga_impl::CvrpConstraintModel {
+        instance: instance.clone(),
+    };
+    let repair_operators: Vec<
+        Box<
+            dyn coralys_core::operators::RepairOperator<
+                    cvrp::CvrpCandidate,
+                    cvrp::moga_impl::CvrpConstraintModel,
+                    Error = cvrp::moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![];
+    let improvement_operators: Vec<
+        Box<
+            dyn coralys_core::operators::ImprovementOperator<
+                    cvrp::CvrpCandidate,
+                    cvrp::moga_impl::CvrpConstraintModel,
+                    Error = cvrp::moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![Box::new(local_search)];
+
     let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
         constraint_model: model,
         repair_operators,
         improvement_operators,
-        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
-        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+        repair_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 10,
+            max_time_ms: 1000,
+        },
+        improve_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        },
     };
 
     let engine = EvolutionEngineBuilder::new()
@@ -86,19 +118,22 @@ fn main() {
 
     // 2. Execute GA & Measure
     let start_time = Instant::now();
-    let _ga_res = engine.run_ga_evolution(evo_config.clone())
+    let _ga_res = engine
+        .run_ga_evolution(evo_config.clone())
         .expect("GA execution failed");
     let total_runtime = start_time.elapsed();
 
     // 3. Load structured metrics from collector
-    let m = engine.metrics_snapshot().expect("metrics should be enabled");
+    let m = engine
+        .metrics_snapshot()
+        .expect("metrics should be enabled");
 
     // Solution Quality (translating from GA fitness y = 100000.0 - distance)
     let best_distance = 100000.0 - m.best_fitness;
     let average_distance = 100000.0 - m.average_fitness;
     let worst_distance = 100000.0 - m.worst_fitness;
     let gap_to_bks = ((best_distance - BKS_DISTANCE) / BKS_DISTANCE) * 100.0;
-    
+
     // Median distance from final fitnesses: wait, since we don't have final_fitnesses in m, we can calculate it from ga_res, or just estimate. Wait! We do have ga_res!
     let final_fitnesses = &_ga_res.final_fitnesses;
     let mut sorted_fitnesses = final_fitnesses.clone();
@@ -112,12 +147,8 @@ fn main() {
     let median_distance = 100000.0 - median_fitness;
 
     // Convergence
-    let best_distances_per_gen: Vec<f64> = m.best_history.iter()
-        .map(|&f| 100000.0 - f)
-        .collect();
-    let avg_distances_per_gen: Vec<f64> = m.average_history.iter()
-        .map(|&f| 100000.0 - f)
-        .collect();
+    let best_distances_per_gen: Vec<f64> = m.best_history.iter().map(|&f| 100000.0 - f).collect();
+    let avg_distances_per_gen: Vec<f64> = m.average_history.iter().map(|&f| 100000.0 - f).collect();
 
     // Engine metrics from EvolutionMetrics map
     let num_processors = engine.processor_count();
@@ -232,22 +263,54 @@ fn main() {
 
     let mut instance_46 = CvrpInstance::a_n46_k7();
     instance_46.distance_metric = cvrp::DistanceMetric::TspLibEuc2D;
-    let evaluator_46 = CvrpEvaluator { instance: instance_46.clone() };
+    let evaluator_46 = CvrpEvaluator {
+        instance: instance_46.clone(),
+    };
     let mutator_46 = CvrpMutator::new(instance_46.clone(), cvrp::RadiusPolicy::Control);
-    let crossover_46 = CvrpCrossoverRoutePreserving { instance: instance_46.clone() };
-    let factory_46 = CvrpGenomeFactory { num_customers: instance_46.customers.len() };
-    let local_search_46 = CvrpLocalSearch { instance: instance_46.clone() };
+    let crossover_46 = CvrpCrossoverRoutePreserving {
+        instance: instance_46.clone(),
+    };
+    let factory_46 = CvrpGenomeFactory {
+        num_customers: instance_46.customers.len(),
+    };
+    let local_search_46 = CvrpLocalSearch {
+        instance: instance_46.clone(),
+    };
 
-    let model_46 = cvrp::moga_impl::CvrpConstraintModel { instance: instance_46.clone() };
-    let repair_operators_46: Vec<Box<dyn coralys_core::operators::RepairOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![];
-    let improvement_operators_46: Vec<Box<dyn coralys_core::operators::ImprovementOperator<cvrp::CvrpCandidate, cvrp::moga_impl::CvrpConstraintModel, Error = cvrp::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search_46)];
-    
+    let model_46 = cvrp::moga_impl::CvrpConstraintModel {
+        instance: instance_46.clone(),
+    };
+    let repair_operators_46: Vec<
+        Box<
+            dyn coralys_core::operators::RepairOperator<
+                    cvrp::CvrpCandidate,
+                    cvrp::moga_impl::CvrpConstraintModel,
+                    Error = cvrp::moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![];
+    let improvement_operators_46: Vec<
+        Box<
+            dyn coralys_core::operators::ImprovementOperator<
+                    cvrp::CvrpCandidate,
+                    cvrp::moga_impl::CvrpConstraintModel,
+                    Error = cvrp::moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![Box::new(local_search_46)];
+
     let pipeline_46 = coralys_core::pipeline::EvolutionaryPipeline {
         constraint_model: model_46,
         repair_operators: repair_operators_46,
         improvement_operators: improvement_operators_46,
-        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
-        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+        repair_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 10,
+            max_time_ms: 1000,
+        },
+        improve_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        },
     };
 
     let engine_46 = EvolutionEngineBuilder::new()
@@ -261,13 +324,16 @@ fn main() {
         .expect("Failed to build EvolutionEngine for A-n46-k7");
 
     let start_46 = Instant::now();
-    let ga_res_46 = engine_46.run_ga_evolution(evo_config.clone())
+    let ga_res_46 = engine_46
+        .run_ga_evolution(evo_config.clone())
         .expect("GA execution failed for A-n46-k7");
     let runtime_46 = start_46.elapsed();
 
-    let m46 = engine_46.metrics_snapshot().expect("metrics should be enabled");
+    let m46 = engine_46
+        .metrics_snapshot()
+        .expect("metrics should be enabled");
     let best_46 = 100000.0 - m46.best_fitness;
-    let avg_46  = 100000.0 - m46.average_fitness;
+    let avg_46 = 100000.0 - m46.average_fitness;
     let worst_46 = 100000.0 - m46.worst_fitness;
     let gap_46 = (best_46 - BKS_A_N46_K7) / BKS_A_N46_K7 * 100.0;
 
@@ -289,7 +355,11 @@ fn main() {
     for i in 0..num_proc_46 {
         if let Some(pm) = m46.processors.get(&i) {
             let time_ms = pm.total_runtime.as_secs_f64() * 1000.0;
-            let avg_ms = if pm.invocation_count > 0 { time_ms / pm.invocation_count as f64 } else { 0.0 };
+            let avg_ms = if pm.invocation_count > 0 {
+                time_ms / pm.invocation_count as f64
+            } else {
+                0.0
+            };
             proc_stats_46.push_str(&format!(
                 "| Processor #{} | {} | {:.4} ms | {:.2} ms |\n",
                 i, pm.invocation_count, avg_ms, time_ms
@@ -329,7 +399,11 @@ fn main() {
         median = median_dist_46,
         stddev = m46.fitness_stddev,
         gap = gap_46,
-        feasible = if feasible_46 { "YES" } else { "NO (INFEASIBLE)" },
+        feasible = if feasible_46 {
+            "YES"
+        } else {
+            "NO (INFEASIBLE)"
+        },
         runtime = runtime_46.as_millis(),
         evals = m46.evaluation_count,
         gens = m46.generation + 1,
@@ -365,8 +439,11 @@ fn main() {
             "tournament_size": 5
         }
     });
-    fs::write(&baseline_46_path, serde_json::to_string_pretty(&baseline_46_json).unwrap())
-        .expect("Failed to write A-n46-k7 baseline JSON");
+    fs::write(
+        &baseline_46_path,
+        serde_json::to_string_pretty(&baseline_46_json).unwrap(),
+    )
+    .expect("Failed to write A-n46-k7 baseline JSON");
     println!("A-n46-k7 baseline saved to {}", baseline_46_path);
 }
 
@@ -419,17 +496,34 @@ fn generate_markdown_report(
     best_dist_integer: f64,
     best_dist_float: f64,
 ) -> String {
-    let prev_best_str = prev.map(|p| format!("{:.4}", p.solution_quality.best_fitness))
+    let prev_best_str = prev
+        .map(|p| format!("{:.4}", p.solution_quality.best_fitness))
         .unwrap_or_else(|| "N/A".to_string());
-    
-    let regression_str = if regression { "⚠️ YES (REGRESSION DETECTED)" } else { "NO" };
+
+    let regression_str = if regression {
+        "⚠️ YES (REGRESSION DETECTED)"
+    } else {
+        "NO"
+    };
     let improvement_str = if improvement { "✅ YES" } else { "NO" };
 
     let mut proc_stats = String::new();
     for i in 0..report.engine_metrics.num_processors_executed {
-        let count = report.engine_metrics.processor_invocation_counts.get(&i).unwrap_or(&0);
-        let time = report.engine_metrics.processor_execution_time_ms.get(&i).unwrap_or(&0.0);
-        let avg = if *count > 0 { time / (*count as f64) } else { 0.0 };
+        let count = report
+            .engine_metrics
+            .processor_invocation_counts
+            .get(&i)
+            .unwrap_or(&0);
+        let time = report
+            .engine_metrics
+            .processor_execution_time_ms
+            .get(&i)
+            .unwrap_or(&0.0);
+        let avg = if *count > 0 {
+            time / (*count as f64)
+        } else {
+            0.0
+        };
         proc_stats.push_str(&format!(
             "| Processor #{} | {} | {:.4} ms | {:.2} ms |\n",
             i, count, avg, time

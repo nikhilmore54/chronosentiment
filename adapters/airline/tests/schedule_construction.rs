@@ -14,15 +14,13 @@ mod fixtures {
 
 use fixtures::roster_fixtures::{canonical_roster, roster_with_one_duty};
 use fixtures::transformations::{
-    assign_unqualified_crew,
-    reduce_rest,
-    reassign_leg,
-    remove_required_leg,
+    TransformationError, assign_unqualified_crew, reassign_leg, reduce_rest, remove_required_leg,
     swap_duties,
-    TransformationError,
 };
 
-use coralys_airline::legality::{coverage, duty_connectivity, duty_time, fdp, minimum_rest, qualification, base_return};
+use coralys_airline::legality::{
+    base_return, coverage, duty_connectivity, duty_time, fdp, minimum_rest, qualification,
+};
 
 fn make_checker() -> LegalityChecker {
     let mut checker = LegalityChecker::new();
@@ -72,23 +70,29 @@ fn test_illegal_transformations() {
         .expect("remove_required_leg should succeed");
     let violations = check_roster(&missing);
     assert!(!violations.is_empty(), "coverage violation expected");
-    assert!(violations.iter().any(|v| v.rule_id == "coverage"), "CoverageRule should be reported");
-
-
+    assert!(
+        violations.iter().any(|v| v.rule_id == "coverage"),
+        "CoverageRule should be reported"
+    );
 
     // Assign unqualified crew – triggers QualificationRule.
     let unqualified = assign_unqualified_crew(&base, &CrewId::new("C1"), &FlightLegId::new("L1"))
         .expect("assign_unqualified_crew should succeed");
     let violations = check_roster(&unqualified);
     assert!(!violations.is_empty());
-    assert!(violations.iter().any(|v| v.rule_id == "qualification"), "QualificationRule expected");
+    assert!(
+        violations.iter().any(|v| v.rule_id == "qualification"),
+        "QualificationRule expected"
+    );
 
     // Reduce rest – triggers MinimumRestRule.
-    let reduced = reduce_rest(&base, &CrewId::new("C1"))
-        .expect("reduce_rest should succeed");
+    let reduced = reduce_rest(&base, &CrewId::new("C1")).expect("reduce_rest should succeed");
     let violations = check_roster(&reduced);
     assert!(!violations.is_empty());
-    assert!(violations.iter().any(|v| v.rule_id == "minimum_rest"), "MinimumRestRule expected");
+    assert!(
+        violations.iter().any(|v| v.rule_id == "minimum_rest"),
+        "MinimumRestRule expected"
+    );
 }
 
 #[test]
@@ -108,5 +112,8 @@ fn test_determinism() {
         &FlightLegId::new("L1"),
     )
     .expect("second transformation");
-    assert_eq!(transformed1, transformed2, "Transformations must be deterministic");
+    assert_eq!(
+        transformed1, transformed2,
+        "Transformations must be deterministic"
+    );
 }

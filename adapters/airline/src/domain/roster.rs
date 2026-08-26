@@ -160,9 +160,7 @@ impl Roster {
         let mut crew_map: HashMap<CrewId, CrewMember> = HashMap::new();
         for member in crew_members {
             if crew_map.contains_key(&member.id) {
-                return Err(RosterError::DuplicateCrewMember {
-                    crew_id: member.id,
-                });
+                return Err(RosterError::DuplicateCrewMember { crew_id: member.id });
             }
             crew_map.insert(member.id.clone(), member);
         }
@@ -344,14 +342,8 @@ mod tests {
     #[test]
     fn roster_with_crew_members() {
         let crew = vec![make_crew_member("C1"), make_crew_member("C2")];
-        let roster = Roster::with_crew(
-            RosterId::new("R1"),
-            sample_period(),
-            vec![],
-            vec![],
-            crew,
-        )
-        .unwrap();
+        let roster =
+            Roster::with_crew(RosterId::new("R1"), sample_period(), vec![], vec![], crew).unwrap();
         assert_eq!(roster.crew_member_count(), 2);
         assert!(roster.crew_member(&CrewId::new("C1")).is_some());
         assert!(roster.crew_member(&CrewId::new("C99")).is_none());
@@ -368,8 +360,7 @@ mod tests {
     #[test]
     fn rotation_lookup_by_crew_id() {
         let rotations = vec![make_rotation("C1")];
-        let roster =
-            Roster::new(RosterId::new("R1"), sample_period(), vec![], rotations).unwrap();
+        let roster = Roster::new(RosterId::new("R1"), sample_period(), vec![], rotations).unwrap();
         assert!(roster.rotation_for(&CrewId::new("C1")).is_some());
         assert!(roster.rotation_for(&CrewId::new("C99")).is_none());
     }
@@ -387,22 +378,15 @@ mod tests {
     #[test]
     fn rejects_duplicate_crew_rotations() {
         let rotations = vec![make_rotation("C1"), make_rotation("C1")]; // same crew
-        let err =
-            Roster::new(RosterId::new("R1"), sample_period(), vec![], rotations).unwrap_err();
+        let err = Roster::new(RosterId::new("R1"), sample_period(), vec![], rotations).unwrap_err();
         assert!(matches!(err, RosterError::DuplicateCrewRotation { .. }));
     }
 
     #[test]
     fn rejects_duplicate_crew_members() {
         let crew = vec![make_crew_member("C1"), make_crew_member("C1")];
-        let err = Roster::with_crew(
-            RosterId::new("R1"),
-            sample_period(),
-            vec![],
-            vec![],
-            crew,
-        )
-        .unwrap_err();
+        let err = Roster::with_crew(RosterId::new("R1"), sample_period(), vec![], vec![], crew)
+            .unwrap_err();
         assert!(matches!(err, RosterError::DuplicateCrewMember { .. }));
     }
 
@@ -423,14 +407,8 @@ mod tests {
         ];
         let rotations = vec![make_rotation("C1")];
         let crew = vec![make_crew_member("C1")];
-        let roster = Roster::with_crew(
-            RosterId::new("R1"),
-            sample_period(),
-            legs,
-            rotations,
-            crew,
-        )
-        .unwrap();
+        let roster =
+            Roster::with_crew(RosterId::new("R1"), sample_period(), legs, rotations, crew).unwrap();
         let json = serde_json::to_string(&roster).unwrap();
         let restored: Roster = serde_json::from_str(&json).unwrap();
         assert_eq!(roster, restored);

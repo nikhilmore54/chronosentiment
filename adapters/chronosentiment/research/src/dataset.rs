@@ -59,53 +59,54 @@ impl ResearchDataset {
             artifact_population,
             content_hash: String::new(),
         };
-        
+
         dataset.content_hash = dataset.calculate_hash();
         dataset
     }
-    
+
     pub fn calculate_hash(&self) -> String {
         let mut hasher = Sha256::new();
-        
+
         // E1 & E3 - Hashing specific fields (exclude dataset_id and name for identity independence)
-        
+
         // 1. Knowledge Lake Version
         hasher.update(self.knowledge_lake_version.as_bytes());
-        
+
         // 2. Universe (Serialize to canonical JSON string)
         let universe_str = serde_json::to_string(&self.universe).unwrap_or_default();
         hasher.update(universe_str.as_bytes());
-        
+
         // 3. Date Range
         hasher.update(self.date_range.start.timestamp().to_be_bytes());
         hasher.update(self.date_range.end.timestamp().to_be_bytes());
-        
+
         // 4. Horizons (Canonical ordering)
         let mut sorted_horizons = self.horizons.clone();
         sorted_horizons.sort_by(|a, b| format!("{:?}", a).cmp(&format!("{:?}", b)));
         for horizon in &sorted_horizons {
             hasher.update(format!("{:?}", horizon).as_bytes());
         }
-        
+
         // 5. Inclusion / Exclusion Rules
         let inc_str = serde_json::to_string(&self.inclusion_rules).unwrap_or_default();
         hasher.update(inc_str.as_bytes());
-        
+
         let exc_str = serde_json::to_string(&self.exclusion_rules).unwrap_or_default();
         hasher.update(exc_str.as_bytes());
-        
+
         // 6. Artifact Population
         // Sort artifact types for canonical ordering
         let mut sorted_types = self.artifact_population.artifact_types.clone();
         sorted_types.sort();
-        
+
         for t in &sorted_types {
             hasher.update(t.as_bytes());
         }
-        
-        let pop_rules_str = serde_json::to_string(&self.artifact_population.population_rules).unwrap_or_default();
+
+        let pop_rules_str =
+            serde_json::to_string(&self.artifact_population.population_rules).unwrap_or_default();
         hasher.update(pop_rules_str.as_bytes());
-        
+
         format!("{:x}", hasher.finalize())
     }
 }

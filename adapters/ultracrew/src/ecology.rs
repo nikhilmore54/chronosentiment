@@ -1,4 +1,4 @@
-use coralys_ecology::models::{MemoryState, CognitionGeometry};
+use coralys_ecology::models::{CognitionGeometry, MemoryState};
 use std::collections::HashMap;
 
 /// Provides historical context (Fatigue) to the MOGA Engine using Coralys Ecology
@@ -16,15 +16,17 @@ impl WorkforceEcology {
     }
 
     pub fn record_historical_hours(&mut self, worker_id: u64, hours: f64) {
-        let memory = self.worker_history.entry(worker_id).or_insert_with(|| {
-            MemoryState::new(CognitionGeometry::RollingBounded { window: 4 })
-        });
-        
+        let memory = self
+            .worker_history
+            .entry(worker_id)
+            .or_insert_with(|| MemoryState::new(CognitionGeometry::RollingBounded { window: 4 }));
+
         memory.buffer.push(hours);
         if hours > memory.running_max {
             memory.running_max = hours;
         }
-        if memory.buffer.len() > 4 { // Keep last 4 scheduling windows
+        if memory.buffer.len() > 4 {
+            // Keep last 4 scheduling windows
             memory.buffer.remove(0);
         }
     }

@@ -17,9 +17,7 @@
 //! `(nurse_id, shift_type_id, day_index)`.  It is atomic and indivisible —
 //! a nurse is either assigned to a shift on a day or not.
 
-use coralys_planning::{
-    CoverageDemand, PlanningScenario, PlanningUnit, PlanningSolution, Worker,
-};
+use coralys_planning::{CoverageDemand, PlanningScenario, PlanningSolution, PlanningUnit, Worker};
 
 use super::models::{InrcNurse, InrcRequirement, InrcScenario};
 

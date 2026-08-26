@@ -262,7 +262,14 @@ impl ArchetypeState {
         }
     }
 
-    fn process_queue(&mut self, idx: usize, price: f64, timestamps: &[u64], latency_ms: u64, miss_prob: f64) {
+    fn process_queue(
+        &mut self,
+        idx: usize,
+        price: f64,
+        timestamps: &[u64],
+        latency_ms: u64,
+        miss_prob: f64,
+    ) {
         if let Some(exit_t) = self.exit_tick {
             if idx >= exit_t {
                 self.current_pos = 0;
@@ -281,7 +288,7 @@ impl ArchetypeState {
                         self.current_pos = 1;
                         self.exit_tick = Some(idx + 100);
                         self.entry_price = price;
-                        
+
                         self.layer.trades.push(TradeEvent {
                             signal_tick: signal_idx,
                             execution_tick: idx,
@@ -302,32 +309,44 @@ impl ArchetypeState {
     }
 }
 
-fn simulate(strategy: &str, prices: &[f64], timestamps: &[u64], latency_ms: u64, miss_prob: f64) -> (SimulationLayer, Vec<RawTimelineEvent>) {
+fn simulate(
+    strategy: &str,
+    prices: &[f64],
+    timestamps: &[u64],
+    latency_ms: u64,
+    miss_prob: f64,
+) -> (SimulationLayer, Vec<RawTimelineEvent>) {
     let mut state = ArchetypeState::new();
     let twap_intervals = vec![120, 360, 600, 840, 1080, 1320];
-    
+
     let mut timeline = Vec::with_capacity(prices.len());
 
     for i in 0..prices.len() {
         let prev_pending = state.pending_signal.is_some();
         let prev_pos = state.current_pos;
         let prev_trades = state.layer.trades.len();
-        
+
         state.process_queue(i, prices[i], timestamps, latency_ms, miss_prob);
 
         let mut signal_generated = None;
 
         match strategy {
             "twap" => {
-                if twap_intervals.contains(&i) && state.pending_signal.is_none() && state.current_pos == 0 {
+                if twap_intervals.contains(&i)
+                    && state.pending_signal.is_none()
+                    && state.current_pos == 0
+                {
                     state.pending_signal = Some((i, prices[i]));
                     signal_generated = Some("BUY".to_string());
                 }
             }
             "breakout" => {
                 if i >= 50 {
-                    let local_high = prices[i-50..i].iter().cloned().fold(f64::NAN, f64::max);
-                    if prices[i] > local_high && state.pending_signal.is_none() && state.current_pos == 0 {
+                    let local_high = prices[i - 50..i].iter().cloned().fold(f64::NAN, f64::max);
+                    if prices[i] > local_high
+                        && state.pending_signal.is_none()
+                        && state.current_pos == 0
+                    {
                         state.pending_signal = Some((i, prices[i]));
                         signal_generated = Some("BUY".to_string());
                     }
@@ -335,7 +354,10 @@ fn simulate(strategy: &str, prices: &[f64], timestamps: &[u64], latency_ms: u64,
             }
             "momentum" => {
                 if i >= 3 {
-                    if prices[i] > prices[i-1] && prices[i-1] > prices[i-2] && prices[i-2] > prices[i-3] {
+                    if prices[i] > prices[i - 1]
+                        && prices[i - 1] > prices[i - 2]
+                        && prices[i - 2] > prices[i - 3]
+                    {
                         if state.pending_signal.is_none() && state.current_pos == 0 {
                             state.pending_signal = Some((i, prices[i]));
                             signal_generated = Some("BUY".to_string());
@@ -345,7 +367,7 @@ fn simulate(strategy: &str, prices: &[f64], timestamps: &[u64], latency_ms: u64,
             }
             "mean_reversion" => {
                 if i >= 20 {
-                    let sma = prices[i-20..=i].iter().sum::<f64>() / 21.0;
+                    let sma = prices[i - 20..=i].iter().sum::<f64>() / 21.0;
                     if prices[i] < sma * 0.998 {
                         if state.pending_signal.is_none() && state.current_pos == 0 {
                             state.pending_signal = Some((i, prices[i]));
@@ -356,10 +378,10 @@ fn simulate(strategy: &str, prices: &[f64], timestamps: &[u64], latency_ms: u64,
             }
             _ => {}
         }
-        
+
         let mut order_id = None;
         let mut exec_status = None;
-        
+
         if signal_generated.is_some() {
             order_id = Some(format!("O{}", state.layer.trades.len() + 1));
             exec_status = Some("SUBMITTED".to_string());
@@ -379,9 +401,16 @@ fn simulate(strategy: &str, prices: &[f64], timestamps: &[u64], latency_ms: u64,
         timeline.push(RawTimelineEvent {
             tick: i,
             market: MarketEvent { price: prices[i] },
-            strategy: RawStrategyEvent { signal: signal_generated },
-            execution: RawExecutionEvent { order_id, status: exec_status },
-            portfolio: RawPortfolioEvent { position: state.current_pos },
+            strategy: RawStrategyEvent {
+                signal: signal_generated,
+            },
+            execution: RawExecutionEvent {
+                order_id,
+                status: exec_status,
+            },
+            portfolio: RawPortfolioEvent {
+                position: state.current_pos,
+            },
         });
     }
 
@@ -396,10 +425,10 @@ fn compute_lcs(seq1: &[i32], seq2: &[i32]) -> usize {
         let mut prev = 0;
         for j in 1..=n {
             let temp = dp[j];
-            if seq1[i-1] == seq2[j-1] {
+            if seq1[i - 1] == seq2[j - 1] {
                 dp[j] = prev + 1;
             } else {
-                dp[j] = std::cmp::max(dp[j], dp[j-1]);
+                dp[j] = std::cmp::max(dp[j], dp[j - 1]);
             }
             prev = temp;
         }
@@ -411,13 +440,15 @@ fn main() {
     let args = Args::parse();
     let file = File::open(&args.substrate_file).expect("Failed to open substrate file");
     let reader = BufReader::new(file);
-    
+
     let mut prices = Vec::new();
     let mut timestamps = Vec::new();
-    
+
     for line in reader.lines() {
         if let Ok(l) = line {
-            if l.trim().is_empty() { continue; }
+            if l.trim().is_empty() {
+                continue;
+            }
             if let Ok(tick) = serde_json::from_str::<SubstrateTick>(&l) {
                 prices.push(tick.price);
                 timestamps.push(tick.timestamp);
@@ -426,12 +457,23 @@ fn main() {
     }
 
     let (baseline, baseline_timeline) = simulate(&args.strategy, &prices, &timestamps, 0, 0.0);
-    let (perturbed, perturbed_timeline) = simulate(&args.strategy, &prices, &timestamps, args.latency_ms, args.missed_fill_prob);
+    let (perturbed, perturbed_timeline) = simulate(
+        &args.strategy,
+        &prices,
+        &timestamps,
+        args.latency_ms,
+        args.missed_fill_prob,
+    );
 
     let n = baseline.state_stream.len();
-    let same_ticks = baseline.state_stream.iter().zip(perturbed.state_stream.iter()).filter(|(a, b)| a == b).count();
+    let same_ticks = baseline
+        .state_stream
+        .iter()
+        .zip(perturbed.state_stream.iter())
+        .filter(|(a, b)| a == b)
+        .count();
     let structural_divergence = 1.0 - (same_ticks as f64 / n as f64);
-    
+
     let lcs = compute_lcs(&baseline.state_stream, &perturbed.state_stream);
     let sequence_fidelity = lcs as f64 / n as f64;
 
@@ -463,16 +505,16 @@ fn main() {
 
     let mut trade_deltas = vec![];
     let max_trades = std::cmp::max(baseline.trades.len(), perturbed.trades.len());
-    
+
     for i in 0..max_trades {
         let b = baseline.trades.get(i);
         let p = perturbed.trades.get(i);
-        
+
         let mut diverged = false;
         let mut delay_ticks = 0;
         let mut slippage_bps = 0.0;
         let mut explanation_refs = vec![];
-        
+
         if let (Some(base), Some(pert)) = (b, p) {
             delay_ticks = pert.execution_tick.saturating_sub(base.execution_tick);
             if delay_ticks > 0 {
@@ -489,14 +531,22 @@ fn main() {
                 explanation_refs.push("R2".to_string());
             }
         }
-        
+
         if structural_divergence > 0.05 && diverged {
             explanation_refs.push("R1".to_string());
         }
-        
-        let delay_ms = delay_ticks as u64 * (if args.latency_ms > 0 { args.latency_ms / delay_ticks.max(1) as u64 } else { 0 });
 
-        let signal_tick = p.map(|t| t.signal_tick).or(b.map(|t| t.signal_tick)).unwrap_or(0);
+        let delay_ms = delay_ticks as u64
+            * (if args.latency_ms > 0 {
+                args.latency_ms / delay_ticks.max(1) as u64
+            } else {
+                0
+            });
+
+        let signal_tick = p
+            .map(|t| t.signal_tick)
+            .or(b.map(|t| t.signal_tick))
+            .unwrap_or(0);
 
         trade_deltas.push(TradeDelta {
             trade_id: format!("T{}", i + 1),
@@ -526,8 +576,14 @@ fn main() {
             timeline_refs: TimelineReferences {
                 market_tick_index: signal_tick,
                 signal_index: signal_tick,
-                execution_index: p.map(|t| t.execution_tick).or(b.map(|t| t.execution_tick)).unwrap_or(signal_tick),
-                portfolio_index: p.map(|t| t.execution_tick).or(b.map(|t| t.execution_tick)).unwrap_or(signal_tick),
+                execution_index: p
+                    .map(|t| t.execution_tick)
+                    .or(b.map(|t| t.execution_tick))
+                    .unwrap_or(signal_tick),
+                portfolio_index: p
+                    .map(|t| t.execution_tick)
+                    .or(b.map(|t| t.execution_tick))
+                    .unwrap_or(signal_tick),
             },
         });
     }
@@ -536,29 +592,49 @@ fn main() {
     let perturbed_missed_fills = perturbed.missed_fills;
     let mut total_slippage_bps = 0.0;
     let mut simple_pnl = 0.0;
-    
+
     for t in &perturbed.trades {
         let slip = (t.actual_price - t.expected_price) / t.expected_price * 10000.0;
         total_slippage_bps += slip;
-        
+
         // Simple 100-tick exit pnl approximation for MVP
         let exit_tick = std::cmp::min(t.execution_tick + 100, prices.len() - 1);
         let exit_price = prices[exit_tick];
         simple_pnl += (exit_price - t.actual_price) / t.actual_price;
     }
 
-    let avg_delay = if trades_count > 0 { perturbed.total_latency_ticks as f64 / trades_count as f64 } else { 0.0 };
-    let avg_slip = if trades_count > 0 { total_slippage_bps / trades_count as f64 } else { 0.0 };
-    
+    let avg_delay = if trades_count > 0 {
+        perturbed.total_latency_ticks as f64 / trades_count as f64
+    } else {
+        0.0
+    };
+    let avg_slip = if trades_count > 0 {
+        total_slippage_bps / trades_count as f64
+    } else {
+        0.0
+    };
+
     let total_signals = trades_count + perturbed_missed_fills;
-    let fill_rate = if total_signals > 0 { trades_count as f64 / total_signals as f64 } else { 1.0 };
-    
-    let baseline_pnl = baseline.trades.iter().map(|t| {
-        let exit_tick = std::cmp::min(t.execution_tick + 100, prices.len() - 1);
-        (prices[exit_tick] - t.actual_price) / t.actual_price
-    }).sum::<f64>();
-    
-    let execution_efficiency = if baseline_pnl > 0.0 { simple_pnl / baseline_pnl } else { 1.0 };
+    let fill_rate = if total_signals > 0 {
+        trades_count as f64 / total_signals as f64
+    } else {
+        1.0
+    };
+
+    let baseline_pnl = baseline
+        .trades
+        .iter()
+        .map(|t| {
+            let exit_tick = std::cmp::min(t.execution_tick + 100, prices.len() - 1);
+            (prices[exit_tick] - t.actual_price) / t.actual_price
+        })
+        .sum::<f64>();
+
+    let execution_efficiency = if baseline_pnl > 0.0 {
+        simple_pnl / baseline_pnl
+    } else {
+        1.0
+    };
 
     let mut anchor_tick = None;
     let mut anchor_trade = None;
@@ -576,33 +652,52 @@ fn main() {
         let p_fill = p_ev.execution.status.as_deref() == Some("FILLED");
         let p_miss = p_ev.execution.status.as_deref() == Some("MISSED");
         let p_delay = p_ev.execution.status.as_deref() == Some("DELAYED");
-        
+
         let b_pos = b_ev.portfolio.position;
         let p_pos = p_ev.portfolio.position;
 
         if anchor_tick.is_none() && (p_delay || p_miss || (p_pos != b_pos)) {
             anchor_tick = Some(i);
-            anchor_trade = p_ev.execution.order_id.clone().or(b_ev.execution.order_id.clone());
+            anchor_trade = p_ev
+                .execution
+                .order_id
+                .clone()
+                .or(b_ev.execution.order_id.clone());
         }
 
         if anchor_tick.is_some() {
             if p_delay && !currently_delayed {
-                cascade.push(DivergenceCascadeEvent { tick: i, event: "DELAYED_FILL".to_string() });
+                cascade.push(DivergenceCascadeEvent {
+                    tick: i,
+                    event: "DELAYED_FILL".to_string(),
+                });
                 currently_delayed = true;
             }
             if p_fill && currently_delayed {
-                cascade.push(DivergenceCascadeEvent { tick: i, event: "LATE_FILL_EXECUTED".to_string() });
+                cascade.push(DivergenceCascadeEvent {
+                    tick: i,
+                    event: "LATE_FILL_EXECUTED".to_string(),
+                });
                 currently_delayed = false;
             }
             if p_miss && !currently_delayed {
-                cascade.push(DivergenceCascadeEvent { tick: i, event: "MISSED_FILL".to_string() });
+                cascade.push(DivergenceCascadeEvent {
+                    tick: i,
+                    event: "MISSED_FILL".to_string(),
+                });
             }
-            
+
             if p_pos != b_pos && !currently_offset {
-                cascade.push(DivergenceCascadeEvent { tick: i, event: "EXPOSURE_OFFSET_BEGIN".to_string() });
+                cascade.push(DivergenceCascadeEvent {
+                    tick: i,
+                    event: "EXPOSURE_OFFSET_BEGIN".to_string(),
+                });
                 currently_offset = true;
             } else if p_pos == b_pos && currently_offset {
-                cascade.push(DivergenceCascadeEvent { tick: i, event: "EXPOSURE_OFFSET_END".to_string() });
+                cascade.push(DivergenceCascadeEvent {
+                    tick: i,
+                    event: "EXPOSURE_OFFSET_END".to_string(),
+                });
                 currently_offset = false;
             }
         }
@@ -610,7 +705,9 @@ fn main() {
         lanes.push(TimelineLaneEvent {
             tick: i,
             market: MarketEvent { price: prices[i] },
-            signal: StrategyEventMerged { intent: p_ev.strategy.signal.clone() },
+            signal: StrategyEventMerged {
+                intent: p_ev.strategy.signal.clone(),
+            },
             execution: ExecutionEventMerged {
                 baseline_fill: b_fill,
                 perturbed_fill: p_fill,
@@ -622,11 +719,14 @@ fn main() {
             },
         });
     }
-    
+
     // Add entry drift if needed
     if let Some(t) = anchor_tick {
         if let Some(r) = rules.iter().find(|r| r.rule_type == "ENTRY_DRIFT") {
-            cascade.push(DivergenceCascadeEvent { tick: t, event: "ENTRY_DRIFT".to_string() });
+            cascade.push(DivergenceCascadeEvent {
+                tick: t,
+                event: "ENTRY_DRIFT".to_string(),
+            });
         }
     }
     cascade.sort_by_key(|c| c.tick);
@@ -648,13 +748,22 @@ fn main() {
             "Execution was delayed but structurally intact".to_string()
         },
         where_divergence_started: anchor_tick,
-        primary_cause: rules.first().map(|r| r.rule_type.clone()).unwrap_or_else(|| "NONE".to_string()),
-        severity: rules.first().map(|r| r.severity.clone()).unwrap_or_else(|| "LOW".to_string()),
+        primary_cause: rules
+            .first()
+            .map(|r| r.rule_type.clone())
+            .unwrap_or_else(|| "NONE".to_string()),
+        severity: rules
+            .first()
+            .map(|r| r.severity.clone())
+            .unwrap_or_else(|| "LOW".to_string()),
     };
 
     let artifact = TraceArtifact {
         metadata: Metadata {
-            generated_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            generated_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
             compiler_version: "1.0.0".to_string(),
         },
         environment: Environment {

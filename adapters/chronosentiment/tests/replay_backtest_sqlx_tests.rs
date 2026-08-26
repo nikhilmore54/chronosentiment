@@ -7,8 +7,8 @@ fn forbidden_db(name: &str) -> bool {
 }
 
 #[tokio::test]
-async fn b4_schedule_populates_deterministic_append_only_ledger()
--> Result<(), Box<dyn std::error::Error>> {
+async fn b4_schedule_populates_deterministic_append_only_ledger(
+) -> Result<(), Box<dyn std::error::Error>> {
     let url = match std::env::var("DATABASE_URL") {
         Ok(u) => u,
         Err(_) => {
@@ -30,10 +30,18 @@ async fn b4_schedule_populates_deterministic_append_only_ledger()
     );
 
     let adapter = ReplayAdapter::new(pool);
-    let first =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
-    let second =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
+    let first = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
+    let second = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
 
     assert!(!first.records.is_empty(), "B4 schedule must not be empty");
     assert_eq!(first.records.len(), second.records.len());
@@ -52,7 +60,9 @@ async fn b4_schedule_populates_deterministic_append_only_ledger()
         assert_eq!(cur.decision_timestamp, cur.as_of_timestamp);
         assert_eq!(cur.engine_version, UNFROZEN_ENGINE_VERSION);
         assert!(!cur.input_set_hash.is_empty());
-        assert!(!cur.lineage.consumed_artifact_ids.is_empty() || cur.lineage.assessment_id.is_some());
+        assert!(
+            !cur.lineage.consumed_artifact_ids.is_empty() || cur.lineage.assessment_id.is_some()
+        );
     }
 
     let json = serde_json::to_value(&first)?;

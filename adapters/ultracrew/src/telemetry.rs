@@ -35,9 +35,8 @@
 ///     tracing::info!("UltraCrew starting");
 /// }
 /// ```
-
 use std::env;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 // ─── Request ID ───────────────────────────────────────────────────────────────
 
@@ -90,8 +89,7 @@ pub fn build_env_filter() -> EnvFilter {
         .or_else(|_| env::var("RUST_LOG"))
         .unwrap_or_else(|_| "info".to_string());
 
-    EnvFilter::try_new(&directive)
-        .unwrap_or_else(|_| EnvFilter::new("info"))
+    EnvFilter::try_new(&directive).unwrap_or_else(|_| EnvFilter::new("info"))
 }
 
 // ─── Span helpers ─────────────────────────────────────────────────────────────
@@ -142,8 +140,17 @@ mod tests {
     #[test]
     fn test_new_request_id_format() {
         let rid = new_request_id();
-        assert!(rid.starts_with("uc-"), "Request ID must start with 'uc-': {}", rid);
-        assert_eq!(rid.len(), 11, "Request ID must be 11 chars (uc- + 8 hex): {}", rid);
+        assert!(
+            rid.starts_with("uc-"),
+            "Request ID must start with 'uc-': {}",
+            rid
+        );
+        assert_eq!(
+            rid.len(),
+            11,
+            "Request ID must be 11 chars (uc- + 8 hex): {}",
+            rid
+        );
         let hex_part = &rid[3..];
         assert!(
             hex_part.chars().all(|c| c.is_ascii_hexdigit()),

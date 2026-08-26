@@ -1,16 +1,16 @@
-use ultracrew::inrc::parser::{parse_scenario, parse_week_data, parse_history};
-use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
-use ultracrew_server::simulation::generate_baseline_schedule;
-use ultracrew_server::optimizer::{ScheduleGenome, UltraCrewEvaluator, UltraCrewMutator};
-use coralys_moga::engine_proof::{EvolutionEngine, ParetoSolution, Evaluator};
-use serde::{Serialize, Deserialize};
-use std::sync::Arc;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use rand::distributions::{WeightedIndex, Distribution};
+use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};
 use rand::Rng;
+use rand::SeedableRng;
+use rand::distributions::{Distribution, WeightedIndex};
+use rand::rngs::StdRng;
+use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
+use ultracrew_server::optimizer::{ScheduleGenome, UltraCrewEvaluator, UltraCrewMutator};
+use ultracrew_server::simulation::generate_baseline_schedule;
 
 const INSTANCE: &str = "n050w4";
 const MAX_GENERATIONS: usize = 1000;
@@ -39,9 +39,9 @@ fn main() {
 
     let base_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(format!("../../adapters/ultracrew/tests/data/{}", INSTANCE));
-    let scenario  = parse_scenario(base_dir.join(format!("Sc-{}.json",  INSTANCE))).unwrap();
+    let scenario = parse_scenario(base_dir.join(format!("Sc-{}.json", INSTANCE))).unwrap();
     let week_data = parse_week_data(base_dir.join(format!("WD-{}-0.json", INSTANCE))).unwrap();
-    let history   = parse_history(base_dir.join(format!("H0-{}-0.json",  INSTANCE))).unwrap();
+    let history = parse_history(base_dir.join(format!("H0-{}-0.json", INSTANCE))).unwrap();
 
     let mut all_reports: Vec<SeedProgressReport> = Vec::new();
 
@@ -56,17 +56,24 @@ fn main() {
             history.clone(),
             ultracrew::ecology::WorkforceEcology::new(),
         );
-        let inrc_optimizer = InrcOptimizer { context: Arc::new(inrc_context) };
+        let inrc_optimizer = InrcOptimizer {
+            context: Arc::new(inrc_context),
+        };
 
-        let evaluator = UltraCrewEvaluator { scenario: scenario.clone() };
-        let mutator   = UltraCrewMutator::new(scenario.clone());
+        let evaluator = UltraCrewEvaluator {
+            scenario: scenario.clone(),
+        };
+        let mutator = UltraCrewMutator::new(scenario.clone());
         let mut engine = EvolutionEngine::new(evaluator, mutator);
 
-        let baseline   = generate_baseline_schedule(&scenario, &week_data.requirements).unwrap();
+        let baseline = generate_baseline_schedule(&scenario, &week_data.requirements).unwrap();
         let base_fitness = engine.evaluator.evaluate(&baseline);
-        let base_uid   = calculate_hash(&baseline);
+        let base_uid = calculate_hash(&baseline);
         engine.archive.add(ParetoSolution {
-            genome: baseline, fitness: base_fitness, uid: base_uid, parent_uid: 0,
+            genome: baseline,
+            fitness: base_fitness,
+            uid: base_uid,
+            parent_uid: 0,
         });
 
         let mut progress_tracker = coralys_ecology::progress::ProgressTracker::new();
@@ -75,7 +82,9 @@ fn main() {
 
         for g in 1..=MAX_GENERATIONS {
             let archive_size = engine.archive.solutions.len();
-            if archive_size == 0 { break; }
+            if archive_size == 0 {
+                break;
+            }
             let num_objs = engine.archive.solutions[0].fitness.len();
 
             let idx = if archive_size == 1 {
@@ -96,21 +105,29 @@ fn main() {
                 for i in 0..archive_size {
                     let mut min_dist = f64::INFINITY;
                     for j in 0..archive_size {
-                        if i == j { continue; }
+                        if i == j {
+                            continue;
+                        }
                         let dist = (0..num_objs)
                             .map(|d| {
-                                let ni = (engine.archive.solutions[i].fitness[d] - min_vals[d]) / ranges[d];
-                                let nj = (engine.archive.solutions[j].fitness[d] - min_vals[d]) / ranges[d];
+                                let ni = (engine.archive.solutions[i].fitness[d] - min_vals[d])
+                                    / ranges[d];
+                                let nj = (engine.archive.solutions[j].fitness[d] - min_vals[d])
+                                    / ranges[d];
                                 (ni - nj).powi(2)
                             })
                             .sum::<f64>()
                             .sqrt();
-                        if dist < min_dist { min_dist = dist; }
+                        if dist < min_dist {
+                            min_dist = dist;
+                        }
                     }
                     weights.push((min_dist + 1e-9).powf(0.5));
                 }
                 let total_w: f64 = weights.iter().sum();
-                for w in weights.iter_mut() { *w /= total_w; }
+                for w in weights.iter_mut() {
+                    *w /= total_w;
+                }
                 WeightedIndex::new(&weights).unwrap().sample(&mut rng)
             };
 
@@ -120,19 +137,24 @@ fn main() {
             let mut best_cand: (ScheduleGenome, Vec<f64>) = {
                 let candidates: Vec<(ScheduleGenome, Vec<f64>)> = (0..5)
                     .map(|_| {
-                        let gc  = engine.mutator.mutate_with_tier(&parent.genome, rng.gen_bool(0.8));
+                        let gc = engine
+                            .mutator
+                            .mutate_with_tier(&parent.genome, rng.gen_bool(0.8));
                         let fit = engine.evaluator.evaluate(&gc);
                         (gc, fit)
                     })
                     .collect();
-                candidates.into_iter()
+                candidates
+                    .into_iter()
                     .min_by(|a, b| calc_energy(&a.1).partial_cmp(&calc_energy(&b.1)).unwrap())
                     .unwrap()
             };
             let mut t = 1000.0_f64;
             let alpha = 0.95_f64;
             for _ in 0..2 {
-                let neighbour = engine.mutator.mutate_with_tier(&best_cand.0, rng.gen_bool(0.8));
+                let neighbour = engine
+                    .mutator
+                    .mutate_with_tier(&best_cand.0, rng.gen_bool(0.8));
                 let n_fit = engine.evaluator.evaluate(&neighbour);
                 let delta = calc_energy(&n_fit) - calc_energy(&best_cand.1);
                 if delta < 0.0 || rng.gen_range(0.0..1.0) < (-delta / t).exp() {
@@ -145,16 +167,22 @@ fn main() {
             let child_uid = calculate_hash(&child_genome);
 
             engine.archive.add(ParetoSolution {
-                genome: child_genome.clone(), fitness: child_fitness.clone(),
-                uid: child_uid, parent_uid: parent.uid,
+                genome: child_genome.clone(),
+                fitness: child_fitness.clone(),
+                uid: child_uid,
+                parent_uid: parent.uid,
             });
 
             let best_sol = &engine.archive.solutions[0];
-            let sc = ultracrew_server::inrc_observer::score_inrc_official(&best_sol.genome, &scenario, &inrc_optimizer);
+            let sc = ultracrew_server::inrc_observer::score_inrc_official(
+                &best_sol.genome,
+                &scenario,
+                &inrc_optimizer,
+            );
             let global_best_fitness = sc.official_total;
-            
+
             let progress_telemetry = progress_tracker.observe_minimization(g, global_best_fitness);
-            
+
             if g == 100 {
                 progress_at_100 = Some(progress_telemetry);
             }
@@ -163,7 +191,10 @@ fn main() {
             }
 
             if g % 100 == 0 {
-                println!("  Generation {:>4} / {}... best cost: {}", g, MAX_GENERATIONS, global_best_fitness);
+                println!(
+                    "  Generation {:>4} / {}... best cost: {}",
+                    g, MAX_GENERATIONS, global_best_fitness
+                );
             }
         }
 

@@ -230,20 +230,35 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--ledger"       => { i += 1; ledger = PathBuf::from(&args[i]); }
-            "--observations" => { i += 1; observations = PathBuf::from(&args[i]); }
-            "--output"       => { i += 1; output = PathBuf::from(&args[i]); }
+            "--ledger" => {
+                i += 1;
+                ledger = PathBuf::from(&args[i]);
+            }
+            "--observations" => {
+                i += 1;
+                observations = PathBuf::from(&args[i]);
+            }
+            "--output" => {
+                i += 1;
+                output = PathBuf::from(&args[i]);
+            }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { ledger, observations, output })
+    Ok(Args {
+        ledger,
+        observations,
+        output,
+    })
 }
 
 // ─── Loaders ─────────────────────────────────────────────────────────────────
 
-fn load_ledger_entries(ledger_dir: &PathBuf) -> Result<Vec<LedgerEntry>, Box<dyn std::error::Error>> {
+fn load_ledger_entries(
+    ledger_dir: &PathBuf,
+) -> Result<Vec<LedgerEntry>, Box<dyn std::error::Error>> {
     let entries_dir = ledger_dir.join("entries");
     let mut entries = Vec::new();
     for entry in fs::read_dir(&entries_dir)? {
@@ -261,7 +276,9 @@ fn load_ledger_entries(ledger_dir: &PathBuf) -> Result<Vec<LedgerEntry>, Box<dyn
     Ok(entries)
 }
 
-fn load_observations(obs_dir: &PathBuf) -> Result<HashMap<String, Observation>, Box<dyn std::error::Error>> {
+fn load_observations(
+    obs_dir: &PathBuf,
+) -> Result<HashMap<String, Observation>, Box<dyn std::error::Error>> {
     let mut map = HashMap::new();
     for entry in fs::read_dir(obs_dir)? {
         let path = entry?.path();
@@ -314,7 +331,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let constructed_at = now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
     let run_id = format!(
         "TIME006-{}-gen{}",
-        as_of_str.replace(':', "").replace('-', "").replace('T', "T").replace('Z', "Z"),
+        as_of_str
+            .replace(':', "")
+            .replace('-', "")
+            .replace('T', "T")
+            .replace('Z', "Z"),
         now.format("%Y%m%dT%H%M%S%6fZ")
     );
 
@@ -408,15 +429,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── AC-T6-05: Accounting invariant ────────────────────────────────────────
     let accounting_ok = n_joined + n_missing == n_total;
-    println!(
-        "[time006] accounting: total={n_total} joined={n_joined} missing={n_missing}"
-    );
+    println!("[time006] accounting: total={n_total} joined={n_joined} missing={n_missing}");
     println!("[time006] AC-T6-05 accounting_invariant={accounting_ok}");
 
     if !accounting_ok {
-        return Err(format!(
-            "AC-T6-05 FAIL: {n_joined} + {n_missing} != {n_total}"
-        ).into());
+        return Err(format!("AC-T6-05 FAIL: {n_joined} + {n_missing} != {n_total}").into());
     }
 
     // ── Write flat CSV for downstream analysis ────────────────────────────────
@@ -432,16 +449,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             row.direction,
             row.action,
             row.evidence_class.as_deref().unwrap_or(""),
-            row.target_rate.map(|v| format!("{v:.6}")).unwrap_or_default(),
+            row.target_rate
+                .map(|v| format!("{v:.6}"))
+                .unwrap_or_default(),
             row.sample_size.map(|v| v.to_string()).unwrap_or_default(),
             row.degradation_level.as_deref().unwrap_or(""),
-            row.adaptive_rr.map(|v| format!("{v:.6}")).unwrap_or_default(),
-            row.adaptive_horizon_sessions.map(|v| format!("{v:.1}")).unwrap_or_default(),
-            row.reference_price.map(|v| format!("{v:.4}")).unwrap_or_default(),
-            row.adaptive_target.map(|v| format!("{v:.4}")).unwrap_or_default(),
-            row.adaptive_risk.map(|v| format!("{v:.4}")).unwrap_or_default(),
+            row.adaptive_rr
+                .map(|v| format!("{v:.6}"))
+                .unwrap_or_default(),
+            row.adaptive_horizon_sessions
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_default(),
+            row.reference_price
+                .map(|v| format!("{v:.4}"))
+                .unwrap_or_default(),
+            row.adaptive_target
+                .map(|v| format!("{v:.4}"))
+                .unwrap_or_default(),
+            row.adaptive_risk
+                .map(|v| format!("{v:.4}"))
+                .unwrap_or_default(),
             row.exit_reason,
-            row.sessions_to_outcome.map(|v| v.to_string()).unwrap_or_default(),
+            row.sessions_to_outcome
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
             row.target_reached,
             row.risk_reached,
             row.horizon_reached,

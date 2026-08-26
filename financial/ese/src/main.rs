@@ -9,7 +9,10 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "cs-ingest", about = "Deterministic replay-bound ingest utilities")]
+#[command(
+    name = "cs-ingest",
+    about = "Deterministic replay-bound ingest utilities"
+)]
 struct Cli {
     #[command(subcommand)]
     cmd: Command,
@@ -41,12 +44,12 @@ enum Command {
         archive: PathBuf,
         #[arg(long, default_value = CANDLE_ROOT)]
         candle_root: PathBuf,
-        #[arg(long, default_value = "observatory/provider_clustering_pca_weights.json")]
-        pca_weights: PathBuf,
         #[arg(
             long,
-            default_value = "./target/release/examples/live_observatory"
+            default_value = "observatory/provider_clustering_pca_weights.json"
         )]
+        pca_weights: PathBuf,
+        #[arg(long, default_value = "./target/release/examples/live_observatory")]
         observatory: PathBuf,
         #[arg(long, default_value = "0")]
         start_interval: usize,
@@ -56,7 +59,10 @@ enum Command {
         resume: bool,
         #[arg(long)]
         rebuild_dedupe: bool,
-        #[arg(long, help = "Wipe archive telemetry layers before ingest (parity / replay verify)")]
+        #[arg(
+            long,
+            help = "Wipe archive telemetry layers before ingest (parity / replay verify)"
+        )]
         fresh: bool,
     },
     /// Phase 4: Timestamp-locked chronology gap recovery.
@@ -123,10 +129,7 @@ fn cmd_timeline(batch_id: u32, cohort: PathBuf, candle_root: PathBuf) -> Result<
     println!("  fingerprint (rust)  : {}", aligned.fingerprint);
     if let Some(fp) = &manifest.timeline_fingerprint {
         println!("  fingerprint (manifest): {fp}");
-        println!(
-            "  fingerprint match   : {}",
-            fp == &aligned.fingerprint
-        );
+        println!("  fingerprint match   : {}", fp == &aligned.fingerprint);
     }
     if let (Some(a), Some(b)) = (aligned.timestamps.first(), aligned.timestamps.last()) {
         println!("  ts range            : {a} → {b}");
@@ -240,7 +243,10 @@ fn main() -> Result<()> {
             batch_id,
             action,
         } => {
-            let cfg = RepairConfig { archive_root, batch_id };
+            let cfg = RepairConfig {
+                archive_root,
+                batch_id,
+            };
             match action {
                 RepairAction::Queue {
                     symbol,

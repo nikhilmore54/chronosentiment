@@ -8,6 +8,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use chrono::Utc;
 use chronosentiment_adapter::decision_support::c3_implementation::{
     living_selection_pool, search_one_evidence_is_immutable,
 };
@@ -32,7 +33,6 @@ use chronosentiment_adapter::decision_support::population_ecology::{
     analyze_search_archive, render_ecology,
 };
 use chronosentiment_adapter::decision_support::recommendation_outcome::score_recommendations;
-use chrono::Utc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (output, cache_dir, search_one) = parse_args()?;
@@ -72,8 +72,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let pool = living_selection_pool(&archive).map_err(|e| e.to_string())?;
     let pool_repeat = living_selection_pool(&archive_repeat).map_err(|e| e.to_string())?;
-    let selected =
-        select_living_on_selection_value(&pool, &development, &selection).map_err(|e| e.to_string())?;
+    let selected = select_living_on_selection_value(&pool, &development, &selection)
+        .map_err(|e| e.to_string())?;
     let selected_repeat = select_living_on_selection_value(&pool_repeat, &development, &selection)
         .map_err(|e| e.to_string())?;
     if selected.artifact.artifact_hash != selected_repeat.artifact.artifact_hash {
@@ -153,7 +153,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     fs::write(
         output.join("PROVENANCE.md"),
-        render_provenance(&output, &cache_dir, &selected.artifact.artifact_hash, &evidence.methodology_hash),
+        render_provenance(
+            &output,
+            &cache_dir,
+            &selected.artifact.artifact_hash,
+            &evidence.methodology_hash,
+        ),
     )?;
 
     search_one_evidence_is_immutable(&search_one)?;
@@ -289,13 +294,16 @@ fn parse_args() -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn std::error::Error
                 cache = Some(PathBuf::from(args.next().ok_or("missing --yahoo-cache")?))
             }
             "--search-one-dir" => {
-                search_one = Some(PathBuf::from(args.next().ok_or("missing --search-one-dir")?))
+                search_one = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-one-dir")?,
+                ))
             }
             other => return Err(format!("unknown argument {other}").into()),
         }
     }
     Ok((
-        output.ok_or("usage: csp006_c3_search --output DIR --yahoo-cache DIR --search-one-dir DIR")?,
+        output
+            .ok_or("usage: csp006_c3_search --output DIR --yahoo-cache DIR --search-one-dir DIR")?,
         cache.ok_or("missing --yahoo-cache")?,
         search_one.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_DIR)),
     ))

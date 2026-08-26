@@ -27,8 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to overwrite Search #1 selected_policy.json".into());
     }
 
-    let artifact: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(search_dir.join("selected_policy.json"))?)?;
+    let artifact: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        search_dir.join("selected_policy.json"),
+    )?)?;
     let artifact_hash = artifact["artifact_hash"]
         .as_str()
         .ok_or("selected_policy.json missing artifact_hash")?;
@@ -36,7 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to score an artifact that is not Search #1".into());
     }
 
-    let rec_path = search_dir.join("recommendations").join("recommendations.json");
+    let rec_path = search_dir
+        .join("recommendations")
+        .join("recommendations.json");
     let recommendations: Vec<RecommendationRow> =
         serde_json::from_str(&fs::read_to_string(rec_path)?)?;
     let (_rows, report) = measure_harness(artifact_hash, &recommendations)?;

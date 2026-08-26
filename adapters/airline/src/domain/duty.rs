@@ -222,7 +222,12 @@ impl Duty {
         }
 
         let metrics = Self::compute_metrics(&legs, offsets, false, false);
-        Ok(Self { id, legs, metrics, offsets })
+        Ok(Self {
+            id,
+            legs,
+            metrics,
+            offsets,
+        })
     }
 
     /// Return a copy of this duty with the deadhead and layover flags set.
@@ -307,10 +312,8 @@ impl Duty {
         let first = &legs[0];
         let last = &legs[legs.len() - 1];
 
-        let report_time = first.scheduled_departure
-            - Duration::minutes(offsets.pre_flight_minutes);
-        let release_time = last.scheduled_arrival
-            + Duration::minutes(offsets.post_flight_minutes);
+        let report_time = first.scheduled_departure - Duration::minutes(offsets.pre_flight_minutes);
+        let release_time = last.scheduled_arrival + Duration::minutes(offsets.post_flight_minutes);
         let duty_duration = release_time - report_time;
 
         let block_time: Duration = legs.iter().map(|l| l.block_time()).sum();
@@ -351,9 +354,7 @@ pub enum DutyError {
     },
 
     /// Two consecutive legs do not connect geographically.
-    #[error(
-        "leg {from_leg} arrives at {mismatch_at} but leg {to_leg} departs from {expected}"
-    )]
+    #[error("leg {from_leg} arrives at {mismatch_at} but leg {to_leg} departs from {expected}")]
     Disconnected {
         from_leg: FlightLegId,
         to_leg: FlightLegId,
@@ -469,14 +470,17 @@ mod tests {
         // report_time = 08:00 − 60 min = 07:00
         assert_eq!(duty.metrics.report_time, base + Duration::hours(7));
         // release_time = 10:00 + 30 min = 10:30
-        assert_eq!(duty.metrics.release_time, base + Duration::hours(10) + Duration::minutes(30));
+        assert_eq!(
+            duty.metrics.release_time,
+            base + Duration::hours(10) + Duration::minutes(30)
+        );
         // duty_duration = 10:30 − 07:00 = 3h30m
         assert_eq!(duty.metrics.duty_duration, Duration::minutes(210));
     }
 
     #[test]
     fn metrics_block_time_and_sector_count() {
-        let l1 = make_leg("001", "LHR", "CDG", 8, 10);  // 2h block
+        let l1 = make_leg("001", "LHR", "CDG", 8, 10); // 2h block
         let l2 = make_leg("002", "CDG", "FRA", 11, 13); // 2h block
         let duty = Duty::new(DutyId::new("D10"), vec![l1, l2]).unwrap();
 
@@ -501,17 +505,17 @@ mod tests {
     fn custom_offsets_faa_part_117() {
         let base = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
         let leg = make_leg("001", "LHR", "CDG", 8, 10);
-        let duty = Duty::new_with_offsets(
-            DutyId::new("D12"),
-            vec![leg],
-            BriefingOffsets::FAA_PART_117,
-        )
-        .unwrap();
+        let duty =
+            Duty::new_with_offsets(DutyId::new("D12"), vec![leg], BriefingOffsets::FAA_PART_117)
+                .unwrap();
 
         // report_time = 08:00 − 60 min = 07:00
         assert_eq!(duty.metrics.report_time, base + Duration::hours(7));
         // release_time = 10:00 + 15 min = 10:15
-        assert_eq!(duty.metrics.release_time, base + Duration::hours(10) + Duration::minutes(15));
+        assert_eq!(
+            duty.metrics.release_time,
+            base + Duration::hours(10) + Duration::minutes(15)
+        );
     }
 
     #[test]

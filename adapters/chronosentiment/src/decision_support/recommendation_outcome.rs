@@ -108,16 +108,15 @@ pub struct RecommendationScorecard {
     pub generalization: String,
 }
 
-pub fn tmv_labels(profile: &crate::reasoning::assessment::AssessmentProfile) -> (String, String, String) {
+pub fn tmv_labels(
+    profile: &crate::reasoning::assessment::AssessmentProfile,
+) -> (String, String, String) {
     let mut factors = factors_from_profile(profile);
     for concept in CERTIFIED_INPUT_CONCEPTS {
         ensure_factor(&mut factors, concept);
     }
     let label = |concept: &str| match factors.iter().find(|f| f.concept == concept) {
-        Some(f) if f.present => f
-            .direction
-            .clone()
-            .unwrap_or_else(|| "present".to_string()),
+        Some(f) if f.present => f.direction.clone().unwrap_or_else(|| "present".to_string()),
         _ => "absent".to_string(),
     };
     (label("Trend"), label("Momentum"), label("Volatility"))
@@ -173,10 +172,8 @@ fn mean(xs: &[f64]) -> Option<f64> {
 }
 
 fn action_accuracy(rows: &[&RecommendationRow], action: DecisionAction) -> ActionAccuracy {
-    let chosen: Vec<&&RecommendationRow> = rows
-        .iter()
-        .filter(|r| r.recommendation == action)
-        .collect();
+    let chosen: Vec<&&RecommendationRow> =
+        rows.iter().filter(|r| r.recommendation == action).collect();
     let mut signed = Vec::new();
     let mut n_correct = 0u32;
     let mut n_incorrect = 0u32;
@@ -289,10 +286,8 @@ fn slice_scorecard(kind: PartitionKind, rows: &[&RecommendationRow]) -> SliceSco
 }
 
 fn instrument_scorecard(instrument: &str, rows: &[&RecommendationRow]) -> InstrumentScorecard {
-    let mine: Vec<&&RecommendationRow> = rows
-        .iter()
-        .filter(|r| r.instrument == instrument)
-        .collect();
+    let mine: Vec<&&RecommendationRow> =
+        rows.iter().filter(|r| r.instrument == instrument).collect();
     let traded: Vec<f64> = mine.iter().filter_map(|r| r.return_contribution).collect();
     InstrumentScorecard {
         instrument: instrument.to_string(),
@@ -351,7 +346,8 @@ pub fn score_recommendations(
         (PartitionKind::Evaluation, evaluation),
     ] {
         for row in &slice.rows {
-            let action = first_match_action(&artifact.rules, artifact.unmatched_action, &row.profile);
+            let action =
+                first_match_action(&artifact.rules, artifact.unmatched_action, &row.profile);
             let (trend, momentum, volatility) = tmv_labels(&row.profile);
             rows.push(RecommendationRow {
                 timestamp: row.as_of.to_rfc3339(),
@@ -440,7 +436,9 @@ pub fn score_recommendations(
 
 pub fn render_scorecard(card: &RecommendationScorecard) -> String {
     let mut out = String::from("# Search #1 recommendation outcome\n\n");
-    out.push_str("Sealed PolicyArtifact applied to every certified decision point. Not Search #2.\n\n");
+    out.push_str(
+        "Sealed PolicyArtifact applied to every certified decision point. Not Search #2.\n\n",
+    );
     out.push_str(&format!(
         "- artifact: `{}`\n- horizon: {} calendar days\n- recommendations: {}\n- generalization: **{}**\n\n",
         card.policy_artifact_hash, card.horizon_days, card.n_recommendations, card.generalization

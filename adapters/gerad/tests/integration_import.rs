@@ -30,7 +30,11 @@ fn fixture_dataset_loads_without_error() {
     assert_eq!(roster.leg_count(), 10, "expected 10 flight legs");
 
     // ── Crew members ──────────────────────────────────────────────────────────
-    assert_eq!(roster.crew_member_count(), 8, "expected 8 crew member records");
+    assert_eq!(
+        roster.crew_member_count(),
+        8,
+        "expected 8 crew member records"
+    );
 
     // ── Rotations (one per crew member that has at least one assignment) ──────
     // 8 crew members, all assigned to at least one pairing.

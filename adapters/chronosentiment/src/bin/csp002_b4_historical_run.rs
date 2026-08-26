@@ -10,11 +10,11 @@ use std::path::PathBuf;
 use chronosentiment_adapter::decision_support::backtest::{
     populate_ledger_from_assessment_schedule, DecisionLedger,
 };
-use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::outcome::{OutcomeEngine, OutcomeReport};
 use chronosentiment_adapter::decision_support::performance::{
     measure_performance, HorizonPerformance, PerformanceReport, ReturnStats, RiskStats,
 };
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 use chronosentiment_adapter::decision_support::DecisionAction;
 use serde::Serialize;
@@ -81,12 +81,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let adapter = ReplayAdapter::new(pool.clone());
-    let ledger =
-        populate_ledger_from_assessment_schedule(
-            &adapter,
-            UNFROZEN_ENGINE_VERSION,
-            &BaselineTrendMappingPolicy,
-        ).await?;
+    let ledger = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
     let outcomes = OutcomeEngine::new(pool).measure_ledger(&ledger).await?;
     let performance = measure_performance(&ledger, &outcomes);
     if performance.decision_engine_version != UNFROZEN_ENGINE_VERSION {
@@ -99,7 +99,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let provenance = Provenance {
         kind: "product_validation",
-        not: &["g_gate", "v1.0_freeze", "strategy_score", "parameter_tuning"],
+        not: &[
+            "g_gate",
+            "v1.0_freeze",
+            "strategy_score",
+            "parameter_tuning",
+        ],
         decision_engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
         decision_engine_v1_frozen: false,
         b4_dump_sha256: b4_hash,
@@ -199,7 +204,11 @@ fn render_markdown(prov: &Provenance, report: &PerformanceReport) -> String {
     md.push_str("## Identity\n\n");
     md.push_str("| Field | Value |\n|---|---|\n");
     row(&mut md, "Kind", prov.kind);
-    row(&mut md, "Decision engine version", &prov.decision_engine_version);
+    row(
+        &mut md,
+        "Decision engine version",
+        &prov.decision_engine_version,
+    );
     row(
         &mut md,
         "Decision Engine v1.0 frozen",
@@ -222,7 +231,11 @@ fn render_markdown(prov: &Provenance, report: &PerformanceReport) -> String {
         if prov.git_dirty { "yes" } else { "no" },
     );
     row(&mut md, "Ledger identity hash", &prov.ledger_identity_hash);
-    row(&mut md, "Outcome identity hash", &prov.outcome_identity_hash);
+    row(
+        &mut md,
+        "Outcome identity hash",
+        &prov.outcome_identity_hash,
+    );
     row(
         &mut md,
         "Performance report hash",
@@ -233,15 +246,15 @@ fn render_markdown(prov: &Provenance, report: &PerformanceReport) -> String {
 
     md.push_str("\n## Decision behaviour\n\n");
     md.push_str("| Field | Value |\n|---|---|\n");
-    row(&mut md, "Historical decisions generated", &b.n_records.to_string());
+    row(
+        &mut md,
+        "Historical decisions generated",
+        &b.n_records.to_string(),
+    );
     row(&mut md, "LONG", &b.counts.long.to_string());
     row(&mut md, "SHORT", &b.counts.short.to_string());
     row(&mut md, "NO_TRADE", &b.counts.no_trade.to_string());
-    row(
-        &mut md,
-        "First as-of",
-        &opt_time(b.first_as_of),
-    );
+    row(&mut md, "First as-of", &opt_time(b.first_as_of));
     row(&mut md, "Last as-of", &opt_time(b.last_as_of));
     row(
         &mut md,
@@ -362,7 +375,11 @@ fn risk_row(md: &mut String, days: u32, k: &RiskStats) {
     ));
 }
 
-fn action_table(md: &mut String, report: &PerformanceReport, pick: fn(&HorizonPerformance) -> &ReturnStats) {
+fn action_table(
+    md: &mut String,
+    report: &PerformanceReport,
+    pick: fn(&HorizonPerformance) -> &ReturnStats,
+) {
     md.push_str("| Horizon | n obs | n missing | mean | median | win | loss | cumulative sum |\n");
     md.push_str("|---|---:|---:|---:|---:|---:|---:|---:|\n");
     for h in &report.horizons {
@@ -389,9 +406,11 @@ fn opt_f(v: Option<f64>, digits: usize) -> String {
 }
 
 fn opt_i64(v: Option<i64>) -> String {
-    v.map(|x| x.to_string()).unwrap_or_else(|| "n/a".to_string())
+    v.map(|x| x.to_string())
+        .unwrap_or_else(|| "n/a".to_string())
 }
 
 fn opt_time(v: Option<chrono::DateTime<chrono::Utc>>) -> String {
-    v.map(|t| t.to_rfc3339()).unwrap_or_else(|| "n/a".to_string())
+    v.map(|t| t.to_rfc3339())
+        .unwrap_or_else(|| "n/a".to_string())
 }

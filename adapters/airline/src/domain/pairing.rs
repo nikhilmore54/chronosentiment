@@ -70,11 +70,7 @@ impl Pairing {
     /// - A duty starts before the previous duty ends.
     /// - The pairing does not start at `base`.
     /// - The pairing does not end at `base`.
-    pub fn new(
-        id: PairingId,
-        base: AirportCode,
-        duties: Vec<Duty>,
-    ) -> Result<Self, PairingError> {
+    pub fn new(id: PairingId, base: AirportCode, duties: Vec<Duty>) -> Result<Self, PairingError> {
         if duties.is_empty() {
             return Err(PairingError::Empty);
         }
@@ -175,11 +171,17 @@ pub enum PairingError {
 
     /// The first duty does not start at the declared base.
     #[error("pairing base is {base} but first duty starts at {actual}")]
-    DoesNotStartAtBase { base: AirportCode, actual: AirportCode },
+    DoesNotStartAtBase {
+        base: AirportCode,
+        actual: AirportCode,
+    },
 
     /// The last duty does not end at the declared base.
     #[error("pairing base is {base} but last duty ends at {actual}")]
-    DoesNotEndAtBase { base: AirportCode, actual: AirportCode },
+    DoesNotEndAtBase {
+        base: AirportCode,
+        actual: AirportCode,
+    },
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -247,8 +249,7 @@ mod tests {
 
     #[test]
     fn rejects_empty_duties() {
-        let err =
-            Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![]).unwrap_err();
+        let err = Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![]).unwrap_err();
         assert_eq!(err, PairingError::Empty);
     }
 
@@ -264,16 +265,14 @@ mod tests {
     #[test]
     fn rejects_wrong_start_base() {
         let d = make_duty("D1", vec![make_leg("L1", "CDG", "LHR", 8, 10)]);
-        let err =
-            Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![d]).unwrap_err();
+        let err = Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![d]).unwrap_err();
         assert!(matches!(err, PairingError::DoesNotStartAtBase { .. }));
     }
 
     #[test]
     fn rejects_wrong_end_base() {
         let d = make_duty("D1", vec![make_leg("L1", "LHR", "CDG", 8, 10)]);
-        let err =
-            Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![d]).unwrap_err();
+        let err = Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![d]).unwrap_err();
         assert!(matches!(err, PairingError::DoesNotEndAtBase { .. }));
     }
 

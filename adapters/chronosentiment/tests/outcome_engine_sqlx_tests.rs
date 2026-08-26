@@ -10,8 +10,8 @@ fn forbidden_db(name: &str) -> bool {
 }
 
 #[tokio::test]
-async fn b4_outcomes_are_deterministic_and_ignore_future_rows()
--> Result<(), Box<dyn std::error::Error>> {
+async fn b4_outcomes_are_deterministic_and_ignore_future_rows(
+) -> Result<(), Box<dyn std::error::Error>> {
     let url = match std::env::var("DATABASE_URL") {
         Ok(u) => u,
         Err(_) => {
@@ -27,17 +27,27 @@ async fn b4_outcomes_are_deterministic_and_ignore_future_rows()
     let dbname: String = sqlx::query_scalar("SELECT current_database()")
         .fetch_one(&pool)
         .await?;
-    assert!(!forbidden_db(&dbname), "refusing certified database {dbname}");
+    assert!(
+        !forbidden_db(&dbname),
+        "refusing certified database {dbname}"
+    );
 
     let adapter = ReplayAdapter::new(pool.clone());
-    let ledger =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
+    let ledger = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
     let engine = OutcomeEngine::new(pool.clone());
     let first = engine.measure_ledger(&ledger).await?;
     let second = engine.measure_ledger(&ledger).await?;
     assert_eq!(first.bundles.len(), ledger.records.len());
     assert_eq!(first.identity_hash(), second.identity_hash());
-    assert_eq!(first.bundles[0].ledger_decision_id, ledger.records[0].decision_id);
+    assert_eq!(
+        first.bundles[0].ledger_decision_id,
+        ledger.records[0].decision_id
+    );
     assert!(first.bundles.iter().all(|b| b.horizons.len() == 4));
     assert!(
         first

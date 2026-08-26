@@ -1,4 +1,4 @@
-use coralys_core::{Solution, Outcome};
+use coralys_core::{Outcome, Solution};
 use serde::{Deserialize, Serialize};
 
 /// Qualification subsystem — GOV-008 / GOV-009
@@ -43,7 +43,7 @@ pub struct CvrpGenerationState {
     pub best_routes: Vec<Vec<usize>>,
     pub deepest_basin_transition: Option<BasinTransition>,
     pub operator_counts: std::collections::HashMap<String, usize>,
-    
+
     // Memetic Telemetry
     pub mutation_damage_avg: f64,
     pub basin_depth_avg: f64,
@@ -51,7 +51,7 @@ pub struct CvrpGenerationState {
     pub parent_reversion_rate: f64,
     pub damage_edge_count_avg: f64,
     pub repair_edge_count_avg: f64,
-    
+
     // Basin Geometry
     pub unique_basins_seen: usize,
     pub global_basin_revisit_rate: f64,
@@ -83,7 +83,7 @@ pub struct CvrpGenerationState {
     pub mean_p_elite: f64,
     pub calibration_error: f64,
     pub calibration_buckets: std::collections::HashMap<String, CalibrationBucket>,
-    
+
     pub innovation_telemetry: Option<coralys_core::memory::InnovationTelemetry>,
 }
 
@@ -145,7 +145,7 @@ pub struct CvrpInstance {
 impl CvrpInstance {
     pub fn a_n32_k5() -> Self {
         let coords = vec![
-            (1, 82.0, 76.0, 0),    // Depot
+            (1, 82.0, 76.0, 0), // Depot
             (2, 96.0, 44.0, 19),
             (3, 50.0, 5.0, 21),
             (4, 49.0, 8.0, 6),
@@ -179,7 +179,12 @@ impl CvrpInstance {
             (32, 98.0, 5.0, 9),
         ];
 
-        let mut depot = Node { id: 0, x: 0.0, y: 0.0, demand: 0 };
+        let mut depot = Node {
+            id: 0,
+            x: 0.0,
+            y: 0.0,
+            demand: 0,
+        };
         let mut customers = Vec::new();
 
         for (id, x, y, demand) in coords {
@@ -201,63 +206,66 @@ impl CvrpInstance {
         }
     }
 
-    
-
     /// CVRPLIB A-n46-k7: 45 customers, 7 vehicles, capacity=100, BKS=914 (TspLibEuc2D)
     /// Source: https://galgos.inf.puc-rio.br/cvrplib/index.php/en/download/instance/18
     /// Verified: total demand=603, max capacity=7×100=700, feasible.
     pub fn a_n46_k7() -> Self {
         // (id, x, y, demand) — node 1 is depot (demand=0)
         let coords: Vec<(usize, f64, f64, i32)> = vec![
-            (1,  75.0, 55.0,  0),  // Depot
-            (2,   7.0, 75.0, 12),
-            (3,  77.0,  1.0, 26),
-            (4,  51.0, 25.0,  1),
-            (5,  81.0, 25.0, 20),
-            (6,  59.0, 37.0,  2),
-            (7,  93.0, 45.0, 13),
-            (8,  43.0, 21.0, 20),
-            (9,  35.0, 53.0,  7),
+            (1, 75.0, 55.0, 0), // Depot
+            (2, 7.0, 75.0, 12),
+            (3, 77.0, 1.0, 26),
+            (4, 51.0, 25.0, 1),
+            (5, 81.0, 25.0, 20),
+            (6, 59.0, 37.0, 2),
+            (7, 93.0, 45.0, 13),
+            (8, 43.0, 21.0, 20),
+            (9, 35.0, 53.0, 7),
             (10, 77.0, 63.0, 10),
             (11, 37.0, 13.0, 15),
-            (12, 37.0, 51.0,  7),
+            (12, 37.0, 51.0, 7),
             (13, 27.0, 31.0, 24),
             (14, 95.0, 31.0, 10),
             (15, 87.0, 43.0, 12),
             (16, 23.0, 65.0, 23),
-            (17,  9.0, 51.0, 13),
+            (17, 9.0, 51.0, 13),
             (18, 73.0, 81.0, 19),
-            (19,  3.0,  1.0,  9),
+            (19, 3.0, 1.0, 9),
             (20, 41.0, 61.0, 12),
-            (21, 29.0, 81.0,  6),
-            (22, 51.0, 95.0,  9),
+            (21, 29.0, 81.0, 6),
+            (22, 51.0, 95.0, 9),
             (23, 49.0, 25.0, 22),
             (24, 81.0, 53.0, 18),
-            (25,  7.0, 51.0, 19),
-            (26, 21.0,  5.0, 20),
+            (25, 7.0, 51.0, 19),
+            (26, 21.0, 5.0, 20),
             (27, 91.0, 35.0, 24),
             (28, 17.0, 81.0, 10),
-            (29, 61.0, 69.0,  4),
+            (29, 61.0, 69.0, 4),
             (30, 27.0, 97.0, 20),
             (31, 83.0, 23.0, 15),
             (32, 21.0, 93.0, 13),
             (33, 59.0, 31.0, 12),
-            (34, 27.0, 53.0,  3),
-            (35,  9.0, 91.0,  7),
+            (34, 27.0, 53.0, 3),
+            (35, 9.0, 91.0, 7),
             (36, 11.0, 27.0, 18),
-            (37, 59.0, 41.0,  3),
-            (38, 67.0,  1.0, 23),
-            (39, 77.0, 39.0,  1),
+            (37, 59.0, 41.0, 3),
+            (38, 67.0, 1.0, 23),
+            (39, 77.0, 39.0, 1),
             (40, 47.0, 29.0, 17),
-            (41,  3.0, 89.0, 13),
-            (42, 33.0, 87.0,  6),
+            (41, 3.0, 89.0, 13),
+            (42, 33.0, 87.0, 6),
             (43, 17.0, 45.0, 22),
             (44, 91.0, 41.0, 20),
-            (45, 23.0,  3.0, 21),
-            (46, 97.0, 61.0,  2),
+            (45, 23.0, 3.0, 21),
+            (46, 97.0, 61.0, 2),
         ];
 
-        let mut depot = Node { id: 0, x: 0.0, y: 0.0, demand: 0 };
+        let mut depot = Node {
+            id: 0,
+            x: 0.0,
+            y: 0.0,
+            demand: 0,
+        };
         let mut customers = Vec::new();
 
         for (id, x, y, demand) in coords {
@@ -298,10 +306,16 @@ impl CvrpInstance {
         }
     }
 
-    pub fn evaluate_routes_distance(&self, routes: &Vec<Vec<usize>>, metric: DistanceMetric) -> f64 {
+    pub fn evaluate_routes_distance(
+        &self,
+        routes: &Vec<Vec<usize>>,
+        metric: DistanceMetric,
+    ) -> f64 {
         let mut total = 0.0;
         for route in routes {
-            if route.is_empty() { continue; }
+            if route.is_empty() {
+                continue;
+            }
             let mut last_node = &self.depot;
             for &node_id in route {
                 let customer = if node_id == self.depot.id {
@@ -310,15 +324,23 @@ impl CvrpInstance {
                     self.customers.iter().find(|c| c.id == node_id).unwrap()
                 };
                 total += match metric {
-                    DistanceMetric::TspLibEuc2D => TspLibEuc2DCalculator.distance(last_node, customer),
-                    DistanceMetric::EuclideanFloat => EuclideanFloatCalculator.distance(last_node, customer),
+                    DistanceMetric::TspLibEuc2D => {
+                        TspLibEuc2DCalculator.distance(last_node, customer)
+                    }
+                    DistanceMetric::EuclideanFloat => {
+                        EuclideanFloatCalculator.distance(last_node, customer)
+                    }
                     DistanceMetric::ExplicitMatrix => self.distance(last_node, customer),
                 };
                 last_node = customer;
             }
             total += match metric {
-                DistanceMetric::TspLibEuc2D => TspLibEuc2DCalculator.distance(last_node, &self.depot),
-                DistanceMetric::EuclideanFloat => EuclideanFloatCalculator.distance(last_node, &self.depot),
+                DistanceMetric::TspLibEuc2D => {
+                    TspLibEuc2DCalculator.distance(last_node, &self.depot)
+                }
+                DistanceMetric::EuclideanFloat => {
+                    EuclideanFloatCalculator.distance(last_node, &self.depot)
+                }
                 DistanceMetric::ExplicitMatrix => self.distance(last_node, &self.depot),
             };
         }
@@ -356,7 +378,12 @@ impl GenomeFactory<CvrpCandidate> for CvrpGenomeFactory {
     fn create(&self, rng: &mut rand::rngs::StdRng) -> CvrpCandidate {
         let mut perm: Vec<usize> = (0..self.num_customers).collect();
         perm.shuffle(rng);
-        CvrpCandidate { permutation: perm, last_mutation_op: None, last_mutation_radius: None, route_boundary_changes: None }
+        CvrpCandidate {
+            permutation: perm,
+            last_mutation_op: None,
+            last_mutation_radius: None,
+            route_boundary_changes: None,
+        }
     }
 }
 
@@ -367,20 +394,30 @@ pub struct CvrpClusteredGenomeFactory {
 impl GenomeFactory<CvrpCandidate> for CvrpClusteredGenomeFactory {
     fn create(&self, rng: &mut rand::rngs::StdRng) -> CvrpCandidate {
         let depot = &self.instance.depot;
-        let mut customers_with_angles: Vec<(usize, f64)> = self.instance.customers.iter().enumerate().map(|(idx, cust)| {
-            let dx = cust.x - depot.x;
-            let dy = cust.y - depot.y;
-            let angle = dy.atan2(dx);
-            (idx, angle)
-        }).collect();
+        let mut customers_with_angles: Vec<(usize, f64)> = self
+            .instance
+            .customers
+            .iter()
+            .enumerate()
+            .map(|(idx, cust)| {
+                let dx = cust.x - depot.x;
+                let dy = cust.y - depot.y;
+                let angle = dy.atan2(dx);
+                (idx, angle)
+            })
+            .collect();
 
         // Sort by polar angle (sweep order)
         customers_with_angles.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        let mut perm: Vec<usize> = customers_with_angles.into_iter().map(|(idx, _)| idx).collect();
+        let mut perm: Vec<usize> = customers_with_angles
+            .into_iter()
+            .map(|(idx, _)| idx)
+            .collect();
 
         // Add some perturbation for diversity
         if rand::Rng::r#gen::<f64>(rng) < 0.9 {
-            let num_swaps = rand::Rng::gen_range(rng, 1..=(self.instance.customers.len() / 5).max(2));
+            let num_swaps =
+                rand::Rng::gen_range(rng, 1..=(self.instance.customers.len() / 5).max(2));
             for _ in 0..num_swaps {
                 let i = rand::Rng::gen_range(rng, 0..perm.len());
                 let j = rand::Rng::gen_range(rng, 0..perm.len());
@@ -398,21 +435,44 @@ impl GenomeFactory<CvrpCandidate> for CvrpClusteredGenomeFactory {
         };
 
         // Run feasibility repair on initialization to start GA search from feasible bounds
-        let model = moga_impl::CvrpConstraintModel { instance: self.instance.clone() };
-        let budget = coralys_core::operators::OperatorBudget { max_iterations: 15, max_time_ms: 1000 };
-        use coralys_core::operators::{RepairOperator, ConstraintModel};
+        let model = moga_impl::CvrpConstraintModel {
+            instance: self.instance.clone(),
+        };
+        let budget = coralys_core::operators::OperatorBudget {
+            max_iterations: 15,
+            max_time_ms: 1000,
+        };
+        use coralys_core::operators::{ConstraintModel, RepairOperator};
 
-        let heuristics: Vec<Box<dyn RepairOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
-            Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: self.instance.clone() }),
-            Box::new(moga_impl::BinPackingRepairHeuristic { instance: self.instance.clone() }),
-            Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: self.instance.clone() }),
+        let heuristics: Vec<
+            Box<
+                dyn RepairOperator<
+                        CvrpCandidate,
+                        moga_impl::CvrpConstraintModel,
+                        Error = moga_impl::CvrpOperatorError,
+                    >,
+            >,
+        > = vec![
+            Box::new(moga_impl::VehicleLimitRepairHeuristic {
+                instance: self.instance.clone(),
+            }),
+            Box::new(moga_impl::BinPackingRepairHeuristic {
+                instance: self.instance.clone(),
+            }),
+            Box::new(moga_impl::SpatialBinPackingRepairHeuristic {
+                instance: self.instance.clone(),
+            }),
         ];
 
         for _ in 0..15 {
-            if model.is_feasible(&candidate) { break; }
+            if model.is_feasible(&candidate) {
+                break;
+            }
             for h in &heuristics {
                 let _ = h.repair(&mut candidate, &model, &budget);
-                if model.is_feasible(&candidate) { break; }
+                if model.is_feasible(&candidate) {
+                    break;
+                }
             }
         }
 
@@ -451,8 +511,8 @@ impl Outcome for CvrpEvaluation {
 }
 
 // We will implement coralys-moga traits in a separate module.
-pub mod moga_impl;
 pub mod analysis;
+pub mod moga_impl;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CvrpState {
@@ -536,12 +596,13 @@ impl CvrpDecisionPlugin {
     }
 }
 
-use coralys_core::{DecisionPlugin, DecisionProposal, EvaluationResult, Violation, StateReference, SimulationResult};
-use uuid::Uuid;
 use chrono::Utc;
-use std::sync::Mutex;
+use coralys_core::{
+    DecisionPlugin, DecisionProposal, EvaluationResult, SimulationResult, StateReference, Violation,
+};
 use coralys_moga::traits::FitnessEvaluator;
-
+use std::sync::Mutex;
+use uuid::Uuid;
 
 impl DecisionPlugin for CvrpDecisionPlugin {
     type State = CvrpState;
@@ -552,18 +613,24 @@ impl DecisionPlugin for CvrpDecisionPlugin {
     }
 
     fn evaluate(&self, state: &Self::State) -> Self::Evaluation {
-        let candidate = state.best_candidate.clone().unwrap_or_else(|| {
-            CvrpCandidate {
+        let candidate = state
+            .best_candidate
+            .clone()
+            .unwrap_or_else(|| CvrpCandidate {
                 permutation: (0..self.instance.customers.len()).collect(),
                 last_mutation_op: None,
                 last_mutation_radius: None,
                 route_boundary_changes: None,
-            }
-        });
+            });
 
-        let evaluator = moga_impl::CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-        
+        let evaluator = moga_impl::CvrpEvaluator {
+            instance: self.instance.clone(),
+        };
+        let outcome = evaluator.evaluate(
+            &candidate,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
+
         translate_evaluation(&candidate, &outcome.eval, &self.instance)
     }
 
@@ -575,8 +642,13 @@ impl DecisionPlugin for CvrpDecisionPlugin {
         let candidate: CvrpCandidate = serde_json::from_value(proposal.payload.clone())
             .map_err(|e| format!("Failed to deserialize CVRP candidate: {}", e))?;
 
-        let evaluator = moga_impl::CvrpEvaluator { instance: self.instance.clone() };
-        let outcome = evaluator.evaluate(&candidate, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let evaluator = moga_impl::CvrpEvaluator {
+            instance: self.instance.clone(),
+        };
+        let outcome = evaluator.evaluate(
+            &candidate,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
 
         let mut new_state = state.clone();
         new_state.gen_state.best_distance = outcome.eval.total_distance;
@@ -654,7 +726,7 @@ pub fn solve_auto_config(
         let analyzer = analysis::CvrpInstanceAnalyzer;
         let (features, difficulty, policy) = analyzer.analyze(instance)?;
         let report = analysis::generate_analysis_report(&features, &difficulty, &policy);
-        
+
         let config = EvolutionConfig {
             population_size: policy.population_size,
             elite_count: policy.population_size / 10,
@@ -680,27 +752,63 @@ pub fn solve_auto_config(
         (config, "Manual baseline configuration used.".to_string())
     };
 
-    let evaluator = moga_impl::CvrpEvaluator { instance: instance.clone() };
+    let evaluator = moga_impl::CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mutator = moga_impl::CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
-    let crossover = moga_impl::CvrpCrossoverRoutePreserving { instance: instance.clone() };
-    let factory = CvrpClusteredGenomeFactory { instance: instance.clone() };
-    let local_search = moga_impl::CvrpLocalSearch { instance: instance.clone() };
+    let crossover = moga_impl::CvrpCrossoverRoutePreserving {
+        instance: instance.clone(),
+    };
+    let factory = CvrpClusteredGenomeFactory {
+        instance: instance.clone(),
+    };
+    let local_search = moga_impl::CvrpLocalSearch {
+        instance: instance.clone(),
+    };
 
-    let model = moga_impl::CvrpConstraintModel { instance: instance.clone() };
-    let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
-        Box::new(moga_impl::VehicleLimitRepairHeuristic { instance: instance.clone() }),
-        Box::new(moga_impl::BinPackingRepairHeuristic { instance: instance.clone() }),
-        Box::new(moga_impl::SpatialBinPackingRepairHeuristic { instance: instance.clone() }),
+    let model = moga_impl::CvrpConstraintModel {
+        instance: instance.clone(),
+    };
+    let repair_operators: Vec<
+        Box<
+            dyn coralys_core::operators::RepairOperator<
+                    CvrpCandidate,
+                    moga_impl::CvrpConstraintModel,
+                    Error = moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![
+        Box::new(moga_impl::VehicleLimitRepairHeuristic {
+            instance: instance.clone(),
+        }),
+        Box::new(moga_impl::BinPackingRepairHeuristic {
+            instance: instance.clone(),
+        }),
+        Box::new(moga_impl::SpatialBinPackingRepairHeuristic {
+            instance: instance.clone(),
+        }),
     ];
-    let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<CvrpCandidate, moga_impl::CvrpConstraintModel, Error = moga_impl::CvrpOperatorError>>> = vec![
-        Box::new(local_search),
-    ];
+    let improvement_operators: Vec<
+        Box<
+            dyn coralys_core::operators::ImprovementOperator<
+                    CvrpCandidate,
+                    moga_impl::CvrpConstraintModel,
+                    Error = moga_impl::CvrpOperatorError,
+                >,
+        >,
+    > = vec![Box::new(local_search)];
     let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
         constraint_model: model,
         repair_operators,
         improvement_operators,
-        repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
-        improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+        repair_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 10,
+            max_time_ms: 1000,
+        },
+        improve_budget: coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        },
     };
 
     let engine = EvolutionEngineBuilder::new()
@@ -712,10 +820,11 @@ pub fn solve_auto_config(
         .build()
         .map_err(|e| format!("Engine build error: {}", e))?;
 
-    let res = engine.run_ga_evolution(config).map_err(|e| format!("Evolution error: {}", e))?;
+    let res = engine
+        .run_ga_evolution(config)
+        .map_err(|e| format!("Evolution error: {}", e))?;
     Ok((res.global_best.eval, report))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -724,20 +833,20 @@ mod tests {
     #[test]
     fn test_cvrp_plugin_lifecycle() {
         let mut plugin = CvrpDecisionPlugin::new(CvrpInstance::a_n32_k5());
-        
+
         let initial_state = plugin.current_state();
         assert_eq!(initial_state.reference.plugin, "cvrp");
-        
+
         let initial_eval = plugin.evaluate(&initial_state);
         assert!(initial_eval.objectives[0] > 0.0);
-        
+
         let candidate = CvrpCandidate {
             permutation: (0..31).collect(),
             last_mutation_op: None,
             last_mutation_radius: None,
             route_boundary_changes: None,
         };
-        
+
         let proposal = DecisionProposal {
             priority: 1.0,
             estimated_gain: 100.0,
@@ -746,32 +855,38 @@ mod tests {
             confidence: 1.0,
             payload: serde_json::to_value(&candidate).unwrap(),
         };
-        
+
         let simulated_state = plugin.simulate(&initial_state, &proposal).unwrap();
         assert_ne!(simulated_state.reference.id, initial_state.reference.id);
         assert!(simulated_state.best_candidate.is_some());
-        
+
         plugin.execute(&proposal);
         let current_state = plugin.current_state();
         assert_ne!(current_state.reference.id, initial_state.reference.id);
-        
+
         let final_eval = plugin.evaluate(&current_state);
         assert!(final_eval.objectives[0] > 0.0);
     }
 
     #[test]
     fn test_cvrp_regression_a_n32_k5() {
-        use crate::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossover, CvrpLocalSearch};
+        use crate::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
         use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
 
         let mut instance = CvrpInstance::a_n32_k5();
         instance.distance_metric = DistanceMetric::TspLibEuc2D;
-        
-        let evaluator = CvrpEvaluator { instance: instance.clone() };
+
+        let evaluator = CvrpEvaluator {
+            instance: instance.clone(),
+        };
         let mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
         let crossover = CvrpCrossover;
-        let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-        let local_search = CvrpLocalSearch { instance: instance.clone() };
+        let factory = CvrpGenomeFactory {
+            num_customers: instance.customers.len(),
+        };
+        let local_search = CvrpLocalSearch {
+            instance: instance.clone(),
+        };
 
         let config = EvolutionConfig {
             population_size: 200,
@@ -784,16 +899,40 @@ mod tests {
             ..Default::default()
         };
 
-        let model = crate::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-        let repair_operators: Vec<Box<dyn coralys_core::operators::RepairOperator<crate::CvrpCandidate, crate::moga_impl::CvrpConstraintModel, Error = crate::moga_impl::CvrpOperatorError>>> = vec![];
-        let improvement_operators: Vec<Box<dyn coralys_core::operators::ImprovementOperator<crate::CvrpCandidate, crate::moga_impl::CvrpConstraintModel, Error = crate::moga_impl::CvrpOperatorError>>> = vec![Box::new(local_search)];
-        
+        let model = crate::moga_impl::CvrpConstraintModel {
+            instance: instance.clone(),
+        };
+        let repair_operators: Vec<
+            Box<
+                dyn coralys_core::operators::RepairOperator<
+                        crate::CvrpCandidate,
+                        crate::moga_impl::CvrpConstraintModel,
+                        Error = crate::moga_impl::CvrpOperatorError,
+                    >,
+            >,
+        > = vec![];
+        let improvement_operators: Vec<
+            Box<
+                dyn coralys_core::operators::ImprovementOperator<
+                        crate::CvrpCandidate,
+                        crate::moga_impl::CvrpConstraintModel,
+                        Error = crate::moga_impl::CvrpOperatorError,
+                    >,
+            >,
+        > = vec![Box::new(local_search)];
+
         let pipeline = coralys_core::pipeline::EvolutionaryPipeline {
             constraint_model: model,
             repair_operators,
             improvement_operators,
-            repair_budget: coralys_core::operators::OperatorBudget { max_iterations: 10, max_time_ms: 1000 },
-            improve_budget: coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 },
+            repair_budget: coralys_core::operators::OperatorBudget {
+                max_iterations: 10,
+                max_time_ms: 1000,
+            },
+            improve_budget: coralys_core::operators::OperatorBudget {
+                max_iterations: 1,
+                max_time_ms: 1000,
+            },
         };
 
         let engine = EvolutionEngineBuilder::new()
@@ -807,19 +946,22 @@ mod tests {
 
         let result = engine.run_ga_evolution(config).unwrap();
         let best_dist = result.global_best.eval.total_distance_integer;
-        assert_eq!(best_dist, 784.0, "Regression: CVRP A-n32-k5 Best distance is {}, expected 784.0", best_dist);
-     }
+        assert_eq!(
+            best_dist, 784.0,
+            "Regression: CVRP A-n32-k5 Best distance is {}, expected 784.0",
+            best_dist
+        );
+    }
 
-     #[test]
-     fn test_solve_auto_config() {
-         let mut instance = CvrpInstance::a_n32_k5();
-         instance.distance_metric = DistanceMetric::TspLibEuc2D;
-         
-         let (eval, report) = solve_auto_config(&instance, true).unwrap();
-         assert!(eval.total_distance > 0.0);
-         assert!(report.contains("Instance Analysis"));
-         assert!(report.contains("Recommended Configuration"));
-         assert!(report.contains("Engineering Rationale"));
-     }
+    #[test]
+    fn test_solve_auto_config() {
+        let mut instance = CvrpInstance::a_n32_k5();
+        instance.distance_metric = DistanceMetric::TspLibEuc2D;
+
+        let (eval, report) = solve_auto_config(&instance, true).unwrap();
+        assert!(eval.total_distance > 0.0);
+        assert!(report.contains("Instance Analysis"));
+        assert!(report.contains("Recommended Configuration"));
+        assert!(report.contains("Engineering Rationale"));
+    }
 }
-

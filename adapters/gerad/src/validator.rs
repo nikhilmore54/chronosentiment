@@ -54,13 +54,19 @@ impl GeradValidator {
 
     fn check_non_empty(&self, raw: &RawGeradDataset) -> Result<(), GeradError> {
         if raw.legs.is_empty() {
-            return Err(GeradError::validation("flights.csv is empty — no flight legs to import"));
+            return Err(GeradError::validation(
+                "flights.csv is empty — no flight legs to import",
+            ));
         }
         if raw.crew.is_empty() {
-            return Err(GeradError::validation("crew.csv is empty — no crew members to import"));
+            return Err(GeradError::validation(
+                "crew.csv is empty — no crew members to import",
+            ));
         }
         if raw.duty_legs.is_empty() {
-            return Err(GeradError::validation("duties.csv is empty — no duty-leg memberships"));
+            return Err(GeradError::validation(
+                "duties.csv is empty — no duty-leg memberships",
+            ));
         }
         if raw.pairing_duties.is_empty() {
             return Err(GeradError::validation(
@@ -159,12 +165,17 @@ impl GeradValidator {
 
     fn check_assignment_refs(&self, raw: &RawGeradDataset) -> Result<(), GeradError> {
         let crew_ids: HashSet<&str> = raw.crew.iter().map(|c| c.crew_id.as_str()).collect();
-        let pairing_ids: HashSet<&str> =
-            raw.pairing_duties.iter().map(|p| p.pairing_id.as_str()).collect();
+        let pairing_ids: HashSet<&str> = raw
+            .pairing_duties
+            .iter()
+            .map(|p| p.pairing_id.as_str())
+            .collect();
 
         for row in &raw.assignments {
             if !crew_ids.contains(row.crew_id.as_str()) {
-                return Err(GeradError::UnknownCrewRef { crew_id: row.crew_id.clone() });
+                return Err(GeradError::UnknownCrewRef {
+                    crew_id: row.crew_id.clone(),
+                });
             }
             if !pairing_ids.contains(row.pairing_id.as_str()) {
                 return Err(GeradError::UnknownPairingRef {

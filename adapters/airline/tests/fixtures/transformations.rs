@@ -1,17 +1,15 @@
 use chrono::Duration;
 use coralys_airline::domain::crew::{CrewId, CrewMember};
-use coralys_airline::domain::duty::{Duty, DutyId, DutyError};
-use coralys_airline::domain::flight::{FlightLeg, FlightLegId, AirportCode};
-use coralys_airline::domain::pairing::{Pairing, PairingId, PairingError};
-use coralys_airline::domain::rotation::{Rotation, RotationId, RotationError};
-use coralys_airline::domain::roster::{Roster, RosterError, RosterId, PlanningPeriod};
+use coralys_airline::domain::duty::{Duty, DutyError, DutyId};
+use coralys_airline::domain::flight::{AirportCode, FlightLeg, FlightLegId};
+use coralys_airline::domain::pairing::{Pairing, PairingError, PairingId};
+use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterError, RosterId};
+use coralys_airline::domain::rotation::{Rotation, RotationError, RotationId};
 
 // tests/fixtures/transformations.rs
 // Immutable transformation utilities for UC‑AIR‑002 tests.
 // Each function takes an existing `Roster` and returns a new `Roster`
 // (or a `TransformationError`).
-
-
 
 /// Simple error wrapper for transformation failures.
 #[derive(Debug)]
@@ -44,9 +42,6 @@ impl From<RotationError> for TransformationError {
     }
 }
 
-
-
-
 /// Helper to clone a roster's data into vectors for reconstruction.
 fn clone_roster_data(roster: &Roster) -> (Vec<FlightLeg>, Vec<Rotation>, Vec<CrewMember>) {
     (
@@ -68,11 +63,7 @@ pub fn reassign_leg(
 }
 
 /// Swap all duties between two crew members (legal).
-pub fn swap_duties(
-    roster: &Roster,
-    a: &CrewId,
-    b: &CrewId,
-) -> Result<Roster, TransformationError> {
+pub fn swap_duties(roster: &Roster, a: &CrewId, b: &CrewId) -> Result<Roster, TransformationError> {
     let mut rotations: Vec<Rotation> = roster.rotations().cloned().collect();
     let idx_a = rotations
         .iter()
@@ -129,8 +120,11 @@ pub fn remove_required_leg(
         if !new_pairings.is_empty() {
             let new_rot = Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings)?;
             new_rotations.push(new_rot);
-        // Debug: show number of remaining rotations after removal
-        println!("DEBUG: after removal, rotations count {}", new_rotations.len());
+            // Debug: show number of remaining rotations after removal
+            println!(
+                "DEBUG: after removal, rotations count {}",
+                new_rotations.len()
+            );
         }
     }
 
@@ -161,11 +155,14 @@ pub fn remove_required_leg(
                 }
             }
         }
-        println!("DEBUG: assignment count for {} after removal: {}", leg_id.as_str(), count);
+        println!(
+            "DEBUG: assignment count for {} after removal: {}",
+            leg_id.as_str(),
+            count
+        );
         Ok(roster_res)
     }
 }
-
 
 /// Assign a crew member that lacks the required qualification (illegal – QualificationRule).
 pub fn assign_unqualified_crew(
@@ -198,44 +195,41 @@ pub fn assign_unqualified_crew(
 }
 
 /// Reduce rest between two consecutive duties below minimum (illegal – MinimumRestRule).
-pub fn reduce_rest(
-    roster: &Roster,
-    crew_id: &CrewId,
-) -> Result<Roster, TransformationError> {
+pub fn reduce_rest(roster: &Roster, crew_id: &CrewId) -> Result<Roster, TransformationError> {
     let mut rotations: Vec<Rotation> = roster.rotations().cloned().collect();
     let rot = rotations
         .iter_mut()
         .find(|r| &r.crew_id == crew_id)
         .ok_or(TransformationError::Custom("crew missing"))?;
     let mut pairings = rot.pairings().to_vec();
-        if let Some(pairing) = pairings.first_mut() {
-            let mut duties = pairing.duties().to_vec();
-            if duties.len() >= 2 {
-                let d1 = duties[0].clone();
-                let d2 = duties[1].clone();
-                let new_start = d1.end() + Duration::minutes(30);
-                let mut new_legs = Vec::new();
-                for leg in d2.legs() {
-                    let duration = leg.scheduled_arrival - leg.scheduled_departure;
-                    let new_leg = FlightLeg::new(
-                        leg.id.clone(),
-                        leg.flight_number.clone(),
-                        leg.origin.clone(),
-                        leg.destination.clone(),
-                        new_start,
-                        new_start + duration,
-                        leg.aircraft_type.clone(),
-                    );
-                    new_legs.push(new_leg);
-                }
-                // Replace the second duty with a new unchecked duty using reduced rest
-                let new_duty = Duty::new(d2.id.clone(), new_legs)
-                    .expect("Failed to create duty with reduced rest");
-                duties[1] = new_duty;
+    if let Some(pairing) = pairings.first_mut() {
+        let mut duties = pairing.duties().to_vec();
+        if duties.len() >= 2 {
+            let d1 = duties[0].clone();
+            let d2 = duties[1].clone();
+            let new_start = d1.end() + Duration::minutes(30);
+            let mut new_legs = Vec::new();
+            for leg in d2.legs() {
+                let duration = leg.scheduled_arrival - leg.scheduled_departure;
+                let new_leg = FlightLeg::new(
+                    leg.id.clone(),
+                    leg.flight_number.clone(),
+                    leg.origin.clone(),
+                    leg.destination.clone(),
+                    new_start,
+                    new_start + duration,
+                    leg.aircraft_type.clone(),
+                );
+                new_legs.push(new_leg);
             }
-            *pairing = Pairing::new(pairing.id.clone(), pairing.base.clone(), duties)?;
+            // Replace the second duty with a new unchecked duty using reduced rest
+            let new_duty = Duty::new(d2.id.clone(), new_legs)
+                .expect("Failed to create duty with reduced rest");
+            duties[1] = new_duty;
         }
-        *rot = Rotation::new(rot.id.clone(), rot.crew_id.clone(), pairings)?;
+        *pairing = Pairing::new(pairing.id.clone(), pairing.base.clone(), duties)?;
+    }
+    *rot = Rotation::new(rot.id.clone(), rot.crew_id.clone(), pairings)?;
     let (legs, _, crew) = clone_roster_data(roster);
     Roster::with_crew(
         roster.id.clone(),

@@ -6,10 +6,12 @@ use chrono::TimeZone;
 use chrono::Utc;
 use coralys_airline::domain::crew::{CrewId, CrewMember, CrewRole, Qualification};
 use coralys_airline::domain::duty::{Duty, DutyId};
-use coralys_airline::domain::flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
+use coralys_airline::domain::flight::{
+    AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
+};
 use coralys_airline::domain::pairing::{Pairing, PairingId};
+use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterId};
 use coralys_airline::domain::rotation::{Rotation, RotationId};
-use coralys_airline::domain::roster::{Roster, RosterId, PlanningPeriod};
 
 /// Helper to create a simple `FlightLeg`.
 fn make_leg(id: &str, origin: &str, dest: &str, dep_h: i64, arr_h: i64) -> FlightLeg {
@@ -31,12 +33,8 @@ fn make_rotation(crew_id: &str) -> Rotation {
     let leg2 = make_leg("L2", "CDG", "LHR", 14, 16);
     let d1 = Duty::new(DutyId::new("D1"), vec![leg1]).unwrap();
     let d2 = Duty::new(DutyId::new("D2"), vec![leg2]).unwrap();
-    let pairing = Pairing::new(
-        PairingId::new("P1"),
-        AirportCode::new("LHR"),
-        vec![d1, d2],
-    )
-    .unwrap();
+    let pairing =
+        Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![d1, d2]).unwrap();
     Rotation::new(
         RotationId::new(format!("R-{crew_id}")),
         CrewId::new(crew_id),
@@ -74,12 +72,8 @@ pub fn canonical_roster() -> Roster {
         vec![duty_out_c1, duty_return_c1],
     )
     .unwrap();
-    let rot_c1 = Rotation::new(
-        RotationId::new("R-C1"),
-        CrewId::new("C1"),
-        vec![pairing_c1],
-    )
-    .unwrap();
+    let rot_c1 =
+        Rotation::new(RotationId::new("R-C1"), CrewId::new("C1"), vec![pairing_c1]).unwrap();
 
     // Crew C2 duties.
     let duty_out_c2 = Duty::new(DutyId::new("D2"), vec![leg_out_c2.clone()]).unwrap();
@@ -90,12 +84,8 @@ pub fn canonical_roster() -> Roster {
         vec![duty_out_c2, duty_return_c2],
     )
     .unwrap();
-    let rot_c2 = Rotation::new(
-        RotationId::new("R-C2"),
-        CrewId::new("C2"),
-        vec![pairing_c2],
-    )
-    .unwrap();
+    let rot_c2 =
+        Rotation::new(RotationId::new("R-C2"), CrewId::new("C2"), vec![pairing_c2]).unwrap();
 
     // All legs for the roster (including return legs).
     let legs = vec![leg_out_c1, leg_return_c1, leg_out_c2, leg_return_c2];
@@ -118,12 +108,7 @@ pub fn canonical_roster() -> Roster {
 pub fn roster_with_one_duty(crew_id: &str) -> Roster {
     let leg = make_leg("L1", "LHR", "CDG", 8, 10);
     let duty = Duty::new(DutyId::new("D1"), vec![leg]).unwrap();
-    let pairing = Pairing::new(
-        PairingId::new("P1"),
-        AirportCode::new("LHR"),
-        vec![duty],
-    )
-    .unwrap();
+    let pairing = Pairing::new(PairingId::new("P1"), AirportCode::new("LHR"), vec![duty]).unwrap();
     let rotation = Rotation::new(
         RotationId::new(format!("R-{crew_id}")),
         CrewId::new(crew_id),

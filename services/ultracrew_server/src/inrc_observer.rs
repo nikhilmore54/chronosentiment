@@ -2,8 +2,5 @@
 // moved to the UltraCrew Solution Adapter (adapters/ultracrew/src/inrc/observer.rs).
 // Re-exported here for backward compatibility with research binaries and existing code.
 pub use ultracrew::inrc::observer::{
-    OBSERVER_ID,
-    InrcScoreComponents,
-    to_inrc_genome,
-    score_inrc_official,
+    InrcScoreComponents, OBSERVER_ID, score_inrc_official, to_inrc_genome,
 };

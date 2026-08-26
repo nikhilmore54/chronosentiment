@@ -46,9 +46,11 @@ pub fn measure_record_from_prices(
         .filter(|p| p.instrument_id.is_none() || p.instrument_id == Some(record.instrument_id))
         .collect();
     known.sort_by(|a, b| {
-        a.effective_from
-            .cmp(&b.effective_from)
-            .then(a.close.partial_cmp(&b.close).unwrap_or(std::cmp::Ordering::Equal))
+        a.effective_from.cmp(&b.effective_from).then(
+            a.close
+                .partial_cmp(&b.close)
+                .unwrap_or(std::cmp::Ordering::Equal),
+        )
     });
 
     let entry = known

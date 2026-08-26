@@ -1,13 +1,16 @@
-use cvrp::{CvrpInstance, CvrpCandidate, RadiusPolicy, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpLocalSearch, CvrpCrossover};
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, LocalSearchOperator, GenomeFactory, CrossoverOperator, ObservedTransitionMetric, RegionIdentifier};
-use coralys_moga::observatory::{ReachabilityProbe, ReachabilityObservation};
-use std::collections::HashSet;
+use coralys_moga::observatory::{ReachabilityObservation, ReachabilityProbe};
+use coralys_moga::traits::{
+    CrossoverOperator, FitnessEvaluator, GenomeFactory, LocalSearchOperator, MutationOperator,
+    ObservedTransitionMetric, RegionIdentifier,
+};
+use cvrp::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpCandidate, CvrpGenomeFactory, CvrpInstance, RadiusPolicy};
+use rand::Rng;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
-use rand::Rng;
-use std::hash::{Hash, Hasher};
+use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 
 pub struct CvrpPartitionMetric {
@@ -38,15 +41,17 @@ impl ObservedTransitionMetric<CvrpCandidate> for CvrpPartitionMetric {
     fn magnitude(&self, source: &CvrpCandidate, result_after_repair: &CvrpCandidate) -> f64 {
         let routes1 = decode_routes(source, &self.instance);
         let routes2 = decode_routes(result_after_repair, &self.instance);
-        
+
         let mut r2_matched = vec![false; routes2.len()];
         let mut total_intersection = 0;
-        
+
         for r1 in &routes1 {
             let mut best_match = None;
             let mut best_inter = 0;
             for (i, r2) in routes2.iter().enumerate() {
-                if r2_matched[i] { continue; }
+                if r2_matched[i] {
+                    continue;
+                }
                 let inter = r1.iter().filter(|x| r2.contains(x)).count();
                 if inter > best_inter {
                     best_inter = inter;
@@ -58,7 +63,7 @@ impl ObservedTransitionMetric<CvrpCandidate> for CvrpPartitionMetric {
                 total_intersection += best_inter;
             }
         }
-        
+
         let total_customers = routes1.iter().map(|r| r.len()).sum::<usize>();
         (total_customers - total_intersection) as f64
     }
@@ -72,7 +77,7 @@ impl ObservedTransitionMetric<CvrpCandidate> for CvrpEdgeMetric {
     fn magnitude(&self, source: &CvrpCandidate, result_after_repair: &CvrpCandidate) -> f64 {
         let routes1 = decode_routes(source, &self.instance);
         let routes2 = decode_routes(result_after_repair, &self.instance);
-        
+
         let mut edges1 = HashSet::new();
         for r in &routes1 {
             let mut prev = 0; // Depot
@@ -85,7 +90,7 @@ impl ObservedTransitionMetric<CvrpCandidate> for CvrpEdgeMetric {
             // Actually, instance customers are 0 to N-1. Depot is separate.
             // Let's just use raw consecutive indices for edges.
         }
-        
+
         // Let's refine edge extraction:
         let get_edges = |routes: &Vec<Vec<usize>>| -> HashSet<(usize, usize)> {
             let mut edges = HashSet::new();
@@ -96,15 +101,19 @@ impl ObservedTransitionMetric<CvrpCandidate> for CvrpEdgeMetric {
                     edges.insert(e);
                     prev = c;
                 }
-                let e = if prev < usize::MAX { (prev, usize::MAX) } else { (usize::MAX, prev) };
+                let e = if prev < usize::MAX {
+                    (prev, usize::MAX)
+                } else {
+                    (usize::MAX, prev)
+                };
                 edges.insert(e);
             }
             edges
         };
-        
+
         let e1 = get_edges(&routes1);
         let e2 = get_edges(&routes2);
-        
+
         // Edge magnitude is number of edges in e2 NOT in e1
         e2.difference(&e1).count() as f64
     }
@@ -119,7 +128,8 @@ impl RegionIdentifier<CvrpCandidate> for CvrpRegionIdentifier {
 
     fn region_of(&self, state: &CvrpCandidate) -> Self::RegionId {
         let routes = decode_routes(state, &self.instance);
-        let mut partitioned_sets: Vec<Vec<usize>> = routes.iter()
+        let mut partitioned_sets: Vec<Vec<usize>> = routes
+            .iter()
             .map(|r| {
                 let mut sorted = r.clone();
                 sorted.sort();
@@ -143,20 +153,37 @@ fn flatten_routes(routes: Vec<Vec<usize>>) -> Vec<usize> {
 
 fn main() {
     let instance = CvrpInstance::a_n32_k5();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    let ls = CvrpLocalSearch { instance: instance.clone() };
+    let ls = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
     let crossover = CvrpCrossover;
     let random_mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    
-    let partition_metric = CvrpPartitionMetric { instance: instance.clone() };
-    let edge_metric = CvrpEdgeMetric { instance: instance.clone() };
-    let region_id = CvrpRegionIdentifier { instance: instance.clone() };
-    
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+
+    let partition_metric = CvrpPartitionMetric {
+        instance: instance.clone(),
+    };
+    let edge_metric = CvrpEdgeMetric {
+        instance: instance.clone(),
+    };
+    let region_id = CvrpRegionIdentifier {
+        instance: instance.clone(),
+    };
+
     let probe_ls = |cand: &mut cvrp::CvrpCandidate| {
-        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
+        let model = cvrp::moga_impl::CvrpConstraintModel {
+            instance: instance.clone(),
+        };
+        let budget = coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        };
         coralys_core::operators::ImprovementOperator::improve(&ls, cand, &model, &budget).unwrap();
     };
     let probe = ReachabilityProbe::new(
@@ -164,38 +191,47 @@ fn main() {
         probe_ls,
         &partition_metric,
         &region_id,
-        100000.0 - 810.0
+        100000.0 - 810.0,
     );
-    
+
     println!("Collecting Parents...");
     let mut elite_pool = Vec::new();
     let mut good_pool = Vec::new();
     let mut root_cand = factory.create(&mut rng);
     let mut root_dist = f64::MAX;
-    
+
     let mut curr_cand = factory.create(&mut rng);
     for _ in 0..5000 {
         let mut child = curr_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-        coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
-        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let model = cvrp::moga_impl::CvrpConstraintModel {
+            instance: instance.clone(),
+        };
+        let budget = coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        };
+        coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget)
+            .unwrap();
+        let eval = evaluator.evaluate(
+            &child,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
         let d = eval.eval.total_distance;
-        
+
         if d <= 810.0 {
             elite_pool.push(child.clone());
         } else if d <= 850.0 {
             good_pool.push(child.clone());
         }
-        
+
         if d < root_dist {
             root_dist = d;
             root_cand = child.clone();
         }
         curr_cand = child;
     }
-    
+
     let root_region = region_id.region_of(&root_cand);
     let root_fitness = 100000.0 - root_dist;
     println!("Root Distance: {}", root_dist);
@@ -208,26 +244,33 @@ fn main() {
     let mut evaluate_child = |child: &mut CvrpCandidate, level: &str| {
         let obs = probe.evaluate_transition(&root_cand, child, root_fitness, &root_region);
         let edge_dist = edge_metric.magnitude(&root_cand, child);
-        
+
         let dist = 100000.0 - obs.s2_fitness;
         let delta = dist - root_dist;
-        
+
         writeln!(
-            file, "{},{},{},{},{},{},{}", 
-            level, 
-            obs.raw_magnitude, 
-            edge_dist, 
-            dist, 
-            delta, 
+            file,
+            "{},{},{},{},{},{},{}",
+            level,
+            obs.raw_magnitude,
+            edge_dist,
+            dist,
+            delta,
             obs.retained_elite,
             obs.discovered_new_region
-        ).unwrap();
+        )
+        .unwrap();
     };
 
     println!("Running L0: Intra-Route Swap");
     for _ in 0..num_samples {
         let mut routes = root_routes.clone();
-        let valid_routes: Vec<usize> = routes.iter().enumerate().filter(|(_, r)| r.len() >= 2).map(|(i, _)| i).collect();
+        let valid_routes: Vec<usize> = routes
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.len() >= 2)
+            .map(|(i, _)| i)
+            .collect();
         if !valid_routes.is_empty() {
             let r_idx = *valid_routes.choose(&mut rng).unwrap();
             let n = routes[r_idx].len();
@@ -247,12 +290,18 @@ fn main() {
         let mut r2 = rng.gen_range(0..routes.len());
         while r2 == r1 || routes[r1].is_empty() {
             r2 = rng.gen_range(0..routes.len());
-            if routes.iter().all(|r| r.is_empty()) { break; }
+            if routes.iter().all(|r| r.is_empty()) {
+                break;
+            }
         }
         if !routes[r1].is_empty() {
             let i = rng.gen_range(0..routes[r1].len());
             let c = routes[r1].remove(i);
-            let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
+            let j = if routes[r2].is_empty() {
+                0
+            } else {
+                rng.gen_range(0..=routes[r2].len())
+            };
             routes[r2].insert(j, c);
             let mut child = root_cand.clone();
             child.permutation = flatten_routes(routes);
@@ -268,12 +317,18 @@ fn main() {
             let mut r2 = rng.gen_range(0..routes.len());
             while r2 == r1 || routes[r1].is_empty() {
                 r2 = rng.gen_range(0..routes.len());
-                if routes.iter().all(|r| r.is_empty()) { break; }
+                if routes.iter().all(|r| r.is_empty()) {
+                    break;
+                }
             }
             if !routes[r1].is_empty() {
                 let i = rng.gen_range(0..routes[r1].len());
                 let c = routes[r1].remove(i);
-                let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
+                let j = if routes[r2].is_empty() {
+                    0
+                } else {
+                    rng.gen_range(0..=routes[r2].len())
+                };
                 routes[r2].insert(j, c);
             }
         }
@@ -285,23 +340,34 @@ fn main() {
     println!("Running L3: Segment Exchange");
     for _ in 0..num_samples {
         let mut routes = root_routes.clone();
-        let valid: Vec<usize> = routes.iter().enumerate().filter(|(_, r)| r.len() >= 2).map(|(i, _)| i).collect();
+        let valid: Vec<usize> = routes
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.len() >= 2)
+            .map(|(i, _)| i)
+            .collect();
         if !valid.is_empty() {
             let r1 = *valid.choose(&mut rng).unwrap();
             let mut r2 = rng.gen_range(0..routes.len());
-            while r2 == r1 { r2 = rng.gen_range(0..routes.len()); }
-            
+            while r2 == r1 {
+                r2 = rng.gen_range(0..routes.len());
+            }
+
             let n = routes[r1].len();
             let len = rng.gen_range(2..=std::cmp::min(4, n));
             let start = rng.gen_range(0..=(n - len));
-            
-            let segment: Vec<usize> = routes[r1].drain(start..start+len).collect();
-            let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
-            
+
+            let segment: Vec<usize> = routes[r1].drain(start..start + len).collect();
+            let j = if routes[r2].is_empty() {
+                0
+            } else {
+                rng.gen_range(0..=routes[r2].len())
+            };
+
             for (k, &c) in segment.iter().enumerate() {
                 routes[r2].insert(j + k, c);
             }
-            
+
             let mut child = root_cand.clone();
             child.permutation = flatten_routes(routes);
             evaluate_child(&mut child, "L3");
@@ -330,6 +396,6 @@ fn main() {
         let (mut c1, _) = crossover.crossover(&root_cand, &p2, &mut rng);
         evaluate_child(&mut c1, "L4C");
     }
-    
+
     println!("Atlas Construction Complete.");
 }

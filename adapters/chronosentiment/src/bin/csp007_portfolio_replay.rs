@@ -65,10 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if CORALYS_EXEC_ARTIFACT_HASH
         != "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
     {
-        return Err(format!(
-            "coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
-        )
-        .into());
+        return Err(format!("coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}").into());
     }
 
     // ── Load Yahoo bar cache ──────────────────────────────────────────────────
@@ -161,7 +158,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== P.E.2 ARM ===");
     println!("  contract={}", c.pe2_arm.execution_contract);
     println!("  positions={}", c.pe2_arm.n_positions_opened);
-    println!("  TARGET={} STOP={} HORIZON={}", c.pe2_arm.n_target, c.pe2_arm.n_stop, c.pe2_arm.n_horizon);
+    println!(
+        "  TARGET={} STOP={} HORIZON={}",
+        c.pe2_arm.n_target, c.pe2_arm.n_stop, c.pe2_arm.n_horizon
+    );
     println!("  final_value={:.2}", c.pe2_arm.final_portfolio_value_inr);
     println!("  total_return={:+.2}%", c.pe2_arm.total_return_pct * 100.0);
     println!("  realized_pnl={:+.2}", c.pe2_arm.total_realized_pnl_inr);
@@ -173,11 +173,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== CORALYS V0 ARM ===");
     println!("  contract={}", c.coralys_arm.execution_contract);
     println!("  positions={}", c.coralys_arm.n_positions_opened);
-    println!("  TARGET={} STOP={} HORIZON={}", c.coralys_arm.n_target, c.coralys_arm.n_stop, c.coralys_arm.n_horizon);
-    println!("  final_value={:.2}", c.coralys_arm.final_portfolio_value_inr);
-    println!("  total_return={:+.2}%", c.coralys_arm.total_return_pct * 100.0);
-    println!("  realized_pnl={:+.2}", c.coralys_arm.total_realized_pnl_inr);
-    println!("  max_drawdown={:.2}%", c.coralys_arm.max_drawdown_pct * 100.0);
+    println!(
+        "  TARGET={} STOP={} HORIZON={}",
+        c.coralys_arm.n_target, c.coralys_arm.n_stop, c.coralys_arm.n_horizon
+    );
+    println!(
+        "  final_value={:.2}",
+        c.coralys_arm.final_portfolio_value_inr
+    );
+    println!(
+        "  total_return={:+.2}%",
+        c.coralys_arm.total_return_pct * 100.0
+    );
+    println!(
+        "  realized_pnl={:+.2}",
+        c.coralys_arm.total_realized_pnl_inr
+    );
+    println!(
+        "  max_drawdown={:.2}%",
+        c.coralys_arm.max_drawdown_pct * 100.0
+    );
     if let Some(avg) = c.coralys_arm.avg_holding_sessions {
         println!("  avg_hold={:.1} sessions", avg);
     }
@@ -200,32 +215,89 @@ fn render_portfolio_report(
     md.push_str("**Does not:** modify C3-002, modify coralys-exec-v0, touch P.E.2 or P.E.3-B archives  \n\n");
     md.push_str("## Setup\n\n");
     md.push_str(&format!("- Certified T: {}\n", ledger.certified_t));
-    md.push_str(&format!("- Initial capital: Rs.{:.2}\n", ledger.initial_capital_inr));
-    md.push_str(&format!("- C3-002 artifact: `{}`\n", ledger.c3_002_artifact_hash));
-    md.push_str(&format!("- Coralys artifact: `{}`\n\n", ledger.coralys_artifact_hash));
+    md.push_str(&format!(
+        "- Initial capital: Rs.{:.2}\n",
+        ledger.initial_capital_inr
+    ));
+    md.push_str(&format!(
+        "- C3-002 artifact: `{}`\n",
+        ledger.c3_002_artifact_hash
+    ));
+    md.push_str(&format!(
+        "- Coralys artifact: `{}`\n\n",
+        ledger.coralys_artifact_hash
+    ));
     md.push_str("## P.E.2 Arm (fixed +5%, no stop)\n\n");
     md.push_str(&format!("- Contract: `{}`\n", c.pe2_arm.execution_contract));
-    md.push_str(&format!("- Positions opened: {}\n", c.pe2_arm.n_positions_opened));
-    md.push_str(&format!("- TARGET: {} | STOP: {} | HORIZON: {} | AMBIGUOUS: {}\n",
-        c.pe2_arm.n_target, c.pe2_arm.n_stop, c.pe2_arm.n_horizon, c.pe2_arm.n_ambiguous));
-    md.push_str(&format!("- Final portfolio value: Rs.{:.2}\n", c.pe2_arm.final_portfolio_value_inr));
-    md.push_str(&format!("- Total return: {:+.2}%\n", c.pe2_arm.total_return_pct * 100.0));
-    md.push_str(&format!("- Realized P&L: Rs.{:+.2}\n", c.pe2_arm.total_realized_pnl_inr));
-    md.push_str(&format!("- Unrealized P&L: Rs.{:+.2}\n", c.pe2_arm.total_unrealized_pnl_inr));
-    md.push_str(&format!("- Max drawdown: {:.2}% (Rs.{:.2})\n", c.pe2_arm.max_drawdown_pct * 100.0, c.pe2_arm.max_drawdown_inr));
+    md.push_str(&format!(
+        "- Positions opened: {}\n",
+        c.pe2_arm.n_positions_opened
+    ));
+    md.push_str(&format!(
+        "- TARGET: {} | STOP: {} | HORIZON: {} | AMBIGUOUS: {}\n",
+        c.pe2_arm.n_target, c.pe2_arm.n_stop, c.pe2_arm.n_horizon, c.pe2_arm.n_ambiguous
+    ));
+    md.push_str(&format!(
+        "- Final portfolio value: Rs.{:.2}\n",
+        c.pe2_arm.final_portfolio_value_inr
+    ));
+    md.push_str(&format!(
+        "- Total return: {:+.2}%\n",
+        c.pe2_arm.total_return_pct * 100.0
+    ));
+    md.push_str(&format!(
+        "- Realized P&L: Rs.{:+.2}\n",
+        c.pe2_arm.total_realized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "- Unrealized P&L: Rs.{:+.2}\n",
+        c.pe2_arm.total_unrealized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "- Max drawdown: {:.2}% (Rs.{:.2})\n",
+        c.pe2_arm.max_drawdown_pct * 100.0,
+        c.pe2_arm.max_drawdown_inr
+    ));
     if let Some(avg) = c.pe2_arm.avg_holding_sessions {
         md.push_str(&format!("- Avg holding: {:.1} sessions\n", avg));
     }
     md.push_str("\n## Coralys v0 Arm (ATR/TMV target + enforced stop)\n\n");
-    md.push_str(&format!("- Contract: `{}`\n", c.coralys_arm.execution_contract));
-    md.push_str(&format!("- Positions opened: {}\n", c.coralys_arm.n_positions_opened));
-    md.push_str(&format!("- TARGET: {} | STOP: {} | HORIZON: {} | AMBIGUOUS: {}\n",
-        c.coralys_arm.n_target, c.coralys_arm.n_stop, c.coralys_arm.n_horizon, c.coralys_arm.n_ambiguous));
-    md.push_str(&format!("- Final portfolio value: Rs.{:.2}\n", c.coralys_arm.final_portfolio_value_inr));
-    md.push_str(&format!("- Total return: {:+.2}%\n", c.coralys_arm.total_return_pct * 100.0));
-    md.push_str(&format!("- Realized P&L: Rs.{:+.2}\n", c.coralys_arm.total_realized_pnl_inr));
-    md.push_str(&format!("- Unrealized P&L: Rs.{:+.2}\n", c.coralys_arm.total_unrealized_pnl_inr));
-    md.push_str(&format!("- Max drawdown: {:.2}% (Rs.{:.2})\n", c.coralys_arm.max_drawdown_pct * 100.0, c.coralys_arm.max_drawdown_inr));
+    md.push_str(&format!(
+        "- Contract: `{}`\n",
+        c.coralys_arm.execution_contract
+    ));
+    md.push_str(&format!(
+        "- Positions opened: {}\n",
+        c.coralys_arm.n_positions_opened
+    ));
+    md.push_str(&format!(
+        "- TARGET: {} | STOP: {} | HORIZON: {} | AMBIGUOUS: {}\n",
+        c.coralys_arm.n_target,
+        c.coralys_arm.n_stop,
+        c.coralys_arm.n_horizon,
+        c.coralys_arm.n_ambiguous
+    ));
+    md.push_str(&format!(
+        "- Final portfolio value: Rs.{:.2}\n",
+        c.coralys_arm.final_portfolio_value_inr
+    ));
+    md.push_str(&format!(
+        "- Total return: {:+.2}%\n",
+        c.coralys_arm.total_return_pct * 100.0
+    ));
+    md.push_str(&format!(
+        "- Realized P&L: Rs.{:+.2}\n",
+        c.coralys_arm.total_realized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "- Unrealized P&L: Rs.{:+.2}\n",
+        c.coralys_arm.total_unrealized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "- Max drawdown: {:.2}% (Rs.{:.2})\n",
+        c.coralys_arm.max_drawdown_pct * 100.0,
+        c.coralys_arm.max_drawdown_inr
+    ));
     if let Some(avg) = c.coralys_arm.avg_holding_sessions {
         md.push_str(&format!("- Avg holding: {:.1} sessions\n", avg));
     }

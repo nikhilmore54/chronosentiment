@@ -1,3 +1,4 @@
+pub mod execution_certificate;
 /// Coralys Qualification Subsystem — CVRP adapter
 ///
 /// Implements the Feasibility Certification Framework (GOV-009) and
@@ -13,41 +14,20 @@
 ///   use cvrp::qualification::feasibility::{run_pre_optimization_fcf_with_fc3, BenchmarkMeta};
 ///   use cvrp::qualification::fleet_utilization::FleetUtilizationCertificate;
 ///   use cvrp::qualification::execution_certificate::{ExecutionCertificate, CertificateInput};
-
 pub mod feasibility;
 pub mod fleet_semantics;
 pub mod fleet_utilization;
-pub mod execution_certificate;
 
 pub use feasibility::{
-    FcResult,
-    FeasibilityStatus,
-    FeasibilityCertificate,
-    CapacityCertificate,
-    BinPackResult,
-    BenchmarkMeta,
-    run_pre_optimization_fcf,
-    run_pre_optimization_fcf_with_fc3,
-    fc1_structural,
-    fc2_5_benchmark,
-    fc2_capacity,
-    fc3_bin_pack_ffd,
+    BenchmarkMeta, BinPackResult, CapacityCertificate, FcResult, FeasibilityCertificate,
+    FeasibilityStatus, fc1_structural, fc2_5_benchmark, fc2_capacity, fc3_bin_pack_ffd,
+    run_pre_optimization_fcf, run_pre_optimization_fcf_with_fc3,
 };
 
-pub use fleet_utilization::{
-    FleetUtilizationCertificate,
-    PackingClassification,
-    RouteLoad,
-};
+pub use fleet_utilization::{FleetUtilizationCertificate, PackingClassification, RouteLoad};
 
 pub use fleet_semantics::{
-    FleetConstraint,
-    FleetSemanticCheck,
-    FleetSemanticOutcome,
-    FamilyFleetSemantics,
-    FamilyFleetConstraintType,
-    FamilyFleetEvidenceLevel,
-    derive_fleet_constraint,
-    get_family_fleet_semantics,
-    family_fleet_semantics_registry,
+    FamilyFleetConstraintType, FamilyFleetEvidenceLevel, FamilyFleetSemantics, FleetConstraint,
+    FleetSemanticCheck, FleetSemanticOutcome, derive_fleet_constraint,
+    family_fleet_semantics_registry, get_family_fleet_semantics,
 };

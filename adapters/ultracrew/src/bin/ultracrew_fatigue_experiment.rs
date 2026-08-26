@@ -4,6 +4,9 @@
 
 use std::collections::HashMap;
 
+use serde_json::json;
+use serde_json::Value;
+use std::process::Command;
 use ultracrew::config::fatigue_config::FatigueConfig;
 use ultracrew::constraint_engine::DomainConstraintEvaluator;
 use ultracrew::constraint_engine::InrcConstraintEvaluator;
@@ -11,9 +14,6 @@ use ultracrew::models::Skill;
 use ultracrew::models::{Shift, Worker};
 use ultracrew::optimization::ScheduleGenome;
 use ultracrew::public_contracts::ScheduleRequest;
-use std::process::Command;
-use serde_json::json;
-use serde_json::Value;
 
 fn build_request(
     fatigue_hours: f64,
@@ -71,7 +71,10 @@ fn record_metadata(scenario_id: &str, seed: usize, arm: &str, fatigue_weight: f6
         .output()
         .expect("Failed to get git commit")
         .stdout;
-    let git_commit = String::from_utf8(git_commit).unwrap_or_default().trim().to_string();
+    let git_commit = String::from_utf8(git_commit)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
 
     // Git dirty status
     let status_output = Command::new("git")
@@ -79,7 +82,10 @@ fn record_metadata(scenario_id: &str, seed: usize, arm: &str, fatigue_weight: f6
         .output()
         .expect("Failed to get git status")
         .stdout;
-    let git_dirty = !String::from_utf8(status_output).unwrap_or_default().trim().is_empty();
+    let git_dirty = !String::from_utf8(status_output)
+        .unwrap_or_default()
+        .trim()
+        .is_empty();
 
     // Toolchain versions
     let rustc_version = String::from_utf8(
@@ -156,13 +162,17 @@ fn main() {
 
     for seed in seeds {
         // Arm A: fatigue disabled (control)
-        let cfg_a = FatigueConfig { enable_fatigue: false, fatigue_weight: 0.0 };
+        let cfg_a = FatigueConfig {
+            enable_fatigue: false,
+            fatigue_weight: 0.0,
+        };
         let (req_a, _) = build_request(0.0, 0, cfg_a.clone());
         let ctx_a = req_a.to_context();
         let hist_fatigue_off = ctx_a.ecology.get_historical_fatigue(1);
         let sc2_penalty_off = 0.0;
         let metadata_a = record_metadata("M2A", seed, "A", 0.0);
-        println!("M2A\t{}\tA\t0.0\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
+        println!(
+            "M2A\t{}\tA\t0.0\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
             seed,
             hist_fatigue_off,
             hist_fatigue_off,
@@ -173,7 +183,10 @@ fn main() {
         );
 
         // Arm B: fatigue enabled with configured default weight
-        let cfg_b = FatigueConfig { enable_fatigue: true, fatigue_weight: default_weight };
+        let cfg_b = FatigueConfig {
+            enable_fatigue: true,
+            fatigue_weight: default_weight,
+        };
         let (req_b, _) = build_request(40.0, 0, cfg_b.clone());
         let ctx_b = req_b.to_context();
         let hist_fatigue_on = ctx_b.ecology.get_historical_fatigue(1);
@@ -182,7 +195,8 @@ fn main() {
         let sc2_penalty_on = report_b.fatigue_penalty;
         let sc2_delta = sc2_penalty_on - sc2_penalty_off;
         let metadata_b = record_metadata("M2A", seed, "B", default_weight);
-        println!("M2A\t{}\tB\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
+        println!(
+            "M2A\t{}\tB\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
             seed,
             default_weight,
             hist_fatigue_off,
@@ -195,7 +209,10 @@ fn main() {
 
         // Arm C: swept weights
         for &wt in &[0.25_f64, 0.50, 1.0, 2.0] {
-            let cfg_c = FatigueConfig { enable_fatigue: true, fatigue_weight: wt };
+            let cfg_c = FatigueConfig {
+                enable_fatigue: true,
+                fatigue_weight: wt,
+            };
             let (req_c, _) = build_request(40.0, 0, cfg_c.clone());
             let ctx_c = req_c.to_context();
             let hist_fatigue_c = ctx_c.ecology.get_historical_fatigue(1);
@@ -204,7 +221,8 @@ fn main() {
             let sc2_penalty_c = report_c.fatigue_penalty;
             let delta_c = sc2_penalty_c - sc2_penalty_off;
             let metadata_c = record_metadata("M2A", seed, "C", wt);
-            println!("M2A\t{}\tC\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
+            println!(
+                "M2A\t{}\tC\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{:.4}\t{}",
                 seed,
                 wt,
                 hist_fatigue_off,

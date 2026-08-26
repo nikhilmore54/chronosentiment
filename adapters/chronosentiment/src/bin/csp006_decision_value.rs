@@ -34,7 +34,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to score an artifact that is not Search #1".into());
     }
 
-    let rec_path = search_dir.join("recommendations").join("recommendations.json");
+    let rec_path = search_dir
+        .join("recommendations")
+        .join("recommendations.json");
     let recommendations: Vec<RecommendationRow> =
         serde_json::from_str(&fs::read_to_string(rec_path)?)?;
     if recommendations.len() != 273 {

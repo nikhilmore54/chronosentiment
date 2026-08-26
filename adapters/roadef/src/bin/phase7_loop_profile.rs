@@ -123,7 +123,10 @@ fn main() {
     };
 
     let init_pop = generate_gen0_population(&factory, &fitness_eval, Some(seed), POPULATION_SIZE);
-    eprintln!("Gen-0 IFR  : {:.4}", init_pop.genomes.len() as f64 / POPULATION_SIZE as f64);
+    eprintln!(
+        "Gen-0 IFR  : {:.4}",
+        init_pop.genomes.len() as f64 / POPULATION_SIZE as f64
+    );
 
     let mutator = RoadefMutator {
         node_ids: node_ids.clone(),
@@ -186,8 +189,14 @@ fn main() {
         let non_eval_ms = g.generation_runtime_ms - g.evaluation_runtime_ms;
         let l1_total_ms = g.cache_lookup_ms + g.cache_hit_materialize_ms + g.cache_insert_ms;
         let unattributed_ms = non_eval_ms - l1_total_ms;
-        let attributed_ms = g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms
-            + g.sort_ms + g.selection_ms + g.feasibility_ms + g.staging_ms;
+        let attributed_ms = g.crossover_ms
+            + g.mutation_ms
+            + g.repair_ms
+            + g.improve_ms
+            + g.sort_ms
+            + g.selection_ms
+            + g.feasibility_ms
+            + g.staging_ms;
         let rayon_residual_ms = unattributed_ms - attributed_ms;
         println!(
             "{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
@@ -249,11 +258,22 @@ fn main() {
     let selection_vec: Vec<f64> = traj.iter().map(|g| g.selection_ms).collect();
     let feasibility_vec: Vec<f64> = traj.iter().map(|g| g.feasibility_ms).collect();
     let staging_vec: Vec<f64> = traj.iter().map(|g| g.staging_ms).collect();
-    let attributed_vec: Vec<f64> = traj.iter().map(|g| {
-        g.crossover_ms + g.mutation_ms + g.repair_ms + g.improve_ms
-            + g.sort_ms + g.selection_ms + g.feasibility_ms + g.staging_ms
-    }).collect();
-    let rayon_residual_vec: Vec<f64> = unattributed_vec.iter().zip(attributed_vec.iter())
+    let attributed_vec: Vec<f64> = traj
+        .iter()
+        .map(|g| {
+            g.crossover_ms
+                + g.mutation_ms
+                + g.repair_ms
+                + g.improve_ms
+                + g.sort_ms
+                + g.selection_ms
+                + g.feasibility_ms
+                + g.staging_ms
+        })
+        .collect();
+    let rayon_residual_vec: Vec<f64> = unattributed_vec
+        .iter()
+        .zip(attributed_vec.iter())
         .map(|(u, a)| u - a)
         .collect();
 
@@ -277,7 +297,10 @@ fn main() {
     let total_rayon_residual_ms: f64 = rayon_residual_vec.iter().sum();
 
     eprintln!();
-    eprintln!("=== Phase 8 Operator Attribution Summary: {} generations on {} ===", generation_limit, instance_name);
+    eprintln!(
+        "=== Phase 8 Operator Attribution Summary: {} generations on {} ===",
+        generation_limit, instance_name
+    );
     eprintln!();
     eprintln!("Run result:");
     eprintln!("  best_obj        : {:.10}", result.best_obj);
@@ -285,37 +308,138 @@ fn main() {
     eprintln!("  generations_run : {}", result.generations_run);
     eprintln!("  wall_clock_ms   : {}", wall_ms);
     eprintln!();
-    eprintln!("Component breakdown (totals across {} generations):", generation_limit);
+    eprintln!(
+        "Component breakdown (totals across {} generations):",
+        generation_limit
+    );
     eprintln!();
-    eprintln!("  {:35} {:>12}  {:>7}  {:>10}  {:>10}",
-        "Component", "Total (ms)", "% wall", "Mean/gen", "Stddev");
+    eprintln!(
+        "  {:35} {:>12}  {:>7}  {:>10}  {:>10}",
+        "Component", "Total (ms)", "% wall", "Mean/gen", "Stddev"
+    );
     eprintln!("  {}", "-".repeat(80));
 
     let row = |label: &str, total: f64, mean_v: f64, sd: f64| {
-        eprintln!("  {:35} {:>12.1}  {:>6.1}%  {:>10.1}  {:>10.1}",
-            label, total, pct(total, wall_ms as f64), mean_v, sd);
+        eprintln!(
+            "  {:35} {:>12.1}  {:>6.1}%  {:>10.1}  {:>10.1}",
+            label,
+            total,
+            pct(total, wall_ms as f64),
+            mean_v,
+            sd
+        );
     };
 
-    row("Wall-clock (total)", wall_ms as f64, wall_ms as f64 / n, 0.0);
-    row("  Eval (Phase B parallel)", total_eval_ms, mean(&eval_ms_vec), stddev(&eval_ms_vec));
-    row("  Non-eval overhead", total_non_eval_ms, mean(&non_eval_ms_vec), stddev(&non_eval_ms_vec));
-    row("    L1 cache lookup", total_l1_lookup_ms, mean(&l1_lookup_vec), stddev(&l1_lookup_vec));
-    row("    L1 cache materialize", total_l1_mat_ms, mean(&l1_mat_vec), stddev(&l1_mat_vec));
-    row("    L1 cache insert", total_l1_ins_ms, mean(&l1_ins_vec), stddev(&l1_ins_vec));
-    row("    L1 cache total", total_l1_total_ms, mean(&l1_total_vec), stddev(&l1_total_vec));
-    row("    Unattributed overhead", total_unattributed_ms, mean(&unattributed_vec), stddev(&unattributed_vec));
+    row(
+        "Wall-clock (total)",
+        wall_ms as f64,
+        wall_ms as f64 / n,
+        0.0,
+    );
+    row(
+        "  Eval (Phase B parallel)",
+        total_eval_ms,
+        mean(&eval_ms_vec),
+        stddev(&eval_ms_vec),
+    );
+    row(
+        "  Non-eval overhead",
+        total_non_eval_ms,
+        mean(&non_eval_ms_vec),
+        stddev(&non_eval_ms_vec),
+    );
+    row(
+        "    L1 cache lookup",
+        total_l1_lookup_ms,
+        mean(&l1_lookup_vec),
+        stddev(&l1_lookup_vec),
+    );
+    row(
+        "    L1 cache materialize",
+        total_l1_mat_ms,
+        mean(&l1_mat_vec),
+        stddev(&l1_mat_vec),
+    );
+    row(
+        "    L1 cache insert",
+        total_l1_ins_ms,
+        mean(&l1_ins_vec),
+        stddev(&l1_ins_vec),
+    );
+    row(
+        "    L1 cache total",
+        total_l1_total_ms,
+        mean(&l1_total_vec),
+        stddev(&l1_total_vec),
+    );
+    row(
+        "    Unattributed overhead",
+        total_unattributed_ms,
+        mean(&unattributed_vec),
+        stddev(&unattributed_vec),
+    );
     eprintln!("  {}", "-".repeat(80));
     eprintln!("  Phase 8 operator breakdown (subset of unattributed):");
-    row("    Crossover", total_crossover_ms, mean(&crossover_vec), stddev(&crossover_vec));
-    row("    Mutation", total_mutation_ms, mean(&mutation_vec), stddev(&mutation_vec));
-    row("    Repair (process_offspring)", total_repair_ms, mean(&repair_vec), stddev(&repair_vec));
-    row("    Improve (process_offspring)", total_improve_ms, mean(&improve_vec), stddev(&improve_vec));
-    row("    Sort", total_sort_ms, mean(&sort_vec), stddev(&sort_vec));
-    row("    Selection", total_selection_ms, mean(&selection_vec), stddev(&selection_vec));
-    row("    Feasibility check", total_feasibility_ms, mean(&feasibility_vec), stddev(&feasibility_vec));
-    row("    Staging overhead", total_staging_ms, mean(&staging_vec), stddev(&staging_vec));
-    row("    Attributed total", total_attributed_ms, mean(&attributed_vec), stddev(&attributed_vec));
-    row("    Rayon residual", total_rayon_residual_ms, mean(&rayon_residual_vec), stddev(&rayon_residual_vec));
+    row(
+        "    Crossover",
+        total_crossover_ms,
+        mean(&crossover_vec),
+        stddev(&crossover_vec),
+    );
+    row(
+        "    Mutation",
+        total_mutation_ms,
+        mean(&mutation_vec),
+        stddev(&mutation_vec),
+    );
+    row(
+        "    Repair (process_offspring)",
+        total_repair_ms,
+        mean(&repair_vec),
+        stddev(&repair_vec),
+    );
+    row(
+        "    Improve (process_offspring)",
+        total_improve_ms,
+        mean(&improve_vec),
+        stddev(&improve_vec),
+    );
+    row(
+        "    Sort",
+        total_sort_ms,
+        mean(&sort_vec),
+        stddev(&sort_vec),
+    );
+    row(
+        "    Selection",
+        total_selection_ms,
+        mean(&selection_vec),
+        stddev(&selection_vec),
+    );
+    row(
+        "    Feasibility check",
+        total_feasibility_ms,
+        mean(&feasibility_vec),
+        stddev(&feasibility_vec),
+    );
+    row(
+        "    Staging overhead",
+        total_staging_ms,
+        mean(&staging_vec),
+        stddev(&staging_vec),
+    );
+    row(
+        "    Attributed total",
+        total_attributed_ms,
+        mean(&attributed_vec),
+        stddev(&attributed_vec),
+    );
+    row(
+        "    Rayon residual",
+        total_rayon_residual_ms,
+        mean(&rayon_residual_vec),
+        stddev(&rayon_residual_vec),
+    );
 
     eprintln!();
     let attribution_pct = if total_unattributed_ms > 0.0 {
@@ -323,7 +447,10 @@ fn main() {
     } else {
         0.0
     };
-    eprintln!("Phase 8 attribution gate: attributed_ms / unattributed_ms = {:.1}%", attribution_pct);
+    eprintln!(
+        "Phase 8 attribution gate: attributed_ms / unattributed_ms = {:.1}%",
+        attribution_pct
+    );
     if attribution_pct >= 80.0 {
         eprintln!("  GATE PASS: >= 80% attribution achieved.");
     } else {
@@ -336,8 +463,14 @@ fn main() {
     eprintln!();
     eprintln!("Phase 7 baseline invariants:");
     eprintln!("  best_obj       : {:.10}", result.best_obj);
-    eprintln!("  n_actual_evals : {}", traj.iter().map(|g| g.n_eval).sum::<usize>());
+    eprintln!(
+        "  n_actual_evals : {}",
+        traj.iter().map(|g| g.n_eval).sum::<usize>()
+    );
     eprintln!("  generations    : {}", result.generations_run);
     eprintln!("  valid          : {}", result.valid);
-    eprintln!("  cache_hits     : {}", traj.iter().map(|g| g.cache_hits).sum::<usize>());
+    eprintln!(
+        "  cache_hits     : {}",
+        traj.iter().map(|g| g.cache_hits).sum::<usize>()
+    );
 }

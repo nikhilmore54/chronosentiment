@@ -30,11 +30,17 @@ impl Hypothesis for TrendFollowingHypothesis {
     }
 
     fn supports(&self, evidence: &EvidenceSet) -> bool {
-        evidence.evidence.iter().any(|e| e.concept == Concept::Trend && e.supports_continuation)
+        evidence
+            .evidence
+            .iter()
+            .any(|e| e.concept == Concept::Trend && e.supports_continuation)
     }
 
     fn contradicts(&self, evidence: &EvidenceSet) -> bool {
-        evidence.evidence.iter().any(|e| e.concept == Concept::Trend && !e.supports_continuation)
+        evidence
+            .evidence
+            .iter()
+            .any(|e| e.concept == Concept::Trend && !e.supports_continuation)
     }
 
     fn confidence(&self, _evidence: &EvidenceSet) -> f64 {
@@ -54,11 +60,17 @@ impl Hypothesis for MeanReversionHypothesis {
     }
 
     fn supports(&self, evidence: &EvidenceSet) -> bool {
-        evidence.evidence.iter().any(|e| e.concept == Concept::Volatility && !e.supports_continuation)
+        evidence
+            .evidence
+            .iter()
+            .any(|e| e.concept == Concept::Volatility && !e.supports_continuation)
     }
 
     fn contradicts(&self, evidence: &EvidenceSet) -> bool {
-        evidence.evidence.iter().any(|e| e.concept == Concept::Momentum && e.supports_continuation)
+        evidence
+            .evidence
+            .iter()
+            .any(|e| e.concept == Concept::Momentum && e.supports_continuation)
     }
 
     fn confidence(&self, _evidence: &EvidenceSet) -> f64 {
@@ -90,7 +102,7 @@ impl HypothesisEngine {
         for h in &self.hypotheses {
             let supports_count = if h.supports(evidence) { 1 } else { 0 };
             let contradicts_count = if h.contradicts(evidence) { 1 } else { 0 };
-            
+
             evaluated.push(EvaluatedHypothesis {
                 name: h.name(),
                 confidence: h.confidence(evidence),
@@ -102,6 +114,8 @@ impl HypothesisEngine {
         // Sort by confidence descending
         evaluated.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
 
-        CompetingHypotheses { hypotheses: evaluated }
+        CompetingHypotheses {
+            hypotheses: evaluated,
+        }
     }
 }

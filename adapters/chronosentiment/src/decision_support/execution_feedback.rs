@@ -99,12 +99,18 @@ impl ExecutionExitReason {
 
     /// Whether the target boundary was reached (including gap-through).
     pub fn target_reached(&self) -> bool {
-        matches!(self, ExecutionExitReason::Target | ExecutionExitReason::TargetGapThrough)
+        matches!(
+            self,
+            ExecutionExitReason::Target | ExecutionExitReason::TargetGapThrough
+        )
     }
 
     /// Whether the risk boundary was reached (including gap-through).
     pub fn risk_reached(&self) -> bool {
-        matches!(self, ExecutionExitReason::Risk | ExecutionExitReason::RiskGapThrough)
+        matches!(
+            self,
+            ExecutionExitReason::Risk | ExecutionExitReason::RiskGapThrough
+        )
     }
 
     pub fn horizon_reached(&self) -> bool {
@@ -280,7 +286,10 @@ pub fn parse_utc(ts: &str) -> Result<DateTime<Utc>, String> {
 
 /// Validate that `feedback_available_at` is strictly after `exit_time`.
 /// This is the core temporal invariant of the feedback ledger.
-pub fn validate_feedback_timing(exit_time: &str, feedback_available_at: &str) -> Result<(), String> {
+pub fn validate_feedback_timing(
+    exit_time: &str,
+    feedback_available_at: &str,
+) -> Result<(), String> {
     let exit = parse_utc(exit_time)?;
     let available = parse_utc(feedback_available_at)?;
     if available <= exit {
@@ -334,7 +343,11 @@ pub fn seal_execution_feedback(
     let ambiguous = exit_reason.is_ambiguous();
     let eligible = exit_reason.eligible_for_primary_comparison();
 
-    let atr_14_normalized = if entry_price > 0.0 { atr_14_at_t / entry_price } else { 0.0 };
+    let atr_14_normalized = if entry_price > 0.0 {
+        atr_14_at_t / entry_price
+    } else {
+        0.0
+    };
 
     let features = ExecutionFeatureSnapshot {
         tmv_state: tmv_state.clone(),
@@ -413,9 +426,7 @@ pub fn training_set_at<'a>(
 
 /// Filter to only records eligible for primary execution comparison.
 /// Excludes AMBIGUOUS exits.
-pub fn primary_comparison_set(
-    ledger: &[ExecutionFeedbackRecord],
-) -> Vec<&ExecutionFeedbackRecord> {
+pub fn primary_comparison_set(ledger: &[ExecutionFeedbackRecord]) -> Vec<&ExecutionFeedbackRecord> {
     ledger
         .iter()
         .filter(|r| r.eligible_for_primary_comparison)
@@ -468,7 +479,8 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         assert!(r.verify_integrity(), "record hash must verify");
     }
 
@@ -480,7 +492,10 @@ mod tests {
             "2026-05-18T03:45:00Z",
             "2026-05-18T03:45:00Z",
         );
-        assert!(result.is_err(), "feedback_available_at == exit_time must be rejected");
+        assert!(
+            result.is_err(),
+            "feedback_available_at == exit_time must be rejected"
+        );
 
         // feedback_available_at before exit_time → error
         let result = make_record(
@@ -488,7 +503,10 @@ mod tests {
             "2026-05-18T03:45:00Z",
             "2026-05-17T00:00:00Z",
         );
-        assert!(result.is_err(), "feedback_available_at before exit_time must be rejected");
+        assert!(
+            result.is_err(),
+            "feedback_available_at before exit_time must be rejected"
+        );
 
         // feedback_available_at after exit_time → ok
         let result = make_record(
@@ -496,7 +514,10 @@ mod tests {
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
         );
-        assert!(result.is_ok(), "feedback_available_at after exit_time must be accepted");
+        assert!(
+            result.is_ok(),
+            "feedback_available_at after exit_time must be accepted"
+        );
     }
 
     #[test]
@@ -505,7 +526,8 @@ mod tests {
             ExecutionExitReason::Ambiguous,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         assert!(!r.eligible_for_primary_comparison);
         assert!(r.ambiguous);
     }
@@ -516,7 +538,8 @@ mod tests {
             ExecutionExitReason::TargetGapThrough,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         assert!(r.target_reached);
         assert!(!r.risk_reached);
         assert!(r.eligible_for_primary_comparison);
@@ -528,7 +551,8 @@ mod tests {
             ExecutionExitReason::RiskGapThrough,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         assert!(r.risk_reached);
         assert!(!r.target_reached);
         assert!(r.eligible_for_primary_comparison);
@@ -540,14 +564,18 @@ mod tests {
             ExecutionExitReason::TargetGapThrough,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let r2 = make_record(
             ExecutionExitReason::RiskGapThrough,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
-        assert_ne!(r1.record_hash, r2.record_hash,
-            "TargetGapThrough and RiskGapThrough must produce different hashes");
+        )
+        .expect("should seal");
+        assert_ne!(
+            r1.record_hash, r2.record_hash,
+            "TargetGapThrough and RiskGapThrough must produce different hashes"
+        );
     }
 
     #[test]
@@ -556,9 +584,13 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
-        assert_eq!(r.learning_scope, LearningScope::ExecutionOnly,
-            "P.E.3 feedback must be ExecutionOnly — Coralys learns target/risk, not direction");
+        )
+        .expect("should seal");
+        assert_eq!(
+            r.learning_scope,
+            LearningScope::ExecutionOnly,
+            "P.E.3 feedback must be ExecutionOnly — Coralys learns target/risk, not direction"
+        );
     }
 
     #[test]
@@ -567,8 +599,12 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
-        assert_eq!(r.execution_feature_hash, r.execution_features.compute_hash());
+        )
+        .expect("should seal");
+        assert_eq!(
+            r.execution_feature_hash,
+            r.execution_features.compute_hash()
+        );
     }
 
     #[test]
@@ -578,14 +614,18 @@ mod tests {
         let r1 = make_record(
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
-            "2026-05-19T00:00:00Z",  // UTC
-        ).expect("should seal");
+            "2026-05-19T00:00:00Z", // UTC
+        )
+        .expect("should seal");
         let ledger = vec![r1];
 
         // T_train in +05:30 representing the same instant as 2026-05-18T18:30:00Z
-        let ts = training_set_at(&ledger, "2026-05-20T00:00:00+05:30")
-            .expect("should parse");
-        assert_eq!(ts.len(), 1, "UTC and +05:30 timestamps for same instant must compare correctly");
+        let ts = training_set_at(&ledger, "2026-05-20T00:00:00+05:30").expect("should parse");
+        assert_eq!(
+            ts.len(),
+            1,
+            "UTC and +05:30 timestamps for same instant must compare correctly"
+        );
     }
 
     #[test]
@@ -594,17 +634,20 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let r2 = make_record(
             ExecutionExitReason::Horizon,
             "2026-06-14T03:45:00Z",
             "2026-06-15T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let r3 = make_record(
             ExecutionExitReason::Risk,
             "2026-06-30T03:45:00Z",
             "2026-07-01T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let ledger = vec![r1, r2, r3];
 
         // At 2026-05-20, only r1 is available
@@ -626,21 +669,28 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let r2 = make_record(
             ExecutionExitReason::Ambiguous,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let r3 = make_record(
             ExecutionExitReason::Horizon,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         let ledger = vec![r1, r2, r3];
 
         let primary = primary_comparison_set(&ledger);
-        assert_eq!(primary.len(), 2, "AMBIGUOUS must be excluded from primary comparison");
+        assert_eq!(
+            primary.len(),
+            2,
+            "AMBIGUOUS must be excluded from primary comparison"
+        );
         assert!(primary.iter().all(|r| !r.ambiguous));
     }
 
@@ -652,7 +702,8 @@ mod tests {
             ExecutionExitReason::Target,
             "2026-05-18T03:45:00Z",
             "2026-05-19T00:00:00Z",
-        ).expect("should seal");
+        )
+        .expect("should seal");
         assert_eq!(r.c3_002_direction, "LONG");
         // The learning scope must be ExecutionOnly — direction is not a learning target.
         assert_eq!(r.learning_scope, LearningScope::ExecutionOnly);

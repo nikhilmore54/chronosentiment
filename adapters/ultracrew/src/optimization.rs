@@ -1,18 +1,20 @@
 // UltraCrew core optimizer improvements
-use serde::{Serialize, Deserialize};
 use crate::ecology::WorkforceEcology;
 use crate::models::{Shift, Worker};
-use coralys_moga::traits::{CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator};
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
+};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 /// **Compatibility Implementation / Legacy Operational Model**
-/// 
-/// Architecturally, `ScheduleGenome` is no longer the primary structural 
-/// representation of the domain. It serves as a compatibility implementation 
-/// of the Coralys `OperationalModel` during the migration to the Native 
+///
+/// Architecturally, `ScheduleGenome` is no longer the primary structural
+/// representation of the domain. It serves as a compatibility implementation
+/// of the Coralys `OperationalModel` during the migration to the Native
 /// Operational Model (OEN).
 #[derive(Debug, Clone)]
 pub struct ScheduleGenome {
@@ -40,9 +42,15 @@ pub struct ScheduleEvaluation {
 
 impl Evaluated for ScheduleEvaluation {
     type Genome = ScheduleGenome;
-    fn fitness(&self) -> f64 { self.fitness }
-    fn is_valid(&self) -> bool { self.is_valid }
-    fn genome(&self) -> &Self::Genome { &self.schedule }
+    fn fitness(&self) -> f64 {
+        self.fitness
+    }
+    fn is_valid(&self) -> bool {
+        self.is_valid
+    }
+    fn genome(&self) -> &Self::Genome {
+        &self.schedule
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,7 +126,10 @@ impl Observatory {
             let unique_genomes = {
                 let mut seen: HashSet<Vec<(u64, u64)>> = HashSet::new();
                 for e in &self.current_generation_evals {
-                    let mut key: Vec<(u64, u64)> = e.schedule.assignments.iter()
+                    let mut key: Vec<(u64, u64)> = e
+                        .schedule
+                        .assignments
+                        .iter()
                         .map(|(&sid, &wid)| (sid, wid))
                         .collect();
                     key.sort_unstable();
@@ -131,8 +142,19 @@ impl Observatory {
                 generation: gen,
                 best_fitness: best_eval.fitness,
                 average_fitness: avg_fitness,
-                hard_violations: best_eval.hc1_violations + best_eval.hc2_violations + best_eval.hc3_violations + best_eval.rest_violations,
-                soft_violations: if best_eval.fairness_penalty > 0.0 { 1 } else { 0 } + if best_eval.fatigue_penalty > 0.0 { 1 } else { 0 },
+                hard_violations: best_eval.hc1_violations
+                    + best_eval.hc2_violations
+                    + best_eval.hc3_violations
+                    + best_eval.rest_violations,
+                soft_violations: if best_eval.fairness_penalty > 0.0 {
+                    1
+                } else {
+                    0
+                } + if best_eval.fatigue_penalty > 0.0 {
+                    1
+                } else {
+                    0
+                },
                 fairness_penalty: best_eval.fairness_penalty,
                 workload_penalty: best_eval.fatigue_penalty,
                 elapsed_time_ms: elapsed,
@@ -169,17 +191,30 @@ pub struct ScheduleOptimizer {
 impl ScheduleOptimizer {
     pub fn new(context: Arc<ScheduleContext>) -> Self {
         let deterministic_rng = StdRng::seed_from_u64(context.rng_seed);
-        Self { context, deterministic_rng }
+        Self {
+            context,
+            deterministic_rng,
+        }
     }
 
-    pub fn mutate_random_reassignment(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
+    pub fn mutate_random_reassignment(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
         let shift = mutable_shifts[rng.gen_range(0..mutable_shifts.len())];
         // Use skill-aware pick so mutations don't reintroduce HC1 violations
         let worker_id = self.skill_aware_pick(shift, rng);
         genome.assignments.insert(shift.id, worker_id);
     }
 
-    pub fn mutate_swap(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
+    pub fn mutate_swap(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
         if mutable_shifts.len() < 2 {
             return;
         }
@@ -191,8 +226,16 @@ impl ScheduleOptimizer {
         let shift1 = mutable_shifts[idx1];
         let shift2 = mutable_shifts[idx2];
 
-        let w1 = genome.assignments.get(&shift1.id).copied().unwrap_or(self.context.workers[0].id);
-        let w2 = genome.assignments.get(&shift2.id).copied().unwrap_or(self.context.workers[0].id);
+        let w1 = genome
+            .assignments
+            .get(&shift1.id)
+            .copied()
+            .unwrap_or(self.context.workers[0].id);
+        let w2 = genome
+            .assignments
+            .get(&shift2.id)
+            .copied()
+            .unwrap_or(self.context.workers[0].id);
         genome.assignments.insert(shift1.id, w2);
         genome.assignments.insert(shift2.id, w1);
     }
@@ -208,7 +251,12 @@ impl ScheduleOptimizer {
     /// Mechanism: directly reduces variance(worker_hours), which is the SC1 penalty
     /// (fitness -= variance * 10.0). The plateau at 9918.4 has residual SC1+SC2 ≈ 81.6;
     /// this operator targets that gap.
-    pub fn mutate_workload_balanced_swap(&self, genome: &mut ScheduleGenome, mutable_shifts: &[&Shift], rng: &mut StdRng) {
+    pub fn mutate_workload_balanced_swap(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
         // Compute hours per worker from current genome
         let mut worker_hours: HashMap<u64, u64> = HashMap::new();
         for worker in self.context.workers.iter() {
@@ -221,11 +269,17 @@ impl ScheduleOptimizer {
         }
 
         // Find most overloaded and most underloaded workers deterministically
-        let max_worker = self.context.workers.iter()
+        let max_worker = self
+            .context
+            .workers
+            .iter()
             .map(|w| (w.id, worker_hours[&w.id]))
             .max_by_key(|&(id, h)| (h, id)) // Break ties using id
             .map(|(id, _)| id);
-        let min_worker = self.context.workers.iter()
+        let min_worker = self
+            .context
+            .workers
+            .iter()
             .map(|w| (w.id, worker_hours[&w.id]))
             .min_by_key(|&(id, h)| (h, id)) // Break ties using id
             .map(|(id, _)| id);
@@ -240,7 +294,8 @@ impl ScheduleOptimizer {
         };
 
         // Collect mutable shifts currently assigned to the overloaded worker
-        let overloaded_shifts: Vec<&Shift> = mutable_shifts.iter()
+        let overloaded_shifts: Vec<&Shift> = mutable_shifts
+            .iter()
             .copied()
             .filter(|s| genome.assignments.get(&s.id).copied() == Some(overloaded))
             .collect();
@@ -291,7 +346,10 @@ impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
                 self.constraint_aware_pick(shift, &worker_assigned, rng)
             };
             // Record this assignment so subsequent shifts see it
-            worker_assigned.entry(worker_id).or_default().push(shift.clone());
+            worker_assigned
+                .entry(worker_id)
+                .or_default()
+                .push(shift.clone());
             assignments.insert(shift.id, worker_id);
         }
         ScheduleGenome { assignments }
@@ -317,12 +375,17 @@ impl ScheduleOptimizer {
     ) -> u64 {
         let shift_end = shift.start_hour + shift.duration_hours;
 
-        let min_rest = self.context.scenario
+        let min_rest = self
+            .context
+            .scenario
             .as_ref()
             .and_then(|s| s.minimum_rest_hours)
             .unwrap_or(10);
 
-        let clean: Vec<u64> = self.context.workers.iter()
+        let clean: Vec<u64> = self
+            .context
+            .workers
+            .iter()
             .filter(|w| w.skills.contains(&shift.required_skill))
             .filter(|w| {
                 match worker_assigned.get(&w.id) {
@@ -354,7 +417,10 @@ impl ScheduleOptimizer {
     /// Pick a worker who possesses the required skill for this shift.
     /// Falls back to a random worker only if no qualified worker exists (prevents panic).
     fn skill_aware_pick(&self, shift: &Shift, rng: &mut StdRng) -> u64 {
-        let qualified: Vec<u64> = self.context.workers.iter()
+        let qualified: Vec<u64> = self
+            .context
+            .workers
+            .iter()
             .filter(|w| w.skills.contains(&shift.required_skill))
             .map(|w| w.id)
             .collect();
@@ -369,9 +435,14 @@ impl ScheduleOptimizer {
 
 impl MutationOperator<ScheduleGenome> for ScheduleOptimizer {
     fn mutate(&self, genome: &mut ScheduleGenome, rng: &mut StdRng) {
-        if self.context.shifts.is_empty() { return; }
-        
-        let mutable_shifts: Vec<&Shift> = self.context.shifts.iter()
+        if self.context.shifts.is_empty() {
+            return;
+        }
+
+        let mutable_shifts: Vec<&Shift> = self
+            .context
+            .shifts
+            .iter()
             .filter(|s| {
                 if let Some(ref locked) = self.context.locked_assignments {
                     !locked.contains_key(&s.id)
@@ -380,7 +451,9 @@ impl MutationOperator<ScheduleGenome> for ScheduleOptimizer {
                 }
             })
             .collect();
-        if mutable_shifts.is_empty() { return; }
+        if mutable_shifts.is_empty() {
+            return;
+        }
 
         let strategies: &[fn(&ScheduleOptimizer, &mut ScheduleGenome, &[&Shift], &mut StdRng)] = &[
             ScheduleOptimizer::mutate_random_reassignment,
@@ -412,21 +485,32 @@ impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
                 child2_assignments.insert(shift.id, *parent_a.assignments.get(&shift.id).unwrap());
             }
         }
-        (ScheduleGenome { assignments: child1_assignments }, ScheduleGenome { assignments: child2_assignments })
+        (
+            ScheduleGenome {
+                assignments: child1_assignments,
+            },
+            ScheduleGenome {
+                assignments: child2_assignments,
+            },
+        )
     }
 }
 
 impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
     type Evaluation = ScheduleEvaluation;
 
-    fn evaluate(&self, genome: &ScheduleGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+    fn evaluate(
+        &self,
+        genome: &ScheduleGenome,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
         use crate::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
 
-        let evaluator: Box<dyn DomainConstraintEvaluator> = Box::new(InrcConstraintEvaluator::new(self.context.clone()));
-
+        let evaluator: Box<dyn DomainConstraintEvaluator> =
+            Box::new(InrcConstraintEvaluator::new(self.context.clone()));
 
         let report = evaluator.evaluate(genome);
-        
+
         let eval = ScheduleEvaluation {
             schedule: genome.clone(),
             fitness: report.fitness,
@@ -439,7 +523,11 @@ impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
             fatigue_penalty: report.fatigue_penalty,
         };
 
-        self.context.observatory.lock().unwrap().record_evaluation(&eval);
+        self.context
+            .observatory
+            .lock()
+            .unwrap()
+            .record_evaluation(&eval);
 
         eval
     }
@@ -452,7 +540,11 @@ pub fn generate_explanation(eval: &ScheduleEvaluation, context: &ScheduleContext
     for shift in context.shifts.iter() {
         let worker_id = eval.schedule.assignments.get(&shift.id).unwrap();
         let worker = context.workers.iter().find(|w| w.id == *worker_id).unwrap();
-        let skill_ok = if worker.skills.contains(&shift.required_skill) { "✔" } else { "✖" };
+        let skill_ok = if worker.skills.contains(&shift.required_skill) {
+            "✔"
+        } else {
+            "✖"
+        };
         lines.push(format!(
             "Shift {} assigned to Worker {} (Skill match: {}), Duration: {}h",
             shift.id, worker.id, skill_ok, shift.duration_hours
@@ -462,7 +554,10 @@ pub fn generate_explanation(eval: &ScheduleEvaluation, context: &ScheduleContext
         lines.push(format!("Fatigue penalty: {:.2}", eval.fatigue_penalty));
     }
     if eval.fairness_penalty > 0.0 {
-        lines.push(format!("Fairness penalty (variance): {:.2}", eval.fairness_penalty));
+        lines.push(format!(
+            "Fairness penalty (variance): {:.2}",
+            eval.fairness_penalty
+        ));
     }
     if eval.rest_violations > 0 {
         lines.push(format!("Rest violations: {}", eval.rest_violations));

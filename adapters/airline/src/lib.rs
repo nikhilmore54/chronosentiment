@@ -40,11 +40,11 @@
 //!   `coralys-eval` or any other Coralys framework crate.
 
 pub mod domain;
+pub mod evaluation;
 pub mod legality;
 pub mod optimization;
-pub mod resilience;
 pub mod planner;
-pub mod evaluation;
+pub mod resilience;
 
 // ── Top-level re-exports ──────────────────────────────────────────────────────
 //

@@ -47,7 +47,12 @@ impl<'a> LocalSearch<'a> {
         weights: Vec<f64>,
         max_iterations: usize,
     ) -> Self {
-        Self { evaluator, checker, weights, max_iterations }
+        Self {
+            evaluator,
+            checker,
+            weights,
+            max_iterations,
+        }
     }
 
     /// Run local search from `initial` and return the best roster found.
@@ -63,8 +68,13 @@ impl<'a> LocalSearch<'a> {
 
         for _ in 0..self.max_iterations {
             let improved = self.best_improving_move(
-                &current, current_cost, metrics,
-                &mut t_neighbour_us, &mut t_legality_us, &mut t_evaluate_us, &mut move_count,
+                &current,
+                current_cost,
+                metrics,
+                &mut t_neighbour_us,
+                &mut t_legality_us,
+                &mut t_evaluate_us,
+                &mut move_count,
             );
             match improved {
                 Some((better, cost)) => {
@@ -125,22 +135,30 @@ impl<'a> LocalSearch<'a> {
 
         // Precompute per-rotation leg counts for O(1) delta evaluation.
         // leg_counts[k] = number of legs assigned to rotation k.
-        let leg_counts: Vec<f64> = rotations.iter().map(|r| {
-            r.pairings().iter()
-                .flat_map(|p| p.duties().iter())
-                .flat_map(|d| d.legs().iter())
-                .count() as f64
-        }).collect();
+        let leg_counts: Vec<f64> = rotations
+            .iter()
+            .map(|r| {
+                r.pairings()
+                    .iter()
+                    .flat_map(|p| p.duties().iter())
+                    .flat_map(|d| d.legs().iter())
+                    .count() as f64
+            })
+            .collect();
         let total_legs: f64 = leg_counts.iter().sum();
         let mean = if n > 0 { total_legs / n as f64 } else { 0.0 };
 
         // Precompute per-pairing leg counts for O(1) delta lookup.
         // pairing_legs[k][p] = leg count of pairing p in rotation k.
-        let pairing_legs: Vec<Vec<f64>> = rotations.iter().map(|r| {
-            r.pairings().iter().map(|p| {
-                p.duties().iter().flat_map(|d| d.legs().iter()).count() as f64
-            }).collect()
-        }).collect();
+        let pairing_legs: Vec<Vec<f64>> = rotations
+            .iter()
+            .map(|r| {
+                r.pairings()
+                    .iter()
+                    .map(|p| p.duties().iter().flat_map(|d| d.legs().iter()).count() as f64)
+                    .collect()
+            })
+            .collect();
 
         // ── Phase 1: scan descriptors, compute variance delta analytically ────
         //
@@ -183,7 +201,8 @@ impl<'a> LocalSearch<'a> {
                         let ci_new = ci - la + lb;
                         let cj_new = cj - lb + la;
                         let delta = ((ci_new - mean).powi(2) + (cj_new - mean).powi(2)
-                            - (ci - mean).powi(2) - (cj - mean).powi(2))
+                            - (ci - mean).powi(2)
+                            - (cj - mean).powi(2))
                             / n as f64;
 
                         // Collect all descriptors with a meaningful negative delta.
@@ -237,7 +256,9 @@ impl<'a> LocalSearch<'a> {
         for src in 0..n {
             let p_count = rotations[src].pairings().len();
             for dst in 0..n {
-                if src == dst { continue; }
+                if src == dst {
+                    continue;
+                }
                 for pi in 0..p_count {
                     let t1 = std::time::Instant::now();
                     let candidate_opt = relocate::relocate_pairing(current, src, pi, dst);
@@ -254,7 +275,9 @@ impl<'a> LocalSearch<'a> {
                             if cost < current_cost {
                                 match &best_relocate {
                                     Some((_, bc)) if cost >= *bc => {}
-                                    _ => { best_relocate = Some((candidate, cost)); }
+                                    _ => {
+                                        best_relocate = Some((candidate, cost));
+                                    }
                                 }
                             }
                         }

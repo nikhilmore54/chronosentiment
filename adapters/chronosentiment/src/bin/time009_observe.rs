@@ -283,21 +283,36 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--ledger" => { i += 1; ledger = PathBuf::from(&args[i]); }
-            "--output" => { i += 1; output = PathBuf::from(&args[i]); }
-            "--cache"  => { i += 1; cache = PathBuf::from(&args[i]); }
+            "--ledger" => {
+                i += 1;
+                ledger = PathBuf::from(&args[i]);
+            }
+            "--output" => {
+                i += 1;
+                output = PathBuf::from(&args[i]);
+            }
+            "--cache" => {
+                i += 1;
+                cache = PathBuf::from(&args[i]);
+            }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { ledger, output, cache })
+    Ok(Args {
+        ledger,
+        output,
+        cache,
+    })
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /// Load all LIVE-005 ledger entries from the entries/ subdirectory.
-fn load_ledger_entries(ledger_dir: &PathBuf) -> Result<Vec<Live005Entry>, Box<dyn std::error::Error>> {
+fn load_ledger_entries(
+    ledger_dir: &PathBuf,
+) -> Result<Vec<Live005Entry>, Box<dyn std::error::Error>> {
     let entries_dir = ledger_dir.join("entries");
     let mut entries = Vec::new();
     if !entries_dir.exists() {
@@ -315,7 +330,11 @@ fn load_ledger_entries(ledger_dir: &PathBuf) -> Result<Vec<Live005Entry>, Box<dy
         entries.push(rec);
     }
     // Sort by ticker then admitted_at for deterministic output.
-    entries.sort_by(|a, b| a.ticker.cmp(&b.ticker).then(a.admitted_at.cmp(&b.admitted_at)));
+    entries.sort_by(|a, b| {
+        a.ticker
+            .cmp(&b.ticker)
+            .then(a.admitted_at.cmp(&b.admitted_at))
+    });
     Ok(entries)
 }
 
@@ -407,12 +426,24 @@ fn compute_observation(
         } else {
             (reference_price - bar.high) / reference_price
         };
-        if bar_mfe > mfe { mfe = bar_mfe; }
-        if bar_mae < mae { mae = bar_mae; }
+        if bar_mfe > mfe {
+            mfe = bar_mfe;
+        }
+        if bar_mae < mae {
+            mae = bar_mae;
+        }
 
         // Gap-through on open.
-        let open_crosses_target = if is_long { bar.open >= target } else { bar.open <= target };
-        let open_crosses_risk   = if is_long { bar.open <= risk   } else { bar.open >= risk   };
+        let open_crosses_target = if is_long {
+            bar.open >= target
+        } else {
+            bar.open <= target
+        };
+        let open_crosses_risk = if is_long {
+            bar.open <= risk
+        } else {
+            bar.open >= risk
+        };
 
         if open_crosses_target {
             let ret = if is_long {
@@ -420,7 +451,14 @@ fn compute_observation(
             } else {
                 (reference_price - bar.open) / reference_price
             };
-            return (ExitReason::TargetGapThrough, Some(i), Some(bar.open), mfe, mae, ret);
+            return (
+                ExitReason::TargetGapThrough,
+                Some(i),
+                Some(bar.open),
+                mfe,
+                mae,
+                ret,
+            );
         }
         if open_crosses_risk {
             let ret = if is_long {
@@ -428,12 +466,27 @@ fn compute_observation(
             } else {
                 (reference_price - bar.open) / reference_price
             };
-            return (ExitReason::RiskGapThrough, Some(i), Some(bar.open), mfe, mae, ret);
+            return (
+                ExitReason::RiskGapThrough,
+                Some(i),
+                Some(bar.open),
+                mfe,
+                mae,
+                ret,
+            );
         }
 
         // Intraday target and risk.
-        let target_hit = if is_long { bar.high >= target } else { bar.low <= target };
-        let risk_hit   = if is_long { bar.low  <= risk   } else { bar.high >= risk   };
+        let target_hit = if is_long {
+            bar.high >= target
+        } else {
+            bar.low <= target
+        };
+        let risk_hit = if is_long {
+            bar.low <= risk
+        } else {
+            bar.high >= risk
+        };
 
         if target_hit && risk_hit {
             let ret = if is_long {
@@ -441,7 +494,14 @@ fn compute_observation(
             } else {
                 (reference_price - bar.close) / reference_price
             };
-            return (ExitReason::Ambiguous, Some(i), Some(bar.close), mfe, mae, ret);
+            return (
+                ExitReason::Ambiguous,
+                Some(i),
+                Some(bar.close),
+                mfe,
+                mae,
+                ret,
+            );
         }
         if target_hit {
             let ret = if is_long {
@@ -468,7 +528,14 @@ fn compute_observation(
     } else {
         (reference_price - last_close) / reference_price
     };
-    (ExitReason::Horizon, Some(window.len().saturating_sub(1)), Some(last_close), mfe, mae, ret)
+    (
+        ExitReason::Horizon,
+        Some(window.len().saturating_sub(1)),
+        Some(last_close),
+        mfe,
+        mae,
+        ret,
+    )
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -499,7 +566,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 c
             }
             Err(e) => {
-                eprintln!("[time009] WARNING: cannot load cache {}: {e}", args.cache.display());
+                eprintln!(
+                    "[time009] WARNING: cannot load cache {}: {e}",
+                    args.cache.display()
+                );
                 BTreeMap::new()
             }
         }
@@ -545,17 +615,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cohort_date = date_of(&entry.admitted_at);
 
         // Parse source_snapshot_timestamp for temporal firewall (AC-T9-02).
-        let snapshot_ts: DateTime<Utc> = entry
-            .source_snapshot_timestamp
-            .parse()
-            .map_err(|e| format!(
+        let snapshot_ts: DateTime<Utc> = entry.source_snapshot_timestamp.parse().map_err(|e| {
+            format!(
                 "bad source_snapshot_timestamp '{}': {e}",
                 entry.source_snapshot_timestamp
-            ))?;
+            )
+        })?;
         let snapshot_unix = snapshot_ts.timestamp();
 
         // Determine horizon (AC-T9-03).
-        let horizon = entry.adaptive_horizon_sessions
+        let horizon = entry
+            .adaptive_horizon_sessions
             .map(|h| h.ceil() as usize)
             .unwrap_or(20)
             .max(1);
@@ -590,10 +660,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             entry.certification_status.as_str(),
             "CERTIFIED" | "DEGRADED"
         );
-        let evidence_eligible = matches!(
-            entry.evidence_class.as_str(),
-            "Favourable" | "Mixed"
-        );
+        let evidence_eligible = matches!(entry.evidence_class.as_str(), "Favourable" | "Mixed");
 
         // If horizon has not elapsed → PENDING (AC-T9-09).
         if !horizon_elapsed {
@@ -670,13 +737,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 n_no_reference_price += 1;
                 // Write PENDING with note (AC-T9-09: never silently discard).
                 let obs = build_pending_obs(
-                    &observation_id, entry, &observed_at, &cohort_date,
-                    snapshot_unix, first_eligible_bar_ts, n_bars_after_t0,
-                    n_bars_in_horizon, horizon,
+                    &observation_id,
+                    entry,
+                    &observed_at,
+                    &cohort_date,
+                    snapshot_unix,
+                    first_eligible_bar_ts,
+                    n_bars_after_t0,
+                    n_bars_in_horizon,
+                    horizon,
                 );
                 let obs_path = args.output.join(format!("{observation_id}.json"));
                 fs::write(&obs_path, serde_json::to_string_pretty(&obs)?)?;
-                println!("[time009] PENDING ticker={} — no reference_price", entry.ticker);
+                println!(
+                    "[time009] PENDING ticker={} — no reference_price",
+                    entry.ticker
+                );
                 continue;
             }
         };
@@ -685,13 +761,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if bars_after_t0.is_empty() {
             n_no_bars += 1;
             let obs = build_pending_obs(
-                &observation_id, entry, &observed_at, &cohort_date,
-                snapshot_unix, first_eligible_bar_ts, n_bars_after_t0,
-                n_bars_in_horizon, horizon,
+                &observation_id,
+                entry,
+                &observed_at,
+                &cohort_date,
+                snapshot_unix,
+                first_eligible_bar_ts,
+                n_bars_after_t0,
+                n_bars_in_horizon,
+                horizon,
             );
             let obs_path = args.output.join(format!("{observation_id}.json"));
             fs::write(&obs_path, serde_json::to_string_pretty(&obs)?)?;
-            println!("[time009] PENDING ticker={} — no bars after T0", entry.ticker);
+            println!(
+                "[time009] PENDING ticker={} — no bars after T0",
+                entry.ticker
+            );
             continue;
         }
 
@@ -703,7 +788,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let target = entry.adaptive_target.unwrap_or(reference_price * 1.05);
             let risk = entry.adaptive_risk.unwrap_or(reference_price * 0.95);
             let (_, idx, price, mfe, mae, ret) = compute_observation(
-                &entry.direction, reference_price, target, risk, horizon, &bars_after_t0,
+                &entry.direction,
+                reference_price,
+                target,
+                risk,
+                horizon,
+                &bars_after_t0,
             );
             (ExitReason::NoTrade, idx, price, mfe, mae, ret)
         } else {
@@ -713,13 +803,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // No target → PENDING (AC-T9-09).
                     n_no_bars += 1;
                     let obs = build_pending_obs(
-                        &observation_id, entry, &observed_at, &cohort_date,
-                        snapshot_unix, first_eligible_bar_ts, n_bars_after_t0,
-                        n_bars_in_horizon, horizon,
+                        &observation_id,
+                        entry,
+                        &observed_at,
+                        &cohort_date,
+                        snapshot_unix,
+                        first_eligible_bar_ts,
+                        n_bars_after_t0,
+                        n_bars_in_horizon,
+                        horizon,
                     );
                     let obs_path = args.output.join(format!("{observation_id}.json"));
                     fs::write(&obs_path, serde_json::to_string_pretty(&obs)?)?;
-                    println!("[time009] PENDING ticker={} — no adaptive_target", entry.ticker);
+                    println!(
+                        "[time009] PENDING ticker={} — no adaptive_target",
+                        entry.ticker
+                    );
                     continue;
                 }
             };
@@ -728,18 +827,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None => {
                     n_no_bars += 1;
                     let obs = build_pending_obs(
-                        &observation_id, entry, &observed_at, &cohort_date,
-                        snapshot_unix, first_eligible_bar_ts, n_bars_after_t0,
-                        n_bars_in_horizon, horizon,
+                        &observation_id,
+                        entry,
+                        &observed_at,
+                        &cohort_date,
+                        snapshot_unix,
+                        first_eligible_bar_ts,
+                        n_bars_after_t0,
+                        n_bars_in_horizon,
+                        horizon,
                     );
                     let obs_path = args.output.join(format!("{observation_id}.json"));
                     fs::write(&obs_path, serde_json::to_string_pretty(&obs)?)?;
-                    println!("[time009] PENDING ticker={} — no adaptive_risk", entry.ticker);
+                    println!(
+                        "[time009] PENDING ticker={} — no adaptive_risk",
+                        entry.ticker
+                    );
                     continue;
                 }
             };
             compute_observation(
-                &entry.direction, reference_price, target, risk, horizon, &bars_after_t0,
+                &entry.direction,
+                reference_price,
+                target,
+                risk,
+                horizon,
+                &bars_after_t0,
             )
         };
 
@@ -760,7 +873,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let eligible = cert_eligible
             && evidence_eligible
             && !is_no_trade
-            && !matches!(exit_reason, ExitReason::Ambiguous | ExitReason::InsufficientData);
+            && !matches!(
+                exit_reason,
+                ExitReason::Ambiguous | ExitReason::InsufficientData
+            );
 
         let obs = ProspectiveObservation {
             observation_id: observation_id.clone(),
@@ -872,7 +988,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[time009] n_no_bars={n_no_bars}");
     println!("[time009] AC-T9-01 t0_immutability=PASS");
     println!("[time009] AC-T9-02 temporal_integrity=PASS (firewall=source_snapshot_timestamp)");
-    println!("[time009] AC-T9-06 idempotency=PASS (complete_skipped={n_duplicate_complete_skipped})");
+    println!(
+        "[time009] AC-T9-06 idempotency=PASS (complete_skipped={n_duplicate_complete_skipped})"
+    );
     println!("[time009] AC-T9-07 no_algorithm_changes=PASS");
     println!("[time009] AC-T9-09 missing_data_pending=PASS");
     println!("[time009] summary={}", summary_path.display());

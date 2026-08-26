@@ -337,8 +337,8 @@ mod tests {
             },
             certification: Certification {
                 status: CertificationStatus::Certified,
-                policy_artifact_hash: "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121"
-                    .into(),
+                policy_artifact_hash:
+                    "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121".into(),
                 execution_artifact_hash: Some(
                     "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f".into(),
                 ),

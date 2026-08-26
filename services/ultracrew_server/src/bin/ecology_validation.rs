@@ -1,22 +1,22 @@
-use ultracrew::inrc::parser::{parse_scenario, parse_week_data, parse_history};
-use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
-use ultracrew_server::simulation::generate_baseline_schedule;
-use ultracrew_server::optimizer::{ScheduleGenome, UltraCrewEvaluator, UltraCrewMutator};
-use ultracrew_server::inrc_observer::score_inrc_official;
-use coralys_moga::engine_proof::{EvolutionEngine, ParetoSolution, Evaluator};
 use coralys_ecology::diagnostics::{
-    SearchObservation, CandidateObservation, ObjectiveVector, DiagnosticDetector,
-    AttractorDetector, TradeoffBasinDetector, EcologyLockInDetector,
-    AccumulationFailureDetector, ProxySuppressionDetector, EcologyState,
+    AccumulationFailureDetector, AttractorDetector, CandidateObservation, DiagnosticDetector,
+    EcologyLockInDetector, EcologyState, ObjectiveVector, ProxySuppressionDetector,
+    SearchObservation, TradeoffBasinDetector,
 };
+use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};
 use coralys_recommendation::EcologyRecommender;
-use std::sync::Arc;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use rand::distributions::{WeightedIndex, Distribution};
 use rand::Rng;
+use rand::SeedableRng;
+use rand::distributions::{Distribution, WeightedIndex};
+use rand::rngs::StdRng;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
+use ultracrew_server::inrc_observer::score_inrc_official;
+use ultracrew_server::optimizer::{ScheduleGenome, UltraCrewEvaluator, UltraCrewMutator};
+use ultracrew_server::simulation::generate_baseline_schedule;
 
 const INSTANCE: &str = "n050w4";
 
@@ -28,12 +28,14 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let max_generations: usize = args.iter()
+    let max_generations: usize = args
+        .iter()
         .position(|a| a == "--gens")
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
         .unwrap_or(1000);
-    let seed: u64 = args.iter()
+    let seed: u64 = args
+        .iter()
         .position(|a| a == "--seed")
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
@@ -50,15 +52,9 @@ fn main() {
     // ── Load scenario ──────────────────────────────────────────────────────────
     let base_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(format!("../../adapters/ultracrew/tests/data/{}", INSTANCE));
-    let scenario = parse_scenario(
-        base_dir.join(format!("Sc-{}.json", INSTANCE))
-    ).unwrap();
-    let week_data = parse_week_data(
-        base_dir.join(format!("WD-{}-0.json", INSTANCE))
-    ).unwrap();
-    let history = parse_history(
-        base_dir.join(format!("H0-{}-0.json", INSTANCE))
-    ).unwrap();
+    let scenario = parse_scenario(base_dir.join(format!("Sc-{}.json", INSTANCE))).unwrap();
+    let week_data = parse_week_data(base_dir.join(format!("WD-{}-0.json", INSTANCE))).unwrap();
+    let history = parse_history(base_dir.join(format!("H0-{}-0.json", INSTANCE))).unwrap();
 
     let inrc_context = InrcContext::new(
         scenario.clone(),
@@ -66,10 +62,14 @@ fn main() {
         history,
         ultracrew::ecology::WorkforceEcology::new(),
     );
-    let inrc_optimizer = InrcOptimizer { context: Arc::new(inrc_context) };
+    let inrc_optimizer = InrcOptimizer {
+        context: Arc::new(inrc_context),
+    };
 
     // ── Engine ─────────────────────────────────────────────────────────────────
-    let evaluator = UltraCrewEvaluator { scenario: scenario.clone() };
+    let evaluator = UltraCrewEvaluator {
+        scenario: scenario.clone(),
+    };
     let mutator = UltraCrewMutator::new(scenario.clone());
     let mut engine = EvolutionEngine::new(evaluator, mutator);
 
@@ -97,7 +97,9 @@ fn main() {
     // ── Evolution Loop ─────────────────────────────────────────────────────────
     for g in 1..=max_generations {
         let archive_size = engine.archive.solutions.len();
-        if archive_size == 0 { break; }
+        if archive_size == 0 {
+            break;
+        }
         let num_objs = engine.archive.solutions[0].fitness.len();
 
         // Parent selection
@@ -120,23 +122,29 @@ fn main() {
             for i in 0..archive_size {
                 let mut min_dist = f64::INFINITY;
                 for j in 0..archive_size {
-                    if i == j { continue; }
+                    if i == j {
+                        continue;
+                    }
                     let dist = (0..num_objs)
                         .map(|d| {
-                            let ni = (engine.archive.solutions[i].fitness[d]
-                                - min_vals[d]) / ranges[d];
-                            let nj = (engine.archive.solutions[j].fitness[d]
-                                - min_vals[d]) / ranges[d];
+                            let ni =
+                                (engine.archive.solutions[i].fitness[d] - min_vals[d]) / ranges[d];
+                            let nj =
+                                (engine.archive.solutions[j].fitness[d] - min_vals[d]) / ranges[d];
                             (ni - nj).powi(2)
                         })
                         .sum::<f64>()
                         .sqrt();
-                    if dist < min_dist { min_dist = dist; }
+                    if dist < min_dist {
+                        min_dist = dist;
+                    }
                 }
                 weights.push((min_dist + 1e-9).powf(0.5));
             }
             let total_w: f64 = weights.iter().sum();
-            for w in weights.iter_mut() { *w /= total_w; }
+            for w in weights.iter_mut() {
+                *w /= total_w;
+            }
             let dist_sampler = WeightedIndex::new(&weights).unwrap();
             dist_sampler.sample(&mut rng)
         };
@@ -149,7 +157,9 @@ fn main() {
         let mut best_cand: (ScheduleGenome, Vec<f64>) = {
             let candidates: Vec<(ScheduleGenome, Vec<f64>)> = (0..5)
                 .map(|_| {
-                    let gc = engine.mutator.mutate_with_tier(&parent.genome, rng.gen_bool(0.8));
+                    let gc = engine
+                        .mutator
+                        .mutate_with_tier(&parent.genome, rng.gen_bool(0.8));
                     let fit = engine.evaluator.evaluate(&gc);
                     (gc, fit)
                 })
@@ -163,7 +173,9 @@ fn main() {
         let mut t = 1000.0_f64;
         let alpha = 0.95_f64;
         for _ in 0..20 {
-            let neighbour = engine.mutator.mutate_with_tier(&best_cand.0, rng.gen_bool(0.8));
+            let neighbour = engine
+                .mutator
+                .mutate_with_tier(&best_cand.0, rng.gen_bool(0.8));
             let n_fit = engine.evaluator.evaluate(&neighbour);
             let delta = calc_energy(&n_fit) - calc_energy(&best_cand.1);
             if delta < 0.0 || rng.gen_range(0.0..1.0) < (-delta / t).exp() {
@@ -196,10 +208,14 @@ fn main() {
         };
 
         // Compute total HC for parent & child
-        let parent_hc = (parent_score.hc_coverage + parent_score.hc_skills
-            + parent_score.hc_one_shift_per_day + parent_score.hc_forbidden_successions) as f64;
-        let child_hc = (child_score.hc_coverage + child_score.hc_skills
-            + child_score.hc_one_shift_per_day + child_score.hc_forbidden_successions) as f64;
+        let parent_hc = (parent_score.hc_coverage
+            + parent_score.hc_skills
+            + parent_score.hc_one_shift_per_day
+            + parent_score.hc_forbidden_successions) as f64;
+        let child_hc = (child_score.hc_coverage
+            + child_score.hc_skills
+            + child_score.hc_one_shift_per_day
+            + child_score.hc_forbidden_successions) as f64;
 
         let candidate = CandidateObservation {
             objectives: get_objective_vector(&child_fitness, child_hc),
@@ -208,11 +224,16 @@ fn main() {
             parent_objectives: Some(get_objective_vector(&parent.fitness, parent_hc)),
         };
 
-        let archive_objectives: Vec<ObjectiveVector> = engine.archive.solutions.iter()
+        let archive_objectives: Vec<ObjectiveVector> = engine
+            .archive
+            .solutions
+            .iter()
             .map(|sol| {
                 let sc = score_inrc_official(&sol.genome, &scenario, &inrc_optimizer);
-                let hc = (sc.hc_coverage + sc.hc_skills
-                    + sc.hc_one_shift_per_day + sc.hc_forbidden_successions) as f64;
+                let hc = (sc.hc_coverage
+                    + sc.hc_skills
+                    + sc.hc_one_shift_per_day
+                    + sc.hc_forbidden_successions) as f64;
                 get_objective_vector(&sol.fitness, hc)
             })
             .collect();
@@ -232,11 +253,26 @@ fn main() {
         let obs_slice = &telemetry_stream[start_idx..];
 
         let mut results = std::collections::HashMap::new();
-        results.insert("Attractor".to_string(), attractor_detector.evaluate(obs_slice));
-        results.insert("TradeoffBasin".to_string(), tradeoff_detector.evaluate(obs_slice));
-        results.insert("EcologyLockIn".to_string(), lockin_detector.evaluate(obs_slice));
-        results.insert("AccumulationFailure".to_string(), accum_detector.evaluate(obs_slice));
-        results.insert("ProxySuppression".to_string(), suppression_detector.evaluate(obs_slice));
+        results.insert(
+            "Attractor".to_string(),
+            attractor_detector.evaluate(obs_slice),
+        );
+        results.insert(
+            "TradeoffBasin".to_string(),
+            tradeoff_detector.evaluate(obs_slice),
+        );
+        results.insert(
+            "EcologyLockIn".to_string(),
+            lockin_detector.evaluate(obs_slice),
+        );
+        results.insert(
+            "AccumulationFailure".to_string(),
+            accum_detector.evaluate(obs_slice),
+        );
+        results.insert(
+            "ProxySuppression".to_string(),
+            suppression_detector.evaluate(obs_slice),
+        );
 
         ecology_state.record(g, results);
 
@@ -245,7 +281,10 @@ fn main() {
         }
     }
 
-    println!("\nTelemetry Stream complete ({} observations captured).", telemetry_stream.len());
+    println!(
+        "\nTelemetry Stream complete ({} observations captured).",
+        telemetry_stream.len()
+    );
     println!("Running diagnostic detectors...");
 
     // ── Evaluate Detectors ─────────────────────────────────────────────────────
@@ -256,9 +295,20 @@ fn main() {
     println!("\n--- Attractor Detector ---");
     println!("Confidence: {:.4}", res_attractor.confidence);
     println!("Severity  : {:.4}", res_attractor.severity);
-    if let Some(metric) = res_attractor.supporting_metrics.iter().find(|m| m.name == "attractor_index") {
+    if let Some(metric) = res_attractor
+        .supporting_metrics
+        .iter()
+        .find(|m| m.name == "attractor_index")
+    {
         let idx = metric.value as usize;
-        let labels = ["Target (HC_Total)", "O1 (Assignments)", "O2 (Weekends)", "O3 (Successions)", "O4 (Workload)", "O5 (Temporal)"];
+        let labels = [
+            "Target (HC_Total)",
+            "O1 (Assignments)",
+            "O2 (Weekends)",
+            "O3 (Successions)",
+            "O4 (Workload)",
+            "O5 (Temporal)",
+        ];
         println!("Attractor Index: {} ({})", idx, labels[idx]);
     }
     for m in &res_attractor.supporting_metrics {
@@ -313,11 +363,14 @@ fn main() {
     println!("\n=== Search Governance Recommendations ===");
     let recommender = EcologyRecommender::new(0.5, 100);
     let report = recommender.recommend(&ecology_state);
-    
+
     if report.recommendations.is_empty() {
         println!("No recommendations triggered (all confidence levels below threshold).");
     } else {
-        println!("Generated at generation {} (using last {} generations history):", report.generated_at_generation, recommender.evaluation_window);
+        println!(
+            "Generated at generation {} (using last {} generations history):",
+            report.generated_at_generation, recommender.evaluation_window
+        );
         for (i, rec) in report.recommendations.iter().enumerate() {
             println!("\n[Recommendation {}]", i + 1);
             println!("  Action:     {}", rec.action);

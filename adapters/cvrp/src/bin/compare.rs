@@ -1,8 +1,8 @@
-use cvrp::{CvrpDecisionPlugin, CvrpInstance, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpMutator, CvrpCrossover, CvrpLocalSearch};
-use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
-use coralys_moga::engine::PluginFitnessEvaluator;
 use coralys_core::DecisionPlugin;
+use coralys_moga::engine::PluginFitnessEvaluator;
+use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
+use cvrp::moga_impl::{CvrpCrossover, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpDecisionPlugin, CvrpGenomeFactory, CvrpInstance};
 
 fn main() {
     let instance = CvrpInstance::a_n32_k5();
@@ -17,8 +17,12 @@ fn main() {
 
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
     let crossover = CvrpCrossover;
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    let local_search = CvrpLocalSearch { instance: instance.clone() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+    let local_search = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
 
     let evo_config = EvolutionConfig {
         population_size: 200,
@@ -40,7 +44,7 @@ fn main() {
         .expect("Builder build failed");
 
     let ga_res = engine.run_ga_evolution(evo_config).expect("GA run failed");
-    
+
     let mut ga_distance = 0.0;
     if let Some(&total) = ga_res.global_best.result.metrics.get("total_distance") {
         ga_distance = total;

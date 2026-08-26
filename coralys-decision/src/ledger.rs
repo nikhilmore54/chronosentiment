@@ -34,20 +34,26 @@ pub enum LedgerError {
     #[error("decision '{0}' is not certified — cannot append lifecycle events")]
     DecisionNotCertified(String),
 
-    #[error("outcome for decision '{0}' cannot be appended while status is still OPEN and observation boundary has not passed")]
+    #[error(
+        "outcome for decision '{0}' cannot be appended while status is still OPEN and observation boundary has not passed"
+    )]
     ObservationBoundaryNotPassed(String),
 
     #[error("execution record for decision '{0}' already exists — use a correction event instead")]
     ExecutionAlreadyRecorded(String),
 
-    #[error("temporal firewall violation: event timestamp {event_ts} is before decision timestamp {decision_ts} for decision '{decision_id}'")]
+    #[error(
+        "temporal firewall violation: event timestamp {event_ts} is before decision timestamp {decision_ts} for decision '{decision_id}'"
+    )]
     TemporalFirewallViolation {
         decision_id: String,
         decision_ts: DateTime<Utc>,
         event_ts: DateTime<Utc>,
     },
 
-    #[error("certification is incomplete for decision '{0}' — policy_artifact_hash, data_snapshot_id, and decision_pipeline are required")]
+    #[error(
+        "certification is incomplete for decision '{0}' — policy_artifact_hash, data_snapshot_id, and decision_pipeline are required"
+    )]
     IncompleteCertification(String),
 }
 
@@ -75,13 +81,22 @@ pub enum DecisionEventType {
     /// The user recorded an execution action.
     UserExecutionRecorded { execution: ExecutionRecord },
     /// The reference risk boundary was reached.
-    ReferenceRiskReached { price: f64, timestamp: DateTime<Utc> },
+    ReferenceRiskReached {
+        price: f64,
+        timestamp: DateTime<Utc>,
+    },
     /// The target price was reached.
-    TargetReached { price: f64, timestamp: DateTime<Utc> },
+    TargetReached {
+        price: f64,
+        timestamp: DateTime<Utc>,
+    },
     /// The observation horizon elapsed.
     HorizonReached { timestamp: DateTime<Utc> },
     /// The user closed the position.
-    UserClosed { price: f64, timestamp: DateTime<Utc> },
+    UserClosed {
+        price: f64,
+        timestamp: DateTime<Utc>,
+    },
     /// Evidence enrichment was appended (does not modify the decision).
     EvidenceAppended { evidence: EvidenceRecord },
     /// The decision lifecycle was closed.
@@ -142,7 +157,9 @@ impl DecisionLedger {
         let cert = self.decisions[&id].certification.clone();
         self.append_event(
             id,
-            DecisionEventType::DecisionCertified { certification: cert },
+            DecisionEventType::DecisionCertified {
+                certification: cert,
+            },
             ts,
         )?;
 
@@ -337,22 +354,25 @@ impl DecisionLedger {
         event_type: DecisionEventType,
         event_timestamp: DateTime<Utc>,
     ) -> Result<(), LedgerError> {
-        let event_id = format!("{}-{}", decision_id, event_timestamp.timestamp_nanos_opt().unwrap_or(0));
+        let event_id = format!(
+            "{}-{}",
+            decision_id,
+            event_timestamp.timestamp_nanos_opt().unwrap_or(0)
+        );
         let event = DecisionEvent {
             event_id,
             decision_id: decision_id.clone(),
             event_type,
             event_timestamp,
         };
-        self.events
-            .entry(decision_id)
-            .or_default()
-            .push(event);
+        self.events.entry(decision_id).or_default().push(event);
         Ok(())
     }
 
     fn check_certified(&self, decision_id: &str) -> Result<(), LedgerError> {
-        let record = self.decisions.get(decision_id)
+        let record = self
+            .decisions
+            .get(decision_id)
             .ok_or_else(|| LedgerError::DecisionNotFound(decision_id.to_string()))?;
         if !record.is_certified() {
             return Err(LedgerError::DecisionNotCertified(decision_id.to_string()));
@@ -385,10 +405,14 @@ impl DecisionLedger {
             || cert.data_snapshot_id.is_empty()
             || cert.decision_pipeline.is_empty()
         {
-            return Err(LedgerError::IncompleteCertification(decision_id.to_string()));
+            return Err(LedgerError::IncompleteCertification(
+                decision_id.to_string(),
+            ));
         }
         if cert.status != CertificationStatus::Certified {
-            return Err(LedgerError::IncompleteCertification(decision_id.to_string()));
+            return Err(LedgerError::IncompleteCertification(
+                decision_id.to_string(),
+            ));
         }
         Ok(())
     }
@@ -416,8 +440,8 @@ mod tests {
             },
             certification: Certification {
                 status: CertificationStatus::Certified,
-                policy_artifact_hash: "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121"
-                    .into(),
+                policy_artifact_hash:
+                    "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121".into(),
                 decision_pipeline: "C3-002".into(),
                 execution_artifact_hash: Some(
                     "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f".into(),
@@ -450,10 +474,16 @@ mod tests {
     fn seal_and_retrieve_decision() {
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
 
         ledger.seal_decision(record.clone()).unwrap();
-        let retrieved = ledger.get_decision("coralys-ADANIENT-20260817T101500Z-001").unwrap();
+        let retrieved = ledger
+            .get_decision("coralys-ADANIENT-20260817T101500Z-001")
+            .unwrap();
         assert_eq!(retrieved.identity.instrument, "ADANIENT.NS");
     }
 
@@ -462,7 +492,11 @@ mod tests {
         // AC-03: immutability
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
 
         ledger.seal_decision(record.clone()).unwrap();
         let err = ledger.seal_decision(record).unwrap_err();
@@ -474,7 +508,11 @@ mod tests {
         // AC-05: observation boundary must have passed
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         ledger.seal_decision(record).unwrap();
 
         let outcome = OutcomeRecord {
@@ -501,7 +539,11 @@ mod tests {
         // AC-02: temporal firewall
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         ledger.seal_decision(record).unwrap();
 
         let past_ts = ts(2026, 8, 16, 9, 0, 0); // before decision_ts
@@ -526,7 +568,11 @@ mod tests {
         // AC-04 + AC-08: user-controlled execution, no allocation
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         ledger.seal_decision(record).unwrap();
 
         let exec_ts = ts(2026, 8, 17, 10, 20, 0);
@@ -536,8 +582,8 @@ mod tests {
                 ExecutionRecord {
                     status: ExecutionStatus::UserExecuted,
                     execution_timestamp: Some(exec_ts),
-                    quantity: None,          // user did not supply quantity
-                    execution_price: None,   // user did not supply price
+                    quantity: None,        // user did not supply quantity
+                    execution_price: None, // user did not supply price
                     execution_source: Some("USER".into()),
                 },
                 exec_ts,
@@ -556,7 +602,11 @@ mod tests {
         // AC-01: certification completeness
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let mut record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let mut record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         record.certification.policy_artifact_hash = String::new(); // empty hash
 
         let err = ledger.seal_decision(record).unwrap_err();
@@ -568,8 +618,12 @@ mod tests {
         let mut ledger = DecisionLedger::new();
         let t1 = ts(2026, 8, 17, 10, 15, 0);
         let t2 = ts(2026, 8, 17, 10, 30, 0);
-        ledger.seal_decision(sample_record("id-001", "ADANIENT.NS", t1)).unwrap();
-        ledger.seal_decision(sample_record("id-002", "BPCL.NS", t2)).unwrap();
+        ledger
+            .seal_decision(sample_record("id-001", "ADANIENT.NS", t1))
+            .unwrap();
+        ledger
+            .seal_decision(sample_record("id-002", "BPCL.NS", t2))
+            .unwrap();
 
         let all = ledger.all_decisions();
         assert_eq!(all.len(), 2);
@@ -581,7 +635,11 @@ mod tests {
     fn event_log_is_populated_on_seal() {
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         ledger.seal_decision(record).unwrap();
 
         let events = ledger
@@ -598,7 +656,11 @@ mod tests {
     fn ledger_round_trips_json() {
         let mut ledger = DecisionLedger::new();
         let decision_ts = ts(2026, 8, 17, 10, 15, 0);
-        let record = sample_record("coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS", decision_ts);
+        let record = sample_record(
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+            decision_ts,
+        );
         ledger.seal_decision(record).unwrap();
 
         let json = serde_json::to_string(&ledger).expect("serialize");

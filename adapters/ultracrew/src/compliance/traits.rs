@@ -1,3 +1,4 @@
+use crate::models::{Shift, Worker};
 /// Core trait contracts for the UltraCrew Compliance Framework.
 ///
 /// This module defines the *contracts* only — no infrastructure.
@@ -9,9 +10,7 @@
 /// - [`RuleContext`]     — the schedule view passed to each rule
 /// - [`RuleOutcome`]     — the result of evaluating one rule
 /// - [`Severity`]        — Hard (schedule-invalidating) vs Soft (penalised)
-
 use std::collections::HashMap;
-use crate::models::{Shift, Worker};
 
 // ── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -83,14 +82,20 @@ impl RuleOutcome {
     pub fn is_hard_violation(&self) -> bool {
         matches!(
             self,
-            RuleOutcome::Violated(ViolationExplanation { severity: Severity::Hard, .. })
+            RuleOutcome::Violated(ViolationExplanation {
+                severity: Severity::Hard,
+                ..
+            })
         )
     }
 
     pub fn is_soft_violation(&self) -> bool {
         matches!(
             self,
-            RuleOutcome::Violated(ViolationExplanation { severity: Severity::Soft, .. })
+            RuleOutcome::Violated(ViolationExplanation {
+                severity: Severity::Soft,
+                ..
+            })
         )
     }
 
@@ -133,7 +138,11 @@ impl<'a> RuleContext<'a> {
         for shifts in worker_shifts.values_mut() {
             shifts.sort_by_key(|s| s.start_hour);
         }
-        RuleContext { workers, all_shifts, worker_shifts }
+        RuleContext {
+            workers,
+            all_shifts,
+            worker_shifts,
+        }
     }
 }
 

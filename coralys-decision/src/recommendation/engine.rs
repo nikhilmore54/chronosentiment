@@ -208,9 +208,7 @@ impl<'a> RecommendationEngine<'a> {
         effective_session: Option<&str>,
     ) -> RecommendationRecord {
         // --- Historical evidence lookup ---
-        let evidence = self
-            .evidence_store
-            .for_decision(direction, trend, momentum);
+        let evidence = self.evidence_store.for_decision(direction, trend, momentum);
 
         // --- Geometry computation ---
         let geometry = compute_geometry(direction, trend, momentum, reference_price, atr_14);
@@ -336,9 +334,7 @@ fn derive_action(
                 RecommendationAction::Watch
             }
         }
-        EvidenceClass::Unfavourable | EvidenceClass::Insufficient => {
-            RecommendationAction::NoTrade
-        }
+        EvidenceClass::Unfavourable | EvidenceClass::Insufficient => RecommendationAction::NoTrade,
     }
 }
 
@@ -357,14 +353,16 @@ fn compute_score(
 
     let evidence_contribution = evidence.target_before_risk_rate * EVIDENCE_WEIGHT;
 
-    let rr_capped = geometry
-        .map(|g| (g.rr / 3.0).min(1.0))
-        .unwrap_or(0.0);
+    let rr_capped = geometry.map(|g| (g.rr / 3.0).min(1.0)).unwrap_or(0.0);
     let rr_contribution = rr_capped * RR_WEIGHT;
 
     // Freshness: 1.0 if effective_session is set (implies next-session decision),
     // 0.5 otherwise (stale or unknown session).
-    let freshness = if effective_session.is_some() { 1.0 } else { 0.5 };
+    let freshness = if effective_session.is_some() {
+        1.0
+    } else {
+        0.5
+    };
     let freshness_contribution = freshness * FRESHNESS_WEIGHT;
 
     let rank_score = evidence_contribution + rr_contribution + freshness_contribution;
@@ -458,8 +456,14 @@ mod tests {
         let store = favourable_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-001", "TCS.NS", "LONG", "Bullish", "Positive",
-            Some(2313.0), Some(70.0), Some("2026-08-18"),
+            "d-001",
+            "TCS.NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(2313.0),
+            Some(70.0),
+            Some("2026-08-18"),
         );
         assert_eq!(rec.action, RecommendationAction::Buy);
         assert!(rec.indicative_target.is_some());
@@ -475,13 +479,20 @@ mod tests {
         let engine = RecommendationEngine::new(&store);
         // Use tiny ATR so R:R hits the floor
         let rec = engine.evaluate(
-            "d-002", "IDEA.NS", "LONG", "Bearish", "Positive",
-            Some(13.71), Some(0.40), Some("2026-08-18"),
+            "d-002",
+            "IDEA.NS",
+            "LONG",
+            "Bearish",
+            "Positive",
+            Some(13.71),
+            Some(0.40),
+            Some("2026-08-18"),
         );
         // Mixed evidence, R:R = upside/downside — check action
         assert!(
             rec.action == RecommendationAction::Watch || rec.action == RecommendationAction::Buy,
-            "Expected Watch or Buy, got {:?}", rec.action
+            "Expected Watch or Buy, got {:?}",
+            rec.action
         );
     }
 
@@ -490,8 +501,14 @@ mod tests {
         let store = unfavourable_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-003", "HDFCBANK.NS", "LONG", "Bearish", "Negative",
-            Some(729.0), Some(9.07), Some("2026-08-18"),
+            "d-003",
+            "HDFCBANK.NS",
+            "LONG",
+            "Bearish",
+            "Negative",
+            Some(729.0),
+            Some(9.07),
+            Some("2026-08-18"),
         );
         assert_eq!(rec.action, RecommendationAction::NoTrade);
     }
@@ -501,8 +518,14 @@ mod tests {
         let store = insufficient_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-004", "RELIANCE.NS", "LONG", "Bullish", "Negative",
-            Some(1316.0), Some(21.55), Some("2026-08-18"),
+            "d-004",
+            "RELIANCE.NS",
+            "LONG",
+            "Bullish",
+            "Negative",
+            Some(1316.0),
+            Some(21.55),
+            Some("2026-08-18"),
         );
         assert_eq!(rec.action, RecommendationAction::NoTrade);
     }
@@ -512,8 +535,14 @@ mod tests {
         let store = favourable_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-005", "INFY.NS", "NO_TRADE", "Bullish", "Positive",
-            Some(1139.0), Some(30.0), Some("2026-08-18"),
+            "d-005",
+            "INFY.NS",
+            "NO_TRADE",
+            "Bullish",
+            "Positive",
+            Some(1139.0),
+            Some(30.0),
+            Some("2026-08-18"),
         );
         assert_eq!(rec.action, RecommendationAction::NoTrade);
     }
@@ -523,8 +552,14 @@ mod tests {
         let store = favourable_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-006", "TCS.NS", "LONG", "Bullish", "Positive",
-            None, None, Some("2026-08-18"),
+            "d-006",
+            "TCS.NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            None,
+            None,
+            Some("2026-08-18"),
         );
         assert!(rec.indicative_target.is_none());
         assert!(rec.rr.is_none());
@@ -537,8 +572,14 @@ mod tests {
         let store = favourable_store();
         let engine = RecommendationEngine::new(&store);
         let rec = engine.evaluate(
-            "d-007", "TCS.NS", "LONG", "Bullish", "Positive",
-            Some(2313.0), Some(70.0), Some("2026-08-18"),
+            "d-007",
+            "TCS.NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(2313.0),
+            Some(70.0),
+            Some("2026-08-18"),
         );
         let sc = &rec.score_components;
         let expected = sc.evidence_contribution + sc.rr_contribution + sc.freshness_contribution;
@@ -569,8 +610,8 @@ mod tests {
 // G4: Leakage boundary preserved — no future data in analogue selection
 
 use super::evidence::{
-    DegradationLevel, EvidenceClass as EvidenceClassV1, Rec001hStore, V1Evidence,
-    VolatilityRegime, VolumeRegime,
+    DegradationLevel, EvidenceClass as EvidenceClassV1, Rec001hStore, V1Evidence, VolatilityRegime,
+    VolumeRegime,
 };
 
 pub const RECOMMENDATION_POLICY_VERSION_V1: &str = "v1";
@@ -658,9 +699,17 @@ impl<'a> RecommendationEngineV1<'a> {
         // NO_TRADE direction → skip evidence lookup
         if direction == "NO_TRADE" {
             return self.no_trade_record(
-                decision_id, instrument, direction, trend, momentum,
-                reference_price, volatility, relative_volume_20,
-                0, 0.0, "Insufficient",
+                decision_id,
+                instrument,
+                direction,
+                trend,
+                momentum,
+                reference_price,
+                volatility,
+                relative_volume_20,
+                0,
+                0.0,
+                "Insufficient",
             );
         }
 
@@ -668,19 +717,38 @@ impl<'a> RecommendationEngineV1<'a> {
         let volume_regime = VolumeRegime::from_relative_volume(relative_volume_20);
 
         let evidence = self.store.for_decision(
-            instrument, direction, trend, momentum,
-            &vol_regime, &volume_regime,
+            instrument,
+            direction,
+            trend,
+            momentum,
+            &vol_regime,
+            &volume_regime,
         );
 
         match evidence {
             None => self.no_trade_record(
-                decision_id, instrument, direction, trend, momentum,
-                reference_price, volatility, relative_volume_20,
-                0, 0.0, "Insufficient",
+                decision_id,
+                instrument,
+                direction,
+                trend,
+                momentum,
+                reference_price,
+                volatility,
+                relative_volume_20,
+                0,
+                0.0,
+                "Insufficient",
             ),
             Some(ev) => self.build_record(
-                decision_id, instrument, direction, trend, momentum,
-                reference_price, vol_regime, volume_regime, ev,
+                decision_id,
+                instrument,
+                direction,
+                trend,
+                momentum,
+                reference_price,
+                vol_regime,
+                volume_regime,
+                ev,
             ),
         }
     }
@@ -698,8 +766,18 @@ impl<'a> RecommendationEngineV1<'a> {
         ev: V1Evidence,
     ) -> RecommendationRecordV1 {
         // Compute adaptive geometry from reference price + evidence percentiles
-        let (adaptive_target, adaptive_risk, adaptive_upside_pct, adaptive_downside_pct, adaptive_rr) =
-            compute_adaptive_geometry(direction, reference_price, ev.adaptive_target_pct, ev.adaptive_risk_pct);
+        let (
+            adaptive_target,
+            adaptive_risk,
+            adaptive_upside_pct,
+            adaptive_downside_pct,
+            adaptive_rr,
+        ) = compute_adaptive_geometry(
+            direction,
+            reference_price,
+            ev.adaptive_target_pct,
+            ev.adaptive_risk_pct,
+        );
 
         let action = derive_action_v1(direction, &ev.evidence_class, adaptive_rr);
         let rank_score = compute_score_v1(ev.target_rate, adaptive_rr, &ev.degradation_level);
@@ -783,23 +861,45 @@ fn compute_adaptive_geometry(
     reference_price: Option<f64>,
     target_pct: f64,
     risk_pct: f64,
-) -> (Option<f64>, Option<f64>, Option<f64>, Option<f64>, Option<f64>) {
+) -> (
+    Option<f64>,
+    Option<f64>,
+    Option<f64>,
+    Option<f64>,
+    Option<f64>,
+) {
     let entry = match reference_price {
         Some(p) if p > 0.0 && target_pct > 0.0 && risk_pct > 0.0 => p,
         _ => return (None, None, None, None, None),
     };
 
     let (target, risk) = if direction == "LONG" {
-        (entry * (1.0 + target_pct / 100.0), entry * (1.0 - risk_pct / 100.0))
+        (
+            entry * (1.0 + target_pct / 100.0),
+            entry * (1.0 - risk_pct / 100.0),
+        )
     } else {
-        (entry * (1.0 - target_pct / 100.0), entry * (1.0 + risk_pct / 100.0))
+        (
+            entry * (1.0 - target_pct / 100.0),
+            entry * (1.0 + risk_pct / 100.0),
+        )
     };
 
     let upside_pct = target_pct / 100.0;
     let downside_pct = risk_pct / 100.0;
-    let rr = if downside_pct > 0.0 { upside_pct / downside_pct } else { 0.0 };
+    let rr = if downside_pct > 0.0 {
+        upside_pct / downside_pct
+    } else {
+        0.0
+    };
 
-    (Some(target), Some(risk), Some(upside_pct), Some(downside_pct), Some(rr))
+    (
+        Some(target),
+        Some(risk),
+        Some(upside_pct),
+        Some(downside_pct),
+        Some(rr),
+    )
 }
 
 // Derive action from evidence class and adaptive R:R (v1 rules).
@@ -888,7 +988,10 @@ mod tests_v1 {
     use tempfile::TempDir;
 
     /// Build a minimal Rec001hStore from in-memory JSONL content.
-    fn make_v1_store(ticker: &str, records: &[(&str, &str, &str, &str, f64, &str, f64, f64)]) -> (TempDir, Rec001hStore) {
+    fn make_v1_store(
+        ticker: &str,
+        records: &[(&str, &str, &str, &str, f64, &str, f64, f64)],
+    ) -> (TempDir, Rec001hStore) {
         // records: (direction, trend, momentum, volatility, rel_vol, outcome, mfe5, mae5)
         let dir = TempDir::new().unwrap();
         let file_name = format!("{}.jsonl", ticker);
@@ -896,8 +999,24 @@ mod tests_v1 {
         let mut f = std::fs::File::create(&path).unwrap();
         for (direction, trend, momentum, volatility, rel_vol, outcome, mfe5, mae5) in records {
             // Build a 10-element mfe_pct and mae_pct array; index 4 = mfe5/mae5
-            let mfe_arr: Vec<f64> = (0..10).map(|i| if i < 5 { *mfe5 * (i as f64 + 1.0) / 5.0 } else { *mfe5 }).collect();
-            let mae_arr: Vec<f64> = (0..10).map(|i| if i < 5 { *mae5 * (i as f64 + 1.0) / 5.0 } else { *mae5 }).collect();
+            let mfe_arr: Vec<f64> = (0..10)
+                .map(|i| {
+                    if i < 5 {
+                        *mfe5 * (i as f64 + 1.0) / 5.0
+                    } else {
+                        *mfe5
+                    }
+                })
+                .collect();
+            let mae_arr: Vec<f64> = (0..10)
+                .map(|i| {
+                    if i < 5 {
+                        *mae5 * (i as f64 + 1.0) / 5.0
+                    } else {
+                        *mae5
+                    }
+                })
+                .collect();
             let line = serde_json::json!({
                 "ticker": format!("{}.NS", ticker.replace("_NS", "")),
                 "date": "2024-01-01",
@@ -929,21 +1048,73 @@ mod tests_v1 {
         (dir, store)
     }
 
-    fn make_records(n: usize, direction: &'static str, trend: &'static str, momentum: &'static str,
-                    volatility: &'static str, rel_vol: f64, outcome: &'static str,
-                    mfe5: f64, mae5: f64) -> Vec<(&'static str, &'static str, &'static str, &'static str, f64, &'static str, f64, f64)> {
-        (0..n).map(|_| (direction, trend, momentum, volatility, rel_vol, outcome, mfe5, mae5)).collect()
+    fn make_records(
+        n: usize,
+        direction: &'static str,
+        trend: &'static str,
+        momentum: &'static str,
+        volatility: &'static str,
+        rel_vol: f64,
+        outcome: &'static str,
+        mfe5: f64,
+        mae5: f64,
+    ) -> Vec<(
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+        f64,
+        &'static str,
+        f64,
+        f64,
+    )> {
+        (0..n)
+            .map(|_| {
+                (
+                    direction, trend, momentum, volatility, rel_vol, outcome, mfe5, mae5,
+                )
+            })
+            .collect()
     }
 
     /// G1: Engine lives in coralys-decision — verified by the fact this test compiles here.
     #[test]
     fn g1_engine_lives_in_coralys_decision() {
         // If this test compiles and runs, G1 is satisfied.
-        let mut records = make_records(20, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 5.0, -2.0);
-        records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 5.0, -2.0));
+        let mut records = make_records(
+            20,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        );
+        records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            5.0,
+            -2.0,
+        ));
         let (_dir, store) = make_v1_store("RELIANCE_NS", &records);
         let engine = RecommendationEngineV1::new(&store);
-        let rec = engine.evaluate("d-g1", "RELIANCE_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
+        let rec = engine.evaluate(
+            "d-g1",
+            "RELIANCE_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
         assert_eq!(rec.recommendation_policy_version, "v1");
     }
 
@@ -954,26 +1125,89 @@ mod tests_v1 {
     #[test]
     fn g2_same_state_different_tickers_different_recommendations() {
         // RELIANCE: strong evidence → BUY
-        let mut rel_records = make_records(20, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 5.0, -2.0);
-        rel_records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 5.0, -2.0));
+        let mut rel_records = make_records(
+            20,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        );
+        rel_records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            5.0,
+            -2.0,
+        ));
         let (_dir_rel, store_rel) = make_v1_store("RELIANCE_NS", &rel_records);
 
         // IDEA: weak evidence → WATCH or NO_TRADE
-        let mut idea_records = make_records(5, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 2.0, -3.0);
-        idea_records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 2.0, -3.0));
+        let mut idea_records = make_records(
+            5,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            2.0,
+            -3.0,
+        );
+        idea_records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            2.0,
+            -3.0,
+        ));
         let (_dir_idea, store_idea) = make_v1_store("IDEA_NS", &idea_records);
 
         let engine_rel = RecommendationEngineV1::new(&store_rel);
         let engine_idea = RecommendationEngineV1::new(&store_idea);
 
-        let rec_rel = engine_rel.evaluate("d-g2-rel", "RELIANCE_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
-        let rec_idea = engine_idea.evaluate("d-g2-idea", "IDEA_NS", "LONG", "Bullish", "Positive", Some(13.0), "present", 1.0);
+        let rec_rel = engine_rel.evaluate(
+            "d-g2-rel",
+            "RELIANCE_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
+        let rec_idea = engine_idea.evaluate(
+            "d-g2-idea",
+            "IDEA_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(13.0),
+            "present",
+            1.0,
+        );
 
         // G2: same state, different outcomes
-        assert_eq!(rec_rel.action, RecommendationAction::Buy,
-            "RELIANCE should be BUY with strong evidence");
-        assert_ne!(rec_rel.action, rec_idea.action,
-            "G2 FAILED: same C3-002 state produced same recommendation for different tickers");
+        assert_eq!(
+            rec_rel.action,
+            RecommendationAction::Buy,
+            "RELIANCE should be BUY with strong evidence"
+        );
+        assert_ne!(
+            rec_rel.action, rec_idea.action,
+            "G2 FAILED: same C3-002 state produced same recommendation for different tickers"
+        );
     }
 
     /// G3: Adaptive geometry — target and risk are NOT fixed at R:R=2.0.
@@ -983,20 +1217,78 @@ mod tests_v1 {
     #[test]
     fn g3_adaptive_geometry_not_fixed_rr() {
         // Ticker A: high MFE, low MAE → high R:R
-        let mut a_records = make_records(20, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 8.0, -2.0);
-        a_records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 8.0, -2.0));
+        let mut a_records = make_records(
+            20,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            8.0,
+            -2.0,
+        );
+        a_records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            8.0,
+            -2.0,
+        ));
         let (_dir_a, store_a) = make_v1_store("TICKER_A_NS", &a_records);
 
         // Ticker B: low MFE, high MAE → low R:R
-        let mut b_records = make_records(20, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 2.0, -6.0);
-        b_records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 2.0, -6.0));
+        let mut b_records = make_records(
+            20,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            2.0,
+            -6.0,
+        );
+        b_records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            2.0,
+            -6.0,
+        ));
         let (_dir_b, store_b) = make_v1_store("TICKER_B_NS", &b_records);
 
         let engine_a = RecommendationEngineV1::new(&store_a);
         let engine_b = RecommendationEngineV1::new(&store_b);
 
-        let rec_a = engine_a.evaluate("d-g3-a", "TICKER_A_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
-        let rec_b = engine_b.evaluate("d-g3-b", "TICKER_B_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
+        let rec_a = engine_a.evaluate(
+            "d-g3-a",
+            "TICKER_A_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
+        let rec_b = engine_b.evaluate(
+            "d-g3-b",
+            "TICKER_B_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
 
         // G3: adaptive R:R must differ between tickers
         let rr_a = rec_a.adaptive_rr.expect("Ticker A should have adaptive_rr");
@@ -1004,10 +1296,14 @@ mod tests_v1 {
         assert!(
             (rr_a - rr_b).abs() > 0.1,
             "G3 FAILED: adaptive_rr should differ between tickers with different MFE/MAE distributions. rr_a={:.3}, rr_b={:.3}",
-            rr_a, rr_b
+            rr_a,
+            rr_b
         );
         // Specifically A should have higher R:R than B
-        assert!(rr_a > rr_b, "G3: Ticker A (high MFE, low MAE) should have higher R:R than Ticker B");
+        assert!(
+            rr_a > rr_b,
+            "G3: Ticker A (high MFE, low MAE) should have higher R:R than Ticker B"
+        );
     }
 
     /// G4: Leakage boundary — the store only uses historical records, no future data.
@@ -1017,29 +1313,95 @@ mod tests_v1 {
     /// Verified by the fact that the store is immutable after load_from_dir().
     #[test]
     fn g4_leakage_boundary_preserved() {
-        let mut records = make_records(20, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 5.0, -2.0);
-        records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.0, "RISK_BEFORE_TARGET", 5.0, -2.0));
+        let mut records = make_records(
+            20,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        );
+        records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "RISK_BEFORE_TARGET",
+            5.0,
+            -2.0,
+        ));
         let (_dir, store) = make_v1_store("RELIANCE_NS", &records);
         let engine = RecommendationEngineV1::new(&store);
 
         // The engine is stateless at query time — no external I/O, no future data.
         // Calling evaluate twice with the same inputs must produce identical results.
-        let rec1 = engine.evaluate("d-g4-1", "RELIANCE_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
-        let rec2 = engine.evaluate("d-g4-2", "RELIANCE_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
+        let rec1 = engine.evaluate(
+            "d-g4-1",
+            "RELIANCE_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
+        let rec2 = engine.evaluate(
+            "d-g4-2",
+            "RELIANCE_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
 
-        assert_eq!(rec1.action, rec2.action, "G4: deterministic — same inputs must produce same action");
-        assert!((rec1.rank_score - rec2.rank_score).abs() < 1e-10, "G4: deterministic — same inputs must produce same score");
-        assert_eq!(rec1.sample_size, rec2.sample_size, "G4: deterministic — same inputs must produce same sample_size");
+        assert_eq!(
+            rec1.action, rec2.action,
+            "G4: deterministic — same inputs must produce same action"
+        );
+        assert!(
+            (rec1.rank_score - rec2.rank_score).abs() < 1e-10,
+            "G4: deterministic — same inputs must produce same score"
+        );
+        assert_eq!(
+            rec1.sample_size, rec2.sample_size,
+            "G4: deterministic — same inputs must produce same sample_size"
+        );
     }
 
     /// Graceful degradation: insufficient evidence → NO_TRADE.
     #[test]
     fn insufficient_evidence_produces_no_trade() {
         // Only 5 records — below MIN_V1_SAMPLE=15
-        let records = make_records(5, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 5.0, -2.0);
+        let records = make_records(
+            5,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        );
         let (_dir, store) = make_v1_store("SMALL_NS", &records);
         let engine = RecommendationEngineV1::new(&store);
-        let rec = engine.evaluate("d-insuf", "SMALL_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
+        let rec = engine.evaluate(
+            "d-insuf",
+            "SMALL_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
         assert_eq!(rec.action, RecommendationAction::NoTrade);
         assert_eq!(rec.degradation_level, "Insufficient");
     }
@@ -1050,13 +1412,45 @@ mod tests_v1 {
         // 8 records with Normal volume (exact match insufficient)
         // + 10 records with High volume (same vol_regime=present, different volume)
         // Total with vol_regime=present = 18 ≥ 15 → RelaxVolume
-        let mut records = make_records(8, "LONG", "Bullish", "Positive", "present", 1.0, "TARGET_BEFORE_RISK", 5.0, -2.0);
-        records.extend(make_records(10, "LONG", "Bullish", "Positive", "present", 1.5, "TARGET_BEFORE_RISK", 5.0, -2.0));
+        let mut records = make_records(
+            8,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.0,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        );
+        records.extend(make_records(
+            10,
+            "LONG",
+            "Bullish",
+            "Positive",
+            "present",
+            1.5,
+            "TARGET_BEFORE_RISK",
+            5.0,
+            -2.0,
+        ));
         let (_dir, store) = make_v1_store("DEGRADE_NS", &records);
         let engine = RecommendationEngineV1::new(&store);
         // Query with Normal volume (rel_vol=1.0) — exact has 8, relax_vol has 18
-        let rec = engine.evaluate("d-deg", "DEGRADE_NS", "LONG", "Bullish", "Positive", Some(1000.0), "present", 1.0);
-        assert_eq!(rec.degradation_level, "RelaxVolume",
-            "Expected RelaxVolume degradation, got {}", rec.degradation_level);
+        let rec = engine.evaluate(
+            "d-deg",
+            "DEGRADE_NS",
+            "LONG",
+            "Bullish",
+            "Positive",
+            Some(1000.0),
+            "present",
+            1.0,
+        );
+        assert_eq!(
+            rec.degradation_level, "RelaxVolume",
+            "Expected RelaxVolume degradation, got {}",
+            rec.degradation_level
+        );
     }
 }

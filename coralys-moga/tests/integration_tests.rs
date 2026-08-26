@@ -1,10 +1,8 @@
 use coralys_moga::runtime::model::network::OperationalModel;
-use coralys_moga::runtime::optimization::{
-    DecisionVector, ObjectiveModel, OptimizationEngine
-};
+use coralys_moga::runtime::optimization::{DecisionVector, ObjectiveModel, OptimizationEngine};
 use coralys_moga::traits::{Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator};
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 // --- Toy Domain Representation ---
 
@@ -61,13 +59,21 @@ impl MutationOperator<FactoryState> for FactoryOptimizer {
 impl FitnessEvaluator<FactoryState> for FactoryOptimizer {
     type Evaluation = FactoryFitness;
 
-    fn evaluate(&self, genome: &FactoryState, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+    fn evaluate(
+        &self,
+        genome: &FactoryState,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
         // Compute total throughput (more hours = more throughput but penalized if exceeding max hours)
         let total_hours: f64 = genome.machine_hours_assigned.iter().sum();
         let max_hours = 40.0;
-        
-        let penalty = if total_hours > max_hours { total_hours - max_hours } else { 0.0 };
-        
+
+        let penalty = if total_hours > max_hours {
+            total_hours - max_hours
+        } else {
+            0.0
+        };
+
         FactoryFitness {
             throughput: total_hours - (penalty * 2.0),
             genome: genome.clone(),
@@ -95,15 +101,15 @@ impl PartialOrd for FactoryFitness {
 
 impl Evaluated for FactoryFitness {
     type Genome = FactoryState;
-    
+
     fn is_valid(&self) -> bool {
         self.throughput > 0.0
     }
-    
+
     fn fitness(&self) -> f64 {
         self.throughput
     }
-    
+
     fn genome(&self) -> &Self::Genome {
         &self.genome
     }
@@ -124,21 +130,21 @@ impl<M: OperationalModel> OptimizationEngine<M> for ToyEngine<M> {
 fn test_factory_optimization() {
     let mut rng = StdRng::seed_from_u64(42);
     let optimizer = FactoryOptimizer;
-    
+
     // Demonstrate generating and evaluating
     let mut state = optimizer.create(&mut rng);
     let fitness = optimizer.evaluate(&state);
-    
+
     println!("Initial State: {:?}, Fitness: {:?}", state, fitness);
-    
+
     optimizer.mutate(&mut state, &mut rng);
     let new_fitness = optimizer.evaluate(&state);
-    
+
     println!("Mutated State: {:?}, Fitness: {:?}", state, new_fitness);
-    
+
     let mut engine = ToyEngine { state };
     engine.optimize();
-    
+
     assert!(fitness.is_valid());
     assert!(new_fitness.is_valid());
     assert!(new_fitness < fitness);

@@ -23,7 +23,12 @@ fn t() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2021, 10, 31, 15, 30, 0).unwrap()
 }
 
-fn profile(ma20: f64, ma50: f64, roc: f64, atr: Option<f64>) -> chronosentiment_adapter::reasoning::assessment::AssessmentProfile {
+fn profile(
+    ma20: f64,
+    ma50: f64,
+    roc: f64,
+    atr: Option<f64>,
+) -> chronosentiment_adapter::reasoning::assessment::AssessmentProfile {
     let mut metrics = MetricReport::default();
     metrics
         .metrics
@@ -104,8 +109,11 @@ fn policy_from(draft: PolicyArtifact) -> ArtifactDecisionPolicy {
 #[test]
 fn empty_rules_emit_unmatched_no_trade() {
     let policy = policy_from(fixture_draft());
-    let decision = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    let decision = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(decision.action, DecisionAction::NoTrade);
     assert_eq!(decision.policy_name, "csp006a.test@v0");
     assert_eq!(
@@ -145,12 +153,21 @@ fn explicit_rule_can_emit_long() {
         action: DecisionAction::Long,
     }];
     let policy = policy_from(draft);
-    let bullish = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    let bullish = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(bullish.action, DecisionAction::Long);
-    assert_eq!(bullish.evidence.consumed_concepts, vec!["Trend".to_string()]);
-    let bearish = decide_from_inputs(replay_inputs(profile(2000.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    assert_eq!(
+        bullish.evidence.consumed_concepts,
+        vec!["Trend".to_string()]
+    );
+    let bearish = decide_from_inputs(
+        replay_inputs(profile(2000.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(bearish.action, DecisionAction::NoTrade);
 }
 
@@ -174,8 +191,11 @@ fn conjunction_can_represent_no_trade_without_prescribing_it() {
         action: DecisionAction::NoTrade,
     }];
     let policy = policy_from(draft);
-    let mixed = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, -1.0, Some(2.0))), &policy)
-        .unwrap();
+    let mixed = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, -1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(mixed.action, DecisionAction::NoTrade);
     assert_eq!(
         mixed.evidence.consumed_concepts,
@@ -205,18 +225,27 @@ fn first_matching_rule_wins() {
         },
     ];
     let policy = policy_from(draft);
-    let decision = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    let decision = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(decision.action, DecisionAction::NoTrade);
 }
 
 #[test]
 fn same_artifact_and_state_are_deterministic() {
     let policy = policy_from(fixture_draft());
-    let a = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
-    let b = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    let a = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
+    let b = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     assert_eq!(a.decision_id, b.decision_id);
     assert_eq!(a.provenance.content_hash, b.provenance.content_hash);
 }
@@ -238,10 +267,16 @@ fn different_rules_change_artifact_hash_and_decision_identity() {
         empty.artifact().artifact_hash,
         with_rule.artifact().artifact_hash
     );
-    let d0 = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &empty)
-        .unwrap();
-    let d1 = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &with_rule)
-        .unwrap();
+    let d0 = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &empty,
+    )
+    .unwrap();
+    let d1 = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &with_rule,
+    )
+    .unwrap();
     assert_ne!(d0.decision_id, d1.decision_id);
 }
 
@@ -324,8 +359,11 @@ fn hash_mismatch_is_rejected() {
 #[test]
 fn fabricated_assessment_confidence_is_not_copied() {
     let policy = policy_from(fixture_draft());
-    let decision = decide_from_inputs(replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))), &policy)
-        .unwrap();
+    let decision = decide_from_inputs(
+        replay_inputs(profile(2100.0, 2050.0, 1.0, Some(2.0))),
+        &policy,
+    )
+    .unwrap();
     for factor in &decision.evidence.factors {
         assert!(
             factor.assessment_confidence.is_none(),

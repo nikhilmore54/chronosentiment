@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Universal objective values wrapper representing the multi-objective score.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -51,8 +51,8 @@ impl Metric {
 /// Output report for a given diagnostic detector evaluation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiagnosticResult {
-    pub confidence: f64,      // 0.0 to 1.0
-    pub severity: f64,        // 0.0 to 1.0
+    pub confidence: f64, // 0.0 to 1.0
+    pub severity: f64,   // 0.0 to 1.0
     pub evidence_count: usize,
     pub supporting_metrics: Vec<Metric>,
 }
@@ -84,15 +84,24 @@ impl EcologyState {
         }
     }
 
-    pub fn record(&mut self, generation: usize, results: std::collections::HashMap<String, DiagnosticResult>) {
-        self.history.push(DiagnosticHistoryEntry { generation, results });
+    pub fn record(
+        &mut self,
+        generation: usize,
+        results: std::collections::HashMap<String, DiagnosticResult>,
+    ) {
+        self.history.push(DiagnosticHistoryEntry {
+            generation,
+            results,
+        });
         if self.history.len() > self.max_history_size {
             self.history.remove(0);
         }
     }
 
     pub fn mean_confidence(&self, detector_name: &str, window: usize) -> f64 {
-        if self.history.is_empty() { return 0.0; }
+        if self.history.is_empty() {
+            return 0.0;
+        }
         let start = self.history.len().saturating_sub(window);
         let slice = &self.history[start..];
         let mut sum = 0.0;
@@ -107,7 +116,9 @@ impl EcologyState {
     }
 
     pub fn mean_severity(&self, detector_name: &str, window: usize) -> f64 {
-        if self.history.is_empty() { return 0.0; }
+        if self.history.is_empty() {
+            return 0.0;
+        }
         let start = self.history.len().saturating_sub(window);
         let slice = &self.history[start..];
         let mut sum = 0.0;
@@ -122,7 +133,9 @@ impl EcologyState {
     }
 
     pub fn persistence_score(&self, detector_name: &str, threshold: f64, window: usize) -> f64 {
-        if self.history.is_empty() { return 0.0; }
+        if self.history.is_empty() {
+            return 0.0;
+        }
         let start = self.history.len().saturating_sub(window);
         let slice = &self.history[start..];
         let mut triggered = 0;
@@ -135,7 +148,11 @@ impl EcologyState {
                 count += 1;
             }
         }
-        if count == 0 { 0.0 } else { triggered as f64 / count as f64 }
+        if count == 0 {
+            0.0
+        } else {
+            triggered as f64 / count as f64
+        }
     }
 }
 
@@ -149,7 +166,7 @@ pub fn pearson_correlation(x: &[f64], y: &[f64]) -> f64 {
     let n = x.len() as f64;
     let mean_x = x.iter().sum::<f64>() / n;
     let mean_y = y.iter().sum::<f64>() / n;
-    
+
     let mut num = 0.0;
     let mut den_x = 0.0;
     let mut den_y = 0.0;
@@ -160,11 +177,11 @@ pub fn pearson_correlation(x: &[f64], y: &[f64]) -> f64 {
         den_x += dx * dx;
         den_y += dy * dy;
     }
-    
+
     if den_x == 0.0 || den_y == 0.0 {
         return 0.0;
     }
-    
+
     num / (den_x * den_y).sqrt()
 }
 
@@ -179,10 +196,10 @@ pub fn gini_coefficient(values: &[f64]) -> f64 {
     }
     let mut sorted = values.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    
+
     let min_val = sorted[0];
     let offset = if min_val < 0.0 { -min_val } else { 0.0 };
-    
+
     let mut sum = 0.0;
     let mut weighted_sum = 0.0;
     for (i, &v) in sorted.iter().enumerate() {
@@ -190,11 +207,11 @@ pub fn gini_coefficient(values: &[f64]) -> f64 {
         sum += val;
         weighted_sum += (i as f64 + 1.0) * val;
     }
-    
+
     if sum == 0.0 {
         return 0.0;
     }
-    
+
     (2.0 * weighted_sum) / (n as f64 * sum) - ((n + 1) as f64) / n as f64
 }
 
@@ -229,7 +246,7 @@ impl DiagnosticDetector for AttractorDetector {
         for obs in observations {
             candidates.extend(obs.candidates.iter().cloned());
         }
-        
+
         let evidence_count = candidates.len();
         if evidence_count < 5 {
             return DiagnosticResult {
@@ -239,29 +256,33 @@ impl DiagnosticDetector for AttractorDetector {
                 supporting_metrics: Vec::new(),
             };
         }
-        
+
         let num_objectives = candidates[0].objectives.values.len();
         let mut max_corr = -1.0;
         let mut second_corr = -1.0;
         let mut max_index = 0;
         let mut supporting_metrics = Vec::new();
-        
-        let admissions: Vec<f64> = candidates.iter()
+
+        let admissions: Vec<f64> = candidates
+            .iter()
             .map(|c| if c.admitted { 1.0 } else { 0.0 })
             .collect();
-            
+
         for obj_idx in 0..num_objectives {
-            let improvements: Vec<f64> = candidates.iter().map(|c| {
-                if let Some(ref parent) = c.parent_objectives {
-                    parent.values[obj_idx] - c.objectives.values[obj_idx]
-                } else {
-                    -c.objectives.values[obj_idx] // lower is better, so negate value
-                }
-            }).collect();
-            
+            let improvements: Vec<f64> = candidates
+                .iter()
+                .map(|c| {
+                    if let Some(ref parent) = c.parent_objectives {
+                        parent.values[obj_idx] - c.objectives.values[obj_idx]
+                    } else {
+                        -c.objectives.values[obj_idx] // lower is better, so negate value
+                    }
+                })
+                .collect();
+
             let r = pearson_correlation(&improvements, &admissions);
             supporting_metrics.push(Metric::new(format!("correlation_obj_{}", obj_idx), r));
-            
+
             if r > max_corr {
                 second_corr = max_corr;
                 max_corr = r;
@@ -270,19 +291,19 @@ impl DiagnosticDetector for AttractorDetector {
                 second_corr = r;
             }
         }
-        
+
         supporting_metrics.push(Metric::new("attractor_index", max_index as f64));
         supporting_metrics.push(Metric::new("max_correlation", max_corr));
-        
+
         let diff = max_corr - second_corr;
         let confidence = if max_corr > self.min_correlation && diff > 0.0 {
             (diff / self.margin_threshold).clamp(0.0, 1.0)
         } else {
             0.0
         };
-        
+
         let severity = (max_corr.clamp(0.0, 1.0) * confidence).clamp(0.0, 1.0);
-        
+
         DiagnosticResult {
             confidence,
             severity,
@@ -321,7 +342,7 @@ impl DiagnosticDetector for TradeoffBasinDetector {
                 }
             }
         }
-        
+
         let evidence_count = candidates_with_parent.len();
         if evidence_count < 5 {
             return DiagnosticResult {
@@ -331,21 +352,21 @@ impl DiagnosticDetector for TradeoffBasinDetector {
                 supporting_metrics: Vec::new(),
             };
         }
-        
+
         let mut dx_vals = Vec::with_capacity(evidence_count);
         let mut dy_vals = Vec::with_capacity(evidence_count);
-        
+
         let mut x_improved_count = 0;
         let mut y_degraded_when_x_improved = 0;
-        
+
         for c in &candidates_with_parent {
             let parent = c.parent_objectives.as_ref().unwrap();
             let dx = parent.values[self.x_index] - c.objectives.values[self.x_index];
             let dy = parent.values[self.y_index] - c.objectives.values[self.y_index];
-            
+
             dx_vals.push(dx);
             dy_vals.push(dy);
-            
+
             if dx > 0.0 {
                 x_improved_count += 1;
                 if dy < 0.0 {
@@ -353,22 +374,22 @@ impl DiagnosticDetector for TradeoffBasinDetector {
                 }
             }
         }
-        
+
         let r = pearson_correlation(&dx_vals, &dy_vals);
         let probability_degrade = if x_improved_count > 0 {
             y_degraded_when_x_improved as f64 / x_improved_count as f64
         } else {
             0.0
         };
-        
+
         let confidence = if r < 0.0 {
             (r.abs() / self.min_correlation.abs()).clamp(0.0, 1.0)
         } else {
             0.0
         };
-        
+
         let severity = (probability_degrade * confidence).clamp(0.0, 1.0);
-        
+
         DiagnosticResult {
             confidence,
             severity,
@@ -417,7 +438,7 @@ impl DiagnosticDetector for EcologyLockInDetector {
                 supporting_metrics: Vec::new(),
             };
         }
-        
+
         let latest = &observations[evidence_count - 1];
         let archive = &latest.archive_objectives;
         if archive.is_empty() {
@@ -428,24 +449,28 @@ impl DiagnosticDetector for EcologyLockInDetector {
                 supporting_metrics: Vec::new(),
             };
         }
-        
-        let target_vals: Vec<f64> = archive.iter().map(|obj| obj.values[self.target_index]).collect();
+
+        let target_vals: Vec<f64> = archive
+            .iter()
+            .map(|obj| obj.values[self.target_index])
+            .collect();
         let gini = gini_coefficient(&target_vals);
-        
+
         // Find best target value in each generation
         let get_best_target = |obs: &SearchObservation| -> f64 {
-            obs.archive_objectives.iter()
+            obs.archive_objectives
+                .iter()
                 .map(|obj| obj.values[self.target_index])
                 .fold(f64::INFINITY, |a, b| a.min(b))
         };
-        
+
         let best_now = get_best_target(latest);
         let old_obs = &observations[evidence_count - 1 - self.stagnation_generations];
         let best_old = get_best_target(old_obs);
-        
+
         let best_delta = (best_old - best_now).abs();
         let is_stagnant = best_delta < 1e-6;
-        
+
         let confidence = if is_stagnant {
             if archive.len() > 1 {
                 if gini < self.gini_threshold {
@@ -464,7 +489,7 @@ impl DiagnosticDetector for EcologyLockInDetector {
         } else {
             0.0
         };
-        
+
         DiagnosticResult {
             confidence,
             severity: confidence, // severity maps directly to lock-in confidence
@@ -504,11 +529,12 @@ impl DiagnosticDetector for AccumulationFailureDetector {
     fn evaluate(&self, observations: &[SearchObservation]) -> DiagnosticResult {
         let mut target_improving_count = 0;
         let mut rejected_count = 0;
-        
+
         for obs in observations {
             for c in &obs.candidates {
                 if let Some(ref parent) = c.parent_objectives {
-                    let delta_target = parent.values[self.target_index] - c.objectives.values[self.target_index];
+                    let delta_target =
+                        parent.values[self.target_index] - c.objectives.values[self.target_index];
                     if delta_target > 0.0 {
                         target_improving_count += 1;
                         if !c.admitted {
@@ -518,23 +544,22 @@ impl DiagnosticDetector for AccumulationFailureDetector {
                 }
             }
         }
-        
+
         let evidence_count = target_improving_count;
-        if evidence_count < 2 { // Require at least 2 improving candidates in the window
+        if evidence_count < 2 {
+            // Require at least 2 improving candidates in the window
             return DiagnosticResult {
                 confidence: 0.0,
                 severity: 0.0,
                 evidence_count,
-                supporting_metrics: vec![
-                    Metric::new("rejection_rate", 0.0),
-                ],
+                supporting_metrics: vec![Metric::new("rejection_rate", 0.0)],
             };
         }
-        
+
         let rejection_rate = rejected_count as f64 / target_improving_count as f64;
         let confidence = (rejection_rate / self.rejection_threshold).clamp(0.0, 1.0);
         let severity = rejection_rate * confidence;
-        
+
         DiagnosticResult {
             confidence,
             severity,
@@ -571,11 +596,12 @@ impl DiagnosticDetector for ProxySuppressionDetector {
     fn evaluate(&self, observations: &[SearchObservation]) -> DiagnosticResult {
         let mut total_rejected_improving = 0;
         let mut degraded_proxy_count = 0;
-        
+
         for obs in observations {
             for c in &obs.candidates {
                 if let Some(ref parent) = c.parent_objectives {
-                    let delta_target = parent.values[self.target_index] - c.objectives.values[self.target_index];
+                    let delta_target =
+                        parent.values[self.target_index] - c.objectives.values[self.target_index];
                     if delta_target > 0.0 && !c.admitted {
                         total_rejected_improving += 1;
                         let mut degraded = false;
@@ -593,30 +619,31 @@ impl DiagnosticDetector for ProxySuppressionDetector {
                 }
             }
         }
-        
+
         let evidence_count = total_rejected_improving;
         if evidence_count == 0 {
             return DiagnosticResult {
                 confidence: 0.0,
                 severity: 0.0,
                 evidence_count,
-                supporting_metrics: vec![
-                    Metric::new("suppression_ratio", 0.0),
-                ],
+                supporting_metrics: vec![Metric::new("suppression_ratio", 0.0)],
             };
         }
-        
+
         let suppression_ratio = degraded_proxy_count as f64 / total_rejected_improving as f64;
         let confidence = (suppression_ratio / self.suppression_threshold).clamp(0.0, 1.0);
         let severity = suppression_ratio * confidence;
-        
+
         DiagnosticResult {
             confidence,
             severity,
             evidence_count,
             supporting_metrics: vec![
                 Metric::new("suppression_ratio", suppression_ratio),
-                Metric::new("rejected_target_improving_count", total_rejected_improving as f64),
+                Metric::new(
+                    "rejected_target_improving_count",
+                    total_rejected_improving as f64,
+                ),
                 Metric::new("degraded_proxy_count", degraded_proxy_count as f64),
             ],
         }
@@ -659,10 +686,10 @@ impl DiagnosticDetector for OperatorExpressivenessFailureDetector {
         }
 
         let slice = &observations[evidence_count - self.stagnation_generations..];
-        
+
         let mut improving_count = 0;
         let mut sum_diversity = 0.0;
-        
+
         for obs in slice {
             sum_diversity += obs.diversity_score;
             for c in &obs.candidates {
@@ -671,9 +698,9 @@ impl DiagnosticDetector for OperatorExpressivenessFailureDetector {
                 }
             }
         }
-        
+
         let avg_diversity = sum_diversity / slice.len() as f64;
-        
+
         let confidence = if improving_count == 0 && avg_diversity >= self.diversity_threshold {
             1.0
         } else {
@@ -722,7 +749,7 @@ mod tests {
     #[test]
     fn test_attractor_detector() {
         let detector = AttractorDetector::new(0.3, 0.2);
-        
+
         // Mock candidates where Obj 1 has high improvement, Obj 0 has low/no improvement.
         // Admitted is 1.0 when Obj 1 improves, 0.0 otherwise.
         let mut candidates = Vec::new();
@@ -750,11 +777,17 @@ mod tests {
         };
 
         let result = detector.evaluate(&[obs]);
-        assert!(result.confidence > 0.8, "Confidence was {}", result.confidence);
+        assert!(
+            result.confidence > 0.8,
+            "Confidence was {}",
+            result.confidence
+        );
         assert!(result.severity > 0.8, "Severity was {}", result.severity);
-        
+
         // The attractor index should point to objective 1
-        let attractor_idx = result.supporting_metrics.iter()
+        let attractor_idx = result
+            .supporting_metrics
+            .iter()
             .find(|m| m.name == "attractor_index")
             .unwrap()
             .value;
@@ -787,7 +820,11 @@ mod tests {
         };
 
         let result = detector.evaluate(&[obs]);
-        assert!(result.confidence > 0.9, "Confidence was {}", result.confidence);
+        assert!(
+            result.confidence > 0.9,
+            "Confidence was {}",
+            result.confidence
+        );
         assert!(result.severity > 0.9, "Severity was {}", result.severity);
     }
 
@@ -814,7 +851,11 @@ mod tests {
         }
 
         let result = detector.evaluate(&observations);
-        assert!(result.confidence > 0.9, "Confidence was {}", result.confidence);
+        assert!(
+            result.confidence > 0.9,
+            "Confidence was {}",
+            result.confidence
+        );
         assert!(result.severity > 0.9, "Severity was {}", result.severity);
     }
 
@@ -844,7 +885,11 @@ mod tests {
         };
 
         let result = detector.evaluate(&[obs]);
-        assert!(result.confidence > 0.9, "Confidence was {}", result.confidence);
+        assert!(
+            result.confidence > 0.9,
+            "Confidence was {}",
+            result.confidence
+        );
         assert!(result.severity > 0.8, "Severity was {}", result.severity);
     }
 
@@ -873,7 +918,11 @@ mod tests {
         };
 
         let result = detector.evaluate(&[obs]);
-        assert!(result.confidence > 0.9, "Confidence was {}", result.confidence);
+        assert!(
+            result.confidence > 0.9,
+            "Confidence was {}",
+            result.confidence
+        );
         assert!(result.severity > 0.9, "Severity was {}", result.severity);
     }
 
@@ -884,42 +933,54 @@ mod tests {
 
         // Record some dummy entries
         let mut results1 = std::collections::HashMap::new();
-        results1.insert("AccumulationFailure".to_string(), DiagnosticResult {
-            confidence: 0.8,
-            severity: 0.5,
-            evidence_count: 10,
-            supporting_metrics: vec![],
-        });
+        results1.insert(
+            "AccumulationFailure".to_string(),
+            DiagnosticResult {
+                confidence: 0.8,
+                severity: 0.5,
+                evidence_count: 10,
+                supporting_metrics: vec![],
+            },
+        );
         state.record(1, results1);
 
         let mut results2 = std::collections::HashMap::new();
-        results2.insert("AccumulationFailure".to_string(), DiagnosticResult {
-            confidence: 0.9,
-            severity: 0.7,
-            evidence_count: 12,
-            supporting_metrics: vec![],
-        });
+        results2.insert(
+            "AccumulationFailure".to_string(),
+            DiagnosticResult {
+                confidence: 0.9,
+                severity: 0.7,
+                evidence_count: 12,
+                supporting_metrics: vec![],
+            },
+        );
         state.record(2, results2);
 
         let mut results3 = std::collections::HashMap::new();
-        results3.insert("AccumulationFailure".to_string(), DiagnosticResult {
-            confidence: 0.4,
-            severity: 0.3,
-            evidence_count: 8,
-            supporting_metrics: vec![],
-        });
+        results3.insert(
+            "AccumulationFailure".to_string(),
+            DiagnosticResult {
+                confidence: 0.4,
+                severity: 0.3,
+                evidence_count: 8,
+                supporting_metrics: vec![],
+            },
+        );
         state.record(3, results3);
 
         assert_eq!(state.history.len(), 3);
 
         // Overwrite oldest due to limit of 3
         let mut results4 = std::collections::HashMap::new();
-        results4.insert("AccumulationFailure".to_string(), DiagnosticResult {
-            confidence: 0.5,
-            severity: 0.2,
-            evidence_count: 6,
-            supporting_metrics: vec![],
-        });
+        results4.insert(
+            "AccumulationFailure".to_string(),
+            DiagnosticResult {
+                confidence: 0.5,
+                severity: 0.2,
+                evidence_count: 6,
+                supporting_metrics: vec![],
+            },
+        );
         state.record(4, results4);
 
         assert_eq!(state.history.len(), 3);

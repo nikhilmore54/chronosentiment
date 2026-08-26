@@ -1,7 +1,7 @@
-use crate::types::{Solution, EvaluationResult};
-use crate::workload::credited_workload;
 use crate::hc3::hc3_violations;
 use crate::objective::objective;
+use crate::types::{EvaluationResult, Solution};
+use crate::workload::credited_workload;
 
 /// Evaluate a solution against the CVD-001 benchmark.
 ///
@@ -30,11 +30,7 @@ use crate::objective::objective;
 /// BENCHMARK-SEMANTICS-v1.0 §6.
 pub fn evaluate(solution: &Solution) -> EvaluationResult {
     // Step 1: compute credited workload W_n for each crew member
-    let workloads: Vec<f64> = solution
-        .crew
-        .iter()
-        .map(|m| credited_workload(m))
-        .collect();
+    let workloads: Vec<f64> = solution.crew.iter().map(|m| credited_workload(m)).collect();
 
     // Step 2: collect HC3 violations — W_n > W^max_n
     let violations = hc3_violations(&solution.crew, &workloads);
@@ -62,10 +58,14 @@ pub fn evaluate(solution: &Solution) -> EvaluationResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Duty, CrewMember, Solution};
+    use crate::types::{CrewMember, Duty, Solution};
 
     fn make_duty(id: u32, credit: f64) -> Duty {
-        Duty { id, credit, legs: vec![] }
+        Duty {
+            id,
+            credit,
+            legs: vec![],
+        }
     }
 
     fn make_member(id: u32, max_workload: f64, target: f64, duty_credits: Vec<f64>) -> CrewMember {
@@ -105,9 +105,18 @@ mod tests {
         assert!(result.feasible, "solution should be feasible");
         assert!(result.violations.is_empty(), "no violations expected");
         assert_eq!(result.workloads.len(), 3);
-        assert!((result.workloads[0] - 180.0).abs() < 1e-9, "W_1 should be 180");
-        assert!((result.workloads[1] - 200.0).abs() < 1e-9, "W_2 should be 200");
-        assert!((result.workloads[2] - 110.0).abs() < 1e-9, "W_3 should be 110");
+        assert!(
+            (result.workloads[0] - 180.0).abs() < 1e-9,
+            "W_1 should be 180"
+        );
+        assert!(
+            (result.workloads[1] - 200.0).abs() < 1e-9,
+            "W_2 should be 200"
+        );
+        assert!(
+            (result.workloads[2] - 110.0).abs() < 1e-9,
+            "W_3 should be 110"
+        );
         assert!((result.objective - 30.0).abs() < 1e-9, "Z should be 30");
     }
 
@@ -128,7 +137,10 @@ mod tests {
         let result = evaluate(&solution);
 
         assert!(!result.feasible, "solution should be infeasible");
-        assert!(result.objective.is_infinite(), "objective should be INFINITY");
+        assert!(
+            result.objective.is_infinite(),
+            "objective should be INFINITY"
+        );
         assert_eq!(result.violations.len(), 1, "exactly one HC3 violation");
         assert_eq!(result.violations[0].constraint, "HC3");
         assert_eq!(result.violations[0].crew_member_id, 1);
@@ -182,7 +194,7 @@ mod tests {
         // Both members violate HC3
         let solution = Solution {
             crew: vec![
-                make_member(10, 100.0, 80.0, vec![150.0]),  // W=150 > max=100
+                make_member(10, 100.0, 80.0, vec![150.0]), // W=150 > max=100
                 make_member(20, 200.0, 150.0, vec![250.0]), // W=250 > max=200
             ],
         };

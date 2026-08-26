@@ -139,7 +139,9 @@ mod tests {
         use chrono::Duration;
         let dep = base + Duration::hours(8);
         let arr = base + Duration::hours(22) + Duration::minutes(1);
-        use crate::domain::flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
+        use crate::domain::flight::{
+            AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
+        };
         let leg = FlightLeg::new(
             FlightLegId::new("L1"),
             FlightNumber::new("XX001"),
@@ -167,8 +169,10 @@ mod tests {
     #[test]
     fn two_duties_over_limit_produce_two_violations() {
         let base = crate::legality::test_helpers::base_time();
+        use crate::domain::flight::{
+            AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
+        };
         use chrono::Duration;
-        use crate::domain::flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
 
         let make_long_leg = |id: &str, dep_h: i64, arr_h: i64| {
             FlightLeg::new(

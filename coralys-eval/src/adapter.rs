@@ -73,11 +73,7 @@ pub trait BenchmarkAdapter: Send + Sync {
     ///
     /// Returns a framework-standard `EvaluationResult`. The `adapter_id` field
     /// of the result must match `self.adapter_id()`.
-    fn evaluate(
-        &self,
-        problem: &Self::Problem,
-        solution: &Self::Solution,
-    ) -> EvaluationResult;
+    fn evaluate(&self, problem: &Self::Problem, solution: &Self::Solution) -> EvaluationResult;
 }
 
 /// Metadata about a registered adapter, independent of its generic types.
@@ -111,9 +107,15 @@ mod tests {
         type Problem = StubProblem;
         type Solution = StubSolution;
 
-        fn adapter_id(&self) -> &'static str { "stub" }
-        fn adapter_name(&self) -> &'static str { "Stub Adapter" }
-        fn adapter_version(&self) -> &'static str { "0.0.1" }
+        fn adapter_id(&self) -> &'static str {
+            "stub"
+        }
+        fn adapter_name(&self) -> &'static str {
+            "Stub Adapter"
+        }
+        fn adapter_version(&self) -> &'static str {
+            "0.0.1"
+        }
 
         fn evaluate(
             &self,

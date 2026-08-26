@@ -25,8 +25,12 @@ fn t() -> chrono::DateTime<Utc> {
 
 fn bullish_profile() -> AssessmentProfile {
     let mut metrics = MetricReport::default();
-    metrics.metrics.insert("ma_20".to_string(), MetricValue::Float(2100.0));
-    metrics.metrics.insert("ma_50".to_string(), MetricValue::Float(2050.0));
+    metrics
+        .metrics
+        .insert("ma_20".to_string(), MetricValue::Float(2100.0));
+    metrics
+        .metrics
+        .insert("ma_50".to_string(), MetricValue::Float(2050.0));
     AssessmentEngine.assess_at(&metrics, &[Concept::Trend], t(), Some(Uuid::from_u128(7)))
 }
 

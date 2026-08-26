@@ -11,7 +11,10 @@ fn default_evaluator() -> FinancialEvaluator {
     FinancialEvaluator::new("BTC".to_string(), "default".to_string())
 }
 
-fn from_financial_eval(domain: &super::domain::ScenarioDomain, candidate: &Candidate) -> ScenarioResult {
+fn from_financial_eval(
+    domain: &super::domain::ScenarioDomain,
+    candidate: &Candidate,
+) -> ScenarioResult {
     attest_domain_result(domain, || {
         let evaluator = default_evaluator();
         let eval = evaluator.evaluate(candidate);
@@ -88,9 +91,7 @@ pub fn evaluate_strategy_across_domains(
         .iter()
         .map(|domain| match domain.id.as_str() {
             "deterministic_demo" => from_financial_eval(domain, candidate),
-            "deterministic_demo_execution" => {
-                from_execution_simulation(domain, candidate, seed)
-            }
+            "deterministic_demo_execution" => from_execution_simulation(domain, candidate, seed),
             _ => ScenarioResult::unattested_stub(
                 domain.id.clone(),
                 domain.domain_class,
@@ -113,7 +114,9 @@ mod tests {
         let registry = ScenarioRegistry::v1_default();
         let results = evaluate_strategy_across_domains(&registry, &Candidate::default(), 42);
         assert_eq!(results.len(), 2);
-        assert!(results.iter().all(|r| r.replay_status == ReplayStatus::Valid));
+        assert!(results
+            .iter()
+            .all(|r| r.replay_status == ReplayStatus::Valid));
     }
 
     #[test]
@@ -125,7 +128,10 @@ mod tests {
             .find(|r| r.scenario_id == "deterministic_demo_execution")
             .expect("execution domain present");
 
-        assert_eq!(execution.attestation_status, AttestationStatus::ResultAttested);
+        assert_eq!(
+            execution.attestation_status,
+            AttestationStatus::ResultAttested
+        );
         assert!(execution.event_count > 0);
         assert_eq!(execution.expected_event_hash.len(), 64);
         assert_eq!(execution.result_hash.len(), 64);

@@ -78,11 +78,11 @@ const RISK_ATR_MULT: f64 = 1.0;
 struct HistoricalDecisionRecord {
     // Identity
     ticker: String,
-    date: String,           // YYYY-MM-DD — session T
-    timestamp_unix: i64,    // Unix timestamp of session T
+    date: String,        // YYYY-MM-DD — session T
+    timestamp_unix: i64, // Unix timestamp of session T
 
     // Market state at T (feature vector — no future leakage)
-    reference_price: f64,   // close at T
+    reference_price: f64, // close at T
     open: f64,
     high: f64,
     low: f64,
@@ -93,22 +93,22 @@ struct HistoricalDecisionRecord {
     trend: String,
     momentum: String,
     volatility: String,
-    direction: String,      // LONG / SHORT / NO_TRADE
-    atr_14: f64,            // ATR-14 at T
+    direction: String, // LONG / SHORT / NO_TRADE
+    atr_14: f64,       // ATR-14 at T
 
     // Geometry (C3-002 v0 fixed geometry)
-    target_distance_pct: Option<f64>,  // % from reference_price to indicative target
-    risk_distance_pct: Option<f64>,    // % from reference_price to indicative risk
+    target_distance_pct: Option<f64>, // % from reference_price to indicative target
+    risk_distance_pct: Option<f64>,   // % from reference_price to indicative risk
     indicative_target: Option<f64>,
     indicative_risk: Option<f64>,
 
     // Forward outcome (T+1 … T+10 only — no leakage)
-    mfe_pct: [f64; 10],     // max favourable excursion at each session
-    mae_pct: [f64; 10],     // max adverse excursion at each session
+    mfe_pct: [f64; 10],        // max favourable excursion at each session
+    mae_pct: [f64; 10],        // max adverse excursion at each session
     sessions_available: usize, // how many forward sessions were available
 
     // Outcome classification
-    outcome: String,        // TARGET_BEFORE_RISK / RISK_BEFORE_TARGET / HORIZON / INSUFFICIENT_DATA
+    outcome: String, // TARGET_BEFORE_RISK / RISK_BEFORE_TARGET / HORIZON / INSUFFICIENT_DATA
     sessions_to_outcome: Option<usize>, // session at which outcome was determined
 }
 
@@ -147,7 +147,11 @@ fn relative_volume(bars: &[YahooHistoricalBar], today_idx: usize, window: usize)
     if today_idx == 0 {
         return 1.0;
     }
-    let start = if today_idx >= window { today_idx - window } else { 0 };
+    let start = if today_idx >= window {
+        today_idx - window
+    } else {
+        0
+    };
     let prev_vols: Vec<f64> = bars[start..today_idx]
         .iter()
         .map(|b| b.volume)
@@ -189,14 +193,28 @@ fn compute_forward_excursions(
     for i in 0..available {
         let bar = &bars[t_idx + 1 + i];
         let (fav, adv) = if direction == "LONG" {
-            ((bar.high - entry) / entry * 100.0, (bar.low - entry) / entry * 100.0)
+            (
+                (bar.high - entry) / entry * 100.0,
+                (bar.low - entry) / entry * 100.0,
+            )
         } else {
             // SHORT: favourable = price falls, adverse = price rises
-            ((entry - bar.low) / entry * 100.0, (entry - bar.high) / entry * 100.0)
+            (
+                (entry - bar.low) / entry * 100.0,
+                (entry - bar.high) / entry * 100.0,
+            )
         };
         // Cumulative MFE/MAE: max favourable / min adverse seen so far
-        mfe[i] = if i == 0 { fav.max(0.0) } else { mfe[i - 1].max(fav.max(0.0)) };
-        mae[i] = if i == 0 { adv.min(0.0) } else { mae[i - 1].min(adv.min(0.0)) };
+        mfe[i] = if i == 0 {
+            fav.max(0.0)
+        } else {
+            mfe[i - 1].max(fav.max(0.0))
+        };
+        mae[i] = if i == 0 {
+            adv.min(0.0)
+        } else {
+            mae[i - 1].min(adv.min(0.0))
+        };
     }
     (mfe, mae, available)
 }
@@ -274,9 +292,7 @@ fn parse_args() -> Result<(PathBuf, PathBuf, PathBuf), String> {
             }
             "--output" => {
                 i += 1;
-                output_path = Some(PathBuf::from(
-                    args.get(i).ok_or("missing --output value")?,
-                ));
+                output_path = Some(PathBuf::from(args.get(i).ok_or("missing --output value")?));
             }
             "--search-two" => {
                 i += 1;
@@ -299,8 +315,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (search_two, universe_path, output_dir) = parse_args()?;
 
     // Load and verify C3-002 artifact
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
@@ -315,7 +332,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .as_array()
         .ok_or("universe JSON must have 'instruments' array")?
         .iter()
-        .map(|v| v.as_str().ok_or("instrument must be a string").map(|s| s.to_string()))
+        .map(|v| {
+            v.as_str()
+                .ok_or("instrument must be a string")
+                .map(|s| s.to_string())
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     println!(
@@ -344,7 +365,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             created_at: Utc::now(),
         };
 
-        let bars = match yahoo.fetch_historical(&instrument, TimeRange::FiveYears).await {
+        let bars = match yahoo
+            .fetch_historical(&instrument, TimeRange::FiveYears)
+            .await
+        {
             Ok(b) => b,
             Err(e) => {
                 eprintln!("skip ticker={ticker} reason=yahoo_error error={e}");

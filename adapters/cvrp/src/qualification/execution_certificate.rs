@@ -1,3 +1,4 @@
+use chrono::Utc;
 /// Execution Certificate — M18.3
 ///
 /// The canonical per-instance evidence artifact produced by every Coralys optimization run.
@@ -22,13 +23,11 @@
 ///   - Immutable: once generated, the certificate is not modified
 ///   - Portable: can be archived, compared, signed, or exchanged independently of the campaign log
 ///   - Self-describing: every field carries enough context to be interpreted without the campaign log
-
 use serde::{Deserialize, Serialize};
-use chrono::Utc;
 
 use crate::qualification::feasibility::{FeasibilityCertificate, FeasibilityStatus};
-use crate::qualification::fleet_utilization::FleetUtilizationCertificate;
 use crate::qualification::fleet_semantics::{FleetSemanticCheck, FleetSemanticOutcome};
+use crate::qualification::fleet_utilization::FleetUtilizationCertificate;
 
 // =============================================================================
 // CERTIFICATE VERSION
@@ -74,25 +73,25 @@ pub enum CertificateStatus {
 impl CertificateStatus {
     pub fn code(&self) -> &'static str {
         match self {
-            CertificateStatus::Qualified              => "QUALIFIED",
+            CertificateStatus::Qualified => "QUALIFIED",
             CertificateStatus::ProvisionallyQualified => "PROVISIONALLY_QUALIFIED",
-            CertificateStatus::Infeasible             => "INFEASIBLE",
-            CertificateStatus::Skipped                => "SKIPPED",
-            CertificateStatus::NotComparable          => "NOT_COMPARABLE",
-            CertificateStatus::UnderInvestigation     => "UNDER_INVESTIGATION",
-            CertificateStatus::NoReference            => "NO_REFERENCE",
+            CertificateStatus::Infeasible => "INFEASIBLE",
+            CertificateStatus::Skipped => "SKIPPED",
+            CertificateStatus::NotComparable => "NOT_COMPARABLE",
+            CertificateStatus::UnderInvestigation => "UNDER_INVESTIGATION",
+            CertificateStatus::NoReference => "NO_REFERENCE",
         }
     }
 
     pub fn symbol(&self) -> &'static str {
         match self {
-            CertificateStatus::Qualified              => "✓",
+            CertificateStatus::Qualified => "✓",
             CertificateStatus::ProvisionallyQualified => "~",
-            CertificateStatus::Infeasible             => "✗",
-            CertificateStatus::Skipped                => "—",
-            CertificateStatus::NotComparable          => "⚠",
-            CertificateStatus::UnderInvestigation     => "?",
-            CertificateStatus::NoReference            => "·",
+            CertificateStatus::Infeasible => "✗",
+            CertificateStatus::Skipped => "—",
+            CertificateStatus::NotComparable => "⚠",
+            CertificateStatus::UnderInvestigation => "?",
+            CertificateStatus::NoReference => "·",
         }
     }
 }
@@ -342,11 +341,12 @@ impl ExecutionCertificate {
         };
 
         // ── Objective ─────────────────────────────────────────────────────────
-        let best_distance_float = if (input.best_distance_float - input.best_distance_integer).abs() > 0.01 {
-            Some(input.best_distance_float)
-        } else {
-            None
-        };
+        let best_distance_float =
+            if (input.best_distance_float - input.best_distance_integer).abs() > 0.01 {
+                Some(input.best_distance_float)
+            } else {
+                None
+            };
 
         let objective = CertificateObjective {
             best_distance: input.best_distance_integer,
@@ -383,7 +383,17 @@ impl ExecutionCertificate {
         let (status, status_reason) = derive_status(input, &fcs);
 
         // Build governance without hash first, then compute hash over body
-        let body_text = build_body_text(&identity, &instance, &objective, &fcf, &fcs, &fuc, &benchmark_context, &status, &status_reason);
+        let body_text = build_body_text(
+            &identity,
+            &instance,
+            &objective,
+            &fcf,
+            &fcs,
+            &fuc,
+            &benchmark_context,
+            &status,
+            &status_reason,
+        );
         let content_hash = fnv1a_64_hex(&body_text);
 
         let governance = CertificateGovernance {
@@ -395,7 +405,16 @@ impl ExecutionCertificate {
             content_hash,
         };
 
-        ExecutionCertificate { identity, instance, objective, fcf, fcs, fuc, benchmark_context, governance }
+        ExecutionCertificate {
+            identity,
+            instance,
+            objective,
+            fcf,
+            fcs,
+            fuc,
+            benchmark_context,
+            governance,
+        }
     }
 
     /// Serialize to JSON string.
@@ -408,17 +427,34 @@ impl ExecutionCertificate {
         let mut out = String::new();
 
         out.push_str("╔══════════════════════════════════════════════════════════════╗\n");
-        out.push_str(&format!("║  EXECUTION CERTIFICATE  {}  ║\n",
-            pad_or_truncate(&self.instance.name, 32)));
+        out.push_str(&format!(
+            "║  EXECUTION CERTIFICATE  {}  ║\n",
+            pad_or_truncate(&self.instance.name, 32)
+        ));
         out.push_str("╚══════════════════════════════════════════════════════════════╝\n\n");
 
         // Identity
         out.push_str("── Identity ─────────────────────────────────────────────────────\n");
-        out.push_str(&format!("  Certificate ID   {}\n", self.identity.certificate_id));
-        out.push_str(&format!("  Version          {}\n", self.identity.certificate_version));
-        out.push_str(&format!("  Generated        {}\n", self.identity.generated_at));
-        out.push_str(&format!("  Campaign         {}\n", self.identity.campaign_id));
-        out.push_str(&format!("  Solver           {}\n\n", self.identity.solver_version));
+        out.push_str(&format!(
+            "  Certificate ID   {}\n",
+            self.identity.certificate_id
+        ));
+        out.push_str(&format!(
+            "  Version          {}\n",
+            self.identity.certificate_version
+        ));
+        out.push_str(&format!(
+            "  Generated        {}\n",
+            self.identity.generated_at
+        ));
+        out.push_str(&format!(
+            "  Campaign         {}\n",
+            self.identity.campaign_id
+        ));
+        out.push_str(&format!(
+            "  Solver           {}\n\n",
+            self.identity.solver_version
+        ));
 
         // Instance
         out.push_str("── Instance ─────────────────────────────────────────────────────\n");
@@ -426,13 +462,25 @@ impl ExecutionCertificate {
         out.push_str(&format!("  Family           {}\n", self.instance.family));
         out.push_str(&format!("  Customers        {}\n", self.instance.customers));
         out.push_str(&format!("  Capacity         {}\n", self.instance.capacity));
-        out.push_str(&format!("  Vehicles (K)     {}\n", self.instance.benchmark_vehicles));
-        out.push_str(&format!("  Vehicle source   {}\n", self.instance.vehicle_source));
-        out.push_str(&format!("  Distance metric  {}\n\n", self.instance.distance_metric));
+        out.push_str(&format!(
+            "  Vehicles (K)     {}\n",
+            self.instance.benchmark_vehicles
+        ));
+        out.push_str(&format!(
+            "  Vehicle source   {}\n",
+            self.instance.vehicle_source
+        ));
+        out.push_str(&format!(
+            "  Distance metric  {}\n\n",
+            self.instance.distance_metric
+        ));
 
         // Objective
         out.push_str("── Objective ────────────────────────────────────────────────────\n");
-        out.push_str(&format!("  Best distance    {:.0}\n", self.objective.best_distance));
+        out.push_str(&format!(
+            "  Best distance    {:.0}\n",
+            self.objective.best_distance
+        ));
         if let Some(fp) = self.objective.best_distance_float {
             out.push_str(&format!("  Best (float)     {:.4}\n", fp));
         }
@@ -447,44 +495,90 @@ impl ExecutionCertificate {
         if let Some(gap_fp) = self.objective.gap_fp_pct {
             out.push_str(&format!("  Gap (float)      {:+.2}%\n", gap_fp));
         }
-        out.push_str(&format!("  Quality class    {}\n", self.objective.quality_class));
-        out.push_str(&format!("  Routes used      {}\n", self.objective.routes_used));
-        out.push_str(&format!("  Runtime          {} ms\n", self.objective.runtime_ms));
-        out.push_str(&format!("  Generations      {}\n", self.objective.generations));
-        out.push_str(&format!("  Termination      {}\n\n", self.objective.termination_reason));
+        out.push_str(&format!(
+            "  Quality class    {}\n",
+            self.objective.quality_class
+        ));
+        out.push_str(&format!(
+            "  Routes used      {}\n",
+            self.objective.routes_used
+        ));
+        out.push_str(&format!(
+            "  Runtime          {} ms\n",
+            self.objective.runtime_ms
+        ));
+        out.push_str(&format!(
+            "  Generations      {}\n",
+            self.objective.generations
+        ));
+        out.push_str(&format!(
+            "  Termination      {}\n\n",
+            self.objective.termination_reason
+        ));
 
         // Qualification
         out.push_str("── Qualification ────────────────────────────────────────────────\n");
         let fcf_sym = if self.fcf.fc2_passed { "✓" } else { "✗" };
-        out.push_str(&format!("  FCF              {} {} (confidence F{})\n",
-            fcf_sym, self.fcf.status, self.fcf.confidence_level));
-        out.push_str(&format!("    FC-1           {} {}\n",
-            if self.fcf.fc1_passed { "✓" } else { "✗" }, self.fcf.fc1_reason));
-        out.push_str(&format!("    FC-2.5         {} {}\n",
-            if self.fcf.fc2_5_passed { "✓" } else { "✗" }, self.fcf.fc2_5_reason));
-        out.push_str(&format!("    FC-2           {} {}\n",
-            if self.fcf.fc2_passed { "✓" } else { "✗" }, self.fcf.fc2_reason));
-        out.push_str(&format!("    FC-3           {} {}\n",
-            if self.fcf.fc3_passed { "✓" } else { "~" }, self.fcf.fc3_reason));
+        out.push_str(&format!(
+            "  FCF              {} {} (confidence F{})\n",
+            fcf_sym, self.fcf.status, self.fcf.confidence_level
+        ));
+        out.push_str(&format!(
+            "    FC-1           {} {}\n",
+            if self.fcf.fc1_passed { "✓" } else { "✗" },
+            self.fcf.fc1_reason
+        ));
+        out.push_str(&format!(
+            "    FC-2.5         {} {}\n",
+            if self.fcf.fc2_5_passed { "✓" } else { "✗" },
+            self.fcf.fc2_5_reason
+        ));
+        out.push_str(&format!(
+            "    FC-2           {} {}\n",
+            if self.fcf.fc2_passed { "✓" } else { "✗" },
+            self.fcf.fc2_reason
+        ));
+        out.push_str(&format!(
+            "    FC-3           {} {}\n",
+            if self.fcf.fc3_passed { "✓" } else { "~" },
+            self.fcf.fc3_reason
+        ));
 
-        let fcs_sym = if self.fcs.comparison_valid { "✓" } else { "⚠" };
-        out.push_str(&format!("  FCS              {} {} ({})\n",
-            fcs_sym, self.fcs.outcome,
+        let fcs_sym = if self.fcs.comparison_valid {
+            "✓"
+        } else {
+            "⚠"
+        };
+        out.push_str(&format!(
+            "  FCS              {} {} ({})\n",
+            fcs_sym,
+            self.fcs.outcome,
             if let Some(k) = self.fcs.declared_k {
-                format!("{}({}), used={}", self.fcs.constraint_type, k, self.fcs.routes_used)
+                format!(
+                    "{}({}), used={}",
+                    self.fcs.constraint_type, k, self.fcs.routes_used
+                )
             } else {
-                format!("{}, used={}", self.fcs.constraint_type, self.fcs.routes_used)
+                format!(
+                    "{}, used={}",
+                    self.fcs.constraint_type, self.fcs.routes_used
+                )
             }
         ));
 
         if let Some(fuc) = &self.fuc {
-            out.push_str(&format!("  FUC-001          ✓ {} (util={:.1}% CV={:.3} RCR={:.3})\n",
+            out.push_str(&format!(
+                "  FUC-001          ✓ {} (util={:.1}% CV={:.3} RCR={:.3})\n",
                 fuc.packing_classification,
                 fuc.avg_utilization * 100.0,
                 fuc.cv,
-                fuc.rcr));
+                fuc.rcr
+            ));
             if fuc.capacity_violations > 0 {
-                out.push_str(&format!("    ⚠ Capacity violations: {}\n", fuc.capacity_violations));
+                out.push_str(&format!(
+                    "    ⚠ Capacity violations: {}\n",
+                    fuc.capacity_violations
+                ));
             }
         } else {
             out.push_str("  FUC-001          — (not computed)\n");
@@ -493,20 +587,50 @@ impl ExecutionCertificate {
 
         // Benchmark Context
         out.push_str("── Benchmark Context ────────────────────────────────────────────\n");
-        out.push_str(&format!("  Provenance reg.  v{}\n", self.benchmark_context.provenance_registry_version));
-        out.push_str(&format!("  Fleet sem. reg.  v{}\n", self.benchmark_context.fleet_semantics_registry_version));
-        out.push_str(&format!("  Qualification    v{}\n", self.benchmark_context.qualification_version));
-        out.push_str(&format!("  BKS source       {}\n", self.benchmark_context.bks_source));
-        out.push_str(&format!("  Fleet evidence   {}\n\n", self.benchmark_context.fleet_semantics_evidence));
+        out.push_str(&format!(
+            "  Provenance reg.  v{}\n",
+            self.benchmark_context.provenance_registry_version
+        ));
+        out.push_str(&format!(
+            "  Fleet sem. reg.  v{}\n",
+            self.benchmark_context.fleet_semantics_registry_version
+        ));
+        out.push_str(&format!(
+            "  Qualification    v{}\n",
+            self.benchmark_context.qualification_version
+        ));
+        out.push_str(&format!(
+            "  BKS source       {}\n",
+            self.benchmark_context.bks_source
+        ));
+        out.push_str(&format!(
+            "  Fleet evidence   {}\n\n",
+            self.benchmark_context.fleet_semantics_evidence
+        ));
 
         // Governance
         out.push_str("── Governance ───────────────────────────────────────────────────\n");
-        out.push_str(&format!("  FCF              v{}\n", self.governance.fcf_version));
-        out.push_str(&format!("  FCS              v{}\n", self.governance.fcs_version));
-        out.push_str(&format!("  FUC-001          v{}\n", self.governance.fuc_version));
+        out.push_str(&format!(
+            "  FCF              v{}\n",
+            self.governance.fcf_version
+        ));
+        out.push_str(&format!(
+            "  FCS              v{}\n",
+            self.governance.fcs_version
+        ));
+        out.push_str(&format!(
+            "  FUC-001          v{}\n",
+            self.governance.fuc_version
+        ));
         out.push_str(&format!("  Status           {}\n", self.governance.status));
-        out.push_str(&format!("  Reason           {}\n", self.governance.status_reason));
-        out.push_str(&format!("  Content hash     {}\n", self.governance.content_hash));
+        out.push_str(&format!(
+            "  Reason           {}\n",
+            self.governance.status_reason
+        ));
+        out.push_str(&format!(
+            "  Content hash     {}\n",
+            self.governance.content_hash
+        ));
 
         out
     }
@@ -545,14 +669,16 @@ fn build_fcf_section(fcf: &FeasibilityCertificate) -> CertificateFcf {
         fc2_passed: fcf.fc2_capacity.passed,
         fc2_reason: fcf.fc2_capacity.reason.clone(),
         fc3_passed: fc3.map(|r| r.passed).unwrap_or(true),
-        fc3_reason: fc3.map(|r| r.reason.clone()).unwrap_or_else(|| "not run".to_string()),
+        fc3_reason: fc3
+            .map(|r| r.reason.clone())
+            .unwrap_or_else(|| "not run".to_string()),
     }
 }
 
 fn build_fcs_section(fcs: &FleetSemanticCheck) -> CertificateFcs {
     let outcome = match &fcs.outcome {
-        FleetSemanticOutcome::Valid               => "Valid",
-        FleetSemanticOutcome::NotComparable       => "NotComparable",
+        FleetSemanticOutcome::Valid => "Valid",
+        FleetSemanticOutcome::NotComparable => "NotComparable",
         FleetSemanticOutcome::PendingVerification => "PendingVerification",
     };
     let comparison_valid = matches!(&fcs.outcome, FleetSemanticOutcome::Valid);
@@ -582,7 +708,10 @@ fn build_fuc_section(fuc: &FleetUtilizationCertificate) -> CertificateFuc {
 }
 
 /// Derive the overall certificate status from all qualification outcomes.
-fn derive_status(input: &CertificateInput<'_>, fcs: &CertificateFcs) -> (CertificateStatus, String) {
+fn derive_status(
+    input: &CertificateInput<'_>,
+    fcs: &CertificateFcs,
+) -> (CertificateStatus, String) {
     // Infeasible: FCF failed at FC-2
     if matches!(input.fcf.status, FeasibilityStatus::ProvenInfeasible { .. }) {
         return (
@@ -592,9 +721,10 @@ fn derive_status(input: &CertificateInput<'_>, fcs: &CertificateFcs) -> (Certifi
     }
 
     // Structural/benchmark invalid
-    if matches!(input.fcf.status,
-        FeasibilityStatus::StructuralInvalid { .. } | FeasibilityStatus::BenchmarkInvalid { .. })
-    {
+    if matches!(
+        input.fcf.status,
+        FeasibilityStatus::StructuralInvalid { .. } | FeasibilityStatus::BenchmarkInvalid { .. }
+    ) {
         return (
             CertificateStatus::Infeasible,
             format!("FCF FAIL: {}", input.fcf.status.code()),
@@ -613,7 +743,10 @@ fn derive_status(input: &CertificateInput<'_>, fcs: &CertificateFcs) -> (Certifi
     if fcs.outcome == "PendingVerification" {
         return (
             CertificateStatus::UnderInvestigation,
-            format!("Fleet semantics unspecified for family '{}' — gap comparison validity unknown", input.family),
+            format!(
+                "Fleet semantics unspecified for family '{}' — gap comparison validity unknown",
+                input.family
+            ),
         );
     }
 
@@ -621,8 +754,10 @@ fn derive_status(input: &CertificateInput<'_>, fcs: &CertificateFcs) -> (Certifi
     if !fcs.comparison_valid {
         return (
             CertificateStatus::NotComparable,
-            format!("FCS INVALID: routes_used={} violates {}({:?})",
-                fcs.routes_used, fcs.constraint_type, fcs.declared_k),
+            format!(
+                "FCS INVALID: routes_used={} violates {}({:?})",
+                fcs.routes_used, fcs.constraint_type, fcs.declared_k
+            ),
         );
     }
 
@@ -631,7 +766,10 @@ fn derive_status(input: &CertificateInput<'_>, fcs: &CertificateFcs) -> (Certifi
         if gap < -0.01 {
             return (
                 CertificateStatus::UnderInvestigation,
-                format!("Negative gap {:+.2}% — comparison validity pending Stage B certificate (P4/P5)", gap),
+                format!(
+                    "Negative gap {:+.2}% — comparison validity pending Stage B certificate (P4/P5)",
+                    gap
+                ),
             );
         }
     }
@@ -668,12 +806,18 @@ fn build_body_text(
     s.push_str(&format!("family={}\n", instance.family));
     s.push_str(&format!("customers={}\n", instance.customers));
     s.push_str(&format!("capacity={}\n", instance.capacity));
-    s.push_str(&format!("benchmark_vehicles={}\n", instance.benchmark_vehicles));
+    s.push_str(&format!(
+        "benchmark_vehicles={}\n",
+        instance.benchmark_vehicles
+    ));
     s.push_str(&format!("vehicle_source={}\n", instance.vehicle_source));
     s.push_str(&format!("distance_metric={}\n", instance.distance_metric));
     // Objective
     s.push_str(&format!("best_distance={}\n", objective.best_distance));
-    s.push_str(&format!("best_distance_float={:?}\n", objective.best_distance_float));
+    s.push_str(&format!(
+        "best_distance_float={:?}\n",
+        objective.best_distance_float
+    ));
     s.push_str(&format!("bks={:?}\n", objective.bks));
     s.push_str(&format!("gap_pct={:?}\n", objective.gap_pct));
     s.push_str(&format!("gap_fp_pct={:?}\n", objective.gap_fp_pct));
@@ -681,12 +825,18 @@ fn build_body_text(
     s.push_str(&format!("routes_used={}\n", objective.routes_used));
     s.push_str(&format!("runtime_ms={}\n", objective.runtime_ms));
     s.push_str(&format!("generations={}\n", objective.generations));
-    s.push_str(&format!("termination_reason={}\n", objective.termination_reason));
+    s.push_str(&format!(
+        "termination_reason={}\n",
+        objective.termination_reason
+    ));
     // FCF
     s.push_str(&format!("fcf_status={}\n", fcf.status));
     s.push_str(&format!("fcf_confidence={}\n", fcf.confidence_level));
     s.push_str(&format!("fc1={}/{}\n", fcf.fc1_passed, fcf.fc1_reason));
-    s.push_str(&format!("fc2_5={}/{}\n", fcf.fc2_5_passed, fcf.fc2_5_reason));
+    s.push_str(&format!(
+        "fc2_5={}/{}\n",
+        fcf.fc2_5_passed, fcf.fc2_5_reason
+    ));
     s.push_str(&format!("fc2={}/{}\n", fcf.fc2_passed, fcf.fc2_reason));
     s.push_str(&format!("fc3={}/{}\n", fcf.fc3_passed, fcf.fc3_reason));
     // FCS
@@ -710,11 +860,23 @@ fn build_body_text(
         s.push_str("fuc=none\n");
     }
     // Benchmark context
-    s.push_str(&format!("provenance_registry_version={}\n", ctx.provenance_registry_version));
-    s.push_str(&format!("fleet_semantics_registry_version={}\n", ctx.fleet_semantics_registry_version));
-    s.push_str(&format!("qualification_version={}\n", ctx.qualification_version));
+    s.push_str(&format!(
+        "provenance_registry_version={}\n",
+        ctx.provenance_registry_version
+    ));
+    s.push_str(&format!(
+        "fleet_semantics_registry_version={}\n",
+        ctx.fleet_semantics_registry_version
+    ));
+    s.push_str(&format!(
+        "qualification_version={}\n",
+        ctx.qualification_version
+    ));
     s.push_str(&format!("bks_source={}\n", ctx.bks_source));
-    s.push_str(&format!("fleet_semantics_evidence={}\n", ctx.fleet_semantics_evidence));
+    s.push_str(&format!(
+        "fleet_semantics_evidence={}\n",
+        ctx.fleet_semantics_evidence
+    ));
     // Governance (status only — hash excluded)
     s.push_str(&format!("status={}\n", status.code()));
     s.push_str(&format!("status_reason={}\n", status_reason));
@@ -740,7 +902,8 @@ fn generate_cert_id(instance_name: &str, timestamp: &str) -> String {
     let key = format!("{}|{}", instance_name, timestamp);
     let hash = fnv1a_64_hex(&key);
     // Sanitize instance name for use in ID (replace non-alphanumeric with -)
-    let safe_name: String = instance_name.chars()
+    let safe_name: String = instance_name
+        .chars()
         .map(|c| if c.is_alphanumeric() { c } else { '-' })
         .collect();
     format!("cert-{}-{}", safe_name, &hash[..8])

@@ -1,9 +1,11 @@
-use cvrp::{CvrpDecisionPlugin, CvrpInstance, CvrpGenomeFactory, CvrpState, CvrpCandidate};
-use cvrp::moga_impl::{CvrpMutator, CvrpRouteAwareMutator, CvrpCrossover, CvrpCrossoverRoutePreserving};
-use coralys_moga::{EvolutionConfig, MutationOperator, CrossoverOperator};
+use coralys_core::DecisionPlugin;
 use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::engine::PluginFitnessEvaluator;
-use coralys_core::DecisionPlugin;
+use coralys_moga::{CrossoverOperator, EvolutionConfig, MutationOperator};
+use cvrp::moga_impl::{
+    CvrpCrossover, CvrpCrossoverRoutePreserving, CvrpMutator, CvrpRouteAwareMutator,
+};
+use cvrp::{CvrpCandidate, CvrpDecisionPlugin, CvrpGenomeFactory, CvrpInstance, CvrpState};
 use std::cmp::Ordering;
 
 struct RunResult {
@@ -28,9 +30,11 @@ where
         state,
         _marker: std::marker::PhantomData,
     };
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
     let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
-    
+
     match engine.run_ga_evolution(evo_config) {
         Ok(ga_res) => {
             if let Some(&total) = ga_res.global_best.result.metrics.get("total_distance") {
@@ -49,7 +53,7 @@ fn main() {
     let state = plugin.current_state();
 
     println!("Starting Grid Search to find top 20 configurations...");
-    
+
     let mut results = Vec::new();
 
     let pop_sizes = [100, 200, 400];
@@ -61,7 +65,9 @@ fn main() {
 
     for &pop in &pop_sizes {
         for &elite in &elite_counts {
-            if elite >= pop { continue; }
+            if elite >= pop {
+                continue;
+            }
             for &g_limit in &gen_limits {
                 for &mut_rate in &mut_rates {
                     for &cross_rate in &cross_rates {
@@ -79,9 +85,17 @@ fn main() {
 
                             // Opt 1: Control + Basic Crossover
                             {
-                                let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
+                                let mutator =
+                                    CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
                                 let crossover = CvrpCrossover;
-                                let dist = evaluate_config(&instance, &plugin, &state, mutator, crossover, evo_config.clone());
+                                let dist = evaluate_config(
+                                    &instance,
+                                    &plugin,
+                                    &state,
+                                    mutator,
+                                    crossover,
+                                    evo_config.clone(),
+                                );
                                 if dist < 5000.0 {
                                     results.push(RunResult {
                                         desc: format!("Control + CvrpCrossover, Pop: {}, Elite: {}, Gen: {}, Mut: {}, Cross: {}, Tourney: {}", pop, elite, g_limit, mut_rate, cross_rate, tourney),
@@ -92,9 +106,19 @@ fn main() {
 
                             // Opt 2: LocalBiased + Basic Crossover
                             {
-                                let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::LocalBiased);
+                                let mutator = CvrpMutator::new(
+                                    instance.clone(),
+                                    cvrp::RadiusPolicy::LocalBiased,
+                                );
                                 let crossover = CvrpCrossover;
-                                let dist = evaluate_config(&instance, &plugin, &state, mutator, crossover, evo_config.clone());
+                                let dist = evaluate_config(
+                                    &instance,
+                                    &plugin,
+                                    &state,
+                                    mutator,
+                                    crossover,
+                                    evo_config.clone(),
+                                );
                                 if dist < 5000.0 {
                                     results.push(RunResult {
                                         desc: format!("LocalBiased + CvrpCrossover, Pop: {}, Elite: {}, Gen: {}, Mut: {}, Cross: {}, Tourney: {}", pop, elite, g_limit, mut_rate, cross_rate, tourney),
@@ -105,9 +129,20 @@ fn main() {
 
                             // Opt 3: RouteAware + RoutePreserving
                             {
-                                let mutator = CvrpRouteAwareMutator { instance: instance.clone() };
-                                let crossover = CvrpCrossoverRoutePreserving { instance: instance.clone() };
-                                let dist = evaluate_config(&instance, &plugin, &state, mutator, crossover, evo_config.clone());
+                                let mutator = CvrpRouteAwareMutator {
+                                    instance: instance.clone(),
+                                };
+                                let crossover = CvrpCrossoverRoutePreserving {
+                                    instance: instance.clone(),
+                                };
+                                let dist = evaluate_config(
+                                    &instance,
+                                    &plugin,
+                                    &state,
+                                    mutator,
+                                    crossover,
+                                    evo_config.clone(),
+                                );
                                 if dist < 5000.0 {
                                     results.push(RunResult {
                                         desc: format!("RouteAware + RoutePreserving, Pop: {}, Elite: {}, Gen: {}, Mut: {}, Cross: {}, Tourney: {}", pop, elite, g_limit, mut_rate, cross_rate, tourney),
@@ -123,7 +158,11 @@ fn main() {
     }
 
     // Sort by ascending distance (best first)
-    results.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap_or(Ordering::Equal));
+    results.sort_by(|a, b| {
+        a.distance
+            .partial_cmp(&b.distance)
+            .unwrap_or(Ordering::Equal)
+    });
 
     println!("==========================================================================");
     println!("TOP 20 BEST CONFIGURATIONS");

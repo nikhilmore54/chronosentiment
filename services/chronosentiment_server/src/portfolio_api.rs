@@ -56,7 +56,7 @@
 //! 400 Bad Request — invalid profile or invalid context.
 //! 422 Unprocessable Entity — JSON deserialization failure (handled by Axum).
 
-use axum::{http::StatusCode, Json};
+use axum::{Json, http::StatusCode};
 use chronosentiment_adapter::product::{
     portfolio_context::{PortfolioContext, PortfolioPosition},
     recommendation::PortfolioAllocationRequest,
@@ -148,8 +148,8 @@ pub async fn post_recommendations(
     Json(req): Json<RecommendationsRequest>,
 ) -> Result<Json<RecommendationsResponse>, (StatusCode, Json<ApiError>)> {
     // 1. Map risk_tolerance string → domain enum.
-    let risk_tolerance = parse_risk_tolerance(&req.user_profile.risk_tolerance)
-        .map_err(|e| bad_request(e))?;
+    let risk_tolerance =
+        parse_risk_tolerance(&req.user_profile.risk_tolerance).map_err(|e| bad_request(e))?;
 
     // 2. Map investment_horizon string → domain enum.
     let investment_horizon = parse_investment_horizon(&req.user_profile.investment_horizon)

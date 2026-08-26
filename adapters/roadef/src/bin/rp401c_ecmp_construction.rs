@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 /// rp401c_ecmp_construction — RP-401C: ECMP-aware load estimation during construction
 ///
 /// Research question: Does replacing the heuristic link-load model with the
@@ -14,16 +15,14 @@
 /// (load-aware Dijkstra with exponential penalty). Only the load model changes.
 ///
 /// Classification: Research binary (not a Candidate or Competition Submission).
-
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
+use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
-use roadef::evaluator::RoadefEvaluator;
 
 // ---------------------------------------------------------------------------
 // Dijkstra shortest path (metric-weighted, ignoring disabled arcs)
@@ -44,7 +43,9 @@ fn dijkstra_path(
         if disabled_links.contains(&link.id) {
             continue;
         }
-        adj.entry(link.from).or_default().push((link.to, link.metric));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, link.metric));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -122,7 +123,9 @@ fn load_aware_path_ecmp(
             load_penalty * sat
         };
         let effective_metric = link.metric + penalty;
-        adj.entry(link.from).or_default().push((link.to, effective_metric));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, effective_metric));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -232,27 +235,35 @@ fn solve_greedy_ecmp(
         }
 
         // Use current ECMP saturations for path selection
-        let full_path = load_aware_path_ecmp(net, *src, *dst, disabled_links, &ecmp_saturation, 100.0)
-            .or_else(|| dijkstra_path(net, *src, *dst, disabled_links));
+        let full_path =
+            load_aware_path_ecmp(net, *src, *dst, disabled_links, &ecmp_saturation, 100.0)
+                .or_else(|| dijkstra_path(net, *src, *dst, disabled_links));
 
         if let Some(fp) = full_path {
             let waypoints = path_to_waypoints(&fp, max_segments);
 
             // Tentatively add this demand's path to the partial solution
             if !waypoints.is_empty() {
-                partial_srpaths.push(SrPath { d: *d_idx, t: time_slot, w: waypoints.clone() });
+                partial_srpaths.push(SrPath {
+                    d: *d_idx,
+                    t: time_slot,
+                    w: waypoints.clone(),
+                });
             }
 
             assignments.insert(*d_idx, waypoints);
 
             // Update ECMP saturations using the oracle on the partial solution
-            let partial_sol = Solution { srpaths: partial_srpaths.clone() };
+            let partial_sol = Solution {
+                srpaths: partial_srpaths.clone(),
+            };
             if let Some(loads) = evaluator.compute_loads(time_slot, &partial_sol) {
                 // Recompute saturations from ECMP arc flows
                 ecmp_saturation.clear();
                 for (arc_id, flow) in &loads.arc_flows {
                     let cap = link_capacity.get(arc_id).copied().unwrap_or(1.0);
-                    ecmp_saturation.insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
+                    ecmp_saturation
+                        .insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
                 }
             }
             // If compute_loads returns None (disconnected), keep previous saturations
@@ -270,7 +281,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("RP-401C — ECMP-Aware Construction (Dataset A)");
     println!("{}", "=".repeat(68));
-    println!("{:<10} {:>12} {:>12} {:>10} {:>8}", "Instance", "RP-401C obj", "Baseline obj", "Delta", "ms");
+    println!(
+        "{:<10} {:>12} {:>12} {:>10} {:>8}",
+        "Instance", "RP-401C obj", "Baseline obj", "Delta", "ms"
+    );
     println!("{}", "-".repeat(58));
 
     let mut total_improvement = 0.0f64;
@@ -290,23 +304,34 @@ fn main() -> anyhow::Result<()> {
 
         let num_demands = tm.demands.len();
         let num_slots = tm.num_time_slots;
-        let max_seg = if scenario.max_segments >= 0 { scenario.max_segments as usize } else { 100 };
+        let max_seg = if scenario.max_segments >= 0 {
+            scenario.max_segments as usize
+        } else {
+            100
+        };
 
         let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
 
         // Disabled links per time slot
-        let disabled_t0: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t0: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 0)
             .flat_map(|i| i.links.iter().copied())
             .collect();
-        let disabled_t1: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t1: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 1)
             .flat_map(|i| i.links.iter().copied())
             .collect();
         let disabled_both: HashSet<u64> = disabled_t0.union(&disabled_t1).copied().collect();
 
         // Average volume demands for shared-path routing
-        let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_avg: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| {
                 let v0 = d.v[0];
                 let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
@@ -321,7 +346,13 @@ fn main() -> anyhow::Result<()> {
         // exceed this due to O(D²) oracle calls; they fall back to empty solution.
         let deadline = t_start + std::time::Duration::from_secs(300);
         let shared_assign = solve_greedy_ecmp(
-            &net, &evaluator, &demands_avg, &disabled_both, 0, max_seg, deadline,
+            &net,
+            &evaluator,
+            &demands_avg,
+            &disabled_both,
+            0,
+            max_seg,
+            deadline,
         );
 
         // Build srpaths: shared path for both t=0 and t=1
@@ -329,16 +360,26 @@ fn main() -> anyhow::Result<()> {
         for d_idx in 0..num_demands {
             if let Some(w) = shared_assign.get(&d_idx) {
                 if !w.is_empty() {
-                    srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
+                    srpaths.push(SrPath {
+                        d: d_idx,
+                        t: 0,
+                        w: w.clone(),
+                    });
                     if num_slots > 1 {
-                        srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                        srpaths.push(SrPath {
+                            d: d_idx,
+                            t: 1,
+                            w: w.clone(),
+                        });
                     }
                 }
             }
         }
 
         // Evaluate RP-401C solution
-        let solution = Solution { srpaths: srpaths.clone() };
+        let solution = Solution {
+            srpaths: srpaths.clone(),
+        };
         let result = evaluator.evaluate_solution(&solution);
 
         // Evaluate empty solution (baseline reference)
@@ -348,7 +389,9 @@ fn main() -> anyhow::Result<()> {
         // Choose best solution
         let (final_srpaths, final_obj) = if !result.valid {
             (vec![], empty_result.obj)
-        } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
+        } else if result.obj.is_finite()
+            && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj)
+        {
             (srpaths, result.obj)
         } else if result.obj.is_infinite() && empty_result.obj.is_finite() {
             (vec![], empty_result.obj)
@@ -384,10 +427,25 @@ fn main() -> anyhow::Result<()> {
         };
 
         let elapsed_ms = t_start.elapsed().as_millis();
-        let obj_str = if final_obj.is_finite() { format!("{:.4}", final_obj) } else { "inf".to_string() };
-        let empty_str = if empty_result.obj.is_finite() { format!("{:.4}", empty_result.obj) } else { "inf".to_string() };
+        let obj_str = if final_obj.is_finite() {
+            format!("{:.4}", final_obj)
+        } else {
+            "inf".to_string()
+        };
+        let empty_str = if empty_result.obj.is_finite() {
+            format!("{:.4}", empty_result.obj)
+        } else {
+            "inf".to_string()
+        };
 
-        println!("{:<10} {:>12} {:>12} {:>10} {:>8}", format!("setA-{}", inst), obj_str, empty_str, delta_str, elapsed_ms);
+        println!(
+            "{:<10} {:>12} {:>12} {:>10} {:>8}",
+            format!("setA-{}", inst),
+            obj_str,
+            empty_str,
+            delta_str,
+            elapsed_ms
+        );
 
         // Write solution file
         let out_path = format!("{}/setA-{}-srpaths-rp401c.json", set_dir, inst);
@@ -403,9 +461,18 @@ fn main() -> anyhow::Result<()> {
     }
 
     println!("{}", "=".repeat(68));
-    println!("Summary: {} improved, {} regressed, {} unchanged", improved_count, regressed_count, unchanged_count);
-    println!("Total objective improvement vs empty: {:.4}", total_improvement);
-    println!("Solution files written to {}/setA-*-srpaths-rp401c.json", set_dir);
+    println!(
+        "Summary: {} improved, {} regressed, {} unchanged",
+        improved_count, regressed_count, unchanged_count
+    );
+    println!(
+        "Total objective improvement vs empty: {:.4}",
+        total_improvement
+    );
+    println!(
+        "Solution files written to {}/setA-*-srpaths-rp401c.json",
+        set_dir
+    );
 
     Ok(())
 }

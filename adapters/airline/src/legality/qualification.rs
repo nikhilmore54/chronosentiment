@@ -48,9 +48,7 @@ impl LegalityRule for QualificationRule {
                                     format!(
                                         "Crew member {} not found in roster; \
                                          cannot verify qualification for leg {} ({})",
-                                        rotation.crew_id,
-                                        leg.id,
-                                        leg.aircraft_type,
+                                        rotation.crew_id, leg.id, leg.aircraft_type,
                                     ),
                                 ));
                             }
@@ -65,10 +63,7 @@ impl LegalityRule for QualificationRule {
                                         format!(
                                             "Crew member {} ({}) is not qualified for \
                                              aircraft type {} required by leg {}",
-                                            member.id,
-                                            member.name,
-                                            leg.aircraft_type,
-                                            leg.id,
+                                            member.id, member.name, leg.aircraft_type, leg.id,
                                         ),
                                     ));
                                 }
@@ -101,12 +96,20 @@ mod tests {
         let crew = make_crew("C1", "LHR", &["B738"]);
         let leg = make_leg("L1", "LHR", "CDG", 8, 10);
         let duty = make_duty("D1", vec![leg.clone()]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
-        let roster = make_roster_with_crew(vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)], vec![rotation], vec![crew]);
+        let roster = make_roster_with_crew(
+            vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)],
+            vec![rotation],
+            vec![crew],
+        );
         assert!(rule().check(&roster).is_empty());
     }
 
@@ -118,12 +121,20 @@ mod tests {
         let crew = make_crew("C1", "LHR", &["A320"]);
         let leg = make_leg("L1", "LHR", "CDG", 8, 10); // B738 (default)
         let duty = make_duty("D1", vec![leg.clone()]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
-        let roster = make_roster_with_crew(vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)], vec![rotation], vec![crew]);
+        let roster = make_roster_with_crew(
+            vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)],
+            vec![rotation],
+            vec![crew],
+        );
         let violations = rule().check(&roster);
         assert_eq!(violations.len(), 2); // both legs are B738
         for v in &violations {
@@ -138,7 +149,7 @@ mod tests {
     fn mixed_qualification_partial_violation() {
         // Crew qualified for B738 only; one leg B738 (ok), one leg A320 (violation)
         let crew = make_crew("C1", "LHR", &["B738"]);
-        let l1 = make_leg("L1", "LHR", "CDG", 8, 10);          // B738 — ok
+        let l1 = make_leg("L1", "LHR", "CDG", 8, 10); // B738 — ok
         let l2 = make_leg_typed("L2", "CDG", "LHR", 22, 24, "A320"); // A320 — violation
         let d1 = make_duty("D1", vec![l1.clone()]);
         let d2 = make_duty("D2", vec![l2.clone()]);
@@ -157,13 +168,21 @@ mod tests {
         // Rotation references C1 but no CrewMember record for C1 in roster
         let leg = make_leg("L1", "LHR", "CDG", 8, 10);
         let duty = make_duty("D1", vec![leg.clone()]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
         // No crew members passed — roster has no CrewMember records
-        let roster = make_roster_with_crew(vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)], vec![rotation], vec![]);
+        let roster = make_roster_with_crew(
+            vec![leg, make_leg("L2", "CDG", "LHR", 22, 24)],
+            vec![rotation],
+            vec![],
+        );
         let violations = rule().check(&roster);
         assert!(!violations.is_empty());
         for v in &violations {
@@ -179,8 +198,14 @@ mod tests {
         let c2 = make_crew("C2", "LHR", &["A320"]); // wrong type
 
         let make_b738_pairing = |pid: &str, rid: &str, cid: &str| {
-            let d1 = make_duty(&format!("{rid}D1"), vec![make_leg(&format!("{rid}L1"), "LHR", "CDG", 8, 10)]);
-            let d2 = make_duty(&format!("{rid}D2"), vec![make_leg(&format!("{rid}L2"), "CDG", "LHR", 22, 24)]);
+            let d1 = make_duty(
+                &format!("{rid}D1"),
+                vec![make_leg(&format!("{rid}L1"), "LHR", "CDG", 8, 10)],
+            );
+            let d2 = make_duty(
+                &format!("{rid}D2"),
+                vec![make_leg(&format!("{rid}L2"), "CDG", "LHR", 22, 24)],
+            );
             let p = make_pairing(pid, "LHR", vec![d1, d2]);
             make_rotation(rid, cid, vec![p])
         };

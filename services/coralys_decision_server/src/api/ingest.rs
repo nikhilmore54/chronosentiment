@@ -13,12 +13,7 @@
 //! - AC-03: once sealed, the decision is immutable.
 //! - MVP-004: provenance hashes are verified against canonical C3-002 values.
 
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
 use coralys_decision::{DecisionRecordBuilder, SealedDecisionInput};
 use serde::{Deserialize, Serialize};
@@ -190,10 +185,7 @@ mod tests {
         resp.assert_status(StatusCode::CREATED);
         let body: Value = resp.json();
         assert_eq!(body["status"], "SEALED");
-        assert_eq!(
-            body["decision_id"],
-            "coralys-ADANIENT-20260817T101500Z-001"
-        );
+        assert_eq!(body["decision_id"], "coralys-ADANIENT-20260817T101500Z-001");
     }
 
     #[tokio::test]

@@ -1,17 +1,19 @@
 use std::collections::BTreeMap;
 
 use chrono::{TimeZone, Utc};
-use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 use chronosentiment_adapter::decision_support::factor_availability::report_factor_availability;
-use chronosentiment_adapter::decision_support::policy::{DecisionPolicy, BaselineTrendMappingPolicy};
+use chronosentiment_adapter::decision_support::policy::{
+    BaselineTrendMappingPolicy, DecisionPolicy,
+};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, ReplayAssessment, ReplayInputs, TREND_MAPPING_RULE,
 };
 use chronosentiment_adapter::decision_support::DecisionAction;
 use chronosentiment_adapter::metrics::concepts::Concept;
 use chronosentiment_adapter::reasoning::assessment::{
-    AssessmentEngine, ENRICHMENT_CONCEPTS, FactorAvailability,
+    AssessmentEngine, FactorAvailability, ENRICHMENT_CONCEPTS,
 };
+use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 use uuid::Uuid;
 
 fn t() -> chrono::DateTime<Utc> {
@@ -102,8 +104,12 @@ fn enrichment_hashes_are_deterministic() {
 #[test]
 fn trend_mapping_policy_is_unchanged_when_momentum_is_present() {
     let instrument_id = Uuid::from_u128(7);
-    let mut profile =
-        AssessmentEngine.assess_at(&full_metrics(), &ENRICHMENT_CONCEPTS, t(), Some(instrument_id));
+    let mut profile = AssessmentEngine.assess_at(
+        &full_metrics(),
+        &ENRICHMENT_CONCEPTS,
+        t(),
+        Some(instrument_id),
+    );
     let id = Uuid::from_u128(1);
     profile.metadata.artifact_id = id;
     let decision = BaselineTrendMappingPolicy.decide(&profile, t());
@@ -119,24 +125,27 @@ fn trend_mapping_policy_is_unchanged_when_momentum_is_present() {
 
     let trading = decide_from_inputs(
         ReplayInputs {
-        instrument_id,
-        as_of: t(),
-        engine_version: "unfrozen-dev".to_string(),
-        produced_by: "test".to_string(),
-        assessments: vec![ReplayAssessment {
-            id,
-            evaluation_timestamp: t(),
-            signature_hash: profile.to_hash(),
-            profile,
-        }],
-        lake_decisions: vec![],
-        observations: vec![],
-    },
+            instrument_id,
+            as_of: t(),
+            engine_version: "unfrozen-dev".to_string(),
+            produced_by: "test".to_string(),
+            assessments: vec![ReplayAssessment {
+                id,
+                evaluation_timestamp: t(),
+                signature_hash: profile.to_hash(),
+                profile,
+            }],
+            lake_decisions: vec![],
+            observations: vec![],
+        },
         &BaselineTrendMappingPolicy,
     )
     .unwrap();
     assert_eq!(trading.action, DecisionAction::Long);
-    assert!(trading.evidence.diagnostics.contains("Consumed concepts: Trend only"));
+    assert!(trading
+        .evidence
+        .diagnostics
+        .contains("Consumed concepts: Trend only"));
 }
 
 #[test]
@@ -178,8 +187,7 @@ fn observations_after_t_do_not_enter_the_decision() {
 #[test]
 fn enrichment_profiles_are_structurally_admissible() {
     use chronosentiment_adapter::decision_support::factor_availability::certify_enrichment_profiles;
-    let profile =
-        AssessmentEngine.assess_at(&full_metrics(), &ENRICHMENT_CONCEPTS, t(), None);
+    let profile = AssessmentEngine.assess_at(&full_metrics(), &ENRICHMENT_CONCEPTS, t(), None);
     let failures = certify_enrichment_profiles(&[profile]);
     assert!(failures.is_empty(), "{failures:?}");
 }
@@ -189,7 +197,10 @@ fn bars_after_t_do_not_change_factor_status() {
     use chronosentiment_adapter::decision_support::enrichment_certify::assess_from_bars_at_t;
     use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
     let mut bars = Vec::new();
-    let start = Utc.with_ymd_and_hms(2021, 8, 1, 0, 0, 0).unwrap().timestamp();
+    let start = Utc
+        .with_ymd_and_hms(2021, 8, 1, 0, 0, 0)
+        .unwrap()
+        .timestamp();
     for i in 0..80 {
         let close = 100.0 + i as f64;
         bars.push(YahooHistoricalBar {
@@ -220,4 +231,3 @@ fn bars_after_t_do_not_change_factor_status() {
     assert!(max_a.unwrap() <= t());
     assert!(max_b.unwrap() <= t());
 }
-

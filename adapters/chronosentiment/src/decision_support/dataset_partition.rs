@@ -140,8 +140,7 @@ pub fn partition_contiguous_equal_thirds(
     {
         return Err("partition lengths do not cover the grid".into());
     }
-    if development_ts.last() >= selection_ts.first()
-        || selection_ts.last() >= evaluation_ts.first()
+    if development_ts.last() >= selection_ts.first() || selection_ts.last() >= evaluation_ts.first()
     {
         return Err("partitions are not strictly chronological".into());
     }
@@ -205,11 +204,8 @@ fn compute_partition_hash(partition: &ChronologicalPartition) -> String {
 
 /// Certified seven-instrument month-end grid (CS-P-006-S1 coverage).
 pub fn certified_research_partition() -> ChronologicalPartition {
-    partition_contiguous_equal_thirds(
-        &replay_month_ends_2021_10_to_2024_12(),
-        &RESEARCH_UNIVERSE,
-    )
-    .expect("certified 39-timestamp grid partitions")
+    partition_contiguous_equal_thirds(&replay_month_ends_2021_10_to_2024_12(), &RESEARCH_UNIVERSE)
+        .expect("certified 39-timestamp grid partitions")
 }
 
 pub fn assign_timestamp(
@@ -241,9 +237,7 @@ pub fn timestamp_cohort_is_atomic(
     }
     for (t, kinds) in by_t {
         if kinds.len() != 1 {
-            return Err(format!(
-                "timestamp {t} split across partitions {kinds:?}"
-            ));
+            return Err(format!("timestamp {t} split across partitions {kinds:?}"));
         }
     }
     Ok(())

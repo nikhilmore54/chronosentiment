@@ -31,11 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n_decisions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM knowledge_decisions")
         .fetch_one(&pool)
         .await?;
-    let orphan_decisions: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM knowledge_decisions WHERE assessment_id IS NULL",
-    )
-    .fetch_one(&pool)
-    .await?;
+    let orphan_decisions: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM knowledge_decisions WHERE assessment_id IS NULL")
+            .fetch_one(&pool)
+            .await?;
     let assessment_after_decision: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*)
@@ -106,10 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         output.join("FACTOR_AVAILABILITY.md"),
         render_factor_availability(&cert.factor_availability),
     )?;
-    fs::write(
-        output.join("CERTIFICATION.md"),
-        render_certification(&cert),
-    )?;
+    fs::write(output.join("CERTIFICATION.md"), render_certification(&cert))?;
 
     println!("result={}", cert.result);
     println!("n_profiles={}", cert.n_profiles);
@@ -139,6 +135,7 @@ fn parse_args() -> Result<(PathBuf, Option<PathBuf>), Box<dyn std::error::Error>
             other => return Err(format!("unknown argument {other}").into()),
         }
     }
-    let output = output.ok_or("usage: csp004_enrichment_certify --output DIR [--yahoo-cache DIR]")?;
+    let output =
+        output.ok_or("usage: csp004_enrichment_certify --output DIR [--yahoo-cache DIR]")?;
     Ok((output, cache))
 }

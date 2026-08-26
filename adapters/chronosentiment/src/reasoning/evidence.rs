@@ -1,5 +1,5 @@
-use crate::reasoning::assessment::{AssessmentProfile, Direction};
 use crate::metrics::concepts::Concept;
+use crate::reasoning::assessment::{AssessmentProfile, Direction};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -40,8 +40,9 @@ impl EvidenceEngine {
 
         for assessment in &profile.assessments {
             let desc = format!("{:?} is {:?}.", assessment.concept, assessment.direction);
-            let supports = assessment.direction == Direction::Bullish || assessment.direction == Direction::Positive;
-            
+            let supports = assessment.direction == Direction::Bullish
+                || assessment.direction == Direction::Positive;
+
             evidence_vec.push(EvidenceStatement {
                 evidence_id: Uuid::new_v4(),
                 assessment_id: Some(Uuid::new_v4()), // Assuming Assessment would have an ID in reality
@@ -54,6 +55,8 @@ impl EvidenceEngine {
             });
         }
 
-        EvidenceSet { evidence: evidence_vec }
+        EvidenceSet {
+            evidence: evidence_vec,
+        }
     }
 }

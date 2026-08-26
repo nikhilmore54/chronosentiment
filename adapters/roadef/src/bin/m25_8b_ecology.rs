@@ -58,7 +58,7 @@ pub struct SolverState {
     pub first_solution_visited: usize,
     pub best_solution_visited: usize,
     pub memory_mode: MemoryMode,
-    
+
     pub time: u64,
     pub successes: HashMap<String, usize>,
     pub failures: HashMap<String, usize>,
@@ -73,40 +73,58 @@ pub struct SolverState {
 impl SolverState {
     fn query_coralys(&mut self, context_tag: &str) -> ConstraintSignal {
         self.memory_queries += 1;
-        if self.memory_mode == MemoryMode::Disabled { 
-            return ConstraintSignal { confidence: 0.0, pressure: 0.0, trend: 0.0, success_count: 0, failure_count: 0, last_seen_epoch: 0 }; 
+        if self.memory_mode == MemoryMode::Disabled {
+            return ConstraintSignal {
+                confidence: 0.0,
+                pressure: 0.0,
+                trend: 0.0,
+                success_count: 0,
+                failure_count: 0,
+                last_seen_epoch: 0,
+            };
         }
-        
+
         let succ = *self.successes.get(context_tag).unwrap_or(&0);
         let fail = *self.failures.get(context_tag).unwrap_or(&0);
         let total = succ + fail;
-        
+
         if total == 0 {
-            return ConstraintSignal { confidence: 0.0, pressure: 0.5, trend: 0.0, success_count: 0, failure_count: 0, last_seen_epoch: 0 }; 
+            return ConstraintSignal {
+                confidence: 0.0,
+                pressure: 0.5,
+                trend: 0.0,
+                success_count: 0,
+                failure_count: 0,
+                last_seen_epoch: 0,
+            };
         }
 
         if self.prev_pressures.contains_key(context_tag) {
             self.memory_hits += 1; // It was based on existing memory from a prior epoch
         }
-        
+
         let pressure = fail as f64 / total as f64;
         let prev = *self.prev_pressures.get(context_tag).unwrap_or(&0.5);
         let trend = pressure - prev; // Positive if pressure increased
-        
-        ConstraintSignal { 
-            confidence: total as f64, 
-            pressure, 
+
+        ConstraintSignal {
+            confidence: total as f64,
+            pressure,
             trend,
             success_count: succ,
             failure_count: fail,
             last_seen_epoch: self.time,
         }
     }
-    
+
     fn derive_preference(&self, signal: &ConstraintSignal) -> SearchPreference {
-        if signal.pressure > 0.8 { SearchPreference::StronglyDefer }
-        else if signal.pressure > 0.4 { SearchPreference::Defer }
-        else { SearchPreference::Neutral }
+        if signal.pressure > 0.8 {
+            SearchPreference::StronglyDefer
+        } else if signal.pressure > 0.4 {
+            SearchPreference::Defer
+        } else {
+            SearchPreference::Neutral
+        }
     }
 
     fn emit_causal_edge(&mut self, context_tag: String, is_success: bool) {
@@ -123,14 +141,26 @@ impl SolverState {
             let fail = *self.failures.get(tag).unwrap_or(&0);
             let total = succ + fail;
             if total > 0 {
-                self.prev_pressures.insert(tag.clone(), fail as f64 / total as f64);
+                self.prev_pressures
+                    .insert(tag.clone(), fail as f64 / total as f64);
             }
         }
     }
 
-    pub fn solve(&mut self, scenario: &Scenario, demand_idx: usize, current_allocs: &HashMap<Link, usize>, current_cost: usize, precomputed_paths: &Vec<Vec<Vec<usize>>>) -> bool {
-        if current_cost > scenario.budget { return false; }
-        if current_cost >= self.best_objective { return false; }
+    pub fn solve(
+        &mut self,
+        scenario: &Scenario,
+        demand_idx: usize,
+        current_allocs: &HashMap<Link, usize>,
+        current_cost: usize,
+        precomputed_paths: &Vec<Vec<Vec<usize>>>,
+    ) -> bool {
+        if current_cost > scenario.budget {
+            return false;
+        }
+        if current_cost >= self.best_objective {
+            return false;
+        }
 
         if demand_idx >= scenario.demands.len() {
             if !self.solution_found {
@@ -146,7 +176,7 @@ impl SolverState {
 
         let demand = &scenario.demands[demand_idx];
         let mut paths = precomputed_paths[demand_idx].clone();
-        
+
         // Pseudo-random baseline heuristic to simulate an imperfect solver
         let mut seed = demand_idx as u32 + 1;
         for i in (1..paths.len()).rev() {
@@ -164,7 +194,9 @@ impl SolverState {
 
         if self.memory_mode == MemoryMode::RankedAdvisory {
             path_risks.sort_by(|a, b| {
-                a.2.pressure.partial_cmp(&b.2.pressure).unwrap_or(std::cmp::Ordering::Equal)
+                a.2.pressure
+                    .partial_cmp(&b.2.pressure)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
 
@@ -176,9 +208,9 @@ impl SolverState {
             let mut true_failure = false;
             let mut failed_link = None;
             let mut next_allocs = current_allocs.clone();
-            
-            for i in 0..path.len()-1 {
-                let link = Link(path[i], path[i+1]);
+
+            for i in 0..path.len() - 1 {
+                let link = Link(path[i], path[i + 1]);
                 let used = next_allocs.entry(link.clone()).or_insert(0);
                 *used += demand.vol;
                 if *used > *scenario.network.capacities.get(&link).unwrap_or(&0) {
@@ -202,17 +234,25 @@ impl SolverState {
                 continue;
             }
 
-            let success = self.solve(scenario, demand_idx + 1, &next_allocs, current_cost + path.len(), precomputed_paths);
+            let success = self.solve(
+                scenario,
+                demand_idx + 1,
+                &next_allocs,
+                current_cost + path.len(),
+                precomputed_paths,
+            );
             if self.memory_mode != MemoryMode::Disabled {
                 self.emit_causal_edge(context_tag, success);
                 if success {
-                    for i in 0..path.len()-1 {
-                        let link = Link(path[i], path[i+1]);
+                    for i in 0..path.len() - 1 {
+                        let link = Link(path[i], path[i + 1]);
                         self.emit_causal_edge(format!("Link_{:?}", link), true);
                     }
                 }
             }
-            if success { any_success = true; }
+            if success {
+                any_success = true;
+            }
         }
         any_success
     }
@@ -224,10 +264,14 @@ impl SolverState {
             let last = *path.last().unwrap();
             if last == dst {
                 paths.push(path);
-                if paths.len() >= 3 { break; } // Bounded combinatorics
+                if paths.len() >= 3 {
+                    break;
+                } // Bounded combinatorics
                 continue;
             }
-            if path.len() > 6 { continue; } 
+            if path.len() > 6 {
+                continue;
+            }
             for &next in &net.adj[last] {
                 if !path.contains(&next) {
                     let mut new_path = path.clone();
@@ -246,13 +290,19 @@ impl SolverState {
 fn main() {
     println!("=== M25.8B Ecology Density Audit ===");
     let nodes = 30;
-    
+
     // Create base network
-    let mut base_net = NetworkGraph { num_nodes: nodes, capacities: HashMap::new(), adj: vec![Vec::new(); nodes] };
+    let mut base_net = NetworkGraph {
+        num_nodes: nodes,
+        capacities: HashMap::new(),
+        adj: vec![Vec::new(); nodes],
+    };
     let mut seed: u32 = 42;
     for i in 0..nodes {
         for j in 0..nodes {
-            if i == j { continue; }
+            if i == j {
+                continue;
+            }
             seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
             if (seed % 100) as f64 / 100.0 < 0.20 {
                 base_net.adj[i].push(j);
@@ -261,36 +311,60 @@ fn main() {
         }
     }
     // High capacity backbone
-    for i in 0..nodes-1 { 
-        base_net.adj[i].push(i+1); 
-        base_net.capacities.insert(Link(i, i+1), 20); 
+    for i in 0..nodes - 1 {
+        base_net.adj[i].push(i + 1);
+        base_net.capacities.insert(Link(i, i + 1), 20);
     }
 
     // Generate 10 demands
     let mut demands = Vec::new();
-    for id in 1..=10 { 
+    for id in 1..=10 {
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
         let src = (seed as usize) % (nodes / 2);
         seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
         let dst = nodes / 2 + (seed as usize) % (nodes / 2);
-        demands.push(Demand { id, src, dst, vol: 2 }); 
+        demands.push(Demand {
+            id,
+            src,
+            dst,
+            vol: 2,
+        });
     }
 
     let mut coralys = SolverState {
-        nodes_visited: 0, false_prunes: 0, solution_found: false, best_objective: usize::MAX,
-        first_solution_visited: 0, best_solution_visited: 0,
-        memory_mode: MemoryMode::RankedAdvisory, time: 1, successes: HashMap::new(), failures: HashMap::new(), prev_pressures: HashMap::new(),
-        memory_queries: 0, memory_hits: 0, link_failure_counts: HashMap::new(),
+        nodes_visited: 0,
+        false_prunes: 0,
+        solution_found: false,
+        best_objective: usize::MAX,
+        first_solution_visited: 0,
+        best_solution_visited: 0,
+        memory_mode: MemoryMode::RankedAdvisory,
+        time: 1,
+        successes: HashMap::new(),
+        failures: HashMap::new(),
+        prev_pressures: HashMap::new(),
+        memory_queries: 0,
+        memory_hits: 0,
+        link_failure_counts: HashMap::new(),
     };
 
-    println!("{:<5} | {:<12} | {:<12} | {:<12} | {:<12} | {:<8} | {:<10} | {:<16}", 
-        "Epoch", "State", "Baseline Obj", "Coralys Obj", "Base Best@N", "Cor Best@N", "Hard FP", "Memory Reuse %");
+    println!(
+        "{:<5} | {:<12} | {:<12} | {:<12} | {:<12} | {:<8} | {:<10} | {:<16}",
+        "Epoch",
+        "State",
+        "Baseline Obj",
+        "Coralys Obj",
+        "Base Best@N",
+        "Cor Best@N",
+        "Hard FP",
+        "Memory Reuse %"
+    );
     println!("{:-<100}", "");
 
     for epoch in 1..=10 {
         coralys.time = epoch;
         coralys.snapshot_pressures();
-        
+
         let mut epoch_net = base_net.clone();
         let mut epoch_demands = demands.clone();
         let mut state_name = "Normal";
@@ -302,7 +376,9 @@ fn main() {
             epoch_net.capacities.insert(Link(11, 12), 2);
         } else if epoch >= 7 && epoch <= 8 {
             state_name = "TrafficSpike";
-            for d in epoch_demands.iter_mut() { d.vol = 4; } 
+            for d in epoch_demands.iter_mut() {
+                d.vol = 4;
+            }
         } else if epoch == 9 {
             state_name = "LinkFailure";
             epoch_net.capacities.insert(Link(14, 15), 0);
@@ -310,24 +386,42 @@ fn main() {
             state_name = "Recovery";
         }
 
-        let scenario = Scenario { network: epoch_net, demands: epoch_demands, budget: 150 };
+        let scenario = Scenario {
+            network: epoch_net,
+            demands: epoch_demands,
+            budget: 150,
+        };
 
         let mut precomputed_paths = Vec::new();
-        for d in &scenario.demands { 
-            precomputed_paths.push(coralys.find_all_paths(&scenario.network, d.src, d.dst)); 
+        for d in &scenario.demands {
+            precomputed_paths.push(coralys.find_all_paths(&scenario.network, d.src, d.dst));
         }
 
         let mut baseline = SolverState {
-            nodes_visited: 0, false_prunes: 0, solution_found: false, best_objective: usize::MAX,
-            first_solution_visited: 0, best_solution_visited: 0,
-            memory_mode: MemoryMode::Disabled, time: epoch, successes: HashMap::new(), failures: HashMap::new(), prev_pressures: HashMap::new(),
-            memory_queries: 0, memory_hits: 0, link_failure_counts: HashMap::new(),
+            nodes_visited: 0,
+            false_prunes: 0,
+            solution_found: false,
+            best_objective: usize::MAX,
+            first_solution_visited: 0,
+            best_solution_visited: 0,
+            memory_mode: MemoryMode::Disabled,
+            time: epoch,
+            successes: HashMap::new(),
+            failures: HashMap::new(),
+            prev_pressures: HashMap::new(),
+            memory_queries: 0,
+            memory_hits: 0,
+            link_failure_counts: HashMap::new(),
         };
         baseline.solve(&scenario, 0, &HashMap::new(), 0, &precomputed_paths);
 
-        coralys.nodes_visited = 0; coralys.solution_found = false; coralys.best_objective = usize::MAX;
-        coralys.first_solution_visited = 0; coralys.best_solution_visited = 0;
-        coralys.memory_queries = 0; coralys.memory_hits = 0;
+        coralys.nodes_visited = 0;
+        coralys.solution_found = false;
+        coralys.best_objective = usize::MAX;
+        coralys.first_solution_visited = 0;
+        coralys.best_solution_visited = 0;
+        coralys.memory_queries = 0;
+        coralys.memory_hits = 0;
         coralys.link_failure_counts.clear();
 
         // Forecast Constraints
@@ -340,7 +434,11 @@ fn main() {
             }
         }
         predicted_risks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        let top_forecast: Vec<_> = predicted_risks.iter().take(3).map(|(t, _)| t.clone()).collect();
+        let top_forecast: Vec<_> = predicted_risks
+            .iter()
+            .take(3)
+            .map(|(t, _)| t.clone())
+            .collect();
 
         // Pre-Recovery Snapshot
         let recovery_link = "Link_Link(14, 15)";
@@ -355,50 +453,91 @@ fn main() {
         // Metrics
         let reuse_rate = if coralys.memory_queries > 0 {
             (coralys.memory_hits as f64 / coralys.memory_queries as f64) * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
-        let hard_fp = (baseline.solution_found && !coralys.solution_found) || (baseline.solution_found && coralys.best_objective > baseline.best_objective);
-        
+        let hard_fp = (baseline.solution_found && !coralys.solution_found)
+            || (baseline.solution_found && coralys.best_objective > baseline.best_objective);
+
         let base_best = baseline.best_solution_visited;
         let cor_best = coralys.best_solution_visited;
 
         let mut actual_failures: Vec<_> = coralys.link_failure_counts.iter().collect();
         actual_failures.sort_by_key(|&(_, count)| std::cmp::Reverse(count));
-        let top_actual: Vec<_> = actual_failures.iter().take(3).map(|(fl, _)| format!("Link_{:?}", fl)).collect();
-        
+        let top_actual: Vec<_> = actual_failures
+            .iter()
+            .take(3)
+            .map(|(fl, _)| format!("Link_{:?}", fl))
+            .collect();
+
         // Precision
         let mut hits = 0;
         for tf in &top_forecast {
-            if top_actual.contains(tf) { hits += 1; }
+            if top_actual.contains(tf) {
+                hits += 1;
+            }
         }
-        let precision = if top_forecast.len() > 0 { (hits as f64 / top_forecast.len() as f64) * 100.0 } else { 0.0 };
+        let precision = if top_forecast.len() > 0 {
+            (hits as f64 / top_forecast.len() as f64) * 100.0
+        } else {
+            0.0
+        };
 
-        println!("{:<5} | {:<12} | {:<12} | {:<12} | {:<12} | {:<8} | {:<10} | {:>5.1}%", 
-            epoch, state_name, 
-            if baseline.solution_found { baseline.best_objective.to_string() } else { "Unsat".to_string() },
-            if coralys.solution_found { coralys.best_objective.to_string() } else { "Unsat".to_string() },
-            base_best, cor_best, hard_fp, reuse_rate);
-            
+        println!(
+            "{:<5} | {:<12} | {:<12} | {:<12} | {:<12} | {:<8} | {:<10} | {:>5.1}%",
+            epoch,
+            state_name,
+            if baseline.solution_found {
+                baseline.best_objective.to_string()
+            } else {
+                "Unsat".to_string()
+            },
+            if coralys.solution_found {
+                coralys.best_objective.to_string()
+            } else {
+                "Unsat".to_string()
+            },
+            base_best,
+            cor_best,
+            hard_fp,
+            reuse_rate
+        );
+
         println!("  ├─ Top Forecast: {:?}", top_forecast);
         println!("  ├─ Top Actual  : {:?}", top_actual);
         println!("  └─ Precision   : {:.1}%", precision);
 
         if epoch == 10 {
             println!("\n=== Recovery Epoch Kinematics ({}) ===", recovery_link);
-            println!("Epoch 9  | Pressure: {:.2} | Confidence: {} | Trend: {:+.2} | Pref: {:?}", 
-                pre_recovery_sig.pressure, pre_recovery_sig.confidence, pre_recovery_sig.trend, coralys.derive_preference(&pre_recovery_sig));
-            println!("Epoch 10 | Pressure: {:.2} | Confidence: {} | Trend: {:+.2} | Pref: {:?}", 
-                post_recovery_sig.pressure, post_recovery_sig.confidence, post_recovery_sig.trend, coralys.derive_preference(&post_recovery_sig));
+            println!(
+                "Epoch 9  | Pressure: {:.2} | Confidence: {} | Trend: {:+.2} | Pref: {:?}",
+                pre_recovery_sig.pressure,
+                pre_recovery_sig.confidence,
+                pre_recovery_sig.trend,
+                coralys.derive_preference(&pre_recovery_sig)
+            );
+            println!(
+                "Epoch 10 | Pressure: {:.2} | Confidence: {} | Trend: {:+.2} | Pref: {:?}",
+                post_recovery_sig.pressure,
+                post_recovery_sig.confidence,
+                post_recovery_sig.trend,
+                coralys.derive_preference(&post_recovery_sig)
+            );
         }
     }
 
     // --- M25.8B Ecology Density Audit Metrics ---
     let mut unique_contexts = HashSet::new();
     let mut reusable_contexts = 0;
-    
-    for k in coralys.successes.keys() { unique_contexts.insert(k.clone()); }
-    for k in coralys.failures.keys() { unique_contexts.insert(k.clone()); }
-    
+
+    for k in coralys.successes.keys() {
+        unique_contexts.insert(k.clone());
+    }
+    for k in coralys.failures.keys() {
+        unique_contexts.insert(k.clone());
+    }
+
     for ctx in &unique_contexts {
         let succ = *coralys.successes.get(ctx).unwrap_or(&0);
         let fail = *coralys.failures.get(ctx).unwrap_or(&0);
@@ -409,11 +548,16 @@ fn main() {
 
     let avg_recall = if unique_contexts.len() > 0 {
         coralys.memory_queries as f64 / unique_contexts.len() as f64
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     println!("\n=== Ecology Metrics ===");
     println!("Unique Contexts        : {}", unique_contexts.len());
     println!("Reusable Contexts      : {}", reusable_contexts);
-    println!("Reusability Ratio      : {:.1}%", (reusable_contexts as f64 / unique_contexts.len() as f64) * 100.0);
+    println!(
+        "Reusability Ratio      : {:.1}%",
+        (reusable_contexts as f64 / unique_contexts.len() as f64) * 100.0
+    );
     println!("Average Recall Depth   : {:.2} queries/context", avg_recall);
 }

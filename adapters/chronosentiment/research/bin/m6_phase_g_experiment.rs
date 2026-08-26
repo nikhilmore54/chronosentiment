@@ -11,7 +11,8 @@ use chronosentiment_adapter::research::predictive_value::PredictiveValueExperime
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "postgresql://nikhil@localhost:5432/chronosentiment".to_string());
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgresql://nikhil@localhost:5432/chronosentiment".to_string());
     println!("Connecting to database: {}", db_url);
 
     let pool = PgPoolOptions::new()
@@ -31,13 +32,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             start: Utc.with_ymd_and_hms(2010, 1, 1, 0, 0, 0).unwrap(),
             end: Utc.with_ymd_and_hms(2025, 12, 31, 23, 59, 59).unwrap(),
         },
-        vec![Horizon::Intraday, Horizon::Swing, Horizon::Position, Horizon::Investment, Horizon::Strategic],
+        vec![
+            Horizon::Intraday,
+            Horizon::Swing,
+            Horizon::Position,
+            Horizon::Investment,
+            Horizon::Strategic,
+        ],
         serde_json::json!([]),
         serde_json::json!([]),
         ArtifactPopulation {
             artifact_types: vec!["Outcome".to_string()],
             population_rules: serde_json::json!({}),
-        }
+        },
     );
 
     let measurements = experiment.execute(&dataset).await?;
@@ -49,10 +56,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let pop_accounting = &measurements.findings[2]["data"];
     if let Some(arr) = pop_accounting.as_array() {
         for row in arr {
-            println!("| {} | {} | {} | {} | {} | {} | {} | {} | {} |", 
+            println!(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 row["signature"].as_str().unwrap_or(""),
-                row["5D_N"], row["10D_N"], row["20D_N"], row["60D_N"],
-                row["5D_Entry"], row["10D_Entry"], row["20D_Entry"], row["60D_Entry"]
+                row["5D_N"],
+                row["10D_N"],
+                row["20D_N"],
+                row["60D_N"],
+                row["5D_Entry"],
+                row["10D_Entry"],
+                row["20D_Entry"],
+                row["60D_Entry"]
             );
         }
     }
@@ -60,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("\n=== AGGREGATE MATRIX ===");
     println!("| Assessment Signature | Horizon | N | Entry % | Target % | Stop % | Mean Return | Median Return | Median MFE | Median MAE | Median DD |");
     println!("|----------------------|--------:|--:|--------:|---------:|-------:|------------:|--------------:|-----------:|-----------:|----------:|");
-    
+
     let aggregate_matrix = &measurements.findings[0]["data"];
     if let Some(arr) = aggregate_matrix.as_array() {
         for row in arr {
@@ -86,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let count = std::cmp::min(5, arr.len());
         for i in 0..count {
             let r = &arr[i];
-            println!("Record {}:", i+1);
+            println!("Record {}:", i + 1);
             println!("  Assessment ID: {}", r["assessment_id"]);
             println!("  Decision ID:   {}", r["decision_id"]);
             println!("  Strategy ID:   {}", r["strategy_id"]);
@@ -94,7 +108,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("  Signature:     {}", r["signature"]);
             println!("  Horizon:       {}", r["horizon"]);
             println!("  Exit Reason:   {}", r["exit_reason"]);
-            println!("  Return:        {:.4}", r["outcome_return"].as_f64().unwrap_or(0.0));
+            println!(
+                "  Return:        {:.4}",
+                r["outcome_return"].as_f64().unwrap_or(0.0)
+            );
             println!("");
         }
         println!("Total Records: {}", arr.len());

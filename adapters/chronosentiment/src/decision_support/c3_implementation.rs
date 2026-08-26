@@ -10,8 +10,8 @@ use std::path::Path;
 use sha2::{Digest, Sha256};
 
 use super::csp006_protocol::{
-    RESEARCH_DISCOVERY_ARTIFACT_HASH, RESEARCH_DISCOVERY_METHODOLOGY_HASH, RESEARCH_UNIVERSE,
-    RESEARCH_SNAPSHOT_IDENTITY_HASH,
+    RESEARCH_DISCOVERY_ARTIFACT_HASH, RESEARCH_DISCOVERY_METHODOLOGY_HASH,
+    RESEARCH_SNAPSHOT_IDENTITY_HASH, RESEARCH_UNIVERSE,
 };
 use super::dataset_partition::PartitionKind;
 use super::decision_value_fitness::score_decision_value;
@@ -128,10 +128,9 @@ pub fn search_one_evidence_is_immutable(search_dir: &Path) -> Result<(), String>
     if digest != SEARCH_ONE_SELECTED_POLICY_FILE_SHA256 {
         return Err("Search #1 selected_policy.json is not byte-for-byte immutable".into());
     }
-    let artifact: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(&selected).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
+    let artifact: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&selected).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     let hash = artifact["artifact_hash"]
         .as_str()
         .ok_or("selected_policy.json missing artifact_hash")?;

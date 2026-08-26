@@ -16,19 +16,19 @@
 pub mod adapter;
 pub mod integration_tests;
 pub mod ledger;
-pub mod record;
 pub mod recommendation;
+pub mod record;
 pub mod temporal_firewall_tests;
 pub mod traits;
 
 pub use adapter::{
-    AdapterError, DecisionRecordBuilder, SealedDecisionInput, C3_002_POLICY_ARTIFACT_HASH,
-    CORALYS_EXEC_ARTIFACT_HASH,
+    AdapterError, C3_002_POLICY_ARTIFACT_HASH, CORALYS_EXEC_ARTIFACT_HASH, DecisionRecordBuilder,
+    SealedDecisionInput,
 };
 pub use ledger::{DecisionEvent, DecisionEventType, DecisionLedger, LedgerError};
 pub use record::{
-    Certification, CertificationStatus, DecisionCore, DecisionIdentity, DecisionRecord,
-    Direction, EvidenceRecord, ExecutionRecord, ExecutionStatus, OutcomeRecord, OutcomeStatus,
-    ReferenceRisk, ReferenceRiskStatus, ReproducibilityTuple,
+    Certification, CertificationStatus, DecisionCore, DecisionIdentity, DecisionRecord, Direction,
+    EvidenceRecord, ExecutionRecord, ExecutionStatus, OutcomeRecord, OutcomeStatus, ReferenceRisk,
+    ReferenceRiskStatus, ReproducibilityTuple,
 };
 pub use traits::{CandidateEvaluator, DecisionMaker, DecisionPolicy};

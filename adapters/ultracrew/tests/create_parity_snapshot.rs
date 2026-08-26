@@ -1,22 +1,24 @@
-use std::path::PathBuf;
-use ultracrew::inrc::parser::{parse_scenario, parse_history, parse_week_data};
-use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
-use ultracrew::ecology::WorkforceEcology;
-use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::config::EvolutionConfig;
+use coralys_moga::engine::EvolutionEngine;
+use std::path::PathBuf;
 use std::sync::Arc;
+use ultracrew::ecology::WorkforceEcology;
+use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
 
 #[test]
 fn test_create_parity_snapshot() {
     let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/n030w4");
-    
+
     let scenario = parse_scenario(base_dir.join("Sc-n030w4.json")).unwrap();
     let history = parse_history(base_dir.join("H0-n030w4-0.json")).unwrap();
     let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json")).unwrap();
 
     let ecology = WorkforceEcology::new();
     let context = InrcContext::new(scenario, week_data, history, ecology);
-    let optimizer = InrcOptimizer { context: Arc::new(context) };
+    let optimizer = InrcOptimizer {
+        context: Arc::new(context),
+    };
 
     let mut engine = EvolutionEngine::new(
         optimizer.clone(),
@@ -44,5 +46,6 @@ fn test_create_parity_snapshot() {
     std::fs::write(
         base_dir.join("new_frozen_genome.json"),
         serde_json::to_string(&best.genome.bits).unwrap(),
-    ).unwrap();
+    )
+    .unwrap();
 }

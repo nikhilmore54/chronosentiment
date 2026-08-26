@@ -212,10 +212,7 @@ fn instrument_label<'a>(
         .unwrap_or_else(|| rec.instrument_id.to_string())
 }
 
-fn behaviour(
-    ledger: &DecisionLedger,
-    ctx: &HashMap<Uuid, &DecisionContext>,
-) -> DecisionBehaviour {
+fn behaviour(ledger: &DecisionLedger, ctx: &HashMap<Uuid, &DecisionContext>) -> DecisionBehaviour {
     let mut counts = empty_counts();
     let mut by_instrument: BTreeMap<String, ActionCounts> = BTreeMap::new();
     let mut by_year: BTreeMap<i32, ActionCounts> = BTreeMap::new();
@@ -312,10 +309,7 @@ fn streaks(ledger: &DecisionLedger) -> BTreeMap<u32, u32> {
     lengths
 }
 
-fn regime_mix(
-    ledger: &DecisionLedger,
-    ctx: &HashMap<Uuid, &DecisionContext>,
-) -> Vec<RegimeMix> {
+fn regime_mix(ledger: &DecisionLedger, ctx: &HashMap<Uuid, &DecisionContext>) -> Vec<RegimeMix> {
     let mut buckets: BTreeMap<(String, String), ActionCounts> = BTreeMap::new();
     for rec in &ledger.records {
         let labels = regime_labels(rec.decision_id, ctx);
@@ -600,7 +594,11 @@ fn vs_baseline(ledger: &DecisionLedger, outcomes: &OutcomeReport) -> Vec<VsBasel
     let full = measure_performance(ledger, outcomes);
     let mut rows = Vec::new();
     for h in &full.horizons {
-        rows.push(baseline_row(DecisionAction::Long, h.horizon_days, &h.by_action.long));
+        rows.push(baseline_row(
+            DecisionAction::Long,
+            h.horizon_days,
+            &h.by_action.long,
+        ));
         rows.push(baseline_row(
             DecisionAction::Short,
             h.horizon_days,
@@ -649,7 +647,11 @@ fn coverage(
             .bundles
             .iter()
             .find(|b| b.ledger_decision_id == rec.decision_id)
-            .map(|b| b.horizons.iter().any(|h| h.available && h.outcome_return.is_some()))
+            .map(|b| {
+                b.horizons
+                    .iter()
+                    .any(|h| h.available && h.outcome_return.is_some())
+            })
             .unwrap_or(false);
         if some {
             n_with_any += 1;
@@ -747,13 +749,21 @@ fn render_behaviour(report: &LaboratoryReport) -> String {
     md.push_str(&format!("| LONG | `{}` |\n", b.counts.long));
     md.push_str(&format!("| SHORT | `{}` |\n", b.counts.short));
     md.push_str(&format!("| NO_TRADE | `{}` |\n", b.counts.no_trade));
-    md.push_str("\n## By instrument\n\n| Instrument | LONG | SHORT | NO_TRADE |\n|---|---:|---:|---:|\n");
+    md.push_str(
+        "\n## By instrument\n\n| Instrument | LONG | SHORT | NO_TRADE |\n|---|---:|---:|---:|\n",
+    );
     for (k, c) in &b.by_instrument {
-        md.push_str(&format!("| {k} | {} | {} | {} |\n", c.long, c.short, c.no_trade));
+        md.push_str(&format!(
+            "| {k} | {} | {} | {} |\n",
+            c.long, c.short, c.no_trade
+        ));
     }
     md.push_str("\n## By year\n\n| Year | LONG | SHORT | NO_TRADE |\n|---|---:|---:|---:|\n");
     for (y, c) in &b.by_year {
-        md.push_str(&format!("| {y} | {} | {} | {} |\n", c.long, c.short, c.no_trade));
+        md.push_str(&format!(
+            "| {y} | {} | {} | {} |\n",
+            c.long, c.short, c.no_trade
+        ));
     }
     md.push_str("\n## Confidence\n\n| Confidence | n |\n|---|---:|\n");
     for (k, n) in &b.confidence_counts {
@@ -766,7 +776,10 @@ fn render_behaviour(report: &LaboratoryReport) -> String {
     md.push_str(&format!("| SHORT → LONG | {} |\n", t.short_to_long));
     md.push_str(&format!("| LONG → LONG | {} |\n", t.long_to_long));
     md.push_str(&format!("| SHORT → SHORT | {} |\n", t.short_to_short));
-    md.push_str(&format!("| involving NO_TRADE | {} |\n", t.involving_no_trade));
+    md.push_str(&format!(
+        "| involving NO_TRADE | {} |\n",
+        t.involving_no_trade
+    ));
     md.push_str("\n## Streak lengths (consecutive same action, per instrument)\n\n| Length | n streaks |\n|---|---:|\n");
     for (len, n) in &b.streak_lengths {
         md.push_str(&format!("| {len} | {n} |\n"));
@@ -777,7 +790,9 @@ fn render_behaviour(report: &LaboratoryReport) -> String {
 fn render_regime(report: &LaboratoryReport) -> String {
     let mut md = String::from("# Regime / Context Analysis\n\n");
     md.push_str(header());
-    md.push_str("Labels are read from the assessment at T. They are not a second Decision Engine.\n\n");
+    md.push_str(
+        "Labels are read from the assessment at T. They are not a second Decision Engine.\n\n",
+    );
     md.push_str("| Dimension | Value | LONG | SHORT | NO_TRADE |\n|---|---|---:|---:|---:|\n");
     for row in &report.regime_mix {
         md.push_str(&format!(
@@ -810,7 +825,9 @@ fn h60_nobs(p: &PerformanceReport) -> u32 {
 fn render_stratification(report: &LaboratoryReport) -> String {
     let mut md = String::from("# Outcome Stratification\n\n");
     md.push_str(header());
-    md.push_str("Trading means use LONG+SHORT attached lake returns only. Missing SHORT stays missing.\n\n");
+    md.push_str(
+        "Trading means use LONG+SHORT attached lake returns only. Missing SHORT stays missing.\n\n",
+    );
     md.push_str("| Dimension | Value | n | 60D n obs | 60D mean |\n|---|---|---:|---:|---:|\n");
     for s in &report.stratification {
         md.push_str(&format!(
@@ -851,7 +868,9 @@ fn render_walk_forward(report: &LaboratoryReport) -> String {
 fn render_robustness(report: &LaboratoryReport) -> String {
     let mut md = String::from("# Robustness Report\n\n");
     md.push_str(header());
-    md.push_str("Sign of trading mean by slice. This is not an optimizer and not G-GATE inference.\n\n");
+    md.push_str(
+        "Sign of trading mean by slice. This is not an optimizer and not G-GATE inference.\n\n",
+    );
     md.push_str("| Dimension | Value | Horizon | n obs | n missing | mean | sign |\n");
     md.push_str("|---|---|---:|---:|---:|---:|---:|\n");
     for c in &report.robustness {
@@ -877,8 +896,12 @@ fn render_robustness(report: &LaboratoryReport) -> String {
 fn render_baseline(report: &LaboratoryReport) -> String {
     let mut md = String::from("# Decision-vs-Baseline Analysis\n\n");
     md.push_str(header());
-    md.push_str("Stand-aside baseline is return 0. `mean_vs_stand_aside` is the attached mean minus 0.\n\n");
-    md.push_str("SHORT with no lake rows cannot be judged. NO_TRADE with n=0 cannot be judged.\n\n");
+    md.push_str(
+        "Stand-aside baseline is return 0. `mean_vs_stand_aside` is the attached mean minus 0.\n\n",
+    );
+    md.push_str(
+        "SHORT with no lake rows cannot be judged. NO_TRADE with n=0 cannot be judged.\n\n",
+    );
     md.push_str("| Action | Horizon | n decisions | n obs | n missing | mean | vs stand-aside |\n");
     md.push_str("|---|---:|---:|---:|---:|---:|---:|\n");
     for r in &report.vs_baseline {

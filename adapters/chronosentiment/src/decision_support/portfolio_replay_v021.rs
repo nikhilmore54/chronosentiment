@@ -129,11 +129,13 @@ impl AllocationModel {
     pub fn per_lot_alloc(&self, available_cash: f64, n_eligible: usize) -> f64 {
         match self {
             AllocationModel::EqualWeight => {
-                if n_eligible == 0 { 0.0 } else { available_cash / n_eligible as f64 }
+                if n_eligible == 0 {
+                    0.0
+                } else {
+                    available_cash / n_eligible as f64
+                }
             }
-            AllocationModel::MaxPerLot { max_per_lot_inr } => {
-                available_cash.min(*max_per_lot_inr)
-            }
+            AllocationModel::MaxPerLot { max_per_lot_inr } => available_cash.min(*max_per_lot_inr),
         }
     }
 }
@@ -382,7 +384,10 @@ impl ContinuousPortfolioArm {
             .iter()
             .filter(|l| l.is_open())
             .map(|l| {
-                let mark = mark_prices.get(&l.instrument).copied().unwrap_or(l.entry_price);
+                let mark = mark_prices
+                    .get(&l.instrument)
+                    .copied()
+                    .unwrap_or(l.entry_price);
                 l.market_value_inr(mark)
             })
             .sum()
@@ -393,7 +398,10 @@ impl ContinuousPortfolioArm {
             .iter()
             .filter(|l| l.is_open())
             .map(|l| {
-                let mark = mark_prices.get(&l.instrument).copied().unwrap_or(l.entry_price);
+                let mark = mark_prices
+                    .get(&l.instrument)
+                    .copied()
+                    .unwrap_or(l.entry_price);
                 l.unrealized_pnl_inr(mark)
             })
             .sum()
@@ -409,7 +417,10 @@ impl ContinuousPortfolioArm {
     ) -> BTreeMap<String, f64> {
         let mut exp: BTreeMap<String, f64> = BTreeMap::new();
         for lot in self.trade_log.iter().filter(|l| l.is_open()) {
-            let mark = mark_prices.get(&lot.instrument).copied().unwrap_or(lot.entry_price);
+            let mark = mark_prices
+                .get(&lot.instrument)
+                .copied()
+                .unwrap_or(lot.entry_price);
             *exp.entry(lot.instrument.clone()).or_insert(0.0) += lot.market_value_inr(mark);
         }
         exp
@@ -429,7 +440,10 @@ impl ContinuousPortfolioArm {
     }
 
     pub fn next_decision_sequence(&mut self, instrument: &str) -> u32 {
-        let seq = self.decision_sequence.entry(instrument.to_string()).or_insert(0);
+        let seq = self
+            .decision_sequence
+            .entry(instrument.to_string())
+            .or_insert(0);
         *seq += 1;
         *seq
     }
@@ -467,7 +481,10 @@ impl ContinuousPortfolioArm {
     }
 
     pub fn holding_sessions_list(&self) -> Vec<u32> {
-        self.trade_log.iter().filter_map(|l| l.holding_sessions).collect()
+        self.trade_log
+            .iter()
+            .filter_map(|l| l.holding_sessions)
+            .collect()
     }
 
     pub fn avg_holding_sessions(&self) -> Option<f64> {
@@ -710,7 +727,11 @@ fn run_continuous_portfolio_replay_inner(
         .iter()
         .filter_map(|b| {
             let ts = Utc.timestamp_opt(b.timestamp, 0).single()?;
-            if ts >= certified_t { Some(ts) } else { None }
+            if ts >= certified_t {
+                Some(ts)
+            } else {
+                None
+            }
         })
         .collect();
 
@@ -742,7 +763,11 @@ fn run_continuous_portfolio_replay_inner(
             if let Some(bars) = cache.get(inst.as_str()) {
                 if let Some(bar) = bars
                     .iter()
-                    .filter(|b| Utc.timestamp_opt(b.timestamp, 0).single().map_or(false, |t| t <= session_t))
+                    .filter(|b| {
+                        Utc.timestamp_opt(b.timestamp, 0)
+                            .single()
+                            .map_or(false, |t| t <= session_t)
+                    })
                     .last()
                 {
                     mark_prices.insert(inst.clone(), bar.close);
@@ -850,7 +875,10 @@ fn run_continuous_portfolio_replay_inner(
                 let returned_cash = lot.allocation_inr + pnl;
 
                 // Collect post-entry closes for TradePath
-                let bars = cache.get(&lot.instrument).map(|v| v.as_slice()).unwrap_or(&[]);
+                let bars = cache
+                    .get(&lot.instrument)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
                 let lot_entry_t = DateTime::parse_from_rfc3339(&lot.entry_time)
                     .map(|t| t.with_timezone(&Utc))
                     .unwrap_or(session_t);
@@ -861,7 +889,11 @@ fn run_continuous_portfolio_replay_inner(
                     .iter()
                     .filter_map(|b| {
                         let ts = Utc.timestamp_opt(b.timestamp, 0).single()?;
-                        if ts > lot_entry_t && ts <= exit_t { Some(b.close) } else { None }
+                        if ts > lot_entry_t && ts <= exit_t {
+                            Some(b.close)
+                        } else {
+                            None
+                        }
                     })
                     .collect();
 
@@ -901,7 +933,10 @@ fn run_continuous_portfolio_replay_inner(
                 let pnl = lot.allocation_inr * ret;
                 let returned_cash = lot.allocation_inr + pnl;
 
-                let bars = cache.get(&lot.instrument).map(|v| v.as_slice()).unwrap_or(&[]);
+                let bars = cache
+                    .get(&lot.instrument)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
                 let lot_entry_t = DateTime::parse_from_rfc3339(&lot.entry_time)
                     .map(|t| t.with_timezone(&Utc))
                     .unwrap_or(session_t);
@@ -912,7 +947,11 @@ fn run_continuous_portfolio_replay_inner(
                     .iter()
                     .filter_map(|b| {
                         let ts = Utc.timestamp_opt(b.timestamp, 0).single()?;
-                        if ts > lot_entry_t && ts <= exit_t { Some(b.close) } else { None }
+                        if ts > lot_entry_t && ts <= exit_t {
+                            Some(b.close)
+                        } else {
+                            None
+                        }
                     })
                     .collect();
 
@@ -958,10 +997,12 @@ fn run_continuous_portfolio_replay_inner(
             };
 
             // Generate C3-002 decision at session_t using the canonical pipeline
-            let decision = match generate_historical_replay_decision(artifact, inst.as_str(), bars, session_t) {
-                Ok(d) => d,
-                Err(_) => continue,
-            };
+            let decision =
+                match generate_historical_replay_decision(artifact, inst.as_str(), bars, session_t)
+                {
+                    Ok(d) => d,
+                    Err(_) => continue,
+                };
 
             if decision.action == DecisionAction::NoTrade {
                 continue;
@@ -996,7 +1037,9 @@ fn run_continuous_portfolio_replay_inner(
         // ── Open P.E.2 lots ───────────────────────────────────────────────────
         let mut pe2_lots_opened = 0u32;
         if n_eligible > 0 && pe2_arm.cash_inr >= MIN_LOT_ALLOCATION_INR {
-            let alloc = allocation_model.per_lot_alloc(pe2_arm.cash_inr, n_eligible).max(0.0);
+            let alloc = allocation_model
+                .per_lot_alloc(pe2_arm.cash_inr, n_eligible)
+                .max(0.0);
             if alloc >= MIN_LOT_ALLOCATION_INR {
                 for plan in &new_lot_plans {
                     // Build canonical P.E.2 execution intent
@@ -1010,11 +1053,7 @@ fn run_continuous_portfolio_replay_inner(
                     };
 
                     let seq = pe2_arm.next_decision_sequence(&plan.instrument);
-                    let trade_id = format!(
-                        "pe2-{}-seq{}",
-                        plan.instrument.replace(".NS", ""),
-                        seq
-                    );
+                    let trade_id = format!("pe2-{}-seq{}", plan.instrument.replace(".NS", ""), seq);
 
                     pe2_arm.trade_log.push(TradeLot {
                         trade_id,
@@ -1049,7 +1088,9 @@ fn run_continuous_portfolio_replay_inner(
         // ── Open Coralys lots ─────────────────────────────────────────────────
         let mut coralys_lots_opened = 0u32;
         if n_eligible > 0 && coralys_arm.cash_inr >= MIN_LOT_ALLOCATION_INR {
-            let alloc = allocation_model.per_lot_alloc(coralys_arm.cash_inr, n_eligible).max(0.0);
+            let alloc = allocation_model
+                .per_lot_alloc(coralys_arm.cash_inr, n_eligible)
+                .max(0.0);
             if alloc >= MIN_LOT_ALLOCATION_INR {
                 for plan in &new_lot_plans {
                     let coralys_result = match seal_coralys_execution_intent(
@@ -1203,6 +1244,7 @@ fn run_continuous_portfolio_replay_inner(
             "first_exit_with_optional_stop. ",
             "Execution arms frozen: P.E.2 = +5% target / no stop / 20 sessions max; ",
             "Coralys v0 = ATR/TMV target / risk_boundary stop / 20 sessions max."
-        ).to_string(),
+        )
+        .to_string(),
     })
 }

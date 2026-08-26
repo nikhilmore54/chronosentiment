@@ -25,10 +25,10 @@
 //!
 //! For M4.2, the CVD-001 adapter will be registered here.
 
-use std::collections::HashMap;
-use serde::de::DeserializeOwned;
 use crate::adapter::{AdapterInfo, BenchmarkAdapter};
 use crate::types::EvaluationResult;
+use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -50,14 +50,16 @@ pub enum RegistryError {
 impl std::fmt::Display for RegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RegistryError::AdapterNotFound(id) =>
-                write!(f, "No adapter registered with id '{id}'"),
-            RegistryError::DuplicateAdapter(id) =>
-                write!(f, "Adapter '{id}' is already registered"),
-            RegistryError::ProblemDeserializationError(msg) =>
-                write!(f, "Failed to deserialise problem: {msg}"),
-            RegistryError::SolutionDeserializationError(msg) =>
-                write!(f, "Failed to deserialise solution: {msg}"),
+            RegistryError::AdapterNotFound(id) => write!(f, "No adapter registered with id '{id}'"),
+            RegistryError::DuplicateAdapter(id) => {
+                write!(f, "Adapter '{id}' is already registered")
+            }
+            RegistryError::ProblemDeserializationError(msg) => {
+                write!(f, "Failed to deserialise problem: {msg}")
+            }
+            RegistryError::SolutionDeserializationError(msg) => {
+                write!(f, "Failed to deserialise solution: {msg}")
+            }
         }
     }
 }
@@ -140,7 +142,8 @@ impl AdapterRegistry {
             Ok(adapter.evaluate(&problem, &solution))
         });
 
-        self.adapters.insert(id, RegisteredAdapter { info, evaluate_fn });
+        self.adapters
+            .insert(id, RegisteredAdapter { info, evaluate_fn });
         Ok(())
     }
 
@@ -154,16 +157,16 @@ impl AdapterRegistry {
         problem_json: &[u8],
         solution_json: &[u8],
     ) -> Result<EvaluationResult, RegistryError> {
-        let entry = self.adapters.get(adapter_id)
+        let entry = self
+            .adapters
+            .get(adapter_id)
             .ok_or_else(|| RegistryError::AdapterNotFound(adapter_id.to_string()))?;
         (entry.evaluate_fn)(problem_json, solution_json)
     }
 
     /// Return metadata for all registered adapters, sorted by id.
     pub fn list(&self) -> Vec<AdapterInfo> {
-        let mut infos: Vec<AdapterInfo> = self.adapters.values()
-            .map(|e| e.info.clone())
-            .collect();
+        let mut infos: Vec<AdapterInfo> = self.adapters.values().map(|e| e.info.clone()).collect();
         infos.sort_by_key(|i| i.id);
         infos
     }
@@ -223,18 +226,24 @@ mod tests {
         type Problem = StubProblem;
         type Solution = StubSolution;
 
-        fn adapter_id(&self) -> &'static str { "stub" }
-        fn adapter_name(&self) -> &'static str { "Stub Adapter" }
-        fn adapter_version(&self) -> &'static str { "0.0.1" }
+        fn adapter_id(&self) -> &'static str {
+            "stub"
+        }
+        fn adapter_name(&self) -> &'static str {
+            "Stub Adapter"
+        }
+        fn adapter_version(&self) -> &'static str {
+            "0.0.1"
+        }
 
-        fn evaluate(
-            &self,
-            problem: &Self::Problem,
-            solution: &Self::Solution,
-        ) -> EvaluationResult {
+        fn evaluate(&self, problem: &Self::Problem, solution: &Self::Solution) -> EvaluationResult {
             EvaluationResult::new(
                 self.adapter_id(),
-                vec![ObjectiveValue::new("obj", "Objective", solution.value * problem.scale)],
+                vec![ObjectiveValue::new(
+                    "obj",
+                    "Objective",
+                    solution.value * problem.scale,
+                )],
                 vec![],
             )
         }

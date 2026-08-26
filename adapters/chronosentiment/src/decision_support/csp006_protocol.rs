@@ -24,8 +24,7 @@ pub const CERTIFIED_FIVE_INSTRUMENT_SNAPSHOT: [&str; 5] = [
     "TCS.NS",
 ];
 
-pub const B4_DUMP_SHA256: &str =
-    "f74e576e8e98b24058cc913b14a567d9ff4b3eabc75662ab9a96901b102f8cd6";
+pub const B4_DUMP_SHA256: &str = "f74e576e8e98b24058cc913b14a567d9ff4b3eabc75662ab9a96901b102f8cd6";
 
 /// Disposable CS-P-006 research snapshot. Not B4. Not B5.
 pub const RESEARCH_SNAPSHOT_DIR: &str =
@@ -49,9 +48,7 @@ pub const SPLIT_DATES_FROZEN: bool = CHRONOLOGICAL_PARTITION_FROZEN;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverageAudit {
     Sufficient,
-    Insufficient {
-        missing: Vec<&'static str>,
-    },
+    Insufficient { missing: Vec<&'static str> },
 }
 
 /// Compare the intended seven-name universe to certified B4 / CS-P-005 rows.
@@ -82,8 +79,7 @@ pub fn coralys_search_is_authorized() -> bool {
 }
 
 /// First CS-P-006-C discovery evidence directory. Not B5.
-pub const RESEARCH_DISCOVERY_DIR: &str =
-    "product_validation/CS-P-006/discovery/20260814T195327Z";
+pub const RESEARCH_DISCOVERY_DIR: &str = "product_validation/CS-P-006/discovery/20260814T195327Z";
 pub const RESEARCH_DISCOVERY_ARTIFACT_HASH: &str =
     "9a887827e8f41988987208f13e4ccbac507b3241692026c55f38d11f85971ac0";
 pub const RESEARCH_DISCOVERY_METHODOLOGY_HASH: &str =

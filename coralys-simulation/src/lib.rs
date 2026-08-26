@@ -60,7 +60,7 @@ mod tests {
 
         let new_state = simulator.step(action);
         assert_eq!(new_state, 1);
-        
+
         let next_action = policy.choose_action(&new_state);
         let final_state = simulator.step(next_action);
         assert_eq!(final_state, 2);

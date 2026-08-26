@@ -12,7 +12,10 @@ fn check_no_domain_leaks_in_dir(dir: &Path) {
                 let content = fs::read_to_string(&path).expect("Failed to read file");
                 for (line_num, line) in content.lines().enumerate() {
                     // We only check for structural dependencies: `use ultracrew` or `extern crate ultracrew`
-                    if line.contains("use ultracrew") || line.contains("extern crate ultracrew") || line.contains("use roadef") {
+                    if line.contains("use ultracrew")
+                        || line.contains("extern crate ultracrew")
+                        || line.contains("use roadef")
+                    {
                         panic!(
                             "Architectural Violation in {}:{}: Coralys Runtime must not depend on domain implementations.",
                             path.display(),

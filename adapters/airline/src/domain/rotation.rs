@@ -144,7 +144,10 @@ pub enum RotationError {
 
     /// A pairing starts before the previous pairing ends.
     #[error("pairing {later} starts before pairing {earlier} ends")]
-    OutOfOrder { earlier: PairingId, later: PairingId },
+    OutOfOrder {
+        earlier: PairingId,
+        later: PairingId,
+    },
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -195,12 +198,7 @@ mod tests {
 
     #[test]
     fn single_pairing_rotation_is_valid() {
-        let r = Rotation::new(
-            RotationId::new("R1"),
-            CrewId::new("C1"),
-            vec![pairing_1()],
-        )
-        .unwrap();
+        let r = Rotation::new(RotationId::new("R1"), CrewId::new("C1"), vec![pairing_1()]).unwrap();
         assert_eq!(r.pairing_count(), 1);
         assert_eq!(r.total_duty_count(), 2);
         assert_eq!(r.total_leg_count(), 2);

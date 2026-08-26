@@ -6,21 +6,20 @@
 ///
 /// Usage:
 ///   cargo run --release --bin m31_2a_engagement_audit -- --instance-prefix n050w4 --seed 42 --weeks 4
-
 use clap::Parser;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use coralys_moga::traits::*;
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
+use ultracrew::ecology::WorkforceEcology;
+use ultracrew::inrc::history::extract_next_history;
 use ultracrew::inrc::optimization::{InrcContext, InrcEvaluation, InrcGenome, InrcOptimizer};
 use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
-use ultracrew::ecology::WorkforceEcology;
 use ultracrew::workforce::WorkforceEcologyAdapter;
-use ultracrew::inrc::history::extract_next_history;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -39,9 +38,9 @@ struct Args {
 #[derive(Default)]
 struct MutationTelemetry {
     attempted: u64,
-    ecology_guided: u64,  // went through the ecology branch (avg_assignments > 0)
-    baseline: u64,        // fell through to pure coin-flip
-    directed: u64,        // ecology actually changed direction (not just coin-flip)
+    ecology_guided: u64, // went through the ecology branch (avg_assignments > 0)
+    baseline: u64,       // fell through to pure coin-flip
+    directed: u64,       // ecology actually changed direction (not just coin-flip)
 }
 
 /// Instrument the mutator to produce telemetry, instead of a fire-and-forget MutationOperator impl.
@@ -62,7 +61,11 @@ fn mutate_with_telemetry(
         loads[n] = adapter.get_assignments(n);
     }
     let sum: f64 = loads.iter().sum();
-    let avg_assignments = if num_nurses > 0 { sum / num_nurses as f64 } else { 0.0 };
+    let avg_assignments = if num_nurses > 0 {
+        sum / num_nurses as f64
+    } else {
+        0.0
+    };
 
     for i in 0..genome.bits.len() {
         if rng.gen_bool(rate) {
@@ -107,7 +110,11 @@ fn mutate_with_telemetry(
     tel
 }
 
-fn tournament_select<'a>(evals: &'a [InrcEvaluation], k: usize, rng: &mut StdRng) -> &'a InrcEvaluation {
+fn tournament_select<'a>(
+    evals: &'a [InrcEvaluation],
+    k: usize,
+    rng: &mut StdRng,
+) -> &'a InrcEvaluation {
     let mut best_idx = rng.gen_range(0..evals.len());
     for _ in 1..k {
         let idx = rng.gen_range(0..evals.len());
@@ -122,7 +129,8 @@ fn main() {
     let args = Args::parse();
 
     let base_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data").join(&args.instance_prefix);
+        .join("tests/data")
+        .join(&args.instance_prefix);
 
     let sc_path = base_dir.join(format!("Sc-{}.json", args.instance_prefix));
     let scenario = parse_scenario(&sc_path).unwrap();
@@ -137,8 +145,10 @@ fn main() {
     let mut current_history = h0.clone();
 
     eprintln!("M31.2A Operator Engagement Audit");
-    eprintln!("Instance: {}, Seed: {}, Weeks: {}, Gens/week: {}",
-        args.instance_prefix, args.seed, args.weeks, args.generations);
+    eprintln!(
+        "Instance: {}, Seed: {}, Weeks: {}, Gens/week: {}",
+        args.instance_prefix, args.seed, args.weeks, args.generations
+    );
     eprintln!("{:-<80}", "");
 
     let mut all_weeks = vec![];
@@ -148,24 +158,38 @@ fn main() {
         let week_data = parse_week_data(&wd_path).unwrap();
 
         let context = Arc::new(InrcContext::new(
-            scenario.clone(), week_data, current_history.clone(), WorkforceEcology::new()
+            scenario.clone(),
+            week_data,
+            current_history.clone(),
+            WorkforceEcology::new(),
         ));
-        let evaluator = InrcOptimizer { context: context.clone() };
+        let evaluator = InrcOptimizer {
+            context: context.clone(),
+        };
         let mut rng = StdRng::seed_from_u64(args.seed + w as u64);
 
         // Snapshot ecology state at start of week
-        let week_start_assignments: Vec<f64> = (0..num_nurses).map(|n| adapter.get_assignments(n)).collect();
+        let week_start_assignments: Vec<f64> = (0..num_nurses)
+            .map(|n| adapter.get_assignments(n))
+            .collect();
         let total_assignments: f64 = week_start_assignments.iter().sum();
-        let mean_assignments = if num_nurses > 0 { total_assignments / num_nurses as f64 } else { 0.0 };
+        let mean_assignments = if num_nurses > 0 {
+            total_assignments / num_nurses as f64
+        } else {
+            0.0
+        };
 
         // Compute imbalance: std dev of loads
-        let variance: f64 = week_start_assignments.iter()
+        let variance: f64 = week_start_assignments
+            .iter()
             .map(|&x| (x - mean_assignments).powi(2))
-            .sum::<f64>() / num_nurses as f64;
+            .sum::<f64>()
+            / num_nurses as f64;
         let std_dev = variance.sqrt();
 
         // Count nurses with non-zero signal
-        let nurses_with_signal = week_start_assignments.iter()
+        let nurses_with_signal = week_start_assignments
+            .iter()
             .filter(|&&x| (x - mean_assignments).abs() > 2.0)
             .count();
 
@@ -183,8 +207,14 @@ fn main() {
         let mut global_best: Option<InrcEvaluation> = None;
 
         for _gen in 0..args.generations {
-            let evals: Vec<InrcEvaluation> = population.iter()
-                .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
+            let evals: Vec<InrcEvaluation> = population
+                .iter()
+                .map(|g| {
+                    evaluator.evaluate(
+                        g,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    )
+                })
                 .filter(|e| e.is_valid())
                 .collect();
 
@@ -199,11 +229,13 @@ fn main() {
                 continue;
             }
 
-            let gen_best = evals.iter().max_by(|a, b|
-                a.fitness().partial_cmp(&b.fitness()).unwrap()
-            ).unwrap();
+            let gen_best = evals
+                .iter()
+                .max_by(|a, b| a.fitness().partial_cmp(&b.fitness()).unwrap())
+                .unwrap();
 
-            if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
+            if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness()
+            {
                 global_best = Some(gen_best.clone());
             }
 
@@ -234,8 +266,12 @@ fn main() {
                     }
                 }
 
-                let t1 = mutate_with_telemetry(&mut c1, &adapter, num_nurses, num_days, num_shifts, &mut rng);
-                let t2 = mutate_with_telemetry(&mut c2, &adapter, num_nurses, num_days, num_shifts, &mut rng);
+                let t1 = mutate_with_telemetry(
+                    &mut c1, &adapter, num_nurses, num_days, num_shifts, &mut rng,
+                );
+                let t2 = mutate_with_telemetry(
+                    &mut c2, &adapter, num_nurses, num_days, num_shifts, &mut rng,
+                );
 
                 week_tel.attempted += t1.attempted + t2.attempted;
                 week_tel.ecology_guided += t1.ecology_guided + t2.ecology_guided;
@@ -256,51 +292,72 @@ fn main() {
         // Compute ecology guidance rate
         let guidance_rate = if week_tel.attempted > 0 {
             week_tel.ecology_guided as f64 / week_tel.attempted as f64 * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let direction_rate = if week_tel.ecology_guided > 0 {
             week_tel.directed as f64 / week_tel.ecology_guided as f64 * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         println!("Week {w}:");
         println!("  Ecology State:  mean_assignments={mean_assignments:.1}  std_dev={std_dev:.2}  nurses_with_signal={nurses_with_signal}/{num_nurses}");
-        println!("  Mutations:      attempted={attempted}  ecology_guided={guided}  baseline={baseline}",
+        println!(
+            "  Mutations:      attempted={attempted}  ecology_guided={guided}  baseline={baseline}",
             attempted = week_tel.attempted,
             guided = week_tel.ecology_guided,
-            baseline = week_tel.baseline);
-        println!("  Guidance Rate:  {guidance_rate:.1}%  (of those, direction_changed={:.1}%)", direction_rate);
+            baseline = week_tel.baseline
+        );
+        println!(
+            "  Guidance Rate:  {guidance_rate:.1}%  (of those, direction_changed={:.1}%)",
+            direction_rate
+        );
         println!("  Week Objective: {}", best_eval.fitness() as i64);
         println!();
 
         all_weeks.push((
-            w, mean_assignments, std_dev, nurses_with_signal,
-            guidance_rate, direction_rate, best_eval.fitness() as i64
+            w,
+            mean_assignments,
+            std_dev,
+            nurses_with_signal,
+            guidance_rate,
+            direction_rate,
+            best_eval.fitness() as i64,
         ));
 
         // Advance ecology
         let next_hist = extract_next_history(&context, best_eval.genome());
         for n in 0..num_nurses {
-            adapter.accumulate_assignments(n,
+            adapter.accumulate_assignments(
+                n,
                 next_hist.nurse_history[n].number_of_assignments
-                    - current_history.nurse_history[n].number_of_assignments);
-            adapter.accumulate_weekends(n,
+                    - current_history.nurse_history[n].number_of_assignments,
+            );
+            adapter.accumulate_weekends(
+                n,
                 next_hist.nurse_history[n].number_of_working_weekends
-                    - current_history.nurse_history[n].number_of_working_weekends);
+                    - current_history.nurse_history[n].number_of_working_weekends,
+            );
         }
         current_history = next_hist;
     }
 
     // Summary table as JSON for easy parsing
-    let rows: Vec<serde_json::Value> = all_weeks.iter().map(|&(w, mean, std, signal_nurses, guidance, direction, obj)| {
-        serde_json::json!({
-            "week": w,
-            "mean_assignments": mean,
-            "assignment_std_dev": std,
-            "nurses_with_signal": signal_nurses,
-            "guidance_rate_pct": guidance,
-            "direction_rate_pct": direction,
-            "objective": obj
+    let rows: Vec<serde_json::Value> = all_weeks
+        .iter()
+        .map(|&(w, mean, std, signal_nurses, guidance, direction, obj)| {
+            serde_json::json!({
+                "week": w,
+                "mean_assignments": mean,
+                "assignment_std_dev": std,
+                "nurses_with_signal": signal_nurses,
+                "guidance_rate_pct": guidance,
+                "direction_rate_pct": direction,
+                "objective": obj
+            })
         })
-    }).collect();
+        .collect();
 
     println!("JSON_SUMMARY:");
     println!("{}", serde_json::to_string_pretty(&rows).unwrap());

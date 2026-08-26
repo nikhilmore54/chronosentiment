@@ -204,7 +204,11 @@ impl InvestmentWorkspace {
     /// Record the investment outcome. Can only be set once.
     ///
     /// Platform invariant: every Outcome belongs to exactly one Workspace.
-    pub fn record_outcome(&mut self, outcome: InvestmentOutcome, now: u64) -> Result<(), &'static str> {
+    pub fn record_outcome(
+        &mut self,
+        outcome: InvestmentOutcome,
+        now: u64,
+    ) -> Result<(), &'static str> {
         if self.outcome.is_some() {
             return Err("Outcome already recorded for this workspace");
         }

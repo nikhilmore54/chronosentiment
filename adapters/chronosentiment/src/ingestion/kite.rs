@@ -1,7 +1,7 @@
-use std::env;
-use reqwest::Client;
 use chrono::{DateTime, Utc};
+use reqwest::Client;
 use serde_json::Value;
+use std::env;
 use std::error::Error;
 use uuid::Uuid;
 
@@ -16,9 +16,9 @@ pub struct KiteGateway {
 
 impl KiteGateway {
     pub fn new() -> Result<Self, Box<dyn Error>> {
-        let api_key = env::var("KITE_API_KEY")
-            .map_err(|_| "KITE_API_KEY environment variable is not set")?;
-            
+        let api_key =
+            env::var("KITE_API_KEY").map_err(|_| "KITE_API_KEY environment variable is not set")?;
+
         // For Phase 1 we read the generated access token from the python flow
         let token_path = "archive/transient_texts/kite_access_token.txt";
         let access_token = std::fs::read_to_string(token_path)
@@ -43,7 +43,6 @@ impl KiteGateway {
         to_date: DateTime<Utc>,
         interval: &str, // e.g. "minute", "day"
     ) -> Result<ValidatedObservation, Box<dyn Error>> {
-        
         let url = format!(
             "https://api.kite.trade/instruments/historical/{}/{}",
             kite_instrument_token, interval
@@ -52,9 +51,14 @@ impl KiteGateway {
         let from_str = from_date.format("%Y-%m-%d %H:%M:%S").to_string();
         let to_str = to_date.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        let response = self.client.get(&url)
+        let response = self
+            .client
+            .get(&url)
             .header("X-Kite-Version", "3")
-            .header("Authorization", format!("token {}:{}", self.api_key, self.access_token))
+            .header(
+                "Authorization",
+                format!("token {}:{}", self.api_key, self.access_token),
+            )
             .query(&[("from", &from_str), ("to", &to_str)])
             .send()
             .await?;
@@ -64,7 +68,7 @@ impl KiteGateway {
         }
 
         let raw_payload: Value = response.json().await?;
-        
+
         // Ensure Kite responded with "success"
         if raw_payload["status"] != "success" {
             return Err("Kite API returned non-success payload".into());
@@ -73,8 +77,11 @@ impl KiteGateway {
         // --- Normalization Phase ---
         // Here we map Kite's specific layout (candles array [timestamp, open, high, low, close, volume])
         // into a standardized JSON structure.
-        let candles = raw_payload["data"]["candles"].as_array().unwrap_or(&vec![]).clone();
-        
+        let candles = raw_payload["data"]["candles"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .clone();
+
         // This acts as the generalized ValidatedObservation structure.
         let normalized_payload = serde_json::json!({
             "interval": interval,
@@ -90,7 +97,7 @@ impl KiteGateway {
             raw_payload,
             normalized_payload,
             0.95, // High confidence since it's a direct API from primary broker
-            "Complete"
+            "Complete",
         );
 
         Ok(canonical_observation)

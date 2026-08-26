@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -55,10 +55,26 @@ impl InnovationTracker {
 
         InnovationTelemetry {
             novel_signatures_discovered: novel_discovered,
-            novelty_ratio: if total_current > 0 { novel_discovered as f64 / total_current as f64 } else { 0.0 },
-            persistence_ratio: if total_previous > 0 { persisted as f64 / total_previous as f64 } else { 0.0 },
-            rediscovery_ratio: if total_current > 0 { rediscovered as f64 / total_current as f64 } else { 0.0 },
-            extinction_ratio: if total_previous > 0 { extinct as f64 / total_previous as f64 } else { 0.0 },
+            novelty_ratio: if total_current > 0 {
+                novel_discovered as f64 / total_current as f64
+            } else {
+                0.0
+            },
+            persistence_ratio: if total_previous > 0 {
+                persisted as f64 / total_previous as f64
+            } else {
+                0.0
+            },
+            rediscovery_ratio: if total_current > 0 {
+                rediscovered as f64 / total_current as f64
+            } else {
+                0.0
+            },
+            extinction_ratio: if total_previous > 0 {
+                extinct as f64 / total_previous as f64
+            } else {
+                0.0
+            },
             active_memory_size: self.global_memory.len(),
         }
     }

@@ -125,7 +125,11 @@ pub fn replay_historical_pe2(
             .ok_or_else(|| format!("no certified session ≤ requested T for {instrument}"))?;
         let subsequent = bars
             .iter()
-            .filter(|b| Utc.timestamp_opt(b.timestamp, 0).single().is_some_and(|ts| ts > t))
+            .filter(|b| {
+                Utc.timestamp_opt(b.timestamp, 0)
+                    .single()
+                    .is_some_and(|ts| ts > t)
+            })
             .count();
         if subsequent < REQUIRED_SUBSEQUENT_SESSIONS as usize {
             return Err(format!(
@@ -152,7 +156,8 @@ pub fn replay_historical_pe2(
         let again = generate_historical_replay_decision(artifact, instrument, bars, t)?;
         let from_known = generate_historical_replay_decision(artifact, instrument, &known, t)?;
         let poisoned = poison_future_bars(bars, t);
-        let from_poisoned = generate_historical_replay_decision(artifact, instrument, &poisoned, t)?;
+        let from_poisoned =
+            generate_historical_replay_decision(artifact, instrument, &poisoned, t)?;
 
         let tick_det = decision == again;
         let tick_lookahead = decision == from_known;
@@ -164,7 +169,10 @@ pub fn replay_historical_pe2(
         }
 
         let entry = entry_close(&known, t).ok_or_else(|| {
-            format!("no entry close at {} for {instrument}", decision.decision_time)
+            format!(
+                "no entry close at {} for {instrument}",
+                decision.decision_time
+            )
         })?;
         let intent = seal_execution_intent(&decision, entry, EXECUTION_TARGET_PCT)?;
         if (intent.target_pct - EXECUTION_TARGET_PCT).abs() > 1e-12 {
@@ -280,7 +288,10 @@ pub fn replay_historical_pe2(
 }
 
 fn count_reason(records: &[HistoricalPe2Record], reason: ExitReason) -> usize {
-    records.iter().filter(|r| r.exit.exit_reason == reason).count()
+    records
+        .iter()
+        .filter(|r| r.exit.exit_reason == reason)
+        .count()
 }
 
 fn count_trigger(records: &[HistoricalPe2Record], trigger: TriggerType) -> usize {
@@ -307,17 +318,35 @@ pub fn render_historical_pe2_report(ledger: &HistoricalPe2Ledger) -> String {
     md.push_str(&format!("- requested T: `{}`\n", ledger.requested_clock));
     md.push_str(&format!("- certified T: `{}`\n", ledger.certified_t));
     md.push_str(&format!("- path kind: `{}`\n", ledger.path_kind));
-    md.push_str(&format!("- product label: {}\n", ledger.execution_contract_label));
-    md.push_str(&format!("- execution contract: `{}`\n", ledger.execution_contract));
-    md.push_str(&format!("- target_pct: {:.1}%\n", ledger.target_pct * 100.0));
+    md.push_str(&format!(
+        "- product label: {}\n",
+        ledger.execution_contract_label
+    ));
+    md.push_str(&format!(
+        "- execution contract: `{}`\n",
+        ledger.execution_contract
+    ));
+    md.push_str(&format!(
+        "- target_pct: {:.1}%\n",
+        ledger.target_pct * 100.0
+    ));
     md.push_str(&format!(
         "- max holding sessions: {}\n\n",
         ledger.max_holding_sessions
     ));
     md.push_str("## Integrity\n\n");
-    md.push_str(&format!("- determinism: {}\n", pass_fail(ledger.determinism_pass)));
-    md.push_str(&format!("- no-lookahead: {}\n", pass_fail(ledger.lookahead_clean)));
-    md.push_str(&format!("- poison test: {}\n", pass_fail(ledger.poison_test_pass)));
+    md.push_str(&format!(
+        "- determinism: {}\n",
+        pass_fail(ledger.determinism_pass)
+    ));
+    md.push_str(&format!(
+        "- no-lookahead: {}\n",
+        pass_fail(ledger.lookahead_clean)
+    ));
+    md.push_str(&format!(
+        "- poison test: {}\n",
+        pass_fail(ledger.poison_test_pass)
+    ));
     md.push_str(&format!(
         "- peeked_returns_at_seal: {}\n",
         ledger.peeked_returns_at_seal
@@ -332,7 +361,10 @@ pub fn render_historical_pe2_report(ledger: &HistoricalPe2Ledger) -> String {
     ));
     md.push_str("## Counts\n\n");
     md.push_str(&format!("- intents: {}\n", ledger.n_decisions));
-    md.push_str(&format!("- execution intents: {}\n", ledger.n_execution_intents));
+    md.push_str(&format!(
+        "- execution intents: {}\n",
+        ledger.n_execution_intents
+    ));
     md.push_str(&format!("- TARGET exits: {}\n", ledger.n_target));
     md.push_str(&format!("- HORIZON exits: {}\n", ledger.n_horizon));
     md.push_str(&format!("- GAP_THROUGH: {}\n", ledger.n_gap_through));

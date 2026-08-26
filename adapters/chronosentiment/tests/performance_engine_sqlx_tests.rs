@@ -9,8 +9,8 @@ fn forbidden_db(name: &str) -> bool {
 }
 
 #[tokio::test]
-async fn b4_performance_is_deterministic_and_keeps_no_trade_separate()
--> Result<(), Box<dyn std::error::Error>> {
+async fn b4_performance_is_deterministic_and_keeps_no_trade_separate(
+) -> Result<(), Box<dyn std::error::Error>> {
     let url = match std::env::var("DATABASE_URL") {
         Ok(u) => u,
         Err(_) => {
@@ -26,11 +26,18 @@ async fn b4_performance_is_deterministic_and_keeps_no_trade_separate()
     let dbname: String = sqlx::query_scalar("SELECT current_database()")
         .fetch_one(&pool)
         .await?;
-    assert!(!forbidden_db(&dbname), "refusing certified database {dbname}");
+    assert!(
+        !forbidden_db(&dbname),
+        "refusing certified database {dbname}"
+    );
 
     let adapter = ReplayAdapter::new(pool.clone());
-    let ledger =
-        populate_ledger_from_assessment_schedule(&adapter, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy).await?;
+    let ledger = populate_ledger_from_assessment_schedule(
+        &adapter,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await?;
     let outcomes = OutcomeEngine::new(pool).measure_ledger(&ledger).await?;
     let ledger_hash = ledger.identity_hash();
     let outcome_hash = outcomes.identity_hash();

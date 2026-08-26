@@ -27,8 +27,11 @@ pub trait ResearchExperiment: Send + Sync {
     fn id(&self) -> Uuid;
     fn name(&self) -> &str;
     fn description(&self) -> &str;
-    
+
     /// Execute the experiment against a defined population.
     /// This keeps the laboratory generic; the experiment itself handles the specific research domain (e.g. Phase G).
-    async fn execute(&self, dataset: &ResearchDataset) -> Result<ExperimentMeasurements, Box<dyn std::error::Error + Send + Sync>>;
+    async fn execute(
+        &self,
+        dataset: &ResearchDataset,
+    ) -> Result<ExperimentMeasurements, Box<dyn std::error::Error + Send + Sync>>;
 }

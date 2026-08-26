@@ -16,7 +16,7 @@ use super::observatory_execution::{
     first_exit, seal_execution_intent, ExecutionExit, ExitReason, SealedExecutionIntent,
     TriggerType, C3G_EXPERIMENT_AUTHORIZED, EXECUTION_CONTRACT_ID, EXECUTION_CONTRACT_LABEL,
     EXECUTION_TARGET_PCT, SEARCH_THREE_AUTHORIZED, STOP_EXIT_AUTHORIZED,
-    TARGET_PATH_OPTIMIZATION_AUTHORIZED, TARGETED_EXECUTION_V0_FROZEN,
+    TARGETED_EXECUTION_V0_FROZEN, TARGET_PATH_OPTIMIZATION_AUTHORIZED,
 };
 use super::observatory_prospective::{generate_prospective_decision, latest_session_at_or_before};
 use super::observatory_slice::SealedDecisionRecord;
@@ -166,7 +166,8 @@ pub fn observe_live_records(
             .get(&record.instrument)
             .ok_or_else(|| format!("yahoo cache missing {}", record.instrument))?;
         let next = first_exit(&record.decision, &record.intent, bars)?;
-        if next.exit_reason != record.exit.exit_reason || next.trigger_type != record.exit.trigger_type
+        if next.exit_reason != record.exit.exit_reason
+            || next.trigger_type != record.exit.trigger_type
         {
             record.exit = next;
             appended += 1;
@@ -191,13 +192,16 @@ pub fn run_live_execution(
         || SEARCH_THREE_AUTHORIZED
         || C3G_EXPERIMENT_AUTHORIZED
     {
-        return Err("refusing a live execution run that opens research or mutates protected ledgers".into());
+        return Err(
+            "refusing a live execution run that opens research or mutates protected ledgers".into(),
+        );
     }
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("live execution identity-gates C3-002".into());
     }
 
-    let mut ledger = existing.unwrap_or_else(|| empty_live_ledger(LIVE_EXECUTION_STATUS_AWAITING, None));
+    let mut ledger =
+        existing.unwrap_or_else(|| empty_live_ledger(LIVE_EXECUTION_STATUS_AWAITING, None));
     if ledger.path_kind != LIVE_EXECUTION_PATH_KIND {
         return Err("live execution belongs on the prospective_execution_v0 ledger".into());
     }
@@ -234,7 +238,9 @@ pub fn run_live_execution(
             let decision = generate_prospective_decision(artifact, instrument, bars, now)?;
             let t = super::observatory_maturity::parse_decision_time(&decision.decision_time)?;
             if is_protected_direction_only_clock(t) {
-                return Err("refusing to seal Execution Contract v0 on the 14 August cohort".into());
+                return Err(
+                    "refusing to seal Execution Contract v0 on the 14 August cohort".into(),
+                );
             }
             let entry = bars
                 .iter()
@@ -248,7 +254,12 @@ pub fn run_live_execution(
                 })
                 .max_by_key(|(ts, _)| *ts)
                 .map(|(_, c)| c)
-                .ok_or_else(|| format!("no entry close at {} for {instrument}", decision.decision_time))?;
+                .ok_or_else(|| {
+                    format!(
+                        "no entry close at {} for {instrument}",
+                        decision.decision_time
+                    )
+                })?;
             let intent = seal_execution_intent(&decision, entry, EXECUTION_TARGET_PCT)?;
             let exit = first_exit(&decision, &intent, bars)?;
             ledger.records.push(LiveExecutionRecord {
@@ -279,20 +290,32 @@ pub fn render_live_execution_report(ledger: &LiveExecutionLedger) -> String {
     md.push_str("14-Aug cohort\nDecision only\n7 OBSERVING\nNo execution intent\n```\n\n");
     md.push_str("```text\n");
     md.push_str("Next eligible cohort\nDecision + Execution Intent\nP.E.2 control\n```\n\n");
-    md.push_str(&format!("- product label: {}\n", ledger.execution_contract_label));
+    md.push_str(&format!(
+        "- product label: {}\n",
+        ledger.execution_contract_label
+    ));
     md.push_str(&format!("- path kind: `{}`\n", ledger.path_kind));
     md.push_str(&format!("- seal status: `{}`\n", ledger.seal_status));
     md.push_str(&format!(
         "- certified T: {}\n",
         ledger.certified_t.as_deref().unwrap_or("—")
     ));
-    md.push_str(&format!("- target_pct: {:.1}%\n", ledger.target_pct * 100.0));
+    md.push_str(&format!(
+        "- target_pct: {:.1}%\n",
+        ledger.target_pct * 100.0
+    ));
     md.push_str(&format!(
         "- 14 August cohort mutated: {}\n",
         ledger.fourteen_aug_cohort_mutated
     ));
-    md.push_str(&format!("- P.E.1 sidecar mutated: {}\n", ledger.pe1_sidecar_mutated));
-    md.push_str(&format!("- peeked_returns_at_seal: {}\n", ledger.peeked_returns_at_seal));
+    md.push_str(&format!(
+        "- P.E.1 sidecar mutated: {}\n",
+        ledger.pe1_sidecar_mutated
+    ));
+    md.push_str(&format!(
+        "- peeked_returns_at_seal: {}\n",
+        ledger.peeked_returns_at_seal
+    ));
     md.push_str(&format!(
         "- statistical strategy backtest: {}\n\n",
         if ledger.statistical_backtest {
@@ -309,7 +332,9 @@ pub fn render_live_execution_report(ledger: &LiveExecutionLedger) -> String {
         md.push_str("The 14-August cohort was sealed without an execution intent and remains untouched. P.E.2 will attach Execution Contract v0 only to the next eligible cohort at T. AWAITING_NEXT_SESSION until a session strictly after 2026-08-14T03:45:00Z exists. IDEA and MAHABANK remain in the universe.\n");
         return md;
     }
-    md.push_str("| Instrument | Decision | Target | Exit | Trigger | Session | Execution price | V |\n");
+    md.push_str(
+        "| Instrument | Decision | Target | Exit | Trigger | Session | Execution price | V |\n",
+    );
     md.push_str("|---|---|---:|---|---|---:|---:|---:|\n");
     for record in &ledger.records {
         md.push_str(&format!(

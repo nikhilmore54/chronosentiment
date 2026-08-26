@@ -1,8 +1,10 @@
+use crate::repository::knowledge::{
+    ArtifactLineage, ArtifactMetadata, ArtifactType, KnowledgeArtifact,
+};
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
-use crate::repository::knowledge::{ArtifactMetadata, ArtifactType, KnowledgeArtifact, ArtifactLineage};
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutcomeRecord {
@@ -10,23 +12,23 @@ pub struct OutcomeRecord {
     pub instrument_id: Option<Uuid>,
     pub decision_id: Uuid,
     pub strategy_id: Uuid,
-    
+
     pub evaluation_timestamp: DateTime<Utc>,
     pub horizon: String,
     pub horizon_expiry_timestamp: DateTime<Utc>,
     pub observation_end_timestamp: DateTime<Utc>,
-    
+
     pub entry_reached: bool,
     pub target_hit: bool,
     pub stop_hit: bool,
-    
+
     pub holding_period_days: u32,
     pub exit_reason: String,
-    
+
     pub outcome_return: f64,
     pub mfe: f64, // Maximum Favourable Excursion
     pub mae: f64, // Maximum Adverse Excursion
-    
+
     pub maximum_drawdown: f64,
     pub realized_volatility: f64,
 }
@@ -44,7 +46,7 @@ pub struct OutcomeEngine;
 
 impl OutcomeEngine {
     pub fn measure_outcome(
-        &self, 
+        &self,
         decision_id: Uuid,
         strategy: &crate::reasoning::strategy::OpportunityStrategy,
         strategy_metadata: &ArtifactMetadata,
@@ -54,44 +56,55 @@ impl OutcomeEngine {
         instrument_id: Option<Uuid>,
     ) -> OutcomeRecord {
         let horizon_str = format!("{}D", measurement_horizon_days);
-        let horizon_expiry = evaluation_timestamp + chrono::Duration::days(measurement_horizon_days as i64);
-        
+        let horizon_expiry =
+            evaluation_timestamp + chrono::Duration::days(measurement_horizon_days as i64);
+
         let mut entered = false;
         let mut target_hit = false;
         let mut stop_hit = false;
         let mut ambiguous = false;
-        
+
         let mut mfe: f64 = 0.0;
         let mut mae: f64 = 0.0;
-        
+
         let mut exit_reason = "Expired".to_string();
         let mut final_price = 0.0;
         let mut entry_price = 0.0;
         let mut holding_days = 0;
         let mut obs_end = evaluation_timestamp;
-        
+
         for obs in future_observations {
             // Temporal Firewall: strictly after Decision(T)
             if obs.effective_from <= evaluation_timestamp {
-                continue; 
+                continue;
             }
             if obs.effective_from > horizon_expiry {
                 break;
             }
-            
+
             obs_end = obs.effective_from;
-            
+
             let payload = &obs.normalized_payload;
             let close = payload.get("close").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            
-            let high = payload.get("high").and_then(|v| v.as_f64()).unwrap_or(close);
+
+            let high = payload
+                .get("high")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(close);
             let low = payload.get("low").and_then(|v| v.as_f64()).unwrap_or(close);
-            let unadj_close = payload.get("unadjusted_close").and_then(|v| v.as_f64()).unwrap_or(close);
-            
-            let adj_ratio = if unadj_close > 0.0 { close / unadj_close } else { 1.0 };
+            let unadj_close = payload
+                .get("unadjusted_close")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(close);
+
+            let adj_ratio = if unadj_close > 0.0 {
+                close / unadj_close
+            } else {
+                1.0
+            };
             let adj_high = high * adj_ratio;
             let adj_low = low * adj_ratio;
-            
+
             if !entered {
                 if adj_low <= strategy.entry_zone.max && adj_high >= strategy.entry_zone.min {
                     entered = true;
@@ -99,16 +112,20 @@ impl OutcomeEngine {
                 }
             } else {
                 holding_days += 1;
-                
+
                 let cur_mfe = (adj_high - entry_price) / entry_price;
                 let cur_mae = (adj_low - entry_price) / entry_price;
-                
-                if cur_mfe > mfe { mfe = cur_mfe; }
-                if cur_mae < mae { mae = cur_mae; }
-                
+
+                if cur_mfe > mfe {
+                    mfe = cur_mfe;
+                }
+                if cur_mae < mae {
+                    mae = cur_mae;
+                }
+
                 let hit_target = adj_high >= strategy.target_zone.min;
                 let hit_stop = adj_low <= strategy.stop_loss_zone.max;
-                
+
                 if hit_target && hit_stop {
                     ambiguous = true;
                     exit_reason = "Ambiguous".to_string();
@@ -130,13 +147,13 @@ impl OutcomeEngine {
             }
             final_price = close;
         }
-        
+
         let outcome_return = if entered {
             (final_price - entry_price) / entry_price
         } else {
             0.0
         };
-        
+
         if !entered {
             exit_reason = "Entry Not Reached".to_string();
         }
@@ -176,7 +193,7 @@ impl OutcomeEngine {
             maximum_drawdown: mae.abs(),
             realized_volatility: 0.0,
         };
-        
+
         let mut hasher = Sha256::new();
         hasher.update(record.strategy_id.as_bytes());
         hasher.update(record.horizon.as_bytes());
@@ -185,9 +202,9 @@ impl OutcomeEngine {
         hasher.update(record.mfe.to_be_bytes());
         hasher.update(record.mae.to_be_bytes());
         hasher.update(record.holding_period_days.to_be_bytes());
-        
+
         record.metadata.content_hash = format!("{:x}", hasher.finalize());
-        
+
         record
     }
 }

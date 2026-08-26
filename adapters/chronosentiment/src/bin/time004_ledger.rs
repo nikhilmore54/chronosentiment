@@ -277,15 +277,28 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--decisions" => { i += 1; decisions = PathBuf::from(&args[i]); }
-            "--ledger"    => { i += 1; ledger = PathBuf::from(&args[i]); }
-            "--audit"     => { i += 1; audit = PathBuf::from(&args[i]); }
+            "--decisions" => {
+                i += 1;
+                decisions = PathBuf::from(&args[i]);
+            }
+            "--ledger" => {
+                i += 1;
+                ledger = PathBuf::from(&args[i]);
+            }
+            "--audit" => {
+                i += 1;
+                audit = PathBuf::from(&args[i]);
+            }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { decisions, ledger, audit })
+    Ok(Args {
+        decisions,
+        ledger,
+        audit,
+    })
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -329,13 +342,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[time004] audit:     {}", args.audit.display());
 
     // ── AC-T4-05: No recomputation — read only ────────────────────────────────
-    let decisions_raw = fs::read_to_string(&args.decisions)
-        .map_err(|e| format!("cannot read decisions artifact {}: {e}", args.decisions.display()))?;
+    let decisions_raw = fs::read_to_string(&args.decisions).map_err(|e| {
+        format!(
+            "cannot read decisions artifact {}: {e}",
+            args.decisions.display()
+        )
+    })?;
     let decisions: Time003Artifact = serde_json::from_str(&decisions_raw)
         .map_err(|e| format!("decisions artifact JSON parse error: {e}"))?;
 
-    println!("[time004] decision_replay_id={}", decisions.decision_replay_id);
-    println!("[time004] reconstruction_id={}", decisions.reconstruction_id);
+    println!(
+        "[time004] decision_replay_id={}",
+        decisions.decision_replay_id
+    );
+    println!(
+        "[time004] reconstruction_id={}",
+        decisions.reconstruction_id
+    );
     println!("[time004] state_id={}", decisions.state_id);
     println!("[time004] as_of={}", decisions.as_of);
     println!("[time004] source_type={}", decisions.source_type);
@@ -387,7 +410,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(&audit_path, &decisions_raw)?;
             println!("[time004] audit record written: {}", audit_path.display());
         } else {
-            println!("[time004] audit record already exists: {}", audit_path.display());
+            println!(
+                "[time004] audit record already exists: {}",
+                audit_path.display()
+            );
         }
     }
 
@@ -413,9 +439,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             // Build decision_id: TIME004-{replay_suffix}-{ticker_safe}
-            let replay_suffix = decisions
-                .decision_replay_id
-                .trim_start_matches("TIME003-");
+            let replay_suffix = decisions.decision_replay_id.trim_start_matches("TIME003-");
             let ticker_safe = inst.ticker.replace('.', "_");
             let decision_id = format!("TIME004-{replay_suffix}-{ticker_safe}");
 
@@ -498,7 +522,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
-        println!("[time004] admitted {} T0 historical decision records", n_admitted);
+        println!(
+            "[time004] admitted {} T0 historical decision records",
+            n_admitted
+        );
     } else {
         n_duplicate_skipped = decisions.accounting.n_decided;
         println!(
@@ -548,9 +575,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ledger_dir: args.ledger.display().to_string(),
         audit_dir: args.audit.display().to_string(),
         ac_t4_01_admission_fidelity: true,
-        ac_t4_02_t0_immutability: true,  // write-once enforced; no modification path
-        ac_t4_04_idempotency: true,       // duplicate check enforced above
-        ac_t4_05_no_recomputation: true,  // no market data, C3-002, or recommendation performed
+        ac_t4_02_t0_immutability: true, // write-once enforced; no modification path
+        ac_t4_04_idempotency: true,     // duplicate check enforced above
+        ac_t4_05_no_recomputation: true, // no market data, C3-002, or recommendation performed
         ac_t4_07_accounting: accounting_check,
     };
 
@@ -563,7 +590,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[time004] run_id={run_id}");
     println!("[time004] n_admitted={n_admitted}");
     println!("[time004] n_duplicate_skipped={n_duplicate_skipped}");
-    println!("[time004] summary written: {}", args.ledger.join("latest_run.json").display());
+    println!(
+        "[time004] summary written: {}",
+        args.ledger.join("latest_run.json").display()
+    );
 
     Ok(())
 }

@@ -1,11 +1,11 @@
 use futures_util::StreamExt;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 struct BinanceAggTrade {
@@ -58,17 +58,27 @@ async fn main() {
     let symbol = "btcusdt";
     let ws_url = format!("wss://stream.binance.com:9443/ws/{}@aggTrade", symbol);
 
-    println!("Starting Stage 1: Live Chronology Capture for {}", symbol.to_uppercase());
+    println!(
+        "Starting Stage 1: Live Chronology Capture for {}",
+        symbol.to_uppercase()
+    );
     println!("Connecting to {}...", ws_url);
 
     let base_dir = PathBuf::from("chronology").join("live_capture");
     std::fs::create_dir_all(&base_dir).unwrap();
 
-    let rotation_interval_secs = 3600; 
-    let mut current_rotation_start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let rotation_interval_secs = 3600;
+    let mut current_rotation_start = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
     let mut file_path = base_dir.join(format!("{}_{}.jsonl", symbol, current_rotation_start));
-    let mut file = OpenOptions::new().create(true).append(true).open(&file_path).unwrap();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file_path)
+        .unwrap();
 
     let mut hasher = Sha256::new();
     let mut tick_count = 0;
@@ -103,14 +113,24 @@ async fn main() {
                         file.write_all(line.as_bytes()).unwrap();
                         hasher.update(line.as_bytes());
                         tick_count += 1;
-                        last_tick_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                        last_tick_time = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs();
 
                         let now = last_tick_time;
                         if now - current_rotation_start >= rotation_interval_secs {
                             // Finalize current rotation
-                            let final_hash = std::mem::replace(&mut hasher, Sha256::new()).finalize();
-                            let hash_hex = final_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-                            let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                            let final_hash =
+                                std::mem::replace(&mut hasher, Sha256::new()).finalize();
+                            let hash_hex = final_hash
+                                .iter()
+                                .map(|b| format!("{:02x}", b))
+                                .collect::<String>();
+                            let import_timestamp = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_secs();
                             let manifest = CaptureManifest {
                                 source: "Binance Live Stream".to_string(),
                                 resolution: "aggTrade".to_string(),
@@ -124,23 +144,43 @@ async fn main() {
                                 gaps: std::mem::take(&mut gaps),
                             };
 
-                            let meta_path = base_dir.join(format!("{}_{}_manifest.json", symbol, current_rotation_start));
+                            let meta_path = base_dir.join(format!(
+                                "{}_{}_manifest.json",
+                                symbol, current_rotation_start
+                            ));
                             let mut meta_file = File::create(&meta_path).unwrap();
-                            meta_file.write_all(serde_json::to_string_pretty(&manifest).unwrap().as_bytes()).unwrap();
+                            meta_file
+                                .write_all(
+                                    serde_json::to_string_pretty(&manifest).unwrap().as_bytes(),
+                                )
+                                .unwrap();
 
-                            println!("Rotated Archive: {} ({} ticks) [Hash: {}]", file_path.display(), tick_count, hash_hex);
+                            println!(
+                                "Rotated Archive: {} ({} ticks) [Hash: {}]",
+                                file_path.display(),
+                                tick_count,
+                                hash_hex
+                            );
 
                             // Start new rotation
                             current_rotation_start = now;
-                            file_path = base_dir.join(format!("{}_{}.jsonl", symbol, current_rotation_start));
-                            file = OpenOptions::new().create(true).append(true).open(&file_path).unwrap();
+                            file_path = base_dir
+                                .join(format!("{}_{}.jsonl", symbol, current_rotation_start));
+                            file = OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(&file_path)
+                                .unwrap();
                             tick_count = 0;
                         }
                     }
                 }
                 Ok(Message::Close(_)) | Err(_) => {
                     println!("Websocket disconnected. Recording gap and reconnecting...");
-                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
                     gaps.push(CaptureGap {
                         gap_start: last_tick_time,
                         gap_end: now,

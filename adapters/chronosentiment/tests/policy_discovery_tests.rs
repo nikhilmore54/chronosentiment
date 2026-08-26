@@ -125,7 +125,8 @@ fn same_seed_twice_reproduces_policy_artifact_identity() {
         "same development state + frozen seed must seal the same artifact"
     );
     assert_eq!(
-        evidence_a.development_best_fitness, evidence_b.development_best_fitness
+        evidence_a.development_best_fitness,
+        evidence_b.development_best_fitness
     );
     assert!(selected_a.genome.rules.len() <= MAX_RULES_FIRST_DISCOVERY);
     for rule in &selected_a.artifact.rules {
@@ -161,11 +162,7 @@ fn handoff_scores_evaluation_without_going_through_score_genome() {
     let selected = select_on_selection(&candidates, &development, &selection).unwrap();
     let handoff = evaluate_sealed_candidate(&selected.artifact, &evaluation).unwrap();
     assert_eq!(handoff.artifact_hash, selected.artifact.artifact_hash);
-    assert!(score_genome(
-        &selected.genome,
-        &evaluation
-    )
-    .is_err());
+    assert!(score_genome(&selected.genome, &evaluation).is_err());
 }
 
 #[test]

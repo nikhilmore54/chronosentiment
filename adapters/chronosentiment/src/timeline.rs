@@ -93,7 +93,11 @@ pub struct TimelineView<'a> {
 
 impl<'a> TimelineView<'a> {
     pub fn new(workspace_id: &'a str, subject: &'a str, events: &'a [TimelineEvent]) -> Self {
-        Self { workspace_id, subject, events }
+        Self {
+            workspace_id,
+            subject,
+            events,
+        }
     }
 
     /// Return all events in chronological order.
@@ -108,12 +112,18 @@ impl<'a> TimelineView<'a> {
 
     /// Return events within a timestamp range [from, to].
     pub fn in_range(&self, from: u64, to: u64) -> Vec<&TimelineEvent> {
-        self.events.iter().filter(|e| e.timestamp >= from && e.timestamp <= to).collect()
+        self.events
+            .iter()
+            .filter(|e| e.timestamp >= from && e.timestamp <= to)
+            .collect()
     }
 
     /// Return events after a given timestamp.
     pub fn since(&self, timestamp: u64) -> Vec<&TimelineEvent> {
-        self.events.iter().filter(|e| e.timestamp > timestamp).collect()
+        self.events
+            .iter()
+            .filter(|e| e.timestamp > timestamp)
+            .collect()
     }
 
     /// Return the most recent event of a specific kind.
@@ -199,7 +209,9 @@ mod tests {
             make_event("e2", TimelineEventKind::EvidenceAdded, 2000),
         ];
         let view = TimelineView::new("ws-001", "Reliance", &events);
-        let latest = view.latest_of_kind(&TimelineEventKind::EvidenceAdded).unwrap();
+        let latest = view
+            .latest_of_kind(&TimelineEventKind::EvidenceAdded)
+            .unwrap();
         assert_eq!(latest.event_id, "e2");
     }
 

@@ -16,7 +16,11 @@ pub trait Evaluated: Clone {
 pub trait FitnessEvaluator<G: Genome> {
     type Evaluation: Evaluated<Genome = G>;
 
-    fn evaluate(&self, genome: &G, metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation;
+    fn evaluate(
+        &self,
+        genome: &G,
+        metrics: &crate::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation;
 }
 
 pub trait MutationOperator<G: Genome> {

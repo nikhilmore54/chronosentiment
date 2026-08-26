@@ -64,10 +64,8 @@ impl ScenarioAggregator {
         let exec_values: Vec<f64> = valid.iter().map(|r| r.execution_fitness).collect();
         let fit_values: Vec<f64> = valid.iter().map(|r| r.fitness).collect();
 
-        let worst_case_execution_fitness = exec_values
-            .iter()
-            .copied()
-            .fold(f64::INFINITY, f64::min);
+        let worst_case_execution_fitness =
+            exec_values.iter().copied().fold(f64::INFINITY, f64::min);
 
         let mean_exec = exec_values.iter().sum::<f64>() / exec_values.len() as f64;
         let mean_fit = fit_values.iter().sum::<f64>() / fit_values.len() as f64;
@@ -126,7 +124,11 @@ mod tests {
     #[test]
     fn robust_min_penalizes_single_domain_peak() {
         let results = vec![
-            sample_result("deterministic_demo", 0.9, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            sample_result(
+                "deterministic_demo",
+                0.9,
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
             sample_result(
                 "deterministic_demo_execution",
                 0.4,

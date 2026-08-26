@@ -107,8 +107,7 @@ pub fn score_genome(
     for ticker in RESEARCH_UNIVERSE {
         let mut traded = Vec::new();
         for row in slice.rows.iter().filter(|r| r.instrument == *ticker) {
-            let action =
-                first_match_action(&genome.rules, genome.unmatched_action, &row.profile);
+            let action = first_match_action(&genome.rules, genome.unmatched_action, &row.profile);
             match action {
                 DecisionAction::NoTrade => n_stood_aside += 1,
                 DecisionAction::Long | DecisionAction::Short => match row.instrument_return {

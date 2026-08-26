@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 
 use chrono::{TimeZone, Utc};
-use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
 use chronosentiment_adapter::decision_support::backtest::{
     run_replay_backtest, DecisionLedger, ReplayTick,
 };
@@ -14,7 +13,9 @@ use chronosentiment_adapter::decision_support::outcome::{
     measure_record, DecisionOutcomeBundle, LakeOutcomeRow, OutcomeReport, HORIZON_DAYS,
 };
 use chronosentiment_adapter::decision_support::performance::measure_performance;
-use chronosentiment_adapter::decision_support::policy::{BaselineTrendMappingPolicy, DecisionPolicy};
+use chronosentiment_adapter::decision_support::policy::{
+    BaselineTrendMappingPolicy, DecisionPolicy,
+};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, DecideAt, ReplayAssessment, ReplayError, ReplayInputs, ReplayLakeDecision,
     ReplayObservation, UNFROZEN_ENGINE_VERSION,
@@ -29,9 +30,10 @@ use chronosentiment_adapter::metrics::instrument::{
 };
 use chronosentiment_adapter::observation::ValidatedObservation;
 use chronosentiment_adapter::reasoning::assessment::{
-    AssessmentEngine, AssessmentProfile, Direction, ENRICHMENT_CONCEPTS, FactorAvailability,
+    AssessmentEngine, AssessmentProfile, Direction, FactorAvailability, ENRICHMENT_CONCEPTS,
 };
 use chronosentiment_adapter::validation::context::InstrumentEvaluationContext;
+use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
 use uuid::Uuid;
 
 fn t() -> chrono::DateTime<Utc> {
@@ -45,19 +47,31 @@ fn inst() -> Uuid {
 fn trend_metrics(bullish: bool) -> MetricReport {
     let mut metrics = MetricReport::default();
     if bullish {
-        metrics.metrics.insert("ma_20".to_string(), MetricValue::Float(2100.0));
-        metrics.metrics.insert("ma_50".to_string(), MetricValue::Float(2050.0));
+        metrics
+            .metrics
+            .insert("ma_20".to_string(), MetricValue::Float(2100.0));
+        metrics
+            .metrics
+            .insert("ma_50".to_string(), MetricValue::Float(2050.0));
     } else {
-        metrics.metrics.insert("ma_20".to_string(), MetricValue::Float(1900.0));
-        metrics.metrics.insert("ma_50".to_string(), MetricValue::Float(2050.0));
+        metrics
+            .metrics
+            .insert("ma_20".to_string(), MetricValue::Float(1900.0));
+        metrics
+            .metrics
+            .insert("ma_50".to_string(), MetricValue::Float(2050.0));
     }
     metrics
 }
 
 fn full_metrics(bullish: bool) -> MetricReport {
     let mut metrics = trend_metrics(bullish);
-    metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(8.3));
-    metrics.metrics.insert("atr_14".to_string(), MetricValue::Float(12.0));
+    metrics
+        .metrics
+        .insert("roc_20".to_string(), MetricValue::Float(8.3));
+    metrics
+        .metrics
+        .insert("atr_14".to_string(), MetricValue::Float(12.0));
     metrics
 }
 
@@ -88,11 +102,18 @@ fn inputs_from(mut profile: AssessmentProfile) -> ReplayInputs {
 }
 
 fn decide(metrics: &MetricReport) -> TradingDecision {
-    decide_from_inputs(inputs_from(profile_at(metrics, t())), &BaselineTrendMappingPolicy).unwrap()
+    decide_from_inputs(
+        inputs_from(profile_at(metrics, t())),
+        &BaselineTrendMappingPolicy,
+    )
+    .unwrap()
 }
 
 fn synthetic_bars() -> Vec<YahooHistoricalBar> {
-    let start = Utc.with_ymd_and_hms(2021, 8, 1, 0, 0, 0).unwrap().timestamp();
+    let start = Utc
+        .with_ymd_and_hms(2021, 8, 1, 0, 0, 0)
+        .unwrap()
+        .timestamp();
     (0..80)
         .map(|i| {
             let close = 100.0 + i as f64;
@@ -109,7 +130,12 @@ fn synthetic_bars() -> Vec<YahooHistoricalBar> {
         .collect()
 }
 
-fn price_obs(id: u128, day_offset: i64, close: f64, high_low: Option<(f64, f64)>) -> ValidatedObservation {
+fn price_obs(
+    id: u128,
+    day_offset: i64,
+    close: f64,
+    high_low: Option<(f64, f64)>,
+) -> ValidatedObservation {
     let ts = t() + chrono::Duration::days(day_offset);
     let (high, low) = high_low.unwrap_or((close + 1.0, close - 1.0));
     let payload = serde_json::json!({
@@ -265,7 +291,9 @@ fn fact_001_missing_roc_20_is_unavailable_not_zero() {
 #[test]
 fn fact_002_missing_atr_14_is_unavailable_not_zero() {
     let mut metrics = trend_metrics(true);
-    metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(1.0));
+    metrics
+        .metrics
+        .insert("roc_20".to_string(), MetricValue::Float(1.0));
     let p = profile_at(&metrics, t());
     let vol = p
         .factor_status
@@ -279,8 +307,12 @@ fn fact_002_missing_atr_14_is_unavailable_not_zero() {
 #[test]
 fn fact_003_zero_roc_is_available_not_unavailable() {
     let mut metrics = trend_metrics(true);
-    metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(0.0));
-    metrics.metrics.insert("atr_14".to_string(), MetricValue::Float(12.0));
+    metrics
+        .metrics
+        .insert("roc_20".to_string(), MetricValue::Float(0.0));
+    metrics
+        .metrics
+        .insert("atr_14".to_string(), MetricValue::Float(12.0));
     let p = profile_at(&metrics, t());
     let mom = p
         .factor_status
@@ -300,13 +332,18 @@ fn fact_004_volatility_has_no_high_low_direction() {
         .find(|s| s.concept == Concept::Volatility)
         .unwrap();
     assert_eq!(vol.availability, FactorAvailability::Available);
-    assert!(!p.assessments.iter().any(|a| a.concept == Concept::Volatility));
+    assert!(!p
+        .assessments
+        .iter()
+        .any(|a| a.concept == Concept::Volatility));
 }
 
 #[test]
 fn fact_005_missing_trend_is_not_invented_bullish() {
     let mut metrics = MetricReport::default();
-    metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(8.3));
+    metrics
+        .metrics
+        .insert("roc_20".to_string(), MetricValue::Float(8.3));
     let p = profile_at(&metrics, t());
     let trend = p
         .factor_status
@@ -322,7 +359,14 @@ fn fact_005_missing_trend_is_not_invented_bullish() {
 #[test]
 fn fact_missing_high_low_does_not_emit_zero_atr() {
     let obs: Vec<_> = (0..20)
-        .map(|i| price_obs(100 + i as u128, i as i64 - 20, 100.0 + i as f64, Some((0.0, 0.0))))
+        .map(|i| {
+            price_obs(
+                100 + i as u128,
+                i as i64 - 20,
+                100.0 + i as f64,
+                Some((0.0, 0.0)),
+            )
+        })
         .collect();
     let ctx = InstrumentEvaluationContext {
         instrument_id: inst(),
@@ -348,9 +392,15 @@ fn dec_003_neutral_and_absent_trend_are_no_trade() {
         .find(|a| a.concept == Concept::Trend)
         .unwrap()
         .direction = Direction::Neutral;
-    assert_eq!(BaselineTrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
+    assert_eq!(
+        BaselineTrendMappingPolicy.decide(&p, t()).action,
+        DecisionAction::NoTrade
+    );
     p.assessments.retain(|a| a.concept != Concept::Trend);
-    assert_eq!(BaselineTrendMappingPolicy.decide(&p, t()).action, DecisionAction::NoTrade);
+    assert_eq!(
+        BaselineTrendMappingPolicy.decide(&p, t()).action,
+        DecisionAction::NoTrade
+    );
 }
 
 #[test]
@@ -366,7 +416,9 @@ fn dec_004_momentum_does_not_secretly_alter_trend_map() {
 fn dec_005_atr_change_does_not_change_trend_only_identity() {
     let a = decide(&full_metrics(true));
     let mut other = full_metrics(true);
-    other.metrics.insert("atr_14".to_string(), MetricValue::Float(99.0));
+    other
+        .metrics
+        .insert("atr_14".to_string(), MetricValue::Float(99.0));
     let b = decide(&other);
     assert_eq!(a.action, b.action);
     assert_eq!(a.decision_id, b.decision_id);
@@ -437,15 +489,15 @@ impl DecideAt for Lake {
     ) -> Result<TradingDecision, ReplayError> {
         decide_from_inputs(
             ReplayInputs {
-            instrument_id,
-            as_of,
-            engine_version: engine_version.to_string(),
-            produced_by: chronosentiment_adapter::decision_support::replay::REPLAY_PRODUCER
-                .to_string(),
-            assessments: self.assessments.clone(),
-            lake_decisions: vec![],
-            observations: vec![],
-        },
+                instrument_id,
+                as_of,
+                engine_version: engine_version.to_string(),
+                produced_by: chronosentiment_adapter::decision_support::replay::REPLAY_PRODUCER
+                    .to_string(),
+                assessments: self.assessments.clone(),
+                lake_decisions: vec![],
+                observations: vec![],
+            },
             policy,
         )
     }
@@ -494,7 +546,9 @@ async fn led_001_later_tick_does_not_mutate_earlier_row() {
     assert_eq!(first.records[0].content_hash, both.records[0].content_hash);
 }
 
-fn rec_from(d: &TradingDecision) -> chronosentiment_adapter::decision_support::backtest::LedgerRecord {
+fn rec_from(
+    d: &TradingDecision,
+) -> chronosentiment_adapter::decision_support::backtest::LedgerRecord {
     let mut ledger = DecisionLedger::new(UNFROZEN_ENGINE_VERSION);
     ledger.append(d.clone());
     ledger.records.pop().unwrap()
@@ -538,7 +592,10 @@ fn out_001_and_perf_001_measurement_cannot_write_upward() {
     let _perf = measure_performance(&ledger, &outcomes);
     assert_eq!(decision.decision_id, before.decision_id);
     assert_eq!(decision.action, before.action);
-    assert_eq!(ledger.records[0].content_hash, ledger_before.records[0].content_hash);
+    assert_eq!(
+        ledger.records[0].content_hash,
+        ledger_before.records[0].content_hash
+    );
     assert_eq!(ledger.identity_hash(), ledger_before.identity_hash());
 }
 
@@ -613,17 +670,29 @@ fn adv_005_one_at_a_time_identity_changes() {
     later.as_of = t() + chrono::Duration::days(1);
     later.assessments[0].evaluation_timestamp = later.as_of;
     later.assessments[0].profile.metadata.evaluation_timestamp = later.as_of;
-    assert_ne!(base.decision_id, decide_from_inputs(later, &BaselineTrendMappingPolicy).unwrap().decision_id);
+    assert_ne!(
+        base.decision_id,
+        decide_from_inputs(later, &BaselineTrendMappingPolicy)
+            .unwrap()
+            .decision_id
+    );
 
     let mut other_inst = inputs_from(profile_at(&full_metrics(true), t()));
     other_inst.instrument_id = Uuid::from_u128(99);
-    assert_ne!(base.decision_id, decide_from_inputs(other_inst, &BaselineTrendMappingPolicy).unwrap().decision_id);
+    assert_ne!(
+        base.decision_id,
+        decide_from_inputs(other_inst, &BaselineTrendMappingPolicy)
+            .unwrap()
+            .decision_id
+    );
 
     let mut other_engine = inputs_from(profile_at(&full_metrics(true), t()));
     other_engine.engine_version = "unfrozen-dev-2".into();
     assert_ne!(
         base.decision_id,
-        decide_from_inputs(other_engine, &BaselineTrendMappingPolicy).unwrap().decision_id
+        decide_from_inputs(other_engine, &BaselineTrendMappingPolicy)
+            .unwrap()
+            .decision_id
     );
 
     let bear = decide(&full_metrics(false));
@@ -633,7 +702,13 @@ fn adv_005_one_at_a_time_identity_changes() {
 
 #[test]
 fn perf_001_signature_is_read_only() {
-    fn assert_sig(_: fn(&DecisionLedger, &OutcomeReport) -> chronosentiment_adapter::decision_support::performance::PerformanceReport) {}
+    fn assert_sig(
+        _: fn(
+            &DecisionLedger,
+            &OutcomeReport,
+        ) -> chronosentiment_adapter::decision_support::performance::PerformanceReport,
+    ) {
+    }
     assert_sig(measure_performance);
     let _ = HORIZON_DAYS;
     let _ = BTreeMap::<String, u32>::new();

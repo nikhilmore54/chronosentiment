@@ -25,7 +25,11 @@ mod tests {
     use crate::types::{Duty, FlightLeg};
 
     fn make_duty(id: u32, credit: f64) -> Duty {
-        Duty { id, credit, legs: vec![] }
+        Duty {
+            id,
+            credit,
+            legs: vec![],
+        }
     }
 
     /// O1: Single duty, credit = 60.0
@@ -55,8 +59,16 @@ mod tests {
             id: 4,
             credit: 90.0,
             legs: vec![
-                FlightLeg { id: 1, credit: 40.0, duration: 60.0 },
-                FlightLeg { id: 2, credit: 40.0, duration: 60.0 },
+                FlightLeg {
+                    id: 1,
+                    credit: 40.0,
+                    duration: 60.0,
+                },
+                FlightLeg {
+                    id: 2,
+                    credit: 40.0,
+                    duration: 60.0,
+                },
                 // leg sum = 80.0, but duty credit = 90.0 (qualification rules)
             ],
         };

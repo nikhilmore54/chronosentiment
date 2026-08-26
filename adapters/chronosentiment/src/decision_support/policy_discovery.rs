@@ -21,9 +21,7 @@ use super::policy_artifact::{
     certified_factor_definitions, certified_input_schema, PolicyArtifact, TrainingProvenance,
     CONTRACT_FIXTURE_ENGINE, POLICY_ARTIFACT_SCHEMA_VERSION,
 };
-use super::policy_genome::{
-    RuleListCrossover, RuleListFactory, RuleListGenome, RuleListMutation,
-};
+use super::policy_genome::{RuleListCrossover, RuleListFactory, RuleListGenome, RuleListMutation};
 use super::search_observability::{
     attach_selected_visibility, selected_instrument_visibility, RecordingObserver, SearchArchive,
 };
@@ -106,7 +104,10 @@ pub fn methodology_hash() -> String {
         "snapshot": RESEARCH_SNAPSHOT_IDENTITY_HASH,
         "partition": CHRONOLOGICAL_PARTITION_HASH,
     });
-    format!("{:x}", Sha256::digest(serde_json::to_vec(&payload).unwrap()))
+    format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&payload).unwrap())
+    )
 }
 
 pub fn discovery_run_id() -> String {
@@ -334,9 +335,7 @@ pub fn seal_discovered_artifact(genome: &RuleListGenome) -> Result<PolicyArtifac
     if artifact.discovery_engine == CONTRACT_FIXTURE_ENGINE {
         return Err("discovered artifact must not use the contract fixture engine".into());
     }
-    artifact
-        .seal()
-        .map_err(|e| e.to_string())
+    artifact.seal().map_err(|e| e.to_string())
 }
 
 pub fn render_search_evidence(evidence: &SearchEvidence) -> String {

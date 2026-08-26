@@ -10,23 +10,34 @@ fn main() {
 
     // 1. Simulate a MetricReport
     let mut metrics = MetricReport::default();
-    metrics.metrics.insert("ma_20".to_string(), MetricValue::Float(142.0));
-    metrics.metrics.insert("ma_50".to_string(), MetricValue::Float(137.0));
-    metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(8.3));
+    metrics
+        .metrics
+        .insert("ma_20".to_string(), MetricValue::Float(142.0));
+    metrics
+        .metrics
+        .insert("ma_50".to_string(), MetricValue::Float(137.0));
+    metrics
+        .metrics
+        .insert("roc_20".to_string(), MetricValue::Float(8.3));
 
     let active_concepts = vec![Concept::Trend, Concept::Momentum];
-    
+
     // 2. Assessment Profile (Rich Synthesis)
     let assess_engine = AssessmentEngine;
     let profile = assess_engine.assess(&metrics, &active_concepts);
 
     println!("1. Assessment Profile (Immutable State):");
     for assessment in &profile.assessments {
-        println!("   - [{:?}] Direction: {:?}, Strength: {:?}, Maturity: {:?}", 
-                 assessment.concept, assessment.direction, assessment.strength, assessment.maturity);
-        println!("     Confidence: {:.0}%, Uncertainty: {:.0}% ({})", 
-                 assessment.confidence * 100.0, assessment.uncertainty * 100.0, 
-                 assessment.uncertainty_reason.clone().unwrap_or_default());
+        println!(
+            "   - [{:?}] Direction: {:?}, Strength: {:?}, Maturity: {:?}",
+            assessment.concept, assessment.direction, assessment.strength, assessment.maturity
+        );
+        println!(
+            "     Confidence: {:.0}%, Uncertainty: {:.0}% ({})",
+            assessment.confidence * 100.0,
+            assessment.uncertainty * 100.0,
+            assessment.uncertainty_reason.clone().unwrap_or_default()
+        );
     }
     println!();
 
@@ -49,10 +60,18 @@ fn main() {
     println!("   - Similarity Score: {:.2}", report.similarity_score);
     println!("   - Found {} historical cases.", report.cases.len());
     for case in &report.cases {
-        println!("     Case ID: {} | Outcome Return: {:.1}% | Hash: {}", 
-                 case.case_id, case.outcome_return * 100.0, case.assessment_profile_hash);
+        println!(
+            "     Case ID: {} | Outcome Return: {:.1}% | Hash: {}",
+            case.case_id,
+            case.outcome_return * 100.0,
+            case.assessment_profile_hash
+        );
     }
-    println!("   - Win Rate: {:.0}% | Median Return: {:.1}%", report.win_rate * 100.0, report.median_return * 100.0);
+    println!(
+        "   - Win Rate: {:.0}% | Median Return: {:.1}%",
+        report.win_rate * 100.0,
+        report.median_return * 100.0
+    );
     for note in &report.notes {
         println!("   - Note: {}", note);
     }
@@ -64,8 +83,15 @@ fn main() {
 
     println!("4. Competing Hypotheses:");
     for h in &hypotheses.hypotheses {
-        println!("   - Hypothesis: {} (Confidence: {:.0}%)", h.name, h.confidence * 100.0);
-        println!("     Supports: {}, Contradicts: {}", h.supporting_evidence_count, h.contradicting_evidence_count);
+        println!(
+            "   - Hypothesis: {} (Confidence: {:.0}%)",
+            h.name,
+            h.confidence * 100.0
+        );
+        println!(
+            "     Supports: {}, Contradicts: {}",
+            h.supporting_evidence_count, h.contradicting_evidence_count
+        );
     }
 
     println!("\n=== Phase 3 Execution Complete ===");

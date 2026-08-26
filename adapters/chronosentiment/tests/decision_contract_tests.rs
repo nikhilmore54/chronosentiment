@@ -6,7 +6,9 @@ use chronosentiment_adapter::decision_support::{
 use uuid::Uuid;
 
 fn as_of() -> chrono::DateTime<chrono::Utc> {
-    chrono::Utc.with_ymd_and_hms(2023, 7, 31, 15, 30, 0).unwrap()
+    chrono::Utc
+        .with_ymd_and_hms(2023, 7, 31, 15, 30, 0)
+        .unwrap()
 }
 
 fn draft(action: DecisionAction) -> DecisionDraft {

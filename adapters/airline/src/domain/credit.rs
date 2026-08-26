@@ -219,8 +219,7 @@ impl CreditPolicy for GeradCreditPolicy {
         let flight_hours = metrics.flight_time.num_minutes() as f64 / 60.0;
 
         // deadhead block time = total block − operated block.
-        let deadhead_minutes =
-            (metrics.block_time - metrics.flight_time).num_minutes();
+        let deadhead_minutes = (metrics.block_time - metrics.flight_time).num_minutes();
         let deadhead_hours = deadhead_minutes as f64 / 60.0;
 
         let deadhead_credit = deadhead_hours * self.deadhead_credit_factor;
@@ -233,7 +232,7 @@ impl CreditPolicy for GeradCreditPolicy {
             components: CreditComponents {
                 block_credit: flight_hours,
                 deadhead_credit,
-                layover_credit: 0.0,          // GERAD has no layover premium
+                layover_credit: 0.0, // GERAD has no layover premium
                 premium_credit: 0.0,
                 minimum_guarantee_applied: false,
             },
@@ -303,7 +302,8 @@ mod tests {
         let base = Utc.with_ymd_and_hms(2026, 7, 1, 8, 0, 0).unwrap();
         DutyMetrics {
             report_time: base - Duration::hours(1),
-            release_time: base + Duration::hours((flight_hours + deadhead_hours) as i64)
+            release_time: base
+                + Duration::hours((flight_hours + deadhead_hours) as i64)
                 + Duration::minutes(30),
             duty_duration: Duration::hours((flight_hours + deadhead_hours + 1) as i64)
                 + Duration::minutes(30),
@@ -439,12 +439,8 @@ mod tests {
     fn duty_with_real_legs_produces_nonzero_credit() {
         let policy = GeradCreditPolicy::default();
         let leg = make_leg("001", "YUL", "YYZ", 8, 10); // 2h block
-        let duty = Duty::new_with_offsets(
-            DutyId::new("D1"),
-            vec![leg],
-            BriefingOffsets::DGCA,
-        )
-        .unwrap();
+        let duty =
+            Duty::new_with_offsets(DutyId::new("D1"), vec![leg], BriefingOffsets::DGCA).unwrap();
         let ctx = make_context();
         let credit = policy.compute(&duty.metrics, &ctx);
 

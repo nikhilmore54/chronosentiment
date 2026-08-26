@@ -180,16 +180,10 @@ impl GenericExporter {
         let solution = ScheduleSolution {
             assignments: assignments.clone(),
             fitness: metrics.get("fitness").copied().unwrap_or(0.0),
-            hard_violations: metrics
-                .get("hard_violations")
-                .copied()
-                .unwrap_or(0.0) as usize,
+            hard_violations: metrics.get("hard_violations").copied().unwrap_or(0.0) as usize,
             fairness_penalty: metrics.get("fairness_penalty").copied().unwrap_or(0.0),
             fatigue_penalty: metrics.get("fatigue_penalty").copied().unwrap_or(0.0),
-            rest_violations: metrics
-                .get("rest_violations")
-                .copied()
-                .unwrap_or(0.0) as usize,
+            rest_violations: metrics.get("rest_violations").copied().unwrap_or(0.0) as usize,
             recommendations: None,
             telemetry: None,
         };
@@ -288,7 +282,8 @@ impl GenericExporter {
         lines.push(format!("shift_id{}worker_id", sep));
 
         // Sort by shift_id for deterministic output.
-        let mut sorted: Vec<(u64, u64)> = solution.assignments.iter().map(|(&k, &v)| (k, v)).collect();
+        let mut sorted: Vec<(u64, u64)> =
+            solution.assignments.iter().map(|(&k, &v)| (k, v)).collect();
         sorted.sort_by_key(|(shift_id, _)| *shift_id);
 
         for (shift_id, worker_id) in &sorted {
@@ -300,11 +295,27 @@ impl GenericExporter {
         lines.push(format!("# UltraCrew Export — Summary Metrics"));
         lines.push(format!("metric{}value", sep));
         lines.push(format!("fitness{}{:.6}", sep, solution.fitness));
-        lines.push(format!("hard_violations{}{}", sep, solution.hard_violations));
-        lines.push(format!("rest_violations{}{}", sep, solution.rest_violations));
-        lines.push(format!("fairness_penalty{}{:.6}", sep, solution.fairness_penalty));
-        lines.push(format!("fatigue_penalty{}{:.6}", sep, solution.fatigue_penalty));
-        lines.push(format!("assignment_count{}{}", sep, solution.assignments.len()));
+        lines.push(format!(
+            "hard_violations{}{}",
+            sep, solution.hard_violations
+        ));
+        lines.push(format!(
+            "rest_violations{}{}",
+            sep, solution.rest_violations
+        ));
+        lines.push(format!(
+            "fairness_penalty{}{:.6}",
+            sep, solution.fairness_penalty
+        ));
+        lines.push(format!(
+            "fatigue_penalty{}{:.6}",
+            sep, solution.fatigue_penalty
+        ));
+        lines.push(format!(
+            "assignment_count{}{}",
+            sep,
+            solution.assignments.len()
+        ));
 
         let content = lines.join("\n") + "\n";
 
@@ -439,7 +450,12 @@ mod tests {
         let ids: Vec<u64> = result
             .content
             .lines()
-            .filter(|l| !l.starts_with('#') && !l.is_empty() && !l.starts_with("shift_id") && !l.starts_with("metric"))
+            .filter(|l| {
+                !l.starts_with('#')
+                    && !l.is_empty()
+                    && !l.starts_with("shift_id")
+                    && !l.starts_with("metric")
+            })
             .filter_map(|l| l.split(',').next().and_then(|s| s.parse().ok()))
             .collect();
         let mut sorted = ids.clone();

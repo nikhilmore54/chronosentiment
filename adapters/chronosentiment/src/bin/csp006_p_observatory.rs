@@ -28,13 +28,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to overwrite selected_policy.json".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
     let recommendations: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_two.join("recommendations").join("recommendations.json"),
+        search_two
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
 
     let mut ledger = empty_ledger();
@@ -69,7 +72,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     fs::create_dir_all(&output)?;
-    fs::write(output.join("ledger.json"), serde_json::to_vec_pretty(&ledger)?)?;
+    fs::write(
+        output.join("ledger.json"),
+        serde_json::to_vec_pretty(&ledger)?,
+    )?;
     fs::write(
         output.join("observatory.html"),
         render_observatory_html(&ledger, chrono::Utc::now()),
@@ -93,7 +99,9 @@ fn parse_args() -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--output" => output = Some(PathBuf::from(args.next().ok_or("missing --output")?)),
             other => return Err(format!("unknown argument {other}").into()),

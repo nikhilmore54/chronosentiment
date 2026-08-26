@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use serde::Serialize;
 
 use super::search_observability::{
-    archive_satisfies_contract, SearchArchive, SerializedGenome, SelectedInstrumentVisibility,
+    archive_satisfies_contract, SearchArchive, SelectedInstrumentVisibility, SerializedGenome,
 };
 use super::DecisionAction;
 
@@ -186,13 +186,8 @@ fn classify(
         _ => MomentumQuestion::Indeterminate,
     };
 
-    let under = matches!(
-        momentum,
-        FamilyOccupancy::Absent | FamilyOccupancy::Trace
-    ) && matches!(
-        short,
-        FamilyOccupancy::Absent | FamilyOccupancy::Trace
-    );
+    let under = matches!(momentum, FamilyOccupancy::Absent | FamilyOccupancy::Trace)
+        && matches!(short, FamilyOccupancy::Absent | FamilyOccupancy::Trace);
     let explored = momentum == FamilyOccupancy::Recurrent
         && short == FamilyOccupancy::Recurrent
         && diversity == DiversityBand::High;
@@ -206,7 +201,8 @@ fn classify(
     } else if under {
         (
             VERDICT_UNDER_EXPLORED.to_string(),
-            "Momentum and SHORT were absent or only trace occupants of the evaluated population.".to_string(),
+            "Momentum and SHORT were absent or only trace occupants of the evaluated population."
+                .to_string(),
             momentum_question,
         )
     } else {
@@ -236,8 +232,8 @@ pub fn analyze_search_archive(
         .iter()
         .map(|g| g.unique_genome_count)
         .collect();
-    let mean_unique = unique_genome_count_by_generation.iter().sum::<usize>() as f64
-        / n_generations as f64;
+    let mean_unique =
+        unique_genome_count_by_generation.iter().sum::<usize>() as f64 / n_generations as f64;
     let min_unique = *unique_genome_count_by_generation.iter().min().unwrap();
     let max_unique = *unique_genome_count_by_generation.iter().max().unwrap();
     let diversity_band = if mean_unique >= DIVERSITY_HIGH_MEAN_UNIQUE {
@@ -458,7 +454,11 @@ pub fn render_ecology(report: &PopulationEcologyReport) -> String {
         for (d, s) in vis.development.iter().zip(vis.selection.iter()) {
             out.push_str(&format!(
                 "| {} | {:.6} | {} | {:.6} | {} |\n",
-                d.instrument, d.mean_signed_traded_return, d.n_traded, s.mean_signed_traded_return, s.n_traded
+                d.instrument,
+                d.mean_signed_traded_return,
+                d.n_traded,
+                s.mean_signed_traded_return,
+                s.n_traded
             ));
         }
     }

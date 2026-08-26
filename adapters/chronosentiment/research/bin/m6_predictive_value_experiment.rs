@@ -21,13 +21,10 @@ const MIN_TEST_N: usize = 20;
 const HORIZONS: [&str; 4] = ["5D", "10D", "20D", "60D"];
 const MOD31: u64 = 1 << 31;
 
-const B3_DUMP_SHA256: &str =
-    "af11d318b03fb171207f96348fcf210e1b9149b1ab6e699c06c363faec518788";
+const B3_DUMP_SHA256: &str = "af11d318b03fb171207f96348fcf210e1b9149b1ab6e699c06c363faec518788";
 const METH_V11: &str = "e129d7add66d7f4c12aab14811a3d552abf6b603f012eeb75c99c484e0065e66";
-const METH_SPLIT_V11: &str =
-    "6e9b3405a21b21f6c59cf99c05822c0d20007d335ef38a7bb5a21cf8f79d5691";
-const METH_MANIFEST_V11: &str =
-    "1604563a0a4516cbe983ef398ad36b6e1daacc8842b7a8daa28812e8ffee958e";
+const METH_SPLIT_V11: &str = "6e9b3405a21b21f6c59cf99c05822c0d20007d335ef38a7bb5a21cf8f79d5691";
+const METH_MANIFEST_V11: &str = "1604563a0a4516cbe983ef398ad36b6e1daacc8842b7a8daa28812e8ffee958e";
 
 struct Boundary {
     rank: usize,
@@ -369,11 +366,9 @@ fn reliability_table(obs: &[Obs]) -> Value {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let db_url = std::env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL is required")?;
-    let out_dir = PathBuf::from(
-        std::env::var("G_GATE_OUT_DIR").unwrap_or_else(|_| "G_GATE_OUT".to_string()),
-    );
+    let db_url = std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL is required")?;
+    let out_dir =
+        PathBuf::from(std::env::var("G_GATE_OUT_DIR").unwrap_or_else(|_| "G_GATE_OUT".to_string()));
     fs::create_dir_all(&out_dir)?;
     let bundle = out_dir.join("G_EXTENSION");
     fs::create_dir_all(&bundle)?;
@@ -383,7 +378,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .unwrap_or_else(|_| B3_DUMP_SHA256.to_string());
     let meth_manifest_sha =
         std::env::var("METH_MANIFEST_SHA256").unwrap_or_else(|_| METH_MANIFEST_V11.to_string());
-    let binary_sha = std::env::var("EXPERIMENT_BINARY_SHA256").unwrap_or_else(|_| "unspecified".to_string());
+    let binary_sha =
+        std::env::var("EXPERIMENT_BINARY_SHA256").unwrap_or_else(|_| "unspecified".to_string());
     let dataset_label = std::env::var("G_GATE_DATASET").unwrap_or_else(|_| {
         if dataset_sha == B3_DUMP_SHA256 {
             "B3".to_string()
@@ -505,7 +501,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut n_pos_all = 0usize;
         let mut n_all = 0usize;
         for s in &train {
-            let y = if *outcome_map.get(&(s.strategy_id, horizon.to_string())).unwrap() > 0.0 {
+            let y = if *outcome_map
+                .get(&(s.strategy_id, horizon.to_string()))
+                .unwrap()
+                > 0.0
+            {
                 1usize
             } else {
                 0
@@ -519,7 +519,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let mut test_obs: Vec<Obs> = Vec::new();
         for s in &test {
-            let y = if *outcome_map.get(&(s.strategy_id, horizon.to_string())).unwrap() > 0.0 {
+            let y = if *outcome_map
+                .get(&(s.strategy_id, horizon.to_string()))
+                .unwrap()
+                > 0.0
+            {
                 1.0
             } else {
                 0.0
@@ -553,7 +557,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             None
         };
         let brier = if min_n_ok && both_classes {
-            let sq: Vec<f64> = ps.iter().zip(ys.iter()).map(|(p, y)| (p - y).powi(2)).collect();
+            let sq: Vec<f64> = ps
+                .iter()
+                .zip(ys.iter())
+                .map(|(p, y)| (p - y).powi(2))
+                .collect();
             Some(mean(&sq))
         } else {
             None
@@ -592,14 +600,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             sa.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let mut sd = boot_delta.clone();
             sd.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let ci_a = (
-                percentile_sorted(&sa, 0.025),
-                percentile_sorted(&sa, 0.975),
-            );
-            let ci_d = (
-                percentile_sorted(&sd, 0.025),
-                percentile_sorted(&sd, 0.975),
-            );
+            let ci_a = (percentile_sorted(&sa, 0.025), percentile_sorted(&sa, 0.975));
+            let ci_d = (percentile_sorted(&sd, 0.025), percentile_sorted(&sd, 0.975));
             let n_le0 = boot_delta.iter().filter(|d| **d <= 0.0).count();
             let p = (1.0 + n_le0 as f64) / (B_BOOT as f64 + 1.0);
             (Some(ci_a), Some(ci_d), Some(p))
@@ -654,10 +656,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for (m, hp) in metrics.iter_mut().zip(holm.into_iter()) {
         m.holm_p = hp;
         let dpos = m.delta_auc.map(|d| d > 0.0).unwrap_or(false);
-        let cilb = m
-            .delta_auc_ci
-            .map(|c| c.0 > 0.0)
-            .unwrap_or(false);
+        let cilb = m.delta_auc_ci.map(|c| c.0 > 0.0).unwrap_or(false);
         let holm_sig = m.holm_p.map(|p| p < 0.05).unwrap_or(false);
         m.contribution = format!(
             "defined={} ΔAUC>0={} CI_lb>0={} holm_p<0.05={}",
@@ -703,7 +702,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     });
 
     let output_txt = render_output(&metrics, classification, leakage_pass, &dataset_label);
-    let results_md = render_report(&metrics, classification, leakage_pass, &reliability, &dataset_label);
+    let results_md = render_report(
+        &metrics,
+        classification,
+        leakage_pass,
+        &reliability,
+        &dataset_label,
+    );
     fs::write(bundle.join("output.txt"), &output_txt)?;
     fs::write(bundle.join("results.md"), &results_md)?;
     fs::write(bundle.join("leakage_audit.md"), &leakage_md)?;
@@ -876,10 +881,7 @@ fn verify_boundaries(ranked: &[RankedStrategy]) -> Result<(), String> {
             .find(|r| r.rn == b.rank as i64)
             .ok_or_else(|| format!("missing rank {}", b.rank))?;
         if s.fold != b.fold {
-            return Err(format!(
-                "rank {} fold {} != {}",
-                b.rank, s.fold, b.fold
-            ));
+            return Err(format!("rank {} fold {} != {}", b.rank, s.fold, b.fold));
         }
         if s.strategy_id.to_string() != b.strategy_id {
             return Err(format!(
@@ -971,10 +973,15 @@ fn leakage_audit(ranked: &[RankedStrategy], outcomes: &[OutcomeRow]) -> (bool, S
     ));
 
     let mut cluster_ok = true;
-    let fold_of: HashMap<Uuid, String> = ranked.iter().map(|s| (s.strategy_id, s.fold.clone())).collect();
+    let fold_of: HashMap<Uuid, String> = ranked
+        .iter()
+        .map(|s| (s.strategy_id, s.fold.clone()))
+        .collect();
     let mut per: HashMap<Uuid, HashSet<String>> = HashMap::new();
     for o in outcomes {
-        per.entry(o.strategy_id).or_default().insert(o.horizon.clone());
+        per.entry(o.strategy_id)
+            .or_default()
+            .insert(o.horizon.clone());
         if !fold_of.contains_key(&o.strategy_id) {
             cluster_ok = false;
         }
@@ -1001,7 +1008,8 @@ fn leakage_audit(ranked: &[RankedStrategy], outcomes: &[OutcomeRow]) -> (bool, S
         9,
         "No scaler/encoder/prevalence from validation or test",
         true,
-        "Prevalence and signature rates are training-fold only. No scaler or encoder is fitted.".into(),
+        "Prevalence and signature rates are training-fold only. No scaler or encoder is fitted."
+            .into(),
     ));
 
     let pass = checks.iter().all(|c| c.2);
@@ -1021,11 +1029,19 @@ fn leakage_audit(ranked: &[RankedStrategy], outcomes: &[OutcomeRow]) -> (bool, S
     (pass, md)
 }
 
-fn render_output(metrics: &[HorizonMetrics], classification: &str, leakage_pass: bool, dataset: &str) -> String {
+fn render_output(
+    metrics: &[HorizonMetrics],
+    classification: &str,
+    leakage_pass: bool,
+    dataset: &str,
+) -> String {
     let mut s = String::from("G-GATE predictive-value experiment (v1.1)\n");
     s.push_str(&format!("Dataset: {dataset}\n"));
     s.push_str(&format!("Seed: {SEED}\n"));
-    s.push_str(&format!("Leakage: {}\n", if leakage_pass { "PASS" } else { "FAIL" }));
+    s.push_str(&format!(
+        "Leakage: {}\n",
+        if leakage_pass { "PASS" } else { "FAIL" }
+    ));
     s.push_str(&format!("Classification: {classification}\n\n"));
     s.push_str("Horizon\tN\tPositive\tNegative\tAUC\tAUC_95CI\tDeltaAUC\tDeltaAUC_95CI\tBrier\tCalIntercept\tCalSlope\tp\tHolm_p\n");
     for m in metrics {
@@ -1106,7 +1122,10 @@ fn render_report(
     }
     s.push_str("\n## Reliability tables\n\n");
     for (h, table) in reliability {
-        s.push_str(&format!("### {h}\n\n```json\n{}\n```\n\n", serde_json::to_string_pretty(table).unwrap()));
+        s.push_str(&format!(
+            "### {h}\n\n```json\n{}\n```\n\n",
+            serde_json::to_string_pretty(table).unwrap()
+        ));
     }
     s.push_str("## Classification rule applied\n\n");
     s.push_str("`PREDICTIVE_VALUE_DETECTED` requires leakage PASS, all four horizons metrics-defined, every ΔAUC > 0, every ΔAUC CI lower bound > 0, and every Holm-adjusted p < 0.05.\n\n");

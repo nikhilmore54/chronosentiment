@@ -1,13 +1,12 @@
-pub mod traits;
-pub mod models;
 pub mod diagnostics;
+pub mod models;
 pub mod progress;
 pub mod state;
+pub mod traits;
 
-
-pub use traits::{MemoryModel, TopologyModel};
-pub use models::{CognitionGeometry, MemoryState, TopologyField, DeformationState};
 pub use diagnostics::{DiagnosticResult, Metric};
+pub use models::{CognitionGeometry, DeformationState, MemoryState, TopologyField};
+pub use traits::{MemoryModel, TopologyModel};
 
 #[cfg(test)]
 mod tests {

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 fn test_ontology_isolation_no_airline_concepts() {
     let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     d.push("src");
-    
+
     let mut files_to_check = Vec::new();
     fn visit_dirs(dir: &std::path::Path, files: &mut Vec<PathBuf>) {
         if dir.is_dir() {
@@ -50,7 +50,10 @@ fn test_ontology_isolation_no_airline_concepts() {
             // we can just forbid the exact case-sensitive word from appearing at all outside of comments.
             // A simple string search is enough for a boundary test.
             if content.contains(term) {
-                panic!("Ontology violation in file {:?}: Found forbidden airline concept '{}'", file, term);
+                panic!(
+                    "Ontology violation in file {:?}: Found forbidden airline concept '{}'",
+                    file, term
+                );
             }
         }
     }

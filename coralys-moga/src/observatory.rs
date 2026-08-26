@@ -1,4 +1,7 @@
-use crate::traits::{Genome, Evaluated, FitnessEvaluator, LocalSearchOperator, ObservedTransitionMetric, RegionIdentifier};
+use crate::traits::{
+    Evaluated, FitnessEvaluator, Genome, LocalSearchOperator, ObservedTransitionMetric,
+    RegionIdentifier,
+};
 
 #[derive(Debug, Clone)]
 pub struct ReachabilityObservation<R> {
@@ -67,31 +70,34 @@ where
     ) -> ReachabilityObservation<RI::RegionId> {
         // S1: The raw mutated child
         let s1 = mutated_child.clone();
-        
+
         // Measure S1
         let raw_magnitude = self.metric.magnitude(source, &s1);
         let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
         let s1_fitness = self.evaluator.evaluate(&s1, &empty_metrics).fitness();
-        
+
         // 1. Apply local search repair cascade to mutate it to S2
         (self.local_search)(mutated_child);
-        
+
         // Measure S2
-        let s2_fitness = self.evaluator.evaluate(mutated_child, &empty_metrics).fitness();
+        let s2_fitness = self
+            .evaluator
+            .evaluate(mutated_child, &empty_metrics)
+            .fitness();
         let residual_magnitude = self.metric.magnitude(source, mutated_child);
         let repair_delta = self.metric.magnitude(&s1, mutated_child);
-        
+
         // Identify S2 region
         let target_region = self.region_identifier.region_of(mutated_child);
         let s1_region = self.region_identifier.region_of(&s1);
         let returned_to_same_region = &target_region == source_region;
         let s1_returned_to_same_region = &s1_region == source_region;
         let discovered_new_region = !returned_to_same_region;
-        
+
         // Compute retention (based on S2)
         let retained_elite = s2_fitness >= self.elite_threshold;
         let fitness_delta = s2_fitness - source_fitness;
-        
+
         ReachabilityObservation {
             raw_magnitude,
             residual_magnitude,
@@ -168,7 +174,7 @@ pub struct ProcessingMetricsCollector {
     pub execution_counts: Mutex<HashMap<usize, usize>>,
     pub cumulative_times: Mutex<HashMap<usize, Duration>>,
     pub processed_count: Mutex<usize>,
-    
+
     // Repair metrics
     pub repair_attempts: Mutex<usize>,
     pub successful_repairs: Mutex<usize>,
@@ -206,7 +212,7 @@ impl<G: Genome> PipelineObserver<G> for ProcessingMetricsCollector {
     fn on_repair_event(&self, event: &RepairEvent) {
         let mut attempts = self.repair_attempts.lock().unwrap();
         *attempts += event.attempts;
-        
+
         if event.successful {
             let mut success = self.successful_repairs.lock().unwrap();
             *success += 1;
@@ -216,4 +222,3 @@ impl<G: Genome> PipelineObserver<G> for ProcessingMetricsCollector {
         }
     }
 }
-

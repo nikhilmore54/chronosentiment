@@ -6,9 +6,9 @@
 //       cycle completed → outcomes reviewed → patterns identified →
 //       insights added to Operational Knowledge Graph
 
+use crate::schedule_solution::ScheduleSolution;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::schedule_solution::ScheduleSolution;
 
 // ── Per-solution analysis ─────────────────────────────────────────────────────
 
@@ -17,10 +17,16 @@ use crate::schedule_solution::ScheduleSolution;
 pub fn analyze_solution(solution: &ScheduleSolution) -> HashMap<String, f64> {
     let mut metrics = HashMap::new();
     metrics.insert("fitness".to_string(), solution.fitness);
-    metrics.insert("hard_violations".to_string(), solution.hard_violations as f64);
+    metrics.insert(
+        "hard_violations".to_string(),
+        solution.hard_violations as f64,
+    );
     metrics.insert("fairness_penalty".to_string(), solution.fairness_penalty);
     metrics.insert("fatigue_penalty".to_string(), solution.fatigue_penalty);
-    metrics.insert("rest_violations".to_string(), solution.rest_violations as f64);
+    metrics.insert(
+        "rest_violations".to_string(),
+        solution.rest_violations as f64,
+    );
     metrics
 }
 
@@ -32,16 +38,25 @@ pub fn generate_insights(solution: &ScheduleSolution) -> Vec<String> {
     if solution.hard_violations == 0 {
         insights.push("No hard‑constraint violations detected.".to_string());
     } else {
-        insights.push(format!("Hard‑constraint violations: {}", solution.hard_violations));
+        insights.push(format!(
+            "Hard‑constraint violations: {}",
+            solution.hard_violations
+        ));
     }
     if solution.fairness_penalty > 0.0 {
-        insights.push(format!("Fairness penalty: {:.2}", solution.fairness_penalty));
+        insights.push(format!(
+            "Fairness penalty: {:.2}",
+            solution.fairness_penalty
+        ));
     }
     if solution.fatigue_penalty > 0.0 {
         insights.push(format!("Fatigue penalty: {:.2}", solution.fatigue_penalty));
     }
     if solution.rest_violations > 0 {
-        insights.push(format!("Rest period violations: {}", solution.rest_violations));
+        insights.push(format!(
+            "Rest period violations: {}",
+            solution.rest_violations
+        ));
     }
     insights
 }
@@ -207,7 +222,11 @@ impl OperationalLearningLoop {
         let n = self.outcomes.len() as f64;
 
         // Pattern 1: Recurring hard constraint violations.
-        let violation_cycles = self.outcomes.iter().filter(|o| o.solution.hard_violations > 0).count();
+        let violation_cycles = self
+            .outcomes
+            .iter()
+            .filter(|o| o.solution.hard_violations > 0)
+            .count();
         let violation_rate = violation_cycles as f64 / n;
         if violation_rate >= 0.3 {
             self.upsert_pattern(
@@ -223,7 +242,9 @@ impl OperationalLearningLoop {
         }
 
         // Pattern 2: Recurring fairness imbalance.
-        let fairness_cycles = self.outcomes.iter()
+        let fairness_cycles = self
+            .outcomes
+            .iter()
             .filter(|o| o.solution.fairness_penalty > 10.0)
             .count();
         let fairness_rate = fairness_cycles as f64 / n;
@@ -241,7 +262,9 @@ impl OperationalLearningLoop {
         }
 
         // Pattern 3: Recurring fatigue accumulation.
-        let fatigue_cycles = self.outcomes.iter()
+        let fatigue_cycles = self
+            .outcomes
+            .iter()
             .filter(|o| o.solution.fatigue_penalty > 5.0)
             .count();
         let fatigue_rate = fatigue_cycles as f64 / n;
@@ -259,7 +282,9 @@ impl OperationalLearningLoop {
         }
 
         // Pattern 4: Recurring disruptions.
-        let disruption_cycles = self.outcomes.iter()
+        let disruption_cycles = self
+            .outcomes
+            .iter()
             .filter(|o| o.disruption_count > 0)
             .count();
         let disruption_rate = disruption_cycles as f64 / n;
@@ -277,7 +302,9 @@ impl OperationalLearningLoop {
         }
 
         // Pattern 5: High performance (positive pattern).
-        let high_perf_cycles = self.outcomes.iter()
+        let high_perf_cycles = self
+            .outcomes
+            .iter()
             .filter(|o| o.solution.hard_violations == 0 && o.solution.fitness > 5000.0)
             .count();
         let high_perf_rate = high_perf_cycles as f64 / n;
@@ -330,7 +357,10 @@ impl OperationalLearningLoop {
         recommendation: impl Into<String>,
         timestamp: u64,
     ) -> Option<String> {
-        let pattern = self.patterns.iter().find(|p| p.pattern_id == source_pattern_id)?;
+        let pattern = self
+            .patterns
+            .iter()
+            .find(|p| p.pattern_id == source_pattern_id)?;
         if pattern.maturity < PatternMaturity::Repeated {
             return None; // not mature enough
         }
@@ -382,12 +412,20 @@ impl OperationalLearningLoop {
     pub fn generate_report(&self, timestamp: u64) -> CycleReviewReport {
         let n = self.outcomes.len();
         let mean_fitness = if n > 0 {
-            self.outcomes.iter().map(|o| o.solution.fitness).sum::<f64>() / n as f64
+            self.outcomes
+                .iter()
+                .map(|o| o.solution.fitness)
+                .sum::<f64>()
+                / n as f64
         } else {
             0.0
         };
         let mean_hard_violations = if n > 0 {
-            self.outcomes.iter().map(|o| o.solution.hard_violations as f64).sum::<f64>() / n as f64
+            self.outcomes
+                .iter()
+                .map(|o| o.solution.hard_violations as f64)
+                .sum::<f64>()
+                / n as f64
         } else {
             0.0
         };
@@ -403,7 +441,9 @@ impl OperationalLearningLoop {
             0.0
         };
 
-        let validated_patterns = self.patterns.iter()
+        let validated_patterns = self
+            .patterns
+            .iter()
             .filter(|p| p.maturity == PatternMaturity::Validated)
             .count();
 
@@ -417,7 +457,10 @@ impl OperationalLearningLoop {
         ));
         summary.push(format!("Patterns identified: {}", self.patterns.len()));
         summary.push(format!("Patterns validated: {}", validated_patterns));
-        summary.push(format!("Insights added to Knowledge Graph: {}", self.insights.len()));
+        summary.push(format!(
+            "Insights added to Knowledge Graph: {}",
+            self.insights.len()
+        ));
 
         for pattern in &self.patterns {
             if pattern.maturity >= PatternMaturity::Repeated {
@@ -446,7 +489,10 @@ impl OperationalLearningLoop {
     }
 
     pub fn validated_patterns(&self) -> Vec<&WorkforcePattern> {
-        self.patterns.iter().filter(|p| p.maturity == PatternMaturity::Validated).collect()
+        self.patterns
+            .iter()
+            .filter(|p| p.maturity == PatternMaturity::Validated)
+            .collect()
     }
 
     pub fn insights(&self) -> &[OperationalInsight] {
@@ -467,7 +513,12 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    fn make_solution(fitness: f64, hard_violations: usize, fairness: f64, fatigue: f64) -> ScheduleSolution {
+    fn make_solution(
+        fitness: f64,
+        hard_violations: usize,
+        fairness: f64,
+        fatigue: f64,
+    ) -> ScheduleSolution {
         ScheduleSolution {
             assignments: HashMap::new(),
             fitness,
@@ -480,7 +531,12 @@ mod tests {
         }
     }
 
-    fn make_outcome(cycle_id: &str, solution: ScheduleSolution, disruptions: usize, resolved: usize) -> SchedulingCycleOutcome {
+    fn make_outcome(
+        cycle_id: &str,
+        solution: ScheduleSolution,
+        disruptions: usize,
+        resolved: usize,
+    ) -> SchedulingCycleOutcome {
         SchedulingCycleOutcome::new(cycle_id, "ws-001", solution, disruptions, resolved, 1000)
     }
 
@@ -509,7 +565,10 @@ mod tests {
             loop_.record_cycle(make_outcome(&format!("c-{}", i), sol, 0, 0));
         }
         loop_.identify_patterns();
-        assert!(loop_.patterns.iter().any(|p| p.pattern_type == PatternType::ConstraintViolation));
+        assert!(loop_
+            .patterns
+            .iter()
+            .any(|p| p.pattern_type == PatternType::ConstraintViolation));
     }
 
     #[test]

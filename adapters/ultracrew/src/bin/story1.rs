@@ -46,7 +46,12 @@ fn run_optimizer(_data: &[InputRecord]) -> Vec<Assignment> {
 fn generate_explanation(assignments: &[Assignment]) -> Vec<String> {
     assignments
         .iter()
-        .map(|a| format!("Nurse {} assigned to {} on day {}", a.nurse_id, a.shift, a.day))
+        .map(|a| {
+            format!(
+                "Nurse {} assigned to {} on day {}",
+                a.nurse_id, a.shift, a.day
+            )
+        })
         .collect()
 }
 

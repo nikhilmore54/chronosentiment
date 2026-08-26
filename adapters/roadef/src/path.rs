@@ -76,7 +76,7 @@ mod tests {
     fn test_uninitialized_dist() {
         let uninit = SrPathBit::new_uninitialized();
         let explicit = SrPathBit::new_explicit(1, 4, &[2, 3]); // path: [1, 2, 3, 4], segments = 4
-        
+
         assert_eq!(uninit.dist(&explicit), 4);
         assert_eq!(explicit.dist(&uninit), 4);
     }
@@ -109,7 +109,7 @@ mod tests {
         // Case B: [1, 5, 5, 9] vs [1, 5, 9]
         let p_dup = SrPathBit::new_explicit(1, 9, &[5, 5]); // transitions: (1,5), (5,5), (5,9)
         let p_no_dup = SrPathBit::new_explicit(1, 9, &[5]); // transitions: (1,5), (5,9)
-        
+
         // Distance should be 1 (the (5,5) transition)
         assert_eq!(p_dup.dist(&p_no_dup), 1);
     }
@@ -119,7 +119,7 @@ mod tests {
         // Case C: Missing demand (uninitialized) vs Empty JSON array `[]`
         let p_missing = SrPathBit::new_uninitialized();
         let p_empty_json = SrPathBit::new_explicit(1, 9, &[]); // path: [1, 9], segments: 2
-        
+
         // If one is uninitialized, distance is other.segment_num()
         // segment_num() for p_empty_json is 2 (source + target)
         assert_eq!(p_missing.dist(&p_empty_json), 2);

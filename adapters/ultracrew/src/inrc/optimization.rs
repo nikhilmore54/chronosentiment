@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use coralys_moga::traits::{Genome, GenomeFactory, Evaluated, MutationOperator, CrossoverOperator};
+use coralys_moga::traits::{CrossoverOperator, Evaluated, Genome, GenomeFactory, MutationOperator};
 use rand::Rng;
+use std::sync::Arc;
 
-use super::models::{InrcScenario, InrcWeekData, InrcHistory};
+use super::models::{InrcHistory, InrcScenario, InrcWeekData};
 use crate::ecology::WorkforceEcology;
 
 pub struct InrcContext {
@@ -11,18 +11,23 @@ pub struct InrcContext {
     pub history: Arc<InrcHistory>,
     pub ecology: WorkforceEcology,
     pub num_nurses: usize,
-    pub num_days: usize, // usually 7 for a week
+    pub num_days: usize,          // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
     pub weights: super::models::ObjectiveWeights,
 }
 
 impl InrcContext {
-    pub fn new(scenario: InrcScenario, week_data: InrcWeekData, history: InrcHistory, ecology: WorkforceEcology) -> Self {
+    pub fn new(
+        scenario: InrcScenario,
+        week_data: InrcWeekData,
+        history: InrcHistory,
+        ecology: WorkforceEcology,
+    ) -> Self {
         let num_nurses = scenario.nurses.len();
         let num_days = 7;
         let shift_types: Vec<String> = scenario.shift_types.iter().map(|s| s.id.clone()).collect();
         let weights = super::models::ObjectiveWeights::default();
-        
+
         Self {
             scenario: Arc::new(scenario),
             week_data: Arc::new(week_data),
@@ -90,10 +95,10 @@ impl Evaluated for InrcEvaluation {
 
 impl InrcEvaluation {
     pub fn is_feasible(&self) -> bool {
-        self.hc_coverage == 0 &&
-        self.hc_skills == 0 &&
-        self.hc_one_shift_per_day == 0 &&
-        self.hc_forbidden_successions == 0
+        self.hc_coverage == 0
+            && self.hc_skills == 0
+            && self.hc_one_shift_per_day == 0
+            && self.hc_forbidden_successions == 0
     }
 }
 
@@ -108,14 +113,14 @@ impl GenomeFactory<InrcGenome> for InrcOptimizer {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
         let size = self.context.num_nurses * self.context.num_days * self.context.shift_types.len();
         let mut bits = vec![false; size];
-        
+
         // Initialize somewhat sparsely, around the expected density (150-200 shifts / 840 total)
         for i in 0..size {
             if rng.gen_bool(0.22) {
                 bits[i] = true;
             }
         }
-        
+
         InrcGenome { bits }
     }
 }
@@ -132,10 +137,15 @@ impl MutationOperator<InrcGenome> for InrcOptimizer {
 }
 
 impl CrossoverOperator<InrcGenome> for InrcOptimizer {
-    fn crossover(&self, parent_a: &InrcGenome, parent_b: &InrcGenome, rng: &mut StdRng) -> (InrcGenome, InrcGenome) {
+    fn crossover(
+        &self,
+        parent_a: &InrcGenome,
+        parent_b: &InrcGenome,
+        rng: &mut StdRng,
+    ) -> (InrcGenome, InrcGenome) {
         let mut child_a_bits = Vec::with_capacity(parent_a.bits.len());
         let mut child_b_bits = Vec::with_capacity(parent_a.bits.len());
-        
+
         for i in 0..parent_a.bits.len() {
             if rng.gen_bool(0.5) {
                 child_a_bits.push(parent_a.bits[i]);
@@ -145,6 +155,9 @@ impl CrossoverOperator<InrcGenome> for InrcOptimizer {
                 child_b_bits.push(parent_a.bits[i]);
             }
         }
-        (InrcGenome { bits: child_a_bits }, InrcGenome { bits: child_b_bits })
+        (
+            InrcGenome { bits: child_a_bits },
+            InrcGenome { bits: child_b_bits },
+        )
     }
 }

@@ -31,7 +31,9 @@ pub struct ParetoArchive<G: Genome> {
 
 impl<G: Genome> Default for ParetoArchive<G> {
     fn default() -> Self {
-        Self { solutions: Vec::new() }
+        Self {
+            solutions: Vec::new(),
+        }
     }
 }
 

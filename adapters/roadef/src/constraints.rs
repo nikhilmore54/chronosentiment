@@ -1,20 +1,36 @@
-use coralys_core::operators::ConstraintModel;
-use crate::moga_impl::RoadefGenome;
-use crate::evaluator::RoadefEvaluator;
-use crate::path::SrPathBit;
-use std::sync::Arc;
-use std::collections::{HashMap, HashSet};
 use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+use crate::evaluator::RoadefEvaluator;
+use crate::moga_impl::RoadefGenome;
+use crate::path::SrPathBit;
+use coralys_core::operators::ConstraintModel;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub enum RoadefViolation {
-    SegmentLimit { demand_id: usize, time_slot: usize, waypoints: usize, max_segments: usize },
-    Budget { time_slot: usize, cost: usize, limit: usize },
-    Connectivity { demand_id: usize, time_slot: usize },
-    Capacity { arc_id: u64, time_slot: usize, flow: f64, capacity: f64, sat: f64 },
+    SegmentLimit {
+        demand_id: usize,
+        time_slot: usize,
+        waypoints: usize,
+        max_segments: usize,
+    },
+    Budget {
+        time_slot: usize,
+        cost: usize,
+        limit: usize,
+    },
+    Connectivity {
+        demand_id: usize,
+        time_slot: usize,
+    },
+    Capacity {
+        arc_id: u64,
+        time_slot: usize,
+        flow: f64,
+        capacity: f64,
+        sat: f64,
+    },
 }
-
-
 
 pub struct RoadefConstraintModel {
     pub evaluator: Arc<RoadefEvaluator>,
@@ -44,7 +60,7 @@ impl ConstraintModel<RoadefGenome> for RoadefConstraintModel {
 
         let mut prev_paths: HashMap<u64, SrPathBit> = HashMap::new();
         let tm = &self.evaluator.tm;
-        
+
         for ts in 0..tm.num_time_slots {
             // Stage 2: Budget
             let mut budget_cost = 0;
@@ -63,9 +79,18 @@ impl ConstraintModel<RoadefGenome> for RoadefConstraintModel {
                 curr_paths.insert(d_id as u64, bitpath);
             }
             if ts > 0 {
-                let budget_val = scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                let budget_val = scenario
+                    .budget
+                    .iter()
+                    .find(|b| b.t == ts)
+                    .map(|b| b.value)
+                    .unwrap_or(0);
                 if budget_cost > budget_val {
-                    violations.push(RoadefViolation::Budget { time_slot: ts, cost: budget_cost, limit: budget_val });
+                    violations.push(RoadefViolation::Budget {
+                        time_slot: ts,
+                        cost: budget_cost,
+                        limit: budget_val,
+                    });
                 }
             }
             prev_paths = curr_paths;
@@ -85,25 +110,40 @@ impl ConstraintModel<RoadefGenome> for RoadefConstraintModel {
 
             for (d_id, demand) in tm.demands.iter().enumerate() {
                 let flow = demand.v[ts];
-                if flow <= 0.0 { continue; }
+                if flow <= 0.0 {
+                    continue;
+                }
                 let mut waypoints: &[u64] = &[];
                 if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
                     waypoints = &srpath.w;
                 }
-                
+
                 let ok = expand_sr_path_cached(
-                    &self.evaluator.graph, demand.s, demand.t, waypoints,
-                    &disabled_arcs, flow, &mut arc_flows, ts,
+                    &self.evaluator.graph,
+                    demand.s,
+                    demand.t,
+                    waypoints,
+                    &disabled_arcs,
+                    flow,
+                    &mut arc_flows,
+                    ts,
                 );
-                
+
                 if !ok {
-                    violations.push(RoadefViolation::Connectivity { demand_id: d_id, time_slot: ts });
+                    violations.push(RoadefViolation::Connectivity {
+                        demand_id: d_id,
+                        time_slot: ts,
+                    });
                 }
             }
 
             for arc in &self.evaluator.graph.arcs {
                 let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
-                let sat = if arc.capacity > 0.0 { flow / arc.capacity } else { f64::INFINITY };
+                let sat = if arc.capacity > 0.0 {
+                    flow / arc.capacity
+                } else {
+                    f64::INFINITY
+                };
                 if sat >= 1.0 - 1e-6 {
                     violations.push(RoadefViolation::Capacity {
                         arc_id: arc.id,
@@ -169,7 +209,12 @@ impl RoadefConstraintModel {
                 curr_paths.insert(d_id as u64, bitpath);
             }
             if ts > 0 {
-                let budget_val = scenario.budget.iter().find(|b| b.t == ts).map(|b| b.value).unwrap_or(0);
+                let budget_val = scenario
+                    .budget
+                    .iter()
+                    .find(|b| b.t == ts)
+                    .map(|b| b.value)
+                    .unwrap_or(0);
                 if budget_cost > budget_val {
                     return false;
                 }
@@ -195,14 +240,22 @@ impl RoadefConstraintModel {
 
             for (d_id, demand) in tm.demands.iter().enumerate() {
                 let flow = demand.v[ts];
-                if flow <= 0.0 { continue; }
+                if flow <= 0.0 {
+                    continue;
+                }
                 let mut waypoints: &[u64] = &[];
                 if let Some(srpath) = solution.srpaths.iter().find(|p| p.d == d_id && p.t == ts) {
                     waypoints = &srpath.w;
                 }
                 let ok = expand_sr_path_cached(
-                    &self.evaluator.graph, demand.s, demand.t, waypoints,
-                    &disabled_arcs, flow, &mut arc_flows, ts,
+                    &self.evaluator.graph,
+                    demand.s,
+                    demand.t,
+                    waypoints,
+                    &disabled_arcs,
+                    flow,
+                    &mut arc_flows,
+                    ts,
                 );
                 if !ok {
                     return false; // Connectivity violation
@@ -211,7 +264,11 @@ impl RoadefConstraintModel {
 
             for arc in &self.evaluator.graph.arcs {
                 let flow = *arc_flows.get(&arc.id).unwrap_or(&0.0);
-                let sat = if arc.capacity > 0.0 { flow / arc.capacity } else { f64::INFINITY };
+                let sat = if arc.capacity > 0.0 {
+                    flow / arc.capacity
+                } else {
+                    f64::INFINITY
+                };
                 if sat >= 1.0 - 1e-6 {
                     return false; // Capacity violation
                 }

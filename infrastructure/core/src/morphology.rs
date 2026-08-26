@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
 use coralys_ecology::models::TopologyField;
 use coralys_ecology::models::{CognitionGeometry, MemoryState};
-use coralys_ecology::traits::{TopologyModel, MemoryModel};
+use coralys_ecology::traits::{MemoryModel, TopologyModel};
+use serde::{Deserialize, Serialize};
 
 /// The canonical replay observability artifact.
 /// This strictly captures raw, mechanical deformation, avoiding any explanatory interpretations.
@@ -34,32 +34,32 @@ pub fn generate_occupancy_traces(
 ) -> Vec<OccupancyTrace> {
     let mut baseline = MemoryState::new(geometry);
     let mut fragmented = MemoryState::new(geometry);
-    
+
     let total_ticks = prices.len() as u64;
     let mut traces = Vec::with_capacity(prices.len());
-    
+
     for (i, &price) in prices.iter().enumerate() {
         let tick_index = i as u64;
-        
+
         // 1. Topology Deformation
         let deformation = topology.transform((tick_index, total_ticks));
-        
+
         // 2. State Ingestion
         baseline.observe(price); // Perfect continuity
-        
+
         // Deterministic pseudo-random acceptance evaluation for fragmented observation
         let hash_int = tick_index.wrapping_mul(1103515245).wrapping_add(12345);
         let normalized = (hash_int % 1000) as f64 / 1000.0;
         let is_accepted = normalized <= deformation.acceptance_ratio;
-        
+
         if is_accepted {
             fragmented.observe(price);
         }
-        
+
         // 3. Morphological Evaluation
         let overlap = fragmented.overlap_ratio(&baseline);
         let occupancy = 1.0 - overlap;
-        
+
         // 4. Trace Emission
         traces.push(OccupancyTrace {
             tick_index,
@@ -70,6 +70,6 @@ pub fn generate_occupancy_traces(
             strictness_ratio: deformation.strict_ratio,
         });
     }
-    
+
     traces
 }

@@ -52,7 +52,11 @@ impl DedupeIndex {
         Ok(self.seen.len())
     }
 
-    pub fn rebuild_from_archive(&mut self, archive_dir: &Path, cohort: Option<&HashSet<String>>) -> Result<usize> {
+    pub fn rebuild_from_archive(
+        &mut self,
+        archive_dir: &Path,
+        cohort: Option<&HashSet<String>>,
+    ) -> Result<usize> {
         let raw = archive_dir.join("raw");
         if !raw.is_dir() {
             return Ok(0);

@@ -76,7 +76,9 @@ impl GeradMapper {
             rotations,
             crew_members.into_values().collect(),
         )
-        .map_err(|e| GeradError::RosterConstruction { detail: e.to_string() })?;
+        .map_err(|e| GeradError::RosterConstruction {
+            detail: e.to_string(),
+        })?;
 
         Ok(roster)
     }
@@ -91,8 +93,18 @@ impl GeradMapper {
 
         for r in &raw.legs {
             let id = FlightLegId::new(&r.leg_id);
-            let dep = parse_timestamp("flight_leg", &r.leg_id, "scheduled_departure", &r.scheduled_departure)?;
-            let arr = parse_timestamp("flight_leg", &r.leg_id, "scheduled_arrival", &r.scheduled_arrival)?;
+            let dep = parse_timestamp(
+                "flight_leg",
+                &r.leg_id,
+                "scheduled_departure",
+                &r.scheduled_departure,
+            )?;
+            let arr = parse_timestamp(
+                "flight_leg",
+                &r.leg_id,
+                "scheduled_arrival",
+                &r.scheduled_arrival,
+            )?;
 
             let leg = FlightLeg::new(
                 id.clone(),
@@ -112,10 +124,7 @@ impl GeradMapper {
 
     // ── Step 2: crew members ──────────────────────────────────────────────────
 
-    fn map_crew(
-        &self,
-        raw: &RawGeradDataset,
-    ) -> Result<HashMap<CrewId, CrewMember>, GeradError> {
+    fn map_crew(&self, raw: &RawGeradDataset) -> Result<HashMap<CrewId, CrewMember>, GeradError> {
         let mut map = HashMap::with_capacity(raw.crew.len());
 
         for r in &raw.crew {
@@ -159,11 +168,12 @@ impl GeradMapper {
             let ordered_legs: Vec<FlightLeg> = seq_legs.into_iter().map(|(_, l)| l).collect();
 
             let duty_id = DutyId::new(&duty_id_str);
-            let duty = Duty::new(duty_id.clone(), ordered_legs)
-                .map_err(|e| GeradError::DutyConstruction {
+            let duty = Duty::new(duty_id.clone(), ordered_legs).map_err(|e| {
+                GeradError::DutyConstruction {
                     duty_id: duty_id_str.clone(),
                     detail: e.to_string(),
-                })?;
+                }
+            })?;
 
             map.insert(duty_id, duty);
         }
@@ -185,12 +195,16 @@ impl GeradMapper {
 
         for r in &raw.pairing_duties {
             let duty_id = DutyId::new(&r.duty_id);
-            let duty = duties.get(&duty_id).ok_or_else(|| GeradError::UnknownDutyRef {
-                pairing_id: r.pairing_id.clone(),
-                duty_id: r.duty_id.clone(),
-            })?;
+            let duty = duties
+                .get(&duty_id)
+                .ok_or_else(|| GeradError::UnknownDutyRef {
+                    pairing_id: r.pairing_id.clone(),
+                    duty_id: r.duty_id.clone(),
+                })?;
 
-            let entry = groups.entry(r.pairing_id.clone()).or_insert_with(|| (r.base.clone(), Vec::new()));
+            let entry = groups
+                .entry(r.pairing_id.clone())
+                .or_insert_with(|| (r.base.clone(), Vec::new()));
             entry.1.push((r.sequence_number, duty.clone()));
         }
 
@@ -202,11 +216,12 @@ impl GeradMapper {
             let pairing_id = PairingId::new(&pairing_id_str);
             let base = AirportCode::new(&base_str);
 
-            let pairing = Pairing::new(pairing_id.clone(), base, ordered_duties)
-                .map_err(|e| GeradError::PairingConstruction {
+            let pairing = Pairing::new(pairing_id.clone(), base, ordered_duties).map_err(|e| {
+                GeradError::PairingConstruction {
                     pairing_id: pairing_id_str.clone(),
                     detail: e.to_string(),
-                })?;
+                }
+            })?;
 
             map.insert(pairing_id, pairing);
         }
@@ -228,15 +243,23 @@ impl GeradMapper {
         for r in &raw.assignments {
             let crew_id = CrewId::new(&r.crew_id);
             if !crew_members.contains_key(&crew_id) {
-                return Err(GeradError::UnknownCrewRef { crew_id: r.crew_id.clone() });
+                return Err(GeradError::UnknownCrewRef {
+                    crew_id: r.crew_id.clone(),
+                });
             }
 
             let pairing_id = PairingId::new(&r.pairing_id);
-            let pairing = pairings.get(&pairing_id).ok_or_else(|| GeradError::UnknownPairingRef {
-                pairing_id: r.pairing_id.clone(),
-            })?;
+            let pairing =
+                pairings
+                    .get(&pairing_id)
+                    .ok_or_else(|| GeradError::UnknownPairingRef {
+                        pairing_id: r.pairing_id.clone(),
+                    })?;
 
-            groups.entry(r.crew_id.clone()).or_default().push(pairing.clone());
+            groups
+                .entry(r.crew_id.clone())
+                .or_default()
+                .push(pairing.clone());
         }
 
         let mut rotations = Vec::with_capacity(groups.len());
@@ -248,12 +271,11 @@ impl GeradMapper {
             let rotation_id = RotationId::new(format!("ROT-{crew_id_str}"));
 
             // Rotation::new validates that pairings are non-overlapping.
-            let rotation = coralys_airline::domain::Rotation::new(
-                rotation_id,
-                crew_id,
-                crew_pairings,
-            )
-            .map_err(|e| GeradError::RosterConstruction { detail: e.to_string() })?;
+            let rotation =
+                coralys_airline::domain::Rotation::new(rotation_id, crew_id, crew_pairings)
+                    .map_err(|e| GeradError::RosterConstruction {
+                        detail: e.to_string(),
+                    })?;
 
             rotations.push(rotation);
         }
@@ -273,16 +295,8 @@ impl GeradMapper {
             ));
         }
 
-        let earliest = legs
-            .values()
-            .map(|l| l.scheduled_departure)
-            .min()
-            .unwrap();
-        let latest = legs
-            .values()
-            .map(|l| l.scheduled_arrival)
-            .max()
-            .unwrap();
+        let earliest = legs.values().map(|l| l.scheduled_departure).min().unwrap();
+        let latest = legs.values().map(|l| l.scheduled_arrival).max().unwrap();
 
         // Extend the period by one day on each side so that all legs and
         // rotations fall comfortably within the declared window.
@@ -382,8 +396,16 @@ mod tests {
                 base: "ORD".into(),
             }],
             duty_legs: vec![
-                RawDutyLeg { duty_id: "D0001".into(), leg_id: "FL0001".into(), sequence_number: 1 },
-                RawDutyLeg { duty_id: "D0001".into(), leg_id: "FL0002".into(), sequence_number: 2 },
+                RawDutyLeg {
+                    duty_id: "D0001".into(),
+                    leg_id: "FL0001".into(),
+                    sequence_number: 1,
+                },
+                RawDutyLeg {
+                    duty_id: "D0001".into(),
+                    leg_id: "FL0002".into(),
+                    sequence_number: 2,
+                },
             ],
             pairing_duties: vec![RawPairingDuty {
                 pairing_id: "P0001".into(),
@@ -412,10 +434,19 @@ mod tests {
     #[test]
     fn parse_role_variants() {
         assert!(matches!(parse_role("C1", "captain"), Ok(CrewRole::Captain)));
-        assert!(matches!(parse_role("C1", "first_officer"), Ok(CrewRole::FirstOfficer)));
+        assert!(matches!(
+            parse_role("C1", "first_officer"),
+            Ok(CrewRole::FirstOfficer)
+        ));
         assert!(matches!(parse_role("C1", "fo"), Ok(CrewRole::FirstOfficer)));
-        assert!(matches!(parse_role("C1", "cabin_crew"), Ok(CrewRole::CabinCrew)));
-        assert!(matches!(parse_role("C1", "relief_pilot"), Ok(CrewRole::ReliefPilot)));
+        assert!(matches!(
+            parse_role("C1", "cabin_crew"),
+            Ok(CrewRole::CabinCrew)
+        ));
+        assert!(matches!(
+            parse_role("C1", "relief_pilot"),
+            Ok(CrewRole::ReliefPilot)
+        ));
         assert!(parse_role("C1", "unknown_role").is_err());
     }
 

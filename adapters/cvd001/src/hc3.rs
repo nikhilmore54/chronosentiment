@@ -1,4 +1,4 @@
-use crate::types::{CrewMember, ConstraintViolation};
+use crate::types::{ConstraintViolation, CrewMember};
 
 /// Check HC3 for a single crew member.
 ///

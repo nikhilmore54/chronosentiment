@@ -88,7 +88,8 @@ fn certified_decisions() -> Vec<CertifiedDecision> {
             risk_pct: 0.031,
             risk_boundary: 1763.58,
             maximum_hold_sessions: 20,
-            decision_rationale: "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
+            decision_rationale:
+                "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
             decision_id: "c3-002-HDFCBANK-2026-08-16".into(),
             execution_intent_id: "coralys-v0-HDFCBANK-2026-08-16".into(),
         },
@@ -101,7 +102,8 @@ fn certified_decisions() -> Vec<CertifiedDecision> {
             risk_pct: 0.031,
             risk_boundary: 1569.78,
             maximum_hold_sessions: 20,
-            decision_rationale: "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
+            decision_rationale:
+                "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
             decision_id: "c3-002-INFY-2026-08-16".into(),
             execution_intent_id: "coralys-v0-INFY-2026-08-16".into(),
         },
@@ -127,7 +129,8 @@ fn certified_decisions() -> Vec<CertifiedDecision> {
             risk_pct: 0.031,
             risk_boundary: 3372.12,
             maximum_hold_sessions: 20,
-            decision_rationale: "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
+            decision_rationale:
+                "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
             decision_id: "c3-002-TCS-2026-08-16".into(),
             execution_intent_id: "coralys-v0-TCS-2026-08-16".into(),
         },
@@ -153,7 +156,8 @@ fn certified_decisions() -> Vec<CertifiedDecision> {
             risk_pct: 0.031,
             risk_boundary: 1201.56,
             maximum_hold_sessions: 20,
-            decision_rationale: "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
+            decision_rationale:
+                "C3-002 LONG — coralys-exec-v0 (ATR/TMV, 20 sessions). Artifact: 3876ffa2.".into(),
             decision_id: "c3-002-ICICIBANK-2026-08-16".into(),
             execution_intent_id: "coralys-v0-ICICIBANK-2026-08-16".into(),
         },

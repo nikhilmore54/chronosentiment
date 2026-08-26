@@ -35,12 +35,14 @@ fn ecology_identity_gates_search_two_and_covers_all_rows() {
     }
     let recommendations: Vec<RecommendationRow> =
         serde_json::from_str(&std::fs::read_to_string(recs).unwrap()).unwrap();
-    let artifact: PolicyArtifact = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("selected_policy.json")).unwrap(),
-    )
-    .unwrap();
+    let artifact: PolicyArtifact =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("selected_policy.json")).unwrap())
+            .unwrap();
     let report = analyze_live_rules(&recommendations, &artifact).unwrap();
-    assert_eq!(report.search_two_artifact_hash, RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH);
+    assert_eq!(
+        report.search_two_artifact_hash,
+        RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH
+    );
     assert_eq!(report.n_rows, 273);
     assert_eq!(report.live_rules.iter().map(|r| r.n).sum::<u32>(), 273);
     assert_eq!(report.live_rules.len(), 3);

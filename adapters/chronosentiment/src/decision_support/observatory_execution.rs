@@ -524,7 +524,9 @@ pub fn replay_targeted_execution(
         || SEARCH_THREE_AUTHORIZED
         || C3G_EXPERIMENT_AUTHORIZED
     {
-        return Err("refusing an execution replay that opens research or mutates prospective".into());
+        return Err(
+            "refusing an execution replay that opens research or mutates prospective".into(),
+        );
     }
     let _ = now;
     let mut intents = Vec::new();
@@ -537,7 +539,10 @@ pub fn replay_targeted_execution(
             let decision = generate_historical_replay_decision(artifact, instrument, bars, clock)?;
             let t = super::observatory_maturity::parse_decision_time(&decision.decision_time)?;
             let entry = entry_close(bars, t).ok_or_else(|| {
-                format!("no entry close at {} for {instrument}", decision.decision_time)
+                format!(
+                    "no entry close at {} for {instrument}",
+                    decision.decision_time
+                )
             })?;
             let intent = seal_execution_intent(&decision, entry, EXECUTION_TARGET_PCT)?;
             let exit = first_exit(&decision, &intent, bars)?;
@@ -620,16 +625,31 @@ pub fn render_execution_report(report: &TargetedExecutionReport) -> String {
     md.push_str("TARGET and HORIZON exits are both evidence. Neither is hidden.\n\n");
     md.push_str("## Integrity\n\n");
     md.push_str(&format!("- product label: {}\n", EXECUTION_CONTRACT_LABEL));
-    md.push_str(&format!("- execution contract: `{}`\n", report.execution_contract));
+    md.push_str(&format!(
+        "- execution contract: `{}`\n",
+        report.execution_contract
+    ));
     md.push_str(&format!("- target source: `{}`\n", report.target_source));
-    md.push_str(&format!("- target_pct: {:.1}%\n", report.target_pct * 100.0));
-    md.push_str(&format!("- max holding sessions: {}\n", report.max_holding_sessions));
-    md.push_str(&format!("- stop authorized: {}\n", report.stop_exit_authorized));
+    md.push_str(&format!(
+        "- target_pct: {:.1}%\n",
+        report.target_pct * 100.0
+    ));
+    md.push_str(&format!(
+        "- max holding sessions: {}\n",
+        report.max_holding_sessions
+    ));
+    md.push_str(&format!(
+        "- stop authorized: {}\n",
+        report.stop_exit_authorized
+    ));
     md.push_str(&format!(
         "- target path-optimization authorized: {}\n",
         report.target_path_optimization_authorized
     ));
-    md.push_str(&format!("- peeked_returns_at_seal: {}\n", report.peeked_returns_at_seal));
+    md.push_str(&format!(
+        "- peeked_returns_at_seal: {}\n",
+        report.peeked_returns_at_seal
+    ));
     md.push_str(&format!(
         "- prospective cohort mutated: {}\n",
         report.prospective_cohort_mutated

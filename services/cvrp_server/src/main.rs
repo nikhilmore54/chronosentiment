@@ -1,6 +1,9 @@
 use axum::{
+    Json, Router,
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
     routing::{get, post},
-    Router, Json, extract::State, response::IntoResponse, http::StatusCode
 };
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
@@ -15,17 +18,29 @@ pub struct EmpiricalReachabilityPredictor;
 
 impl ReachabilityPredictor for EmpiricalReachabilityPredictor {
     fn predict_elite_prob(&self, parent_dist: f64, damage: f64) -> f64 {
-        let p_bucket = if parent_dist <= 810.0 { 0 }
-                       else if parent_dist <= 820.0 { 1 }
-                       else if parent_dist <= 840.0 { 2 }
-                       else { 3 };
-                       
-        let d_bucket = if damage < 0.0 { 0 }
-                       else if damage <= 50.0 { 1 }
-                       else if damage <= 100.0 { 2 }
-                       else if damage <= 200.0 { 3 }
-                       else if damage <= 400.0 { 4 }
-                       else { 5 };
+        let p_bucket = if parent_dist <= 810.0 {
+            0
+        } else if parent_dist <= 820.0 {
+            1
+        } else if parent_dist <= 840.0 {
+            2
+        } else {
+            3
+        };
+
+        let d_bucket = if damage < 0.0 {
+            0
+        } else if damage <= 50.0 {
+            1
+        } else if damage <= 100.0 {
+            2
+        } else if damage <= 200.0 {
+            3
+        } else if damage <= 400.0 {
+            4
+        } else {
+            5
+        };
 
         let matrix = [
             [96.4, 59.2, 51.1, 40.7, 18.7, 7.9],
@@ -48,17 +63,23 @@ impl GuidancePolicy for SoftGuidancePolicy {
     }
 }
 
-use tower_http::cors::{Any, CorsLayer};
+use rand::SeedableRng;
 use serde::Serialize;
 use std::cmp::Ordering;
-use rand::SeedableRng;
+use tower_http::cors::{Any, CorsLayer};
 
-use coralys_ecology::diagnostics::{AccumulationFailureDetector, EcologyLockInDetector, OperatorExpressivenessFailureDetector, DiagnosticDetector, EcologyState, SearchObservation, CandidateObservation, ObjectiveVector, DiagnosticResult};
-use coralys_recommendation::{EcologyRecommender, RecommendationReport};
-use coralys_moga::traits::{FitnessEvaluator, CrossoverOperator, GenomeFactory, Evaluated, Genome, ImprovementOperator};
+use coralys_ecology::diagnostics::{
+    AccumulationFailureDetector, CandidateObservation, DiagnosticDetector, DiagnosticResult,
+    EcologyLockInDetector, EcologyState, ObjectiveVector, OperatorExpressivenessFailureDetector,
+    SearchObservation,
+};
 use coralys_moga::runtime::optimization::metric::MetricReport;
-use std::hash::{Hash, Hasher};
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, ImprovementOperator,
+};
+use coralys_recommendation::{EcologyRecommender, RecommendationReport};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
@@ -68,7 +89,9 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 fn get_canonical_signature(routes: &Vec<Vec<usize>>) -> u64 {
     let mut canonical = routes.clone();
-    for r in &mut canonical { r.sort_unstable(); }
+    for r in &mut canonical {
+        r.sort_unstable();
+    }
     canonical.sort_unstable();
     calculate_hash(&canonical)
 }
@@ -88,8 +111,8 @@ fn get_edges(routes: &Vec<Vec<usize>>) -> std::collections::HashSet<(usize, usiz
     edges
 }
 
-use cvrp::{CvrpInstance, CvrpGenerationState, moga_impl::*};
 use cvrp::CvrpGenomeFactory;
+use cvrp::{CvrpGenerationState, CvrpInstance, moga_impl::*};
 
 #[derive(Clone)]
 struct AppState {
@@ -125,7 +148,10 @@ async fn main() {
         current_recommendations: Arc::new(Mutex::new(None)),
         current_diagnostics: Arc::new(Mutex::new(Vec::new())),
         entropy_scale: Arc::new(Mutex::new(
-            std::env::var("MUTATION_SCALE").unwrap_or_else(|_| "1.0".to_string()).parse::<f64>().unwrap_or(1.0)
+            std::env::var("MUTATION_SCALE")
+                .unwrap_or_else(|_| "1.0".to_string())
+                .parse::<f64>()
+                .unwrap_or(1.0),
         )),
     };
 
@@ -147,13 +173,23 @@ async fn main() {
         let state_clone = state.clone();
         tokio::spawn(async move {
             run_evolution_loop(state_clone).await;
-        }).await.unwrap();
-        
+        })
+        .await
+        .unwrap();
+
         // Wait briefly for the loop to complete if it finishes quickly
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         let gen_state = state.current_generation.lock().await.clone().unwrap();
-        println!("FINAL_RESULT:{},{},{},{},{},{}", gen_state.best_distance, gen_state.p10_distance, gen_state.median_distance, gen_state.elite_similarity, gen_state.elite_offspring_survival_rate, gen_state.top10_offspring_rate);
+        println!(
+            "FINAL_RESULT:{},{},{},{},{},{}",
+            gen_state.best_distance,
+            gen_state.p10_distance,
+            gen_state.median_distance,
+            gen_state.elite_similarity,
+            gen_state.elite_offspring_survival_rate,
+            gen_state.top10_offspring_rate
+        );
 
         // Serialize the last telemetry observation to mock a run for Coralys Server
         let mock_run = serde_json::json!({
@@ -186,7 +222,11 @@ async fn main() {
                 ]
             }
         });
-        std::fs::write("cvrp_seed_42.json", serde_json::to_string_pretty(&mock_run).unwrap()).unwrap();
+        std::fs::write(
+            "cvrp_seed_42.json",
+            serde_json::to_string_pretty(&mock_run).unwrap(),
+        )
+        .unwrap();
         return;
     }
 
@@ -236,7 +276,7 @@ async fn start_run(State(state): State<AppState>) -> impl IntoResponse {
         return StatusCode::BAD_REQUEST;
     }
     *running = true;
-    
+
     let state_clone = state.clone();
     tokio::spawn(async move {
         run_evolution_loop(state_clone).await;
@@ -247,26 +287,42 @@ async fn start_run(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn run_evolution_loop(state: AppState) {
     let instance = CvrpInstance::a_n32_k5();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let radius_env = std::env::var("RADIUS_POLICY").unwrap_or_else(|_| "Control".to_string());
     let radius_policy = match radius_env.as_str() {
         "LocalBiased" => cvrp::RadiusPolicy::LocalBiased,
         "ExtremeLocal" => cvrp::RadiusPolicy::ExtremeLocal,
         _ => cvrp::RadiusPolicy::Control,
     };
-    let mut mutator: Box<dyn coralys_moga::traits::MutationOperator<cvrp::CvrpCandidate> + Send + Sync> = 
-        if std::env::var("USE_ROUTE_AWARE_MUTATOR").is_ok() {
-            Box::new(cvrp::moga_impl::CvrpRouteAwareMutator { instance: instance.clone() })
-        } else {
-            Box::new(cvrp::moga_impl::CvrpMutator::new(instance.clone(), radius_policy.clone()))
-        };
+    let mut mutator: Box<
+        dyn coralys_moga::traits::MutationOperator<cvrp::CvrpCandidate> + Send + Sync,
+    > = if std::env::var("USE_ROUTE_AWARE_MUTATOR").is_ok() {
+        Box::new(cvrp::moga_impl::CvrpRouteAwareMutator {
+            instance: instance.clone(),
+        })
+    } else {
+        Box::new(cvrp::moga_impl::CvrpMutator::new(
+            instance.clone(),
+            radius_policy.clone(),
+        ))
+    };
     let crossover_type = std::env::var("CROSSOVER_TYPE").unwrap_or_else(|_| "OX1".to_string());
     let crossover = match crossover_type.as_str() {
-        "ROUTE" => cvrp::moga_impl::CvrpCrossoverVariant::RoutePreserving(cvrp::moga_impl::CvrpCrossoverRoutePreserving { instance: instance.clone() }),
+        "ROUTE" => cvrp::moga_impl::CvrpCrossoverVariant::RoutePreserving(
+            cvrp::moga_impl::CvrpCrossoverRoutePreserving {
+                instance: instance.clone(),
+            },
+        ),
         _ => cvrp::moga_impl::CvrpCrossoverVariant::OX1(cvrp::moga_impl::CvrpCrossover),
     };
-    let local_search = cvrp::moga_impl::CvrpLocalSearch { instance: instance.clone() };
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let local_search = cvrp::moga_impl::CvrpLocalSearch {
+        instance: instance.clone(),
+    };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
 
     let mut accum_detector = AccumulationFailureDetector::new(0, 0.75);
     let mut lockin_detector = EcologyLockInDetector::new(0, 0.15, 100);
@@ -276,13 +332,24 @@ async fn run_evolution_loop(state: AppState) {
 
     let population_size = 100;
     let mut rng = rand::rngs::StdRng::from_entropy();
-    
+
     let mut population: Vec<_> = (0..population_size)
         .map(|_| {
             let mut cand = factory.create(&mut rng);
-            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut cand, &model, &budget).unwrap();
+            let model = cvrp::moga_impl::CvrpConstraintModel {
+                instance: instance.clone(),
+            };
+            let budget = coralys_core::operators::OperatorBudget {
+                max_iterations: 1,
+                max_time_ms: 1000,
+            };
+            coralys_core::operators::ImprovementOperator::improve(
+                &local_search,
+                &mut cand,
+                &model,
+                &budget,
+            )
+            .unwrap();
             cand
         })
         .collect();
@@ -291,7 +358,7 @@ async fn run_evolution_loop(state: AppState) {
     let mut ecology_state = EcologyState::new(10000);
     let mut global_best_fitness = f64::NEG_INFINITY;
     let mut generations_since_improvement = 0;
-    
+
     let mut basin_tracker: HashMap<u64, usize> = HashMap::new();
     let mut all_basin_distances: Vec<f64> = Vec::new();
 
@@ -300,7 +367,9 @@ async fn run_evolution_loop(state: AppState) {
 
     for generation in 1..=10000 {
         let is_running = *state.is_running.lock().await;
-        if !is_running { break; }
+        if !is_running {
+            break;
+        }
 
         let current_entropy = *state.entropy_scale.lock().await;
         // mutator.entropy_scale = current_entropy;
@@ -308,7 +377,7 @@ async fn run_evolution_loop(state: AppState) {
         if generation % 100 == 0 {
             println!("Generation {}", generation);
         }
-        
+
         if std::env::var("FAST_MODE").is_ok() && generation >= 300 {
             break;
         }
@@ -320,23 +389,40 @@ async fn run_evolution_loop(state: AppState) {
             .collect();
 
         if evals.is_empty() {
-            population = (0..population_size).map(|_| {
-                let mut cand = factory.create(&mut rng);
-                let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-                let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-                coralys_core::operators::ImprovementOperator::improve(&local_search, &mut cand, &model, &budget).unwrap();
-                cand
-            }).collect();
+            population = (0..population_size)
+                .map(|_| {
+                    let mut cand = factory.create(&mut rng);
+                    let model = cvrp::moga_impl::CvrpConstraintModel {
+                        instance: instance.clone(),
+                    };
+                    let budget = coralys_core::operators::OperatorBudget {
+                        max_iterations: 1,
+                        max_time_ms: 1000,
+                    };
+                    coralys_core::operators::ImprovementOperator::improve(
+                        &local_search,
+                        &mut cand,
+                        &model,
+                        &budget,
+                    )
+                    .unwrap();
+                    cand
+                })
+                .collect();
             generations_since_improvement += 1;
             continue;
         }
 
-        evals.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal));
+        evals.sort_by(|a, b| {
+            b.fitness()
+                .partial_cmp(&a.fitness())
+                .unwrap_or(Ordering::Equal)
+        });
         let gen_best = evals[0].clone();
-        
+
         let archive_best_before = global_best_fitness;
         let mut improved_this_gen = false;
-        
+
         if gen_best.fitness() > global_best_fitness {
             global_best_fitness = gen_best.fitness();
             improved_this_gen = true;
@@ -345,20 +431,26 @@ async fn run_evolution_loop(state: AppState) {
             generations_since_improvement += 1;
         }
 
-        let avg_dist = evals.iter().map(|e| e.eval.total_distance).sum::<f64>() / evals.len() as f64;
+        let avg_dist =
+            evals.iter().map(|e| e.eval.total_distance).sum::<f64>() / evals.len() as f64;
         let p10_distance = evals[evals.len() / 10].eval.total_distance;
         let p25_distance = evals[evals.len() / 4].eval.total_distance;
         let median_distance = evals[evals.len() / 2].eval.total_distance;
         let p75_distance = evals[(evals.len() * 3) / 4].eval.total_distance;
         let worst_distance = evals[evals.len() - 1].eval.total_distance;
-        
+
         // Track global improving candidate generation
-        let global_improving_generated = evals.iter().filter(|e| e.fitness() > archive_best_before).count();
+        let global_improving_generated = evals
+            .iter()
+            .filter(|e| e.fitness() > archive_best_before)
+            .count();
 
         let mut candidates_obs = Vec::new();
         for eval in &evals {
             candidates_obs.push(CandidateObservation {
-                objectives: ObjectiveVector { values: vec![eval.fitness()] },
+                objectives: ObjectiveVector {
+                    values: vec![eval.fitness()],
+                },
                 admitted: eval.fitness() > archive_best_before,
                 feasible: true,
                 parent_objectives: None,
@@ -370,7 +462,9 @@ async fn run_evolution_loop(state: AppState) {
             archive_size: 1,
             diversity_score: 0.1, // mock
             candidates: candidates_obs,
-            archive_objectives: vec![ObjectiveVector { values: vec![gen_best.fitness()] }],
+            archive_objectives: vec![ObjectiveVector {
+                values: vec![gen_best.fitness()],
+            }],
             telemetry: None,
         };
         telemetry.push(obs);
@@ -390,16 +484,31 @@ async fn run_evolution_loop(state: AppState) {
 
         results.insert("AccumulationFailure".to_string(), res_accum.clone());
         results.insert("EcologyLockIn".to_string(), res_lockin.clone());
-        results.insert("OperatorExpressivenessFailure".to_string(), res_express.clone());
+        results.insert(
+            "OperatorExpressivenessFailure".to_string(),
+            res_express.clone(),
+        );
 
         // TEMPORARILY DISABLED GOVERNANCE RECORDING PER PLAN
         // ecology_state.record(generation, results);
 
         let mut diagnostics = Vec::new();
-        diagnostics.push(NamedDiagnosticResult { name: "Accumulation Failure".into(), confidence: res_accum.confidence, severity: res_accum.severity });
-        diagnostics.push(NamedDiagnosticResult { name: "Ecology Lock-In".into(), confidence: res_lockin.confidence, severity: res_lockin.severity });
-        diagnostics.push(NamedDiagnosticResult { name: "Operator Expressiveness Failure".into(), confidence: res_express.confidence, severity: res_express.severity });
-        
+        diagnostics.push(NamedDiagnosticResult {
+            name: "Accumulation Failure".into(),
+            confidence: res_accum.confidence,
+            severity: res_accum.severity,
+        });
+        diagnostics.push(NamedDiagnosticResult {
+            name: "Ecology Lock-In".into(),
+            confidence: res_lockin.confidence,
+            severity: res_lockin.severity,
+        });
+        diagnostics.push(NamedDiagnosticResult {
+            name: "Operator Expressiveness Failure".into(),
+            confidence: res_express.confidence,
+            severity: res_express.severity,
+        });
+
         let recs = rec_engine.recommend(&ecology_state);
 
         let mut next_gen = Vec::with_capacity(population_size);
@@ -418,7 +527,7 @@ async fn run_evolution_loop(state: AppState) {
         let mut children_entering_top10 = 0;
         let median_fitness = evals[evals.len() / 2].fitness();
         let p10_fitness = evals[evals.len() / 10].fitness();
-        
+
         let mut total_mutation_damage = 0.0;
         let mut total_basin_depth = 0.0;
         let mut new_basin_discoveries = 0;
@@ -429,7 +538,7 @@ async fn run_evolution_loop(state: AppState) {
         let mut elite_basin_discoveries = 0;
         let mut total_damage_edge_count = 0;
         let mut total_repair_edge_count = 0;
-        
+
         let mut deepest_basin_transition: Option<cvrp::BasinTransition> = None;
         let mut max_basin_depth = -1.0;
 
@@ -437,24 +546,33 @@ async fn run_evolution_loop(state: AppState) {
         let mut total_shadow_rejected_elites = 0;
         let mut total_p_elite = 0.0;
         let mut p_elite_count = 0;
-        let mut calib_buckets: std::collections::HashMap<String, cvrp::CalibrationBucket> = std::collections::HashMap::new();
+        let mut calib_buckets: std::collections::HashMap<String, cvrp::CalibrationBucket> =
+            std::collections::HashMap::new();
         let current_guidance_mode = cvrp::GuidanceMode::Shadow;
         let predictor = EmpiricalReachabilityPredictor;
         let policy = SoftGuidancePolicy;
 
         while next_gen.len() < population_size {
             use rand::Rng;
-            
-            let tournament_size: usize = std::env::var("TOURNAMENT_SIZE").unwrap_or_else(|_| "2".to_string()).parse().unwrap_or(2);
-            let random_parent_prob: f64 = std::env::var("RANDOM_PARENT_PROB").unwrap_or_else(|_| "0.2".to_string()).parse().unwrap_or(0.2);
+
+            let tournament_size: usize = std::env::var("TOURNAMENT_SIZE")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()
+                .unwrap_or(2);
+            let random_parent_prob: f64 = std::env::var("RANDOM_PARENT_PROB")
+                .unwrap_or_else(|_| "0.2".to_string())
+                .parse()
+                .unwrap_or(0.2);
 
             let p1_idx = if rng.gen_bool(random_parent_prob) {
                 rng.gen_range(0..evals.len())
             } else {
                 let mut best_idx = rng.gen_range(0..evals.len());
-                for _ in 0..(tournament_size.saturating_sub(1)) { 
+                for _ in 0..(tournament_size.saturating_sub(1)) {
                     let cand_idx = rng.gen_range(0..evals.len());
-                    if evals[cand_idx].fitness() > evals[best_idx].fitness() { best_idx = cand_idx; }
+                    if evals[cand_idx].fitness() > evals[best_idx].fitness() {
+                        best_idx = cand_idx;
+                    }
                 }
                 best_idx
             };
@@ -464,22 +582,31 @@ async fn run_evolution_loop(state: AppState) {
                 rng.gen_range(0..evals.len())
             } else {
                 let mut best_idx = rng.gen_range(0..evals.len());
-                for _ in 0..(tournament_size.saturating_sub(1)) { 
+                for _ in 0..(tournament_size.saturating_sub(1)) {
                     let cand_idx = rng.gen_range(0..evals.len());
-                    if evals[cand_idx].fitness() > evals[best_idx].fitness() { best_idx = cand_idx; }
+                    if evals[cand_idx].fitness() > evals[best_idx].fitness() {
+                        best_idx = cand_idx;
+                    }
                 }
                 best_idx
             };
             let p2_eval = &evals[p2_idx];
 
             for idx in [p1_idx, p2_idx] {
-                if idx < 10 { total_top_10_parents += 1; }
-                if idx < 20 { total_top_20_parents += 1; }
-                if idx >= population_size / 2 { total_bottom_50_parents += 1; }
+                if idx < 10 {
+                    total_top_10_parents += 1;
+                }
+                if idx < 20 {
+                    total_top_20_parents += 1;
+                }
+                if idx >= population_size / 2 {
+                    total_bottom_50_parents += 1;
+                }
             }
 
-            let (mut c1, mut c2) = crossover.crossover(p1_eval.genome(), p2_eval.genome(), &mut rng);
-            
+            let (mut c1, mut c2) =
+                crossover.crossover(p1_eval.genome(), p2_eval.genome(), &mut rng);
+
             // Parent similarity & Offspring novelty
             let size = p1_eval.genome().permutation.len();
             let mut identical_parents = 0;
@@ -494,8 +621,12 @@ async fn run_evolution_loop(state: AppState) {
                 let mut identical_p1 = 0;
                 let mut identical_p2 = 0;
                 for k in 0..size {
-                    if c.permutation[k] == p1_eval.genome().permutation[k] { identical_p1 += 1; }
-                    if c.permutation[k] == p2_eval.genome().permutation[k] { identical_p2 += 1; }
+                    if c.permutation[k] == p1_eval.genome().permutation[k] {
+                        identical_p1 += 1;
+                    }
+                    if c.permutation[k] == p2_eval.genome().permutation[k] {
+                        identical_p2 += 1;
+                    }
                 }
                 let sim_p1 = identical_p1 as f64 / size as f64;
                 let sim_p2 = identical_p2 as f64 / size as f64;
@@ -503,23 +634,42 @@ async fn run_evolution_loop(state: AppState) {
                 num_offspring += 1.0;
             }
 
-            let c1_crossover_dist = evaluator.evaluate(&c1, &MetricReport::default()).eval.total_distance;
-            let c2_crossover_dist = evaluator.evaluate(&c2, &MetricReport::default()).eval.total_distance;
+            let c1_crossover_dist = evaluator
+                .evaluate(&c1, &MetricReport::default())
+                .eval
+                .total_distance;
+            let c2_crossover_dist = evaluator
+                .evaluate(&c2, &MetricReport::default())
+                .eval
+                .total_distance;
 
             let mut c1_mut_eval = evaluator.evaluate(&c1, &MetricReport::default());
             let mut c1_mutated_dist = c1_mut_eval.eval.total_distance;
             let mut c2_mut_eval = evaluator.evaluate(&c2, &MetricReport::default());
             let mut c2_mutated_dist = c2_mut_eval.eval.total_distance;
-            
+
             let mut c1_p_elite = 0.0;
             let mut c1_bucket = "";
             let mut c2_p_elite = 0.0;
             let mut c2_bucket = "";
 
             for (idx, (child, p_dist, mut_e, m_dist)) in [
-                (&mut c1, c1_crossover_dist, &mut c1_mut_eval, &mut c1_mutated_dist),
-                (&mut c2, c2_crossover_dist, &mut c2_mut_eval, &mut c2_mutated_dist)
-            ].into_iter().enumerate() {
+                (
+                    &mut c1,
+                    c1_crossover_dist,
+                    &mut c1_mut_eval,
+                    &mut c1_mutated_dist,
+                ),
+                (
+                    &mut c2,
+                    c2_crossover_dist,
+                    &mut c2_mut_eval,
+                    &mut c2_mutated_dist,
+                ),
+            ]
+            .into_iter()
+            .enumerate()
+            {
                 let mut tries = 0;
                 loop {
                     let mut test_child = child.clone();
@@ -527,54 +677,103 @@ async fn run_evolution_loop(state: AppState) {
                     let mut_eval = evaluator.evaluate(&test_child, &MetricReport::default());
                     let mut_dist = mut_eval.eval.total_distance;
                     let damage = mut_dist - p_dist;
-                    
+
                     let p_elite = predictor.predict_elite_prob(p_dist, damage);
-                    let bucket_name = if p_elite < 5.0 { "0-5%" }
-                                  else if p_elite < 10.0 { "5-10%" }
-                                  else if p_elite < 20.0 { "10-20%" }
-                                  else if p_elite < 40.0 { "20-40%" }
-                                  else if p_elite < 60.0 { "40-60%" }
-                                  else { "60%+" };
+                    let bucket_name = if p_elite < 5.0 {
+                        "0-5%"
+                    } else if p_elite < 10.0 {
+                        "5-10%"
+                    } else if p_elite < 20.0 {
+                        "10-20%"
+                    } else if p_elite < 40.0 {
+                        "20-40%"
+                    } else if p_elite < 60.0 {
+                        "40-60%"
+                    } else {
+                        "60%+"
+                    };
 
                     if current_guidance_mode == cvrp::GuidanceMode::Shadow {
                         total_p_elite += p_elite;
                         p_elite_count += 1;
-                        let bucket = calib_buckets.entry(bucket_name.to_string()).or_insert_with(cvrp::CalibrationBucket::default);
+                        let bucket = calib_buckets
+                            .entry(bucket_name.to_string())
+                            .or_insert_with(cvrp::CalibrationBucket::default);
                         bucket.predicted_count += 1;
                         if p_elite < 10.0 {
                             total_shadow_rejected_offspring += 1;
                         }
-                        if idx == 0 { c1_p_elite = p_elite; c1_bucket = bucket_name; }
-                        else { c2_p_elite = p_elite; c2_bucket = bucket_name; }
-                        *child = test_child; *mut_e = mut_eval; *m_dist = mut_dist;
+                        if idx == 0 {
+                            c1_p_elite = p_elite;
+                            c1_bucket = bucket_name;
+                        } else {
+                            c2_p_elite = p_elite;
+                            c2_bucket = bucket_name;
+                        }
+                        *child = test_child;
+                        *mut_e = mut_eval;
+                        *m_dist = mut_dist;
                         break;
                     } else if current_guidance_mode == cvrp::GuidanceMode::Soft {
                         if policy.accept(p_elite, &mut rng) {
-                            if idx == 0 { c1_p_elite = p_elite; c1_bucket = bucket_name; }
-                            else { c2_p_elite = p_elite; c2_bucket = bucket_name; }
-                            *child = test_child; *mut_e = mut_eval; *m_dist = mut_dist;
+                            if idx == 0 {
+                                c1_p_elite = p_elite;
+                                c1_bucket = bucket_name;
+                            } else {
+                                c2_p_elite = p_elite;
+                                c2_bucket = bucket_name;
+                            }
+                            *child = test_child;
+                            *mut_e = mut_eval;
+                            *m_dist = mut_dist;
                             break;
                         }
                         total_shadow_rejected_offspring += 1;
                     } else {
-                        *child = test_child; *mut_e = mut_eval; *m_dist = mut_dist;
+                        *child = test_child;
+                        *mut_e = mut_eval;
+                        *m_dist = mut_dist;
                         break;
                     }
                     tries += 1;
-                    if tries > 100 { 
-                        if idx == 0 { c1_p_elite = p_elite; c1_bucket = bucket_name; }
-                        else { c2_p_elite = p_elite; c2_bucket = bucket_name; }
-                        *child = test_child; *mut_e = mut_eval; *m_dist = mut_dist;
-                        break; 
+                    if tries > 100 {
+                        if idx == 0 {
+                            c1_p_elite = p_elite;
+                            c1_bucket = bucket_name;
+                        } else {
+                            c2_p_elite = p_elite;
+                            c2_bucket = bucket_name;
+                        }
+                        *child = test_child;
+                        *mut_e = mut_eval;
+                        *m_dist = mut_dist;
+                        break;
                     }
                 }
             }
 
             // Apply True Local Search exploitation phase
-            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut c1, &model, &budget).unwrap();
-            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut c2, &model, &budget).unwrap();
+            let model = cvrp::moga_impl::CvrpConstraintModel {
+                instance: instance.clone(),
+            };
+            let budget = coralys_core::operators::OperatorBudget {
+                max_iterations: 1,
+                max_time_ms: 1000,
+            };
+            coralys_core::operators::ImprovementOperator::improve(
+                &local_search,
+                &mut c1,
+                &model,
+                &budget,
+            )
+            .unwrap();
+            coralys_core::operators::ImprovementOperator::improve(
+                &local_search,
+                &mut c2,
+                &model,
+                &budget,
+            )
+            .unwrap();
 
             // Calculate preservation metrics and local improvements
             let c1_eval = evaluator.evaluate(&c1, &MetricReport::default());
@@ -583,12 +782,31 @@ async fn run_evolution_loop(state: AppState) {
             let c1_opt_dist = c1_eval.eval.total_distance;
             let c2_opt_dist = c2_eval.eval.total_distance;
 
-            total_mutation_damage += (c1_mutated_dist - c1_crossover_dist) + (c2_mutated_dist - c2_crossover_dist);
+            total_mutation_damage +=
+                (c1_mutated_dist - c1_crossover_dist) + (c2_mutated_dist - c2_crossover_dist);
             total_basin_depth += (c1_mutated_dist - c1_opt_dist) + (c2_mutated_dist - c2_opt_dist);
 
             for (c, p1_perm, p2_perm, p_routes, c_eval, mut_eval, mut_dist, opt_dist) in [
-                (&c1, &p1_eval.genome().permutation, &p2_eval.genome().permutation, &p1_eval.eval.routes, &c1_eval, &c1_mut_eval, c1_mutated_dist, c1_opt_dist),
-                (&c2, &p1_eval.genome().permutation, &p2_eval.genome().permutation, &p2_eval.eval.routes, &c2_eval, &c2_mut_eval, c2_mutated_dist, c2_opt_dist)
+                (
+                    &c1,
+                    &p1_eval.genome().permutation,
+                    &p2_eval.genome().permutation,
+                    &p1_eval.eval.routes,
+                    &c1_eval,
+                    &c1_mut_eval,
+                    c1_mutated_dist,
+                    c1_opt_dist,
+                ),
+                (
+                    &c2,
+                    &p1_eval.genome().permutation,
+                    &p2_eval.genome().permutation,
+                    &p2_eval.eval.routes,
+                    &c2_eval,
+                    &c2_mut_eval,
+                    c2_mutated_dist,
+                    c2_opt_dist,
+                ),
             ] {
                 let basin_depth = mut_dist - opt_dist;
                 let mutated_edges = get_edges(&mut_eval.eval.routes);
@@ -597,7 +815,7 @@ async fn run_evolution_loop(state: AppState) {
                 let dmg_count = mutated_edges.difference(&optimized_edges).count();
                 let rep_count = optimized_edges.difference(&mutated_edges).count();
                 let mutation_edge_damage = parent_edges.difference(&mutated_edges).count();
-                
+
                 total_damage_edge_count += dmg_count;
                 total_repair_edge_count += rep_count;
 
@@ -618,14 +836,22 @@ async fn run_evolution_loop(state: AppState) {
                 } else {
                     new_basin_discoveries += 1; // Structurally distinct from parents
                 }
-                
+
                 let parent_dist = p1_eval.eval.total_distance;
                 let basin_hash = get_canonical_signature(&c_eval.eval.routes);
 
                 let is_elite = opt_dist <= 805.0;
-                
-                let p_elite = if c.permutation == c1.permutation { c1_p_elite } else { c2_p_elite };
-                let bucket_name = if c.permutation == c1.permutation { c1_bucket } else { c2_bucket };
+
+                let p_elite = if c.permutation == c1.permutation {
+                    c1_p_elite
+                } else {
+                    c2_p_elite
+                };
+                let bucket_name = if c.permutation == c1.permutation {
+                    c1_bucket
+                } else {
+                    c2_bucket
+                };
 
                 if is_elite {
                     if let Some(bucket) = calib_buckets.get_mut(bucket_name) {
@@ -635,7 +861,7 @@ async fn run_evolution_loop(state: AppState) {
                         total_shadow_rejected_elites += 1;
                     }
                 }
-                
+
                 let op_name = c.last_mutation_op.as_deref().unwrap_or("None");
                 let radius = c.last_mutation_radius.unwrap_or(0);
 
@@ -651,20 +877,41 @@ async fn run_evolution_loop(state: AppState) {
 
                 let boundary_changes = c.route_boundary_changes.unwrap_or_else(|| {
                     use std::collections::HashSet;
-                    let p_sets: Vec<HashSet<usize>> = p_routes.iter().map(|r| r.iter().cloned().collect()).collect();
-                    let m_sets: Vec<HashSet<usize>> = mut_eval.eval.routes.iter().map(|r| r.iter().cloned().collect()).collect();
+                    let p_sets: Vec<HashSet<usize>> = p_routes
+                        .iter()
+                        .map(|r| r.iter().cloned().collect())
+                        .collect();
+                    let m_sets: Vec<HashSet<usize>> = mut_eval
+                        .eval
+                        .routes
+                        .iter()
+                        .map(|r| r.iter().cloned().collect())
+                        .collect();
                     m_sets.iter().filter(|m| !p_sets.contains(m)).count()
                 });
 
                 // Log offspring telemetry
                 use std::io::Write;
-                if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(csv_name) {
+                if let Ok(mut file) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(csv_name)
+                {
                     let _ = writeln!(
-                        file, 
-                        "{},{},{},{},{},{},{},{},{},{},{},{}", 
-                        generation, basin_hash, parent_dist, mut_dist, opt_dist, 
+                        file,
+                        "{},{},{},{},{},{},{},{},{},{},{},{}",
+                        generation,
+                        basin_hash,
+                        parent_dist,
+                        mut_dist,
+                        opt_dist,
                         mut_dist - parent_dist, // Mutation Damage
-                        basin_depth, rep_count, mutation_edge_damage, op_name, radius, boundary_changes
+                        basin_depth,
+                        rep_count,
+                        mutation_edge_damage,
+                        op_name,
+                        radius,
+                        boundary_changes
                     );
                 }
 
@@ -684,11 +931,19 @@ async fn run_evolution_loop(state: AppState) {
                     } else {
                         elite_basin_discoveries += 1;
                     }
-                    let pos = all_basin_distances.binary_search_by(|a| a.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal)).unwrap_or_else(|e| e);
+                    let pos = all_basin_distances
+                        .binary_search_by(|a| {
+                            a.partial_cmp(&dist).unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .unwrap_or_else(|e| e);
                     all_basin_distances.insert(pos, dist);
-                    
+
                     use std::io::Write;
-                    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("basin_discoveries.csv") {
+                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("basin_discoveries.csv")
+                    {
                         let _ = writeln!(file, "{},{}", generation, dist);
                     }
                 }
@@ -697,12 +952,20 @@ async fn run_evolution_loop(state: AppState) {
             total_memetic_children += 2;
 
             let best_parent_fitness = p1_eval.fitness().max(p2_eval.fitness());
-            if c1_eval.fitness() > best_parent_fitness { local_improving_generated += 1; }
-            if c2_eval.fitness() > best_parent_fitness { local_improving_generated += 1; }
-            
+            if c1_eval.fitness() > best_parent_fitness {
+                local_improving_generated += 1;
+            }
+            if c2_eval.fitness() > best_parent_fitness {
+                local_improving_generated += 1;
+            }
+
             for c_eval in [&c1_eval, &c2_eval] {
-                if c_eval.fitness() > median_fitness { children_better_than_median += 1; }
-                if c_eval.fitness() > p10_fitness { children_entering_top10 += 1; }
+                if c_eval.fitness() > median_fitness {
+                    children_better_than_median += 1;
+                }
+                if c_eval.fitness() > p10_fitness {
+                    children_entering_top10 += 1;
+                }
             }
 
             for c_eval in [&c1_eval, &c2_eval] {
@@ -712,13 +975,18 @@ async fn run_evolution_loop(state: AppState) {
                         let b = window[1];
                         let mut preserved = false;
                         for p_eval in [p1_eval, p2_eval] {
-                            if p_eval.eval.routes.iter().any(|r| r.windows(2).any(|w| (w[0] == a && w[1] == b) || (w[0] == b && w[1] == a))) {
+                            if p_eval.eval.routes.iter().any(|r| {
+                                r.windows(2)
+                                    .any(|w| (w[0] == a && w[1] == b) || (w[0] == b && w[1] == a))
+                            }) {
                                 preserved = true;
                                 break;
                             }
                         }
                         total_pairs += 1;
-                        if preserved { total_preserved_pairs += 1; }
+                        if preserved {
+                            total_preserved_pairs += 1;
+                        }
                     }
                 }
             }
@@ -728,28 +996,47 @@ async fn run_evolution_loop(state: AppState) {
                 next_gen.push(c2);
             }
         }
-        
+
         let crossover_structural_damage_ratio = if total_pairs > 0 {
             1.0 - (total_preserved_pairs as f64 / total_pairs as f64)
         } else {
             0.0
         };
-        
-        let parent_similarity = if num_offspring > 0.0 { total_parent_similarity / (num_offspring / 2.0) } else { 0.0 };
-        let offspring_novelty = if num_offspring > 0.0 { total_offspring_novelty / num_offspring } else { 0.0 };
+
+        let parent_similarity = if num_offspring > 0.0 {
+            total_parent_similarity / (num_offspring / 2.0)
+        } else {
+            0.0
+        };
+        let offspring_novelty = if num_offspring > 0.0 {
+            total_offspring_novelty / num_offspring
+        } else {
+            0.0
+        };
 
         // Evaluate accepted improving candidates
-        let improving_accepted = next_gen.iter().filter(|g| evaluator.evaluate(g, &MetricReport::default()).fitness() > archive_best_before).count();
+        let improving_accepted = next_gen
+            .iter()
+            .filter(|g| {
+                evaluator.evaluate(g, &MetricReport::default()).fitness() > archive_best_before
+            })
+            .count();
         let improving_rejected = global_improving_generated.saturating_sub(improving_accepted);
 
-        let mut unique_dists: Vec<_> = evals.iter().map(|e| (e.eval.total_distance * 1000.0).round() as i64).collect();
+        let mut unique_dists: Vec<_> = evals
+            .iter()
+            .map(|e| (e.eval.total_distance * 1000.0).round() as i64)
+            .collect();
         unique_dists.sort_unstable();
         unique_dists.dedup();
         let diversity_score = unique_dists.len() as f64 / evals.len() as f64;
 
         let num_elites = (evals.len() / 5).max(1);
         let elite_evals = &evals[0..num_elites];
-        let mut unique_elite_dists: Vec<_> = elite_evals.iter().map(|e| (e.eval.total_distance * 1000.0).round() as i64).collect();
+        let mut unique_elite_dists: Vec<_> = elite_evals
+            .iter()
+            .map(|e| (e.eval.total_distance * 1000.0).round() as i64)
+            .collect();
         unique_elite_dists.sort_unstable();
         unique_elite_dists.dedup();
         let elite_diversity_score = unique_elite_dists.len() as f64 / num_elites as f64;
@@ -757,7 +1044,9 @@ async fn run_evolution_loop(state: AppState) {
         let mut unique_route_structures = std::collections::HashSet::new();
         for eval in &evals {
             let mut canonical_routes = eval.eval.routes.clone();
-            for r in &mut canonical_routes { r.sort_unstable(); }
+            for r in &mut canonical_routes {
+                r.sort_unstable();
+            }
             canonical_routes.sort_unstable();
             unique_route_structures.insert(canonical_routes);
         }
@@ -769,7 +1058,9 @@ async fn run_evolution_loop(state: AppState) {
         for eval in &evals {
             let mut identical = 0;
             for k in 0..p_size {
-                if eval.genome().permutation[k] == elite_perm[k] { identical += 1; }
+                if eval.genome().permutation[k] == elite_perm[k] {
+                    identical += 1;
+                }
             }
             total_elite_sim += identical as f64 / p_size as f64;
         }
@@ -790,16 +1081,52 @@ async fn run_evolution_loop(state: AppState) {
             best_routes: gen_best.eval.routes.clone(),
             deepest_basin_transition,
             operator_counts: HashMap::new(),
-            mutation_damage_avg: if total_memetic_children > 0 { total_mutation_damage / total_memetic_children as f64 } else { 0.0 },
-            basin_depth_avg: if total_memetic_children > 0 { total_basin_depth / total_memetic_children as f64 } else { 0.0 },
-            damage_edge_count_avg: if total_memetic_children > 0 { total_damage_edge_count as f64 / total_memetic_children as f64 } else { 0.0 },
-            repair_edge_count_avg: if total_memetic_children > 0 { total_repair_edge_count as f64 / total_memetic_children as f64 } else { 0.0 },
-            new_basin_discovery_rate: if total_memetic_children > 0 { new_basin_discoveries as f64 / total_memetic_children as f64 } else { 0.0 },
-            parent_reversion_rate: if total_memetic_children > 0 { parent_reversions as f64 / total_memetic_children as f64 } else { 0.0 },
+            mutation_damage_avg: if total_memetic_children > 0 {
+                total_mutation_damage / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            basin_depth_avg: if total_memetic_children > 0 {
+                total_basin_depth / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            damage_edge_count_avg: if total_memetic_children > 0 {
+                total_damage_edge_count as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            repair_edge_count_avg: if total_memetic_children > 0 {
+                total_repair_edge_count as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            new_basin_discovery_rate: if total_memetic_children > 0 {
+                new_basin_discoveries as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            parent_reversion_rate: if total_memetic_children > 0 {
+                parent_reversions as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
             unique_basins_seen: basin_tracker.len(),
-            global_basin_revisit_rate: if total_memetic_children > 0 { global_basin_revisits as f64 / total_memetic_children as f64 } else { 0.0 },
-            recent_basin_revisit_rate: if total_memetic_children > 0 { recent_basin_revisits as f64 / total_memetic_children as f64 } else { 0.0 },
-            elite_basin_discovery_rate: if total_memetic_children > 0 { elite_basin_discoveries as f64 / total_memetic_children as f64 } else { 0.0 },
+            global_basin_revisit_rate: if total_memetic_children > 0 {
+                global_basin_revisits as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            recent_basin_revisit_rate: if total_memetic_children > 0 {
+                recent_basin_revisits as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
+            elite_basin_discovery_rate: if total_memetic_children > 0 {
+                elite_basin_discoveries as f64 / total_memetic_children as f64
+            } else {
+                0.0
+            },
             generations_since_improvement,
             local_improving_generated,
             global_improving_generated,
@@ -813,13 +1140,25 @@ async fn run_evolution_loop(state: AppState) {
             top_10_parent_ratio: total_top_10_parents as f64 / (population_size as f64),
             top_20_parent_ratio: total_top_20_parents as f64 / (population_size as f64),
             bottom_50_parent_ratio: total_bottom_50_parents as f64 / (population_size as f64),
-            elite_offspring_survival_rate: if num_offspring > 0.0 { children_better_than_median as f64 / num_offspring } else { 0.0 },
-            top10_offspring_rate: if num_offspring > 0.0 { children_entering_top10 as f64 / num_offspring } else { 0.0 },
+            elite_offspring_survival_rate: if num_offspring > 0.0 {
+                children_better_than_median as f64 / num_offspring
+            } else {
+                0.0
+            },
+            top10_offspring_rate: if num_offspring > 0.0 {
+                children_entering_top10 as f64 / num_offspring
+            } else {
+                0.0
+            },
             guidance_mode: current_guidance_mode,
             shadow_rejected_offspring: total_shadow_rejected_offspring,
             shadow_local_search_work_saved: total_shadow_rejected_offspring, // Offspring == LS calls saved
             shadow_rejected_elites: total_shadow_rejected_elites,
-            mean_p_elite: if p_elite_count > 0 { total_p_elite / p_elite_count as f64 } else { 0.0 },
+            mean_p_elite: if p_elite_count > 0 {
+                total_p_elite / p_elite_count as f64
+            } else {
+                0.0
+            },
             calibration_error: 0.0, // Calculated dynamically
             calibration_buckets: calib_buckets,
             innovation_telemetry: None,
@@ -845,7 +1184,8 @@ async fn run_evolution_loop(state: AppState) {
         let innovation_telemetry = innovation_tracker.observe(&generation_signatures);
         gen_state.innovation_telemetry = Some(innovation_telemetry.clone());
 
-        let progress_telemetry = progress_tracker.observe_minimization(generation, global_best_fitness);
+        let progress_telemetry =
+            progress_tracker.observe_minimization(generation, global_best_fitness);
 
         let mut attachments = Vec::new();
         attachments.push(coralys_core::telemetry::TelemetryAttachment {

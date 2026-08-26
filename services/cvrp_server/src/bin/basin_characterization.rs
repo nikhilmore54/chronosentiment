@@ -1,13 +1,15 @@
-use serde::Serialize;
-use std::collections::{HashMap, HashSet};
-use std::cmp::Ordering;
 use rand::SeedableRng;
-use std::hash::{Hash, Hasher};
+use serde::Serialize;
+use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, GenomeFactory, Evaluated, Genome};
-use cvrp::{CvrpInstance, moga_impl::*};
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
+};
 use cvrp::CvrpGenomeFactory;
+use cvrp::{CvrpInstance, moga_impl::*};
 
 #[derive(Serialize)]
 struct FamilyStats {
@@ -48,13 +50,17 @@ fn get_edges(routes: &Vec<Vec<usize>>) -> Vec<(usize, usize)> {
             // Let's use 9999 for Depot ID
             let mut a = prev;
             let mut b = node + 1; // +1 to distinguish from depot
-            if a > b { std::mem::swap(&mut a, &mut b); }
+            if a > b {
+                std::mem::swap(&mut a, &mut b);
+            }
             edges.push((a, b));
             prev = node + 1;
         }
         let mut a = prev;
         let mut b = 0;
-        if a > b { std::mem::swap(&mut a, &mut b); }
+        if a > b {
+            std::mem::swap(&mut a, &mut b);
+        }
         edges.push((a, b));
     }
     edges.sort_unstable();
@@ -74,11 +80,15 @@ fn get_family_id(routes: &Vec<Vec<usize>>) -> String {
 
 fn main() {
     let instance = CvrpInstance::a_n32_k5();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mut mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
     mutator.entropy_scale = 1.0;
     let crossover = cvrp::moga_impl::CvrpCrossoverVariant::OX1(cvrp::moga_impl::CvrpCrossover);
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
 
     let num_seeds = 30;
     let generations = 10000;
@@ -89,7 +99,10 @@ fn main() {
     let mut family_map: HashMap<String, FamilyStats> = HashMap::new();
 
     println!("=== M8D: Characterizing the CVRP Basin ===");
-    println!("Running {} seeds for {} generations...", num_seeds, generations);
+    println!(
+        "Running {} seeds for {} generations...",
+        num_seeds, generations
+    );
 
     for seed_idx in 0..num_seeds {
         let seed = 42 + seed_idx as u64 * 100; // deterministic offsets
@@ -105,18 +118,29 @@ fn main() {
         for _ in 1..=generations {
             let mut evals: Vec<_> = population
                 .iter()
-                .map(|c| evaluator.evaluate(c, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
+                .map(|c| {
+                    evaluator.evaluate(
+                        c,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    )
+                })
                 .filter(|e| e.is_valid())
                 .collect();
 
             if evals.is_empty() {
-                population = (0..population_size).map(|_| factory.create(&mut rng)).collect();
+                population = (0..population_size)
+                    .map(|_| factory.create(&mut rng))
+                    .collect();
                 continue;
             }
 
-            evals.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal));
+            evals.sort_by(|a, b| {
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal)
+            });
             let gen_best = evals[0].clone();
-            
+
             if gen_best.eval.total_distance < global_best_distance {
                 global_best_distance = gen_best.eval.total_distance;
                 global_best_eval = Some(gen_best.clone());
@@ -124,7 +148,7 @@ fn main() {
 
             // Tournament + Crossover + Mutation
             let mut next_gen = Vec::with_capacity(population_size);
-            
+
             // Elitism
             let mut elite_count = 0;
             let mut iter = evals.iter();
@@ -139,7 +163,7 @@ fn main() {
 
             while next_gen.len() < population_size {
                 use rand::seq::SliceRandom;
-                
+
                 let tournament = |rng: &mut rand::rngs::StdRng| {
                     let mut best = evals.choose(rng).unwrap();
                     for _ in 0..4 {
@@ -152,7 +176,7 @@ fn main() {
                 };
 
                 let parent1 = tournament(&mut rng);
-                
+
                 if rand::Rng::gen_bool(&mut rng, 0.8) {
                     let parent2 = tournament(&mut rng);
                     let (mut child1, _child2) = crossover.crossover(&parent1, &parent2, &mut rng);
@@ -193,7 +217,12 @@ fn main() {
             family_id: family_id.clone(),
         });
 
-        println!("Seed {} -> Dist: {:.2} (Family {})", seed, distance, &family_id[..12]);
+        println!(
+            "Seed {} -> Dist: {:.2} (Family {})",
+            seed,
+            distance,
+            &family_id[..12]
+        );
     }
 
     for stats in family_map.values_mut() {
@@ -210,6 +239,6 @@ fn main() {
 
     let json = serde_json::to_string_pretty(&report).unwrap();
     std::fs::write("../../basin_characterization_report.json", json).unwrap();
-    
+
     println!("Report written to basin_characterization_report.json");
 }

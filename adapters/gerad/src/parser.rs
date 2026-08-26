@@ -31,7 +31,9 @@ pub struct GeradParser {
 impl GeradParser {
     /// Create a new parser rooted at `dataset_dir`.
     pub fn new(dataset_dir: impl Into<PathBuf>) -> Self {
-        Self { dataset_dir: dataset_dir.into() }
+        Self {
+            dataset_dir: dataset_dir.into(),
+        }
     }
 
     /// Parse all five CSV files and return the collected raw dataset.
@@ -178,6 +180,9 @@ mod tests {
 
         let parser = GeradParser::new(tmp.path());
         let err = parser.parse().unwrap_err();
-        assert!(matches!(err, GeradError::Io { .. }), "expected Io error, got {err:?}");
+        assert!(
+            matches!(err, GeradError::Io { .. }),
+            "expected Io error, got {err:?}"
+        );
     }
 }

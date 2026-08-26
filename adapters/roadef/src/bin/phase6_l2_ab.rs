@@ -113,10 +113,7 @@ fn main() {
 
     // Generate the shared initial population once (same seed → same genomes for both arms).
     let init_pop = generate_gen0_population(&factory, &fitness_eval_a, Some(seed), POPULATION_SIZE);
-    eprintln!(
-        "Gen-0 pop hash : {}",
-        init_pop.hash
-    );
+    eprintln!("Gen-0 pop hash : {}", init_pop.hash);
 
     let mutator = RoadefMutator {
         node_ids: node_ids.clone(),
@@ -255,9 +252,17 @@ fn main() {
     }
 
     // best_obj: compare bit-exact (f64 must be identical, not just close)
-    check!("best_obj bits", result_a.best_obj.to_bits(), result_b.best_obj.to_bits());
+    check!(
+        "best_obj bits",
+        result_a.best_obj.to_bits(),
+        result_b.best_obj.to_bits()
+    );
     check!("n_actual_evals", n_eval_a, n_eval_b);
-    check!("generations_run", result_a.generations_run, result_b.generations_run);
+    check!(
+        "generations_run",
+        result_a.generations_run,
+        result_b.generations_run
+    );
     check!("valid", result_a.valid, result_b.valid);
     check!("cache_hits", cache_hits_a, cache_hits_b);
 

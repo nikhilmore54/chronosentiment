@@ -22,8 +22,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::credit::DutyCredit;
 use super::cost::DutyCost;
+use super::credit::DutyCredit;
 use super::flight::AirportCode;
 
 // ── RosterMetrics ─────────────────────────────────────────────────────────────
@@ -203,9 +203,9 @@ impl BaseCreditFloor {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::credit::{CreditComponents, DutyCredit};
     use super::super::cost::DutyCost;
+    use super::super::credit::{CreditComponents, DutyCredit};
+    use super::*;
 
     fn make_record(credited: f64, cost: f64, block: f64, fdp: f64) -> DutyRecord {
         DutyRecord {
@@ -220,7 +220,10 @@ mod tests {
                     minimum_guarantee_applied: false,
                 },
             },
-            cost: DutyCost { credit_cost: cost, pay_rate: 100.0 },
+            cost: DutyCost {
+                credit_cost: cost,
+                pay_rate: 100.0,
+            },
             block_hours: block,
             flight_hours: block,
             fdp_hours: fdp,

@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 /// rp402_budget_adapt — RP-402: Budget-Aware t=1 Adaptation
 ///
 /// Research question: Can budget-aware transition planning recover additional
@@ -29,16 +30,14 @@
 /// that recovers the remaining infeasible instances.
 ///
 /// Classification: Research binary (not a Candidate or Competition Submission).
-
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
+use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
-use roadef::evaluator::RoadefEvaluator;
 use roadef::path::SrPathBit;
 
 // ---------------------------------------------------------------------------
@@ -62,7 +61,9 @@ fn dijkstra_path(
             continue;
         }
         let mult = metric_multipliers.get(&link.id).copied().unwrap_or(1.0);
-        adj.entry(link.from).or_default().push((link.to, link.metric * mult));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, link.metric * mult));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -160,7 +161,9 @@ fn build_shared_paths(
         }
 
         // Build load-aware metric multipliers from current ECMP saturation
-        let load_mult: HashMap<u64, f64> = net.links.iter()
+        let load_mult: HashMap<u64, f64> = net
+            .links
+            .iter()
             .filter(|l| !disabled_links.contains(&l.id))
             .map(|l| {
                 let sat = ecmp_saturation.get(&l.id).copied().unwrap_or(0.0);
@@ -178,17 +181,24 @@ fn build_shared_paths(
         if let Some(path) = dijkstra_path(net, *src, *dst, disabled_links, &load_mult) {
             let wp = path_to_waypoints(&path, max_segments);
             if !wp.is_empty() {
-                partial_srpaths.push(SrPath { d: *d_idx, t: 0, w: wp.clone() });
+                partial_srpaths.push(SrPath {
+                    d: *d_idx,
+                    t: 0,
+                    w: wp.clone(),
+                });
             }
             assignments.insert(*d_idx, wp);
 
             // Update ECMP saturations
-            let partial_sol = Solution { srpaths: partial_srpaths.clone() };
+            let partial_sol = Solution {
+                srpaths: partial_srpaths.clone(),
+            };
             if let Some(loads) = evaluator.compute_loads(0, &partial_sol) {
                 ecmp_saturation.clear();
                 for (arc_id, flow) in &loads.arc_flows {
                     let cap = link_capacity.get(arc_id).copied().unwrap_or(1.0);
-                    ecmp_saturation.insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
+                    ecmp_saturation
+                        .insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
                 }
             }
         }
@@ -239,11 +249,18 @@ fn adapt_t1_within_budget(
     }
 
     // Compute initial t=1 saturation from shared paths
-    let initial_t1_srpaths: Vec<SrPath> = shared_assignments.iter()
+    let initial_t1_srpaths: Vec<SrPath> = shared_assignments
+        .iter()
         .filter(|(_, wp)| !wp.is_empty())
-        .map(|(&d_idx, wp)| SrPath { d: d_idx, t: 1, w: wp.clone() })
+        .map(|(&d_idx, wp)| SrPath {
+            d: d_idx,
+            t: 1,
+            w: wp.clone(),
+        })
         .collect();
-    let initial_t1_sol = Solution { srpaths: initial_t1_srpaths };
+    let initial_t1_sol = Solution {
+        srpaths: initial_t1_srpaths,
+    };
     if let Some(loads) = evaluator.compute_loads(1, &initial_t1_sol) {
         for (arc_id, flow) in &loads.arc_flows {
             let cap = link_capacity.get(arc_id).copied().unwrap_or(1.0);
@@ -264,7 +281,9 @@ fn adapt_t1_within_budget(
         let shared_bit = SrPathBit::new_explicit(*src, *dst, &shared_wp);
 
         // Build load-aware metric multipliers for t=1
-        let load_mult: HashMap<u64, f64> = net.links.iter()
+        let load_mult: HashMap<u64, f64> = net
+            .links
+            .iter()
             .filter(|l| !disabled_t1.contains(&l.id))
             .map(|l| {
                 let sat = ecmp_saturation_t1.get(&l.id).copied().unwrap_or(0.0);
@@ -300,27 +319,44 @@ fn adapt_t1_within_budget(
         }
 
         // Evaluate: build trial t=1 solution with this candidate
-        let mut trial_t1_srpaths: Vec<SrPath> = t1_assignments.iter()
+        let mut trial_t1_srpaths: Vec<SrPath> = t1_assignments
+            .iter()
             .filter(|(_, wp)| !wp.is_empty())
-            .map(|(&di, wp)| SrPath { d: di, t: 1, w: wp.clone() })
+            .map(|(&di, wp)| SrPath {
+                d: di,
+                t: 1,
+                w: wp.clone(),
+            })
             .collect();
 
         // Replace this demand's t=1 path with the candidate
         trial_t1_srpaths.retain(|p| p.d != *d_idx);
         if !candidate_wp.is_empty() {
-            trial_t1_srpaths.push(SrPath { d: *d_idx, t: 1, w: candidate_wp.clone() });
+            trial_t1_srpaths.push(SrPath {
+                d: *d_idx,
+                t: 1,
+                w: candidate_wp.clone(),
+            });
         }
 
-        let trial_sol = Solution { srpaths: trial_t1_srpaths.clone() };
+        let trial_sol = Solution {
+            srpaths: trial_t1_srpaths.clone(),
+        };
         if let Some(loads) = evaluator.compute_loads(1, &trial_sol) {
             // Accept if t=1 MLU improves
             let current_t1_sol = Solution {
-                srpaths: t1_assignments.iter()
+                srpaths: t1_assignments
+                    .iter()
                     .filter(|(_, wp)| !wp.is_empty())
-                    .map(|(&di, wp)| SrPath { d: di, t: 1, w: wp.clone() })
-                    .collect()
+                    .map(|(&di, wp)| SrPath {
+                        d: di,
+                        t: 1,
+                        w: wp.clone(),
+                    })
+                    .collect(),
             };
-            let current_mlu = evaluator.compute_loads(1, &current_t1_sol)
+            let current_mlu = evaluator
+                .compute_loads(1, &current_t1_sol)
                 .map(|l| l.mlu)
                 .unwrap_or(f64::INFINITY);
 
@@ -333,7 +369,8 @@ fn adapt_t1_within_budget(
                 ecmp_saturation_t1.clear();
                 for (arc_id, flow) in &loads.arc_flows {
                     let cap = link_capacity.get(arc_id).copied().unwrap_or(1.0);
-                    ecmp_saturation_t1.insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
+                    ecmp_saturation_t1
+                        .insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
                 }
             }
         }
@@ -350,8 +387,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("RP-402 — Budget-Aware t=1 Adaptation (Dataset A)");
     println!("{}", "=".repeat(80));
-    println!("{:<10} {:>10} {:>10} {:>10} {:>10} {:>8} {:>8}",
-        "Instance", "RP-402 obj", "RP-401C obj", "Empty obj", "vs Empty", "budget", "ms");
+    println!(
+        "{:<10} {:>10} {:>10} {:>10} {:>10} {:>8} {:>8}",
+        "Instance", "RP-402 obj", "RP-401C obj", "Empty obj", "vs Empty", "budget", "ms"
+    );
     println!("{}", "-".repeat(80));
 
     let mut improved_vs_empty = 0usize;
@@ -370,17 +409,30 @@ fn main() -> anyhow::Result<()> {
 
         let num_demands = tm.demands.len();
         let num_slots = tm.num_time_slots;
-        let max_seg = if scenario.max_segments >= 0 { scenario.max_segments as usize } else { 100 };
-        let budget_t1 = scenario.budget.iter().find(|b| b.t == 1).map(|b| b.value).unwrap_or(0);
+        let max_seg = if scenario.max_segments >= 0 {
+            scenario.max_segments as usize
+        } else {
+            100
+        };
+        let budget_t1 = scenario
+            .budget
+            .iter()
+            .find(|b| b.t == 1)
+            .map(|b| b.value)
+            .unwrap_or(0);
 
         let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
 
         // Disabled links per time slot
-        let disabled_t0: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t0: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 0)
             .flat_map(|i| i.links.iter().copied())
             .collect();
-        let disabled_t1: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t1: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 1)
             .flat_map(|i| i.links.iter().copied())
             .collect();
@@ -390,7 +442,10 @@ fn main() -> anyhow::Result<()> {
         let deadline = t_start + std::time::Duration::from_secs(300);
 
         // Step 1: Build shared paths (RP-401C ECMP-aware greedy, t=0 and t=1 identical)
-        let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_avg: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| {
                 let v0 = d.v[0];
                 let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
@@ -399,12 +454,20 @@ fn main() -> anyhow::Result<()> {
             .collect();
 
         let shared_assignments = build_shared_paths(
-            &net, &evaluator, &demands_avg, &disabled_both, max_seg, deadline,
+            &net,
+            &evaluator,
+            &demands_avg,
+            &disabled_both,
+            max_seg,
+            deadline,
         );
 
         // Step 2: Budget-aware t=1 adaptation (only if budget > 0 and 2 time slots)
         let t1_assignments = if num_slots > 1 && budget_t1 > 0 {
-            let demands_with_delta: Vec<(usize, u64, u64, f64, f64)> = tm.demands.iter().enumerate()
+            let demands_with_delta: Vec<(usize, u64, u64, f64, f64)> = tm
+                .demands
+                .iter()
+                .enumerate()
                 .map(|(i, d)| {
                     let v0 = d.v[0];
                     let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
@@ -413,8 +476,14 @@ fn main() -> anyhow::Result<()> {
                 .collect();
 
             adapt_t1_within_budget(
-                &net, &evaluator, &shared_assignments, &demands_with_delta,
-                &disabled_t1, max_seg, budget_t1, deadline,
+                &net,
+                &evaluator,
+                &shared_assignments,
+                &demands_with_delta,
+                &disabled_t1,
+                max_seg,
+                budget_t1,
+                deadline,
             )
         } else {
             shared_assignments.clone()
@@ -426,21 +495,31 @@ fn main() -> anyhow::Result<()> {
             // t=0: always use shared path
             if let Some(w) = shared_assignments.get(&d_idx) {
                 if !w.is_empty() {
-                    srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
+                    srpaths.push(SrPath {
+                        d: d_idx,
+                        t: 0,
+                        w: w.clone(),
+                    });
                 }
             }
             // t=1: use adapted path (may differ from shared)
             if num_slots > 1 {
                 if let Some(w) = t1_assignments.get(&d_idx) {
                     if !w.is_empty() {
-                        srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                        srpaths.push(SrPath {
+                            d: d_idx,
+                            t: 1,
+                            w: w.clone(),
+                        });
                     }
                 }
             }
         }
 
         // Step 4: Evaluate
-        let solution = Solution { srpaths: srpaths.clone() };
+        let solution = Solution {
+            srpaths: srpaths.clone(),
+        };
         let result = evaluator.evaluate_solution(&solution);
         let empty_sol = Solution { srpaths: vec![] };
         let empty_result = evaluator.evaluate_solution(&empty_sol);
@@ -455,7 +534,9 @@ fn main() -> anyhow::Result<()> {
 
         let (final_srpaths, final_obj) = if !result.valid {
             (vec![], empty_result.obj)
-        } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
+        } else if result.obj.is_finite()
+            && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj)
+        {
             (srpaths, result.obj)
         } else if result.obj.is_infinite() && empty_result.obj.is_finite() {
             (vec![], empty_result.obj)
@@ -483,11 +564,27 @@ fn main() -> anyhow::Result<()> {
         }
 
         let elapsed_ms = t_start.elapsed().as_millis();
-        let obj_str = if final_obj.is_finite() { format!("{:.4}", final_obj) } else { "inf".to_string() };
-        let empty_str = if empty_result.obj.is_finite() { format!("{:.4}", empty_result.obj) } else { "inf".to_string() };
+        let obj_str = if final_obj.is_finite() {
+            format!("{:.4}", final_obj)
+        } else {
+            "inf".to_string()
+        };
+        let empty_str = if empty_result.obj.is_finite() {
+            format!("{:.4}", empty_result.obj)
+        } else {
+            "inf".to_string()
+        };
 
-        println!("{:<10} {:>10} {:>10} {:>10} {:>10} {:>8} {:>8}",
-            format!("setA-{}", inst), obj_str, rp401c_obj_str, empty_str, delta_str, budget_t1, elapsed_ms);
+        println!(
+            "{:<10} {:>10} {:>10} {:>10} {:>10} {:>8} {:>8}",
+            format!("setA-{}", inst),
+            obj_str,
+            rp401c_obj_str,
+            empty_str,
+            delta_str,
+            budget_t1,
+            elapsed_ms
+        );
 
         // Write solution file
         let out_path = format!("{}/setA-{}-srpaths-rp402.json", set_dir, inst);
@@ -504,9 +601,18 @@ fn main() -> anyhow::Result<()> {
 
     println!("{}", "=".repeat(80));
     println!("Instances improved vs empty: {}", improved_vs_empty);
-    println!("Total objective improvement vs empty: {:.4}", total_improvement);
-    println!("New finite solutions on target instances (setA-02,07,09,12,17): {}/5", new_finite);
-    println!("Solution files written to {}/setA-*-srpaths-rp402.json", set_dir);
+    println!(
+        "Total objective improvement vs empty: {:.4}",
+        total_improvement
+    );
+    println!(
+        "New finite solutions on target instances (setA-02,07,09,12,17): {}/5",
+        new_finite
+    );
+    println!(
+        "Solution files written to {}/setA-*-srpaths-rp402.json",
+        set_dir
+    );
 
     Ok(())
 }

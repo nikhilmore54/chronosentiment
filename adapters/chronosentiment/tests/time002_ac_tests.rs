@@ -20,7 +20,6 @@ use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
 use chronosentiment_adapter::time_machine::clock::HistoricalClock;
 use sha2::{Digest, Sha256};
 
-
 const TEST_TICKER: &str = "RELIANCE.NS";
 // as_of = 2026-08-14T10:15:00Z (well within the cache range)
 const AS_OF_STR: &str = "2026-08-14T10:15:00Z";
@@ -35,9 +34,8 @@ fn cache_dir() -> std::path::PathBuf {
         .expect("adapters dir")
         .parent()
         .expect("workspace root");
-    workspace_root.join(
-        "product_validation/CS-P-006/snapshot/20260814T183851Z_100instrument/yahoo_cache",
-    )
+    workspace_root
+        .join("product_validation/CS-P-006/snapshot/20260814T183851Z_100instrument/yahoo_cache")
 }
 
 fn as_of() -> DateTime<Utc> {
@@ -50,7 +48,10 @@ fn load_test_bars() -> Vec<YahooHistoricalBar> {
 }
 
 /// Compute source hash (mirrors the main binary's compute_source_hash).
-fn compute_source_hash(all_bars: &[(String, Vec<YahooHistoricalBar>)], as_of: DateTime<Utc>) -> String {
+fn compute_source_hash(
+    all_bars: &[(String, Vec<YahooHistoricalBar>)],
+    as_of: DateTime<Utc>,
+) -> String {
     let mut hasher = Sha256::new();
     let mut sorted: Vec<&(String, Vec<YahooHistoricalBar>)> = all_bars.iter().collect();
     sorted.sort_by_key(|(ticker, _)| ticker.as_str());
@@ -78,7 +79,10 @@ fn compute_source_hash(all_bars: &[(String, Vec<YahooHistoricalBar>)], as_of: Da
 #[test]
 fn t2_01_temporal_boundary() {
     let all_bars = load_test_bars();
-    assert!(!all_bars.is_empty(), "test cache must have bars for {TEST_TICKER}");
+    assert!(
+        !all_bars.is_empty(),
+        "test cache must have bars for {TEST_TICKER}"
+    );
 
     let t = as_of();
     let bars_at_t: Vec<YahooHistoricalBar> = all_bars
@@ -144,7 +148,10 @@ fn t2_02_derived_features_from_bars_at_t_only() {
     // ATR-14 from bars_at_t.
     let metrics = metrics_from_bars_at_t(&bars_at_t, session_t, instrument_id);
     let atr_14 = metrics.get_float("atr_14");
-    assert!(atr_14.is_some(), "T2-02: atr_14 must be derivable from bars_at_t");
+    assert!(
+        atr_14.is_some(),
+        "T2-02: atr_14 must be derivable from bars_at_t"
+    );
 
     // TMV from bars_at_t.
     let (profile, _, _) = assess_from_bars_at_t(&bars_at_t, session_t, instrument_id);
@@ -176,7 +183,10 @@ fn t2_03_clock_isolation() {
     }
 
     // Clock must be in REPLAY mode.
-    assert!(clock.is_replay(), "T2-03 FAIL: clock must be in REPLAY mode");
+    assert!(
+        clock.is_replay(),
+        "T2-03 FAIL: clock must be in REPLAY mode"
+    );
     assert_eq!(clock.mode_label(), "REPLAY");
 
     // clock.now() must be ≤ T (never in the future).
@@ -210,8 +220,7 @@ fn t2_04_future_cache_isolation() {
         .count();
 
     assert_eq!(
-        future_bars_in_result,
-        0,
+        future_bars_in_result, 0,
         "T2-04 FAIL: {future_bars_in_result} future bars leaked into bars_at_t"
     );
 
@@ -257,7 +266,7 @@ fn t2_05_future_poison_raw_source_layer() {
 
     // Create poisoned future bars with extreme values designed to alter
     // price, ATR, trend, and momentum if they were included.
-    let poison_ts_1 = t.timestamp() + 86400;  // T + 1 day
+    let poison_ts_1 = t.timestamp() + 86400; // T + 1 day
     let poison_ts_2 = t.timestamp() + 172800; // T + 2 days
     let poison_ts_3 = t.timestamp() + 259200; // T + 3 days
 
@@ -381,7 +390,11 @@ fn t2_06_deterministic_reconstruction() {
         .cloned()
         .collect();
 
-    assert_eq!(bars_run1.len(), bars_run2.len(), "T2-06 FAIL: bar count differs");
+    assert_eq!(
+        bars_run1.len(),
+        bars_run2.len(),
+        "T2-06 FAIL: bar count differs"
+    );
 
     let instrument_id = instrument_id_for(TEST_TICKER);
     let session_t = latest_session_at_or_before(&bars_run1, t).unwrap_or(t);
@@ -398,7 +411,10 @@ fn t2_06_deterministic_reconstruction() {
     // Source hash must be identical.
     let hash1 = compute_source_hash(&[(TEST_TICKER.to_string(), bars_run1.clone())], t);
     let hash2 = compute_source_hash(&[(TEST_TICKER.to_string(), bars_run2.clone())], t);
-    assert_eq!(hash1, hash2, "T2-06 FAIL: source_dataset_hash is not deterministic");
+    assert_eq!(
+        hash1, hash2,
+        "T2-06 FAIL: source_dataset_hash is not deterministic"
+    );
 
     println!("T2-06 PASS: hash={hash1}");
 }
@@ -453,11 +469,8 @@ fn t2_07_complete_accounting() {
             .iter()
             .any(|s| s.concept == chronosentiment_adapter::metrics::concepts::Concept::Volatility);
 
-        let tmv_complete = has_trend
-            && has_momentum
-            && has_volatility
-            && ref_price.is_some()
-            && atr_14.is_some();
+        let tmv_complete =
+            has_trend && has_momentum && has_volatility && ref_price.is_some() && atr_14.is_some();
 
         if tmv_complete {
             n_complete += 1;

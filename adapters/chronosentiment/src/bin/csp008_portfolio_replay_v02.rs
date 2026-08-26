@@ -154,10 +154,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if CORALYS_EXEC_ARTIFACT_HASH
         != "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
     {
-        return Err(format!(
-            "coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
-        )
-        .into());
+        return Err(format!("coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}").into());
     }
 
     // ── Load Yahoo bar cache ──────────────────────────────────────────────────

@@ -31,7 +31,10 @@ mod api;
 
 use std::sync::Arc;
 
-use axum::{Router, routing::{get, post}};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use coralys_decision::DecisionLedger;
 use coralys_decision::recommendation::{EvidenceStore, Rec001hStore};
 use tokio::net::TcpListener;
@@ -89,10 +92,7 @@ pub fn build_router(state: AppState) -> Router {
             "/decisions",
             get(api::feed::get_decisions).post(api::ingest::ingest_decision),
         )
-        .route(
-            "/decisions/{id}",
-            get(api::detail::get_decision_by_id),
-        )
+        .route("/decisions/{id}", get(api::detail::get_decision_by_id))
         .route(
             "/decisions/{id}/execution",
             post(api::execution::record_execution),
@@ -120,9 +120,7 @@ pub fn build_router(state: AppState) -> Router {
 
 #[tokio::main]
 async fn main() {
-    fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .init();
+    fmt().with_env_filter(EnvFilter::from_default_env()).init();
 
     // Load the frozen HDV-001 evidence store (v0).
     let outcomes_path = std::env::var("HDV001_OUTCOMES_PATH")
@@ -175,9 +173,7 @@ async fn main() {
         .expect("failed to bind port 3001");
 
     tracing::info!("Coralys Decision Intelligence API listening on :3001");
-    axum::serve(listener, app)
-        .await
-        .expect("server error");
+    axum::serve(listener, app).await.expect("server error");
 }
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────

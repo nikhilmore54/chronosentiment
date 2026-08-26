@@ -125,14 +125,22 @@ pub async fn record_execution(
                 decision: DecisionResponse::from(record),
                 message: "Execution recorded.".to_string(),
             };
-            (StatusCode::OK, Json(serde_json::to_value(response).unwrap())).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::to_value(response).unwrap()),
+            )
+                .into_response()
         }
         Err(coralys_decision::ledger::LedgerError::DecisionNotFound(_)) => {
             let err = ErrorResponse {
                 error: "decision not found".to_string(),
                 decision_id: decision_id.clone(),
             };
-            (StatusCode::NOT_FOUND, Json(serde_json::to_value(err).unwrap())).into_response()
+            (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::to_value(err).unwrap()),
+            )
+                .into_response()
         }
         Err(coralys_decision::ledger::LedgerError::TemporalFirewallViolation { .. }) => {
             let err = ErrorResponse {
@@ -170,7 +178,12 @@ mod tests {
     async fn post_execution_for_valid_decision_returns_200() {
         // AC-E1
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -201,7 +214,12 @@ mod tests {
     async fn null_quantity_is_accepted() {
         // AC-E3: no quantity inference
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -221,7 +239,12 @@ mod tests {
     async fn execution_timestamp_before_decision_returns_422() {
         // AC-E5: temporal firewall
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -239,7 +262,12 @@ mod tests {
     async fn user_ignored_is_valid_execution_status() {
         // AC-E8
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -255,7 +283,12 @@ mod tests {
     async fn original_certified_decision_fields_unchanged() {
         // AC-E7: immutability of original decision
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -278,7 +311,12 @@ mod tests {
     #[tokio::test]
     async fn execution_source_is_always_user() {
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server

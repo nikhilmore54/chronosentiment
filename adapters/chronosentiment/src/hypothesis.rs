@@ -114,12 +114,23 @@ impl InvestmentThesis {
     /// Generate a human-readable summary of this thesis version.
     pub fn summary(&self) -> String {
         let mut lines = Vec::new();
-        lines.push(format!("Thesis v{}: {}", self.version, self.thesis_statement));
+        lines.push(format!(
+            "Thesis v{}: {}",
+            self.version, self.thesis_statement
+        ));
         if !self.assumptions.is_empty() {
-            lines.push(format!("Assumptions ({}): {}", self.assumptions.len(), self.assumptions.join("; ")));
+            lines.push(format!(
+                "Assumptions ({}): {}",
+                self.assumptions.len(),
+                self.assumptions.join("; ")
+            ));
         }
         if !self.risks.is_empty() {
-            lines.push(format!("Risks ({}): {}", self.risks.len(), self.risks.join("; ")));
+            lines.push(format!(
+                "Risks ({}): {}",
+                self.risks.len(),
+                self.risks.join("; ")
+            ));
         }
         if let Some(notes) = &self.version_notes {
             lines.push(format!("Version notes: {}", notes));

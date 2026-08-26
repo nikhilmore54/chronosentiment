@@ -27,11 +27,11 @@
 //! pub const OBSERVER_ID: &str = "inrc_official_total";
 //! ```
 
-use std::collections::HashMap;
 use crate::inrc::models::InrcScenario;
-use crate::inrc::optimization::{InrcOptimizer, InrcGenome};
-use coralys_moga::traits::FitnessEvaluator;
+use crate::inrc::optimization::{InrcGenome, InrcOptimizer};
 use crate::inrc::schedule_optimizer::ScheduleGenome;
+use coralys_moga::traits::FitnessEvaluator;
+use std::collections::HashMap;
 
 /// The canonical observer ID for the INRC official total metric.
 pub const OBSERVER_ID: &str = "inrc_official_total";
@@ -110,9 +110,8 @@ pub fn score_inrc_official(
     let i_genome = to_inrc_genome(genome, scenario);
     let empty_metrics = coralys_moga::runtime::optimization::metric::MetricReport::default();
     let ev = inrc_optimizer.evaluate(&i_genome, &empty_metrics);
-    let total_hc = ev.hc_coverage + ev.hc_skills
-        + ev.hc_one_shift_per_day
-        + ev.hc_forbidden_successions;
+    let total_hc =
+        ev.hc_coverage + ev.hc_skills + ev.hc_one_shift_per_day + ev.hc_forbidden_successions;
     // Canonical formula: no additional multiplier.
     // HC components are already penalty-weighted (×1000) by the evaluator.
     let official_total = (total_hc as i64 + ev.soft_report.total_penalty as i64) as f64;

@@ -1,6 +1,6 @@
 use crate::pipeline::aggregation::generate_latest_signals_with_thresholds;
-use crate::pipeline::reporting::{ThresholdSweepRow, SignalsSnapshot};
 use crate::pipeline::old::{SignalAction, TradeSignal};
+use crate::pipeline::reporting::{SignalsSnapshot, ThresholdSweepRow};
 
 /// Runs a parameter sweep over confidence and score thresholds.
 /// Returns a sorted vector of `ThresholdSweepRow` results.
@@ -21,7 +21,11 @@ pub fn run_threshold_sweep(
             );
             // Compute global average PnL.
             let pnls: Vec<f64> = snapshot.signals.iter().map(|s| s.scenario_pnl).collect();
-            let global_avg = if pnls.is_empty() { 0.0 } else { pnls.iter().sum::<f64>() / pnls.len() as f64 };
+            let global_avg = if pnls.is_empty() {
+                0.0
+            } else {
+                pnls.iter().sum::<f64>() / pnls.len() as f64
+            };
             // Compute variance for std_dev.
             let variance = if pnls.is_empty() {
                 0.0

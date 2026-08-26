@@ -1,16 +1,34 @@
-use axum::{extract::{Path, Query, State}, Json};
-use uuid::Uuid;
+use axum::{
+    extract::{Path, Query, State},
+    Json,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
+use uuid::Uuid;
 
 use crate::{
     dto::{
-        CompareStrategiesRequest, CompareStrategiesResponse, EvaluateStrategyRequest,
-        EvaluateStrategyResponse, InspectStrategyRequest, RunGaQuery, RunGaResponse, TimelineResponse,
-        SystemState, TradeInspectorResponse, EventWrapper,
+        CanonicalEvent,
+        CanonicalEventWindow,
         // Canonical schema types
-        CanonicalInspectResponse, CanonicalEventWindow, CanonicalPortfolioState,
-        CanonicalPosition, CanonicalEvent, NarrativeBlock, NarrativeBlockType, NarrativeGroup,
-        CertificationState, SourceLayer,
+        CanonicalInspectResponse,
+        CanonicalPortfolioState,
+        CanonicalPosition,
+        CertificationState,
+        CompareStrategiesRequest,
+        CompareStrategiesResponse,
+        EvaluateStrategyRequest,
+        EvaluateStrategyResponse,
+        EventWrapper,
+        InspectStrategyRequest,
+        NarrativeBlock,
+        NarrativeBlockType,
+        NarrativeGroup,
+        RunGaQuery,
+        RunGaResponse,
+        SourceLayer,
+        SystemState,
+        TimelineResponse,
+        TradeInspectorResponse,
     },
     errors::ApiError,
     services::evaluation_service::EvaluationService,
@@ -21,7 +39,6 @@ use crate::{
     strategy_id_parse::parse_strategy_id_full,
 };
 use serde_json;
-
 
 pub async fn health_handler() -> Json<serde_json::Value> {
     Json(serde_json::json!({
@@ -98,12 +115,12 @@ pub async fn evaluate_strategy_handler(
     Json(request): Json<EvaluateStrategyRequest>,
 ) -> Result<Json<EvaluateStrategyResponse>, ApiError> {
     println!("Request received: evaluate_strategy");
-    let response = service.evaluate_strategy(
-        request.strategy_config,
-        request.scenarios,
-        request.seed,
-    )?;
-    println!("Evaluation completed for strategy_id: {}", response.strategy_evaluation.strategy_id);
+    let response =
+        service.evaluate_strategy(request.strategy_config, request.scenarios, request.seed)?;
+    println!(
+        "Evaluation completed for strategy_id: {}",
+        response.strategy_evaluation.strategy_id
+    );
     Ok(Json(response))
 }
 
@@ -118,11 +135,7 @@ pub async fn compare_strategies_handler(
         .map(|w| w.strategy_config)
         .collect();
 
-    let response = service.compare_strategies(
-        strategies,
-        request.scenarios,
-        request.seed,
-    )?;
+    let response = service.compare_strategies(strategies, request.scenarios, request.seed)?;
     println!("Comparison completed");
     Ok(Json(response))
 }
@@ -152,12 +165,11 @@ pub async fn inspect_strategy_handler(
         "deterministic_demo".to_string()
     };
 
-    let legacy = service.inspect_strategy(
-        strategy_config,
-        scenario,
-        request.seed,
-    )?;
-    println!("Inspection completed for strategy_id: {}", legacy.strategy_id);
+    let legacy = service.inspect_strategy(strategy_config, scenario, request.seed)?;
+    println!(
+        "Inspection completed for strategy_id: {}",
+        legacy.strategy_id
+    );
 
     // ── Build canonical response ──────────────────────────────────────────
     let session_id = Uuid::new_v4();
@@ -168,33 +180,45 @@ pub async fn inspect_strategy_handler(
         .as_nanos() as u64;
 
     // Convert legacy EventWrappers to CanonicalEvents with BLAKE3 signatures
-    let mut canonical_events: Vec<CanonicalEvent> = legacy.execution_trace.iter().map(|ew| {
-        let sig = compute_event_signature(
-            ew.sequence_id,
-            ew.timestamp,
-            &ew.event_type,
-            &SourceLayer::Sequencer,
-            &ew.payload,
-        );
-        CanonicalEvent {
-            sequence_id: ew.sequence_id,
-            timestamp_ns: ew.timestamp,
-            event_type: ew.event_type.clone(),
-            source_layer: SourceLayer::Sequencer,
-            strategy_id: Some(legacy.strategy_id.clone()),
-            parent_sequence_id: ew.parent_sequence_id,
-            payload: ew.payload.clone(),
-            kernel_signature: sig,
-            replay_session_id: Some(session_id),
-        }
-    }).collect();
+    let mut canonical_events: Vec<CanonicalEvent> = legacy
+        .execution_trace
+        .iter()
+        .map(|ew| {
+            let sig = compute_event_signature(
+                ew.sequence_id,
+                ew.timestamp,
+                &ew.event_type,
+                &SourceLayer::Sequencer,
+                &ew.payload,
+            );
+            CanonicalEvent {
+                sequence_id: ew.sequence_id,
+                timestamp_ns: ew.timestamp,
+                event_type: ew.event_type.clone(),
+                source_layer: SourceLayer::Sequencer,
+                strategy_id: Some(legacy.strategy_id.clone()),
+                parent_sequence_id: ew.parent_sequence_id,
+                payload: ew.payload.clone(),
+                kernel_signature: sig,
+                replay_session_id: Some(session_id),
+            }
+        })
+        .collect();
 
     // Sign the full batch (authoritative signing pass)
     sign_event_batch(&mut canonical_events);
 
     // Determine sequence bounds
-    let first_seq = canonical_events.iter().map(|e| e.sequence_id).min().unwrap_or(0);
-    let last_seq = canonical_events.iter().map(|e| e.sequence_id).max().unwrap_or(0);
+    let first_seq = canonical_events
+        .iter()
+        .map(|e| e.sequence_id)
+        .min()
+        .unwrap_or(0);
+    let last_seq = canonical_events
+        .iter()
+        .map(|e| e.sequence_id)
+        .max()
+        .unwrap_or(0);
     let event_count = canonical_events.len();
 
     // Build causal ancestry chain from parent_sequence_id links (backend-certified)
@@ -219,105 +243,93 @@ pub async fn inspect_strategy_handler(
     // Build backend-certified narrative blocks (replaces client-side groupAndNarrateEvents).
     // Match on canonical SCREAMING_SNAKE_CASE event type strings per event_taxonomy.md.
     // inspector.rs EventType enum serializes to SCREAMING_SNAKE_CASE via serde rename_all.
-    let narrative_blocks: Vec<NarrativeBlock> = canonical_events.iter().map(|event| {
-        let (group, block_type, narrative) = match event.event_type.as_str() {
-            "ORDER_INTENT" => (
-                NarrativeGroup::Intent,
-                NarrativeBlockType::Primary,
-                format!(
-                    "Strategy decision: order placed at seq {}.",
-                    event.sequence_id
+    let narrative_blocks: Vec<NarrativeBlock> = canonical_events
+        .iter()
+        .map(|event| {
+            let (group, block_type, narrative) = match event.event_type.as_str() {
+                "ORDER_INTENT" => (
+                    NarrativeGroup::Intent,
+                    NarrativeBlockType::Primary,
+                    format!(
+                        "Strategy decision: order placed at seq {}.",
+                        event.sequence_id
+                    ),
                 ),
-            ),
-            "ORDER_ENTERED_QUEUE" => (
-                NarrativeGroup::Queue,
-                NarrativeBlockType::Derived,
-                format!(
-                    "Order entered execution queue at seq {}.",
-                    event.sequence_id
+                "ORDER_ENTERED_QUEUE" => (
+                    NarrativeGroup::Queue,
+                    NarrativeBlockType::Derived,
+                    format!(
+                        "Order entered execution queue at seq {}.",
+                        event.sequence_id
+                    ),
                 ),
-            ),
-            "QUEUE_PROGRESSION" => (
-                NarrativeGroup::Queue,
-                NarrativeBlockType::Derived,
-                format!(
-                    "Queue position advancing at seq {}.",
-                    event.sequence_id
+                "QUEUE_PROGRESSION" => (
+                    NarrativeGroup::Queue,
+                    NarrativeBlockType::Derived,
+                    format!("Queue position advancing at seq {}.", event.sequence_id),
                 ),
-            ),
-            "PARTIAL_FILL" => (
-                NarrativeGroup::Execution,
-                NarrativeBlockType::Primary,
-                format!(
-                    "Partial execution recorded at seq {}.",
-                    event.sequence_id
+                "PARTIAL_FILL" => (
+                    NarrativeGroup::Execution,
+                    NarrativeBlockType::Primary,
+                    format!("Partial execution recorded at seq {}.", event.sequence_id),
                 ),
-            ),
-            "ORDER_FILLED" => (
-                NarrativeGroup::Execution,
-                NarrativeBlockType::Primary,
-                format!(
-                    "Order fully executed at seq {}.",
-                    event.sequence_id
+                "ORDER_FILLED" => (
+                    NarrativeGroup::Execution,
+                    NarrativeBlockType::Primary,
+                    format!("Order fully executed at seq {}.", event.sequence_id),
                 ),
-            ),
-            "ORDER_CANCELLED" => (
-                NarrativeGroup::Execution,
-                NarrativeBlockType::Primary,
-                format!(
-                    "Order cancelled at seq {}.",
-                    event.sequence_id
+                "ORDER_CANCELLED" => (
+                    NarrativeGroup::Execution,
+                    NarrativeBlockType::Primary,
+                    format!("Order cancelled at seq {}.", event.sequence_id),
                 ),
-            ),
-            "MARKET_NEW_ORDER" => (
-                NarrativeGroup::Queue,
-                NarrativeBlockType::CausalLink,
-                format!(
-                    "Market new order at seq {} (liquidity added).",
-                    event.sequence_id
+                "MARKET_NEW_ORDER" => (
+                    NarrativeGroup::Queue,
+                    NarrativeBlockType::CausalLink,
+                    format!(
+                        "Market new order at seq {} (liquidity added).",
+                        event.sequence_id
+                    ),
                 ),
-            ),
-            "MARKET_TRADE" => (
-                NarrativeGroup::Queue,
-                NarrativeBlockType::CausalLink,
-                format!(
-                    "Market trade at seq {} (queue consumed).",
-                    event.sequence_id
+                "MARKET_TRADE" => (
+                    NarrativeGroup::Queue,
+                    NarrativeBlockType::CausalLink,
+                    format!(
+                        "Market trade at seq {} (queue consumed).",
+                        event.sequence_id
+                    ),
                 ),
-            ),
-            "MARKET_CANCEL" => (
-                NarrativeGroup::Queue,
-                NarrativeBlockType::CausalLink,
-                format!(
-                    "Market cancel at seq {} (liquidity removed).",
-                    event.sequence_id
+                "MARKET_CANCEL" => (
+                    NarrativeGroup::Queue,
+                    NarrativeBlockType::CausalLink,
+                    format!(
+                        "Market cancel at seq {} (liquidity removed).",
+                        event.sequence_id
+                    ),
                 ),
-            ),
-            _ => (
-                NarrativeGroup::Governance,
-                NarrativeBlockType::CausalLink,
-                format!(
-                    "Event {} at seq {}.",
-                    event.event_type, event.sequence_id
+                _ => (
+                    NarrativeGroup::Governance,
+                    NarrativeBlockType::CausalLink,
+                    format!("Event {} at seq {}.", event.event_type, event.sequence_id),
                 ),
-            ),
-        };
+            };
 
-        // parent_block_id resolved in a second pass if needed
-        let parent_block_id: Option<Uuid> = None;
+            // parent_block_id resolved in a second pass if needed
+            let parent_block_id: Option<Uuid> = None;
 
-        NarrativeBlock {
-            block_id: Uuid::new_v4(),
-            group,
-            sequence_id: event.sequence_id,
-            narrative,
-            block_type,
-            parent_sequence_id: event.parent_sequence_id,
-            parent_block_id,
-            timestamp_ns: Some(event.timestamp_ns),
-            divergence_score: None,
-        }
-    }).collect();
+            NarrativeBlock {
+                block_id: Uuid::new_v4(),
+                group,
+                sequence_id: event.sequence_id,
+                narrative,
+                block_type,
+                parent_sequence_id: event.parent_sequence_id,
+                parent_block_id,
+                timestamp_ns: Some(event.timestamp_ns),
+                divergence_score: None,
+            }
+        })
+        .collect();
 
     // Determine certification state per event_taxonomy.md certification impact matrix.
     // INVALID: missing any event type whose absence = INVALID.
@@ -330,17 +342,37 @@ pub async fn inspect_strategy_handler(
         .collect();
 
     let (certification_state, certification_reason) = if event_count == 0 {
-        (CertificationState::Invalid, Some("No events in execution trace".to_string()))
+        (
+            CertificationState::Invalid,
+            Some("No events in execution trace".to_string()),
+        )
     } else if first_seq == 0 && last_seq == 0 {
-        (CertificationState::Degraded, Some("Sequence IDs could not be determined".to_string()))
+        (
+            CertificationState::Degraded,
+            Some("Sequence IDs could not be determined".to_string()),
+        )
     } else if !event_types_present.contains("ORDER_INTENT") {
-        (CertificationState::Invalid, Some("ORDER_INTENT missing — no order lifecycle to certify".to_string()))
-    } else if !event_types_present.contains("ORDER_FILLED") && !event_types_present.contains("ORDER_CANCELLED") {
-        (CertificationState::Invalid, Some("ORDER_FILLED/ORDER_CANCELLED missing — execution not confirmed".to_string()))
+        (
+            CertificationState::Invalid,
+            Some("ORDER_INTENT missing — no order lifecycle to certify".to_string()),
+        )
+    } else if !event_types_present.contains("ORDER_FILLED")
+        && !event_types_present.contains("ORDER_CANCELLED")
+    {
+        (
+            CertificationState::Invalid,
+            Some("ORDER_FILLED/ORDER_CANCELLED missing — execution not confirmed".to_string()),
+        )
     } else if !event_types_present.contains("ORDER_ENTERED_QUEUE") {
-        (CertificationState::Partial, Some("ORDER_ENTERED_QUEUE missing — queue position unknown".to_string()))
+        (
+            CertificationState::Partial,
+            Some("ORDER_ENTERED_QUEUE missing — queue position unknown".to_string()),
+        )
     } else if !event_types_present.contains("MARKET_TRADE") {
-        (CertificationState::Degraded, Some("MARKET_TRADE missing — fill simulation accuracy reduced".to_string()))
+        (
+            CertificationState::Degraded,
+            Some("MARKET_TRADE missing — fill simulation accuracy reduced".to_string()),
+        )
     } else {
         (CertificationState::Certified, None)
     };
@@ -366,7 +398,7 @@ pub async fn inspect_strategy_handler(
 
     // Build canonical portfolio state from legacy metrics
     let portfolio_state = CanonicalPortfolioState {
-        positions: vec![],  // populated from order outcomes when available
+        positions: vec![], // populated from order outcomes when available
         cash_balance: 0.0,
         total_equity: legacy.metrics.avg,
         unrealized_pnl: 0.0,
@@ -409,13 +441,12 @@ pub async fn test_determinism_handler(
     Json(request): Json<EvaluateStrategyRequest>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     println!("Request received: test_determinism");
-    let is_deterministic = service.test_determinism(
-        request.strategy_config,
-        request.scenarios,
-        request.seed,
-    )?;
+    let is_deterministic =
+        service.test_determinism(request.strategy_config, request.scenarios, request.seed)?;
 
-    Ok(Json(serde_json::json!({ "deterministic": is_deterministic })))
+    Ok(Json(
+        serde_json::json!({ "deterministic": is_deterministic }),
+    ))
 }
 
 pub async fn run_ga_handler(
@@ -423,9 +454,7 @@ pub async fn run_ga_handler(
     Query(query): Query<RunGaQuery>,
 ) -> Result<Json<RunGaResponse>, ApiError> {
     println!("RUN_GA_ENDPOINT_HIT");
-    let config = query
-        .to_ga_config()
-        .map_err(ApiError::ValidationError)?;
+    let config = query.to_ga_config().map_err(ApiError::ValidationError)?;
     let response = service.run_ga(config)?;
     println!("GA run completed");
     Ok(Json(response))

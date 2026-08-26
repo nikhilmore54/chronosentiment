@@ -163,7 +163,11 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     // Default snapshot: <output>/latest.json
     let snapshot = snapshot.unwrap_or_else(|| output.join("latest.json"));
 
-    Ok(Args { snapshot, policy_dir, output })
+    Ok(Args {
+        snapshot,
+        policy_dir,
+        output,
+    })
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -186,7 +190,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .into());
     }
-    println!("[live002] policy artifact verified: {}", artifact.artifact_hash);
+    println!(
+        "[live002] policy artifact verified: {}",
+        artifact.artifact_hash
+    );
 
     // ── AC-1: Load LIVE-001 snapshot (no network) ─────────────────────────────
     let snapshot_raw = fs::read_to_string(&args.snapshot)
@@ -226,10 +233,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for inst in &snapshot.instruments {
         // AC-2: Eligibility gate
         if inst.completeness_status == "ERROR" || inst.error.is_some() {
-            println!(
-                "[live002] excluded ticker={} reason=ERROR",
-                inst.ticker
-            );
+            println!("[live002] excluded ticker={} reason=ERROR", inst.ticker);
             instrument_states.push(InstrumentState {
                 ticker: inst.ticker.clone(),
                 eligibility: "EXCLUDED_ERROR".to_string(),
@@ -242,7 +246,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 source_bar_timestamp: inst.source_bar_timestamp.clone(),
                 acquisition_timestamp: inst.acquisition_timestamp.clone(),
                 exclusion_reason: Some(
-                    inst.error.clone().unwrap_or_else(|| "ERROR status".to_string()),
+                    inst.error
+                        .clone()
+                        .unwrap_or_else(|| "ERROR status".to_string()),
                 ),
             });
             n_excluded_error += 1;

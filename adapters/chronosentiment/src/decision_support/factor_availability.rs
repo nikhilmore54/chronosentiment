@@ -61,11 +61,7 @@ pub fn report_factor_availability(
                 status.availability,
             );
             bump(
-                by_year
-                    .entry(year)
-                    .or_default()
-                    .entry(concept)
-                    .or_default(),
+                by_year.entry(year).or_default().entry(concept).or_default(),
                 status.availability,
             );
         }

@@ -16,8 +16,8 @@ use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_ya
 use chronosentiment_adapter::decision_support::observatory_execution::{
     default_execution_clocks, refuse_protected_output, render_execution_html,
     render_execution_report, replay_targeted_execution, C3G_EXPERIMENT_AUTHORIZED,
-    SEARCH_THREE_AUTHORIZED, STOP_EXIT_AUTHORIZED, TARGET_PATH_OPTIMIZATION_AUTHORIZED,
-    TARGETED_EXECUTION_V0_FROZEN,
+    SEARCH_THREE_AUTHORIZED, STOP_EXIT_AUTHORIZED, TARGETED_EXECUTION_V0_FROZEN,
+    TARGET_PATH_OPTIMIZATION_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
 
@@ -41,11 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || SEARCH_THREE_AUTHORIZED
         || C3G_EXPERIMENT_AUTHORIZED
     {
-        return Err("refusing an execution run that opens research or path-optimizes the target".into());
+        return Err(
+            "refusing an execution run that opens research or path-optimizes the target".into(),
+        );
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(args.search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        args.search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
@@ -61,8 +64,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.output.join("report.json"),
         serde_json::to_vec_pretty(&report)?,
     )?;
-    fs::write(args.output.join("REPORT.md"), render_execution_report(&report))?;
-    fs::write(args.output.join("evidence.html"), render_execution_html(&report))?;
+    fs::write(
+        args.output.join("REPORT.md"),
+        render_execution_report(&report),
+    )?;
+    fs::write(
+        args.output.join("evidence.html"),
+        render_execution_html(&report),
+    )?;
     fs::write(
         args.output.join("CONTRACT.txt"),
         "Execution Contract v0\nC3-002 chooses direction only.\ntarget_pct = 5.0% belongs to this contract, not to C3-002.\nTarget sealed at T. Replay v0/v1 and the 14 August cohort are not rewritten.\n",
@@ -76,7 +85,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("target={}", report.n_target);
     println!("horizon={}", report.n_horizon);
     println!("peeked_returns_at_seal={}", report.peeked_returns_at_seal);
-    println!("prospective_cohort_mutated={}", report.prospective_cohort_mutated);
+    println!(
+        "prospective_cohort_mutated={}",
+        report.prospective_cohort_mutated
+    );
     println!("statistical_backtest={}", report.statistical_backtest);
     println!("output={}", args.output.display());
     Ok(())
@@ -99,7 +111,9 @@ fn parse_args() -> Result<ExecArgs, Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(args.next().ok_or("missing --yahoo-cache")?))
@@ -113,12 +127,15 @@ fn parse_args() -> Result<ExecArgs, Box<dyn std::error::Error>> {
         }
     }
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
     Ok(ExecArgs {
         search_two: search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        cache_dir: cache.unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
+        cache_dir: cache
+            .unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
         output: output.unwrap_or_else(|| {
             PathBuf::from("product_validation/CS-P-006/observatory/targeted_execution_v0")
         }),

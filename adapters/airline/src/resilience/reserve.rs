@@ -19,7 +19,9 @@ pub struct ReservePool {
 
 impl ReservePool {
     pub fn new() -> Self {
-        Self { members: Vec::new() }
+        Self {
+            members: Vec::new(),
+        }
     }
 
     pub fn add(&mut self, member: CrewMember) {
@@ -92,11 +94,9 @@ impl<'a> ReserveAllocator<'a> {
                     continue;
                 }
 
-                if let Ok(new_rot) = Rotation::new(
-                    rot.id.clone(),
-                    reserve.id.clone(),
-                    rot.pairings().to_vec(),
-                ) {
+                if let Ok(new_rot) =
+                    Rotation::new(rot.id.clone(), reserve.id.clone(), rot.pairings().to_vec())
+                {
                     // Build a minimal temp roster to run the legality check.
                     let temp_roster = Roster::new(
                         roster.id.clone(),
@@ -134,7 +134,11 @@ impl<'a> ReserveAllocator<'a> {
         )
         .unwrap_or_else(|_| roster.clone());
 
-        AllocationResult { roster: new_roster, assignments, uncovered_rotations: uncovered }
+        AllocationResult {
+            roster: new_roster,
+            assignments,
+            uncovered_rotations: uncovered,
+        }
     }
 }
 
@@ -145,7 +149,7 @@ mod tests {
     use super::*;
     use crate::domain::crew::{CrewRole, Qualification};
     use crate::domain::flight::{AircraftType, AirportCode};
-    use crate::legality::{test_helpers::*, LegalityChecker};
+    use crate::legality::{LegalityChecker, test_helpers::*};
 
     fn make_checker() -> LegalityChecker {
         LegalityChecker::new()

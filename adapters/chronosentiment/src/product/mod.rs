@@ -38,18 +38,18 @@
 //! No module in this layer may alter C3-002 direction or Coralys execution parameters.
 //! The allocation engine is a portfolio constraint layer, not a market intelligence layer.
 
-pub mod user_profile;
+pub mod allocation_engine;
 pub mod portfolio_context;
 pub mod recommendation;
-pub mod allocation_engine;
 pub mod recommendation_engine;
+pub mod user_profile;
 
-pub use user_profile::{UserProfile, RiskTolerance, InvestmentHorizon, UserProfileError};
-pub use portfolio_context::{PortfolioContext, PortfolioPosition, PortfolioContextError};
+pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
+pub use portfolio_context::{PortfolioContext, PortfolioContextError, PortfolioPosition};
 pub use recommendation::{
     PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction,
 };
-pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use recommendation_engine::{
     PortfolioRecommendationEngine, RecommendationEngineError, RECOMMENDATION_ENGINE_VERSION,
 };
+pub use user_profile::{InvestmentHorizon, RiskTolerance, UserProfile, UserProfileError};

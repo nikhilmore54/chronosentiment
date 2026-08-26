@@ -20,7 +20,7 @@ impl From<CandidateEvaluation> for SemanticEvaluationReport {
         report_metrics.insert("win_rate".to_string(), eval.win_rate);
         report_metrics.insert("trade_count".to_string(), eval.trade_count as f64);
         report_metrics.insert("max_drawdown".to_string(), eval.max_drawdown);
-        
+
         Self {
             fitness: eval.fitness,
             avg_pnl: eval.avg_pnl,

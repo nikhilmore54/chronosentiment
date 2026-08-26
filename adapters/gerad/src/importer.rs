@@ -46,7 +46,9 @@ impl GeradImporter {
     /// The directory must contain the five CSV files described in
     /// [`crate::models`].
     pub fn new(dataset_dir: impl Into<PathBuf>) -> Self {
-        Self { dataset_dir: dataset_dir.into() }
+        Self {
+            dataset_dir: dataset_dir.into(),
+        }
     }
 
     /// Parse, validate, and map the dataset.
@@ -140,6 +142,9 @@ mod tests {
         );
 
         let err = GeradImporter::new(tmp.path()).load().unwrap_err();
-        assert!(matches!(err, GeradError::Io { .. }), "expected Io error, got {err:?}");
+        assert!(
+            matches!(err, GeradError::Io { .. }),
+            "expected Io error, got {err:?}"
+        );
     }
 }

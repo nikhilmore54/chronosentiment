@@ -1,6 +1,6 @@
-use std::error::Error;
-use chrono::{DateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde_json::Value;
+use std::error::Error;
 
 pub struct FredWorker {
     client: reqwest::Client,
@@ -24,8 +24,10 @@ impl FredWorker {
 
         let response = self.client.get(&url).send().await?.json::<Value>().await?;
 
-        let observations_array = response["observations"].as_array().ok_or("Missing observations array")?;
-        
+        let observations_array = response["observations"]
+            .as_array()
+            .ok_or("Missing observations array")?;
+
         let mut observations = Vec::new();
 
         for obs in observations_array {

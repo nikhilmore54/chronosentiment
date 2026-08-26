@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::traits::{MemoryModel, TopologyModel};
+use serde::{Deserialize, Serialize};
 
 /// Defines the deterministic state evolution constraints for a chronological container.
 /// This strictly models memory physics.
@@ -31,25 +31,25 @@ impl MemoryState {
         if baseline.buffer.is_empty() {
             return 0.0;
         }
-        
+
         let base_len = baseline.buffer.len();
         let frag_len = self.buffer.len();
-        
+
         let mut overlap_count = 0;
-        
+
         for i in 0..base_len {
             let base_val = baseline.buffer[base_len - 1 - i];
             let frag_val = if i < frag_len {
                 self.buffer[frag_len - 1 - i]
             } else {
-                0.0 
+                0.0
             };
-            
+
             if (base_val - frag_val).abs() < f64::EPSILON {
                 overlap_count += 1;
             }
         }
-        
+
         overlap_count as f64 / base_len as f64
     }
 }
@@ -91,12 +91,27 @@ impl MemoryModel<f64> for MemoryState {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum TopologyField {
-    UniformDelay { delay_ticks: u32 },
-    Oscillatory { period: u32, amplitude: f64, noise: f64 },
-    PlateauLow { occupancy: f64 },
-    ImpulseShock { at_tick: u64, magnitude: f64 },
-    DriftField { min_acceptance: f64 },
-    FragmentedRegime { switch_period: u32 },
+    UniformDelay {
+        delay_ticks: u32,
+    },
+    Oscillatory {
+        period: u32,
+        amplitude: f64,
+        noise: f64,
+    },
+    PlateauLow {
+        occupancy: f64,
+    },
+    ImpulseShock {
+        at_tick: u64,
+        magnitude: f64,
+    },
+    DriftField {
+        min_acceptance: f64,
+    },
+    FragmentedRegime {
+        switch_period: u32,
+    },
     Baseline,
 }
 
@@ -121,24 +136,33 @@ impl TopologyModel<(u64, u64)> for TopologyField {
                 acceptance_ratio: 1.0,
                 strict_ratio: 0.0,
             },
-            TopologyField::Oscillatory { period, amplitude, noise } => {
-                let wave = (std::f64::consts::PI * 2.0 * (tick_index as f64 / *period as f64)).cos();
+            TopologyField::Oscillatory {
+                period,
+                amplitude,
+                noise,
+            } => {
+                let wave =
+                    (std::f64::consts::PI * 2.0 * (tick_index as f64 / *period as f64)).cos();
                 let wave_norm = (wave + 1.0) / 2.0;
-                
+
                 let mut wave_prog = (1.0 - amplitude) + (amplitude * wave_norm);
-                
+
                 if *noise > 0.0 {
-                    let pseudo_noise = ((tick_index.wrapping_mul(1103515245).wrapping_add(12345) % 1000) as f64 / 1000.0) * 2.0 - 1.0;
+                    let pseudo_noise = ((tick_index.wrapping_mul(1103515245).wrapping_add(12345)
+                        % 1000) as f64
+                        / 1000.0)
+                        * 2.0
+                        - 1.0;
                     wave_prog += pseudo_noise * noise;
                 }
-                
+
                 let wave_prog = wave_prog.clamp(0.0, 1.0);
-                
+
                 DeformationState {
                     acceptance_ratio: (wave_prog + 0.3).min(1.0),
                     strict_ratio: wave_prog,
                 }
-            },
+            }
             TopologyField::PlateauLow { occupancy } => DeformationState {
                 acceptance_ratio: *occupancy,
                 strict_ratio: *occupancy,
@@ -155,21 +179,21 @@ impl TopologyModel<(u64, u64)> for TopologyField {
                         strict_ratio: 1.0,
                     }
                 }
-            },
+            }
             TopologyField::DriftField { min_acceptance } => {
                 let progress = tick_index as f64 / total_ticks.max(1) as f64;
                 let wave_prog = 1.0 - (progress * (1.0 - min_acceptance));
                 let wave_prog = wave_prog.clamp(0.0, 1.0);
-                
+
                 DeformationState {
                     acceptance_ratio: wave_prog,
                     strict_ratio: wave_prog,
                 }
-            },
+            }
             TopologyField::FragmentedRegime { switch_period } => {
                 let regime_idx = tick_index / (*switch_period as u64).max(1);
                 let wave_prog = if regime_idx % 2 == 0 { 1.0 } else { 0.1 };
-                
+
                 DeformationState {
                     acceptance_ratio: wave_prog,
                     strict_ratio: wave_prog,

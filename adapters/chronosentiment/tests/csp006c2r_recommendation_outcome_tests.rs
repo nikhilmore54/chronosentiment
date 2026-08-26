@@ -34,7 +34,10 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn profile(ma20: f64, ma50: f64) -> chronosentiment_adapter::reasoning::assessment::AssessmentProfile {
+fn profile(
+    ma20: f64,
+    ma50: f64,
+) -> chronosentiment_adapter::reasoning::assessment::AssessmentProfile {
     let t = Utc.with_ymd_and_hms(2021, 10, 31, 15, 30, 0).unwrap();
     let mut metrics = MetricReport::default();
     metrics
@@ -125,7 +128,10 @@ fn long_is_correct_only_when_the_market_rose() {
     assert_eq!(rows[1].directional_call, DirectionalCall::Incorrect);
     assert_eq!(rows[2].recommendation, DecisionAction::NoTrade);
     assert_eq!(rows[2].directional_call, DirectionalCall::NotApplicable);
-    assert_eq!(rows[2].no_trade_winning_alternative, Some(DecisionAction::Long));
+    assert_eq!(
+        rows[2].no_trade_winning_alternative,
+        Some(DecisionAction::Long)
+    );
     assert!(!card.search_two_authorized);
     assert!(!card.coralys_feedback);
 }
@@ -140,7 +146,9 @@ fn no_trade_is_never_marked_correct() {
         &slice(PartitionKind::Evaluation, false, 0.0),
     )
     .unwrap();
-    assert!(rows.iter().all(|r| r.recommendation == DecisionAction::NoTrade));
+    assert!(rows
+        .iter()
+        .all(|r| r.recommendation == DecisionAction::NoTrade));
     assert!(rows
         .iter()
         .all(|r| r.directional_call == DirectionalCall::NotApplicable));
@@ -184,7 +192,10 @@ fn on_disk_scorecard_matches_search_one_when_present() {
     }
     let card: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-    assert_eq!(card["policy_artifact_hash"], RESEARCH_DISCOVERY_ARTIFACT_HASH);
+    assert_eq!(
+        card["policy_artifact_hash"],
+        RESEARCH_DISCOVERY_ARTIFACT_HASH
+    );
     assert_eq!(card["n_recommendations"], 273);
     assert_eq!(card["overall"]["long"]["n"], 121);
     assert_eq!(card["overall"]["short"]["n"], 0);

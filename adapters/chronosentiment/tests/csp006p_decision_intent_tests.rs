@@ -4,10 +4,10 @@ use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::decision_intent::{
     certified_execution_state, seal_experiment_a_intent, seal_experiment_b_intent,
-    ASYMMETRIC_TARGET_AUTHORIZED, AUTHORIZED_TARGET_INPUTS, CORALYS_TARGET_ARTIFACT_PRESENT,
-    CORALYS_TARGET_GENERATION_STARTED, CORALYS_TARGET_SEARCH_AUTHORIZED, CertifiedExecutionState,
-    FORBIDDEN_TARGET_INPUTS, HORIZON_SEARCH_AUTHORIZED, TARGET_LOOKAHEAD_AUTHORIZED,
-    TARGET_SOURCE_FIXED,
+    CertifiedExecutionState, ASYMMETRIC_TARGET_AUTHORIZED, AUTHORIZED_TARGET_INPUTS,
+    CORALYS_TARGET_ARTIFACT_PRESENT, CORALYS_TARGET_GENERATION_STARTED,
+    CORALYS_TARGET_SEARCH_AUTHORIZED, FORBIDDEN_TARGET_INPUTS, HORIZON_SEARCH_AUTHORIZED,
+    TARGET_LOOKAHEAD_AUTHORIZED, TARGET_SOURCE_FIXED,
 };
 use chronosentiment_adapter::decision_support::observatory_execution::EXECUTION_TARGET_PCT;
 use chronosentiment_adapter::decision_support::observatory_slice::SealedDecisionRecord;
@@ -20,9 +20,7 @@ fn paper_decision(action: DecisionAction, time: &str) -> SealedDecisionRecord {
         instrument: "INFY.NS".into(),
         decision_time: time.into(),
         state: chronosentiment_adapter::decision_support::observatory_slice::certified_tmv_state(
-            "Bullish",
-            "Positive",
-            "present",
+            "Bullish", "Positive", "present",
         ),
         action,
         policy_id: "C3-002".into(),

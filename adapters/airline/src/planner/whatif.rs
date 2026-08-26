@@ -73,10 +73,7 @@ impl WhatIfAnalysis {
     ///
     /// `baseline` — violations from the original roster.
     /// `candidate` — violations from the proposed modified roster.
-    pub fn compare(
-        baseline: Vec<LegalityViolation>,
-        candidate: Vec<LegalityViolation>,
-    ) -> Self {
+    pub fn compare(baseline: Vec<LegalityViolation>, candidate: Vec<LegalityViolation>) -> Self {
         use std::collections::HashMap;
 
         // Index baseline violations by key, counting occurrences.
@@ -102,7 +99,8 @@ impl WhatIfAnalysis {
         let mut persisting = Vec::new();
 
         // Collect all keys from both sets.
-        let mut all_keys: std::collections::HashSet<ViolationKey> = std::collections::HashSet::new();
+        let mut all_keys: std::collections::HashSet<ViolationKey> =
+            std::collections::HashSet::new();
         all_keys.extend(baseline_counts.keys().cloned());
         all_keys.extend(candidate_counts.keys().cloned());
 
@@ -145,7 +143,11 @@ impl WhatIfAnalysis {
             }
         }
 
-        Self { introduced, resolved, persisting }
+        Self {
+            introduced,
+            resolved,
+            persisting,
+        }
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────────
@@ -251,8 +253,8 @@ mod tests {
     #[test]
     fn mixed_change() {
         let v1 = err("max_duty_time", "D1", 900.0, 840.0); // baseline only → resolved
-        let v2 = err("minimum_rest", "P1", 300.0, 600.0);  // both → persists
-        let v3 = err("coverage", "L1", 0.0, 1.0);          // candidate only → introduced
+        let v2 = err("minimum_rest", "P1", 300.0, 600.0); // both → persists
+        let v3 = err("coverage", "L1", 0.0, 1.0); // candidate only → introduced
 
         let baseline = vec![v1, v2.clone()];
         let candidate = vec![v2, v3];

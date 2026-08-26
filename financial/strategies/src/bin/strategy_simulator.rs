@@ -60,7 +60,9 @@ struct ArchetypeState {
 impl ArchetypeState {
     fn new() -> Self {
         Self {
-            out: ArchetypeOutput { state_stream: vec![] },
+            out: ArchetypeOutput {
+                state_stream: vec![],
+            },
             pending_signal: None,
             current_pos: 0,
             exit_tick: None,
@@ -99,70 +101,78 @@ fn main() {
     let args = Args::parse();
     let file = File::open(&args.substrate_file).expect("Failed to open substrate file");
     let reader = BufReader::new(file);
-    
+
     let mut prices = Vec::new();
     let mut timestamps = Vec::new();
-    
+
     for line in reader.lines() {
         if let Ok(l) = line {
-            if l.trim().is_empty() { continue; }
+            if l.trim().is_empty() {
+                continue;
+            }
             if let Ok(tick) = serde_json::from_str::<SubstrateTick>(&l) {
                 prices.push(tick.price);
                 timestamps.push(tick.timestamp);
             }
         }
     }
-    
+
     let ticks_to_slip = (args.latency_ms / 10) as usize;
-    
+
     let mut port_null_state = ArchetypeState::new();
     let mut sig_null_state = ArchetypeState::new();
     let mut twap_state = ArchetypeState::new();
     let mut brk_state = ArchetypeState::new();
     let mut mom_state = ArchetypeState::new();
     let mut mr_state = ArchetypeState::new();
-    
+
     let twap_intervals = vec![120, 360, 600, 840, 1080, 1320];
-    
+
     for i in 0..prices.len() {
         // Portfolio Null Observer doesn't even generate signals
         port_null_state.process_queue(i, &timestamps, &args, ticks_to_slip);
-        
+
         // Signal Null Observer
         if i > 0 && i % 50 == 0 {
             // Generates signal but never executes
             // Wait, we just don't set pending_signal
         }
         sig_null_state.process_queue(i, &timestamps, &args, ticks_to_slip);
-        
+
         twap_state.process_queue(i, &timestamps, &args, ticks_to_slip);
         brk_state.process_queue(i, &timestamps, &args, ticks_to_slip);
         mom_state.process_queue(i, &timestamps, &args, ticks_to_slip);
         mr_state.process_queue(i, &timestamps, &args, ticks_to_slip);
-        
+
         if twap_intervals.contains(&i) {
             if twap_state.pending_signal.is_none() && twap_state.current_pos == 0 {
                 twap_state.pending_signal = Some(i);
             }
         }
-        
+
         if i >= 50 {
-            let local_high = prices[i-50..i].iter().cloned().fold(f64::NAN, f64::max);
-            if prices[i] > local_high && brk_state.pending_signal.is_none() && brk_state.current_pos == 0 {
+            let local_high = prices[i - 50..i].iter().cloned().fold(f64::NAN, f64::max);
+            if prices[i] > local_high
+                && brk_state.pending_signal.is_none()
+                && brk_state.current_pos == 0
+            {
                 brk_state.pending_signal = Some(i);
             }
         }
-        
+
         if i >= 3 {
-            if prices[i] > prices[i-1] && prices[i-1] > prices[i-2] && prices[i-2] > prices[i-3] {
+            if prices[i] > prices[i - 1]
+                && prices[i - 1] > prices[i - 2]
+                && prices[i - 2] > prices[i - 3]
+            {
                 if mom_state.pending_signal.is_none() && mom_state.current_pos == 0 {
                     mom_state.pending_signal = Some(i);
                 }
             }
         }
-        
+
         if i >= 20 {
-            let sma = prices[i-20..=i].iter().sum::<f64>() / 21.0;
+            let sma = prices[i - 20..=i].iter().sum::<f64>() / 21.0;
             if prices[i] < sma * 0.998 {
                 if mr_state.pending_signal.is_none() && mr_state.current_pos == 0 {
                     mr_state.pending_signal = Some(i);
@@ -170,7 +180,7 @@ fn main() {
             }
         }
     }
-    
+
     let res = SimulationResult {
         portfolio_null_observer: port_null_state.out,
         signal_null_observer: sig_null_state.out,
@@ -179,6 +189,6 @@ fn main() {
         momentum: mom_state.out,
         mean_reversion: mr_state.out,
     };
-    
+
     println!("{}", serde_json::to_string(&res).unwrap());
 }

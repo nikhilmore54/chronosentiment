@@ -63,12 +63,12 @@ impl ObservabilityTracker {
             evaluations: 0,
         }
     }
-    
+
     pub fn record_evaluation(
-        &mut self, 
-        uid: u64, 
-        generation: u64, 
-        internal: f64, 
+        &mut self,
+        uid: u64,
+        generation: u64,
+        internal: f64,
         external: f64,
         archive_member: bool,
         admitted: bool,
@@ -76,7 +76,7 @@ impl ObservabilityTracker {
         age: u64,
         novelty: f64,
         fitness_objs: Vec<f64>,
-        external_objs: Vec<f64>
+        external_objs: Vec<f64>,
     ) {
         self.evaluations += 1;
         self.alignment_records.push(AlignmentRecord {
@@ -92,22 +92,29 @@ impl ObservabilityTracker {
             fitness_objs,
             external_objs,
         });
-        
+
         let is_new_best = match &self.best_ever {
             Some(best) => external < best.fitness,
             None => true,
         };
 
         if is_new_best {
-            self.best_ever = Some(ExternalChampion { uid, generation, fitness: external });
-            self.lifecycles.insert(uid, ChampionLifecycle {
+            self.best_ever = Some(ExternalChampion {
                 uid,
-                discovery_generation: generation,
-                eviction_generation: None,
-                external_fitness: external,
-                internal_fitness_at_discovery: internal,
-                archive_lifetime: None,
+                generation,
+                fitness: external,
             });
+            self.lifecycles.insert(
+                uid,
+                ChampionLifecycle {
+                    uid,
+                    discovery_generation: generation,
+                    eviction_generation: None,
+                    external_fitness: external,
+                    internal_fitness_at_discovery: internal,
+                    archive_lifetime: None,
+                },
+            );
         }
     }
 
@@ -119,10 +126,12 @@ impl ObservabilityTracker {
     }
 
     pub fn snapshot_archive(&mut self, generation: u64, archive_external_fitnesses: &[f64]) {
-        if archive_external_fitnesses.is_empty() { return; }
+        if archive_external_fitnesses.is_empty() {
+            return;
+        }
         let mut scores = archive_external_fitnesses.to_vec();
         scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let len = scores.len() as f64;
         let p10 = scores[((len * 0.10) as usize).min(scores.len() - 1)];
         let p25 = scores[((len * 0.25) as usize).min(scores.len() - 1)];

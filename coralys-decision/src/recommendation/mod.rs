@@ -14,9 +14,11 @@
 pub mod engine;
 pub mod evidence;
 
+pub use engine::{
+    RECOMMENDATION_POLICY_VERSION_V1, RecommendationEngineV1, RecommendationRecordV1,
+};
 pub use engine::{RecommendationAction, RecommendationEngine, RecommendationRecord};
-pub use engine::{RecommendationEngineV1, RecommendationRecordV1, RECOMMENDATION_POLICY_VERSION_V1};
 pub use evidence::{AnalogueKey, EvidenceClass, EvidenceStore, HistoricalEvidence};
 pub use evidence::{
-    DegradationLevel, Rec001hStore, V1Evidence, VolatilityRegime, VolumeRegime, MIN_V1_SAMPLE,
+    DegradationLevel, MIN_V1_SAMPLE, Rec001hStore, V1Evidence, VolatilityRegime, VolumeRegime,
 };

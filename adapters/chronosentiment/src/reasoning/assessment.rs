@@ -1,10 +1,10 @@
 use crate::metrics::concepts::Concept;
-use coralys_moga::runtime::optimization::metric::MetricReport;
-use sha2::{Sha256, Digest};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
 use crate::repository::knowledge::{ArtifactMetadata, KnowledgeArtifact};
+use chrono::{DateTime, Utc};
+use coralys_moga::runtime::optimization::metric::MetricReport;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
@@ -82,7 +82,7 @@ impl KnowledgeArtifact for AssessmentProfile {
     fn metadata(&self) -> &ArtifactMetadata {
         &self.metadata
     }
-    
+
     fn instrument_id(&self) -> Option<Uuid> {
         self.instrument_id
     }
@@ -93,7 +93,7 @@ impl AssessmentProfile {
         let mut parts = Vec::new();
         let mut assessments = self.assessments.clone();
         assessments.sort_by_key(|a| format!("{:?}", a.concept));
-        
+
         for a in &assessments {
             let mut s = format!("{:?}: {:?}", a.concept, a.direction);
             if let Some(strength) = &a.strength {
@@ -112,14 +112,14 @@ impl AssessmentProfile {
         for s in &statuses {
             parts.push(format!("{:?}:{:?}", s.concept, s.availability));
         }
-        
+
         if parts.is_empty() {
             "Neutral / Weak".to_string()
         } else {
             parts.join(" | ")
         }
     }
-    
+
     pub fn to_hash(&self) -> String {
         let sig = self.to_signature();
         let mut hasher = Sha256::new();
@@ -128,7 +128,8 @@ impl AssessmentProfile {
     }
 }
 
-pub const ENRICHMENT_CONCEPTS: [Concept; 3] = [Concept::Trend, Concept::Momentum, Concept::Volatility];
+pub const ENRICHMENT_CONCEPTS: [Concept; 3] =
+    [Concept::Trend, Concept::Momentum, Concept::Volatility];
 
 pub struct AssessmentEngine;
 
@@ -162,7 +163,13 @@ impl AssessmentEngine {
         self.assess_with_metadata(metrics, active_concepts, metadata, instrument_id)
     }
 
-    pub fn assess_with_metadata(&self, metrics: &MetricReport, active_concepts: &[Concept], mut metadata: ArtifactMetadata, instrument_id: Option<Uuid>) -> AssessmentProfile {
+    pub fn assess_with_metadata(
+        &self,
+        metrics: &MetricReport,
+        active_concepts: &[Concept],
+        mut metadata: ArtifactMetadata,
+        instrument_id: Option<Uuid>,
+    ) -> AssessmentProfile {
         let mut assessments = Vec::new();
         let mut factor_status = Vec::new();
 
@@ -231,7 +238,11 @@ impl AssessmentEngine {
 
     /// Semantic direction only when it does not require a new trading threshold.
     /// Volatility ATR is magnitude-only: AVAILABLE in `factor_status`, no invented High/Low.
-    fn assess_concept(&self, concept: &Concept, metrics: &MetricReport) -> Option<DomainAssessment> {
+    fn assess_concept(
+        &self,
+        concept: &Concept,
+        metrics: &MetricReport,
+    ) -> Option<DomainAssessment> {
         match concept {
             Concept::Trend => {
                 let ma_20 = metrics.get_float("ma_20");

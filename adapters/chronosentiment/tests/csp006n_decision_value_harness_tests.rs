@@ -3,26 +3,28 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::csp006_protocol::{
     RESEARCH_DISCOVERY_ARTIFACT_HASH, RESEARCH_DISCOVERY_DIR, RESEARCH_UNIVERSE,
 };
 use chronosentiment_adapter::decision_support::dataset_partition::PartitionKind;
 use chronosentiment_adapter::decision_support::decision_value_harness::{
-    action_values, measure_harness, search_admissible_protocol_value, ProtocolValue,
-    C3_AUTHORIZED, ROWS_PER_SYMBOL_PER_SLICE,
+    action_values, measure_harness, search_admissible_protocol_value, ProtocolValue, C3_AUTHORIZED,
+    ROWS_PER_SYMBOL_PER_SLICE,
 };
 use chronosentiment_adapter::decision_support::decision_value_landscape::landscape_row;
 use chronosentiment_adapter::decision_support::observation_value::score_genome;
+use chronosentiment_adapter::decision_support::observation_value::{
+    ObservationRow, ObservationSlice,
+};
 use chronosentiment_adapter::decision_support::policy_artifact::first_match_action;
 use chronosentiment_adapter::decision_support::recommendation_outcome::{
     DirectionalCall, RecommendationRow,
 };
 use chronosentiment_adapter::decision_support::DecisionAction;
-use chronosentiment_adapter::decision_support::observation_value::{ObservationRow, ObservationSlice};
-use chrono::{TimeZone, Utc};
+use chronosentiment_adapter::metrics::concepts::Concept;
 use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
 use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
-use chronosentiment_adapter::metrics::concepts::Concept;
 use uuid::Uuid;
 
 fn workspace_root() -> PathBuf {
@@ -61,7 +63,9 @@ fn rec(
 
 #[test]
 fn continuous_value_and_action_symmetry() {
-    for raw in [0.001, 0.0873, -0.001, -0.0873, 0.0, 0.0001, -0.0001, 0.20, -0.30] {
+    for raw in [
+        0.001, 0.0873, -0.001, -0.0873, 0.0, 0.0001, -0.0001, 0.20, -0.30,
+    ] {
         let (long, short, no_trade) = action_values(raw);
         assert_eq!(long, raw);
         assert_eq!(short, -raw);
@@ -72,8 +76,13 @@ fn continuous_value_and_action_symmetry() {
 #[test]
 fn borderline_magnitudes_are_not_thresholded() {
     for raw in [0.0001, -0.0001, 0.001, -0.001] {
-        let row = landscape_row(&rec("HDFCBANK.NS", PartitionKind::Development, DecisionAction::Long, raw))
-            .unwrap();
+        let row = landscape_row(&rec(
+            "HDFCBANK.NS",
+            PartitionKind::Development,
+            DecisionAction::Long,
+            raw,
+        ))
+        .unwrap();
         assert!((row.recommended_value - raw).abs() < 1e-15);
         assert_ne!(row.recommended_value, 0.0);
     }
@@ -91,7 +100,10 @@ fn no_trade_enters_the_instrument_mean() {
     }
     let protocol = ProtocolValue::from_per_instrument_v(&map).unwrap();
     let first = protocol.instrument_means[RESEARCH_UNIVERSE[0]];
-    assert!((first - 0.05).abs() < 1e-15, "NO_TRADE=0 must dilute the instrument mean");
+    assert!(
+        (first - 0.05).abs() < 1e-15,
+        "NO_TRADE=0 must dilute the instrument mean"
+    );
 }
 
 #[test]
@@ -140,7 +152,9 @@ fn score_genome_still_rejects_evaluation() {
 #[test]
 fn first_match_action_does_not_see_forward_returns() {
     let src = include_str!("../src/decision_support/policy_artifact.rs");
-    let start = src.find("pub fn first_match_action").expect("first_match_action");
+    let start = src
+        .find("pub fn first_match_action")
+        .expect("first_match_action");
     let body = &src[start..start + 400];
     assert!(!body.contains("instrument_return"));
     assert!(!body.contains("forward"));
@@ -151,10 +165,18 @@ fn first_match_action_does_not_see_forward_returns() {
 fn policy_action_is_independent_of_whether_outcome_is_present() {
     let t = Utc.with_ymd_and_hms(2021, 10, 31, 15, 30, 0).unwrap();
     let mut metrics = MetricReport::default();
-    metrics.metrics.insert("ma_20".into(), MetricValue::Float(90.0));
-    metrics.metrics.insert("ma_50".into(), MetricValue::Float(100.0));
-    metrics.metrics.insert("roc_20".into(), MetricValue::Float(0.01));
-    metrics.metrics.insert("atr_14".into(), MetricValue::Float(1.0));
+    metrics
+        .metrics
+        .insert("ma_20".into(), MetricValue::Float(90.0));
+    metrics
+        .metrics
+        .insert("ma_50".into(), MetricValue::Float(100.0));
+    metrics
+        .metrics
+        .insert("roc_20".into(), MetricValue::Float(0.01));
+    metrics
+        .metrics
+        .insert("atr_14".into(), MetricValue::Float(1.0));
     let profile = AssessmentEngine.assess_at(
         &metrics,
         &[Concept::Trend, Concept::Momentum, Concept::Volatility],

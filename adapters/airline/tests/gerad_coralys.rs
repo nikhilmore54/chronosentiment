@@ -61,6 +61,7 @@
 
 #![allow(non_snake_case, dead_code)]
 
+use coralys_airline::domain::crew::CrewId;
 use coralys_airline::domain::duty::{Duty, DutyId};
 use coralys_airline::domain::flight::{
     AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
@@ -68,11 +69,10 @@ use coralys_airline::domain::flight::{
 use coralys_airline::domain::pairing::{Pairing, PairingId};
 use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterId};
 use coralys_airline::domain::rotation::{Rotation, RotationId};
-use coralys_airline::domain::crew::CrewId;
 use coralys_airline::optimization::cost::CostEvaluator;
+use coralys_airline::optimization::metrics::OptimizationMetrics;
 use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::greedy::GreedyScheduler;
-use coralys_airline::optimization::metrics::OptimizationMetrics;
 
 use chrono::{DateTime, Utc};
 use rand::prelude::*;
@@ -108,7 +108,11 @@ fn parse_utc(s: &str) -> DateTime<Utc> {
     if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
         return dt.into();
     }
-    let with_z = if s.ends_with('Z') { s.to_string() } else { format!("{s}Z") };
+    let with_z = if s.ends_with('Z') {
+        s.to_string()
+    } else {
+        format!("{s}Z")
+    };
     DateTime::parse_from_rfc3339(&with_z)
         .unwrap_or_else(|_| panic!("Cannot parse UTC timestamp: {s}"))
         .into()
@@ -120,16 +124,20 @@ fn load_flights(path: &Path) -> Vec<RawFlight> {
     for result in rdr.deserialize::<HashMap<String, String>>() {
         let row = result.expect("CSV parse error in flights.csv");
         let origin = pad_airport(row["origin"].trim());
-        let dest   = pad_airport(row["destination"].trim());
+        let dest = pad_airport(row["destination"].trim());
         flights.push(RawFlight {
             flight_id: row["flight_id"].clone(),
-            flight_number: row.get("flight_number").cloned()
+            flight_number: row
+                .get("flight_number")
+                .cloned()
                 .unwrap_or_else(|| row["flight_id"].clone()),
             origin,
             destination: dest,
             departure_utc: parse_utc(row["departure_utc"].trim()),
-            arrival_utc:   parse_utc(row["arrival_utc"].trim()),
-            aircraft_type: row.get("aircraft_type").cloned()
+            arrival_utc: parse_utc(row["arrival_utc"].trim()),
+            aircraft_type: row
+                .get("aircraft_type")
+                .cloned()
                 .unwrap_or_else(|| "B737".to_string()),
         });
     }
@@ -138,7 +146,11 @@ fn load_flights(path: &Path) -> Vec<RawFlight> {
 }
 
 fn pad_airport(s: &str) -> String {
-    if s.len() >= 3 { s[..3].to_uppercase() } else { format!("{:A<3}", s.to_uppercase()) }
+    if s.len() >= 3 {
+        s[..3].to_uppercase()
+    } else {
+        format!("{:A<3}", s.to_uppercase())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -151,7 +163,9 @@ fn load_crew(path: &Path) -> Vec<RawCrew> {
     let mut crew = Vec::new();
     for result in rdr.deserialize::<HashMap<String, String>>() {
         let row = result.expect("CSV parse error in crew.csv");
-        crew.push(RawCrew { crew_id: row["crew_id"].clone() });
+        crew.push(RawCrew {
+            crew_id: row["crew_id"].clone(),
+        });
     }
     crew
 }
@@ -162,17 +176,20 @@ fn build_pairings_from_flights(
     raw_flights: &[RawFlight],
     layover_rest_hours: f64,
 ) -> (Vec<FlightLeg>, Vec<Pairing>) {
-    let legs: Vec<FlightLeg> = raw_flights.iter().map(|f| {
-        FlightLeg::new(
-            FlightLegId::new(&f.flight_id),
-            FlightNumber::new(&f.flight_number),
-            AirportCode::new(&f.origin),
-            AirportCode::new(&f.destination),
-            f.departure_utc,
-            f.arrival_utc,
-            AircraftType::new(&f.aircraft_type),
-        )
-    }).collect();
+    let legs: Vec<FlightLeg> = raw_flights
+        .iter()
+        .map(|f| {
+            FlightLeg::new(
+                FlightLegId::new(&f.flight_id),
+                FlightNumber::new(&f.flight_number),
+                AirportCode::new(&f.origin),
+                AirportCode::new(&f.destination),
+                f.departure_utc,
+                f.arrival_utc,
+                AircraftType::new(&f.aircraft_type),
+            )
+        })
+        .collect();
 
     let mut duties: Vec<Duty> = Vec::new();
     let mut current_duty_legs: Vec<FlightLeg> = Vec::new();
@@ -183,11 +200,15 @@ fn build_pairings_from_flights(
                           rejections: &mut usize,
                           duties: &mut Vec<Duty>,
                           legs: Vec<FlightLeg>| {
-        if legs.is_empty() { return; }
+        if legs.is_empty() {
+            return;
+        }
         *counter += 1;
         match Duty::new(DutyId::new(format!("D{counter}")), legs) {
             Ok(d) => duties.push(d),
-            Err(_) => { *rejections += 1; },
+            Err(_) => {
+                *rejections += 1;
+            }
         }
     };
 
@@ -196,8 +217,8 @@ fn build_pairings_from_flights(
             current_duty_legs.push(leg.clone());
         } else {
             let last = current_duty_legs.last().unwrap();
-            let ground_h = (leg.scheduled_departure - last.scheduled_arrival)
-                .num_seconds() as f64 / 3600.0;
+            let ground_h =
+                (leg.scheduled_departure - last.scheduled_arrival).num_seconds() as f64 / 3600.0;
             let airports_connect = last.destination == leg.origin;
             let temporal_overlap = leg.scheduled_departure < last.scheduled_arrival;
             if ground_h >= layover_rest_hours || !airports_connect || temporal_overlap {
@@ -246,7 +267,9 @@ fn decode_genome(
     period_end: DateTime<Utc>,
 ) -> Option<Roster> {
     let n_rot = crew.len().min(pairings.len());
-    if n_rot == 0 { return None; }
+    if n_rot == 0 {
+        return None;
+    }
 
     // Group pairings by rotation index
     let mut buckets: Vec<Vec<Pairing>> = vec![Vec::new(); n_rot];
@@ -257,12 +280,15 @@ fn decode_genome(
     // Build rotations — each bucket must be non-empty (enforced by repair)
     let mut rotations = Vec::with_capacity(n_rot);
     for (i, bucket) in buckets.into_iter().enumerate() {
-        if bucket.is_empty() { return None; } // repair should prevent this
+        if bucket.is_empty() {
+            return None;
+        } // repair should prevent this
         let rot = Rotation::new(
             RotationId::new(format!("ROT{}", i + 1)),
             CrewId::new(&crew[i].crew_id),
             bucket,
-        ).ok()?;
+        )
+        .ok()?;
         rotations.push(rot);
     }
 
@@ -289,7 +315,9 @@ fn fitness(
 /// Repair: ensure every rotation has at least one pairing.
 /// If a rotation is empty, steal one pairing from the most-loaded rotation.
 fn repair(genome: &mut Vec<usize>, n_rot: usize, rng: &mut impl Rng) {
-    if n_rot == 0 { return; }
+    if n_rot == 0 {
+        return;
+    }
     loop {
         // Count pairings per rotation
         let mut counts = vec![0usize; n_rot];
@@ -303,12 +331,16 @@ fn repair(genome: &mut Vec<usize>, n_rot: usize, rng: &mut impl Rng) {
             None => break, // all rotations have at least one pairing
         };
         // Find most-loaded rotation
-        let max_rot = counts.iter().enumerate()
+        let max_rot = counts
+            .iter()
+            .enumerate()
             .max_by_key(|&(_, &c)| c)
             .map(|(i, _)| i)
             .unwrap();
         // Collect indices of pairings in max_rot
-        let candidates: Vec<usize> = genome.iter().enumerate()
+        let candidates: Vec<usize> = genome
+            .iter()
+            .enumerate()
             .filter(|&(_, &g)| g % n_rot == max_rot)
             .map(|(i, _)| i)
             .collect();
@@ -344,18 +376,21 @@ fn run_evolutionary(
     let t_start = std::time::Instant::now();
 
     // ── Initialise population ─────────────────────────────────────────────────
-    let mut population: Vec<Vec<usize>> = (0..POP_SIZE).map(|_| {
-        let mut genome: Vec<usize> = match init_strategy {
-            "round_robin" => (0..n_pairings).map(|i| i % n_rot).collect(),
-            _ => (0..n_pairings).map(|_| rng.gen_range(0..n_rot)).collect(),
-        };
-        repair(&mut genome, n_rot, rng);
-        genome
-    }).collect();
+    let mut population: Vec<Vec<usize>> = (0..POP_SIZE)
+        .map(|_| {
+            let mut genome: Vec<usize> = match init_strategy {
+                "round_robin" => (0..n_pairings).map(|i| i % n_rot).collect(),
+                _ => (0..n_pairings).map(|_| rng.gen_range(0..n_rot)).collect(),
+            };
+            repair(&mut genome, n_rot, rng);
+            genome
+        })
+        .collect();
 
-    let mut fitnesses: Vec<f64> = population.iter().map(|g| {
-        fitness(g, pairings, crew, legs, period_start, period_end, &obj)
-    }).collect();
+    let mut fitnesses: Vec<f64> = population
+        .iter()
+        .map(|g| fitness(g, pairings, crew, legs, period_start, period_end, &obj))
+        .collect();
 
     let mut best_score = fitnesses.iter().cloned().fold(f64::INFINITY, f64::min);
     let mut best_gen = 0usize;
@@ -402,16 +437,21 @@ fn run_evolutionary(
         }
 
         // Evaluate new population
-        let next_fitnesses: Vec<f64> = next_pop.iter().map(|g| {
-            fitness(g, pairings, crew, legs, period_start, period_end, &obj)
-        }).collect();
+        let next_fitnesses: Vec<f64> = next_pop
+            .iter()
+            .map(|g| fitness(g, pairings, crew, legs, period_start, period_end, &obj))
+            .collect();
 
         // Elitism: keep best from previous generation
-        let prev_best_idx = fitnesses.iter().enumerate()
+        let prev_best_idx = fitnesses
+            .iter()
+            .enumerate()
             .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(i, _)| i)
             .unwrap();
-        let new_worst_idx = next_fitnesses.iter().enumerate()
+        let new_worst_idx = next_fitnesses
+            .iter()
+            .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(i, _)| i)
             .unwrap();
@@ -442,18 +482,26 @@ fn run_greedy_baseline(
     period_end: DateTime<Utc>,
 ) -> (f64, u128) {
     let n_rot = crew.len().min(pairings.len());
-    if n_rot == 0 { return (0.0, 0); }
+    if n_rot == 0 {
+        return (0.0, 0);
+    }
 
     let period = PlanningPeriod::new(period_start, period_end);
     let mut remaining = pairings.to_vec();
     let seeds: Vec<Pairing> = remaining.drain(..n_rot).collect();
-    let rotations: Vec<Rotation> = crew.iter().take(n_rot).enumerate().map(|(i, c)| {
-        Rotation::new(
-            RotationId::new(format!("ROT{}", i + 1)),
-            CrewId::new(&c.crew_id),
-            vec![seeds[i].clone()],
-        ).expect("Seeded rotation must be valid")
-    }).collect();
+    let rotations: Vec<Rotation> = crew
+        .iter()
+        .take(n_rot)
+        .enumerate()
+        .map(|(i, c)| {
+            Rotation::new(
+                RotationId::new(format!("ROT{}", i + 1)),
+                CrewId::new(&c.crew_id),
+                vec![seeds[i].clone()],
+            )
+            .expect("Seeded rotation must be valid")
+        })
+        .collect();
     let baseline = Roster::new(RosterId::new("GERAD"), period, legs.to_vec(), rotations)
         .expect("Roster construction failed");
 
@@ -484,11 +532,12 @@ fn run_greedy_baseline(
 #[test]
 fn gerad_coralys_vs_greedy() {
     let workspace_root = {
-        let manifest = std::env::var("CARGO_MANIFEST_DIR")
-            .unwrap_or_else(|_| ".".to_string());
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(&manifest)
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .to_path_buf()
     };
 
@@ -499,7 +548,9 @@ fn gerad_coralys_vs_greedy() {
     println!("============================================================================");
     println!("Genome: pairing_id → rotation_id (Vec<usize>, length P)");
     println!("Fitness: WorkloadBalanceObjective (lower is better)");
-    println!("EA params: pop={POP_SIZE} gen={GENERATIONS} xover={CROSSOVER_PROB} tournament_k={TOURNAMENT_K} seed={SEED}");
+    println!(
+        "EA params: pop={POP_SIZE} gen={GENERATIONS} xover={CROSSOVER_PROB} tournament_k={TOURNAMENT_K} seed={SEED}"
+    );
     println!("Layover threshold: {LAYOVER_REST_HOURS}h (Condition A)");
     println!();
 
@@ -513,17 +564,16 @@ fn gerad_coralys_vs_greedy() {
         ("Instance7", "instance7"),
     ];
 
-    println!("{:<12} {:>8} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12}",
-        "Instance", "Pairings",
-        "Greedy", "Greedy_ms",
-        "EA_rr", "EA_rr_ms",
-        "EA_rand", "EA_rand_ms");
+    println!(
+        "{:<12} {:>8} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12}",
+        "Instance", "Pairings", "Greedy", "Greedy_ms", "EA_rr", "EA_rr_ms", "EA_rand", "EA_rand_ms"
+    );
     println!("{}", "-".repeat(100));
 
     for (label, dir) in &instances {
         let instance_dir = benchmark_base.join(dir);
         let flights_path = instance_dir.join("flights.csv");
-        let crew_path    = instance_dir.join("crew.csv");
+        let crew_path = instance_dir.join("crew.csv");
 
         if !flights_path.exists() || !crew_path.exists() {
             println!("{:<12} SKIP (files not found)", label);
@@ -531,45 +581,69 @@ fn gerad_coralys_vs_greedy() {
         }
 
         let raw_flights = load_flights(&flights_path);
-        let crew        = load_crew(&crew_path);
+        let crew = load_crew(&crew_path);
 
         let (legs, pairings) = build_pairings_from_flights(&raw_flights, LAYOVER_REST_HOURS);
 
-        let period_start = raw_flights.first().map(|f| f.departure_utc).unwrap_or(Utc::now());
-        let period_end   = raw_flights.last().map(|f| f.arrival_utc).unwrap_or(Utc::now());
+        let period_start = raw_flights
+            .first()
+            .map(|f| f.departure_utc)
+            .unwrap_or(Utc::now());
+        let period_end = raw_flights
+            .last()
+            .map(|f| f.arrival_utc)
+            .unwrap_or(Utc::now());
 
         let n_pairings = pairings.len();
         let n_rot = crew.len().min(n_pairings);
 
         if n_pairings == 0 || n_rot == 0 {
-            println!("{:<12} {:>8} (no pairings or rotations — skipping EA)", label, 0);
+            println!(
+                "{:<12} {:>8} (no pairings or rotations — skipping EA)",
+                label, 0
+            );
             continue;
         }
 
         // Greedy baseline
-        let (greedy_score, greedy_ms) = run_greedy_baseline(
-            &pairings, &crew, &legs, period_start, period_end,
-        );
+        let (greedy_score, greedy_ms) =
+            run_greedy_baseline(&pairings, &crew, &legs, period_start, period_end);
 
         // Evolutionary — round-robin initialisation
         let mut rng_rr = StdRng::seed_from_u64(SEED);
         let (ea_rr_score, ea_rr_gen, ea_rr_ms) = run_evolutionary(
-            &pairings, &crew, &legs, period_start, period_end,
-            "round_robin", &mut rng_rr,
+            &pairings,
+            &crew,
+            &legs,
+            period_start,
+            period_end,
+            "round_robin",
+            &mut rng_rr,
         );
 
         // Evolutionary — random initialisation
         let mut rng_rand = StdRng::seed_from_u64(SEED + 1);
         let (ea_rand_score, ea_rand_gen, ea_rand_ms) = run_evolutionary(
-            &pairings, &crew, &legs, period_start, period_end,
-            "random", &mut rng_rand,
+            &pairings,
+            &crew,
+            &legs,
+            period_start,
+            period_end,
+            "random",
+            &mut rng_rand,
         );
 
-        println!("{:<12} {:>8} {:>12.4} {:>12} {:>12.4} {:>12} {:>12.4} {:>12}",
-            label, n_pairings,
-            greedy_score, greedy_ms,
-            ea_rr_score, ea_rr_ms,
-            ea_rand_score, ea_rand_ms);
+        println!(
+            "{:<12} {:>8} {:>12.4} {:>12} {:>12.4} {:>12} {:>12.4} {:>12}",
+            label,
+            n_pairings,
+            greedy_score,
+            greedy_ms,
+            ea_rr_score,
+            ea_rr_ms,
+            ea_rand_score,
+            ea_rand_ms
+        );
 
         eprintln!(
             "  [coralys] instance={label} pairings={n_pairings} rotations={n_rot} \

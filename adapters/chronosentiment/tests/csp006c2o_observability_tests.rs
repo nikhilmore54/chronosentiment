@@ -85,8 +85,7 @@ fn observability_on_and_off_seal_the_same_artifact() {
     let selection = synthetic_slice(PartitionKind::Selection, -0.01);
     let (_, off_candidates) = evolve_on_development(development.clone()).unwrap();
     let off = select_on_selection(&off_candidates, &development, &selection).unwrap();
-    let (_, on_candidates, archive) =
-        evolve_on_development_observed(development.clone()).unwrap();
+    let (_, on_candidates, archive) = evolve_on_development_observed(development.clone()).unwrap();
     let (on, archive) =
         select_and_observe(&on_candidates, &development, &selection, archive).unwrap();
     assert_eq!(off.artifact.artifact_hash, on.artifact.artifact_hash);

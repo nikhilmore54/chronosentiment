@@ -1,6 +1,6 @@
 {
   "campaign_id": "campaign_v1.0_verify",
-  "timestamp": "2026-08-05T15:23:35.347061+00:00",
+  "timestamp": "2026-08-25T05:12:46.760719+00:00",
   "solver_version": "0.1.0",
   "total_instances": 20,
   "valid_count": 15,
@@ -13,11 +13,11 @@
       "num_nodes": 20,
       "num_links": 80,
       "num_time_slots": 2,
-      "best_obj": 48.04364793438184,
+      "best_obj": 47.88751260377562,
       "avg_mlu": 0.7104834776883322,
       "valid": true,
-      "runtime_ms": 8585,
-      "generations": 51,
+      "runtime_ms": 24004,
+      "generations": 108,
       "quality_class": "Competitive"
     },
     {
@@ -30,7 +30,7 @@
       "best_obj": null,
       "avg_mlu": null,
       "valid": false,
-      "runtime_ms": 1767,
+      "runtime_ms": 12780,
       "generations": 21,
       "quality_class": "Invalid"
     },
@@ -41,11 +41,11 @@
       "num_nodes": 50,
       "num_links": 250,
       "num_time_slots": 2,
-      "best_obj": 60.380212456873906,
-      "avg_mlu": 0.7731619309951275,
+      "best_obj": 60.459178067117136,
+      "avg_mlu": 0.679254620215311,
       "valid": true,
-      "runtime_ms": 16307,
-      "generations": 61,
+      "runtime_ms": 26553,
+      "generations": 66,
       "quality_class": "Weak"
     },
     {
@@ -55,11 +55,11 @@
       "num_nodes": 50,
       "num_links": 250,
       "num_time_slots": 2,
-      "best_obj": 63.589331040020454,
+      "best_obj": 64.56123715947537,
       "avg_mlu": 0.6899896984924623,
       "valid": true,
-      "runtime_ms": 30534,
-      "generations": 14,
+      "runtime_ms": 30518,
+      "generations": 9,
       "quality_class": "Weak"
     },
     {
@@ -69,11 +69,11 @@
       "num_nodes": 100,
       "num_links": 396,
       "num_time_slots": 2,
-      "best_obj": 13.628851933792312,
-      "avg_mlu": 0.16871078406318077,
+      "best_obj": 14.215094195610964,
+      "avg_mlu": 0.18588605279603998,
       "valid": true,
-      "runtime_ms": 30785,
-      "generations": 11,
+      "runtime_ms": 30794,
+      "generations": 9,
       "quality_class": "Good"
     },
     {
@@ -83,11 +83,11 @@
       "num_nodes": 100,
       "num_links": 500,
       "num_time_slots": 2,
-      "best_obj": 54.44584206685029,
-      "avg_mlu": 0.6408452,
+      "best_obj": 57.04474483178299,
+      "avg_mlu": 0.6056337999999999,
       "valid": true,
-      "runtime_ms": 135769,
-      "generations": 13,
+      "runtime_ms": 135486,
+      "generations": 7,
       "quality_class": "Competitive"
     },
     {
@@ -97,12 +97,12 @@
       "num_nodes": 100,
       "num_links": 500,
       "num_time_slots": 2,
-      "best_obj": null,
-      "avg_mlu": null,
-      "valid": false,
-      "runtime_ms": 79481,
-      "generations": 21,
-      "quality_class": "Invalid"
+      "best_obj": 286.6887322723423,
+      "avg_mlu": 0.930841196968102,
+      "valid": true,
+      "runtime_ms": 217383,
+      "generations": 5,
+      "quality_class": "Poor"
     },
     {
       "instance_id": 8,
@@ -111,11 +111,11 @@
       "num_nodes": 150,
       "num_links": 654,
       "num_time_slots": 2,
-      "best_obj": 53.76540424769199,
-      "avg_mlu": 0.6313076858372906,
+      "best_obj": 52.36812789859633,
+      "avg_mlu": 0.4807906215603945,
       "valid": true,
-      "runtime_ms": 72686,
-      "generations": 9,
+      "runtime_ms": 71711,
+      "generations": 4,
       "quality_class": "Competitive"
     },
     {
@@ -125,11 +125,11 @@
       "num_nodes": 150,
       "num_links": 750,
       "num_time_slots": 2,
-      "best_obj": 157.5632779278224,
+      "best_obj": 161.49540712181667,
       "avg_mlu": 0.7303933928571429,
       "valid": true,
-      "runtime_ms": 77368,
-      "generations": 10,
+      "runtime_ms": 79912,
+      "generations": 5,
       "quality_class": "Poor"
     },
     {
@@ -139,11 +139,11 @@
       "num_nodes": 150,
       "num_links": 966,
       "num_time_slots": 2,
-      "best_obj": 86.121844675745,
-      "avg_mlu": 0.6282609900000002,
+      "best_obj": 93.65938965981266,
+      "avg_mlu": 0.7086958299999999,
       "valid": true,
-      "runtime_ms": 330622,
-      "generations": 10,
+      "runtime_ms": 313490,
+      "generations": 4,
       "quality_class": "Weak"
     },
     {
@@ -153,11 +153,11 @@
       "num_nodes": 200,
       "num_links": 1000,
       "num_time_slots": 2,
-      "best_obj": 113.54857209331686,
-      "avg_mlu": 0.7273890618609407,
+      "best_obj": 116.45826037323985,
+      "avg_mlu": 0.7837190618609406,
       "valid": true,
-      "runtime_ms": 204604,
-      "generations": 9,
+      "runtime_ms": 211681,
+      "generations": 6,
       "quality_class": "Poor"
     },
     {
@@ -167,11 +167,11 @@
       "num_nodes": 200,
       "num_links": 898,
       "num_time_slots": 2,
-      "best_obj": 24.66943477064703,
-      "avg_mlu": 0.8799671909187718,
+      "best_obj": 20.042403723095372,
+      "avg_mlu": 0.7999716044683691,
       "valid": true,
-      "runtime_ms": 192790,
-      "generations": 10,
+      "runtime_ms": 199902,
+      "generations": 4,
       "quality_class": "Good"
     },
     {
@@ -181,12 +181,12 @@
       "num_nodes": 200,
       "num_links": 1000,
       "num_time_slots": 2,
-      "best_obj": 73.81494081636096,
-      "avg_mlu": 0.8504265,
-      "valid": true,
-      "runtime_ms": 328788,
-      "generations": 7,
-      "quality_class": "Weak"
+      "best_obj": null,
+      "avg_mlu": null,
+      "valid": false,
+      "runtime_ms": 411676,
+      "generations": 2,
+      "quality_class": "Invalid"
     },
     {
       "instance_id": 14,
@@ -195,11 +195,11 @@
       "num_nodes": 250,
       "num_links": 1108,
       "num_time_slots": 2,
-      "best_obj": 90.12678916028587,
-      "avg_mlu": 0.6306384094771942,
+      "best_obj": 93.19353979421726,
+      "avg_mlu": 0.5820857128671102,
       "valid": true,
-      "runtime_ms": 340942,
-      "generations": 9,
+      "runtime_ms": 344003,
+      "generations": 4,
       "quality_class": "Weak"
     },
     {
@@ -209,11 +209,11 @@
       "num_nodes": 250,
       "num_links": 1250,
       "num_time_slots": 2,
-      "best_obj": 248.0708479037255,
+      "best_obj": 256.6357178895998,
       "avg_mlu": 0.8619509041916167,
       "valid": true,
-      "runtime_ms": 334876,
-      "generations": 9,
+      "runtime_ms": 322906,
+      "generations": 4,
       "quality_class": "Poor"
     },
     {
@@ -226,8 +226,8 @@
       "best_obj": null,
       "avg_mlu": null,
       "valid": false,
-      "runtime_ms": 305703,
-      "generations": 5,
+      "runtime_ms": 562845,
+      "generations": 1,
       "quality_class": "Invalid"
     },
     {
@@ -237,11 +237,11 @@
       "num_nodes": 300,
       "num_links": 1270,
       "num_time_slots": 2,
-      "best_obj": 62.38058277674888,
-      "avg_mlu": 0.4461541335947212,
+      "best_obj": 63.103159626552454,
+      "avg_mlu": 0.4111402724943716,
       "valid": true,
-      "runtime_ms": 311920,
-      "generations": 2,
+      "runtime_ms": 341033,
+      "generations": 1,
       "quality_class": "Weak"
     },
     {
@@ -251,11 +251,11 @@
       "num_nodes": 300,
       "num_links": 1500,
       "num_time_slots": 2,
-      "best_obj": 799251.4530196163,
-      "avg_mlu": 0.8602315464587393,
+      "best_obj": 799263.4334773517,
+      "avg_mlu": 0.9171809616634178,
       "valid": true,
-      "runtime_ms": 415784,
-      "generations": 8,
+      "runtime_ms": 339134,
+      "generations": 1,
       "quality_class": "Poor"
     },
     {
@@ -268,8 +268,8 @@
       "best_obj": null,
       "avg_mlu": null,
       "valid": false,
-      "runtime_ms": 314284,
-      "generations": 3,
+      "runtime_ms": 796646,
+      "generations": 1,
       "quality_class": "Invalid"
     },
     {
@@ -282,8 +282,8 @@
       "best_obj": null,
       "avg_mlu": null,
       "valid": false,
-      "runtime_ms": 345705,
-      "generations": 2,
+      "runtime_ms": 1117891,
+      "generations": 1,
       "quality_class": "Invalid"
     }
   ]

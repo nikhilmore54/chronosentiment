@@ -13,7 +13,10 @@ pub trait InstanceAnalyzer<I>: Send + Sync {
     type Difficulty: DifficultyAssessment;
     type Policy: ConfigurationPolicy;
 
-    fn analyze(&self, instance: &I) -> Result<(Self::Features, Self::Difficulty, Self::Policy), String>;
+    fn analyze(
+        &self,
+        instance: &I,
+    ) -> Result<(Self::Features, Self::Difficulty, Self::Policy), String>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -114,7 +117,7 @@ impl SimilarityAnalyzer {
         let mut score_sum = 0.0;
         let mut count = 0;
         let mut metrics = HashMap::new();
-        
+
         for (k, &v1) in f1 {
             if let Some(&v2) = f2.get(k) {
                 let diff = (v1 - v2).abs();
@@ -125,8 +128,12 @@ impl SimilarityAnalyzer {
                 count += 1;
             }
         }
-        
-        let score = if count > 0 { score_sum / count as f64 } else { 0.0 };
+
+        let score = if count > 0 {
+            score_sum / count as f64
+        } else {
+            0.0
+        };
         SimilarityScore { score, metrics }
     }
 }
@@ -156,7 +163,8 @@ impl ObservatoryDatabase {
     }
 
     pub fn record_run(&mut self, run: BenchmarkRun, features: HashMap<String, f64>) {
-        self.features_cache.insert(run.instance_name.clone(), features);
+        self.features_cache
+            .insert(run.instance_name.clone(), features);
         self.runs.push(run);
     }
 
@@ -180,10 +188,21 @@ impl ObservatoryDatabase {
 
         best_run.map(|run| {
             let rationale = vec![
-                format!("Found historically similar instance '{}' (Similarity: {:.2}%)", run.instance_name, highest_similarity * 100.0),
-                format!("Historical run yielded objective value {:.2} in {:.2}s (Feasible: {})", run.metrics.final_objective, run.metrics.runtime_sec, run.metrics.feasibility),
+                format!(
+                    "Found historically similar instance '{}' (Similarity: {:.2}%)",
+                    run.instance_name,
+                    highest_similarity * 100.0
+                ),
+                format!(
+                    "Historical run yielded objective value {:.2} in {:.2}s (Feasible: {})",
+                    run.metrics.final_objective, run.metrics.runtime_sec, run.metrics.feasibility
+                ),
             ];
-            (run.configuration.clone(), EvidenceLevel::Verified, rationale)
+            (
+                run.configuration.clone(),
+                EvidenceLevel::Verified,
+                rationale,
+            )
         })
     }
 }

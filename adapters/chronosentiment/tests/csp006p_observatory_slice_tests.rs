@@ -58,7 +58,10 @@ fn sealed_record_has_two_identities_and_no_outcome_fields() {
     )
     .unwrap();
     assert_eq!(decision.policy_id, CANDIDATE_C3_002);
-    assert_eq!(decision.policy_artifact_sha256, RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH);
+    assert_eq!(
+        decision.policy_artifact_sha256,
+        RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH
+    );
     assert_eq!(decision.engine_version, "unfrozen-dev");
     assert_eq!(decision.horizon_days, 20);
     assert_eq!(decision.sealed_status, "OPEN");
@@ -73,7 +76,10 @@ fn sealed_record_has_two_identities_and_no_outcome_fields() {
         "confidence",
         "realized_return",
     ] {
-        assert!(!json.contains(forbidden), "{forbidden} leaked onto the decision");
+        assert!(
+            !json.contains(forbidden),
+            "{forbidden} leaked onto the decision"
+        );
     }
     let again = generate_decision(
         &artifact,
@@ -170,7 +176,9 @@ fn document_records_the_vertical_slice() {
     assert!(doc.contains("immutable"));
     assert!(doc.contains("Candidate C3-002"));
     assert!(doc.contains("OBSERVED"));
-    assert!(doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered"));
+    assert!(
+        doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered")
+    );
 }
 
 #[test]

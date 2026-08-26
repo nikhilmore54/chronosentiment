@@ -24,12 +24,12 @@ use super::observatory_maturity::{
     HISTORICAL_REPLAY_V1_CONTRACT, HORIZON_CALENDAR_BASIS, HORIZON_UNIT, SESSION_RESOLUTION_RULE,
     TRADING_SESSION_HORIZON_AUTHORIZED, UI_STATUS_OUTCOME_DUE,
 };
+use super::observatory_prospective::generate_prospective_decision;
 use super::observatory_slice::{
     action_label, empty_ledger, measure_decision_value, observe_outcome,
-    render_observatory_html_with_clocks, seal_into_ledger, OutcomeObservation, ObservatoryLedger,
+    render_observatory_html_with_clocks, seal_into_ledger, ObservatoryLedger, OutcomeObservation,
     SealedDecisionRecord, OBSERVATORY_HORIZON_DAYS,
 };
-use super::observatory_prospective::generate_prospective_decision;
 use super::policy_artifact::PolicyArtifact;
 
 pub const HISTORICAL_REPLAY_PATH_KIND: &str = "historical_observatory_replay";
@@ -42,10 +42,8 @@ pub const SEARCH_THREE_AUTHORIZED: bool = false;
 
 /// Two closed-window clock requests. 14 June 2026 is not a session;
 /// the engine uses the latest session ≤ that timestamp.
-pub const DEFAULT_REPLAY_CLOCKS: [&str; 2] = [
-    "2026-05-15T03:45:00+00:00",
-    "2026-06-14T03:45:00+00:00",
-];
+pub const DEFAULT_REPLAY_CLOCKS: [&str; 2] =
+    ["2026-05-15T03:45:00+00:00", "2026-06-14T03:45:00+00:00"];
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ReplayTickReport {
@@ -126,7 +124,10 @@ pub fn generate_historical_replay_decision(
         return Err("historical replay refuses a look-ahead configuration".into());
     }
     let known = decision_time_bars(bars, historical_now);
-    if known.iter().any(|b| bar_time(b).is_some_and(|ts| ts > historical_now)) {
+    if known
+        .iter()
+        .any(|b| bar_time(b).is_some_and(|ts| ts > historical_now))
+    {
         return Err(format!(
             "{instrument} decision-time slice contained a bar after {historical_now}"
         ));
@@ -275,11 +276,24 @@ pub fn render_replay_report(report: &HistoricalReplayReport) -> String {
     md.push_str("`.cursor/rules/chronosentiment-core.mdc`: same certified state at T + same sealed policy → same decision; outcomes never construct the decision.\n\n");
     md.push_str("This is the production Observatory running against a historical clock. Historical replay is a backtesting mechanism. This replay is not yet a statistical strategy backtest. Replay integrity is not strategy validation.\n\n");
     md.push_str("## Integrity\n\n");
-    md.push_str(&format!("- historical replay integrity: {}\n", pass_fail(report.determinism_pass && report.lookahead_clean && !report.peeked_returns)));
-    md.push_str(&format!("- statistical strategy backtest: {}\n", if report.statistical_backtest { "DONE" } else { "not done" }));
+    md.push_str(&format!(
+        "- historical replay integrity: {}\n",
+        pass_fail(report.determinism_pass && report.lookahead_clean && !report.peeked_returns)
+    ));
+    md.push_str(&format!(
+        "- statistical strategy backtest: {}\n",
+        if report.statistical_backtest {
+            "DONE"
+        } else {
+            "not done"
+        }
+    ));
     md.push_str("- replay integrity ≠ strategy validation\n\n");
     md.push_str("## Contract\n\n");
-    md.push_str(&format!("- replay contract: `{}`\n", report.replay_contract));
+    md.push_str(&format!(
+        "- replay contract: `{}`\n",
+        report.replay_contract
+    ));
     md.push_str("Replay v0 (20 calendar days) is archived and is not reinterpreted here.\n\n");
     md.push_str("```text\n");
     md.push_str(&format!(
@@ -287,16 +301,31 @@ pub fn render_replay_report(report: &HistoricalReplayReport) -> String {
         report.horizon_duration_days, report.horizon_unit, report.horizon_calendar_basis
     ));
     md.push_str("```\n\n");
-    md.push_str(&format!("- session rule: `{}`\n", report.session_resolution_rule));
-    md.push_str(&format!("- trading-session horizon authorized: {}\n", report.trading_session_horizon_authorized));
+    md.push_str(&format!(
+        "- session rule: `{}`\n",
+        report.session_resolution_rule
+    ));
+    md.push_str(&format!(
+        "- trading-session horizon authorized: {}\n",
+        report.trading_session_horizon_authorized
+    ));
     md.push_str(&format!("- path_kind: `{}`\n", report.path_kind));
     md.push_str(&format!("- policy: {}\n", report.policy_id));
-    md.push_str(&format!("- artifact: `{}`\n", report.policy_artifact_sha256));
+    md.push_str(&format!(
+        "- artifact: `{}`\n",
+        report.policy_artifact_sha256
+    ));
     md.push_str(&format!("- decisions: {}\n", report.n_decisions));
     md.push_str(&format!("- completed evidence: {}\n", report.n_observed));
     md.push_str(&format!("- peeked_returns: {}\n", report.peeked_returns));
-    md.push_str(&format!("- determinism: {}\n", pass_fail(report.determinism_pass)));
-    md.push_str(&format!("- no-lookahead: {}\n", pass_fail(report.lookahead_clean)));
+    md.push_str(&format!(
+        "- determinism: {}\n",
+        pass_fail(report.determinism_pass)
+    ));
+    md.push_str(&format!(
+        "- no-lookahead: {}\n",
+        pass_fail(report.lookahead_clean)
+    ));
     md.push_str(&format!(
         "- prospective cohort mutated: {}\n\n",
         report.prospective_cohort_mutated

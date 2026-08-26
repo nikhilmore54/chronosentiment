@@ -41,11 +41,7 @@ impl LegalityRule for DutyConnectivityRule {
                                 0.0,
                                 format!(
                                     "Duty {}: leg {} arrives at {} but leg {} departs from {}",
-                                    duty.id,
-                                    prev.id,
-                                    prev.destination,
-                                    curr.id,
-                                    curr.origin,
+                                    duty.id, prev.id, prev.destination, curr.id, curr.origin,
                                 ),
                             ));
                         }
@@ -76,10 +72,14 @@ mod tests {
         let l1 = make_leg("L1", "LHR", "CDG", 8, 10);
         let l2 = make_leg("L2", "CDG", "FRA", 11, 13);
         let duty = make_duty("D1", vec![l1, l2]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L3", "FRA", "LHR", 16, 18)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L3", "FRA", "LHR", 16, 18)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
         let roster = make_roster(vec![], vec![rotation]);
         assert!(rule().check(&roster).is_empty());
@@ -90,10 +90,14 @@ mod tests {
     #[test]
     fn single_leg_duty_always_connected() {
         let duty = make_duty("D1", vec![make_leg("L1", "LHR", "CDG", 8, 10)]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 14, 16)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 14, 16)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
         let roster = make_roster(vec![], vec![rotation]);
         assert!(rule().check(&roster).is_empty());

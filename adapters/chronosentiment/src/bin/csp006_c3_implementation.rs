@@ -7,6 +7,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::c3_implementation::{
     evolve_on_development_value, identity_lineage_holds, living_selection_pool,
     post_seal_symbol_matrices_required, search_one_evidence_is_immutable,
@@ -28,7 +29,6 @@ use chronosentiment_adapter::decision_support::search_observability::{
 use chronosentiment_adapter::decision_support::DecisionAction;
 use chronosentiment_adapter::metrics::concepts::Concept;
 use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
-use chrono::{TimeZone, Utc};
 use coralys_moga::runtime::optimization::metric::{MetricReport, MetricValue};
 use uuid::Uuid;
 
@@ -107,7 +107,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "post_seal_symbol_matrices_required": true,
         "result": "PASS",
     });
-    fs::write(output.join("verification.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        output.join("verification.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
     fs::write(output.join("IMPLEMENTATION.md"), render_report())?;
 
     println!("result=PASS");
@@ -182,33 +185,36 @@ fn slot(identity: &str) -> SerializedGenome {
 fn synthetic_living_archive() -> SearchArchive {
     SearchArchive {
         contract_id: "csp006c2o.search_observability.1".to_string(),
-        generations: vec![GenerationPopulationRecord {
-            generation: 0,
-            population_size: 2,
-            unique_genome_count: 2,
-            best_fitness: 0.0,
-            median_fitness: 0.0,
-            mean_fitness: 0.0,
-            worst_fitness: 0.0,
-            action_symbols: Default::default(),
-            factor_consumption: Default::default(),
-            generation_best: slot("A"),
-            near_best: vec![],
-            living_slots: vec![slot("A"), slot("B")],
-        }, GenerationPopulationRecord {
-            generation: 1,
-            population_size: 2,
-            unique_genome_count: 2,
-            best_fitness: 0.0,
-            median_fitness: 0.0,
-            mean_fitness: 0.0,
-            worst_fitness: 0.0,
-            action_symbols: Default::default(),
-            factor_consumption: Default::default(),
-            generation_best: slot("A"),
-            near_best: vec![],
-            living_slots: vec![slot("A"), slot("C")],
-        }],
+        generations: vec![
+            GenerationPopulationRecord {
+                generation: 0,
+                population_size: 2,
+                unique_genome_count: 2,
+                best_fitness: 0.0,
+                median_fitness: 0.0,
+                mean_fitness: 0.0,
+                worst_fitness: 0.0,
+                action_symbols: Default::default(),
+                factor_consumption: Default::default(),
+                generation_best: slot("A"),
+                near_best: vec![],
+                living_slots: vec![slot("A"), slot("B")],
+            },
+            GenerationPopulationRecord {
+                generation: 1,
+                population_size: 2,
+                unique_genome_count: 2,
+                best_fitness: 0.0,
+                median_fitness: 0.0,
+                mean_fitness: 0.0,
+                worst_fitness: 0.0,
+                action_symbols: Default::default(),
+                factor_consumption: Default::default(),
+                generation_best: slot("A"),
+                near_best: vec![],
+                living_slots: vec![slot("A"), slot("C")],
+            },
+        ],
         offspring: vec![OffspringEdge {
             generation: 1,
             parent_a_identity: "A".into(),

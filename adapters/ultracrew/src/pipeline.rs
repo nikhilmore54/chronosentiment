@@ -1,11 +1,11 @@
 // Pipeline module for UltraCrew internal scheduling workflow
 
-use std::sync::Arc;
-use std::error::Error;
 use crate::helpers::run_optimization;
-use coralys_moga::config::EvolutionConfig;
 use crate::optimization::ScheduleContext;
 use crate::schedule_solution::ScheduleSolution;
+use coralys_moga::config::EvolutionConfig;
+use std::error::Error;
+use std::sync::Arc;
 
 /// Runs the complete internal scheduling pipeline:
 /// 1. Execute the genetic algorithm optimization.
@@ -16,7 +16,11 @@ pub fn run_pipeline(
     config: EvolutionConfig,
 ) -> Result<ScheduleSolution, Box<dyn Error>> {
     // Initialize the observatory with the population size
-    context.observatory.lock().unwrap().start_run(config.population_size);
+    context
+        .observatory
+        .lock()
+        .unwrap()
+        .start_run(config.population_size);
 
     // Execute the optimizer
     let ga_result = run_optimization(context.clone(), config);
@@ -30,8 +34,9 @@ pub fn run_pipeline(
     // Generate recommendations using the ConstraintEngine and RecommendationEngine
     use crate::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
 
-    let evaluator: Box<dyn DomainConstraintEvaluator> = Box::new(InrcConstraintEvaluator::new(context.clone()));
-    
+    let evaluator: Box<dyn DomainConstraintEvaluator> =
+        Box::new(InrcConstraintEvaluator::new(context.clone()));
+
     let report = evaluator.evaluate(&best_evaluation.schedule);
     let recommendation_engine = crate::recommendation::RecommendationEngine::new();
     let recs = recommendation_engine.generate_recommendations(&report);
@@ -39,7 +44,9 @@ pub fn run_pipeline(
 
     // Populate telemetry
     let reports = context.observatory.lock().unwrap().reports.clone();
-    solution.telemetry = Some(crate::optimization::OptimizationReport { generations: reports });
+    solution.telemetry = Some(crate::optimization::OptimizationReport {
+        generations: reports,
+    });
 
     Ok(solution)
 }
@@ -59,12 +66,24 @@ pub fn run_pipeline_from_request(
     elite_count: Option<usize>,
 ) -> Result<ScheduleSolution, Box<dyn Error>> {
     let mut config = EvolutionConfig::default();
-    if let Some(v) = generation_limit { config.generation_limit = v; }
-    if let Some(v) = tournament_size  { config.tournament_size = Some(v); }
-    if let Some(v) = population_size  { config.population_size = v; }
-    if let Some(v) = mutation_rate    { config.mutation_rate = v; }
-    if let Some(v) = crossover_rate   { config.crossover_rate = v; }
-    if let Some(v) = elite_count      { config.elite_count = v; }
+    if let Some(v) = generation_limit {
+        config.generation_limit = v;
+    }
+    if let Some(v) = tournament_size {
+        config.tournament_size = Some(v);
+    }
+    if let Some(v) = population_size {
+        config.population_size = v;
+    }
+    if let Some(v) = mutation_rate {
+        config.mutation_rate = v;
+    }
+    if let Some(v) = crossover_rate {
+        config.crossover_rate = v;
+    }
+    if let Some(v) = elite_count {
+        config.elite_count = v;
+    }
     run_pipeline(context, config)
 }
 
@@ -80,11 +99,11 @@ pub fn run_inrc_startup_pipeline(
     week_data_path: &std::path::Path,
     steps: usize,
 ) -> Result<crate::public_contracts::InrcStartupResult, Box<dyn Error>> {
+    use crate::inrc::baseline::generate_baseline_schedule;
     use crate::inrc::parser::{parse_scenario, parse_week_data};
     use crate::inrc::schedule_optimizer::{ScheduleGenome, UltraCrewEvaluator, UltraCrewMutator};
-    use crate::inrc::baseline::generate_baseline_schedule;
-    use coralys_moga::engine_proof::EvolutionEngine;
     use crate::public_contracts::{InrcParetoSolution, InrcStartupResult};
+    use coralys_moga::engine_proof::EvolutionEngine;
 
     let scenario = parse_scenario(scenario_path)?;
     let week_data = parse_week_data(week_data_path)?;
@@ -97,7 +116,9 @@ pub fn run_inrc_startup_pipeline(
             nurses: scenario.nurses.iter().map(|n| n.id.clone()).collect(),
         });
 
-    let evaluator = UltraCrewEvaluator { scenario: scenario.clone() };
+    let evaluator = UltraCrewEvaluator {
+        scenario: scenario.clone(),
+    };
     let mutator = UltraCrewMutator::new(scenario.clone());
 
     let mut engine = EvolutionEngine::new(evaluator, mutator);
@@ -108,16 +129,19 @@ pub fn run_inrc_startup_pipeline(
         engine.step();
     }
 
-    let pareto_solutions: Vec<InrcParetoSolution> = engine.archive.solutions.iter().map(|sol| {
-        InrcParetoSolution {
-            s6_assignment_penalty:  sol.fitness.get(0).copied().unwrap_or(0.0),
-            s7_weekend_penalty:     sol.fitness.get(1).copied().unwrap_or(0.0),
-            recovery_penalty:       sol.fitness.get(2).copied().unwrap_or(0.0),
-            workload_balance:       sol.fitness.get(3).copied().unwrap_or(0.0),
-            temporal_load_balance:  sol.fitness.get(4).copied().unwrap_or(0.0),
-            schedule:               sol.genome.to_flat_schedule(),
-        }
-    }).collect();
+    let pareto_solutions: Vec<InrcParetoSolution> = engine
+        .archive
+        .solutions
+        .iter()
+        .map(|sol| InrcParetoSolution {
+            s6_assignment_penalty: sol.fitness.get(0).copied().unwrap_or(0.0),
+            s7_weekend_penalty: sol.fitness.get(1).copied().unwrap_or(0.0),
+            recovery_penalty: sol.fitness.get(2).copied().unwrap_or(0.0),
+            workload_balance: sol.fitness.get(3).copied().unwrap_or(0.0),
+            temporal_load_balance: sol.fitness.get(4).copied().unwrap_or(0.0),
+            schedule: sol.genome.to_flat_schedule(),
+        })
+        .collect();
 
     let schedule = if !engine.archive.solutions.is_empty() {
         engine.archive.solutions[0].genome.to_flat_schedule()
@@ -125,5 +149,8 @@ pub fn run_inrc_startup_pipeline(
         fallback_schedule
     };
 
-    Ok(InrcStartupResult { schedule, pareto_solutions })
+    Ok(InrcStartupResult {
+        schedule,
+        pareto_solutions,
+    })
 }

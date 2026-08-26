@@ -30,8 +30,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing certified database name in DATABASE_URL".into());
     }
 
-    let on_disk: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_dir.join("selected_policy.json"))?)?;
+    let on_disk: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_dir.join("selected_policy.json"),
+    )?)?;
     if on_disk.artifact_hash != RESEARCH_DISCOVERY_ARTIFACT_HASH {
         return Err("refusing to analyze an artifact that is not Search #1".into());
     }
@@ -53,10 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (_, candidates, archive) =
         evolve_on_development_observed(development.clone()).map_err(|e| e.to_string())?;
-    let (selected, archive) =
-        select_and_observe(&candidates, &development, &selection, archive).map_err(|e| e.to_string())?;
+    let (selected, archive) = select_and_observe(&candidates, &development, &selection, archive)
+        .map_err(|e| e.to_string())?;
     if selected.artifact.artifact_hash != RESEARCH_DISCOVERY_ARTIFACT_HASH {
-        return Err("observability replay diverged from Search #1; refusing to write ecology".into());
+        return Err(
+            "observability replay diverged from Search #1; refusing to write ecology".into(),
+        );
     }
     if selected.artifact.artifact_hash != on_disk.artifact_hash {
         return Err("replay artifact does not match the on-disk Search #1 control".into());

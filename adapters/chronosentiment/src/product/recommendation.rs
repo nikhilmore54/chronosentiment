@@ -192,7 +192,8 @@ mod tests {
             risk_pct: req.risk_pct,
             risk_boundary: req.risk_boundary,
             maximum_hold_sessions: req.maximum_hold_sessions,
-            rationale: "Allocated ₹1,000 (20% of weekly budget). Existing exposure: ₹25,000.".into(),
+            rationale: "Allocated ₹1,000 (20% of weekly budget). Existing exposure: ₹25,000."
+                .into(),
             decision_id: req.decision_id.clone(),
             execution_intent_id: req.execution_intent_id.clone(),
             allocation_engine_version: "allocation-engine-v0".into(),
@@ -224,11 +225,17 @@ mod tests {
         let rec = sample_recommendation();
         let s = rec.summary();
         assert!(s.contains("ADD"), "summary must contain action: {s}");
-        assert!(s.contains("INFY.NS"), "summary must contain instrument: {s}");
+        assert!(
+            s.contains("INFY.NS"),
+            "summary must contain instrument: {s}"
+        );
         assert!(s.contains("1000"), "summary must contain allocation: {s}");
         assert!(s.contains("6.2%"), "summary must contain target_pct: {s}");
         assert!(s.contains("3.1%"), "summary must contain risk_pct: {s}");
-        assert!(s.contains("20 sessions"), "summary must contain max hold: {s}");
+        assert!(
+            s.contains("20 sessions"),
+            "summary must contain max hold: {s}"
+        );
     }
 
     #[test]
@@ -239,8 +246,14 @@ mod tests {
         rec.rationale = "No actionable signal.".into();
         let s = rec.summary();
         assert!(s.contains("NO_ACTION"), "summary must contain action: {s}");
-        assert!(s.contains("INFY.NS"), "summary must contain instrument: {s}");
-        assert!(!s.contains("₹0"), "zero allocation should not appear in summary: {s}");
+        assert!(
+            s.contains("INFY.NS"),
+            "summary must contain instrument: {s}"
+        );
+        assert!(
+            !s.contains("₹0"),
+            "zero allocation should not appear in summary: {s}"
+        );
     }
 
     #[test]
@@ -248,14 +261,22 @@ mod tests {
         // The allocation engine must not alter target_pct, risk_pct, or maximum_hold_sessions.
         let req = sample_request();
         let rec = sample_recommendation();
-        assert!((rec.target_pct - req.target_pct).abs() < 1e-9,
-            "target_pct must be passed through unchanged");
-        assert!((rec.risk_pct - req.risk_pct).abs() < 1e-9,
-            "risk_pct must be passed through unchanged");
-        assert_eq!(rec.maximum_hold_sessions, req.maximum_hold_sessions,
-            "maximum_hold_sessions must be passed through unchanged");
-        assert_eq!(rec.c3_002_direction, req.c3_002_direction,
-            "c3_002_direction must be passed through unchanged");
+        assert!(
+            (rec.target_pct - req.target_pct).abs() < 1e-9,
+            "target_pct must be passed through unchanged"
+        );
+        assert!(
+            (rec.risk_pct - req.risk_pct).abs() < 1e-9,
+            "risk_pct must be passed through unchanged"
+        );
+        assert_eq!(
+            rec.maximum_hold_sessions, req.maximum_hold_sessions,
+            "maximum_hold_sessions must be passed through unchanged"
+        );
+        assert_eq!(
+            rec.c3_002_direction, req.c3_002_direction,
+            "c3_002_direction must be passed through unchanged"
+        );
     }
 
     #[test]

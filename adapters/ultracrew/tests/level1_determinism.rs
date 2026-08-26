@@ -1,10 +1,10 @@
-use ultracrew::helpers::{generate_scenario, run_optimization};
 use coralys_moga::config::EvolutionConfig;
+use ultracrew::helpers::{generate_scenario, run_optimization};
 
 #[test]
 fn test_level1_determinism() {
     let num_runs = 10;
-    
+
     let config = EvolutionConfig {
         population_size: 50,
         generation_limit: 50,
@@ -25,16 +25,17 @@ fn test_level1_determinism() {
 
         // 1. Final Best Fitness must be identical
         assert_eq!(
-            baseline_result.global_best.fitness,
-            result.global_best.fitness,
-            "Run {} diverged in final fitness", i
+            baseline_result.global_best.fitness, result.global_best.fitness,
+            "Run {} diverged in final fitness",
+            i
         );
 
         // 2. Trajectory must be identical
         assert_eq!(
             baseline_result.generation_history.len(),
             result.generation_history.len(),
-            "Run {} diverged in trajectory length", i
+            "Run {} diverged in trajectory length",
+            i
         );
 
         for gen in 0..baseline_result.generation_history.len() {
@@ -42,16 +43,23 @@ fn test_level1_determinism() {
             let new_gen = &result.generation_history[gen];
             assert_eq!(
                 base_gen.fitness, new_gen.fitness,
-                "Run {} diverged at generation {}", i, gen
+                "Run {} diverged at generation {}",
+                i, gen
             );
         }
 
         // 3. Genome assignments must be byte-for-byte identical
         for (shift_id, worker_id) in &baseline_result.global_best.schedule.assignments {
-            let new_worker_id = result.global_best.schedule.assignments.get(shift_id).unwrap();
+            let new_worker_id = result
+                .global_best
+                .schedule
+                .assignments
+                .get(shift_id)
+                .unwrap();
             assert_eq!(
                 worker_id, new_worker_id,
-                "Run {} diverged in schedule assignments", i
+                "Run {} diverged in schedule assignments",
+                i
             );
         }
     }

@@ -1,6 +1,6 @@
-use chronosentiment_optimization::GaConfig;
-use chronosentiment_core::{harness::run_simulation_harness, *};
 use crate::ApiError;
+use chronosentiment_core::{harness::run_simulation_harness, *};
+use chronosentiment_optimization::GaConfig;
 use rand::{Rng, SeedableRng};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -24,7 +24,11 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let mode = match input.mode.as_str() {
         "real" => ExecutionMode::Real,
         "ideal" => ExecutionMode::Ideal,
-        _ => return Err(ApiError::ValidationError("mode must be 'real' or 'ideal'".to_string())),
+        _ => {
+            return Err(ApiError::ValidationError(
+                "mode must be 'real' or 'ideal'".to_string(),
+            ))
+        }
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(input.seed);
@@ -37,11 +41,14 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let assets_with_candles = source.load_all();
     let mut all_scenarios = std::collections::HashMap::new();
     for (asset, candles) in assets_with_candles {
-        let asset_scenarios = chronosentiment_strategies::compatibility::scenarios_from_candles(&asset, &candles);
+        let asset_scenarios =
+            chronosentiment_strategies::compatibility::scenarios_from_candles(&asset, &candles);
         all_scenarios.extend(asset_scenarios);
     }
-    
-    let default_scenario = all_scenarios.values().next().ok_or_else(|| ApiError::InternalError("No real market scenarios found in test_assets".to_string()))?;
+
+    let default_scenario = all_scenarios.values().next().ok_or_else(|| {
+        ApiError::InternalError("No real market scenarios found in test_assets".to_string())
+    })?;
     let market_events = default_scenario.clone();
 
     let first_event_price = market_events.first().map(|e| e.price).unwrap_or(100);
@@ -60,18 +67,26 @@ pub fn handle_simulate(input: SimulateInput) -> Result<SimulateOutput, ApiError>
     let (_, res1, _) = run_simulation_harness(mode, market_events.clone(), create_orders.clone());
     let (_, res2, _) = run_simulation_harness(mode, market_events.clone(), create_orders.clone());
 
-    if res1.pnl != res2.pnl || res1.trades != res2.trades || res1.events.len() != res2.events.len() {
-        return Err(ApiError::InternalError("Determinism violation detected".to_string()));
+    if res1.pnl != res2.pnl || res1.trades != res2.trades || res1.events.len() != res2.events.len()
+    {
+        return Err(ApiError::InternalError(
+            "Determinism violation detected".to_string(),
+        ));
     }
 
     // Baseline Validation 2: Event Identity
     for i in 0..res1.events.len() {
         if res1.events[i] != res2.events[i] {
-            return Err(ApiError::InternalError(format!("Event mismatch at sequence {}", i)));
+            return Err(ApiError::InternalError(format!(
+                "Event mismatch at sequence {}",
+                i
+            )));
         }
     }
 
-    let state_hash = blake3::hash(serde_json::to_string(&res1).unwrap_or_default().as_bytes()).to_hex().to_string();
+    let state_hash = blake3::hash(serde_json::to_string(&res1).unwrap_or_default().as_bytes())
+        .to_hex()
+        .to_string();
 
     Ok(SimulateOutput {
         pnl: res1.pnl,

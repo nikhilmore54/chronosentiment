@@ -1,9 +1,12 @@
-use ultracrew::inrc::parser::{parse_scenario, parse_history, parse_week_data};
 use std::path::PathBuf;
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
 
 #[test]
 fn test_inrc_parser() {
-    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("data").join("n030w4");
+    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("n030w4");
 
     let sc_path = base_dir.join("Sc-n030w4.json");
     let scenario = parse_scenario(&sc_path).expect("Failed to parse scenario");

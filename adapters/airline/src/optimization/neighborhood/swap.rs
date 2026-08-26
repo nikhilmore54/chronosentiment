@@ -47,13 +47,25 @@ pub fn swap_pairings(
     let new_pairings_a: Vec<_> = pairings_a
         .iter()
         .enumerate()
-        .map(|(i, p)| if i == pairing_a { pairings_b[pairing_b].clone() } else { p.clone() })
+        .map(|(i, p)| {
+            if i == pairing_a {
+                pairings_b[pairing_b].clone()
+            } else {
+                p.clone()
+            }
+        })
         .collect();
 
     let new_pairings_b: Vec<_> = pairings_b
         .iter()
         .enumerate()
-        .map(|(i, p)| if i == pairing_b { pairings_a[pairing_a].clone() } else { p.clone() })
+        .map(|(i, p)| {
+            if i == pairing_b {
+                pairings_a[pairing_a].clone()
+            } else {
+                p.clone()
+            }
+        })
         .collect();
 
     // Rebuild rotations.
@@ -82,7 +94,8 @@ pub fn swap_pairings(
         roster.period.clone(),
         roster.legs().cloned().collect(),
         new_rotations,
-    ).ok()
+    )
+    .ok()
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -115,8 +128,12 @@ mod tests {
 
         // rotations() iterates a HashMap — order is non-deterministic.
         // Look up by crew ID instead of by index.
-        let rot_c1 = new_roster.rotation_for(&CrewId::new("C1")).expect("C1 rotation missing");
-        let rot_c2 = new_roster.rotation_for(&CrewId::new("C2")).expect("C2 rotation missing");
+        let rot_c1 = new_roster
+            .rotation_for(&CrewId::new("C1"))
+            .expect("C1 rotation missing");
+        let rot_c2 = new_roster
+            .rotation_for(&CrewId::new("C2"))
+            .expect("C2 rotation missing");
 
         // C1 originally had P1; after swap it should have P2.
         assert_eq!(rot_c1.pairings()[0].id.as_str(), "P2");

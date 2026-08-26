@@ -13,8 +13,8 @@ use crate::reasoning::assessment::AssessmentProfile;
 
 use super::policy::DecisionPolicy;
 use super::{
-    ConfidenceStatus, DecisionDraft, DecisionEvidence, DecisionLineage, RiskInformation,
-    RiskLevel, TradingDecision,
+    ConfidenceStatus, DecisionDraft, DecisionEvidence, DecisionLineage, RiskInformation, RiskLevel,
+    TradingDecision,
 };
 
 #[async_trait::async_trait]
@@ -33,9 +33,7 @@ pub const UNFROZEN_ENGINE_VERSION: &str = "unfrozen-dev";
 pub const REPLAY_PRODUCER: &str = "csp004.adapter.v0.1";
 /// Placeholder horizon until an engine version is frozen. Not a G-GATE parameter.
 const UNFROZEN_HORIZON_DAYS: u32 = 5;
-pub use super::policy::{
-    BASELINE_TREND_MAPPING_POLICY_NAME, TREND_MAPPING_RULE,
-};
+pub use super::policy::{BASELINE_TREND_MAPPING_POLICY_NAME, TREND_MAPPING_RULE};
 
 #[derive(Debug)]
 pub enum ReplayError {
@@ -257,9 +255,7 @@ impl DecideAt for ReplayAdapter {
 
 impl ReplayAdapter {
     /// Chronological unique (instrument, assessment as-of) ticks. Read-only. No decision logic.
-    pub async fn assessment_schedule(
-        &self,
-    ) -> Result<Vec<(DateTime<Utc>, Uuid)>, ReplayError> {
+    pub async fn assessment_schedule(&self) -> Result<Vec<(DateTime<Utc>, Uuid)>, ReplayError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET TRANSACTION READ ONLY")
             .execute(&mut *tx)

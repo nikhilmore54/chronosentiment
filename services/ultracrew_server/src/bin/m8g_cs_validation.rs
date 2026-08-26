@@ -1,10 +1,10 @@
 use chronosentiment_optimization::{
-    GaConfig, Candidate, CandidateEvaluation, FitnessEvaluator,
-    initialize_population, tournament_selection, crossover, mutate_candidate,
+    Candidate, CandidateEvaluation, FitnessEvaluator, GaConfig, crossover, initialize_population,
+    mutate_candidate, tournament_selection,
 };
-use serde::{Serialize, Deserialize};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use serde::{Deserialize, Serialize};
 
 const MAX_GENERATIONS: usize = 1000;
 const POPULATION_SIZE: usize = 50;
@@ -25,10 +25,10 @@ impl FitnessEvaluator<Candidate> for SyntheticEvaluator {
         // Normalize variables to [-2.0, 2.0] based on their typical ranges
         let x = (candidate.queue_threshold as f64 / 2500.0) - 2.0;
         let y = (candidate.take_profit as f64 / 250.0) - 2.0;
-        
+
         // Rosenbrock function: f(x,y) = (1-x)^2 + 100(y-x^2)^2
         let rosenbrock = (1.0 - x).powi(2) + 100.0 * (y - x.powi(2)).powi(2);
-        
+
         // Map to [0, 1] range: e^(-rosenbrock / 100)
         let fitness = (-rosenbrock / 100.0).exp();
 
@@ -79,24 +79,31 @@ fn main() {
         let mut history_log = Vec::new();
 
         for g in 1..=MAX_GENERATIONS {
-            let mut evaluations: Vec<CandidateEvaluation> = population
-                .iter()
-                .map(|c| evaluator.evaluate(c))
-                .collect();
+            let mut evaluations: Vec<CandidateEvaluation> =
+                population.iter().map(|c| evaluator.evaluate(c)).collect();
 
             evaluations.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
             let global_best_fitness = evaluations[0].fitness;
-            
+
             // Approximate diversity: std dev of fitness
-            let mean_fit = evaluations.iter().map(|e| e.fitness).sum::<f64>() / POPULATION_SIZE as f64;
-            let div = (evaluations.iter().map(|e| (e.fitness - mean_fit).powi(2)).sum::<f64>() / POPULATION_SIZE as f64).sqrt();
+            let mean_fit =
+                evaluations.iter().map(|e| e.fitness).sum::<f64>() / POPULATION_SIZE as f64;
+            let div = (evaluations
+                .iter()
+                .map(|e| (e.fitness - mean_fit).powi(2))
+                .sum::<f64>()
+                / POPULATION_SIZE as f64)
+                .sqrt();
 
             if g <= 100 || g % 100 == 0 {
-                history_log.push(format!("Gen {:>4} | Best: {:.4} | Div: {:.6}", g, global_best_fitness, div));
+                history_log.push(format!(
+                    "Gen {:>4} | Best: {:.4} | Div: {:.6}",
+                    g, global_best_fitness, div
+                ));
             }
-            
+
             let progress_telemetry = progress_tracker.observe_maximization(g, global_best_fitness);
-            
+
             if g == 100 {
                 progress_at_100 = Some(progress_telemetry);
             }

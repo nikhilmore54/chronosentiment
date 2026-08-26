@@ -38,8 +38,14 @@ fn comparison_identity_gates_both_artifacts() {
     .unwrap();
     let report = compare_sealed_recommendations(&one, &two, &art).unwrap();
     assert_eq!(report.n_rows, 273);
-    assert_eq!(report.search_one_artifact_hash, RESEARCH_DISCOVERY_ARTIFACT_HASH);
-    assert_eq!(report.search_two_artifact_hash, RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH);
+    assert_eq!(
+        report.search_one_artifact_hash,
+        RESEARCH_DISCOVERY_ARTIFACT_HASH
+    );
+    assert_eq!(
+        report.search_two_artifact_hash,
+        RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH
+    );
     assert!(!report.search_three_authorized);
     assert!(!report.used_as_coralys_fitness);
     assert_eq!(

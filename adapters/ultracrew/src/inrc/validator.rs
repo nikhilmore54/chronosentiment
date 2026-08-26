@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::inrc::models::InrcScenario;
 use crate::inrc::types::{ValidationReport, ViolationDetail};
+use std::collections::HashMap;
 
 /// Validate a schedule against INRC constraints and return a full report.
 pub fn validate_schedule(

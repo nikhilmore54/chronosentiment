@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SchedulingRecommendation {
@@ -15,7 +15,10 @@ impl RecommendationEngine {
         Self
     }
 
-    pub fn generate_recommendations(&self, report: &crate::constraint_engine::ConstraintReport) -> Vec<SchedulingRecommendation> {
+    pub fn generate_recommendations(
+        &self,
+        report: &crate::constraint_engine::ConstraintReport,
+    ) -> Vec<SchedulingRecommendation> {
         let mut recs = Vec::new();
 
         // HC1: Skills

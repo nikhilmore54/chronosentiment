@@ -13,14 +13,14 @@ pub enum ScenarioStatus {
 pub struct Scenario {
     pub scenario_id: String,
     pub research_session_id: String,
-    
+
     // Core attributes mapped from hypothesis
     pub hypothesis_ids: Vec<String>,
     pub expected_return: f64,
     pub expected_risk: f64,
     pub expected_drawdown: f64,
     pub expected_probability: f64,
-    
+
     // Status
     pub status: ScenarioStatus,
     pub description: String,

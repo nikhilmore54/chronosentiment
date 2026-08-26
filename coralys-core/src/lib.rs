@@ -20,14 +20,16 @@ pub trait State: Send + Sync + 'static {}
 
 pub trait Action: Send + Sync + 'static {}
 
-pub mod telemetry;
+pub mod analysis;
 pub mod memory;
 pub mod models;
-pub mod analysis;
 pub mod operators;
 pub mod pipeline;
+pub mod telemetry;
 
-pub use models::{Violation, MatchingResult, EvaluationResult, StateReference, DecisionProposal, DecisionLineage};
+pub use models::{
+    DecisionLineage, DecisionProposal, EvaluationResult, MatchingResult, StateReference, Violation,
+};
 pub use pipeline::EvolutionaryPipeline;
 
 pub type SimulationResult<S> = Result<S, String>;
@@ -35,24 +37,18 @@ pub type SimulationResult<S> = Result<S, String>;
 pub trait DecisionPlugin {
     type State;
     type Evaluation;
-    
+
     fn current_state(&self) -> Self::State;
-    
-    fn evaluate(
-        &self,
-        state: &Self::State,
-    ) -> Self::Evaluation;
-    
+
+    fn evaluate(&self, state: &Self::State) -> Self::Evaluation;
+
     fn simulate(
         &self,
         state: &Self::State,
         proposal: &DecisionProposal,
     ) -> SimulationResult<Self::State>;
-    
-    fn execute(
-        &mut self,
-        proposal: &DecisionProposal,
-    );
+
+    fn execute(&mut self, proposal: &DecisionProposal);
 }
 
 pub trait ReasoningEngine {
@@ -65,4 +61,3 @@ pub trait ReasoningEngine {
         config: &Self::Config,
     ) -> Result<Vec<DecisionProposal>, String>;
 }
-

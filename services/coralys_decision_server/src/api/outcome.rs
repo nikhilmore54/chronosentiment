@@ -123,14 +123,22 @@ pub async fn record_outcome(
                 decision: DecisionResponse::from(record),
                 message: "Outcome recorded.".to_string(),
             };
-            (StatusCode::OK, Json(serde_json::to_value(response).unwrap())).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::to_value(response).unwrap()),
+            )
+                .into_response()
         }
         Err(coralys_decision::ledger::LedgerError::DecisionNotFound(_)) => {
             let err = ErrorResponse {
                 error: "decision not found".to_string(),
                 decision_id: decision_id.clone(),
             };
-            (StatusCode::NOT_FOUND, Json(serde_json::to_value(err).unwrap())).into_response()
+            (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::to_value(err).unwrap()),
+            )
+                .into_response()
         }
         Err(coralys_decision::ledger::LedgerError::ObservationBoundaryNotPassed(_)) => {
             let err = ErrorResponse {
@@ -180,7 +188,12 @@ mod tests {
     async fn outcome_without_boundary_confirmation_returns_422() {
         // AC-O1
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -194,17 +207,24 @@ mod tests {
             .await;
         resp.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
         let body: Value = resp.json();
-        assert!(body["error"]
-            .as_str()
-            .unwrap()
-            .contains("observation boundary"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("observation boundary")
+        );
     }
 
     #[tokio::test]
     async fn outcome_with_boundary_confirmation_returns_200() {
         // AC-O2
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -240,7 +260,12 @@ mod tests {
     async fn outcome_does_not_alter_certification() {
         // AC-O4
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -254,17 +279,24 @@ mod tests {
         resp.assert_status_ok();
         let body: Value = resp.json();
         assert_eq!(body["decision"]["certification"]["status"], "CERTIFIED");
-        assert!(!body["decision"]["certification"]["policy_artifact_hash"]
-            .as_str()
-            .unwrap()
-            .is_empty());
+        assert!(
+            !body["decision"]["certification"]["policy_artifact_hash"]
+                .as_str()
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]
     async fn outcome_does_not_alter_decision_core() {
         // AC-O5
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -287,7 +319,12 @@ mod tests {
     async fn outcome_does_not_inject_evidence() {
         // AC-O6
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -308,7 +345,12 @@ mod tests {
     #[tokio::test]
     async fn reference_risk_outcome_is_recorded() {
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -329,7 +371,12 @@ mod tests {
     #[tokio::test]
     async fn horizon_outcome_is_recorded() {
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server

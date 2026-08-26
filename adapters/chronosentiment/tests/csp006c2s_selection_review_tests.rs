@@ -59,7 +59,9 @@ fn certified_review_when_archive_and_cache_present() {
     let archive_path = search.join("ecology").join("archive.json");
     let artifact_path = search.join("selected_policy.json");
     let cache_dir = root.join(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache");
-    if !archive_path.exists() || !artifact_path.exists() || !cache_dir.join("HDFCBANK.NS.json").exists()
+    if !archive_path.exists()
+        || !artifact_path.exists()
+        || !cache_dir.join("HDFCBANK.NS.json").exists()
     {
         return;
     }

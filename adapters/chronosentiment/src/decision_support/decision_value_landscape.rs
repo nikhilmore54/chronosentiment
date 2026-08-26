@@ -134,10 +134,14 @@ pub fn landscape_row(row: &RecommendationRow) -> Option<DecisionValueRow> {
     let recommended_value = action_value(row.recommendation, raw);
     let best = best_action(raw);
     let best_value = action_value(best, raw);
-    let unique_best = [DecisionAction::Long, DecisionAction::Short, DecisionAction::NoTrade]
-        .into_iter()
-        .filter(|&action| action != row.recommendation)
-        .all(|action| recommended_value > action_value(action, raw));
+    let unique_best = [
+        DecisionAction::Long,
+        DecisionAction::Short,
+        DecisionAction::NoTrade,
+    ]
+    .into_iter()
+    .filter(|&action| action != row.recommendation)
+    .all(|action| recommended_value > action_value(action, raw));
     Some(DecisionValueRow {
         timestamp: row.timestamp.clone(),
         instrument: row.instrument.clone(),
@@ -171,7 +175,10 @@ fn slice_landscape(kind: PartitionKind, rows: &[&DecisionValueRow]) -> SliceLand
         .collect();
     let acted_adv: Vec<f64> = acted.iter().map(|r| r.advantage_vs_no_trade).collect();
     let stood_cost: Vec<f64> = stood.iter().map(|r| r.regret).collect();
-    let n_acted_better = acted.iter().filter(|r| r.advantage_vs_no_trade > 0.0).count();
+    let n_acted_better = acted
+        .iter()
+        .filter(|r| r.advantage_vs_no_trade > 0.0)
+        .count();
     let n_unique_best = rows.iter().filter(|r| r.recommended_is_unique_best).count();
     SliceLandscape {
         partition: kind,
@@ -253,7 +260,9 @@ pub fn analyze_landscape(
 
 pub fn render_landscape(card: &DecisionValueLandscape) -> String {
     let mut out = String::from("# Search #1 decision-value landscape\n\n");
-    out.push_str("Existing 273 recommendations only. Not Search #2. No borderline band is frozen.\n\n");
+    out.push_str(
+        "Existing 273 recommendations only. Not Search #2. No borderline band is frozen.\n\n",
+    );
     out.push_str(&format!(
         "- artifact: `{}`\n- rows: {}\n- mean recommended value (all, NO_TRADE=0): {:.6}\n- mean regret vs best alternative: {:.6}\n\n",
         card.policy_artifact_hash,
@@ -286,6 +295,8 @@ pub fn render_landscape(card: &DecisionValueLandscape) -> String {
         ));
     }
     out.push_str("\nAdvantage versus alternatives is observational. It is not Coralys fitness.\n");
-    out.push_str("Evaluation is diagnostic. Coralys receives no feedback. Search #2 is not authorized.\n");
+    out.push_str(
+        "Evaluation is diagnostic. Coralys receives no feedback. Search #2 is not authorized.\n",
+    );
     out
 }

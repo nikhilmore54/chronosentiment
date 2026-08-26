@@ -57,8 +57,8 @@ mod obs_000_temporal_firewall {
             },
             certification: Certification {
                 status: CertificationStatus::Certified,
-                policy_artifact_hash: "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121"
-                    .into(),
+                policy_artifact_hash:
+                    "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121".into(),
                 execution_artifact_hash: Some(
                     "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f".into(),
                 ),
@@ -96,7 +96,14 @@ mod obs_000_temporal_firewall {
         target_price: f64,
         risk_boundary: f64,
     ) -> DecisionRecord {
-        let mut d = long_decision(id, instrument, decision_ts, reference_price, target_price, risk_boundary);
+        let mut d = long_decision(
+            id,
+            instrument,
+            decision_ts,
+            reference_price,
+            target_price,
+            risk_boundary,
+        );
         d.decision.direction = Direction::Short;
         d.decision.trend = "Bearish".into();
         d
@@ -111,7 +118,14 @@ mod obs_000_temporal_firewall {
     fn inv1_t0_fields_unchanged_after_execution_recorded() {
         let mut ledger = DecisionLedger::new();
         let t0 = ts(2026, 8, 17, 10, 15, 0);
-        let record = long_decision("obs000-inv1-exec", "ADANIENT.NS", t0, 1200.0, 1260.0, 1160.0);
+        let record = long_decision(
+            "obs000-inv1-exec",
+            "ADANIENT.NS",
+            t0,
+            1200.0,
+            1260.0,
+            1160.0,
+        );
 
         // Capture the T0 snapshot before any lifecycle events.
         let sealed_identity = record.identity.clone();
@@ -140,10 +154,22 @@ mod obs_000_temporal_firewall {
         let after = ledger.get_decision("obs000-inv1-exec").unwrap();
 
         // T0 fields must be byte-identical to what was sealed.
-        assert_eq!(after.identity, sealed_identity, "identity mutated after execution");
-        assert_eq!(after.certification, sealed_certification, "certification mutated after execution");
-        assert_eq!(after.decision, sealed_decision, "decision core mutated after execution");
-        assert_eq!(after.reference_risk, sealed_risk, "reference_risk mutated after execution");
+        assert_eq!(
+            after.identity, sealed_identity,
+            "identity mutated after execution"
+        );
+        assert_eq!(
+            after.certification, sealed_certification,
+            "certification mutated after execution"
+        );
+        assert_eq!(
+            after.decision, sealed_decision,
+            "decision core mutated after execution"
+        );
+        assert_eq!(
+            after.reference_risk, sealed_risk,
+            "reference_risk mutated after execution"
+        );
     }
 
     /// After sealing, the T0 fields must be unchanged after an outcome is appended.
@@ -177,10 +203,22 @@ mod obs_000_temporal_firewall {
             .unwrap();
 
         let after = ledger.get_decision("obs000-inv1-out").unwrap();
-        assert_eq!(after.identity, sealed_identity, "identity mutated after outcome");
-        assert_eq!(after.certification, sealed_certification, "certification mutated after outcome");
-        assert_eq!(after.decision, sealed_decision, "decision core mutated after outcome");
-        assert_eq!(after.reference_risk, sealed_risk, "reference_risk mutated after outcome");
+        assert_eq!(
+            after.identity, sealed_identity,
+            "identity mutated after outcome"
+        );
+        assert_eq!(
+            after.certification, sealed_certification,
+            "certification mutated after outcome"
+        );
+        assert_eq!(
+            after.decision, sealed_decision,
+            "decision core mutated after outcome"
+        );
+        assert_eq!(
+            after.reference_risk, sealed_risk,
+            "reference_risk mutated after outcome"
+        );
     }
 
     // ── Invariant 2: Future-Data Exclusion ───────────────────────────────────
@@ -356,7 +394,14 @@ mod obs_000_temporal_firewall {
         // Verify the sealed record preserves this geometry.
         let mut ledger = DecisionLedger::new();
         let t0 = ts(2026, 8, 17, 10, 15, 0);
-        let record = long_decision("obs000-inv4-long", "ADANIENT.NS", t0, reference, target, risk);
+        let record = long_decision(
+            "obs000-inv4-long",
+            "ADANIENT.NS",
+            t0,
+            reference,
+            target,
+            risk,
+        );
         ledger.seal_decision(record).unwrap();
 
         let d = ledger.get_decision("obs000-inv4-long").unwrap();
@@ -365,8 +410,14 @@ mod obs_000_temporal_firewall {
         let risk_price = d.reference_risk.boundary_price.unwrap();
 
         assert_eq!(d.decision.direction, Direction::Long);
-        assert!(target_price > ref_price, "LONG target must be above reference after seal");
-        assert!(risk_price < ref_price, "LONG risk must be below reference after seal");
+        assert!(
+            target_price > ref_price,
+            "LONG target must be above reference after seal"
+        );
+        assert!(
+            risk_price < ref_price,
+            "LONG risk must be below reference after seal"
+        );
     }
 
     /// SHORT: target must be below reference price; risk must be above.
@@ -374,7 +425,7 @@ mod obs_000_temporal_firewall {
     fn inv4_short_target_below_reference_risk_above() {
         let reference = 4971.0_f64;
         let target = 4792.0_f64; // below reference for SHORT
-        let risk = 5060.0_f64;   // above reference for SHORT
+        let risk = 5060.0_f64; // above reference for SHORT
 
         assert!(
             target < reference,
@@ -387,7 +438,14 @@ mod obs_000_temporal_firewall {
 
         let mut ledger = DecisionLedger::new();
         let t0 = ts(2026, 8, 17, 10, 15, 0);
-        let record = short_decision("obs000-inv4-short", "TORNTPHARM.NS", t0, reference, target, risk);
+        let record = short_decision(
+            "obs000-inv4-short",
+            "TORNTPHARM.NS",
+            t0,
+            reference,
+            target,
+            risk,
+        );
         ledger.seal_decision(record).unwrap();
 
         let d = ledger.get_decision("obs000-inv4-short").unwrap();
@@ -396,8 +454,14 @@ mod obs_000_temporal_firewall {
         let risk_price = d.reference_risk.boundary_price.unwrap();
 
         assert_eq!(d.decision.direction, Direction::Short);
-        assert!(target_price < ref_price, "SHORT target must be below reference after seal");
-        assert!(risk_price > ref_price, "SHORT risk must be above reference after seal");
+        assert!(
+            target_price < ref_price,
+            "SHORT target must be below reference after seal"
+        );
+        assert!(
+            risk_price > ref_price,
+            "SHORT risk must be above reference after seal"
+        );
     }
 
     // ── Invariant 5: Append-Only Outcomes ────────────────────────────────────
@@ -441,10 +505,19 @@ mod obs_000_temporal_firewall {
         assert_eq!(after.outcome.exit_price, Some(5850.0));
 
         // Original decision fields are unchanged.
-        assert_eq!(after.decision.target_price, original_target, "target_price was rewritten");
-        assert_eq!(after.decision.direction, original_direction, "direction was rewritten");
+        assert_eq!(
+            after.decision.target_price, original_target,
+            "target_price was rewritten"
+        );
+        assert_eq!(
+            after.decision.direction, original_direction,
+            "direction was rewritten"
+        );
         assert_eq!(after.decision.trend, original_trend, "trend was rewritten");
-        assert_eq!(after.reference_risk.boundary_price, original_risk, "risk boundary was rewritten");
+        assert_eq!(
+            after.reference_risk.boundary_price, original_risk,
+            "risk boundary was rewritten"
+        );
     }
 
     /// HORIZON outcome is appended correctly without modifying T0 fields.
@@ -474,7 +547,10 @@ mod obs_000_temporal_firewall {
 
         let after = ledger.get_decision("obs000-inv5-horizon").unwrap();
         assert_eq!(after.outcome.status, OutcomeStatus::Horizon);
-        assert_eq!(after.decision, original_decision, "decision core mutated by horizon outcome");
+        assert_eq!(
+            after.decision, original_decision,
+            "decision core mutated by horizon outcome"
+        );
     }
 
     // ── Invariant 6: Replay Determinism ──────────────────────────────────────
@@ -497,9 +573,18 @@ mod obs_000_temporal_firewall {
         let b = ledger_b.get_decision("obs000-inv6").unwrap();
 
         assert_eq!(a.identity, b.identity, "identity differs between replays");
-        assert_eq!(a.certification, b.certification, "certification differs between replays");
-        assert_eq!(a.decision, b.decision, "decision core differs between replays");
-        assert_eq!(a.reference_risk, b.reference_risk, "reference_risk differs between replays");
+        assert_eq!(
+            a.certification, b.certification,
+            "certification differs between replays"
+        );
+        assert_eq!(
+            a.decision, b.decision,
+            "decision core differs between replays"
+        );
+        assert_eq!(
+            a.reference_risk, b.reference_risk,
+            "reference_risk differs between replays"
+        );
     }
 
     /// Appending the same outcome to two identical ledgers produces identical results.
@@ -520,20 +605,41 @@ mod obs_000_temporal_firewall {
         let mut ledger_b = DecisionLedger::new();
 
         ledger_a
-            .seal_decision(long_decision("obs000-inv6-out", "WIPRO.NS", t0, 550.0, 577.0, 536.0))
+            .seal_decision(long_decision(
+                "obs000-inv6-out",
+                "WIPRO.NS",
+                t0,
+                550.0,
+                577.0,
+                536.0,
+            ))
             .unwrap();
         ledger_b
-            .seal_decision(long_decision("obs000-inv6-out", "WIPRO.NS", t0, 550.0, 577.0, 536.0))
+            .seal_decision(long_decision(
+                "obs000-inv6-out",
+                "WIPRO.NS",
+                t0,
+                550.0,
+                577.0,
+                536.0,
+            ))
             .unwrap();
 
-        ledger_a.record_outcome("obs000-inv6-out", make_outcome(), obs_ts, true).unwrap();
-        ledger_b.record_outcome("obs000-inv6-out", make_outcome(), obs_ts, true).unwrap();
+        ledger_a
+            .record_outcome("obs000-inv6-out", make_outcome(), obs_ts, true)
+            .unwrap();
+        ledger_b
+            .record_outcome("obs000-inv6-out", make_outcome(), obs_ts, true)
+            .unwrap();
 
         let a = ledger_a.get_decision("obs000-inv6-out").unwrap();
         let b = ledger_b.get_decision("obs000-inv6-out").unwrap();
 
         assert_eq!(a.outcome, b.outcome, "outcome differs between replays");
-        assert_eq!(a.decision, b.decision, "decision core differs between replays after outcome");
+        assert_eq!(
+            a.decision, b.decision,
+            "decision core differs between replays after outcome"
+        );
     }
 
     // ── Invariant 7: No Accidental Research Feedback ─────────────────────────
@@ -576,10 +682,22 @@ mod obs_000_temporal_firewall {
         assert_eq!(after.evidence.historical_target_rate, Some(0.62));
 
         // T0 fields are unchanged — evidence cannot feed back into the decision.
-        assert_eq!(after.decision, original_decision, "decision core altered by evidence");
-        assert_eq!(after.certification, original_certification, "certification altered by evidence");
-        assert_eq!(after.identity, original_identity, "identity altered by evidence");
-        assert_eq!(after.reference_risk, original_risk, "reference_risk altered by evidence");
+        assert_eq!(
+            after.decision, original_decision,
+            "decision core altered by evidence"
+        );
+        assert_eq!(
+            after.certification, original_certification,
+            "certification altered by evidence"
+        );
+        assert_eq!(
+            after.identity, original_identity,
+            "identity altered by evidence"
+        );
+        assert_eq!(
+            after.reference_risk, original_risk,
+            "reference_risk altered by evidence"
+        );
     }
 
     /// Outcome must not alter the decision core — the outcome is a separate
@@ -632,14 +750,7 @@ mod obs_000_temporal_firewall {
         let t0 = ts(2026, 8, 17, 10, 15, 0);
 
         // Seal a legitimate T0 decision.
-        let legitimate = long_decision(
-            "obs000-poison",
-            "ICICIBANK.NS",
-            t0,
-            1100.0,
-            1155.0,
-            1072.0,
-        );
+        let legitimate = long_decision("obs000-poison", "ICICIBANK.NS", t0, 1100.0, 1155.0, 1072.0);
         let sealed_decision = legitimate.decision.clone();
         let sealed_certification = legitimate.certification.clone();
 
@@ -712,9 +823,21 @@ mod obs_000_temporal_firewall {
         );
 
         // Confirm future data IS present in the lifecycle appendages.
-        assert_eq!(after.evidence.similar_decisions_count, Some(55), "evidence not recorded");
-        assert_eq!(after.execution.status, ExecutionStatus::UserExecuted, "execution not recorded");
-        assert_eq!(after.outcome.status, OutcomeStatus::Target, "outcome not recorded");
+        assert_eq!(
+            after.evidence.similar_decisions_count,
+            Some(55),
+            "evidence not recorded"
+        );
+        assert_eq!(
+            after.execution.status,
+            ExecutionStatus::UserExecuted,
+            "execution not recorded"
+        );
+        assert_eq!(
+            after.outcome.status,
+            OutcomeStatus::Target,
+            "outcome not recorded"
+        );
     }
 
     /// Attempting to seal a second decision with the same ID after the first is

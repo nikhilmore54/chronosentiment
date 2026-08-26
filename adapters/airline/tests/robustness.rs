@@ -40,9 +40,7 @@ use coralys_airline::legality::{
 };
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{
-    SchedulingObjective, WorkloadBalanceObjective,
-};
+use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::local_search::LocalSearch;
 
 use chrono::{Duration, TimeZone, Utc};
@@ -73,12 +71,7 @@ fn make_pairing(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
         vec![out.clone(), ret.clone()],
     )
     .unwrap();
-    let pairing = Pairing::new(
-        PairingId::new(id),
-        AirportCode::new("LHR"),
-        vec![duty],
-    )
-    .unwrap();
+    let pairing = Pairing::new(PairingId::new(id), AirportCode::new("LHR"), vec![duty]).unwrap();
     (vec![out, ret], pairing)
 }
 
@@ -159,26 +152,36 @@ fn rob_1__crew_unavailability() {
         .map(|i| make_pairing(&format!("R1P{i:02}"), (i * 6) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairings.iter()
-        .flat_map(|(legs, _)| legs.clone())
-        .collect();
+    let all_legs: Vec<FlightLeg> = pairings.iter().flat_map(|(legs, _)| legs.clone()).collect();
 
     // C4 unavailable: C1 absorbs all late pairings (P04..P11).
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT2", "C2", vec![
-                pairings[0].1.clone(), pairings[1].1.clone(),
-            ]),
-            make_rotation("ROT3", "C3", vec![
-                pairings[2].1.clone(), pairings[3].1.clone(),
-            ]),
-            make_rotation("ROT1", "C1", vec![
-                pairings[4].1.clone(),  pairings[5].1.clone(),
-                pairings[6].1.clone(),  pairings[7].1.clone(),
-                pairings[8].1.clone(),  pairings[9].1.clone(),
-                pairings[10].1.clone(), pairings[11].1.clone(),
-            ]),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![pairings[0].1.clone(), pairings[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairings[2].1.clone(), pairings[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT1",
+                "C1",
+                vec![
+                    pairings[4].1.clone(),
+                    pairings[5].1.clone(),
+                    pairings[6].1.clone(),
+                    pairings[7].1.clone(),
+                    pairings[8].1.clone(),
+                    pairings[9].1.clone(),
+                    pairings[10].1.clone(),
+                    pairings[11].1.clone(),
+                ],
+            ),
         ],
     );
 
@@ -190,7 +193,9 @@ fn rob_1__crew_unavailability() {
     let optimized_score = obj.evaluate(&optimized);
     let improvement_pct = if baseline_score > 0.0 {
         (baseline_score - optimized_score) / baseline_score * 100.0
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     let baseline_pairings: usize = baseline.rotations().map(|r| r.pairings().len()).sum();
     let optimized_pairings: usize = optimized.rotations().map(|r| r.pairings().len()).sum();
@@ -201,14 +206,31 @@ fn rob_1__crew_unavailability() {
     println!("ROB-1: Crew Unavailability");
     println!("  Disruption:  C4 grounded; C1 absorbs 8 pairings (3 rotations remain)");
     println!("  Baseline:    (8,2,2) -- score={:.4}", baseline_score);
-    println!("  Optimized:   score={:.4}  improvement={:.1}%", optimized_score, improvement_pct);
-    println!("  Evaluations: {}  Improvements: {}", metrics.evaluations(), metrics.improvements());
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Optimized:   score={:.4}  improvement={:.1}%",
+        optimized_score, improvement_pct
+    );
+    println!(
+        "  Evaluations: {}  Improvements: {}",
+        metrics.evaluations(),
+        metrics.improvements()
+    );
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
-    assert!(optimized_score < baseline_score,
+    assert!(
+        optimized_score < baseline_score,
         "ROB-1 FAIL: optimized ({:.4}) must be < post-disruption baseline ({:.4})",
-        optimized_score, baseline_score);
-    assert!(optimized_pairings == baseline_pairings, "ROB-1 FAIL: pairings not conserved");
+        optimized_score,
+        baseline_score
+    );
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "ROB-1 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "ROB-1 FAIL: optimized roster is not legal");
 }
 
@@ -228,7 +250,8 @@ fn rob_2__pairing_cancellation() {
         .collect();
 
     // P06 cancelled (first pairing of the heavy rotation).
-    let all_legs: Vec<FlightLeg> = pairings.iter()
+    let all_legs: Vec<FlightLeg> = pairings
+        .iter()
         .enumerate()
         .filter(|(i, _)| *i != 6)
         .flat_map(|(_, (legs, _))| legs.clone())
@@ -237,21 +260,33 @@ fn rob_2__pairing_cancellation() {
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT2", "C2", vec![
-                pairings[0].1.clone(), pairings[1].1.clone(),
-            ]),
-            make_rotation("ROT3", "C3", vec![
-                pairings[2].1.clone(), pairings[3].1.clone(),
-            ]),
-            make_rotation("ROT4", "C4", vec![
-                pairings[4].1.clone(), pairings[5].1.clone(),
-            ]),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![pairings[0].1.clone(), pairings[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairings[2].1.clone(), pairings[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT4",
+                "C4",
+                vec![pairings[4].1.clone(), pairings[5].1.clone()],
+            ),
             // P06 cancelled; heavy rotation has 5 pairings (P07..P11).
-            make_rotation("ROT1", "C1", vec![
-                pairings[7].1.clone(),  pairings[8].1.clone(),
-                pairings[9].1.clone(),  pairings[10].1.clone(),
-                pairings[11].1.clone(),
-            ]),
+            make_rotation(
+                "ROT1",
+                "C1",
+                vec![
+                    pairings[7].1.clone(),
+                    pairings[8].1.clone(),
+                    pairings[9].1.clone(),
+                    pairings[10].1.clone(),
+                    pairings[11].1.clone(),
+                ],
+            ),
         ],
     );
 
@@ -263,7 +298,9 @@ fn rob_2__pairing_cancellation() {
     let optimized_score = obj.evaluate(&optimized);
     let improvement_pct = if baseline_score > 0.0 {
         (baseline_score - optimized_score) / baseline_score * 100.0
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     let baseline_pairings: usize = baseline.rotations().map(|r| r.pairings().len()).sum();
     let optimized_pairings: usize = optimized.rotations().map(|r| r.pairings().len()).sum();
@@ -274,14 +311,31 @@ fn rob_2__pairing_cancellation() {
     println!("ROB-2: Pairing Cancellation");
     println!("  Disruption:  P06 cancelled; 11 pairings remain across 4 rotations");
     println!("  Baseline:    (5,2,2,2) -- score={:.4}", baseline_score);
-    println!("  Optimized:   score={:.4}  improvement={:.1}%", optimized_score, improvement_pct);
-    println!("  Evaluations: {}  Improvements: {}", metrics.evaluations(), metrics.improvements());
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Optimized:   score={:.4}  improvement={:.1}%",
+        optimized_score, improvement_pct
+    );
+    println!(
+        "  Evaluations: {}  Improvements: {}",
+        metrics.evaluations(),
+        metrics.improvements()
+    );
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
-    assert!(optimized_score < baseline_score,
+    assert!(
+        optimized_score < baseline_score,
         "ROB-2 FAIL: optimized ({:.4}) must be < post-disruption baseline ({:.4})",
-        optimized_score, baseline_score);
-    assert!(optimized_pairings == baseline_pairings, "ROB-2 FAIL: pairings not conserved");
+        optimized_score,
+        baseline_score
+    );
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "ROB-2 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "ROB-2 FAIL: optimized roster is not legal");
 }
 
@@ -313,9 +367,7 @@ fn rob_3__operational_policy_change() {
         .map(|i| make_pairing(&format!("R3P{i:02}"), (i * 6) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairings.iter()
-        .flat_map(|(legs, _)| legs.clone())
-        .collect();
+    let all_legs: Vec<FlightLeg> = pairings.iter().flat_map(|(legs, _)| legs.clone()).collect();
 
     // Baseline (4,4,2,2): ROT1 and ROT2 each have 4 LATE pairings.
     // ROT3 and ROT4 each have 2 EARLY pairings.
@@ -323,20 +375,36 @@ fn rob_3__operational_policy_change() {
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT3", "C3", vec![
-                pairings[0].1.clone(), pairings[1].1.clone(),
-            ]),
-            make_rotation("ROT4", "C4", vec![
-                pairings[2].1.clone(), pairings[3].1.clone(),
-            ]),
-            make_rotation("ROT1", "C1", vec![
-                pairings[4].1.clone(), pairings[5].1.clone(),
-                pairings[6].1.clone(), pairings[7].1.clone(),
-            ]),
-            make_rotation("ROT2", "C2", vec![
-                pairings[8].1.clone(),  pairings[9].1.clone(),
-                pairings[10].1.clone(), pairings[11].1.clone(),
-            ]),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairings[0].1.clone(), pairings[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT4",
+                "C4",
+                vec![pairings[2].1.clone(), pairings[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT1",
+                "C1",
+                vec![
+                    pairings[4].1.clone(),
+                    pairings[5].1.clone(),
+                    pairings[6].1.clone(),
+                    pairings[7].1.clone(),
+                ],
+            ),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![
+                    pairings[8].1.clone(),
+                    pairings[9].1.clone(),
+                    pairings[10].1.clone(),
+                    pairings[11].1.clone(),
+                ],
+            ),
         ],
     );
 
@@ -345,8 +413,10 @@ fn rob_3__operational_policy_change() {
     policy_checker.add_rule(Box::new(FatiguePolicyMaxPairings { max_pairings: 4 }));
 
     // Baseline must be legal under the policy (all rotations ≤ 4).
-    assert!(policy_checker.is_legal(&baseline),
-        "ROB-3: baseline must be legal under the fatigue policy");
+    assert!(
+        policy_checker.is_legal(&baseline),
+        "ROB-3: baseline must be legal under the fatigue policy"
+    );
 
     let (optimized, metrics) = run_optimizer(&baseline, policy_checker);
 
@@ -359,7 +429,9 @@ fn rob_3__operational_policy_change() {
     let optimized_score = obj.evaluate(&optimized);
     let improvement_pct = if baseline_score > 0.0 {
         (baseline_score - optimized_score) / baseline_score * 100.0
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     let baseline_pairings: usize = baseline.rotations().map(|r| r.pairings().len()).sum();
     let optimized_pairings: usize = optimized.rotations().map(|r| r.pairings().len()).sum();
@@ -368,16 +440,37 @@ fn rob_3__operational_policy_change() {
     println!();
     println!("ROB-3: Operational Policy Change");
     println!("  Disruption:  Fatigue policy: max 4 pairings per rotation");
-    println!("  Baseline:    (4,4,2,2) -- legal under policy -- score={:.4}", baseline_score);
-    println!("  Optimized:   score={:.4}  improvement={:.1}%", optimized_score, improvement_pct);
-    println!("  Evaluations: {}  Improvements: {}", metrics.evaluations(), metrics.improvements());
-    println!("  Legal under policy: {}  Pairings conserved: {}",
-        optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Baseline:    (4,4,2,2) -- legal under policy -- score={:.4}",
+        baseline_score
+    );
+    println!(
+        "  Optimized:   score={:.4}  improvement={:.1}%",
+        optimized_score, improvement_pct
+    );
+    println!(
+        "  Evaluations: {}  Improvements: {}",
+        metrics.evaluations(),
+        metrics.improvements()
+    );
+    println!(
+        "  Legal under policy: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
-    assert!(optimized_score < baseline_score,
+    assert!(
+        optimized_score < baseline_score,
         "ROB-3 FAIL: optimized ({:.4}) must be < post-disruption baseline ({:.4})",
-        optimized_score, baseline_score);
-    assert!(optimized_pairings == baseline_pairings, "ROB-3 FAIL: pairings not conserved");
-    assert!(optimized_legal,
-        "ROB-3 FAIL: optimized roster must comply with fatigue policy (max 4 pairings per rotation)");
+        optimized_score,
+        baseline_score
+    );
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "ROB-3 FAIL: pairings not conserved"
+    );
+    assert!(
+        optimized_legal,
+        "ROB-3 FAIL: optimized roster must comply with fatigue policy (max 4 pairings per rotation)"
+    );
 }

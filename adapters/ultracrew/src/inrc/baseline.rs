@@ -6,9 +6,8 @@
 ///
 /// Moved from `services/ultracrew_server/src/simulation.rs` into the adapter
 /// so that the application layer does not need to import INRC domain types.
-
-use crate::inrc::models::{InrcScenario, InrcRequirement};
-use crate::inrc::schedule_optimizer::{ScheduleGenome, AssignmentSlot};
+use crate::inrc::models::{InrcRequirement, InrcScenario};
+use crate::inrc::schedule_optimizer::{AssignmentSlot, ScheduleGenome};
 
 pub fn generate_baseline_schedule(
     scenario: &InrcScenario,
@@ -26,8 +25,8 @@ pub fn generate_baseline_schedule(
 
     let mapped_shift_types = [
         ("Early", "Early"),
-        ("Day",   "Day"),
-        ("Late",  "Late"),
+        ("Day", "Day"),
+        ("Late", "Late"),
         ("Night", "Night"),
     ];
 

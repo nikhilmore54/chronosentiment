@@ -1,4 +1,4 @@
-use chronosentiment_optimization::{CandidateEvaluation, Candidate};
+use chronosentiment_optimization::{Candidate, CandidateEvaluation};
 use chronosentiment_strategies::evaluation::report_adapter::SemanticEvaluationReport;
 use std::collections::HashMap;
 
@@ -44,11 +44,11 @@ fn aggregation_output_hash_is_stable() {
     }
 
     let scenarios = scenarios_from_candles("BTCUSDT", &candles);
-    
+
     let mut hasher = DefaultHasher::new();
     let mut keys: Vec<&String> = scenarios.keys().collect();
     keys.sort();
-    
+
     for key in keys {
         key.hash(&mut hasher);
         let events = scenarios.get(key).unwrap();
@@ -57,13 +57,19 @@ fn aggregation_output_hash_is_stable() {
             s.hash(&mut hasher);
         }
     }
-    
+
     let hash = hasher.finish();
     // Pre-calculated hash from the old.rs implementation
-    assert_eq!(hash, 1355411665765150301, "Hash diverged! Semantic aggregation logic has shifted.");
+    assert_eq!(
+        hash, 1355411665765150301,
+        "Hash diverged! Semantic aggregation logic has shifted."
+    );
 }
 
 #[test]
 fn pipeline_output_is_seed_stable() {
-    assert!(true, "Pending implementation: Ensure end-to-end pipeline outputs are stable");
+    assert!(
+        true,
+        "Pending implementation: Ensure end-to-end pipeline outputs are stable"
+    );
 }

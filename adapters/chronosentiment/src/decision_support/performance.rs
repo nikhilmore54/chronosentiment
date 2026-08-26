@@ -102,10 +102,7 @@ pub struct PerformanceReport {
 }
 
 /// Pure measurement. Ledger action is the decision; bundles supply attached returns.
-pub fn measure_performance(
-    ledger: &DecisionLedger,
-    outcomes: &OutcomeReport,
-) -> PerformanceReport {
+pub fn measure_performance(ledger: &DecisionLedger, outcomes: &OutcomeReport) -> PerformanceReport {
     let behavior = behavior(ledger);
     let horizons = HORIZON_DAYS
         .iter()
@@ -215,10 +212,7 @@ fn horizon_slice(
     }
 }
 
-fn attached_return(
-    bundle: &super::outcome::DecisionOutcomeBundle,
-    days: u32,
-) -> Option<f64> {
+fn attached_return(bundle: &super::outcome::DecisionOutcomeBundle, days: u32) -> Option<f64> {
     bundle
         .horizons
         .iter()

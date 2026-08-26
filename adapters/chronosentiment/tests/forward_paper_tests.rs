@@ -3,11 +3,11 @@ use chronosentiment_adapter::decision_support::backtest::{DecisionLedger, Ledger
 use chronosentiment_adapter::decision_support::forward::{
     decide_forward, ForwardJournal, FORWARD_PRODUCER,
 };
-use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::observation_outcome::{
     measure_ledger_from_prices, measure_record_from_prices, PriceBar,
 };
 use chronosentiment_adapter::decision_support::performance::measure_performance;
+use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::{
     ReplayAssessment, ReplayInputs, ReplayObservation, UNFROZEN_ENGINE_VERSION,
 };
@@ -85,7 +85,10 @@ fn prices_after_now_are_excluded_and_unelapsed_horizons_are_unavailable() {
     assert!(bundle.horizons[0].available);
     assert!(!bundle.horizons[1].available);
     assert!(!bundle.horizons[3].available);
-    assert_ne!(bundle.horizons[0].outcome_return, Some((999.0 - 100.0) / 100.0));
+    assert_ne!(
+        bundle.horizons[0].outcome_return,
+        Some((999.0 - 100.0) / 100.0)
+    );
 }
 
 #[test]
@@ -166,7 +169,11 @@ fn journal_is_append_only_and_idempotent() {
     let dir = std::env::temp_dir().join(format!("csp003-{}", Uuid::from_u128(77)));
     let _ = std::fs::remove_dir_all(&dir);
     let journal = ForwardJournal::open(&dir).unwrap();
-    let decision = decide_forward(bullish_inputs(Uuid::from_u128(7)), &BaselineTrendMappingPolicy).unwrap();
+    let decision = decide_forward(
+        bullish_inputs(Uuid::from_u128(7)),
+        &BaselineTrendMappingPolicy,
+    )
+    .unwrap();
     let first = journal.persist(decision.clone()).unwrap();
     let second = journal.persist(decision).unwrap();
     assert_eq!(first.decision_id, second.decision_id);
@@ -178,7 +185,10 @@ fn journal_is_append_only_and_idempotent() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn synthetic_history(n: usize, last: chrono::DateTime<Utc>) -> Vec<chronosentiment_adapter::decision_support::forward_tick::DailyBar> {
+fn synthetic_history(
+    n: usize,
+    last: chrono::DateTime<Utc>,
+) -> Vec<chronosentiment_adapter::decision_support::forward_tick::DailyBar> {
     use chronosentiment_adapter::decision_support::forward_tick::DailyBar;
     (0..n)
         .map(|i| DailyBar {
@@ -190,13 +200,17 @@ fn synthetic_history(n: usize, last: chrono::DateTime<Utc>) -> Vec<chronosentime
 
 #[test]
 fn tick_decides_only_the_latest_session_not_historical_replay() {
-    use chronosentiment_adapter::decision_support::forward_tick::{decide_latest_session, latest_as_of};
+    use chronosentiment_adapter::decision_support::forward_tick::{
+        decide_latest_session, latest_as_of,
+    };
     let last = t(31);
     let mut bars = synthetic_history(60, last);
-    bars.push(chronosentiment_adapter::decision_support::forward_tick::DailyBar {
-        timestamp: last + chrono::Duration::days(1),
-        close: 999.0,
-    });
+    bars.push(
+        chronosentiment_adapter::decision_support::forward_tick::DailyBar {
+            timestamp: last + chrono::Duration::days(1),
+            close: 999.0,
+        },
+    );
     let now = last;
     let as_of = latest_as_of(&bars, now).unwrap();
     assert_eq!(as_of, last);

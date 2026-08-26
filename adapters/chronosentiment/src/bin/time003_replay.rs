@@ -83,8 +83,7 @@ use chronosentiment_adapter::decision_support::policy_artifact::{
 };
 use chronosentiment_adapter::decision_support::DecisionAction;
 use coralys_decision::recommendation::{
-    RecommendationEngineV1, RecommendationRecordV1, Rec001hStore,
-    RECOMMENDATION_POLICY_VERSION_V1,
+    Rec001hStore, RecommendationEngineV1, RecommendationRecordV1, RECOMMENDATION_POLICY_VERSION_V1,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -342,8 +341,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let policy_path = args.policy_dir.join("selected_policy.json");
     let policy_raw = fs::read_to_string(&policy_path)
         .map_err(|e| format!("cannot read policy {}: {e}", policy_path.display()))?;
-    let policy_artifact: PolicyArtifact = serde_json::from_str(&policy_raw)
-        .map_err(|e| format!("policy JSON parse error: {e}"))?;
+    let policy_artifact: PolicyArtifact =
+        serde_json::from_str(&policy_raw).map_err(|e| format!("policy JSON parse error: {e}"))?;
 
     if policy_artifact.artifact_hash != C3_002_ARTIFACT_HASH {
         return Err(format!(
@@ -353,12 +352,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .into());
     }
-    println!("[time003] C3-002 artifact verified: {}", policy_artifact.artifact_hash);
+    println!(
+        "[time003] C3-002 artifact verified: {}",
+        policy_artifact.artifact_hash
+    );
 
     // ── Step 2: Load frozen REC-001-H evidence store ──────────────────────────
-    println!("[time003] loading evidence store from: {}", args.evidence_dir);
-    let store = Rec001hStore::load_from_dir(&args.evidence_dir)
-        .map_err(|e| format!("cannot load REC-001-H evidence store from {}: {e}", args.evidence_dir))?;
+    println!(
+        "[time003] loading evidence store from: {}",
+        args.evidence_dir
+    );
+    let store = Rec001hStore::load_from_dir(&args.evidence_dir).map_err(|e| {
+        format!(
+            "cannot load REC-001-H evidence store from {}: {e}",
+            args.evidence_dir
+        )
+    })?;
     let evidence_store_n_files = count_jsonl_files(&args.evidence_dir);
     println!(
         "[time003] evidence store loaded: n_files={evidence_store_n_files} dir={}",
@@ -366,8 +375,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // ── Step 3: Load TIME-002 reconstruction artifact (no network) ────────────
-    let reconstruction_raw = fs::read_to_string(&args.reconstruction)
-        .map_err(|e| format!("cannot read reconstruction artifact {}: {e}", args.reconstruction.display()))?;
+    let reconstruction_raw = fs::read_to_string(&args.reconstruction).map_err(|e| {
+        format!(
+            "cannot read reconstruction artifact {}: {e}",
+            args.reconstruction.display()
+        )
+    })?;
     let input_artifact_hash = sha256_of_bytes(reconstruction_raw.as_bytes());
 
     let reconstruction: Time002Artifact = serde_json::from_str(&reconstruction_raw)
@@ -390,8 +403,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let decision_replay_id = make_decision_replay_id(&prov.as_of, &created_at);
     let state_id = format!(
         "TIME003-STATE-{}",
-        prov.reconstruction_id
-            .trim_start_matches("TIME002-")
+        prov.reconstruction_id.trim_start_matches("TIME002-")
     );
 
     println!("[time003] decision_replay_id={decision_replay_id}");
@@ -427,7 +439,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 reference_price: inst.reference_price,
                 atr_14: inst.atr_14,
                 exclusion_reason: Some(
-                    inst.error.clone().unwrap_or_else(|| "ERROR status".to_string()),
+                    inst.error
+                        .clone()
+                        .unwrap_or_else(|| "ERROR status".to_string()),
                 ),
                 recommendation: None,
             });
@@ -437,7 +451,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Eligibility gate: INCOMPLETE or tmv_complete=false → EXCLUDED_INCOMPLETE
         if inst.status == "INCOMPLETE" || !inst.tmv_complete {
-            println!("[time003] excluded ticker={} reason=INCOMPLETE", inst.ticker);
+            println!(
+                "[time003] excluded ticker={} reason=INCOMPLETE",
+                inst.ticker
+            );
             instruments.push(InstrumentDecision {
                 ticker: inst.ticker.clone(),
                 eligibility: "EXCLUDED_INCOMPLETE".to_string(),
@@ -480,7 +497,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Volatility mapping: TIME-002 uses "Available"/"Unavailable";
         // RecommendationEngine v1 expects "present"/"absent".
-        let volatility_for_engine = if volatility == "Available" { "present" } else { "absent" };
+        let volatility_for_engine = if volatility == "Available" {
+            "present"
+        } else {
+            "absent"
+        };
 
         // relative_volume_20: not available in TIME-002 artifact; use 1.0 (neutral).
         // This is documented in the artifact as a known limitation, consistent with LIVE-003.
@@ -546,9 +567,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "[time003] accounting: total={n_total} decided={n_decided} \
          excluded_incomplete={n_excluded_incomplete} excluded_error={n_excluded_error}"
     );
-    println!(
-        "[time003] c3_002: long={n_long} short={n_short} no_trade={n_no_trade_direction}"
-    );
+    println!("[time003] c3_002: long={n_long} short={n_short} no_trade={n_no_trade_direction}");
     println!(
         "[time003] recommendation: buy={n_buy} sell={n_sell} watch={n_watch} \
          no_trade_evidence={n_no_trade_evidence}"
@@ -587,7 +606,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(&args.output)?;
 
     // Named artifact: TIME003-<as_of_compact>.json
-    let as_of_compact = prov.as_of
+    let as_of_compact = prov
+        .as_of
         .replace(['-', ':', '.'], "")
         .replace('T', "T")
         .trim_end_matches('Z')

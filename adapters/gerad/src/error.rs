@@ -57,10 +57,7 @@ pub enum GeradError {
     // ── Referential integrity ─────────────────────────────────────────────────
     /// A pairing references a duty ID that was not found in the duties table.
     #[error("pairing '{pairing_id}' references unknown duty '{duty_id}'")]
-    UnknownDutyRef {
-        pairing_id: String,
-        duty_id: String,
-    },
+    UnknownDutyRef { pairing_id: String, duty_id: String },
 
     /// A duty references a flight leg ID that was not found in the legs table.
     #[error("duty '{duty_id}' references unknown flight leg '{leg_id}'")]
@@ -96,11 +93,16 @@ pub enum GeradError {
 impl GeradError {
     /// Convenience constructor for [`GeradError::Io`].
     pub fn io(path: impl Into<String>, source: std::io::Error) -> Self {
-        Self::Io { path: path.into(), source }
+        Self::Io {
+            path: path.into(),
+            source,
+        }
     }
 
     /// Convenience constructor for [`GeradError::Validation`].
     pub fn validation(message: impl Into<String>) -> Self {
-        Self::Validation { message: message.into() }
+        Self::Validation {
+            message: message.into(),
+        }
     }
 }

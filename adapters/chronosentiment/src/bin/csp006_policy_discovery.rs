@@ -73,13 +73,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .map_err(|e| e.to_string())?;
 
-    let (evidence, candidates) = evolve_on_development(development.clone()).map_err(|e| e.to_string())?;
-    let selected = select_on_selection(&candidates, &development, &selection).map_err(|e| e.to_string())?;
+    let (evidence, candidates) =
+        evolve_on_development(development.clone()).map_err(|e| e.to_string())?;
+    let selected =
+        select_on_selection(&candidates, &development, &selection).map_err(|e| e.to_string())?;
 
     let (evidence_repeat, candidates_repeat) =
         evolve_on_development(development.clone()).map_err(|e| e.to_string())?;
-    let selected_repeat =
-        select_on_selection(&candidates_repeat, &development, &selection).map_err(|e| e.to_string())?;
+    let selected_repeat = select_on_selection(&candidates_repeat, &development, &selection)
+        .map_err(|e| e.to_string())?;
     if selected.artifact.artifact_hash != selected_repeat.artifact.artifact_hash {
         return Err("same seed produced a different PolicyArtifact identity".into());
     }
@@ -94,16 +96,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // ChronoSentiment holdout — after the artifact is sealed. Not Coralys feedback.
-    let handoff = evaluate_sealed_candidate(&selected.artifact, &evaluation).map_err(|e| e.to_string())?;
+    let handoff =
+        evaluate_sealed_candidate(&selected.artifact, &evaluation).map_err(|e| e.to_string())?;
 
     fs::write(
         output.join("search_evidence.json"),
         serde_json::to_vec_pretty(&search_output)?,
     )?;
-    fs::write(
-        output.join("SEARCH.md"),
-        render_search_evidence(&evidence),
-    )?;
+    fs::write(output.join("SEARCH.md"), render_search_evidence(&evidence))?;
     fs::write(
         output.join("selected_policy.json"),
         serde_json::to_vec_pretty(&selected.artifact)?,
@@ -129,7 +129,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("result=PASS");
     println!("artifact_hash={}", selected.artifact.artifact_hash);
-    println!("repeated_artifact_hash={}", selected_repeat.artifact.artifact_hash);
+    println!(
+        "repeated_artifact_hash={}",
+        selected_repeat.artifact.artifact_hash
+    );
     println!("methodology_hash={}", selected.artifact.methodology_hash);
     println!("seed={}", FROZEN_SEED);
     println!(
@@ -185,9 +188,7 @@ fn parse_args() -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
         }
     }
     Ok((
-        output.ok_or(
-            "usage: csp006_policy_discovery --output DIR --yahoo-cache DIR",
-        )?,
+        output.ok_or("usage: csp006_policy_discovery --output DIR --yahoo-cache DIR")?,
         cache.ok_or("missing --yahoo-cache")?,
     ))
 }

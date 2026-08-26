@@ -8,8 +8,9 @@ use chronosentiment_adapter::decision_support::observatory_execution::{
 };
 use chronosentiment_adapter::decision_support::observatory_live_execution::{
     is_protected_direction_only_clock, refuse_live_execution_output, render_live_execution_html,
-    run_live_execution, CONTINUOUS_SESSION_SEAL_AUTHORIZED, FOURTEEN_AUG_COHORT_MUTATION_AUTHORIZED,
-    LIVE_EXECUTION_STATUS_AWAITING, LIVE_YAHOO_FETCH_AUTHORIZED, PE1_SIDECAR_MUTATION_AUTHORIZED,
+    run_live_execution, CONTINUOUS_SESSION_SEAL_AUTHORIZED,
+    FOURTEEN_AUG_COHORT_MUTATION_AUTHORIZED, LIVE_EXECUTION_STATUS_AWAITING,
+    LIVE_YAHOO_FETCH_AUTHORIZED, PE1_SIDECAR_MUTATION_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::observatory_slice::SealedDecisionRecord;
 use chronosentiment_adapter::decision_support::DecisionAction;
@@ -21,9 +22,7 @@ fn paper_decision(action: DecisionAction, time: &str) -> SealedDecisionRecord {
         instrument: "INFY.NS".into(),
         decision_time: time.into(),
         state: chronosentiment_adapter::decision_support::observatory_slice::certified_tmv_state(
-            "Bullish",
-            "Positive",
-            "present",
+            "Bullish", "Positive", "present",
         ),
         action,
         policy_id: "C3-002".into(),
@@ -35,7 +34,15 @@ fn paper_decision(action: DecisionAction, time: &str) -> SealedDecisionRecord {
     }
 }
 
-fn bar(year: i32, month: u32, day: u32, open: f64, high: f64, low: f64, close: f64) -> YahooHistoricalBar {
+fn bar(
+    year: i32,
+    month: u32,
+    day: u32,
+    open: f64,
+    high: f64,
+    low: f64,
+    close: f64,
+) -> YahooHistoricalBar {
     let ts = Utc
         .with_ymd_and_hms(year, month, day, 3, 45, 0)
         .unwrap()
@@ -64,10 +71,10 @@ fn live_protections_stay_closed() {
     assert!(!is_protected_direction_only_clock(
         Utc.with_ymd_and_hms(2026, 8, 17, 3, 45, 0).unwrap()
     ));
-    assert!(refuse_live_execution_output(
-        "product_validation/CS-P-006/observatory/prospective"
-    )
-    .is_err());
+    assert!(
+        refuse_live_execution_output("product_validation/CS-P-006/observatory/prospective")
+            .is_err()
+    );
     assert!(refuse_live_execution_output(
         "product_validation/CS-P-006/observatory/targeted_execution_v0"
     )
@@ -165,7 +172,11 @@ fn certified_cache_awaits_the_next_session() {
     assert_eq!(ledger.n_decisions, 0);
     assert!(!ledger.fourteen_aug_cohort_mutated);
     assert!(!ledger.pe1_sidecar_mutated);
-    assert!(ledger.certified_t.as_ref().unwrap().starts_with("2026-08-14T03:45:00"));
+    assert!(ledger
+        .certified_t
+        .as_ref()
+        .unwrap()
+        .starts_with("2026-08-14T03:45:00"));
     let html = render_live_execution_html(&ledger);
     assert!(html.contains("AWAITING_NEXT_SESSION"));
     assert!(html.contains("14-August cohort was sealed without an execution intent"));
@@ -208,7 +219,10 @@ fn next_session_seals_all_seven_including_idea_and_mahabank() {
         .records
         .iter()
         .all(|r| r.intent.sealed_at_t && r.intent.target_pct == 0.05));
-    assert!(ledger.records.iter().all(|r| r.exit.exit_reason == ExitReason::Observing));
+    assert!(ledger
+        .records
+        .iter()
+        .all(|r| r.exit.exit_reason == ExitReason::Observing));
     assert!(ledger.records.iter().all(|r| r.exit.trigger_type.is_none()));
     assert!(!ledger.peeked_returns_at_seal);
     let again = run_live_execution(&artifact, &cache, now, Some(ledger.clone())).unwrap();
@@ -233,7 +247,10 @@ fn document_freezes_pe1_and_protects_fourteen_aug() {
     let pe1 = include_str!("../../../docs/CS-P-006-P.E.1_EXECUTION_EVIDENCE_SURFACE.md");
     assert!(pe1.contains("Frozen"));
     assert!(doc.contains("Frozen"));
-    assert!(doc.contains("not a test of whether 5% is a good target") || doc.contains("Not: is 5% a good target"));
+    assert!(
+        doc.contains("not a test of whether 5% is a good target")
+            || doc.contains("Not: is 5% a good target")
+    );
     assert!(doc.contains("Execution Intent"));
     let pe3 = include_str!("../../../docs/CS-P-006-P.E.3_CORALYS_TARGET_DISCOVERY.md");
     assert!(pe3.contains("Specified"));
@@ -242,14 +259,16 @@ fn document_freezes_pe1_and_protects_fourteen_aug() {
     assert!(pe3.contains("CORALYS_TARGET_SEARCH_AUTHORIZED = false"));
 }
 
-fn load_c3_002() -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact>
-{
+fn load_c3_002(
+) -> Option<chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact> {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
         .unwrap()
-        .join(chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_DIR)
+        .join(
+            chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_DIR,
+        )
         .join("selected_policy.json");
     if !path.exists() {
         return None;

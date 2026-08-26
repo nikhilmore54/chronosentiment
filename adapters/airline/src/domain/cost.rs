@@ -109,8 +109,8 @@ impl CostModel for FlatRateCostModel {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::credit::{CreditComponents, DutyCredit};
+    use super::*;
 
     fn make_credit(credited_hours: f64) -> DutyCredit {
         DutyCredit {
@@ -135,7 +135,9 @@ mod tests {
 
     #[test]
     fn flat_rate_cost_is_hours_times_rate() {
-        let model = FlatRateCostModel { pay_rate_per_hour: 150.0 };
+        let model = FlatRateCostModel {
+            pay_rate_per_hour: 150.0,
+        };
         let credit = make_credit(4.0);
         let ctx = make_context();
         let cost = model.compute_cost(&credit, &ctx);
@@ -165,7 +167,9 @@ mod tests {
 
     #[test]
     fn flat_rate_fractional_hours() {
-        let model = FlatRateCostModel { pay_rate_per_hour: 200.0 };
+        let model = FlatRateCostModel {
+            pay_rate_per_hour: 200.0,
+        };
         let credit = make_credit(1.5); // 1h 30m
         let ctx = make_context();
         let cost = model.compute_cost(&credit, &ctx);

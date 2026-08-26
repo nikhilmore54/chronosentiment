@@ -6,5 +6,8 @@ fn main() {
     println!("Total Customers: {}", instance.customers.len());
     println!("Total Demand: {}", total_demand);
     println!("Capacity: {}", instance.capacity);
-    println!("Minimum possible vehicles: {}", (total_demand as f64 / instance.capacity as f64).ceil());
+    println!(
+        "Minimum possible vehicles: {}",
+        (total_demand as f64 / instance.capacity as f64).ceil()
+    );
 }

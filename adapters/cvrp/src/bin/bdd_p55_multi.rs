@@ -1,22 +1,26 @@
-use std::fs;
+use coralys_moga::traits::{
+    CrossoverOperator, FitnessEvaluator, GenomeFactory, ImprovementOperator, MutationOperator,
+};
+use cvrp::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpGenomeFactory, CvrpInstance, DistanceMetric};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, ImprovementOperator, GenomeFactory};
-use cvrp::{CvrpInstance, CvrpGenomeFactory, DistanceMetric};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossover, CvrpLocalSearch};
+use std::fs;
 
 fn parse_vrp_file(content: &str) -> CvrpInstance {
     let mut capacity = 0;
     let mut coords = Vec::new();
     let mut demands = Vec::new();
-    
+
     let mut in_coord_section = false;
     let mut in_demand_section = false;
-    
+
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
-        
+        if line.is_empty() {
+            continue;
+        }
+
         if line.starts_with("CAPACITY") {
             let parts: Vec<&str> = line.split(':').collect();
             capacity = parts[1].trim().parse().unwrap();
@@ -46,18 +50,30 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
             }
         }
     }
-    
+
     let depot_coord = coords.iter().find(|(id, _, _)| *id == 1).unwrap();
     let depot_demand = demands.iter().find(|(id, _)| *id == 1).unwrap();
-    let depot = cvrp::Node { id: depot_coord.0, x: depot_coord.1, y: depot_coord.2, demand: depot_demand.1 as i32 };
-    
+    let depot = cvrp::Node {
+        id: depot_coord.0,
+        x: depot_coord.1,
+        y: depot_coord.2,
+        demand: depot_demand.1 as i32,
+    };
+
     let mut customers = Vec::new();
     for coord in coords {
-        if coord.0 == 1 { continue; }
+        if coord.0 == 1 {
+            continue;
+        }
         let demand = demands.iter().find(|(id, _)| *id == coord.0).unwrap();
-        customers.push(cvrp::Node { id: coord.0, x: coord.1, y: coord.2, demand: demand.1 as i32 });
+        customers.push(cvrp::Node {
+            id: coord.0,
+            x: coord.1,
+            y: coord.2,
+            demand: demand.1 as i32,
+        });
     }
-    
+
     CvrpInstance {
         capacity: capacity as i32,
         depot,
@@ -69,11 +85,17 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
 }
 
 fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
     let crossover = CvrpCrossover;
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    let local_search = CvrpLocalSearch { instance: instance.clone() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+    let local_search = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
 
     let mut rng = StdRng::seed_from_u64(seed);
     let pop_size = 200;
@@ -90,7 +112,10 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
     for _generation in 1..=generation_limit {
         let mut evals = Vec::new();
         for ind in &population {
-            evals.push(evaluator.evaluate(ind, &coralys_moga::runtime::optimization::metric::MetricReport::default()));
+            evals.push(evaluator.evaluate(
+                ind,
+                &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+            ));
         }
 
         for ev in &evals {
@@ -99,7 +124,12 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
             }
         }
 
-        evals.sort_by(|a, b| a.eval.total_distance.partial_cmp(&b.eval.total_distance).unwrap());
+        evals.sort_by(|a, b| {
+            a.eval
+                .total_distance
+                .partial_cmp(&b.eval.total_distance)
+                .unwrap()
+        });
 
         let mut next_gen = Vec::with_capacity(pop_size);
         for i in 0..elite_count {
@@ -121,9 +151,20 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
                 mutator.mutate(&mut child, &mut rng);
             }
 
-            let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-            let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-            coralys_core::operators::ImprovementOperator::improve(&local_search, &mut child, &model, &budget).unwrap();
+            let model = cvrp::moga_impl::CvrpConstraintModel {
+                instance: instance.clone(),
+            };
+            let budget = coralys_core::operators::OperatorBudget {
+                max_iterations: 1,
+                max_time_ms: 1000,
+            };
+            coralys_core::operators::ImprovementOperator::improve(
+                &local_search,
+                &mut child,
+                &model,
+                &budget,
+            )
+            .unwrap();
             next_gen.push(child);
         }
 
@@ -135,7 +176,8 @@ fn run_ga(seed: u64, instance: &CvrpInstance) -> f64 {
 
 fn main() {
     println!("=== Running 30-seed Replication Experiment on P-n55-k8 ===");
-    let vrp_path = "/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances/P-n55-k8.vrp";
+    let vrp_path =
+        "/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances/P-n55-k8.vrp";
     let content = fs::read_to_string(vrp_path).unwrap();
     let mut instance = parse_vrp_file(&content);
     instance.max_vehicles = Some(8);
@@ -157,7 +199,7 @@ fn main() {
     let worst = costs[29];
     let median = costs[15];
     let mean = costs.iter().sum::<f64>() / 30.0;
-    
+
     let variance = costs.iter().map(|c| (c - mean) * (c - mean)).sum::<f64>() / 30.0;
     let std_dev = variance.sqrt();
 
@@ -167,5 +209,9 @@ fn main() {
     println!("Mean: {:.2}", mean);
     println!("Median: {:.2}", median);
     println!("Std Dev: {:.4}", std_dev);
-    println!("576 Rediscovered: {}/30 runs ({:.1}%)", rediscoveries, (rediscoveries as f64 / 30.0) * 100.0);
+    println!(
+        "576 Rediscovered: {}/30 runs ({:.1}%)",
+        rediscoveries,
+        (rediscoveries as f64 / 30.0) * 100.0
+    );
 }

@@ -138,8 +138,8 @@ struct UniverseFile {
 fn load_universe(path: &PathBuf) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let raw = fs::read_to_string(path)
         .map_err(|e| format!("cannot read universe file {}: {e}", path.display()))?;
-    let universe: UniverseFile = serde_json::from_str(&raw)
-        .map_err(|e| format!("universe JSON parse error: {e}"))?;
+    let universe: UniverseFile =
+        serde_json::from_str(&raw).map_err(|e| format!("universe JSON parse error: {e}"))?;
     Ok(universe.instruments)
 }
 
@@ -269,7 +269,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .find(|s| s.concept == chronosentiment_adapter::metrics::concepts::Concept::Volatility)
             .map(|s| format!("{:?}", s.availability));
 
-        let tmv_complete = trend.is_some() && momentum.is_some() && volatility.is_some()
+        let tmv_complete = trend.is_some()
+            && momentum.is_some()
+            && volatility.is_some()
             && reference_price.is_some()
             && atr_14.is_some();
 
@@ -354,7 +356,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[live001] latest={}", latest_path.display());
 
     if completeness_status == "FAILED" {
-        return Err("snapshot completeness=FAILED — no instruments produced complete C3-002 inputs".into());
+        return Err(
+            "snapshot completeness=FAILED — no instruments produced complete C3-002 inputs".into(),
+        );
     }
 
     Ok(())
@@ -386,15 +390,16 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     }
 
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
 
     Ok(Args {
         universe: universe
             .unwrap_or_else(|| PathBuf::from("datasets/universes/coralys_102_v1.json")),
-        output: output
-            .unwrap_or_else(|| PathBuf::from("product_validation/LIVE-001/snapshots")),
+        output: output.unwrap_or_else(|| PathBuf::from("product_validation/LIVE-001/snapshots")),
         now,
     })
 }

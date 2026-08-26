@@ -1,9 +1,8 @@
-pub mod traits;
 pub mod recommender;
+pub mod traits;
 
+pub use recommender::{EcologyRecommender, InterventionRecommendation, RecommendationReport};
 pub use traits::{Explainer, Ranker};
-pub use recommender::{InterventionRecommendation, RecommendationReport, EcologyRecommender};
-
 
 #[cfg(test)]
 mod tests {
@@ -34,15 +33,15 @@ mod tests {
     #[test]
     fn test_recommendation_pipeline_compilation() {
         let candidates = vec![1, 5, 3, 9];
-        
+
         let ranker = DescendingRanker;
         let ranked = ranker.rank(candidates);
-        
+
         assert_eq!(ranked, vec![9, 5, 3, 1]);
-        
+
         let explainer = NumberExplainer;
         let explanation = explainer.explain(&ranked[0]);
-        
+
         assert_eq!(explanation, "Highest value candidate");
     }
 }

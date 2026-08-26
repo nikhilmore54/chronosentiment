@@ -1,12 +1,12 @@
 // Benchmark for CVRP performance using the Coralys MOGA engine
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use cvrp::{CvrpDecisionPlugin, CvrpInstance, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpMutator, CvrpCrossover};
-use coralys_moga::{EvolutionConfig};
+use coralys_core::DecisionPlugin;
+use coralys_moga::EvolutionConfig;
 use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::engine::PluginFitnessEvaluator;
-use coralys_core::DecisionPlugin;
+use criterion::{Criterion, criterion_group, criterion_main};
+use cvrp::moga_impl::{CvrpCrossover, CvrpMutator};
+use cvrp::{CvrpDecisionPlugin, CvrpGenomeFactory, CvrpInstance};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
@@ -26,7 +26,9 @@ fn cvrp_benchmark(c: &mut Criterion) {
     // Mutator, crossover and factory required by EvolutionEngine
     let mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
     let crossover = CvrpCrossover; // basic OX1 crossover
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
 
     // Configure the MOGA engine
     let evo_config = EvolutionConfig {
@@ -43,10 +45,14 @@ fn cvrp_benchmark(c: &mut Criterion) {
     let mut rng = StdRng::seed_from_u64(42);
     // Construct the engine with all required components
     let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
-c.bench_function("cvrp_moga", |b| b.iter(|| {
-    let _ = engine.run_ga_evolution(evo_config.clone());
-}));
-    let ga_res = engine.run_ga_evolution(evo_config.clone()).expect("GA run failed");
+    c.bench_function("cvrp_moga", |b| {
+        b.iter(|| {
+            let _ = engine.run_ga_evolution(evo_config.clone());
+        })
+    });
+    let ga_res = engine
+        .run_ga_evolution(evo_config.clone())
+        .expect("GA run failed");
     if let Some(total) = ga_res.global_best.result.metrics.get("total_distance") {
         println!("GA best distance: {:.4}", total);
     }
@@ -54,5 +60,3 @@ c.bench_function("cvrp_moga", |b| b.iter(|| {
 
 criterion_group!(benches, cvrp_benchmark);
 criterion_main!(benches);
-
-

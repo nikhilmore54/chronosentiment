@@ -74,16 +74,22 @@ pub enum AdapterError {
     #[error("invalid direction: '{0}' — expected LONG, SHORT, or NO_TRADE")]
     InvalidDirection(String),
 
-    #[error("temporal firewall violation: certified_timestamp {certified_ts} is before decision_timestamp {decision_ts}")]
+    #[error(
+        "temporal firewall violation: certified_timestamp {certified_ts} is before decision_timestamp {decision_ts}"
+    )]
     CertifiedBeforeDecision {
         decision_ts: DateTime<Utc>,
         certified_ts: DateTime<Utc>,
     },
 
-    #[error("provenance binding failure: policy_artifact_hash '{supplied}' does not match the known C3-002 hash '{expected}'")]
+    #[error(
+        "provenance binding failure: policy_artifact_hash '{supplied}' does not match the known C3-002 hash '{expected}'"
+    )]
     PolicyHashMismatch { supplied: String, expected: String },
 
-    #[error("provenance binding failure: execution_artifact_hash '{supplied}' does not match the known Coralys execution artifact hash '{expected}'")]
+    #[error(
+        "provenance binding failure: execution_artifact_hash '{supplied}' does not match the known Coralys execution artifact hash '{expected}'"
+    )]
     ExecutionHashMismatch { supplied: String, expected: String },
 }
 
@@ -489,10 +495,7 @@ mod tests {
     fn reference_risk_is_reference_not_optimal() {
         // Spec §9: must not claim "optimal stop"
         let record = DecisionRecordBuilder::build(canonical_input()).unwrap();
-        assert_eq!(
-            record.reference_risk.status,
-            ReferenceRiskStatus::Reference
-        );
+        assert_eq!(record.reference_risk.status, ReferenceRiskStatus::Reference);
         let json = serde_json::to_string(&record.reference_risk).unwrap();
         assert!(!json.contains("optimal"));
         assert!(!json.contains("best_stop"));

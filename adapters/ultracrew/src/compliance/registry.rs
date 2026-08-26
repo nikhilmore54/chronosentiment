@@ -1,3 +1,4 @@
+use crate::compliance::metadata::ComplianceDescriptor;
 /// Compliance Registry — infrastructure for composing compliance packs.
 ///
 /// The registry is the runtime container that holds all active
@@ -21,12 +22,10 @@
 /// // registry.install(AcmeCorpCompanyPack::default());
 /// // registry.install(FairnessOptimizationPack::new());
 /// ```
-
 use crate::compliance::traits::{
-    ConstraintRule, CompliancePack, RuleId, RuleOutcome, RuleContext,
-    Severity, ViolationExplanation,
+    CompliancePack, ConstraintRule, RuleContext, RuleId, RuleOutcome, Severity,
+    ViolationExplanation,
 };
-use crate::compliance::metadata::ComplianceDescriptor;
 
 /// Holds all registered constraint rules and tracks installed pack descriptors.
 pub struct ComplianceRegistry {

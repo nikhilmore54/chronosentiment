@@ -85,7 +85,8 @@ pub fn relocate_pairing(
         roster.period.clone(),
         roster.legs().cloned().collect(),
         new_rotations,
-    ).ok()
+    )
+    .ok()
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

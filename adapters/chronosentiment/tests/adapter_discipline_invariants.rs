@@ -74,7 +74,8 @@ fn decision_producers_do_not_import_research_or_lake_generators() {
         );
         let lower = src.to_lowercase();
         assert!(
-            !lower.contains("from knowledge_outcomes") && !lower.contains("join knowledge_outcomes"),
+            !lower.contains("from knowledge_outcomes")
+                && !lower.contains("join knowledge_outcomes"),
             "{rel} must not query knowledge_outcomes"
         );
     }
@@ -128,7 +129,10 @@ fn week2_tests_are_quarantined_not_compiled() {
 #[test]
 fn b3_b4_generators_are_preserved_behind_legacy_lake() {
     let populate = crate_root().join("legacy/bin/m4_populate_knowledge_lake.rs");
-    assert!(populate.exists(), "m4_populate_knowledge_lake must remain for B3/B4 reproduction");
+    assert!(
+        populate.exists(),
+        "m4_populate_knowledge_lake must remain for B3/B4 reproduction"
+    );
     let decision = read("src/reasoning/decision.rs");
     assert!(
         decision.contains("#[cfg(feature = \"legacy-lake\")]"),
@@ -155,7 +159,11 @@ fn product_src_bin_contains_only_csp_binaries() {
     walk_rs(&crate_root().join("src/bin"), &mut bins);
     let names: Vec<String> = bins
         .iter()
-        .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(|s| s.to_string()))
+        .filter_map(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+        })
         .collect();
     for name in &names {
         assert!(
@@ -163,7 +171,10 @@ fn product_src_bin_contains_only_csp_binaries() {
             "src/bin/{name} is not a product CS-P binary; move it to legacy/ or research/"
         );
     }
-    assert!(!names.is_empty(), "product CS-P binaries must remain in src/bin");
+    assert!(
+        !names.is_empty(),
+        "product CS-P binaries must remain in src/bin"
+    );
 }
 
 #[test]
@@ -201,7 +212,9 @@ fn product_decide_paths_require_an_explicit_policy_argument() {
 fn policy_artifact_is_an_evaluator_not_an_optimizer() {
     let src = read("src/decision_support/policy_artifact.rs");
     assert!(
-        !src.contains("EvolutionEngine") && !src.contains("FitnessEvaluator") && !src.contains("rand::"),
+        !src.contains("EvolutionEngine")
+            && !src.contains("FitnessEvaluator")
+            && !src.contains("rand::"),
         "CS-P-006-A must not contain a search engine"
     );
     assert!(

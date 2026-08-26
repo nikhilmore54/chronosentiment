@@ -31,7 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let historical_s = historical_dir.to_string_lossy();
     let prospective_s = prospective_dir.to_string_lossy();
-    if historical_s.contains("historical_replay_v0") || prospective_s.contains("historical_replay_v0")
+    if historical_s.contains("historical_replay_v0")
+        || prospective_s.contains("historical_replay_v0")
     {
         return Err("refusing to overwrite Replay v0".into());
     }
@@ -39,12 +40,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to overwrite Replay v1 HTML with the combined product view".into());
     }
 
-    let historical: ObservatoryLedger = serde_json::from_str(&fs::read_to_string(
-        historical_dir.join("ledger.json"),
-    )?)?;
-    let prospective: ObservatoryLedger = serde_json::from_str(&fs::read_to_string(
-        prospective_dir.join("ledger.json"),
-    )?)?;
+    let historical: ObservatoryLedger =
+        serde_json::from_str(&fs::read_to_string(historical_dir.join("ledger.json"))?)?;
+    let prospective: ObservatoryLedger =
+        serde_json::from_str(&fs::read_to_string(prospective_dir.join("ledger.json"))?)?;
 
     let cache_dir = PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache");
     let cache = load_required_yahoo_cache(&cache_dir).ok();
@@ -57,12 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .as_ref()
             .and_then(|c| c.get(&decision.instrument))
             .map(|v| v.as_slice());
-        let status = ui_lifecycle_status_with_bars(
-            &prospective,
-            &decision.decision_id,
-            now,
-            bars,
-        );
+        let status = ui_lifecycle_status_with_bars(&prospective, &decision.decision_id, now, bars);
         let due_at = observation_due_at_with_bars(decision, bars)?;
         let remain = sessions_remaining(decision, now, bars)?;
         let closed = observation_window_closed_with_bars(decision, now, bars)?;
@@ -109,18 +103,23 @@ fn parse_args() -> Result<(PathBuf, PathBuf, DateTime<Utc>), Box<dyn std::error:
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--historical-dir" => {
-                historical = Some(PathBuf::from(args.next().ok_or("missing --historical-dir")?))
+                historical = Some(PathBuf::from(
+                    args.next().ok_or("missing --historical-dir")?,
+                ))
             }
             "--prospective-dir" => {
-                prospective =
-                    Some(PathBuf::from(args.next().ok_or("missing --prospective-dir")?))
+                prospective = Some(PathBuf::from(
+                    args.next().ok_or("missing --prospective-dir")?,
+                ))
             }
             "--now" => now_raw = Some(args.next().ok_or("missing --now")?),
             other => return Err(format!("unknown argument {other}").into()),
         }
     }
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
     Ok((

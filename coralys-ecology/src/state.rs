@@ -4,12 +4,12 @@ use std::collections::HashMap;
 #[derive(Serialize, Clone)]
 pub struct SearchSnapshot {
     pub generation: usize,
-    
+
     // Core telemetry
     pub best_fitness: f64,
     pub best_fitness_age: usize,
     pub improvement_magnitude: f64,
-    
+
     // Ecology metrics
     pub diversity: f64,
     pub memory_novelty_proxy: f64,
@@ -17,12 +17,12 @@ pub struct SearchSnapshot {
     pub revisit_rate: f64,
     pub distance_to_incumbent_best: f64,
     pub operator_success_rate: f64,
-    
+
     // Operator dominance
     pub dominant_operator: String,
     pub dominant_operator_share: f64,
     pub unique_successful_operators: usize,
-    
+
     // Explicit Operator Competition
     pub tier1_attempts: usize,
     pub tier1_acceptances: usize,
@@ -30,7 +30,7 @@ pub struct SearchSnapshot {
     pub tier2_attempts: usize,
     pub tier2_acceptances: usize,
     pub tier2_improvements: usize,
-    
+
     // SA Exploration Pressure
     pub temperature: f64,
     pub accepted_worse_moves: usize,

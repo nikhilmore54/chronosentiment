@@ -155,7 +155,12 @@ fn label_matches(pred: &FactorPredicate, trend: &str, momentum: &str, volatility
 
 fn rule_matches(rule: &DecisionRule, row: &RecommendationRow) -> bool {
     rule.when.iter().all(|p| {
-        label_matches(p, &row.trend_state, &row.momentum_state, &row.volatility_state)
+        label_matches(
+            p,
+            &row.trend_state,
+            &row.momentum_state,
+            &row.volatility_state,
+        )
     })
 }
 
@@ -292,12 +297,14 @@ fn ecology_for(
     }
     let fired_states = state_map
         .into_iter()
-        .map(|((trend_state, momentum_state, volatility_state), n)| FiredState {
-            trend_state,
-            momentum_state,
-            volatility_state,
-            n,
-        })
+        .map(
+            |((trend_state, momentum_state, volatility_state), n)| FiredState {
+                trend_state,
+                momentum_state,
+                volatility_state,
+                n,
+            },
+        )
         .collect();
     LiveRuleEcology {
         rule_index: index,
@@ -332,8 +339,18 @@ fn ecology_for(
             .sum::<f64>()
             / rows.len().max(1) as f64,
         alternative_mean_no_trade: 0.0,
-        momentum_states: histogram(&rows.iter().map(|(r, _)| r.momentum_state.clone()).collect::<Vec<_>>()),
-        trend_states: histogram(&rows.iter().map(|(r, _)| r.trend_state.clone()).collect::<Vec<_>>()),
+        momentum_states: histogram(
+            &rows
+                .iter()
+                .map(|(r, _)| r.momentum_state.clone())
+                .collect::<Vec<_>>(),
+        ),
+        trend_states: histogram(
+            &rows
+                .iter()
+                .map(|(r, _)| r.trend_state.clone())
+                .collect::<Vec<_>>(),
+        ),
         volatility_states: histogram(
             &rows
                 .iter()
@@ -359,7 +376,10 @@ pub fn analyze_live_rules(
         return Err("recommendation matrix is not Search #2".into());
     }
     if recommendations.len() != 273 {
-        return Err(format!("expected 273 rows, found {}", recommendations.len()));
+        return Err(format!(
+            "expected 273 rows, found {}",
+            recommendations.len()
+        ));
     }
     let mut buckets: BTreeMap<usize, Vec<(&RecommendationRow, DecisionValueRow)>> = BTreeMap::new();
     for row in recommendations {
@@ -385,10 +405,7 @@ pub fn analyze_live_rules(
         .find(|r| r.rule_index == 3)
         .map(|r| r.fired_states.clone())
         .unwrap_or_default();
-    let total_sum: f64 = live_rules
-        .iter()
-        .map(|r| r.value.mean * r.n as f64)
-        .sum();
+    let total_sum: f64 = live_rules.iter().map(|r| r.value.mean * r.n as f64).sum();
     let mut value_share_of_sum = BTreeMap::new();
     for rule in &live_rules {
         let share = if total_sum.abs() < 1e-15 {

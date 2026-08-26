@@ -1,3 +1,4 @@
+use crate::CvrpInstance;
 /// Fleet Utilization Certificate — FUC-001
 /// GOV-009 / GOV-008 — Execution Evidence
 ///
@@ -15,9 +16,7 @@
 ///   4. Balance         — mean, median, std dev, coefficient of variation
 ///
 /// Reference: benchmarks/campaign/qualification_decision_register.md §Stage B
-
 use serde::{Deserialize, Serialize};
-use crate::CvrpInstance;
 
 // ---------------------------------------------------------------------------
 // Per-route record
@@ -48,18 +47,27 @@ impl RouteLoad {
     fn compute(vehicle_id: usize, route: &[usize], instance: &CvrpInstance) -> Self {
         let capacity = instance.capacity;
         // Routes store node IDs (matching customer.id), not array indices.
-        let load: i32 = route.iter().map(|&node_id| {
-            if node_id == instance.depot.id {
-                0
-            } else {
-                instance.customers.iter()
-                    .find(|c| c.id == node_id)
-                    .map(|c| c.demand)
-                    .unwrap_or(0)
-            }
-        }).sum();
+        let load: i32 = route
+            .iter()
+            .map(|&node_id| {
+                if node_id == instance.depot.id {
+                    0
+                } else {
+                    instance
+                        .customers
+                        .iter()
+                        .find(|c| c.id == node_id)
+                        .map(|c| c.demand)
+                        .unwrap_or(0)
+                }
+            })
+            .sum();
         let slack = capacity - load;
-        let utilization = if capacity > 0 { load as f64 / capacity as f64 } else { 0.0 };
+        let utilization = if capacity > 0 {
+            load as f64 / capacity as f64
+        } else {
+            0.0
+        };
         RouteLoad {
             vehicle_id,
             customer_count: route.len(),
@@ -188,16 +196,17 @@ impl PackingClassification {
 
     pub fn description(&self) -> &'static str {
         match self {
-            PackingClassification::HighlyConsolidated =>
-                "median≥95% RCR≥0.80 — residual concentrated in one route",
-            PackingClassification::WellPacked =>
-                "median≥95% RCR≥0.50 — well packed with moderate residual spread",
-            PackingClassification::Balanced =>
-                "median 85–95% CV<0.15 — evenly distributed loads",
-            PackingClassification::Uneven =>
-                "CV>0.30 — significant load imbalance across routes",
-            PackingClassification::CapacityLoose =>
-                "fleet capacity <70% — instance is capacity-loose",
+            PackingClassification::HighlyConsolidated => {
+                "median≥95% RCR≥0.80 — residual concentrated in one route"
+            }
+            PackingClassification::WellPacked => {
+                "median≥95% RCR≥0.50 — well packed with moderate residual spread"
+            }
+            PackingClassification::Balanced => "median 85–95% CV<0.15 — evenly distributed loads",
+            PackingClassification::Uneven => "CV>0.30 — significant load imbalance across routes",
+            PackingClassification::CapacityLoose => {
+                "fleet capacity <70% — instance is capacity-loose"
+            }
             PackingClassification::Empty => "no routes",
         }
     }
@@ -280,12 +289,22 @@ impl FleetUtilizationCertificate {
                 avg_utilization: 0.0,
                 median_utilization: 0.0,
                 fleet_capacity_used: 0.0,
-                dist_100pct: 0, dist_95_99: 0, dist_90_94: 0,
-                dist_80_89: 0, dist_70_79: 0, dist_below_70: 0,
-                packed_routes: 0, high_util_routes: 0, residual_routes: 0,
-                total_residual_capacity: 0, largest_residual_slack: 0,
+                dist_100pct: 0,
+                dist_95_99: 0,
+                dist_90_94: 0,
+                dist_80_89: 0,
+                dist_70_79: 0,
+                dist_below_70: 0,
+                packed_routes: 0,
+                high_util_routes: 0,
+                residual_routes: 0,
+                total_residual_capacity: 0,
+                largest_residual_slack: 0,
                 residual_concentration_ratio: 0.0,
-                load_mean: 0.0, load_median: 0.0, load_stddev: 0.0, load_cv: 0.0,
+                load_mean: 0.0,
+                load_median: 0.0,
+                load_stddev: 0.0,
+                load_cv: 0.0,
                 packing_classification: PackingClassification::Empty,
             };
         }
@@ -317,12 +336,19 @@ impl FleetUtilizationCertificate {
         let mut dist_below_70 = 0usize;
         for &u in &utils {
             let pct = u * 100.0;
-            if pct >= 100.0 { dist_100pct += 1; }
-            else if pct >= 95.0 { dist_95_99 += 1; }
-            else if pct >= 90.0 { dist_90_94 += 1; }
-            else if pct >= 80.0 { dist_80_89 += 1; }
-            else if pct >= 70.0 { dist_70_79 += 1; }
-            else { dist_below_70 += 1; }
+            if pct >= 100.0 {
+                dist_100pct += 1;
+            } else if pct >= 95.0 {
+                dist_95_99 += 1;
+            } else if pct >= 90.0 {
+                dist_90_94 += 1;
+            } else if pct >= 80.0 {
+                dist_80_89 += 1;
+            } else if pct >= 70.0 {
+                dist_70_79 += 1;
+            } else {
+                dist_below_70 += 1;
+            }
         }
 
         // Section 3: Residual Analysis
@@ -347,7 +373,11 @@ impl FleetUtilizationCertificate {
         let load_mean = loads.iter().sum::<f64>() / n as f64;
         let variance = loads.iter().map(|l| (l - load_mean).powi(2)).sum::<f64>() / n as f64;
         let load_stddev = variance.sqrt();
-        let load_cv = if load_mean > 0.0 { load_stddev / load_mean } else { 0.0 };
+        let load_cv = if load_mean > 0.0 {
+            load_stddev / load_mean
+        } else {
+            0.0
+        };
 
         let packing_classification = PackingClassification::derive(
             median_utilization,
@@ -413,7 +443,9 @@ impl FleetUtilizationCertificate {
 
     /// Render a bar of `n` filled blocks (max_width total).
     fn bar(n: usize, max_n: usize, max_width: usize) -> String {
-        if max_n == 0 { return String::new(); }
+        if max_n == 0 {
+            return String::new();
+        }
         let filled = (n * max_width + max_n - 1) / max_n;
         "█".repeat(filled)
     }
@@ -423,11 +455,14 @@ impl FleetUtilizationCertificate {
         let mut lines = Vec::new();
         let sep = "  ─────────────────────────────────────────────────────────────";
 
-        lines.push("╔══ FUC-001: Fleet Utilization Certificate ══════════════════════╗".to_string());
+        lines
+            .push("╔══ FUC-001: Fleet Utilization Certificate ══════════════════════╗".to_string());
         lines.push(format!("  Instance          : {}", self.instance_name));
         lines.push(format!(
             "  Benchmark K       : {}    Routes used: {}    Unused: {}",
-            self.benchmark_vehicles, self.routes_used, self.unused_vehicles.max(0)
+            self.benchmark_vehicles,
+            self.routes_used,
+            self.unused_vehicles.max(0)
         ));
         lines.push(format!(
             "  Vehicle capacity  : {}    Total demand: {}    Customers: {}",
@@ -440,11 +475,20 @@ impl FleetUtilizationCertificate {
             if r.empty {
                 lines.push(format!("  V{:02}  [EMPTY]", r.vehicle_id));
             } else {
-                let viol = if r.capacity_violation { " ⚠VIOLATION" } else { "" };
+                let viol = if r.capacity_violation {
+                    " ⚠VIOLATION"
+                } else {
+                    ""
+                };
                 lines.push(format!(
                     "  V{:02}  load={:4}/{:4}  slack={:4}  util={:5.1}%  n={:3}{}",
-                    r.vehicle_id, r.load, r.capacity, r.slack,
-                    r.utilization * 100.0, r.customer_count, viol,
+                    r.vehicle_id,
+                    r.load,
+                    r.capacity,
+                    r.slack,
+                    r.utilization * 100.0,
+                    r.customer_count,
+                    viol,
                 ));
             }
         }
@@ -454,7 +498,8 @@ impl FleetUtilizationCertificate {
         lines.push("  § Fleet Packing".to_string());
         lines.push(format!(
             "    Avg utilization   : {:5.1}%    Median: {:5.1}%",
-            self.avg_utilization * 100.0, self.median_utilization * 100.0
+            self.avg_utilization * 100.0,
+            self.median_utilization * 100.0
         ));
         lines.push(format!(
             "    Fleet capacity    : {:5.1}%    ({} / {} total)",
@@ -465,17 +510,50 @@ impl FleetUtilizationCertificate {
 
         // Section 2: Utilization Distribution
         let max_bucket = [
-            self.dist_100pct, self.dist_95_99, self.dist_90_94,
-            self.dist_80_89, self.dist_70_79, self.dist_below_70,
-        ].iter().cloned().max().unwrap_or(1).max(1);
+            self.dist_100pct,
+            self.dist_95_99,
+            self.dist_90_94,
+            self.dist_80_89,
+            self.dist_70_79,
+            self.dist_below_70,
+        ]
+        .iter()
+        .cloned()
+        .max()
+        .unwrap_or(1)
+        .max(1);
         lines.push(sep.to_string());
         lines.push("  § Utilization Distribution".to_string());
-        lines.push(format!("    100%      {:2}  {}", self.dist_100pct,  Self::bar(self.dist_100pct,  max_bucket, 12)));
-        lines.push(format!("    95–99%    {:2}  {}", self.dist_95_99,   Self::bar(self.dist_95_99,   max_bucket, 12)));
-        lines.push(format!("    90–94%    {:2}  {}", self.dist_90_94,   Self::bar(self.dist_90_94,   max_bucket, 12)));
-        lines.push(format!("    80–89%    {:2}  {}", self.dist_80_89,   Self::bar(self.dist_80_89,   max_bucket, 12)));
-        lines.push(format!("    70–79%    {:2}  {}", self.dist_70_79,   Self::bar(self.dist_70_79,   max_bucket, 12)));
-        lines.push(format!("    <70%      {:2}  {}", self.dist_below_70, Self::bar(self.dist_below_70, max_bucket, 12)));
+        lines.push(format!(
+            "    100%      {:2}  {}",
+            self.dist_100pct,
+            Self::bar(self.dist_100pct, max_bucket, 12)
+        ));
+        lines.push(format!(
+            "    95–99%    {:2}  {}",
+            self.dist_95_99,
+            Self::bar(self.dist_95_99, max_bucket, 12)
+        ));
+        lines.push(format!(
+            "    90–94%    {:2}  {}",
+            self.dist_90_94,
+            Self::bar(self.dist_90_94, max_bucket, 12)
+        ));
+        lines.push(format!(
+            "    80–89%    {:2}  {}",
+            self.dist_80_89,
+            Self::bar(self.dist_80_89, max_bucket, 12)
+        ));
+        lines.push(format!(
+            "    70–79%    {:2}  {}",
+            self.dist_70_79,
+            Self::bar(self.dist_70_79, max_bucket, 12)
+        ));
+        lines.push(format!(
+            "    <70%      {:2}  {}",
+            self.dist_below_70,
+            Self::bar(self.dist_below_70, max_bucket, 12)
+        ));
 
         // Section 3: Residual Analysis
         lines.push(sep.to_string());
@@ -494,7 +572,8 @@ impl FleetUtilizationCertificate {
         ));
         lines.push(format!(
             "    Total residual cap: {}    Largest residual: {}    RCR: {:.3}",
-            self.total_residual_capacity, self.largest_residual_slack,
+            self.total_residual_capacity,
+            self.largest_residual_slack,
             self.residual_concentration_ratio
         ));
         // Interpret RCR
@@ -526,7 +605,9 @@ impl FleetUtilizationCertificate {
             self.packing_classification.description(),
         ));
 
-        lines.push("╚═════════════════════════════════════════════════════════════════╝".to_string());
+        lines.push(
+            "╚═════════════════════════════════════════════════════════════════╝".to_string(),
+        );
         lines.join("\n")
     }
 }

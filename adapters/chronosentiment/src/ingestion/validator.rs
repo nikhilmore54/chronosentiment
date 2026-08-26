@@ -1,7 +1,7 @@
-use chrono::Utc;
-use uuid::Uuid;
 use crate::instrument::Instrument;
 use crate::observation::{RawObservation, ValidatedObservation};
+use chrono::Utc;
+use uuid::Uuid;
 
 pub struct ValidationEngine;
 

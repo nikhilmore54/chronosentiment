@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 /// rp406b_bottleneck_relief -- RP-406B: Bottleneck-Relief Micro-Repair
 /// Classification: Research binary (RP-406B).
 ///
@@ -16,49 +17,66 @@
 ///     g. Rollback if final result is worse than starting point.
 /// Phase 3 – Write solution JSON.
 /// Phase 4 – Emit diagnostic table.
-
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
+use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
-use roadef::evaluator::RoadefEvaluator;
 
-const BATCH_SIZE:   usize = 8;
-const MAX_STALL:    usize = 3;
-const MAX_SEG_CAP:  usize = 100;
-const PENALTY:      f64   = 100.0;
+const BATCH_SIZE: usize = 8;
+const MAX_STALL: usize = 3;
+const MAX_SEG_CAP: usize = 100;
+const PENALTY: f64 = 100.0;
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 struct Config {
-    instance:     String,
-    set_dir:      String,
-    out_dir:      String,
-    verbose:      bool,
-    load_vector:  bool,
+    instance: String,
+    set_dir: String,
+    out_dir: String,
+    verbose: bool,
+    load_vector: bool,
 }
 
 impl Config {
     fn from_args() -> Self {
         let args: Vec<String> = std::env::args().collect();
         let mut instance = String::new();
-        let mut set_dir  = "adapters/roadef/repo/challenge-roadef-2026-main/setA".to_string();
-        let mut out_dir  = set_dir.clone();
-        let mut verbose      = false;
-        let mut load_vector  = false;
+        let mut set_dir = "adapters/roadef/repo/challenge-roadef-2026-main/setA".to_string();
+        let mut out_dir = set_dir.clone();
+        let mut verbose = false;
+        let mut load_vector = false;
         let mut i = 1;
         while i < args.len() {
             match args[i].as_str() {
-                "--instance" => { i += 1; if i < args.len() { instance = args[i].clone(); } }
-                "--set-dir"  => { i += 1; if i < args.len() { set_dir  = args[i].clone(); } }
-                "--out-dir"  => { i += 1; if i < args.len() { out_dir  = args[i].clone(); } }
-                "--verbose"      => { verbose = true; }
-                "--load-vector"  => { load_vector = true; }
-                _            => {}
+                "--instance" => {
+                    i += 1;
+                    if i < args.len() {
+                        instance = args[i].clone();
+                    }
+                }
+                "--set-dir" => {
+                    i += 1;
+                    if i < args.len() {
+                        set_dir = args[i].clone();
+                    }
+                }
+                "--out-dir" => {
+                    i += 1;
+                    if i < args.len() {
+                        out_dir = args[i].clone();
+                    }
+                }
+                "--verbose" => {
+                    verbose = true;
+                }
+                "--load-vector" => {
+                    load_vector = true;
+                }
+                _ => {}
             }
             i += 1;
         }
@@ -66,7 +84,13 @@ impl Config {
             eprintln!("Usage: rp406b_bottleneck_relief --instance <01..20> [--set-dir <path>] [--out-dir <path>] [--verbose] [--load-vector]");
             std::process::exit(1);
         }
-        Config { instance, set_dir, out_dir, verbose, load_vector }
+        Config {
+            instance,
+            set_dir,
+            out_dir,
+            verbose,
+            load_vector,
+        }
     }
 }
 
@@ -80,10 +104,14 @@ fn dijkstra_path(
     sat: &HashMap<u64, f64>,
     penalty: f64,
 ) -> Option<Vec<u64>> {
-    if src == dst { return Some(vec![src]); }
+    if src == dst {
+        return Some(vec![src]);
+    }
     let mut adj: HashMap<u64, Vec<(u64, f64)>> = HashMap::new();
     for l in &net.links {
-        if disabled.contains(&l.id) { continue; }
+        if disabled.contains(&l.id) {
+            continue;
+        }
         let s = sat.get(&l.id).copied().unwrap_or(0.0);
         let p = if s >= 1.0 {
             1e9
@@ -100,8 +128,12 @@ fn dijkstra_path(
     dist.insert(src, 0);
     heap.push((Reverse(0), src));
     while let Some((Reverse(cost), node)) = heap.pop() {
-        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost { continue; }
-        if node == dst { break; }
+        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost {
+            continue;
+        }
+        if node == dst {
+            break;
+        }
         if let Some(nbrs) = adj.get(&node) {
             for &(next, em) in nbrs {
                 let nc = cost + (em * 1000.0) as u64;
@@ -113,26 +145,41 @@ fn dijkstra_path(
             }
         }
     }
-    if !dist.contains_key(&dst) { return None; }
+    if !dist.contains_key(&dst) {
+        return None;
+    }
     let mut path = vec![dst];
     let mut cur = dst;
     while cur != src {
-        if let Some(&p) = prev.get(&cur) { path.push(p); cur = p; } else { return None; }
+        if let Some(&p) = prev.get(&cur) {
+            path.push(p);
+            cur = p;
+        } else {
+            return None;
+        }
     }
     path.reverse();
     Some(path)
 }
 
 fn path_to_waypoints(fp: &[u64], max_seg: usize) -> Vec<u64> {
-    if fp.len() <= 2 { return vec![]; }
+    if fp.len() <= 2 {
+        return vec![];
+    }
     let wp: Vec<u64> = fp[1..fp.len() - 1].to_vec();
-    if max_seg > 0 && wp.len() + 1 > max_seg { wp[..max_seg - 1].to_vec() } else { wp }
+    if max_seg > 0 && wp.len() + 1 > max_seg {
+        wp[..max_seg - 1].to_vec()
+    } else {
+        wp
+    }
 }
 
 // ── Solution loading helpers ──────────────────────────────────────────────────
 
 fn load_srpaths_file(path: &str, nd: usize) -> Option<Vec<SrPath>> {
-    if !std::path::Path::new(path).exists() { return None; }
+    if !std::path::Path::new(path).exists() {
+        return None;
+    }
     let content = std::fs::read_to_string(path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
     let arr = json["srpaths"].as_array()?;
@@ -140,8 +187,14 @@ fn load_srpaths_file(path: &str, nd: usize) -> Option<Vec<SrPath>> {
     for e in arr {
         let d = e["d"].as_u64()? as usize;
         let t = e["t"].as_u64()? as usize;
-        let w: Vec<u64> = e["w"].as_array()?.iter().filter_map(|v| v.as_u64()).collect();
-        if d < nd { srpaths.push(SrPath { d, t, w }); }
+        let w: Vec<u64> = e["w"]
+            .as_array()?
+            .iter()
+            .filter_map(|v| v.as_u64())
+            .collect();
+        if d < nd {
+            srpaths.push(SrPath { d, t, w });
+        }
     }
     Some(srpaths)
 }
@@ -150,8 +203,11 @@ fn srpaths_to_maps(srpaths: &[SrPath]) -> (HashMap<usize, Vec<u64>>, HashMap<usi
     let mut t0: HashMap<usize, Vec<u64>> = HashMap::new();
     let mut t1: HashMap<usize, Vec<u64>> = HashMap::new();
     for sp in srpaths {
-        if sp.t == 0 { t0.insert(sp.d, sp.w.clone()); }
-        else         { t1.insert(sp.d, sp.w.clone()); }
+        if sp.t == 0 {
+            t0.insert(sp.d, sp.w.clone());
+        } else {
+            t1.insert(sp.d, sp.w.clone());
+        }
     }
     (t0, t1)
 }
@@ -164,9 +220,25 @@ fn build_srpaths(
 ) -> Vec<SrPath> {
     let mut v = Vec::new();
     for d in 0..nd {
-        if let Some(w) = t0.get(&d) { if !w.is_empty() { v.push(SrPath { d, t: 0, w: w.clone() }); } }
+        if let Some(w) = t0.get(&d) {
+            if !w.is_empty() {
+                v.push(SrPath {
+                    d,
+                    t: 0,
+                    w: w.clone(),
+                });
+            }
+        }
         if ns > 1 {
-            if let Some(w) = t1.get(&d) { if !w.is_empty() { v.push(SrPath { d, t: 1, w: w.clone() }); } }
+            if let Some(w) = t1.get(&d) {
+                if !w.is_empty() {
+                    v.push(SrPath {
+                        d,
+                        t: 1,
+                        w: w.clone(),
+                    });
+                }
+            }
         }
     }
     v
@@ -180,7 +252,9 @@ fn compute_sat(
     t: usize,
     cap: &HashMap<u64, f64>,
 ) -> HashMap<u64, f64> {
-    let sol = Solution { srpaths: srpaths.to_vec() };
+    let sol = Solution {
+        srpaths: srpaths.to_vec(),
+    };
     let mut sat: HashMap<u64, f64> = HashMap::new();
     if let Some(loads) = ev.compute_loads(t, &sol) {
         for (id, flow) in &loads.arc_flows {
@@ -204,18 +278,18 @@ fn compute_combined_sat(
         let sat = compute_sat(ev, srpaths, t, cap);
         for (id, s) in sat {
             let e = combined.entry(id).or_insert(0.0);
-            if s > *e { *e = s; }
+            if s > *e {
+                *e = s;
+            }
         }
     }
     combined
 }
 
 /// Returns (link_id, from, to, utilisation) for the highest-utilisation link.
-fn highest_util_link(
-    net: &Network,
-    sat: &HashMap<u64, f64>,
-) -> Option<(u64, u64, u64, f64)> {
-    net.links.iter()
+fn highest_util_link(net: &Network, sat: &HashMap<u64, f64>) -> Option<(u64, u64, u64, f64)> {
+    net.links
+        .iter()
         .map(|l| (l.id, l.from, l.to, sat.get(&l.id).copied().unwrap_or(0.0)))
         .max_by(|a, b| a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal))
 }
@@ -238,11 +312,17 @@ fn max_util(sat: &HashMap<u64, f64>) -> f64 {
 // Dijkstra on unweighted metric.
 
 fn plain_dijkstra(net: &Network, src: u64, dst: u64, disabled: &HashSet<u64>) -> Option<Vec<u64>> {
-    if src == dst { return Some(vec![src]); }
+    if src == dst {
+        return Some(vec![src]);
+    }
     let mut adj: HashMap<u64, Vec<(u64, u64)>> = HashMap::new();
     for l in &net.links {
-        if disabled.contains(&l.id) { continue; }
-        adj.entry(l.from).or_default().push((l.to, (l.metric * 1000.0) as u64));
+        if disabled.contains(&l.id) {
+            continue;
+        }
+        adj.entry(l.from)
+            .or_default()
+            .push((l.to, (l.metric * 1000.0) as u64));
     }
     let mut dist: HashMap<u64, u64> = HashMap::new();
     let mut prev: HashMap<u64, u64> = HashMap::new();
@@ -250,8 +330,12 @@ fn plain_dijkstra(net: &Network, src: u64, dst: u64, disabled: &HashSet<u64>) ->
     dist.insert(src, 0);
     heap.push((Reverse(0), src));
     while let Some((Reverse(cost), node)) = heap.pop() {
-        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost { continue; }
-        if node == dst { break; }
+        if dist.get(&node).copied().unwrap_or(u64::MAX) < cost {
+            continue;
+        }
+        if node == dst {
+            break;
+        }
         if let Some(nbrs) = adj.get(&node) {
             for &(next, w) in nbrs {
                 let nc = cost + w;
@@ -263,11 +347,18 @@ fn plain_dijkstra(net: &Network, src: u64, dst: u64, disabled: &HashSet<u64>) ->
             }
         }
     }
-    if !dist.contains_key(&dst) { return None; }
+    if !dist.contains_key(&dst) {
+        return None;
+    }
     let mut path = vec![dst];
     let mut cur = dst;
     while cur != src {
-        if let Some(&p) = prev.get(&cur) { path.push(p); cur = p; } else { return None; }
+        if let Some(&p) = prev.get(&cur) {
+            path.push(p);
+            cur = p;
+        } else {
+            return None;
+        }
     }
     path.reverse();
     Some(path)
@@ -275,13 +366,14 @@ fn plain_dijkstra(net: &Network, src: u64, dst: u64, disabled: &HashSet<u64>) ->
 
 /// Returns the set of demand indices whose approximate route traverses (from, to).
 fn candidate_demands(
-    demands: &[(usize, u64, u64, f64)],   // (idx, src, dst, vol)
+    demands: &[(usize, u64, u64, f64)], // (idx, src, dst, vol)
     t0_map: &HashMap<usize, Vec<u64>>,
     net: &Network,
     disabled: &HashSet<u64>,
     bn_from: u64,
     bn_to: u64,
-) -> Vec<(usize, f64)> {  // (demand_idx, flow_score)
+) -> Vec<(usize, f64)> {
+    // (demand_idx, flow_score)
     let mut result: Vec<(usize, f64)> = Vec::new();
     for &(d, src, dst, vol) in demands {
         let waypoints = t0_map.get(&d).cloned().unwrap_or_default();
@@ -296,7 +388,10 @@ fn candidate_demands(
             f
         };
         // Count how many times the bottleneck edge appears (usually 0 or 1)
-        let traversals = full.windows(2).filter(|w| w[0] == bn_from && w[1] == bn_to).count();
+        let traversals = full
+            .windows(2)
+            .filter(|w| w[0] == bn_from && w[1] == bn_to)
+            .count();
         if traversals > 0 {
             result.push((d, vol * traversals as f64));
         }
@@ -309,13 +404,13 @@ fn candidate_demands(
 // ── Relief curve record ───────────────────────────────────────────────────────
 
 struct ReliefPoint {
-    batch:            usize,
+    batch: usize,
     demands_rerouted: usize,
-    bottleneck_link:  u64,
-    bn_util:          f64,
-    mlu:              f64,
-    _overloaded:      usize,
-    objective:        f64,
+    bottleneck_link: u64,
+    bn_util: f64,
+    mlu: f64,
+    _overloaded: usize,
+    objective: f64,
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -323,48 +418,69 @@ struct ReliefPoint {
 fn main() -> anyhow::Result<()> {
     let cfg = Config::from_args();
     let set_dir = &cfg.set_dir;
-    let inst    = &cfg.instance;
+    let inst = &cfg.instance;
 
     // ── Load instance ─────────────────────────────────────────────────────────
-    let net = load_network(&format!("{}/setA-{}-net.json",      set_dir, inst))?;
-    let tm  = load_traffic_matrix(&format!("{}/setA-{}-tm.json", set_dir, inst))?;
-    let sc  = load_scenario(&format!("{}/setA-{}-scenario.json", set_dir, inst))?;
+    let net = load_network(&format!("{}/setA-{}-net.json", set_dir, inst))?;
+    let tm = load_traffic_matrix(&format!("{}/setA-{}-tm.json", set_dir, inst))?;
+    let sc = load_scenario(&format!("{}/setA-{}-scenario.json", set_dir, inst))?;
 
     let nd = tm.demands.len();
     let ns = tm.num_time_slots;
-    let max_seg = if sc.max_segments >= 0 { sc.max_segments as usize } else { MAX_SEG_CAP };
+    let max_seg = if sc.max_segments >= 0 {
+        sc.max_segments as usize
+    } else {
+        MAX_SEG_CAP
+    };
 
-    let ev  = RoadefEvaluator::new(&net, tm.clone(), sc.clone());
+    let ev = RoadefEvaluator::new(&net, tm.clone(), sc.clone());
     let cap: HashMap<u64, f64> = net.links.iter().map(|l| (l.id, l.capacity)).collect();
 
-    let dis_t0: HashSet<u64> = sc.interventions.iter()
-        .filter(|i| i.t == 0).flat_map(|i| i.links.iter().copied()).collect();
-    let dis_t1: HashSet<u64> = sc.interventions.iter()
-        .filter(|i| i.t == 1).flat_map(|i| i.links.iter().copied()).collect();
+    let dis_t0: HashSet<u64> = sc
+        .interventions
+        .iter()
+        .filter(|i| i.t == 0)
+        .flat_map(|i| i.links.iter().copied())
+        .collect();
+    let dis_t1: HashSet<u64> = sc
+        .interventions
+        .iter()
+        .filter(|i| i.t == 1)
+        .flat_map(|i| i.links.iter().copied())
+        .collect();
     let dis_both: HashSet<u64> = dis_t0.union(&dis_t1).copied().collect();
 
-    let demands: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate().map(|(i, d)| {
-        let v0 = d.v[0];
-        let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
-        (i, d.s, d.t, (v0 + v1) / 2.0)
-    }).collect();
+    let demands: Vec<(usize, u64, u64, f64)> = tm
+        .demands
+        .iter()
+        .enumerate()
+        .map(|(i, d)| {
+            let v0 = d.v[0];
+            let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
+            (i, d.s, d.t, (v0 + v1) / 2.0)
+        })
+        .collect();
 
     // ── Phase 1: load best prior solution ────────────────────────────────────
     let rp405_path = format!("{}/setA-{}-srpaths-rp405-adaptive.json", set_dir, inst);
-    let rp403_path = format!("{}/setA-{}-srpaths-rp403.json",          set_dir, inst);
+    let rp403_path = format!("{}/setA-{}-srpaths-rp403.json", set_dir, inst);
 
     let prior_srpaths = load_srpaths_file(&rp405_path, nd)
         .or_else(|| load_srpaths_file(&rp403_path, nd))
         .unwrap_or_default();
 
-    let prior_sol = Solution { srpaths: prior_srpaths.clone() };
+    let prior_sol = Solution {
+        srpaths: prior_srpaths.clone(),
+    };
     let prior_result = ev.evaluate_solution(&prior_sol);
     let prior_obj = prior_result.obj;
 
     let (mut best_t0, mut best_t1) = srpaths_to_maps(&prior_srpaths);
 
-    eprintln!("RP-406B  setA-{}  prior_obj={:.6}  nd={}  ns={}",
-        inst, prior_obj, nd, ns);
+    eprintln!(
+        "RP-406B  setA-{}  prior_obj={:.6}  nd={}  ns={}",
+        inst, prior_obj, nd, ns
+    );
 
     // ── Phase 2: conditional bottleneck-relief micro-repair ───────────────────
     let t_repair_start = Instant::now();
@@ -374,7 +490,7 @@ fn main() -> anyhow::Result<()> {
     let mut batches_executed = 0usize;
     let mut initial_bn_util = 0.0f64;
     let mut initial_bn_link = 0u64;
-    let mut final_bn_util   = 0.0f64;
+    let mut final_bn_util = 0.0f64;
     let mut repair_activated = false;
 
     // Evaluate initial utilisation
@@ -390,7 +506,7 @@ fn main() -> anyhow::Result<()> {
         if let Some((lid, _from, _to, util)) = highest_util_link(&net, &init_sat) {
             initial_bn_link = lid;
             initial_bn_util = util;
-            final_bn_util   = util;
+            final_bn_util = util;
         }
 
         relief_curve.push(ReliefPoint {
@@ -417,37 +533,48 @@ fn main() -> anyhow::Result<()> {
             let cur_overloaded = overloaded_count(&cur_sat);
             current_mlu = max_util(&cur_sat);
 
-            if cur_overloaded == 0 { break; }
+            if cur_overloaded == 0 {
+                break;
+            }
 
             // Find bottleneck link
             let (bn_lid, bn_from, bn_to, bn_util) = match highest_util_link(&net, &cur_sat) {
                 Some(x) => x,
-                None    => break,
+                None => break,
             };
             final_bn_util = bn_util;
 
             // Identify candidate demands traversing bottleneck
-            let candidates = candidate_demands(
-                &demands, &current_t0, &net, &dis_both, bn_from, bn_to,
-            );
+            let candidates =
+                candidate_demands(&demands, &current_t0, &net, &dis_both, bn_from, bn_to);
 
             if candidates.is_empty() {
-                eprintln!("  [batch {}] No candidates for link {} ({}->{}) util={:.4}; stopping.",
-                    batches_executed, bn_lid, bn_from, bn_to, bn_util);
+                eprintln!(
+                    "  [batch {}] No candidates for link {} ({}->{}) util={:.4}; stopping.",
+                    batches_executed, bn_lid, bn_from, bn_to, bn_util
+                );
                 break;
             }
 
             // Take next batch (skip already-rerouted in this pass by tracking
             // which demands we've already attempted this iteration)
-            let batch: Vec<usize> = candidates.iter()
+            let batch: Vec<usize> = candidates
+                .iter()
                 .map(|(d, _)| *d)
                 .take(BATCH_SIZE)
                 .collect();
 
             if cfg.verbose {
-                eprintln!("  [batch {}] bottleneck=link{} ({}->{}) util={:.4}  candidates={}  batch={:?}",
-                    batches_executed + 1, bn_lid, bn_from, bn_to, bn_util,
-                    candidates.len(), batch);
+                eprintln!(
+                    "  [batch {}] bottleneck=link{} ({}->{}) util={:.4}  candidates={}  batch={:?}",
+                    batches_executed + 1,
+                    bn_lid,
+                    bn_from,
+                    bn_to,
+                    bn_util,
+                    candidates.len(),
+                    batch
+                );
             }
 
             // Reroute batch using load-aware Dijkstra.
@@ -457,12 +584,15 @@ fn main() -> anyhow::Result<()> {
             let mut trial_t0 = current_t0.clone();
             let mut trial_t1 = best_t1.clone();
             // Build partial sat excluding the batch demands
-            let partial_srpaths: Vec<SrPath> = cur_srpaths.iter()
+            let partial_srpaths: Vec<SrPath> = cur_srpaths
+                .iter()
                 .filter(|sp| sp.t == 0 && !batch.contains(&sp.d))
                 .cloned()
                 .collect();
             let mut routing_sat = compute_sat(&ev, &partial_srpaths, 0, &cap);
-            for l in &net.links { routing_sat.entry(l.id).or_insert(0.0); }
+            for l in &net.links {
+                routing_sat.entry(l.id).or_insert(0.0);
+            }
 
             let mut rerouted_this_batch = 0usize;
             for &d in &batch {
@@ -487,7 +617,9 @@ fn main() -> anyhow::Result<()> {
 
             // Evaluate trial solution
             let trial_srpaths = build_srpaths(&trial_t0, &trial_t1, nd, ns);
-            let trial_sol = Solution { srpaths: trial_srpaths.clone() };
+            let trial_sol = Solution {
+                srpaths: trial_srpaths.clone(),
+            };
             let trial_result = ev.evaluate_solution(&trial_sol);
             let trial_obj = trial_result.obj;
 
@@ -510,16 +642,26 @@ fn main() -> anyhow::Result<()> {
 
             // Log all overloaded links after this batch (diagnostic instrumentation)
             if cfg.verbose {
-                let overloaded_links: Vec<(u64, f64)> = net.links.iter()
+                let overloaded_links: Vec<(u64, f64)> = net
+                    .links
+                    .iter()
                     .filter_map(|l| {
                         let s = trial_sat.get(&l.id).copied().unwrap_or(0.0);
-                        if s >= 1.0 { Some((l.id, s)) } else { None }
+                        if s >= 1.0 {
+                            Some((l.id, s))
+                        } else {
+                            None
+                        }
                     })
                     .collect();
                 if overloaded_links.is_empty() {
                     eprintln!("  [batch {}] Overloaded links: none", batches_executed);
                 } else {
-                    eprintln!("  [batch {}] Overloaded links ({}):", batches_executed, overloaded_links.len());
+                    eprintln!(
+                        "  [batch {}] Overloaded links ({}):",
+                        batches_executed,
+                        overloaded_links.len()
+                    );
                     for (lid, s) in &overloaded_links {
                         eprintln!("    link {}  util={:.6}", lid, s);
                     }
@@ -537,8 +679,7 @@ fn main() -> anyhow::Result<()> {
                 trial_obj < current_obj - 1e-9
             } else {
                 // Both inf: feasibility-recovery mode — accept if overload state improves
-                trial_overloaded < current_overloaded
-                    || trial_mlu < current_mlu - 1e-9
+                trial_overloaded < current_overloaded || trial_mlu < current_mlu - 1e-9
             };
 
             if improved {
@@ -551,18 +692,25 @@ fn main() -> anyhow::Result<()> {
             } else {
                 stall += 1;
                 if stall >= MAX_STALL {
-                    eprintln!("  Stalled for {} batches; stopping micro-repair.", MAX_STALL);
+                    eprintln!(
+                        "  Stalled for {} batches; stopping micro-repair.",
+                        MAX_STALL
+                    );
                     break;
                 }
             }
 
             // Stop if objective is now finite
-            if current_obj.is_finite() { break; }
+            if current_obj.is_finite() {
+                break;
+            }
         }
 
         // Accept repaired solution only if it is at least as good as prior
         let repaired_srpaths = build_srpaths(&current_t0, &current_t1, nd, ns);
-        let repaired_result = ev.evaluate_solution(&Solution { srpaths: repaired_srpaths.clone() });
+        let repaired_result = ev.evaluate_solution(&Solution {
+            srpaths: repaired_srpaths.clone(),
+        });
         let repaired_obj = repaired_result.obj;
         let repaired_sat = compute_combined_sat(&ev, &repaired_srpaths, ns, &cap);
         let repaired_mlu = max_util(&repaired_sat);
@@ -570,13 +718,20 @@ fn main() -> anyhow::Result<()> {
         let prior_mlu_check = max_util(&prior_sat_check);
 
         if cfg.verbose {
-            eprintln!("[post-repair] obj={} mlu={:.6} valid={}",
-                if repaired_obj.is_finite() { format!("{:.6}", repaired_obj) } else { "inf".to_string() },
-                repaired_mlu, repaired_result.valid);
+            eprintln!(
+                "[post-repair] obj={} mlu={:.6} valid={}",
+                if repaired_obj.is_finite() {
+                    format!("{:.6}", repaired_obj)
+                } else {
+                    "inf".to_string()
+                },
+                repaired_mlu,
+                repaired_result.valid
+            );
         }
 
         let accept = if repaired_obj.is_finite() && !prior_obj.is_finite() {
-            true  // finite beats inf unconditionally
+            true // finite beats inf unconditionally
         } else if repaired_obj.is_finite() && prior_obj.is_finite() {
             repaired_obj <= prior_obj + 1e-9
         } else {
@@ -596,7 +751,9 @@ fn main() -> anyhow::Result<()> {
 
     // ── Phase 3: write solution ───────────────────────────────────────────────
     let final_srpaths = build_srpaths(&best_t0, &best_t1, nd, ns);
-    let final_sol = Solution { srpaths: final_srpaths.clone() };
+    let final_sol = Solution {
+        srpaths: final_srpaths.clone(),
+    };
     let final_result = ev.evaluate_solution(&final_sol);
     let final_obj = final_result.obj;
 
@@ -608,9 +765,10 @@ fn main() -> anyhow::Result<()> {
 
     std::fs::create_dir_all(&cfg.out_dir)?;
     let out_path = format!("{}/setA-{}-srpaths-rp406b.json", cfg.out_dir, inst);
-    let srpaths_json: Vec<serde_json::Value> = final_srpaths.iter().map(|sp| {
-        serde_json::json!({ "d": sp.d, "t": sp.t, "w": sp.w })
-    }).collect();
+    let srpaths_json: Vec<serde_json::Value> = final_srpaths
+        .iter()
+        .map(|sp| serde_json::json!({ "d": sp.d, "t": sp.t, "w": sp.w }))
+        .collect();
     let json_out = serde_json::json!({ "srpaths": srpaths_json });
     let mut f = File::create(&out_path)?;
     writeln!(f, "{}", serde_json::to_string_pretty(&json_out)?)?;
@@ -621,31 +779,95 @@ fn main() -> anyhow::Result<()> {
         let init_sat2 = compute_combined_sat(&ev, &init_srpaths2, ns, &cap);
         if let Some((_, bn_from, bn_to, _)) = highest_util_link(&net, &init_sat2) {
             candidate_demands(&demands, &best_t0, &net, &dis_both, bn_from, bn_to).len()
-        } else { 0 }
-    } else { 0 };
+        } else {
+            0
+        }
+    } else {
+        0
+    };
 
     eprintln!();
     eprintln!("┌─────────────────────────────────────────────────────────────────┐");
-    eprintln!("│  RP-406B Diagnostics  setA-{}                                   │", inst);
+    eprintln!(
+        "│  RP-406B Diagnostics  setA-{}                                   │",
+        inst
+    );
     eprintln!("├──────────────────────────────┬──────────────────────────────────┤");
-    eprintln!("│ Repair activated             │ {:<32} │", if repair_activated { "yes" } else { "no (no overloaded links)" });
-    eprintln!("│ Bottleneck link              │ {:<32} │", if repair_activated { initial_bn_link.to_string() } else { "—".to_string() });
-    eprintln!("│ Candidate demands            │ {:<32} │", if repair_activated { candidates_count.to_string() } else { "—".to_string() });
+    eprintln!(
+        "│ Repair activated             │ {:<32} │",
+        if repair_activated {
+            "yes"
+        } else {
+            "no (no overloaded links)"
+        }
+    );
+    eprintln!(
+        "│ Bottleneck link              │ {:<32} │",
+        if repair_activated {
+            initial_bn_link.to_string()
+        } else {
+            "—".to_string()
+        }
+    );
+    eprintln!(
+        "│ Candidate demands            │ {:<32} │",
+        if repair_activated {
+            candidates_count.to_string()
+        } else {
+            "—".to_string()
+        }
+    );
     eprintln!("│ Rerouted demands             │ {:<32} │", total_rerouted);
-    eprintln!("│ Batches executed             │ {:<32} │", batches_executed);
-    eprintln!("│ Runtime (micro-repair)       │ {:<32} │", format!("{} ms", repair_ms));
-    eprintln!("│ Initial utilisation (BN)     │ {:<32} │", if repair_activated { format!("{:.6}", initial_bn_util) } else { "—".to_string() });
-    eprintln!("│ Final utilisation (BN)       │ {:<32} │", if repair_activated { format!("{:.6}", final_bn_util) } else { "—".to_string() });
-    eprintln!("│ Prior objective              │ {:<32} │", if prior_obj.is_finite() { format!("{:.6}", prior_obj) } else { "inf".to_string() });
-    eprintln!("│ Final objective              │ {:<32} │", if final_obj.is_finite() { format!("{:.6}", final_obj) } else { "inf".to_string() });
+    eprintln!(
+        "│ Batches executed             │ {:<32} │",
+        batches_executed
+    );
+    eprintln!(
+        "│ Runtime (micro-repair)       │ {:<32} │",
+        format!("{} ms", repair_ms)
+    );
+    eprintln!(
+        "│ Initial utilisation (BN)     │ {:<32} │",
+        if repair_activated {
+            format!("{:.6}", initial_bn_util)
+        } else {
+            "—".to_string()
+        }
+    );
+    eprintln!(
+        "│ Final utilisation (BN)       │ {:<32} │",
+        if repair_activated {
+            format!("{:.6}", final_bn_util)
+        } else {
+            "—".to_string()
+        }
+    );
+    eprintln!(
+        "│ Prior objective              │ {:<32} │",
+        if prior_obj.is_finite() {
+            format!("{:.6}", prior_obj)
+        } else {
+            "inf".to_string()
+        }
+    );
+    eprintln!(
+        "│ Final objective              │ {:<32} │",
+        if final_obj.is_finite() {
+            format!("{:.6}", final_obj)
+        } else {
+            "inf".to_string()
+        }
+    );
     eprintln!("└──────────────────────────────┴──────────────────────────────────┘");
 
     // Relief curve table (only when repair was activated)
     if repair_activated && !relief_curve.is_empty() {
         eprintln!();
         eprintln!("  Bottleneck Relief Curve");
-        eprintln!("  {:>5}  {:>8}  {:>10}  {:>8}  {:>10}  {:>12}",
-            "batch", "rerouted", "bn_link", "bn_util", "mlu", "objective");
+        eprintln!(
+            "  {:>5}  {:>8}  {:>10}  {:>8}  {:>10}  {:>12}",
+            "batch", "rerouted", "bn_link", "bn_util", "mlu", "objective"
+        );
         eprintln!("  {}", "-".repeat(62));
         for pt in &relief_curve {
             let obj_str = if pt.objective.is_finite() {
@@ -653,9 +875,10 @@ fn main() -> anyhow::Result<()> {
             } else {
                 "inf".to_string()
             };
-            eprintln!("  {:>5}  {:>8}  {:>10}  {:>8.4}  {:>10.4}  {:>12}",
-                pt.batch, pt.demands_rerouted, pt.bottleneck_link,
-                pt.bn_util, pt.mlu, obj_str);
+            eprintln!(
+                "  {:>5}  {:>8}  {:>10}  {:>8.4}  {:>10.4}  {:>12}",
+                pt.batch, pt.demands_rerouted, pt.bottleneck_link, pt.bn_util, pt.mlu, obj_str
+            );
         }
     }
 
@@ -683,7 +906,9 @@ fn main() -> anyhow::Result<()> {
     // ── Load vector output (competition criterion) ────────────────────────────
     {
         // Compute per-link utilisation across all time slots, sort descending
-        let mut sorted_util: Vec<f64> = net.links.iter()
+        let mut sorted_util: Vec<f64> = net
+            .links
+            .iter()
             .map(|l| final_sat.get(&l.id).copied().unwrap_or(0.0))
             .collect();
         sorted_util.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
@@ -693,10 +918,20 @@ fn main() -> anyhow::Result<()> {
         println!("RP-406B RESULT  setA-{}", inst);
         println!("========================================================");
         println!();
-        println!("Objective : {}", if final_obj.is_finite() { format!("{:.6}", final_obj) } else { "inf".to_string() });
+        println!(
+            "Objective : {}",
+            if final_obj.is_finite() {
+                format!("{:.6}", final_obj)
+            } else {
+                "inf".to_string()
+            }
+        );
         println!("Valid     : {}", final_result.valid);
         println!();
-        println!("MLU       : {:.6}", sorted_util.first().copied().unwrap_or(0.0));
+        println!(
+            "MLU       : {:.6}",
+            sorted_util.first().copied().unwrap_or(0.0)
+        );
         println!();
         println!("Top-{} Load Vector", top_n);
         println!("--------------------------------------------------------");
@@ -716,7 +951,6 @@ fn main() -> anyhow::Result<()> {
             eprintln!("Load vector CSV written to {}", csv_path);
         }
     }
-
 
     Ok(())
 }

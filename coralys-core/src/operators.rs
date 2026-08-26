@@ -53,9 +53,9 @@ pub trait RepairOperator<G, M: ConstraintModel<G>> {
 pub trait ImprovementOperator<G, M: ConstraintModel<G>> {
     type Error: Error + Send + Sync + 'static;
 
-    /// Applies local search heuristics. 
+    /// Applies local search heuristics.
     /// INVARIANT: If candidate was feasible before improve(), it MUST remain feasible.
-    /// Note: The Rust type system expresses this intended contract; runtime verification 
+    /// Note: The Rust type system expresses this intended contract; runtime verification
     /// via assertions enforces the preservation property.
     fn improve(
         &self,

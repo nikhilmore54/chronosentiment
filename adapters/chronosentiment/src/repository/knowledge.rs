@@ -1,9 +1,9 @@
+use crate::reasoning::assessment::AssessmentProfile;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use uuid::Uuid;
-use crate::reasoning::assessment::AssessmentProfile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ArtifactType {
@@ -81,7 +81,7 @@ pub trait AssessmentQueries {
         &self,
         signature: &str,
     ) -> Result<Vec<AssessmentProfile>, Box<dyn Error>>;
-    
+
     async fn find_by_market_state(
         &self,
         state: &str,

@@ -77,7 +77,8 @@ impl FitnessEvaluator<RuleListGenome> for DevelopmentValue {
     type Evaluation = GenomeEvaluation;
 
     fn evaluate(&self, genome: &RuleListGenome, _metrics: &MetricReport) -> Self::Evaluation {
-        let score = score_decision_value(genome, &self.slice).expect("development slice is permitted");
+        let score =
+            score_decision_value(genome, &self.slice).expect("development slice is permitted");
         GenomeEvaluation {
             genome: genome.clone(),
             fitness: score.fitness,

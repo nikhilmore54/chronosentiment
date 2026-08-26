@@ -48,15 +48,14 @@ use super::coralys_execution_model::{
 };
 use super::csp006_protocol::{RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH, RESEARCH_UNIVERSE};
 use super::observatory_execution::{
-    first_exit, ExecutionExit, ExitReason, SealedExecutionIntent,
-    C3G_EXPERIMENT_AUTHORIZED, TARGET_PATH_OPTIMIZATION_AUTHORIZED,
+    first_exit, ExecutionExit, ExitReason, SealedExecutionIntent, C3G_EXPERIMENT_AUTHORIZED,
+    TARGET_PATH_OPTIMIZATION_AUTHORIZED,
 };
 use super::observatory_historical::{
     decision_time_bars, generate_historical_replay_decision, poison_future_bars,
 };
 use super::observatory_live_execution_pe3::{
-    atr_14_at_t, coralys_intent_to_sealed, placeholder_no_trade_intent,
-    PE3_EXECUTION_CONTRACT_ID,
+    atr_14_at_t, coralys_intent_to_sealed, placeholder_no_trade_intent, PE3_EXECUTION_CONTRACT_ID,
 };
 use super::observatory_maturity::nth_market_session_after;
 use super::observatory_prospective::latest_session_at_or_before;
@@ -231,7 +230,11 @@ pub fn replay_historical_pe3(
 
         let subsequent = bars
             .iter()
-            .filter(|b| Utc.timestamp_opt(b.timestamp, 0).single().is_some_and(|ts| ts > t))
+            .filter(|b| {
+                Utc.timestamp_opt(b.timestamp, 0)
+                    .single()
+                    .is_some_and(|ts| ts > t)
+            })
             .count();
         if subsequent < REQUIRED_SUBSEQUENT_SESSIONS as usize {
             return Err(format!(
@@ -301,49 +304,73 @@ pub fn replay_historical_pe3(
         let entry_time = decision.decision_time.clone();
 
         // ── coralys-exec-v0 intent — identical call pattern to live module ────
-        let (pe3_eligible, exclusion_reason, coralys_intent_hash,
-             coralys_target_pct, coralys_risk_pct, coralys_atr_14_at_t,
-             coralys_tmv_state, mut sealed_intent) =
-            if direction_str == "NO_TRADE" {
-                n_no_trade += 1;
-                let placeholder = placeholder_no_trade_intent(&decision);
-                (false, Some("NO_TRADE: no execution intent".to_string()),
-                 None, None, None, None, None, placeholder)
-            } else {
-                let entry = entry_opt.ok_or_else(|| {
-                    format!("no entry close at T for {instrument}")
-                })?;
-                match seal_coralys_execution_intent(
-                    instrument,
-                    &decision.decision_time,
-                    &entry_time,
-                    direction_str,
-                    entry,
-                    atr,
-                    &decision.state.trend,
-                    &decision.state.momentum,
-                    &decision.state.state_hash,
-                )? {
-                    CoralysExecutionResult::Intent(ci) => {
-                        let sealed = coralys_intent_to_sealed(&ci);
-                        n_pe3_eligible += 1;
-                        (true, None,
-                         Some(ci.intent_hash.clone()),
-                         Some(ci.target_pct),
-                         Some(ci.risk_pct),
-                         Some(ci.atr_14_at_t),
-                         Some(ci.tmv_state.clone()),
-                         sealed)
-                    }
-                    CoralysExecutionResult::Invalid { reason, .. } => {
-                        // ATR unavailable — excluded from P.E.3 sample.
-                        // Do NOT fall back to +5%. That would contaminate the P.E.2 comparison.
-                        n_excluded_no_atr += 1;
-                        let placeholder = placeholder_no_trade_intent(&decision);
-                        (false, Some(reason), None, None, None, None, None, placeholder)
-                    }
+        let (
+            pe3_eligible,
+            exclusion_reason,
+            coralys_intent_hash,
+            coralys_target_pct,
+            coralys_risk_pct,
+            coralys_atr_14_at_t,
+            coralys_tmv_state,
+            mut sealed_intent,
+        ) = if direction_str == "NO_TRADE" {
+            n_no_trade += 1;
+            let placeholder = placeholder_no_trade_intent(&decision);
+            (
+                false,
+                Some("NO_TRADE: no execution intent".to_string()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                placeholder,
+            )
+        } else {
+            let entry = entry_opt.ok_or_else(|| format!("no entry close at T for {instrument}"))?;
+            match seal_coralys_execution_intent(
+                instrument,
+                &decision.decision_time,
+                &entry_time,
+                direction_str,
+                entry,
+                atr,
+                &decision.state.trend,
+                &decision.state.momentum,
+                &decision.state.state_hash,
+            )? {
+                CoralysExecutionResult::Intent(ci) => {
+                    let sealed = coralys_intent_to_sealed(&ci);
+                    n_pe3_eligible += 1;
+                    (
+                        true,
+                        None,
+                        Some(ci.intent_hash.clone()),
+                        Some(ci.target_pct),
+                        Some(ci.risk_pct),
+                        Some(ci.atr_14_at_t),
+                        Some(ci.tmv_state.clone()),
+                        sealed,
+                    )
                 }
-            };
+                CoralysExecutionResult::Invalid { reason, .. } => {
+                    // ATR unavailable — excluded from P.E.3 sample.
+                    // Do NOT fall back to +5%. That would contaminate the P.E.2 comparison.
+                    n_excluded_no_atr += 1;
+                    let placeholder = placeholder_no_trade_intent(&decision);
+                    (
+                        false,
+                        Some(reason),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        placeholder,
+                    )
+                }
+            }
+        };
 
         // Patch decision_id into the sealed intent so first_exit() can match it.
         sealed_intent.decision_id = decision.decision_id.clone();
@@ -374,8 +401,7 @@ pub fn replay_historical_pe3(
 
         // ── Contamination guard ───────────────────────────────────────────────
         if pe3_eligible
-            && sealed_intent.execution_contract
-                == "targeted_execution_v0_fixed_5pct_20_sessions"
+            && sealed_intent.execution_contract == "targeted_execution_v0_fixed_5pct_20_sessions"
         {
             return Err(format!(
                 "{instrument} P.E.3 intent carries P.E.2 execution_contract — contamination detected"
@@ -407,9 +433,7 @@ pub fn replay_historical_pe3(
         });
     }
 
-    let certified_t = certified
-        .ok_or("no certified T resolved")?
-        .to_rfc3339();
+    let certified_t = certified.ok_or("no certified T resolved")?.to_rfc3339();
 
     let n_decisions = records.len();
 

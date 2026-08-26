@@ -23,7 +23,11 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn rec_row(partition: PartitionKind, recommendation: DecisionAction, raw: f64) -> RecommendationRow {
+fn rec_row(
+    partition: PartitionKind,
+    recommendation: DecisionAction,
+    raw: f64,
+) -> RecommendationRow {
     RecommendationRow {
         timestamp: "2021-10-31T15:30:00Z".to_string(),
         instrument: "HDFCBANK.NS".to_string(),
@@ -150,7 +154,8 @@ fn certified_landscape_from_existing_recommendations() {
     }
     let recommendations: Vec<RecommendationRow> =
         serde_json::from_str(&std::fs::read_to_string(rec_path).unwrap()).unwrap();
-    let (rows, card) = analyze_landscape(RESEARCH_DISCOVERY_ARTIFACT_HASH, &recommendations).unwrap();
+    let (rows, card) =
+        analyze_landscape(RESEARCH_DISCOVERY_ARTIFACT_HASH, &recommendations).unwrap();
     assert_eq!(rows.len(), 273);
     assert_eq!(card.n_rows, 273);
     assert_eq!(card.development.n_acted, 49);

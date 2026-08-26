@@ -12,7 +12,8 @@ use std::path::PathBuf;
 use chrono::{DateTime, TimeZone, Utc};
 use chronosentiment_adapter::decision_support::forward::{write_progress_report, ForwardJournal};
 use chronosentiment_adapter::decision_support::forward_tick::{
-    decide_latest_session, instrument_id_for, latest_as_of, price_bars_for, DailyBar, DEFAULT_TICKERS,
+    decide_latest_session, instrument_id_for, latest_as_of, price_bars_for, DailyBar,
+    DEFAULT_TICKERS,
 };
 use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
 use chronosentiment_adapter::decision_support::replay::UNFROZEN_ENGINE_VERSION;
@@ -51,7 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let session = session.ok_or("missing --session DIR")?;
     let now: DateTime<Utc> = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
 
@@ -139,7 +142,10 @@ async fn run_tick(session: &str, now: DateTime<Utc>) -> Result<(), Box<dyn std::
     let report = journal.performance(&prices, now)?;
     let out = PathBuf::from(session).join("reports");
     fs::create_dir_all(&out)?;
-    fs::write(out.join("performance.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        out.join("performance.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
     write_progress_report(&out.join("PROGRESS.md"), &report)?;
     println!("new_decisions={new_decisions}");
     println!("n_decisions={}", report.behavior.n_records);
@@ -153,12 +159,12 @@ fn run_measure(session: &str, now: DateTime<Utc>) -> Result<(), Box<dyn std::err
     let report = journal.performance(&prices, now)?;
     let out = PathBuf::from(session).join("reports");
     fs::create_dir_all(&out)?;
-    fs::write(out.join("performance.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        out.join("performance.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
     write_progress_report(&out.join("PROGRESS.md"), &report)?;
-    println!(
-        "n_decisions={}",
-        report.behavior.n_records
-    );
+    println!("n_decisions={}", report.behavior.n_records);
     println!(
         "long={} short={} no_trade={}",
         report.behavior.counts.long, report.behavior.counts.short, report.behavior.counts.no_trade

@@ -163,7 +163,9 @@ fn living_archive() -> SearchArchive {
 fn search_two_run_stays_unauthorized() {
     assert!(!SEARCH_TWO_RUN_AUTHORIZED);
     assert!(!search_two_run_is_authorized());
-    assert!(evolve_on_development_value(synthetic_slice(PartitionKind::Development, 0.01)).is_err());
+    assert!(
+        evolve_on_development_value(synthetic_slice(PartitionKind::Development, 0.01)).is_err()
+    );
     assert_eq!(verify_implementation_contract().result, "PASS");
     assert!(post_seal_symbol_matrices_required());
     identity_lineage_holds().unwrap();
@@ -180,8 +182,11 @@ fn search_one_evidence_is_byte_immutable() {
 
 #[test]
 fn m1_fitness_is_long_r_short_neg_r_no_trade_zero() {
-    let long = score_decision_value(&always(DecisionAction::Long), &synthetic_slice(PartitionKind::Development, 0.04))
-        .unwrap();
+    let long = score_decision_value(
+        &always(DecisionAction::Long),
+        &synthetic_slice(PartitionKind::Development, 0.04),
+    )
+    .unwrap();
     let short = score_decision_value(
         &always(DecisionAction::Short),
         &synthetic_slice(PartitionKind::Development, 0.04),
@@ -202,17 +207,23 @@ fn m1_fitness_is_long_r_short_neg_r_no_trade_zero() {
 fn fitness_preserves_magnitude_instead_of_labels() {
     let long = always(DecisionAction::Long);
     let short = always(DecisionAction::Short);
-    let a = score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.001)).unwrap();
-    let b = score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.005)).unwrap();
-    let c = score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.05)).unwrap();
+    let a =
+        score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.001)).unwrap();
+    let b =
+        score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.005)).unwrap();
+    let c =
+        score_decision_value(&long, &synthetic_slice(PartitionKind::Development, 0.05)).unwrap();
     assert!(a.fitness < b.fitness && b.fitness < c.fitness);
     assert!((a.fitness - 0.001).abs() < 1e-15);
     assert!((b.fitness - 0.005).abs() < 1e-15);
     assert!((c.fitness - 0.05).abs() < 1e-15);
 
-    let na = score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.001)).unwrap();
-    let nb = score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.005)).unwrap();
-    let nc = score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.05)).unwrap();
+    let na =
+        score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.001)).unwrap();
+    let nb =
+        score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.005)).unwrap();
+    let nc =
+        score_decision_value(&short, &synthetic_slice(PartitionKind::Development, 0.05)).unwrap();
     assert!(nc.fitness < nb.fitness && nb.fitness < na.fitness);
     assert!((na.fitness + 0.001).abs() < 1e-15);
     assert!((nb.fitness + 0.005).abs() < 1e-15);
@@ -296,7 +307,9 @@ fn empty_instrument_is_a_protocol_error_not_silent_zero() {
 #[test]
 fn evaluation_cannot_reach_decision_value_fitness() {
     let genome = always(DecisionAction::Long);
-    assert!(score_decision_value(&genome, &synthetic_slice(PartitionKind::Evaluation, 0.01)).is_err());
+    assert!(
+        score_decision_value(&genome, &synthetic_slice(PartitionKind::Evaluation, 0.01)).is_err()
+    );
     assert!(DevelopmentValue::new(synthetic_slice(PartitionKind::Evaluation, 0.01)).is_err());
     assert!(DevelopmentValue::new(synthetic_slice(PartitionKind::Selection, 0.01)).is_err());
     assert!(DevelopmentValue::new(synthetic_slice(PartitionKind::Development, 0.01)).is_ok());
@@ -378,9 +391,15 @@ fn representation_can_emit_all_three_actions_without_a_threshold() {
 fn living_pool_is_unique_slots_not_every_offspring() {
     let pool = living_selection_pool(&living_archive()).unwrap();
     assert_eq!(pool.len(), 3);
-    assert!(pool.iter().any(|g| g.unmatched_action == DecisionAction::Long));
-    assert!(pool.iter().any(|g| g.unmatched_action == DecisionAction::Short));
-    assert!(pool.iter().any(|g| g.unmatched_action == DecisionAction::NoTrade));
+    assert!(pool
+        .iter()
+        .any(|g| g.unmatched_action == DecisionAction::Long));
+    assert!(pool
+        .iter()
+        .any(|g| g.unmatched_action == DecisionAction::Short));
+    assert!(pool
+        .iter()
+        .any(|g| g.unmatched_action == DecisionAction::NoTrade));
     assert!(!pool.iter().any(|g| g.identity_hash() == "D-never-entered"));
     let _ = genome_from_living_slot(&slot("A", DecisionAction::Long));
     let mut empty = living_archive();
@@ -392,7 +411,10 @@ fn living_pool_is_unique_slots_not_every_offspring() {
 fn select_on_selection_value_uses_m1_not_traded_only() {
     let development = synthetic_slice(PartitionKind::Development, 0.02);
     let selection = synthetic_slice(PartitionKind::Selection, -0.03);
-    let candidates = vec![always(DecisionAction::Long), always(DecisionAction::NoTrade)];
+    let candidates = vec![
+        always(DecisionAction::Long),
+        always(DecisionAction::NoTrade),
+    ];
     let selected = select_on_selection_value(&candidates, &development, &selection).unwrap();
     assert_eq!(selected.genome.unmatched_action, DecisionAction::NoTrade);
     assert_eq!(selected.selection.fitness, 0.0);

@@ -14,8 +14,8 @@
 //   4. Promotes mature patterns to InvestmentInsights.
 //   5. Generates a QuarterlyReviewReport summarising the learning cycle.
 
-use serde::{Deserialize, Serialize};
 use crate::workspace::InvestmentOutcome;
+use serde::{Deserialize, Serialize};
 
 // ── Investment Pattern ────────────────────────────────────────────────────────
 
@@ -173,10 +173,10 @@ impl PersonalInvestmentLearningLoop {
         }
 
         // Pattern: high conviction success.
-        let profitable_count = self.outcomes.iter()
-            .filter(|o| {
-                matches!(o.result, crate::workspace::OutcomeResult::Profitable)
-            })
+        let profitable_count = self
+            .outcomes
+            .iter()
+            .filter(|o| matches!(o.result, crate::workspace::OutcomeResult::Profitable))
             .count();
         let profit_rate = profitable_count as f64 / n;
         if profit_rate >= 0.6 && n >= 3.0 {
@@ -193,7 +193,9 @@ impl PersonalInvestmentLearningLoop {
         }
 
         // Pattern: loss rate.
-        let loss_count = self.outcomes.iter()
+        let loss_count = self
+            .outcomes
+            .iter()
             .filter(|o| matches!(o.result, crate::workspace::OutcomeResult::Loss))
             .count();
         let loss_rate = loss_count as f64 / n;
@@ -211,7 +213,9 @@ impl PersonalInvestmentLearningLoop {
         }
 
         // Pattern: evidence gap (no key learnings recorded).
-        let no_learnings_count = self.outcomes.iter()
+        let no_learnings_count = self
+            .outcomes
+            .iter()
             .filter(|o| o.key_learnings.is_empty())
             .count();
         let no_learnings_rate = no_learnings_count as f64 / n;
@@ -264,7 +268,10 @@ impl PersonalInvestmentLearningLoop {
         recommendation: impl Into<String>,
         timestamp: u64,
     ) -> Option<String> {
-        let pattern = self.patterns.iter().find(|p| p.pattern_id == source_pattern_id)?;
+        let pattern = self
+            .patterns
+            .iter()
+            .find(|p| p.pattern_id == source_pattern_id)?;
         if pattern.maturity < PatternMaturity::Repeated {
             return None;
         }
@@ -312,40 +319,58 @@ impl PersonalInvestmentLearningLoop {
     }
 
     /// Step 5 — Generate a structured quarterly review report.
-    pub fn generate_quarterly_report(&self, quarter: impl Into<String>, timestamp: u64) -> QuarterlyReviewReport {
+    pub fn generate_quarterly_report(
+        &self,
+        quarter: impl Into<String>,
+        timestamp: u64,
+    ) -> QuarterlyReviewReport {
         let n = self.outcomes.len();
-        let profitable = self.outcomes.iter()
+        let profitable = self
+            .outcomes
+            .iter()
             .filter(|o| matches!(o.result, crate::workspace::OutcomeResult::Profitable))
             .count();
-        let losses = self.outcomes.iter()
+        let losses = self
+            .outcomes
+            .iter()
             .filter(|o| matches!(o.result, crate::workspace::OutcomeResult::Loss))
             .count();
         let validated = self.outcomes.iter().filter(|o| o.thesis_validated).count();
-        let thesis_validation_rate = if n > 0 { validated as f64 / n as f64 } else { 0.0 };
+        let thesis_validation_rate = if n > 0 {
+            validated as f64 / n as f64
+        } else {
+            0.0
+        };
 
-        let returns: Vec<f64> = self.outcomes.iter()
-            .filter_map(|o| o.return_pct)
-            .collect();
+        let returns: Vec<f64> = self.outcomes.iter().filter_map(|o| o.return_pct).collect();
         let mean_return_pct = if returns.is_empty() {
             None
         } else {
             Some(returns.iter().sum::<f64>() / returns.len() as f64)
         };
 
-        let validated_patterns = self.patterns.iter()
+        let validated_patterns = self
+            .patterns
+            .iter()
             .filter(|p| p.maturity == PatternMaturity::Validated)
             .count();
 
         let mut summary = Vec::new();
         summary.push(format!("Outcomes reviewed: {}", n));
         summary.push(format!("Profitable: {} | Losses: {}", profitable, losses));
-        summary.push(format!("Thesis validation rate: {:.0}%", thesis_validation_rate * 100.0));
+        summary.push(format!(
+            "Thesis validation rate: {:.0}%",
+            thesis_validation_rate * 100.0
+        ));
         if let Some(ret) = mean_return_pct {
             summary.push(format!("Mean return: {:.1}%", ret));
         }
         summary.push(format!("Patterns identified: {}", self.patterns.len()));
         summary.push(format!("Patterns validated: {}", validated_patterns));
-        summary.push(format!("Insights in Knowledge Graph: {}", self.insights.len()));
+        summary.push(format!(
+            "Insights in Knowledge Graph: {}",
+            self.insights.len()
+        ));
 
         for pattern in &self.patterns {
             if pattern.maturity >= PatternMaturity::Repeated {
@@ -396,7 +421,12 @@ mod tests {
     use super::*;
     use crate::workspace::{InvestmentOutcome, OutcomeResult};
 
-    fn make_outcome(id: &str, result: OutcomeResult, validated: bool, return_pct: Option<f64>) -> InvestmentOutcome {
+    fn make_outcome(
+        id: &str,
+        result: OutcomeResult,
+        validated: bool,
+        return_pct: Option<f64>,
+    ) -> InvestmentOutcome {
         InvestmentOutcome {
             outcome_id: id.to_string(),
             workspace_id: "ws-001".to_string(),
@@ -405,7 +435,11 @@ mod tests {
             return_pct,
             holding_period_days: Some(180),
             thesis_validated: validated,
-            key_learnings: if validated { vec!["Thesis confirmed.".to_string()] } else { vec![] },
+            key_learnings: if validated {
+                vec!["Thesis confirmed.".to_string()]
+            } else {
+                vec![]
+            },
             recorded_at: 1000,
         }
     }
@@ -416,10 +450,18 @@ mod tests {
         // 4 outcomes, 3 with thesis not validated.
         loop_.record_outcome(make_outcome("o1", OutcomeResult::Loss, false, Some(-5.0)));
         loop_.record_outcome(make_outcome("o2", OutcomeResult::Loss, false, Some(-8.0)));
-        loop_.record_outcome(make_outcome("o3", OutcomeResult::Profitable, true, Some(12.0)));
+        loop_.record_outcome(make_outcome(
+            "o3",
+            OutcomeResult::Profitable,
+            true,
+            Some(12.0),
+        ));
         loop_.record_outcome(make_outcome("o4", OutcomeResult::Loss, false, Some(-3.0)));
         loop_.identify_patterns();
-        assert!(loop_.patterns().iter().any(|p| p.pattern_type == InvestmentPatternType::AssumptionBias));
+        assert!(loop_
+            .patterns()
+            .iter()
+            .any(|p| p.pattern_type == InvestmentPatternType::AssumptionBias));
     }
 
     #[test]
@@ -434,14 +476,27 @@ mod tests {
             ));
         }
         loop_.identify_patterns();
-        assert!(loop_.patterns().iter().any(|p| p.pattern_type == InvestmentPatternType::HighConvictionSuccess));
+        assert!(loop_
+            .patterns()
+            .iter()
+            .any(|p| p.pattern_type == InvestmentPatternType::HighConvictionSuccess));
     }
 
     #[test]
     fn quarterly_report_calculates_mean_return() {
         let mut loop_ = PersonalInvestmentLearningLoop::new();
-        loop_.record_outcome(make_outcome("o1", OutcomeResult::Profitable, true, Some(10.0)));
-        loop_.record_outcome(make_outcome("o2", OutcomeResult::Profitable, true, Some(20.0)));
+        loop_.record_outcome(make_outcome(
+            "o1",
+            OutcomeResult::Profitable,
+            true,
+            Some(10.0),
+        ));
+        loop_.record_outcome(make_outcome(
+            "o2",
+            OutcomeResult::Profitable,
+            true,
+            Some(20.0),
+        ));
         loop_.record_outcome(make_outcome("o3", OutcomeResult::Loss, false, Some(-5.0)));
         let report = loop_.generate_quarterly_report("Q3 2026", 9999);
         assert_eq!(report.outcomes_reviewed, 3);
@@ -453,7 +508,12 @@ mod tests {
         let mut loop_ = PersonalInvestmentLearningLoop::new();
         // 6 outcomes with no learnings → EvidenceGap pattern at Repeated maturity.
         for i in 0..6 {
-            let mut outcome = make_outcome(&format!("o{}", i), OutcomeResult::Profitable, true, Some(5.0));
+            let mut outcome = make_outcome(
+                &format!("o{}", i),
+                OutcomeResult::Profitable,
+                true,
+                Some(5.0),
+            );
             outcome.key_learnings = vec![]; // no learnings recorded
             loop_.record_outcome(outcome);
         }

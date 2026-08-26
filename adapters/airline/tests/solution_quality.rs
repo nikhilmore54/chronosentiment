@@ -28,9 +28,7 @@ use coralys_airline::domain::rotation::{Rotation, RotationId};
 use coralys_airline::legality::LegalityChecker;
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{
-    SchedulingObjective, WorkloadBalanceObjective,
-};
+use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::local_search::LocalSearch;
 
 use chrono::{Duration, TimeZone, Utc};
@@ -61,12 +59,7 @@ fn make_pairing(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
         vec![out.clone(), ret.clone()],
     )
     .unwrap();
-    let pairing = Pairing::new(
-        PairingId::new(id),
-        AirportCode::new("LHR"),
-        vec![duty],
-    )
-    .unwrap();
+    let pairing = Pairing::new(PairingId::new(id), AirportCode::new("LHR"), vec![duty]).unwrap();
     (vec![out, ret], pairing)
 }
 
@@ -98,10 +91,10 @@ fn m6_3__optimized_beats_deterministic_baseline() {
     let (l10, p10) = make_pairing("P10", 60);
     let (l11, p11) = make_pairing("P11", 66);
 
-    let all_legs: Vec<FlightLeg> = [
-        l00, l01, l02, l03, l04, l05, l06, l07, l08, l09, l10, l11,
-    ]
-    .into_iter().flatten().collect();
+    let all_legs: Vec<FlightLeg> = [l00, l01, l02, l03, l04, l05, l06, l07, l08, l09, l10, l11]
+        .into_iter()
+        .flatten()
+        .collect();
 
     // Baseline: (6,2,2,2) -- heavy rotation holds LATE pairings.
     // Mean = 3, variance = ((6-3)^2 + 3*(2-3)^2) / 4 = 3.0
@@ -154,11 +147,28 @@ fn m6_3__optimized_beats_deterministic_baseline() {
     println!();
     println!("Metric               Baseline    Optimized");
     println!("-------------------------------------------");
-    println!("Objective score      {:>10.4}  {:>10.4}", baseline_score, optimized_score);
-    println!("Pairings assigned    {:>10}  {:>10}", baseline_pairings, optimized_pairings);
-    println!("Legal                {:>10}  {:>10}", baseline_legal, optimized_legal);
-    println!("Evaluations          {:>10}  {:>10}", 0, metrics.evaluations());
-    println!("Improvements         {:>10}  {:>10}", 0, metrics.improvements());
+    println!(
+        "Objective score      {:>10.4}  {:>10.4}",
+        baseline_score, optimized_score
+    );
+    println!(
+        "Pairings assigned    {:>10}  {:>10}",
+        baseline_pairings, optimized_pairings
+    );
+    println!(
+        "Legal                {:>10}  {:>10}",
+        baseline_legal, optimized_legal
+    );
+    println!(
+        "Evaluations          {:>10}  {:>10}",
+        0,
+        metrics.evaluations()
+    );
+    println!(
+        "Improvements         {:>10}  {:>10}",
+        0,
+        metrics.improvements()
+    );
     println!();
     println!("Observed improvement: {:.1}%", improvement_pct);
     println!();
@@ -167,9 +177,14 @@ fn m6_3__optimized_beats_deterministic_baseline() {
     assert!(
         optimized_score < baseline_score,
         "M6.3 FAIL: optimized ({:.4}) must be < baseline ({:.4}); improvement={:.1}%",
-        optimized_score, baseline_score, improvement_pct
+        optimized_score,
+        baseline_score,
+        improvement_pct
     );
-    assert_eq!(optimized_pairings, baseline_pairings, "M6.3 FAIL: pairings must be conserved");
+    assert_eq!(
+        optimized_pairings, baseline_pairings,
+        "M6.3 FAIL: pairings must be conserved"
+    );
     assert!(baseline_legal, "M6.3 FAIL: baseline must be legal");
     assert!(optimized_legal, "M6.3 FAIL: optimized must be legal");
 }

@@ -7,13 +7,13 @@ use std::collections::BTreeSet;
 
 use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::csp006_protocol::{
-    coralys_search_is_authorized, CHRONOLOGICAL_PARTITION_HASH, RESEARCH_UNIVERSE,
-    RESEARCH_SNAPSHOT_CERTIFIED,
+    coralys_search_is_authorized, CHRONOLOGICAL_PARTITION_HASH, RESEARCH_SNAPSHOT_CERTIFIED,
+    RESEARCH_UNIVERSE,
 };
 use chronosentiment_adapter::decision_support::dataset_partition::{
     assign_timestamp, certified_research_partition, partition_contiguous_equal_thirds,
     search_may_observe_outcomes, search_may_use_for_evolution, search_may_use_for_selection,
-    timestamp_cohort_is_atomic, PartitionKind, SearchOutcomeAccess, search_outcome_access,
+    search_outcome_access, timestamp_cohort_is_atomic, PartitionKind, SearchOutcomeAccess,
 };
 use chronosentiment_adapter::decision_support::enrichment_certify::replay_month_ends_2021_10_to_2024_12;
 use chronosentiment_adapter::decision_support::policy_artifact::TrainingProvenance;
@@ -172,7 +172,8 @@ fn on_disk_manifest_matches_frozen_partition_hash() {
     if !path.exists() {
         return;
     }
-    let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let v: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     assert_eq!(v["authorization"], "PASS");
     assert_eq!(v["n_timestamps"], 39);
     assert_eq!(v["development"]["n_timestamps"], 13);

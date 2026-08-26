@@ -195,7 +195,10 @@ fn classify_stops(
     // both arms. This bounds post_stop_bars and counterfactual to the experiment window,
     // preventing look-ahead leakage from bars that extend beyond the last simulated session.
     let end_ts: Option<chrono::DateTime<chrono::Utc>> = {
-        let all_exit_times = ledger.pe2_arm.trade_log.iter()
+        let all_exit_times = ledger
+            .pe2_arm
+            .trade_log
+            .iter()
             .chain(ledger.coralys_arm.trade_log.iter())
             .filter_map(|l| l.exit_time.as_deref())
             .filter_map(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
@@ -284,10 +287,16 @@ fn classify_stops(
             // LONG: favorable = high prices. SHORT: favorable = low prices.
             let max_favorable_pct = if !within_5.is_empty() && exit_price > 0.0 {
                 if is_long {
-                    let max_close = within_5.iter().map(|b| b.close).fold(f64::NEG_INFINITY, f64::max);
+                    let max_close = within_5
+                        .iter()
+                        .map(|b| b.close)
+                        .fold(f64::NEG_INFINITY, f64::max);
                     Some((max_close - exit_price) / exit_price)
                 } else {
-                    let min_close = within_5.iter().map(|b| b.close).fold(f64::INFINITY, f64::min);
+                    let min_close = within_5
+                        .iter()
+                        .map(|b| b.close)
+                        .fold(f64::INFINITY, f64::min);
                     Some((exit_price - min_close) / exit_price)
                 }
             } else {
@@ -311,11 +320,12 @@ fn classify_stops(
 
             // Direction-normalized continued adverse: price kept moving against entry for all 5 bars.
             // LONG: all closes below entry. SHORT: all closes above entry.
-            let continued_adverse = within_5.len() >= 5 && if is_long {
-                within_5.iter().all(|b| b.close < lot.entry_price)
-            } else {
-                within_5.iter().all(|b| b.close > lot.entry_price)
-            };
+            let continued_adverse = within_5.len() >= 5
+                && if is_long {
+                    within_5.iter().all(|b| b.close < lot.entry_price)
+                } else {
+                    within_5.iter().all(|b| b.close > lot.entry_price)
+                };
 
             // Counterfactual: use last bar within experiment end_clock (not cache end).
             let last_bar_in_window = post_stop_bars.last().map(|b| b.close);
@@ -328,7 +338,13 @@ fn classify_stops(
                 lot.allocation_inr * ret
             });
 
-            (max_favorable_pct, target_reached, recovered, continued_adverse, counterfactual)
+            (
+                max_favorable_pct,
+                target_reached,
+                recovered,
+                continued_adverse,
+                counterfactual,
+            )
         } else {
             (None, false, false, false, None)
         };
@@ -380,19 +396,49 @@ fn classify_stops(
         });
     }
 
-    let n_gap_through = diagnostics.iter().filter(|d| d.category == StopCategory::GapThrough).count();
-    let n_premature = diagnostics.iter().filter(|d| d.category == StopCategory::PrematureStop).count();
-    let n_temporary = diagnostics.iter().filter(|d| d.category == StopCategory::TemporaryExcursion).count();
-    let n_tight = diagnostics.iter().filter(|d| d.category == StopCategory::StopTooTight).count();
-    let n_direction = diagnostics.iter().filter(|d| d.category == StopCategory::DirectionFailure).count();
-    let n_genuine = diagnostics.iter().filter(|d| d.category == StopCategory::GenuineAdverse).count();
+    let n_gap_through = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::GapThrough)
+        .count();
+    let n_premature = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::PrematureStop)
+        .count();
+    let n_temporary = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::TemporaryExcursion)
+        .count();
+    let n_tight = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::StopTooTight)
+        .count();
+    let n_direction = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::DirectionFailure)
+        .count();
+    let n_genuine = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::GenuineAdverse)
+        .count();
 
     let total_stop_pnl: f64 = diagnostics.iter().map(|d| d.realized_pnl_inr).sum();
-    let total_opp_cost: f64 = diagnostics.iter().filter_map(|d| d.opportunity_cost_inr).sum();
-    let total_cf_pnl: f64 = diagnostics.iter().filter_map(|d| d.counterfactual_pnl_inr).sum();
+    let total_opp_cost: f64 = diagnostics
+        .iter()
+        .filter_map(|d| d.opportunity_cost_inr)
+        .sum();
+    let total_cf_pnl: f64 = diagnostics
+        .iter()
+        .filter_map(|d| d.counterfactual_pnl_inr)
+        .sum();
     let net_benefit = total_stop_pnl - total_cf_pnl;
 
-    let pct = |k: usize| if n > 0 { k as f64 / n as f64 * 100.0 } else { 0.0 };
+    let pct = |k: usize| {
+        if n > 0 {
+            k as f64 / n as f64 * 100.0
+        } else {
+            0.0
+        }
+    };
 
     StopLossAnalysis {
         config_label: config_label.to_string(),
@@ -428,65 +474,138 @@ fn render_v04_report(
     let c = &ledger.coralys_summary;
     let mut md = String::new();
 
-    md.push_str(&format!("# Portfolio Replay v0.4 — Allocation Experiment: {config_label}\n\n"));
+    md.push_str(&format!(
+        "# Portfolio Replay v0.4 — Allocation Experiment: {config_label}\n\n"
+    ));
     md.push_str("**Document type:** Product validation evidence  \n");
     md.push_str("**Experiment:** Allocation model comparison — EqualWeight vs MaxPerSymbol  \n");
     md.push_str(&format!("**Allocation:** {allocation_desc}  \n"));
-    md.push_str(&format!("**Initial capital:** Rs.{:.0}  \n\n", V04_INITIAL_CAPITAL_INR));
+    md.push_str(&format!(
+        "**Initial capital:** Rs.{:.0}  \n\n",
+        V04_INITIAL_CAPITAL_INR
+    ));
 
     md.push_str("## Setup\n\n");
     md.push_str(&format!("- Config label: `{config_label}`\n"));
-    md.push_str(&format!("- Universe size: {} instruments\n", ledger.universe.len()));
+    md.push_str(&format!(
+        "- Universe size: {} instruments\n",
+        ledger.universe.len()
+    ));
     md.push_str(&format!("- Universe: {}\n", ledger.universe.join(", ")));
     md.push_str(&format!("- Certified T: {}\n", ledger.certified_t));
-    md.push_str(&format!("- Sessions simulated: {}\n", ledger.n_sessions_simulated));
-    md.push_str(&format!("- Initial capital: Rs.{:.0}\n", ledger.initial_capital_inr));
+    md.push_str(&format!(
+        "- Sessions simulated: {}\n",
+        ledger.n_sessions_simulated
+    ));
+    md.push_str(&format!(
+        "- Initial capital: Rs.{:.0}\n",
+        ledger.initial_capital_inr
+    ));
     md.push_str(&format!("- Allocation model: {allocation_desc}\n"));
-    md.push_str(&format!("- C3-002 artifact: `{}`\n", ledger.c3_002_artifact_hash));
-    md.push_str(&format!("- Coralys artifact: `{}`\n\n", ledger.coralys_artifact_hash));
+    md.push_str(&format!(
+        "- C3-002 artifact: `{}`\n",
+        ledger.c3_002_artifact_hash
+    ));
+    md.push_str(&format!(
+        "- Coralys artifact: `{}`\n\n",
+        ledger.coralys_artifact_hash
+    ));
 
     md.push_str("## Capital Velocity\n\n");
     md.push_str("| Metric | P.E.2 | Coralys v0 |\n");
     md.push_str("|--------|-------|------------|\n");
-    md.push_str(&format!("| Capital velocity | {:.2}x | {:.2}x |\n", p.capital_velocity_ratio, c.capital_velocity_ratio));
-    md.push_str(&format!("| Lots opened | {} | {} |\n", p.n_lots_opened, c.n_lots_opened));
-    md.push_str(&format!("| TARGET exits | {} | {} |\n", p.n_target, c.n_target));
+    md.push_str(&format!(
+        "| Capital velocity | {:.2}x | {:.2}x |\n",
+        p.capital_velocity_ratio, c.capital_velocity_ratio
+    ));
+    md.push_str(&format!(
+        "| Lots opened | {} | {} |\n",
+        p.n_lots_opened, c.n_lots_opened
+    ));
+    md.push_str(&format!(
+        "| TARGET exits | {} | {} |\n",
+        p.n_target, c.n_target
+    ));
     md.push_str(&format!("| STOP exits | {} | {} |\n", p.n_stop, c.n_stop));
-    md.push_str(&format!("| HORIZON exits | {} | {} |\n", p.n_horizon, c.n_horizon));
-    md.push_str(&format!("| Open at end | {} | {} |\n", p.n_open_at_end, c.n_open_at_end));
+    md.push_str(&format!(
+        "| HORIZON exits | {} | {} |\n",
+        p.n_horizon, c.n_horizon
+    ));
+    md.push_str(&format!(
+        "| Open at end | {} | {} |\n",
+        p.n_open_at_end, c.n_open_at_end
+    ));
     if let (Some(pa), Some(ca)) = (p.avg_holding_sessions, c.avg_holding_sessions) {
-        md.push_str(&format!("| Avg hold (sessions) | {:.1} | {:.1} |\n", pa, ca));
+        md.push_str(&format!(
+            "| Avg hold (sessions) | {:.1} | {:.1} |\n",
+            pa, ca
+        ));
     }
     md.push_str("\n");
 
     md.push_str("## Returns\n\n");
     md.push_str("| Metric | P.E.2 | Coralys v0 |\n");
     md.push_str("|--------|-------|------------|\n");
-    md.push_str(&format!("| Total return | {:+.2}% | {:+.2}% |\n",
-        p.total_return_pct * 100.0, c.total_return_pct * 100.0));
-    md.push_str(&format!("| Realized PnL | Rs.{:+.2} | Rs.{:+.2} |\n",
-        p.total_realized_pnl_inr, c.total_realized_pnl_inr));
-    md.push_str(&format!("| Unrealized PnL | Rs.{:+.2} | Rs.{:+.2} |\n",
-        p.total_unrealized_pnl_inr, c.total_unrealized_pnl_inr));
-    md.push_str(&format!("| Max drawdown | Rs.{:.2} ({:.2}%) | Rs.{:.2} ({:.2}%) |\n",
-        p.max_drawdown_inr, p.max_drawdown_pct * 100.0,
-        c.max_drawdown_inr, c.max_drawdown_pct * 100.0));
+    md.push_str(&format!(
+        "| Total return | {:+.2}% | {:+.2}% |\n",
+        p.total_return_pct * 100.0,
+        c.total_return_pct * 100.0
+    ));
+    md.push_str(&format!(
+        "| Realized PnL | Rs.{:+.2} | Rs.{:+.2} |\n",
+        p.total_realized_pnl_inr, c.total_realized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "| Unrealized PnL | Rs.{:+.2} | Rs.{:+.2} |\n",
+        p.total_unrealized_pnl_inr, c.total_unrealized_pnl_inr
+    ));
+    md.push_str(&format!(
+        "| Max drawdown | Rs.{:.2} ({:.2}%) | Rs.{:.2} ({:.2}%) |\n",
+        p.max_drawdown_inr,
+        p.max_drawdown_pct * 100.0,
+        c.max_drawdown_inr,
+        c.max_drawdown_pct * 100.0
+    ));
     md.push_str("\n");
 
     md.push_str("## Stop-Loss Analysis (Coralys arm)\n\n");
-    md.push_str(&format!("- Total stops: {}\n", stop_analysis.n_coralys_stops));
+    md.push_str(&format!(
+        "- Total stops: {}\n",
+        stop_analysis.n_coralys_stops
+    ));
     if stop_analysis.n_coralys_stops > 0 {
-        md.push_str(&format!("- Premature: {:.1}% ({}/{})\n",
-            stop_analysis.pct_premature, stop_analysis.n_premature, stop_analysis.n_coralys_stops));
-        md.push_str(&format!("- Temporary excursion: {:.1}% ({}/{})\n",
-            stop_analysis.pct_temporary_excursion, stop_analysis.n_temporary_excursion, stop_analysis.n_coralys_stops));
-        md.push_str(&format!("- Stop too tight: {:.1}% ({}/{})\n",
-            stop_analysis.pct_stop_too_tight, stop_analysis.n_stop_too_tight, stop_analysis.n_coralys_stops));
-        md.push_str(&format!("- Direction failure: {:.1}% ({}/{})\n",
-            stop_analysis.pct_direction_failure, stop_analysis.n_direction_failure, stop_analysis.n_coralys_stops));
-        md.push_str(&format!("- Genuine adverse: {:.1}% ({}/{})\n",
-            stop_analysis.pct_genuine_adverse, stop_analysis.n_genuine_adverse, stop_analysis.n_coralys_stops));
-        md.push_str(&format!("- Net stop benefit: Rs.{:+.2}\n", stop_analysis.net_stop_benefit_inr));
+        md.push_str(&format!(
+            "- Premature: {:.1}% ({}/{})\n",
+            stop_analysis.pct_premature, stop_analysis.n_premature, stop_analysis.n_coralys_stops
+        ));
+        md.push_str(&format!(
+            "- Temporary excursion: {:.1}% ({}/{})\n",
+            stop_analysis.pct_temporary_excursion,
+            stop_analysis.n_temporary_excursion,
+            stop_analysis.n_coralys_stops
+        ));
+        md.push_str(&format!(
+            "- Stop too tight: {:.1}% ({}/{})\n",
+            stop_analysis.pct_stop_too_tight,
+            stop_analysis.n_stop_too_tight,
+            stop_analysis.n_coralys_stops
+        ));
+        md.push_str(&format!(
+            "- Direction failure: {:.1}% ({}/{})\n",
+            stop_analysis.pct_direction_failure,
+            stop_analysis.n_direction_failure,
+            stop_analysis.n_coralys_stops
+        ));
+        md.push_str(&format!(
+            "- Genuine adverse: {:.1}% ({}/{})\n",
+            stop_analysis.pct_genuine_adverse,
+            stop_analysis.n_genuine_adverse,
+            stop_analysis.n_coralys_stops
+        ));
+        md.push_str(&format!(
+            "- Net stop benefit: Rs.{:+.2}\n",
+            stop_analysis.net_stop_benefit_inr
+        ));
     }
     md.push_str("\n");
 
@@ -494,25 +613,43 @@ fn render_v04_report(
 }
 
 fn render_comparison_matrix(
-    results: &[(String, String, &ContinuousPortfolioLedger, &StopLossAnalysis)],
+    results: &[(
+        String,
+        String,
+        &ContinuousPortfolioLedger,
+        &StopLossAnalysis,
+    )],
 ) -> String {
     let mut md = String::new();
 
     md.push_str("# Portfolio Replay v0.4 — Allocation Model Comparison Matrix\n\n");
     md.push_str("**Experiment:** EqualWeight (control) vs MaxPerSymbol ₹20k (experiment)  \n");
-    md.push_str(&format!("**Initial capital:** Rs.{:.0} for all configs  \n\n", V04_INITIAL_CAPITAL_INR));
+    md.push_str(&format!(
+        "**Initial capital:** Rs.{:.0} for all configs  \n\n",
+        V04_INITIAL_CAPITAL_INR
+    ));
 
     // P.E.2 arm table
     md.push_str("## P.E.2 Arm\n\n");
-    md.push_str("| Config | Alloc | Universe | Lots | TARGET | STOP | HORIZON | Return | Velocity |\n");
-    md.push_str("|--------|-------|----------|------|--------|------|---------|--------|----------|\n");
+    md.push_str(
+        "| Config | Alloc | Universe | Lots | TARGET | STOP | HORIZON | Return | Velocity |\n",
+    );
+    md.push_str(
+        "|--------|-------|----------|------|--------|------|---------|--------|----------|\n",
+    );
     for (label, alloc_desc, ledger, _) in results {
         let p = &ledger.pe2_summary;
         md.push_str(&format!(
             "| {} | {} | {} | {} | {} | {} | {} | {:+.2}% | {:.2}x |\n",
-            label, alloc_desc, ledger.universe.len(),
-            p.n_lots_opened, p.n_target, p.n_stop, p.n_horizon,
-            p.total_return_pct * 100.0, p.capital_velocity_ratio,
+            label,
+            alloc_desc,
+            ledger.universe.len(),
+            p.n_lots_opened,
+            p.n_target,
+            p.n_stop,
+            p.n_horizon,
+            p.total_return_pct * 100.0,
+            p.capital_velocity_ratio,
         ));
     }
     md.push_str("\n");
@@ -563,8 +700,10 @@ fn render_comparison_matrix(
             md.push_str(&format!(
                 "| {} | {:.2}x / {:.2}x | {:.2}x / {:.2}x | PE2: {:+.2}x / Coralys: {:+.2}x |\n",
                 universe_size,
-                eq_pe2_v, eq_cor_v,
-                mx_pe2_v, mx_cor_v,
+                eq_pe2_v,
+                eq_cor_v,
+                mx_pe2_v,
+                mx_cor_v,
                 mx_pe2_v - eq_pe2_v,
                 mx_cor_v - eq_cor_v,
             ));
@@ -573,12 +712,20 @@ fn render_comparison_matrix(
     md.push_str("\n");
 
     md.push_str("## Interpretation\n\n");
-    md.push_str("- **EqualWeight** deploys all available cash in every session with eligible signals.\n");
+    md.push_str(
+        "- **EqualWeight** deploys all available cash in every session with eligible signals.\n",
+    );
     md.push_str("  At high signal density (50 instruments), this exhausts capital in session 1.\n");
     md.push_str("- **MaxPerSymbol ₹20k** caps each lot at ₹20,000, leaving undeployed capital\n");
-    md.push_str("  available for subsequent sessions. This should increase velocity at 50 instruments.\n");
-    md.push_str("- If MaxPerSymbol velocity > EqualWeight velocity at 50 instruments, the hypothesis\n");
-    md.push_str("  is confirmed: allocation policy (not capital amount) drives velocity collapse.\n\n");
+    md.push_str(
+        "  available for subsequent sessions. This should increase velocity at 50 instruments.\n",
+    );
+    md.push_str(
+        "- If MaxPerSymbol velocity > EqualWeight velocity at 50 instruments, the hypothesis\n",
+    );
+    md.push_str(
+        "  is confirmed: allocation policy (not capital amount) drives velocity collapse.\n\n",
+    );
 
     md
 }
@@ -636,66 +783,207 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
 
 /// 7-instrument RESEARCH_UNIVERSE (canonical baseline).
 const UNIVERSE_7: &[&str] = &[
-    "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "RELIANCE.NS",
-    "TCS.NS", "IDEA.NS", "MAHABANK.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "IDEA.NS",
+    "MAHABANK.NS",
 ];
 
 /// First 27 instruments — v0.3-A base (25) + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_25: &[&str] = &[
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-    "LT.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
-    "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "NESTLEIND.NS",
-    "POWERGRID.NS", "NTPC.NS", "TECHM.NS", "HCLTECH.NS", "ONGC.NS",
-    "MAHABANK.NS", "IDEA.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
+    "SUNPHARMA.NS",
+    "WIPRO.NS",
+    "ULTRACEMCO.NS",
+    "BAJFINANCE.NS",
+    "NESTLEIND.NS",
+    "POWERGRID.NS",
+    "NTPC.NS",
+    "TECHM.NS",
+    "HCLTECH.NS",
+    "ONGC.NS",
+    "MAHABANK.NS",
+    "IDEA.NS",
 ];
 
 /// 52 instruments — extends UNIVERSE_25 with 25 more + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_50: &[&str] = &[
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-    "LT.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
-    "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "NESTLEIND.NS",
-    "POWERGRID.NS", "NTPC.NS", "TECHM.NS", "HCLTECH.NS", "ONGC.NS",
-    "BAJAJFINSV.NS", "JSWSTEEL.NS", "TMPV.NS", "ADANIENT.NS", "ADANIPORTS.NS",
-    "COALINDIA.NS", "DIVISLAB.NS", "DRREDDY.NS", "EICHERMOT.NS", "GRASIM.NS",
-    "HEROMOTOCO.NS", "HINDALCO.NS", "INDUSINDBK.NS", "M&M.NS", "SBILIFE.NS",
-    "TATACONSUM.NS", "TATASTEEL.NS", "UPL.NS", "VEDL.NS", "BPCL.NS",
-    "CIPLA.NS", "HDFCLIFE.NS", "PIDILITIND.NS", "SHREECEM.NS", "UNITDSPR.NS",
-    "MAHABANK.NS", "IDEA.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
+    "SUNPHARMA.NS",
+    "WIPRO.NS",
+    "ULTRACEMCO.NS",
+    "BAJFINANCE.NS",
+    "NESTLEIND.NS",
+    "POWERGRID.NS",
+    "NTPC.NS",
+    "TECHM.NS",
+    "HCLTECH.NS",
+    "ONGC.NS",
+    "BAJAJFINSV.NS",
+    "JSWSTEEL.NS",
+    "TMPV.NS",
+    "ADANIENT.NS",
+    "ADANIPORTS.NS",
+    "COALINDIA.NS",
+    "DIVISLAB.NS",
+    "DRREDDY.NS",
+    "EICHERMOT.NS",
+    "GRASIM.NS",
+    "HEROMOTOCO.NS",
+    "HINDALCO.NS",
+    "INDUSINDBK.NS",
+    "M&M.NS",
+    "SBILIFE.NS",
+    "TATACONSUM.NS",
+    "TATASTEEL.NS",
+    "UPL.NS",
+    "VEDL.NS",
+    "BPCL.NS",
+    "CIPLA.NS",
+    "HDFCLIFE.NS",
+    "PIDILITIND.NS",
+    "SHREECEM.NS",
+    "UNITDSPR.NS",
+    "MAHABANK.NS",
+    "IDEA.NS",
 ];
 
 /// 102 instruments — v0.3-C base (100) + MAHABANK.NS + IDEA.NS.
 const UNIVERSE_100: &[&str] = &[
-    "HDFCBANK.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS",
-    "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS",
-    "KOTAKBANK.NS", "AXISBANK.NS", "SBIN.NS", "BAJFINANCE.NS",
-    "BHARTIARTL.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
-    "SUNPHARMA.NS", "WIPRO.NS", "HCLTECH.NS", "ULTRACEMCO.NS",
-    "NESTLEIND.NS", "POWERGRID.NS", "NTPC.NS", "ONGC.NS",
-    "TMPV.NS", "TATASTEEL.NS",
-    "ADANIENT.NS", "ADANIPORTS.NS", "BAJAJFINSV.NS", "BPCL.NS",
-    "BRITANNIA.NS", "CIPLA.NS", "COALINDIA.NS", "DIVISLAB.NS",
-    "DRREDDY.NS", "EICHERMOT.NS", "GRASIM.NS", "HEROMOTOCO.NS",
-    "HINDALCO.NS", "INDUSINDBK.NS", "JSWSTEEL.NS", "LT.NS",
-    "M&M.NS", "PIDILITIND.NS", "SBILIFE.NS", "SHREECEM.NS",
-    "SIEMENS.NS", "TECHM.NS", "TRENT.NS", "UPL.NS",
+    "HDFCBANK.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "KOTAKBANK.NS",
+    "AXISBANK.NS",
+    "SBIN.NS",
+    "BAJFINANCE.NS",
+    "BHARTIARTL.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
+    "SUNPHARMA.NS",
+    "WIPRO.NS",
+    "HCLTECH.NS",
+    "ULTRACEMCO.NS",
+    "NESTLEIND.NS",
+    "POWERGRID.NS",
+    "NTPC.NS",
+    "ONGC.NS",
+    "TMPV.NS",
+    "TATASTEEL.NS",
+    "ADANIENT.NS",
+    "ADANIPORTS.NS",
+    "BAJAJFINSV.NS",
+    "BPCL.NS",
+    "BRITANNIA.NS",
+    "CIPLA.NS",
+    "COALINDIA.NS",
+    "DIVISLAB.NS",
+    "DRREDDY.NS",
+    "EICHERMOT.NS",
+    "GRASIM.NS",
+    "HEROMOTOCO.NS",
+    "HINDALCO.NS",
+    "INDUSINDBK.NS",
+    "JSWSTEEL.NS",
+    "LT.NS",
+    "M&M.NS",
+    "PIDILITIND.NS",
+    "SBILIFE.NS",
+    "SHREECEM.NS",
+    "SIEMENS.NS",
+    "TECHM.NS",
+    "TRENT.NS",
+    "UPL.NS",
     "VEDL.NS",
-    "ABCAPITAL.NS", "ABFRL.NS", "ACC.NS", "AMBUJACEM.NS",
-    "APOLLOHOSP.NS", "APOLLOTYRE.NS", "AUROPHARMA.NS", "BALKRISIND.NS",
-    "BANDHANBNK.NS", "BANKBARODA.NS", "BERGEPAINT.NS", "BIOCON.NS",
-    "BOSCHLTD.NS", "CANBK.NS", "CHOLAFIN.NS", "COLPAL.NS",
-    "CONCOR.NS", "CUMMINSIND.NS", "DABUR.NS", "DLF.NS",
-    "ESCORTS.NS", "EXIDEIND.NS", "FEDERALBNK.NS", "GAIL.NS",
-    "GODREJCP.NS", "GODREJPROP.NS", "HAVELLS.NS", "HDFCAMC.NS",
-    "HDFCLIFE.NS", "ICICIPRULI.NS", "IDFCFIRSTB.NS", "IGL.NS",
-    "INDUSTOWER.NS", "IRCTC.NS", "JUBLFOOD.NS", "LICHSGFIN.NS",
-    "LUPIN.NS", "MARICO.NS", "UNITDSPR.NS", "MFSL.NS",
-    "MPHASIS.NS", "MRF.NS", "MUTHOOTFIN.NS", "NAUKRI.NS",
-    "NMDC.NS", "PAGEIND.NS", "PIIND.NS", "PERSISTENT.NS",
-    "PFC.NS", "PNB.NS",
+    "ABCAPITAL.NS",
+    "ABFRL.NS",
+    "ACC.NS",
+    "AMBUJACEM.NS",
+    "APOLLOHOSP.NS",
+    "APOLLOTYRE.NS",
+    "AUROPHARMA.NS",
+    "BALKRISIND.NS",
+    "BANDHANBNK.NS",
+    "BANKBARODA.NS",
+    "BERGEPAINT.NS",
+    "BIOCON.NS",
+    "BOSCHLTD.NS",
+    "CANBK.NS",
+    "CHOLAFIN.NS",
+    "COLPAL.NS",
+    "CONCOR.NS",
+    "CUMMINSIND.NS",
+    "DABUR.NS",
+    "DLF.NS",
+    "ESCORTS.NS",
+    "EXIDEIND.NS",
+    "FEDERALBNK.NS",
+    "GAIL.NS",
+    "GODREJCP.NS",
+    "GODREJPROP.NS",
+    "HAVELLS.NS",
+    "HDFCAMC.NS",
+    "HDFCLIFE.NS",
+    "ICICIPRULI.NS",
+    "IDFCFIRSTB.NS",
+    "IGL.NS",
+    "INDUSTOWER.NS",
+    "IRCTC.NS",
+    "JUBLFOOD.NS",
+    "LICHSGFIN.NS",
+    "LUPIN.NS",
+    "MARICO.NS",
+    "UNITDSPR.NS",
+    "MFSL.NS",
+    "MPHASIS.NS",
+    "MRF.NS",
+    "MUTHOOTFIN.NS",
+    "NAUKRI.NS",
+    "NMDC.NS",
+    "PAGEIND.NS",
+    "PIIND.NS",
+    "PERSISTENT.NS",
+    "PFC.NS",
+    "PNB.NS",
     "TATACONSUM.NS",
-    "MAHABANK.NS", "IDEA.NS",
+    "MAHABANK.NS",
+    "IDEA.NS",
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -722,7 +1010,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!(
             "artifact hash mismatch: expected {RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH}, got {}",
             artifact.artifact_hash
-        ).into());
+        )
+        .into());
     }
     println!("  artifact_hash  : {} ✓", artifact.artifact_hash);
 
@@ -806,10 +1095,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── Run each config ───────────────────────────────────────────────────────
     fs::create_dir_all(&args.output_base)?;
 
-    let mut all_results: Vec<(String, String, ContinuousPortfolioLedger, StopLossAnalysis)> = Vec::new();
+    let mut all_results: Vec<(String, String, ContinuousPortfolioLedger, StopLossAnalysis)> =
+        Vec::new();
 
     for (label, alloc_desc, config) in &configs {
-        let available = config.universe.iter().filter(|s| cache.contains_key(s.as_str())).count();
+        let available = config
+            .universe
+            .iter()
+            .filter(|s| cache.contains_key(s.as_str()))
+            .count();
         let requested_size = config.universe.len();
 
         if args.strict && available < requested_size {
@@ -818,7 +1112,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ).into());
         }
 
-        println!("\n─── Running config: {label} ({available}/{requested_size} instruments in cache) ───");
+        println!(
+            "\n─── Running config: {label} ({available}/{requested_size} instruments in cache) ───"
+        );
         println!("    allocation: {alloc_desc}");
 
         let ledger = run_continuous_portfolio_replay_with_config(&artifact, &cache, config)
@@ -828,7 +1124,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(format!(
                 "unexpected path_kind for {label}: expected {CONTINUOUS_REPLAY_VERSION}, got {}",
                 ledger.path_kind
-            ).into());
+            )
+            .into());
         }
 
         // ── Stop classification ───────────────────────────────────────────────
@@ -900,16 +1197,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let c = &ledger.coralys_summary;
         println!("  result=PASS  config={label}  alloc={alloc_desc}");
         println!("  universe_available={}", ledger.universe.len());
-        println!("  P.E.2:     lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
-            p.n_lots_opened, p.n_target, p.n_stop, p.n_horizon,
-            p.total_return_pct * 100.0, p.capital_velocity_ratio);
-        println!("  Coralys:   lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
-            c.n_lots_opened, c.n_target, c.n_stop, c.n_horizon,
-            c.total_return_pct * 100.0, c.capital_velocity_ratio);
-        let stop_rate = if c.n_lots_opened > 0 { c.n_stop as f64 / c.n_lots_opened as f64 * 100.0 } else { 0.0 };
-        println!("  stop_rate={:.1}%  premature={:.1}%  excursion={:.1}%  genuine={:.1}%",
-            stop_rate, stop_analysis.pct_premature, stop_analysis.pct_temporary_excursion,
-            stop_analysis.pct_genuine_adverse);
+        println!(
+            "  P.E.2:     lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
+            p.n_lots_opened,
+            p.n_target,
+            p.n_stop,
+            p.n_horizon,
+            p.total_return_pct * 100.0,
+            p.capital_velocity_ratio
+        );
+        println!(
+            "  Coralys:   lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
+            c.n_lots_opened,
+            c.n_target,
+            c.n_stop,
+            c.n_horizon,
+            c.total_return_pct * 100.0,
+            c.capital_velocity_ratio
+        );
+        let stop_rate = if c.n_lots_opened > 0 {
+            c.n_stop as f64 / c.n_lots_opened as f64 * 100.0
+        } else {
+            0.0
+        };
+        println!(
+            "  stop_rate={:.1}%  premature={:.1}%  excursion={:.1}%  genuine={:.1}%",
+            stop_rate,
+            stop_analysis.pct_premature,
+            stop_analysis.pct_temporary_excursion,
+            stop_analysis.pct_genuine_adverse
+        );
         println!("  archive={}", archive_dir.display());
 
         all_results.push((label.clone(), alloc_desc.clone(), ledger, stop_analysis));
@@ -918,44 +1235,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── Write cross-config comparison matrix ──────────────────────────────────
     println!("\n─── Writing comparison matrix ───");
 
-    let results_ref: Vec<(String, String, &ContinuousPortfolioLedger, &StopLossAnalysis)> =
-        all_results.iter().map(|(l, a, ledger, stop)| (l.clone(), a.clone(), ledger, stop)).collect();
+    let results_ref: Vec<(
+        String,
+        String,
+        &ContinuousPortfolioLedger,
+        &StopLossAnalysis,
+    )> = all_results
+        .iter()
+        .map(|(l, a, ledger, stop)| (l.clone(), a.clone(), ledger, stop))
+        .collect();
 
     // comparison_matrix.json
-    let matrix_json: Vec<serde_json::Value> = results_ref.iter().map(|(label, alloc_desc, ledger, stop)| {
-        let p = &ledger.pe2_summary;
-        let c = &ledger.coralys_summary;
-        let stop_rate = if c.n_lots_opened > 0 { c.n_stop as f64 / c.n_lots_opened as f64 * 100.0 } else { 0.0 };
-        serde_json::json!({
-            "config_label": label,
-            "allocation_model": alloc_desc,
-            "universe_size": ledger.universe.len(),
-            "pe2": {
-                "n_lots_opened": p.n_lots_opened,
-                "n_target": p.n_target,
-                "n_stop": p.n_stop,
-                "n_horizon": p.n_horizon,
-                "total_return_pct": p.total_return_pct * 100.0,
-                "capital_velocity_ratio": p.capital_velocity_ratio,
-                "total_realized_pnl_inr": p.total_realized_pnl_inr,
-            },
-            "coralys": {
-                "n_lots_opened": c.n_lots_opened,
-                "n_target": c.n_target,
-                "n_stop": c.n_stop,
-                "n_horizon": c.n_horizon,
-                "total_return_pct": c.total_return_pct * 100.0,
-                "capital_velocity_ratio": c.capital_velocity_ratio,
-                "total_realized_pnl_inr": c.total_realized_pnl_inr,
-                "stop_rate_pct": stop_rate,
-                "pct_premature": stop.pct_premature,
-                "pct_temporary_excursion": stop.pct_temporary_excursion,
-                "pct_stop_too_tight": stop.pct_stop_too_tight,
-                "pct_direction_failure": stop.pct_direction_failure,
-                "pct_genuine_adverse": stop.pct_genuine_adverse,
-            }
+    let matrix_json: Vec<serde_json::Value> = results_ref
+        .iter()
+        .map(|(label, alloc_desc, ledger, stop)| {
+            let p = &ledger.pe2_summary;
+            let c = &ledger.coralys_summary;
+            let stop_rate = if c.n_lots_opened > 0 {
+                c.n_stop as f64 / c.n_lots_opened as f64 * 100.0
+            } else {
+                0.0
+            };
+            serde_json::json!({
+                "config_label": label,
+                "allocation_model": alloc_desc,
+                "universe_size": ledger.universe.len(),
+                "pe2": {
+                    "n_lots_opened": p.n_lots_opened,
+                    "n_target": p.n_target,
+                    "n_stop": p.n_stop,
+                    "n_horizon": p.n_horizon,
+                    "total_return_pct": p.total_return_pct * 100.0,
+                    "capital_velocity_ratio": p.capital_velocity_ratio,
+                    "total_realized_pnl_inr": p.total_realized_pnl_inr,
+                },
+                "coralys": {
+                    "n_lots_opened": c.n_lots_opened,
+                    "n_target": c.n_target,
+                    "n_stop": c.n_stop,
+                    "n_horizon": c.n_horizon,
+                    "total_return_pct": c.total_return_pct * 100.0,
+                    "capital_velocity_ratio": c.capital_velocity_ratio,
+                    "total_realized_pnl_inr": c.total_realized_pnl_inr,
+                    "stop_rate_pct": stop_rate,
+                    "pct_premature": stop.pct_premature,
+                    "pct_temporary_excursion": stop.pct_temporary_excursion,
+                    "pct_stop_too_tight": stop.pct_stop_too_tight,
+                    "pct_direction_failure": stop.pct_direction_failure,
+                    "pct_genuine_adverse": stop.pct_genuine_adverse,
+                }
+            })
         })
-    }).collect();
+        .collect();
 
     fs::write(
         args.output_base.join("comparison_matrix.json"),

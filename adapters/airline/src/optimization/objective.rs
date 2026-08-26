@@ -25,8 +25,8 @@
 //! the Credit Engine (Layer 1a).  They use [`GeradCreditPolicy`] by default
 //! and accept any [`CreditPolicy`] + [`CostModel`] implementation.
 
-use crate::domain::credit::{CreditContext, CreditPolicy, GeradCreditPolicy};
 use crate::domain::cost::{CostContext, CostModel, FlatRateCostModel};
+use crate::domain::credit::{CreditContext, CreditPolicy, GeradCreditPolicy};
 use crate::domain::flight::AirportCode;
 use crate::domain::roster::Roster;
 use chrono::NaiveDate;
@@ -77,7 +77,8 @@ impl SchedulingObjective for WorkloadBalanceObjective {
         let counts: Vec<f64> = roster
             .rotations()
             .map(|r| {
-                r.pairings().iter()
+                r.pairings()
+                    .iter()
                     .flat_map(|p| p.duties().iter())
                     .flat_map(|d| d.legs().iter())
                     .count() as f64
@@ -89,8 +90,8 @@ impl SchedulingObjective for WorkloadBalanceObjective {
         }
 
         let mean = counts.iter().sum::<f64>() / counts.len() as f64;
-        let variance = counts.iter().map(|&c| (c - mean).powi(2)).sum::<f64>()
-            / counts.len() as f64;
+        let variance =
+            counts.iter().map(|&c| (c - mean).powi(2)).sum::<f64>() / counts.len() as f64;
         variance
     }
 }
@@ -139,7 +140,9 @@ impl SchedulingObjective for CoverageCostObjective {
             for pairing in rotation.pairings().iter() {
                 for duty in pairing.duties().iter() {
                     for leg in duty.legs().iter() {
-                        *assignment_count.entry(leg.id.as_str().to_string()).or_insert(0) += 1;
+                        *assignment_count
+                            .entry(leg.id.as_str().to_string())
+                            .or_insert(0) += 1;
                     }
                 }
             }
@@ -257,7 +260,10 @@ impl CreditedHoursBalanceObjective {
 
     /// Create with a custom credit policy and crew base.
     pub fn with_policy(policy: Box<dyn CreditPolicy>, base: AirportCode) -> Self {
-        Self { policy, context_base: base }
+        Self {
+            policy,
+            context_base: base,
+        }
     }
 
     fn make_context(&self) -> CreditContext {
@@ -351,7 +357,11 @@ impl CreditCostObjective {
         cost_model: Box<dyn CostModel>,
         base: AirportCode,
     ) -> Self {
-        Self { credit_policy, cost_model, context_base: base }
+        Self {
+            credit_policy,
+            cost_model,
+            context_base: base,
+        }
     }
 
     fn make_credit_context(&self) -> CreditContext {
@@ -428,10 +438,13 @@ mod tests {
 
     fn make_unbalanced_roster() -> Roster {
         // C1 has 3 legs, C2 has 1 leg — unbalanced.
-        let d1a = make_duty("D1a", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "AMS", 11, 13),
-        ]);
+        let d1a = make_duty(
+            "D1a",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "AMS", 11, 13),
+            ],
+        );
         let d1b = make_duty("D1b", vec![make_leg("L1c", "AMS", "LHR", 22, 24)]);
         let d2a = make_duty("D2a", vec![make_leg("L2a", "LHR", "CDG", 8, 10)]);
         let d2b = make_duty("D2b", vec![make_leg("L2b", "CDG", "LHR", 22, 24)]);
@@ -530,9 +543,18 @@ mod tests {
     #[test]
     fn objective_ids_are_stable() {
         assert_eq!(WorkloadBalanceObjective.objective_id(), "workload_balance");
-        assert_eq!(CoverageCostObjective::default().objective_id(), "coverage_cost");
-        assert_eq!(RestQualityObjective::default().objective_id(), "rest_quality");
-        assert_eq!(CreditedHoursBalanceObjective::default().objective_id(), "credited_hours_balance");
+        assert_eq!(
+            CoverageCostObjective::default().objective_id(),
+            "coverage_cost"
+        );
+        assert_eq!(
+            RestQualityObjective::default().objective_id(),
+            "rest_quality"
+        );
+        assert_eq!(
+            CreditedHoursBalanceObjective::default().objective_id(),
+            "credited_hours_balance"
+        );
         assert_eq!(CreditCostObjective::default().objective_id(), "credit_cost");
     }
 
@@ -549,14 +571,20 @@ mod tests {
     fn credited_hours_balance_equal_duties_scores_zero() {
         // Two crew members, each with one identical 2h round-trip duty → variance = 0.
         // Pairings must end at their base (LHR), so use LHR→CDG→LHR.
-        let d1 = make_duty("D1", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "LHR", 11, 13),
-        ]);
-        let d2 = make_duty("D2", vec![
-            make_leg("L2a", "LHR", "CDG", 8, 10),
-            make_leg("L2b", "CDG", "LHR", 11, 13),
-        ]);
+        let d1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "LHR", 11, 13),
+            ],
+        );
+        let d2 = make_duty(
+            "D2",
+            vec![
+                make_leg("L2a", "LHR", "CDG", 8, 10),
+                make_leg("L2b", "CDG", "LHR", 11, 13),
+            ],
+        );
         let p1 = make_pairing("P1", "LHR", vec![d1]);
         let p2 = make_pairing("P2", "LHR", vec![d2]);
         let r1 = make_rotation("R1", "C1", vec![p1]);
@@ -569,14 +597,20 @@ mod tests {
     #[test]
     fn credited_hours_balance_unequal_duties_scores_positive() {
         // C1 has a 4h round-trip duty, C2 has a 2h round-trip duty → variance > 0.
-        let d1 = make_duty("D1", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "LHR", 12, 14), // 4h total block
-        ]);
-        let d2 = make_duty("D2", vec![
-            make_leg("L2a", "LHR", "CDG", 8, 9),
-            make_leg("L2b", "CDG", "LHR", 10, 11), // 2h total block
-        ]);
+        let d1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "LHR", 12, 14), // 4h total block
+            ],
+        );
+        let d2 = make_duty(
+            "D2",
+            vec![
+                make_leg("L2a", "LHR", "CDG", 8, 9),
+                make_leg("L2b", "CDG", "LHR", 10, 11), // 2h total block
+            ],
+        );
         let p1 = make_pairing("P1", "LHR", vec![d1]);
         let p2 = make_pairing("P2", "LHR", vec![d2]);
         let r1 = make_rotation("R1", "C1", vec![p1]);
@@ -590,28 +624,40 @@ mod tests {
     fn credited_hours_balance_more_balanced_scores_lower() {
         // Balanced: C1=4h, C2=4h → variance=0.
         // Unbalanced: C1=4h, C2=2h → variance>0.
-        let d_bal1 = make_duty("D1", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "LHR", 12, 14),
-        ]);
-        let d_bal2 = make_duty("D2", vec![
-            make_leg("L2a", "LHR", "CDG", 8, 10),
-            make_leg("L2b", "CDG", "LHR", 12, 14),
-        ]);
+        let d_bal1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "LHR", 12, 14),
+            ],
+        );
+        let d_bal2 = make_duty(
+            "D2",
+            vec![
+                make_leg("L2a", "LHR", "CDG", 8, 10),
+                make_leg("L2b", "CDG", "LHR", 12, 14),
+            ],
+        );
         let p_bal1 = make_pairing("P1", "LHR", vec![d_bal1]);
         let p_bal2 = make_pairing("P2", "LHR", vec![d_bal2]);
         let r_bal1 = make_rotation("R1", "C1", vec![p_bal1]);
         let r_bal2 = make_rotation("R2", "C2", vec![p_bal2]);
         let balanced = make_roster(vec![], vec![r_bal1, r_bal2]);
 
-        let d_unb1 = make_duty("D3", vec![
-            make_leg("L3a", "LHR", "CDG", 8, 10),
-            make_leg("L3b", "CDG", "LHR", 12, 14), // 4h
-        ]);
-        let d_unb2 = make_duty("D4", vec![
-            make_leg("L4a", "LHR", "CDG", 8, 9),
-            make_leg("L4b", "CDG", "LHR", 10, 11), // 2h
-        ]);
+        let d_unb1 = make_duty(
+            "D3",
+            vec![
+                make_leg("L3a", "LHR", "CDG", 8, 10),
+                make_leg("L3b", "CDG", "LHR", 12, 14), // 4h
+            ],
+        );
+        let d_unb2 = make_duty(
+            "D4",
+            vec![
+                make_leg("L4a", "LHR", "CDG", 8, 9),
+                make_leg("L4b", "CDG", "LHR", 10, 11), // 2h
+            ],
+        );
         let p_unb1 = make_pairing("P3", "LHR", vec![d_unb1]);
         let p_unb2 = make_pairing("P4", "LHR", vec![d_unb2]);
         let r_unb1 = make_rotation("R3", "C3", vec![p_unb1]);
@@ -634,10 +680,13 @@ mod tests {
     #[test]
     fn credit_cost_single_duty_is_positive() {
         // Round-trip duty: LHR→CDG→LHR (2h block each leg = 4h total).
-        let d = make_duty("D1", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "LHR", 11, 13),
-        ]);
+        let d = make_duty(
+            "D1",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "LHR", 11, 13),
+            ],
+        );
         let p = make_pairing("P1", "LHR", vec![d]);
         let r = make_rotation("R1", "C1", vec![p]);
         let roster = make_roster(vec![], vec![r]);
@@ -648,14 +697,20 @@ mod tests {
     #[test]
     fn credit_cost_more_duties_costs_more() {
         // One round-trip duty vs two round-trip duties — two should cost more.
-        let d1 = make_duty("D1", vec![
-            make_leg("L1a", "LHR", "CDG", 8, 10),
-            make_leg("L1b", "CDG", "LHR", 11, 13),
-        ]);
-        let d2 = make_duty("D2", vec![
-            make_leg("L2a", "LHR", "CDG", 14, 16),
-            make_leg("L2b", "CDG", "LHR", 17, 19),
-        ]);
+        let d1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1a", "LHR", "CDG", 8, 10),
+                make_leg("L1b", "CDG", "LHR", 11, 13),
+            ],
+        );
+        let d2 = make_duty(
+            "D2",
+            vec![
+                make_leg("L2a", "LHR", "CDG", 14, 16),
+                make_leg("L2b", "CDG", "LHR", 17, 19),
+            ],
+        );
         let p_one = make_pairing("P1", "LHR", vec![d1.clone()]);
         let p_two = make_pairing("P2", "LHR", vec![d1, d2]);
         let r_one = make_rotation("R1", "C1", vec![p_one]);

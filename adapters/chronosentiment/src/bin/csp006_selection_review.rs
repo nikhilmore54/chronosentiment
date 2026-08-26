@@ -28,8 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing certified database name in DATABASE_URL".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_dir.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_dir.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_ARTIFACT_HASH {
         return Err("refusing to review an artifact that is not Search #1".into());
     }

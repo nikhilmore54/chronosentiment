@@ -64,7 +64,11 @@ impl IncrementalChecker {
             rotation_cache.entry(crew_id.clone()).or_default();
         }
 
-        Self { checker, rotation_cache, global_violations }
+        Self {
+            checker,
+            rotation_cache,
+            global_violations,
+        }
     }
 
     /// Re-evaluate the rotation for `crew_id` after it has been modified.
@@ -77,7 +81,10 @@ impl IncrementalChecker {
 
         self.rotation_cache.insert(
             crew_id.clone(),
-            rotation_violations.get(crew_id).cloned().unwrap_or_default(),
+            rotation_violations
+                .get(crew_id)
+                .cloned()
+                .unwrap_or_default(),
         );
         self.global_violations = global_violations;
     }
@@ -125,7 +132,10 @@ impl IncrementalChecker {
 /// `EntityRef::Rotation { crew_id, .. }`.  All other violations are global.
 fn partition_violations(
     violations: Vec<LegalityViolation>,
-) -> (HashMap<CrewId, Vec<LegalityViolation>>, Vec<LegalityViolation>) {
+) -> (
+    HashMap<CrewId, Vec<LegalityViolation>>,
+    Vec<LegalityViolation>,
+) {
     use crate::legality::EntityRef;
 
     let mut rotation_map: HashMap<CrewId, Vec<LegalityViolation>> = HashMap::new();
@@ -156,33 +166,46 @@ mod tests {
     /// Emits one Rotation-entity violation per rotation in the roster.
     struct RotationErrorRule;
     impl LegalityRule for RotationErrorRule {
-        fn rule_id(&self) -> &str { "rotation_error" }
-        fn rule_name(&self) -> &str { "Rotation Error" }
+        fn rule_id(&self) -> &str {
+            "rotation_error"
+        }
+        fn rule_name(&self) -> &str {
+            "Rotation Error"
+        }
         fn check(&self, roster: &Roster) -> Vec<LegalityViolation> {
-            roster.rotations().map(|r| {
-                LegalityViolation::error(
-                    "rotation_error",
-                    EntityRef::Rotation {
-                        rotation_id: r.id.as_str().to_string(),
-                        crew_id: r.crew_id.as_str().to_string(),
-                    },
-                    1.0, 0.0,
-                    format!("rotation {} has an error", r.id),
-                )
-            }).collect()
+            roster
+                .rotations()
+                .map(|r| {
+                    LegalityViolation::error(
+                        "rotation_error",
+                        EntityRef::Rotation {
+                            rotation_id: r.id.as_str().to_string(),
+                            crew_id: r.crew_id.as_str().to_string(),
+                        },
+                        1.0,
+                        0.0,
+                        format!("rotation {} has an error", r.id),
+                    )
+                })
+                .collect()
         }
     }
 
     /// Emits one Roster-entity (global) violation.
     struct GlobalErrorRule;
     impl LegalityRule for GlobalErrorRule {
-        fn rule_id(&self) -> &str { "global_error" }
-        fn rule_name(&self) -> &str { "Global Error" }
+        fn rule_id(&self) -> &str {
+            "global_error"
+        }
+        fn rule_name(&self) -> &str {
+            "Global Error"
+        }
         fn check(&self, roster: &Roster) -> Vec<LegalityViolation> {
             vec![LegalityViolation::error(
                 "global_error",
                 EntityRef::Roster(roster.id.to_string()),
-                1.0, 0.0,
+                1.0,
+                0.0,
                 "global error",
             )]
         }

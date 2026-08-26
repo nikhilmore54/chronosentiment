@@ -53,7 +53,5 @@ pub use duty::{Duty, DutyError, DutyId};
 pub use flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
 pub use pairing::{Pairing, PairingError, PairingId};
 pub use roster::{PlanningPeriod, Roster, RosterError, RosterId};
-pub use roster_metrics::{
-    BaseCreditFloor, DutyRecord, RosterMetrics, aggregate_roster_credits,
-};
+pub use roster_metrics::{BaseCreditFloor, DutyRecord, RosterMetrics, aggregate_roster_credits};
 pub use rotation::{Rotation, RotationError, RotationId};

@@ -1,27 +1,31 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc, TimeZone, NaiveTime, Datelike};
+use chrono::{DateTime, Datelike, NaiveTime, TimeZone, Utc};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::error::Error;
 use uuid::Uuid;
-use sha2::{Sha256, Digest};
 
+use chronosentiment_adapter::decision_support::forward_tick::DEFAULT_TICKERS;
+use chronosentiment_adapter::ingestion::provider::{
+    MarketDataProvider, ValidatedObservationTranslator,
+};
+use chronosentiment_adapter::ingestion::yahoo::{YahooProvider, YahooTranslator};
 use chronosentiment_adapter::instrument::Instrument;
-use chronosentiment_adapter::observation::ValidatedObservation;
-use chronosentiment_adapter::repository::observation_repository::ValidatedObservationRepository;
-use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
-use chronosentiment_adapter::metrics::instrument::{InstrumentMetricEngine, SimpleMovingAverageMetric, RateOfChangeMetric, AverageTrueRangeMetric};
-use coralys_moga::runtime::optimization::metric::MetricEngine;
 use chronosentiment_adapter::metrics::concepts::Concept;
+use chronosentiment_adapter::metrics::instrument::{
+    AverageTrueRangeMetric, InstrumentMetricEngine, RateOfChangeMetric, SimpleMovingAverageMetric,
+};
+use chronosentiment_adapter::observation::ValidatedObservation;
 use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
+use chronosentiment_adapter::reasoning::decision::{DecisionEngine, Opportunity};
 use chronosentiment_adapter::reasoning::evidence::EvidenceEngine;
 use chronosentiment_adapter::reasoning::historical_reasoning::HistoricalReasoningEngine;
 use chronosentiment_adapter::reasoning::hypothesis::HypothesisEngine;
-use chronosentiment_adapter::reasoning::decision::{DecisionEngine, Opportunity};
 use chronosentiment_adapter::reasoning::strategy::StrategyEngine;
-use chronosentiment_adapter::ingestion::provider::{MarketDataProvider, ValidatedObservationTranslator};
-use chronosentiment_adapter::ingestion::yahoo::{YahooProvider, YahooTranslator};
+use chronosentiment_adapter::repository::observation_repository::ValidatedObservationRepository;
 use chronosentiment_adapter::validation::outcome::OutcomeEngine;
-use chronosentiment_adapter::decision_support::forward_tick::DEFAULT_TICKERS;
+use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
+use coralys_moga::runtime::optimization::metric::MetricEngine;
 
 struct InMemoryObservationRepo {
     observations: Vec<ValidatedObservation>,
@@ -29,9 +33,11 @@ struct InMemoryObservationRepo {
 
 impl InMemoryObservationRepo {
     fn new() -> Self {
-        Self { observations: Vec::new() }
+        Self {
+            observations: Vec::new(),
+        }
     }
-    
+
     fn insert_batch(&mut self, obs: Vec<ValidatedObservation>) {
         self.observations.extend(obs);
         self.observations.sort_by_key(|o| o.effective_from);
@@ -40,21 +46,35 @@ impl InMemoryObservationRepo {
 
 #[async_trait]
 impl ValidatedObservationRepository for InMemoryObservationRepo {
-    async fn store_observation(&self, _observation: &ValidatedObservation) -> Result<(), Box<dyn Error>> { Ok(()) }
+    async fn store_observation(
+        &self,
+        _observation: &ValidatedObservation,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
     async fn get_observations_as_of(
         &self,
         instrument_id: Uuid,
         evaluation_timestamp: DateTime<Utc>,
     ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
-        Ok(self.observations.iter()
-            .filter(|o| o.instrument_id == Some(instrument_id) && o.effective_from <= evaluation_timestamp)
+        Ok(self
+            .observations
+            .iter()
+            .filter(|o| {
+                o.instrument_id == Some(instrument_id) && o.effective_from <= evaluation_timestamp
+            })
             .cloned()
             .collect())
     }
 
-    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
-        Ok(self.observations.iter()
+    async fn get_complete_history(
+        &self,
+        instrument_id: Uuid,
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
+        Ok(self
+            .observations
+            .iter()
             .filter(|o| o.instrument_id == Some(instrument_id))
             .cloned()
             .collect())
@@ -80,12 +100,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut instrument_map = HashMap::new();
     let yahoo = YahooProvider::new();
     let translator = YahooTranslator;
-    
+
     for ticker in &tickers {
         let id = Uuid::new_v4();
         let mut provider_ids = HashMap::new();
         provider_ids.insert("yahoo".to_string(), ticker.to_string());
-        
+
         let instrument = Instrument {
             id,
             exchange: "NSE".to_string(),
@@ -93,10 +113,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             provider_ids,
             created_at: Utc::now(),
         };
-        
+
         instrument_map.insert(id, instrument.clone());
-        
-        let raw_bars = yahoo.fetch_historical(&instrument, chronosentiment_adapter::ingestion::provider::TimeRange::FiveYears).await;
+
+        let raw_bars = yahoo
+            .fetch_historical(
+                &instrument,
+                chronosentiment_adapter::ingestion::provider::TimeRange::FiveYears,
+            )
+            .await;
         if let Ok(bars) = raw_bars {
             let mut validated = Vec::new();
             for bar in bars {
@@ -127,14 +152,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
             repo.insert_batch(validated);
         }
     }
-    
+
     let mut timestamps = Vec::new();
     for year in 2021..=2024 {
         for month in 1..=12 {
             let next_month = if month == 12 { 1 } else { month + 1 };
             let next_year = if month == 12 { year + 1 } else { year };
-            let d = chrono::NaiveDate::from_ymd_opt(next_year, next_month, 1).unwrap().pred_opt().unwrap();
-            let dt = Utc.from_utc_datetime(&d.and_time(NaiveTime::from_hms_opt(15, 30, 0).unwrap()));
+            let d = chrono::NaiveDate::from_ymd_opt(next_year, next_month, 1)
+                .unwrap()
+                .pred_opt()
+                .unwrap();
+            let dt =
+                Utc.from_utc_datetime(&d.and_time(NaiveTime::from_hms_opt(15, 30, 0).unwrap()));
             timestamps.push(dt);
         }
     }
@@ -145,32 +174,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut pos_decisions = 0;
     let mut neu_decisions = 0;
     let mut neg_decisions = 0;
-    
+
     let mut strategies_generated = 0;
     let mut outcomes_evaluated = 0;
-    
+
     let mut entry_reached = 0;
     let mut entry_not_reached = 0;
     let mut target_hit = 0;
     let mut stop_hit = 0;
     let mut ambiguous_hit = 0;
     let mut expired = 0;
-    
+
     let mut win_count = 0;
     let mut returns = Vec::new();
     let mut mfes = Vec::new();
     let mut maes = Vec::new();
-    
+
     let mut metric_engine = InstrumentMetricEngine::new();
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(20)));
     metric_engine.add_model(Box::new(SimpleMovingAverageMetric::new(50)));
     metric_engine.add_model(Box::new(RateOfChangeMetric::new(14)));
     metric_engine.add_model(Box::new(AverageTrueRangeMetric::new(14)));
-    
+
     let replay_engine = ReplayEngine::new(&repo);
     let decision_engine = DecisionEngine;
     let strategy_engine = StrategyEngine;
-    
+
     for dt in &timestamps {
         for (inst_id, _inst) in &instrument_map {
             let req = ReplayRequest {
@@ -181,17 +210,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 policy_snapshot: None,
                 target_instrument_id: *inst_id,
             };
-            
+
             let context = match replay_engine.generate_context(req).await {
                 Ok(ctx) => ctx,
                 Err(_) => continue,
             };
-            
+
             let inst_context = match context.instrument_contexts.get(inst_id) {
                 Some(ctx) => ctx,
                 None => continue,
             };
-            
+
             if inst_context.observations.len() < 50 {
                 continue; // Not enough data
             }
@@ -202,7 +231,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     panic!("TEMPORAL VIOLATION: Observation leaked.");
                 }
             }
-            
+
             let metric_report = metric_engine.evaluate(inst_context);
             let profile = AssessmentEngine.assess_at(
                 &metric_report,
@@ -212,16 +241,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
             );
             let evidence = EvidenceEngine.evaluate(&profile);
             let reasoning = HistoricalReasoningEngine.evaluate(&profile);
-            
+
             for case in &reasoning.cases {
                 if case.historical_date > *dt {
                     temporal_violations += 1;
                     panic!("TEMPORAL VIOLATION: Future case leaked.");
                 }
             }
-            
+
             let _hypotheses = HypothesisEngine::new().evaluate(&evidence);
-            
+
             let context_id = Uuid::new_v4();
             let replay_hash = generate_replay_hash(&context_id, "v1.0", dt);
             let duplicate_hash = generate_replay_hash(&context_id, "v1.0", dt);
@@ -229,33 +258,48 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 hash_mismatches += 1;
                 panic!("TEMPORAL VIOLATION: Replay hash is not deterministic.");
             }
-            
+
             let decision = decision_engine.evaluate(&profile, *dt, *inst_id);
             decisions_replayed += 1;
-            
+
             match decision.opportunity {
                 Opportunity::Positive => pos_decisions += 1,
                 Opportunity::Neutral => neu_decisions += 1,
                 Opportunity::Negative => neg_decisions += 1,
             }
-            
-            let current_close = inst_context.observations.last().and_then(|o| o.normalized_payload.get("close")).and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let atr = metric_report.get_float("atr_14").unwrap_or(current_close * 0.02);
-            
+
+            let current_close = inst_context
+                .observations
+                .last()
+                .and_then(|o| o.normalized_payload.get("close"))
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            let atr = metric_report
+                .get_float("atr_14")
+                .unwrap_or(current_close * 0.02);
+
             let strategy_opt = strategy_engine.generate(&decision, current_close, atr);
-            
+
             if let Some(strategy) = strategy_opt {
                 strategies_generated += 1;
-                
+
                 let full_history = repo.get_complete_history(*inst_id).await.unwrap();
                 let outcome_engine = OutcomeEngine;
-                let outcome = outcome_engine.measure_outcome(uuid::Uuid::new_v4(), &strategy, &chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(), &full_history, *dt, 5, None);
-                
+                let outcome = outcome_engine.measure_outcome(
+                    uuid::Uuid::new_v4(),
+                    &strategy,
+                    &chronosentiment_adapter::repository::knowledge::ArtifactMetadata::mock(),
+                    &full_history,
+                    *dt,
+                    5,
+                    None,
+                );
+
                 if outcome.exit_reason != "Entry Not Reached" {
                     entry_reached += 1;
                     if outcome.exit_reason != "Ambiguous" {
                         outcomes_evaluated += 1;
-                        
+
                         if outcome.exit_reason == "Target Hit" {
                             target_hit += 1;
                             win_count += 1;
@@ -263,9 +307,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             stop_hit += 1;
                         } else {
                             expired += 1;
-                            if outcome.outcome_return > 0.0 { win_count += 1; }
+                            if outcome.outcome_return > 0.0 {
+                                win_count += 1;
+                            }
                         }
-                        
+
                         returns.push(outcome.outcome_return);
                         mfes.push(outcome.mfe);
                         maes.push(outcome.mae);
@@ -278,17 +324,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    
+
     returns.sort_by(|a, b| a.partial_cmp(b).unwrap());
     mfes.sort_by(|a, b| a.partial_cmp(b).unwrap());
     maes.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    
-    let median_return = if returns.is_empty() { 0.0 } else { returns[returns.len() / 2] };
-    let median_mfe = if mfes.is_empty() { 0.0 } else { mfes[mfes.len() / 2] };
-    let median_mae = if maes.is_empty() { 0.0 } else { maes[maes.len() / 2] };
-    let win_rate = if outcomes_evaluated > 0 { (win_count as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
-    let target_hit_rate = if outcomes_evaluated > 0 { (target_hit as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
-    let stop_hit_rate = if outcomes_evaluated > 0 { (stop_hit as f64 / outcomes_evaluated as f64) * 100.0 } else { 0.0 };
+
+    let median_return = if returns.is_empty() {
+        0.0
+    } else {
+        returns[returns.len() / 2]
+    };
+    let median_mfe = if mfes.is_empty() {
+        0.0
+    } else {
+        mfes[mfes.len() / 2]
+    };
+    let median_mae = if maes.is_empty() {
+        0.0
+    } else {
+        maes[maes.len() / 2]
+    };
+    let win_rate = if outcomes_evaluated > 0 {
+        (win_count as f64 / outcomes_evaluated as f64) * 100.0
+    } else {
+        0.0
+    };
+    let target_hit_rate = if outcomes_evaluated > 0 {
+        (target_hit as f64 / outcomes_evaluated as f64) * 100.0
+    } else {
+        0.0
+    };
+    let stop_hit_rate = if outcomes_evaluated > 0 {
+        (stop_hit as f64 / outcomes_evaluated as f64) * 100.0
+    } else {
+        0.0
+    };
 
     println!("PHASE 4B BASELINE");
     println!("────────────────────────────────────");
@@ -305,12 +375,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("  Future observations:       0");
     println!("  Future historical cases:   0");
     println!("  Hash mismatches:           {}\n", hash_mismatches);
-    
+
     println!("Decision Distribution");
     println!("  Positive:                 {}", pos_decisions);
     println!("  Neutral:                  {}", neu_decisions);
     println!("  Negative:                 {}\n", neg_decisions);
-    
+
     println!("Strategy Outcomes");
     println!("  Strategies generated:     {}", strategies_generated);
     println!("  Outcomes evaluable:       {}", outcomes_evaluated);
@@ -320,7 +390,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("  Horizon expiry:           {}", expired);
     println!("  Ambiguous (discarded):    {}", ambiguous_hit);
     println!("  Entry not reached:        {}\n", entry_not_reached);
-    
+
     println!("Actual Performance");
     println!("  Win rate:                 {:.1}%", win_rate);
     println!("  Target hit rate:          {:.1}%", target_hit_rate);
@@ -328,7 +398,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("  Median return:            {:.2}%", median_return * 100.0);
     println!("  Median MFE:               {:.2}%", median_mfe * 100.0);
     println!("  Median MAE:               {:.2}%", median_mae * 100.0);
-    
+
     println!("\n============================================================");
     println!("TEMPORAL INTEGRITY: PASS");
     println!("REPLAY DETERMINISM: PASS");

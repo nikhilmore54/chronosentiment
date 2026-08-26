@@ -36,11 +36,11 @@ use chronosentiment_adapter::decision_support::coralys_execution_model::CORALYS_
 use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_yahoo_cache;
 use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
+use chronosentiment_adapter::decision_support::portfolio_replay_v0::INITIAL_CAPITAL_INR;
 use chronosentiment_adapter::decision_support::portfolio_replay_v021::{
     refuse_v021_output, run_continuous_portfolio_replay, ContinuousPortfolioLedger,
     CONTINUOUS_EXPERIMENT_ID, CONTINUOUS_REPLAY_VERSION,
 };
-use chronosentiment_adapter::decision_support::portfolio_replay_v0::INITIAL_CAPITAL_INR;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
@@ -66,10 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if CORALYS_EXEC_ARTIFACT_HASH
         != "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
     {
-        return Err(format!(
-            "coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
-        )
-        .into());
+        return Err(format!("coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}").into());
     }
 
     // ── Load Yahoo bar cache ──────────────────────────────────────────────────
@@ -210,16 +207,32 @@ fn render_continuous_report(ledger: &ContinuousPortfolioLedger) -> String {
     md.push_str("# Portfolio Replay v0.2.1 — Continuous Lifecycle\n\n");
     md.push_str("**Document type:** Product validation evidence  \n");
     md.push_str("**Experiment:** Continuous portfolio lifecycle with position upgrades  \n");
-    md.push_str("**Design:** Session-by-session loop, capital recycling, multiple lots per instrument  \n");
-    md.push_str("**Does not:** modify C3-002, modify coralys-exec-v0, touch any prior archive  \n\n");
+    md.push_str(
+        "**Design:** Session-by-session loop, capital recycling, multiple lots per instrument  \n",
+    );
+    md.push_str(
+        "**Does not:** modify C3-002, modify coralys-exec-v0, touch any prior archive  \n\n",
+    );
 
     md.push_str("## Setup\n\n");
     md.push_str(&format!("- Certified T: {}\n", ledger.certified_t));
-    md.push_str(&format!("- Sessions simulated: {}\n", ledger.n_sessions_simulated));
-    md.push_str(&format!("- Initial capital: Rs.{:.2}\n", ledger.initial_capital_inr));
+    md.push_str(&format!(
+        "- Sessions simulated: {}\n",
+        ledger.n_sessions_simulated
+    ));
+    md.push_str(&format!(
+        "- Initial capital: Rs.{:.2}\n",
+        ledger.initial_capital_inr
+    ));
     md.push_str(&format!("- Universe: {}\n", ledger.universe.join(", ")));
-    md.push_str(&format!("- C3-002 artifact: `{}`\n", ledger.c3_002_artifact_hash));
-    md.push_str(&format!("- Coralys artifact: `{}`\n\n", ledger.coralys_artifact_hash));
+    md.push_str(&format!(
+        "- C3-002 artifact: `{}`\n",
+        ledger.c3_002_artifact_hash
+    ));
+    md.push_str(&format!(
+        "- Coralys artifact: `{}`\n\n",
+        ledger.coralys_artifact_hash
+    ));
 
     md.push_str("## Capital Velocity Comparison\n\n");
     md.push_str("| Metric | P.E.2 | Coralys v0 |\n");
@@ -236,10 +249,7 @@ fn render_continuous_report(ledger: &ContinuousPortfolioLedger) -> String {
         "| TARGET exits | {} | {} |\n",
         p.n_target, c.n_target
     ));
-    md.push_str(&format!(
-        "| STOP exits | {} | {} |\n",
-        p.n_stop, c.n_stop
-    ));
+    md.push_str(&format!("| STOP exits | {} | {} |\n", p.n_stop, c.n_stop));
     md.push_str(&format!(
         "| HORIZON exits | {} | {} |\n",
         p.n_horizon, c.n_horizon
@@ -336,9 +346,8 @@ fn parse_args() -> Result<ContinuousReplayArgs, Box<dyn std::error::Error>> {
             "product_validation/CS-P-006/snapshot/20260814T183851Z_7instrument/yahoo_cache",
         )
     });
-    let output = output.unwrap_or_else(|| {
-        PathBuf::from("historical_runs/portfolio_continuous_v021_2026-08-16")
-    });
+    let output = output
+        .unwrap_or_else(|| PathBuf::from("historical_runs/portfolio_continuous_v021_2026-08-16"));
 
     Ok(ContinuousReplayArgs {
         search_two,

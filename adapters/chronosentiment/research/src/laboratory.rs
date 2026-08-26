@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use chrono::Utc;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::research::dataset::ResearchDataset;
@@ -30,14 +30,18 @@ impl ResearchLaboratory {
         self.experiments.insert(experiment.id(), experiment);
     }
 
-    pub async fn execute_experiment(&self, experiment_id: Uuid, dataset: &ResearchDataset) -> Result<Option<ResearchRun>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn execute_experiment(
+        &self,
+        experiment_id: Uuid,
+        dataset: &ResearchDataset,
+    ) -> Result<Option<ResearchRun>, Box<dyn std::error::Error + Send + Sync>> {
         let exp = match self.experiments.get(&experiment_id) {
             Some(e) => e,
             None => return Ok(None),
         };
-        
+
         let measurements = exp.execute(dataset).await?;
-        
+
         let run = ResearchRun {
             run_id: Uuid::new_v4(),
             experiment_id: exp.id(),
@@ -45,9 +49,9 @@ impl ResearchLaboratory {
             execution_time: Utc::now(),
             measurements,
         };
-        
+
         self.repository.save_run(run.clone()).await;
-        
+
         Ok(Some(run))
     }
 }

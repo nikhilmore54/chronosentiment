@@ -1,8 +1,8 @@
+use async_trait::async_trait;
 use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::observation::ValidatedObservation;
-use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
 use chronosentiment_adapter::repository::observation_repository::ValidatedObservationRepository;
-use async_trait::async_trait;
+use chronosentiment_adapter::validation::replay::{ReplayEngine, ReplayRequest};
 use serde_json::json;
 use std::error::Error;
 use uuid::Uuid;
@@ -50,10 +50,7 @@ impl ValidatedObservationRepository for MockRepository {
     }
 }
 
-fn make_obs(
-    instrument_id: Uuid,
-    t: chrono::DateTime<Utc>,
-) -> ValidatedObservation {
+fn make_obs(instrument_id: Uuid, t: chrono::DateTime<Utc>) -> ValidatedObservation {
     ValidatedObservation {
         id: Uuid::new_v4(),
         research_session_id: None,

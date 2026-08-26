@@ -17,7 +17,9 @@ use super::observation_outcome::{measure_ledger_from_prices, PriceBar};
 use super::outcome::OutcomeReport;
 use super::performance::{measure_performance, PerformanceReport};
 use super::policy::DecisionPolicy;
-use super::replay::{decide_from_inputs, DecideAt, ReplayError, ReplayInputs, UNFROZEN_ENGINE_VERSION};
+use super::replay::{
+    decide_from_inputs, DecideAt, ReplayError, ReplayInputs, UNFROZEN_ENGINE_VERSION,
+};
 use super::TradingDecision;
 
 pub const FORWARD_PRODUCER: &str = "csp003.forward_adapter";

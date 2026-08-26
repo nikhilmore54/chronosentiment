@@ -331,17 +331,38 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--certification" => { i += 1; certification = PathBuf::from(&args[i]); }
-            "--recommend"     => { i += 1; recommend = PathBuf::from(&args[i]); }
-            "--ledger"        => { i += 1; ledger = PathBuf::from(&args[i]); }
-            "--audit"         => { i += 1; audit = PathBuf::from(&args[i]); }
-            "--emit-url"      => { i += 1; emit_url = Some(args[i].clone()); }
+            "--certification" => {
+                i += 1;
+                certification = PathBuf::from(&args[i]);
+            }
+            "--recommend" => {
+                i += 1;
+                recommend = PathBuf::from(&args[i]);
+            }
+            "--ledger" => {
+                i += 1;
+                ledger = PathBuf::from(&args[i]);
+            }
+            "--audit" => {
+                i += 1;
+                audit = PathBuf::from(&args[i]);
+            }
+            "--emit-url" => {
+                i += 1;
+                emit_url = Some(args[i].clone());
+            }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { certification, recommend, ledger, audit, emit_url })
+    Ok(Args {
+        certification,
+        recommend,
+        ledger,
+        audit,
+        emit_url,
+    })
 }
 
 // ─── Session helper ───────────────────────────────────────────────────────────
@@ -364,10 +385,7 @@ fn next_trading_session(t: &DateTime<Utc>) -> String {
 /// Uses the canonical `decision_id` from the ledger entry — does not create a
 /// new ID. 409 = already exists = idempotent success (returns Ok(false)).
 /// Returns Ok(true) on 201 Created, Err on any other failure.
-fn emit_entry_to_server(
-    base_url: &str,
-    entry: &LedgerEntry,
-) -> Result<bool, String> {
+fn emit_entry_to_server(base_url: &str, entry: &LedgerEntry) -> Result<bool, String> {
     // Parse recommended_at as the decision_timestamp for the server ledger.
     let decision_ts: DateTime<Utc> = entry
         .recommended_at
@@ -420,9 +438,11 @@ fn emit_entry_to_server(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-fn read_json<T: for<'de> Deserialize<'de>>(path: &PathBuf) -> Result<T, Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+fn read_json<T: for<'de> Deserialize<'de>>(
+    path: &PathBuf,
+) -> Result<T, Box<dyn std::error::Error>> {
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     serde_json::from_str(&content)
         .map_err(|e| format!("cannot parse {}: {e}", path.display()))
         .map_err(|e: String| e.into())
@@ -472,9 +492,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let recommend: Live003RecommendArtifact = read_json(&args.recommend)?;
 
     println!("[live005] certification_id={}", cert.certification_id);
-    println!("[live005] certification_status={}", cert.certification_status);
-    println!("[live005] recommendation_id={}", recommend.recommendation_id);
-    println!("[live005] n_recommendations={}", recommend.recommendations.len());
+    println!(
+        "[live005] certification_status={}",
+        cert.certification_status
+    );
+    println!(
+        "[live005] recommendation_id={}",
+        recommend.recommendation_id
+    );
+    println!(
+        "[live005] n_recommendations={}",
+        recommend.recommendations.len()
+    );
 
     // ── Verify provenance coherence before admission ───────────────────────────
     if cert.source_recommendation_id != recommend.recommendation_id {
@@ -495,7 +524,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if is_audit_only {
         println!("[live005] admission_policy=AUDIT_ONLY (status={status}) — not admitted to primary ledger");
     } else {
-        println!("[live005] admission_policy=UNKNOWN_STATUS (status={status}) — treating as AUDIT_ONLY");
+        println!(
+            "[live005] admission_policy=UNKNOWN_STATUS (status={status}) — treating as AUDIT_ONLY"
+        );
     }
 
     // ── Create output directories ─────────────────────────────────────────────
@@ -513,7 +544,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let now = Utc::now();
     let admitted_at = now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
-    let run_id = format!("LIVE-005-{}", cert.certification_id.trim_start_matches("LIVE-004-"));
+    let run_id = format!(
+        "LIVE-005-{}",
+        cert.certification_id.trim_start_matches("LIVE-004-")
+    );
 
     let mut n_admitted = 0usize;
     let mut n_duplicate_skipped = 0usize;
@@ -529,7 +563,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(&audit_path, &audit_content)?;
             println!("[live005] audit record written: {}", audit_path.display());
         } else {
-            println!("[live005] audit record already exists: {}", audit_path.display());
+            println!(
+                "[live005] audit record already exists: {}",
+                audit_path.display()
+            );
         }
     }
 
@@ -554,10 +591,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // We store the full chain; step7 is certification, step8 is ledger
             // We embed step8 into the provenance_chain.step7_certification field
             // to avoid schema changes — the ledger step is appended as a suffix.
-            provenance.step7_certification = format!(
-                "{} | step8_ledger: {step8}",
-                provenance.step7_certification
-            );
+            provenance.step7_certification =
+                format!("{} | step8_ledger: {step8}", provenance.step7_certification);
 
             let entry = LedgerEntry {
                 decision_id: decision_id.clone(),
@@ -638,7 +673,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        println!("[live005] admitted {} T0 decision records to ledger", n_admitted);
+        println!(
+            "[live005] admitted {} T0 decision records to ledger",
+            n_admitted
+        );
         if args.emit_url.is_some() {
             println!(
                 "[live005] emit n_new={n_emitted_new} n_already={n_emitted_already} n_errors={n_emit_errors}"
@@ -646,7 +684,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     } else if is_duplicate {
         n_duplicate_skipped = recommend.recommendations.len();
-        println!("[live005] {} records skipped (duplicate, AC-L5-05)", n_duplicate_skipped);
+        println!(
+            "[live005] {} records skipped (duplicate, AC-L5-05)",
+            n_duplicate_skipped
+        );
     } else {
         println!("[live005] 0 records admitted (audit-only status)");
     }
@@ -661,7 +702,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         certification_status: cert.certification_status.clone(),
         admission_policy: if is_admitted { "ADMIT" } else { "AUDIT_ONLY" }.to_string(),
         n_admitted,
-        n_audit_only: if !is_admitted { recommend.recommendations.len() } else { 0 },
+        n_audit_only: if !is_admitted {
+            recommend.recommendations.len()
+        } else {
+            0
+        },
         n_duplicate_skipped,
         n_total_recommendations: recommend.recommendations.len(),
         admitted_statuses: ADMITTED_STATUSES.iter().map(|s| s.to_string()).collect(),
@@ -670,8 +715,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_dir: args.audit.display().to_string(),
         ac_l5_01_admission_fidelity: is_admitted || is_audit_only,
         ac_l5_02_status_preservation: true, // certification_status passed through unchanged
-        ac_l5_05_idempotency: true,          // duplicate check enforced above
-ac_l5_06_no_recomputation: true,     // no market data, C3-002, recommendation, or certification performed
+        ac_l5_05_idempotency: true,         // duplicate check enforced above
+        ac_l5_06_no_recomputation: true, // no market data, C3-002, recommendation, or certification performed
     };
 
     let summary_json = serde_json::to_string_pretty(&summary)?;
@@ -681,21 +726,35 @@ ac_l5_06_no_recomputation: true,     // no market data, C3-002, recommendation, 
     println!("[live005]");
     println!("[live005] result=OK");
     println!("[live005] run_id={run_id}");
-    println!("[live005] certification_status={}", cert.certification_status);
-    println!("[live005] admission_policy={}", if is_admitted { "ADMIT" } else { "AUDIT_ONLY" });
+    println!(
+        "[live005] certification_status={}",
+        cert.certification_status
+    );
+    println!(
+        "[live005] admission_policy={}",
+        if is_admitted { "ADMIT" } else { "AUDIT_ONLY" }
+    );
     println!("[live005] n_admitted={n_admitted}");
     println!("[live005] n_duplicate_skipped={n_duplicate_skipped}");
-    println!("[live005] n_total_recommendations={}", recommend.recommendations.len());
+    println!(
+        "[live005] n_total_recommendations={}",
+        recommend.recommendations.len()
+    );
     if args.emit_url.is_some() {
         println!("[live005] n_emitted_new={n_emitted_new}");
         println!("[live005] n_emitted_already={n_emitted_already}");
         println!("[live005] n_emit_errors={n_emit_errors}");
         if n_emit_errors > 0 {
-            eprintln!("[live005] WARNING: {n_emit_errors} decision(s) failed to emit to Decision Server");
+            eprintln!(
+                "[live005] WARNING: {n_emit_errors} decision(s) failed to emit to Decision Server"
+            );
         }
     }
     println!("[live005] AC-L5-01 admission_fidelity=PASS");
-    println!("[live005] AC-L5-02 status_preservation=PASS (certification_status={} unchanged)", cert.certification_status);
+    println!(
+        "[live005] AC-L5-02 status_preservation=PASS (certification_status={} unchanged)",
+        cert.certification_status
+    );
     println!("[live005] AC-L5-03 t0_immutability=PASS (write-once, no modification path)");
     println!("[live005] AC-L5-04 provenance_completeness=PASS (full chain in every entry)");
     println!("[live005] AC-L5-05 idempotency=PASS (duplicate_skipped={n_duplicate_skipped})");

@@ -17,7 +17,7 @@
 //! Exit 0 = all PASS, Exit 1 = any FAIL or load error.
 
 use roadef::evaluator::RoadefEvaluator;
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::Solution;
 
 const REPO: &str = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
@@ -49,8 +49,8 @@ fn main() {
     let mut pass_count = 0usize;
 
     for name in &instance_names {
-        let net_path  = format!("{}/{}-net.json",      REPO, name);
-        let tm_path   = format!("{}/{}-tm.json",       REPO, name);
+        let net_path = format!("{}/{}-net.json", REPO, name);
+        let tm_path = format!("{}/{}-tm.json", REPO, name);
         let scen_path = format!("{}/{}-scenario.json", REPO, name);
 
         let net = match load_network(&net_path) {
@@ -144,7 +144,10 @@ fn main() {
     eprintln!("E-001 Result: {}/{} instances PASS", pass_count, total);
 
     if total == 0 {
-        eprintln!("E-001 VERDICT: SKIP — no instances loaded (check data path: {})", REPO);
+        eprintln!(
+            "E-001 VERDICT: SKIP — no instances loaded (check data path: {})",
+            REPO
+        );
         std::process::exit(1);
     } else if all_pass {
         eprintln!("E-001 VERDICT: PASS — evaluate_solution_cached() is semantically equivalent to evaluate_solution_timed()");

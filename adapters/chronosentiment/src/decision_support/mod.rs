@@ -10,57 +10,57 @@
 //! Decision Engine v1.0 is **not frozen**. `engine_version` is caller-supplied.
 //! Outcomes do not belong on this object.
 
-pub mod replay;
 pub mod backtest;
-pub mod outcome;
-pub mod performance;
-pub mod observation_outcome;
-pub mod forward;
-pub mod forward_tick;
-pub mod laboratory;
-pub mod lab_context;
-pub mod policy;
-pub mod policy_artifact;
-pub mod policy_genome;
-pub mod observation_value;
-pub mod policy_discovery;
-pub mod policy_handoff;
-pub mod policy_search_diagnosis;
-pub mod search_observability;
-pub mod population_ecology;
-pub mod recommendation_outcome;
-pub mod selection_decision_value;
-pub mod decision_value_landscape;
-pub mod decision_value_harness;
-pub mod decision_value_fitness;
-pub mod c3_implementation;
-pub mod c3_run;
 pub mod c3_comparison;
+pub mod c3_implementation;
 pub mod c3_rule_ecology;
 pub mod c3_rule_persistence;
+pub mod c3_run;
 pub mod c3_state_landscape;
-pub mod observatory_registry;
-pub mod observatory_slice;
-pub mod observatory_prospective;
-pub mod observatory_maturity;
-pub mod observatory_historical;
+pub mod coralys_execution_model;
+pub mod csp006_protocol;
+pub mod csp006_snapshot;
+pub mod csp007_protocol;
+pub mod dataset_partition;
+pub mod decision_intent;
+pub mod decision_value_fitness;
+pub mod decision_value_harness;
+pub mod decision_value_landscape;
+pub mod enrichment_certify;
+pub mod execution_feedback;
+pub mod factor_availability;
+pub mod factor_ecology;
+pub mod forward;
+pub mod forward_tick;
+pub mod lab_context;
+pub mod laboratory;
+pub mod observation_outcome;
+pub mod observation_value;
 pub mod observatory_execution;
-pub mod observatory_live_execution;
-pub mod observatory_live_execution_pe3;
+pub mod observatory_historical;
 pub mod observatory_historical_pe2;
 pub mod observatory_historical_pe3;
+pub mod observatory_live_execution;
+pub mod observatory_live_execution_pe3;
+pub mod observatory_maturity;
+pub mod observatory_prospective;
+pub mod observatory_registry;
+pub mod observatory_slice;
+pub mod outcome;
+pub mod performance;
+pub mod policy;
+pub mod policy_artifact;
+pub mod policy_discovery;
+pub mod policy_genome;
+pub mod policy_handoff;
+pub mod policy_search_diagnosis;
+pub mod population_ecology;
 pub mod portfolio_replay_v0;
 pub mod portfolio_replay_v021;
-pub mod decision_intent;
-pub mod coralys_execution_model;
-pub mod execution_feedback;
-pub mod csp006_protocol;
-pub mod csp007_protocol;
-pub mod csp006_snapshot;
-pub mod dataset_partition;
-pub mod factor_availability;
-pub mod enrichment_certify;
-pub mod factor_ecology;
+pub mod recommendation_outcome;
+pub mod replay;
+pub mod search_observability;
+pub mod selection_decision_value;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -207,10 +207,9 @@ impl std::fmt::Display for DecisionContractError {
         match self {
             Self::EmptyEngineVersion => write!(f, "engine_version must be non-empty"),
             Self::EmptyPolicyName => write!(f, "policy_name must be non-empty"),
-            Self::ConfidenceOutOfBounds => write!(
-                f,
-                "available confidence must be finite and in [0, 1]"
-            ),
+            Self::ConfidenceOutOfBounds => {
+                write!(f, "available confidence must be finite and in [0, 1]")
+            }
             Self::ConfidenceStatusMismatch => write!(
                 f,
                 "UNAVAILABLE requires confidence=null; AVAILABLE requires a [0, 1] value"
@@ -260,7 +259,10 @@ impl TradingDecision {
     pub fn try_from_draft(mut draft: DecisionDraft) -> Result<Self, DecisionContractError> {
         draft.lineage.consumed_artifact_ids.sort_unstable();
         draft.evidence_refs.sort();
-        draft.evidence.factors.sort_by(|a, b| a.concept.cmp(&b.concept));
+        draft
+            .evidence
+            .factors
+            .sort_by(|a, b| a.concept.cmp(&b.concept));
         draft.evidence.consumed_concepts.sort();
         validate(&draft)?;
 
@@ -268,7 +270,13 @@ impl TradingDecision {
             .evidence
             .factors
             .iter()
-            .filter(|f| draft.evidence.consumed_concepts.iter().any(|c| c == &f.concept))
+            .filter(|f| {
+                draft
+                    .evidence
+                    .consumed_concepts
+                    .iter()
+                    .any(|c| c == &f.concept)
+            })
             .map(|f| EvidenceFactor {
                 assessment_confidence: None,
                 ..f.clone()

@@ -5,11 +5,11 @@
 //! dumps can be read. The *generators* (`DecisionEngine`, `StrategyEngine`) are
 //! compiled only with `--features legacy-lake`.
 
-pub mod scenario;
-pub mod decision;
-pub mod policy_engine;
 pub mod assessment;
+pub mod decision;
 pub mod evidence;
-pub mod strategy;
 pub mod historical_reasoning;
 pub mod hypothesis;
+pub mod policy_engine;
+pub mod scenario;
+pub mod strategy;

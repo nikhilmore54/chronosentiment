@@ -274,7 +274,9 @@ fn failures(rows: &[Pair<'_>]) -> FailureCluster {
         if landscape.recommended_value >= 0.0 {
             continue;
         }
-        let inst = by_instrument.entry(row.instrument.clone()).or_insert((0, 0.0));
+        let inst = by_instrument
+            .entry(row.instrument.clone())
+            .or_insert((0, 0.0));
         inst.0 += 1;
         inst.1 += landscape.recommended_value;
         let year = by_year
@@ -395,29 +397,31 @@ fn persist_rule(index: usize, action: DecisionAction, rows: &[Pair<'_>]) -> Rule
     }
     let states = state_map
         .into_iter()
-        .map(|((trend_state, momentum_state, volatility_state), subset)| {
-            let vs: Vec<f64> = subset.iter().map(|(_, l)| l.recommended_value).collect();
-            let evals: Vec<f64> = subset
-                .iter()
-                .filter(|(r, _)| r.partition == PartitionKind::Evaluation)
-                .map(|(_, l)| l.recommended_value)
-                .collect();
-            StatePersistence {
-                trend_state,
-                momentum_state,
-                volatility_state,
-                n: subset.len() as u32,
-                mean_v: mean(&vs),
-                evaluation_n: evals.len() as u32,
-                evaluation_mean_v: if evals.is_empty() {
-                    None
-                } else {
-                    Some(mean(&evals))
-                },
-                n_positive: vs.iter().filter(|v| **v > 0.0).count() as u32,
-                n_negative: vs.iter().filter(|v| **v < 0.0).count() as u32,
-            }
-        })
+        .map(
+            |((trend_state, momentum_state, volatility_state), subset)| {
+                let vs: Vec<f64> = subset.iter().map(|(_, l)| l.recommended_value).collect();
+                let evals: Vec<f64> = subset
+                    .iter()
+                    .filter(|(r, _)| r.partition == PartitionKind::Evaluation)
+                    .map(|(_, l)| l.recommended_value)
+                    .collect();
+                StatePersistence {
+                    trend_state,
+                    momentum_state,
+                    volatility_state,
+                    n: subset.len() as u32,
+                    mean_v: mean(&vs),
+                    evaluation_n: evals.len() as u32,
+                    evaluation_mean_v: if evals.is_empty() {
+                        None
+                    } else {
+                        Some(mean(&evals))
+                    },
+                    n_positive: vs.iter().filter(|v| **v > 0.0).count() as u32,
+                    n_negative: vs.iter().filter(|v| **v < 0.0).count() as u32,
+                }
+            },
+        )
         .collect();
 
     RulePersistence {
@@ -465,7 +469,10 @@ pub fn analyze_rule_persistence(
         return Err("recommendation matrix is not Search #2".into());
     }
     if recommendations.len() != 273 {
-        return Err(format!("expected 273 rows, found {}", recommendations.len()));
+        return Err(format!(
+            "expected 273 rows, found {}",
+            recommendations.len()
+        ));
     }
     let mut buckets: BTreeMap<usize, Vec<Pair<'_>>> = BTreeMap::new();
     for row in recommendations {
@@ -524,7 +531,9 @@ pub fn render_rule_persistence(report: &PersistenceReport) -> String {
         report.n_rows
     ));
     out.push_str("## Sample size and contribution\n\n");
-    out.push_str("| Live state | Action | n | Eval n | Mean V | Eval V | Value share | Eval share |\n");
+    out.push_str(
+        "| Live state | Action | n | Eval n | Mean V | Eval V | Value share | Eval share |\n",
+    );
     out.push_str("|---|---|---:|---:|---:|---:|---:|---:|\n");
     for rule in &report.rules {
         let eval = rule

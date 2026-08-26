@@ -20,7 +20,10 @@ use chronosentiment_adapter::decision_support::enrichment_certify::{
 use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
 
 fn synthetic_bars() -> Vec<YahooHistoricalBar> {
-    let start = Utc.with_ymd_and_hms(2020, 1, 2, 10, 0, 0).unwrap().timestamp();
+    let start = Utc
+        .with_ymd_and_hms(2020, 1, 2, 10, 0, 0)
+        .unwrap()
+        .timestamp();
     (0..800)
         .map(|i| {
             let close = 100.0 + (i as f64) * 0.05;
@@ -85,12 +88,21 @@ fn chronological_coverage_is_seven_by_thirty_nine_month_ends() {
     let grid = replay_month_ends_2021_10_to_2024_12();
     let mut seen = BTreeSet::new();
     for row in &snapshot.rows {
-        assert!(grid.contains(&row.as_of), "{} as_of {} not on replay grid", row.instrument, row.as_of);
+        assert!(
+            grid.contains(&row.as_of),
+            "{} as_of {} not on replay grid",
+            row.instrument,
+            row.as_of
+        );
         assert!(seen.insert((row.instrument.clone(), row.as_of)));
     }
     assert_eq!(seen.len(), 7 * 39);
     for ticker in RESEARCH_UNIVERSE {
-        let n = snapshot.rows.iter().filter(|r| r.instrument == *ticker).count();
+        let n = snapshot
+            .rows
+            .iter()
+            .filter(|r| r.instrument == *ticker)
+            .count();
         assert_eq!(n, 39, "{ticker} missing chronological coverage");
     }
 }
@@ -99,7 +111,10 @@ fn chronological_coverage_is_seven_by_thirty_nine_month_ends() {
 fn future_bars_are_not_consumed_during_state_construction() {
     let cache = seven_cache();
     let mut with_future = cache.clone();
-    let future_ts = Utc.with_ymd_and_hms(2026, 6, 1, 10, 0, 0).unwrap().timestamp();
+    let future_ts = Utc
+        .with_ymd_and_hms(2026, 6, 1, 10, 0, 0)
+        .unwrap()
+        .timestamp();
     for bars in with_future.values_mut() {
         let last = bars.last().cloned().expect("bars");
         bars.push(YahooHistoricalBar {
@@ -124,9 +139,21 @@ fn future_bars_are_not_consumed_during_state_construction() {
 fn every_row_records_tmv_availability_and_assessment_decision_lineage() {
     let snapshot = build_research_snapshot(&seven_cache()).unwrap();
     for row in &snapshot.rows {
-        assert!(row.trend_available, "{} {} missing Trend", row.instrument, row.as_of);
-        assert!(row.momentum_available, "{} {} missing Momentum", row.instrument, row.as_of);
-        assert!(row.volatility_available, "{} {} missing Volatility", row.instrument, row.as_of);
+        assert!(
+            row.trend_available,
+            "{} {} missing Trend",
+            row.instrument, row.as_of
+        );
+        assert!(
+            row.momentum_available,
+            "{} {} missing Momentum",
+            row.instrument, row.as_of
+        );
+        assert!(
+            row.volatility_available,
+            "{} {} missing Volatility",
+            row.instrument, row.as_of
+        );
         assert_eq!(row.as_of, row.evaluation_timestamp);
         assert_ne!(row.assessment_id, uuid::Uuid::nil());
         assert_ne!(row.decision_id, uuid::Uuid::nil());
@@ -143,9 +170,8 @@ fn five_instrument_signatures_match_csp004_when_certified_cache_is_present() {
         .unwrap()
         .to_path_buf();
     let five_cache = root.join("product_validation/assessment_enrichment_v0.1/yahoo_cache");
-    let identity_path = root.join(
-        "product_validation/assessment_enrichment_v0.1/provenance/identity_run1.txt",
-    );
+    let identity_path =
+        root.join("product_validation/assessment_enrichment_v0.1/provenance/identity_run1.txt");
     if !five_cache.join("HDFCBANK.NS.json").exists() || !identity_path.exists() {
         return;
     }
@@ -164,7 +190,8 @@ fn five_instrument_signatures_match_csp004_when_certified_cache_is_present() {
         .expect("parse CS-P-004-E1-S1 identity");
     let cert = certify_research_snapshot(&snapshot, &cache, Some(&prior));
     assert_eq!(
-        cert.five_instrument_signature_mismatches, 0,
+        cert.five_instrument_signature_mismatches,
+        0,
         "existing five instruments must remain reproducible vs CS-P-004-E1-S1: {:?}",
         cert.failures
             .iter()

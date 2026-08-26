@@ -1,13 +1,13 @@
+use crate::ingestion::provider::{MarketDataProvider, TimeRange, ValidatedObservationTranslator};
+use crate::instrument::Instrument;
+use crate::observation::RawObservation;
+use async_trait::async_trait;
+use chrono::{DateTime, Duration, TimeZone, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use chrono::{DateTime, Duration, Utc, TimeZone};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use async_trait::async_trait;
-use crate::instrument::Instrument;
-use crate::ingestion::provider::{MarketDataProvider, ValidatedObservationTranslator, TimeRange};
-use crate::observation::RawObservation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct YahooHistoricalBar {
@@ -30,10 +30,8 @@ impl YahooProvider {
             .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
             .build()
             .unwrap();
-            
-        Self {
-            client,
-        }
+
+        Self { client }
     }
 }
 
@@ -46,7 +44,9 @@ impl MarketDataProvider for YahooProvider {
         instrument: &Instrument,
         _range: TimeRange,
     ) -> Result<Vec<Self::RawRecord>, Box<dyn Error>> {
-        let ticker = instrument.provider_ids.get("yahoo")
+        let ticker = instrument
+            .provider_ids
+            .get("yahoo")
             .ok_or("Instrument missing 'yahoo' identity")?;
 
         // Load any bars already on disk.
@@ -89,14 +89,16 @@ impl MarketDataProvider for YahooProvider {
             return Err("No data returned from Yahoo Finance".into());
         }
 
-        let timestamps = result["timestamp"].as_array().ok_or("Missing timestamp array")?;
+        let timestamps = result["timestamp"]
+            .as_array()
+            .ok_or("Missing timestamp array")?;
         let quote = &result["indicators"]["quote"][0];
 
-        let opens     = quote["open"].as_array().ok_or("Missing opens")?;
-        let highs     = quote["high"].as_array().ok_or("Missing highs")?;
-        let lows      = quote["low"].as_array().ok_or("Missing lows")?;
-        let closes    = quote["close"].as_array().ok_or("Missing closes")?;
-        let volumes   = quote["volume"].as_array().ok_or("Missing volumes")?;
+        let opens = quote["open"].as_array().ok_or("Missing opens")?;
+        let highs = quote["high"].as_array().ok_or("Missing highs")?;
+        let lows = quote["low"].as_array().ok_or("Missing lows")?;
+        let closes = quote["close"].as_array().ok_or("Missing closes")?;
+        let volumes = quote["volume"].as_array().ok_or("Missing volumes")?;
         let adj_closes = result["indicators"]["adjclose"][0]["adjclose"]
             .as_array()
             .ok_or("Missing adjclose")?;
@@ -116,12 +118,12 @@ impl MarketDataProvider for YahooProvider {
 
             new_bars.push(YahooHistoricalBar {
                 timestamp: ts,
-                open:      opens[i].as_f64().unwrap_or(0.0),
-                high:      highs[i].as_f64().unwrap_or(0.0),
-                low:       lows[i].as_f64().unwrap_or(0.0),
-                close:     closes[i].as_f64().unwrap_or(0.0),
+                open: opens[i].as_f64().unwrap_or(0.0),
+                high: highs[i].as_f64().unwrap_or(0.0),
+                low: lows[i].as_f64().unwrap_or(0.0),
+                close: closes[i].as_f64().unwrap_or(0.0),
                 adj_close: adj_closes[i].as_f64().unwrap_or(0.0),
-                volume:    volumes[i].as_f64().unwrap_or(0.0),
+                volume: volumes[i].as_f64().unwrap_or(0.0),
             });
         }
 
@@ -171,13 +173,9 @@ fn write_yahoo_cache(ticker: &str, bars: &[YahooHistoricalBar]) -> Result<(), Bo
 pub struct YahooTranslator;
 
 impl ValidatedObservationTranslator<YahooHistoricalBar> for YahooTranslator {
-    fn translate(
-        &self,
-        raw: YahooHistoricalBar,
-        _instrument: &Instrument,
-    ) -> RawObservation {
+    fn translate(&self, raw: YahooHistoricalBar, _instrument: &Instrument) -> RawObservation {
         let observed_at = Utc.timestamp_opt(raw.timestamp, 0).unwrap();
-        
+
         let payload = serde_json::json!({
             "open": raw.open,
             "high": raw.high,

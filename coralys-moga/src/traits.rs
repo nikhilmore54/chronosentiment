@@ -7,4 +7,7 @@ pub use evaluator::{
     CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
     SelectionStrategy,
 };
-pub use improvement::{ImprovementOperator, NoOpImprovement, LocalSearchOperator, ObservedTransitionMetric, RegionIdentifier};
+pub use improvement::{
+    ImprovementOperator, LocalSearchOperator, NoOpImprovement, ObservedTransitionMetric,
+    RegionIdentifier,
+};

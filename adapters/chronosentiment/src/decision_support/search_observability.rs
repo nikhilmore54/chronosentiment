@@ -240,7 +240,11 @@ impl GenerationObserver<RuleListGenome, GenomeEvaluation> for RecordingObserver 
                 DecisionAction::Short => action_symbols.unmatched_short += 1,
                 DecisionAction::NoTrade => action_symbols.unmatched_no_trade += 1,
             }
-            if genome.rules.iter().any(|r| r.when.iter().any(|p| p.concept == "Trend")) {
+            if genome
+                .rules
+                .iter()
+                .any(|r| r.when.iter().any(|p| p.concept == "Trend"))
+            {
                 factor_consumption.genomes_using_trend += 1;
             }
             if genome
@@ -279,7 +283,11 @@ impl GenerationObserver<RuleListGenome, GenomeEvaluation> for RecordingObserver 
                 .map(|e| serialize_genome(e.genome(), e.fitness()))
                 .collect(),
         };
-        self.inner.lock().expect("observability lock").generations.push(record);
+        self.inner
+            .lock()
+            .expect("observability lock")
+            .generations
+            .push(record);
         let _ = fitnesses;
     }
 
@@ -290,12 +298,16 @@ impl GenerationObserver<RuleListGenome, GenomeEvaluation> for RecordingObserver 
         parent_b: &RuleListGenome,
         child: &RuleListGenome,
     ) {
-        self.inner.lock().expect("observability lock").offspring.push(OffspringEdge {
-            generation,
-            parent_a_identity: parent_a.identity_hash(),
-            parent_b_identity: parent_b.identity_hash(),
-            child_identity: child.identity_hash(),
-        });
+        self.inner
+            .lock()
+            .expect("observability lock")
+            .offspring
+            .push(OffspringEdge {
+                generation,
+                parent_a_identity: parent_a.identity_hash(),
+                parent_b_identity: parent_b.identity_hash(),
+                child_identity: child.identity_hash(),
+            });
     }
 }
 

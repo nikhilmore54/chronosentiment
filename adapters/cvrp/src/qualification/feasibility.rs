@@ -1,11 +1,10 @@
+use crate::{CvrpInstance, DistanceMetric};
 /// Feasibility Certification Framework — GOV-009
 /// Implements FC-1 (Structural), FC-2.5 (Benchmark Consistency), FC-2 (Capacity).
 /// These are O(n) / O(1) checks that run before every optimization.
 ///
 /// Reference: benchmarks/campaign/feasibility_certification_framework.md
-
 use serde::{Deserialize, Serialize};
-use crate::{CvrpInstance, DistanceMetric};
 
 // ---------------------------------------------------------------------------
 // Outcome types
@@ -20,10 +19,16 @@ pub struct FcResult {
 
 impl FcResult {
     pub fn pass(reason: impl Into<String>) -> Self {
-        Self { passed: true, reason: reason.into() }
+        Self {
+            passed: true,
+            reason: reason.into(),
+        }
     }
     pub fn fail(reason: impl Into<String>) -> Self {
-        Self { passed: false, reason: reason.into() }
+        Self {
+            passed: false,
+            reason: reason.into(),
+        }
     }
 }
 
@@ -49,11 +54,11 @@ impl FeasibilityStatus {
     /// Short code for log output.
     pub fn code(&self) -> &'static str {
         match self {
-            FeasibilityStatus::ProvenFeasible           => "PROVEN_FEASIBLE",
-            FeasibilityStatus::ProvenInfeasible { .. }  => "PROVEN_INFEASIBLE",
-            FeasibilityStatus::FeasibilityUndetermined  => "FEASIBILITY_UNDETERMINED",
-            FeasibilityStatus::SolverFailed             => "SOLVER_FAILED",
-            FeasibilityStatus::BenchmarkInvalid { .. }  => "BENCHMARK_INVALID",
+            FeasibilityStatus::ProvenFeasible => "PROVEN_FEASIBLE",
+            FeasibilityStatus::ProvenInfeasible { .. } => "PROVEN_INFEASIBLE",
+            FeasibilityStatus::FeasibilityUndetermined => "FEASIBILITY_UNDETERMINED",
+            FeasibilityStatus::SolverFailed => "SOLVER_FAILED",
+            FeasibilityStatus::BenchmarkInvalid { .. } => "BENCHMARK_INVALID",
             FeasibilityStatus::StructuralInvalid { .. } => "STRUCTURAL_INVALID",
         }
     }
@@ -62,11 +67,11 @@ impl FeasibilityStatus {
     pub fn confidence_level(&self) -> u8 {
         match self {
             FeasibilityStatus::StructuralInvalid { .. } => 0,
-            FeasibilityStatus::BenchmarkInvalid { .. }  => 0,
-            FeasibilityStatus::ProvenInfeasible { .. }  => 2, // proven at FC-2 or higher
-            FeasibilityStatus::SolverFailed             => 3, // passed FC-1..FC-3, solver failed
-            FeasibilityStatus::FeasibilityUndetermined  => 3,
-            FeasibilityStatus::ProvenFeasible           => 4, // solution verified
+            FeasibilityStatus::BenchmarkInvalid { .. } => 0,
+            FeasibilityStatus::ProvenInfeasible { .. } => 2, // proven at FC-2 or higher
+            FeasibilityStatus::SolverFailed => 3,            // passed FC-1..FC-3, solver failed
+            FeasibilityStatus::FeasibilityUndetermined => 3,
+            FeasibilityStatus::ProvenFeasible => 4, // solution verified
         }
     }
 }
@@ -74,19 +79,19 @@ impl FeasibilityStatus {
 /// Full feasibility certificate for one instance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeasibilityCertificate {
-    pub instance_name:   String,
-    pub fc1_structural:  FcResult,
+    pub instance_name: String,
+    pub fc1_structural: FcResult,
     pub fc2_5_benchmark: FcResult,
-    pub fc2_capacity:    FcResult,
+    pub fc2_capacity: FcResult,
     /// FC-3 not yet implemented; always None in Phase 1.
-    pub fc3_bin_pack:    Option<FcResult>,
+    pub fc3_bin_pack: Option<FcResult>,
     /// FC-4 not yet implemented; always None in Phase 1.
-    pub fc4_cuts:        Option<FcResult>,
+    pub fc4_cuts: Option<FcResult>,
     /// FC-5 not yet implemented; always None in Phase 1.
-    pub fc5_exact:       Option<FcResult>,
+    pub fc5_exact: Option<FcResult>,
     /// Feasibility Confidence Ladder level (F0–F5).
     pub confidence_level: u8,
-    pub status:          FeasibilityStatus,
+    pub status: FeasibilityStatus,
 }
 
 impl FeasibilityCertificate {
@@ -95,8 +100,8 @@ impl FeasibilityCertificate {
         matches!(
             &self.status,
             FeasibilityStatus::StructuralInvalid { .. }
-            | FeasibilityStatus::BenchmarkInvalid { .. }
-            | FeasibilityStatus::ProvenInfeasible { .. }
+                | FeasibilityStatus::BenchmarkInvalid { .. }
+                | FeasibilityStatus::ProvenInfeasible { .. }
         )
     }
 
@@ -106,9 +111,21 @@ impl FeasibilityCertificate {
             "FCF: {} (F{}) — FC1:{} FC2.5:{} FC2:{}",
             self.status.code(),
             self.confidence_level,
-            if self.fc1_structural.passed  { "PASS" } else { "FAIL" },
-            if self.fc2_5_benchmark.passed { "PASS" } else { "FAIL" },
-            if self.fc2_capacity.passed    { "PASS" } else { "FAIL" },
+            if self.fc1_structural.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
+            if self.fc2_5_benchmark.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
+            if self.fc2_capacity.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
         )
     }
 }
@@ -121,7 +138,9 @@ impl FeasibilityCertificate {
 /// Checks graph integrity, depot existence, customer numbering, demand validity.
 pub fn fc1_structural(instance: &CvrpInstance, name: &str) -> FcResult {
     // Depot must exist (non-zero id is conventional; we just check it's present)
-    if instance.depot.id == 0 && instance.depot.x == 0.0 && instance.depot.y == 0.0
+    if instance.depot.id == 0
+        && instance.depot.x == 0.0
+        && instance.depot.y == 0.0
         && instance.customers.is_empty()
     {
         return FcResult::fail("Depot and customers both empty — malformed instance");
@@ -183,12 +202,12 @@ pub fn fc1_structural(instance: &CvrpInstance, name: &str) -> FcResult {
 /// Caller populates this from the registry before calling fc2_5_benchmark.
 #[derive(Debug, Clone)]
 pub struct BenchmarkMeta {
-    pub name:            String,
-    pub vehicles:        usize,
-    pub capacity:        i32,
-    pub bks:             Option<f64>,
+    pub name: String,
+    pub vehicles: usize,
+    pub capacity: i32,
+    pub bks: Option<f64>,
     pub distance_metric: String,
-    pub family:          String,
+    pub family: String,
 }
 
 /// FC-2.5: Benchmark Consistency — O(1).
@@ -250,13 +269,13 @@ pub fn fc2_5_benchmark(instance: &CvrpInstance, meta: Option<&BenchmarkMeta>) ->
 /// Result of FC-2 capacity checks with full arithmetic detail.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapacityCertificate {
-    pub total_demand:    i64,
-    pub fleet_capacity:  i64,   // K × Q
-    pub k_available:     usize,
-    pub k_minimum:       usize, // ⌈Σd_i / Q⌉
-    pub max_demand:      i32,   // largest single customer demand
-    pub nc1_fleet:       FcResult,
-    pub nc2_individual:  FcResult,
+    pub total_demand: i64,
+    pub fleet_capacity: i64, // K × Q
+    pub k_available: usize,
+    pub k_minimum: usize, // ⌈Σd_i / Q⌉
+    pub max_demand: i32,  // largest single customer demand
+    pub nc1_fleet: FcResult,
+    pub nc2_individual: FcResult,
     pub nc5_lower_bound: FcResult,
 }
 
@@ -271,11 +290,16 @@ pub fn fc2_capacity(instance: &CvrpInstance) -> CapacityCertificate {
     let total_demand: i64 = instance.customers.iter().map(|c| c.demand as i64).sum();
     let fleet_capacity = k * q;
     let k_minimum = if q > 0 {
-        ((total_demand + q - 1) / q) as usize  // ⌈Σd_i / Q⌉
+        ((total_demand + q - 1) / q) as usize // ⌈Σd_i / Q⌉
     } else {
         usize::MAX
     };
-    let max_demand = instance.customers.iter().map(|c| c.demand).max().unwrap_or(0);
+    let max_demand = instance
+        .customers
+        .iter()
+        .map(|c| c.demand)
+        .max()
+        .unwrap_or(0);
 
     // NC1: Fleet capacity
     let nc1 = if q <= 0 {
@@ -297,7 +321,9 @@ pub fn fc2_capacity(instance: &CvrpInstance) -> CapacityCertificate {
     // NC2: Individual demand
     let nc2 = if max_demand as i64 > q {
         // Find the offending customer
-        let offender = instance.customers.iter()
+        let offender = instance
+            .customers
+            .iter()
             .find(|c| c.demand as i64 > q)
             .map(|c| format!("customer_id={} demand={}", c.id, c.demand))
             .unwrap_or_default();
@@ -344,9 +370,15 @@ impl CapacityCertificate {
 
     /// First failing NC reason, or None if all pass.
     pub fn infeasibility_reason(&self) -> Option<String> {
-        if !self.nc1_fleet.passed      { return Some(self.nc1_fleet.reason.clone()); }
-        if !self.nc2_individual.passed { return Some(self.nc2_individual.reason.clone()); }
-        if !self.nc5_lower_bound.passed { return Some(self.nc5_lower_bound.reason.clone()); }
+        if !self.nc1_fleet.passed {
+            return Some(self.nc1_fleet.reason.clone());
+        }
+        if !self.nc2_individual.passed {
+            return Some(self.nc2_individual.reason.clone());
+        }
+        if !self.nc5_lower_bound.passed {
+            return Some(self.nc5_lower_bound.reason.clone());
+        }
         None
     }
 
@@ -358,9 +390,21 @@ impl CapacityCertificate {
             self.fleet_capacity,
             self.k_minimum,
             self.k_available,
-            if self.nc1_fleet.passed      { "PASS" } else { "FAIL" },
-            if self.nc2_individual.passed { "PASS" } else { "FAIL" },
-            if self.nc5_lower_bound.passed { "PASS" } else { "FAIL" },
+            if self.nc1_fleet.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
+            if self.nc2_individual.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
+            if self.nc5_lower_bound.passed {
+                "PASS"
+            } else {
+                "FAIL"
+            },
         )
     }
 }
@@ -382,13 +426,13 @@ pub fn run_pre_optimization_fcf(
     if !fc1.passed {
         let reason = fc1.reason.clone();
         return FeasibilityCertificate {
-            instance_name:   name.to_string(),
-            fc1_structural:  fc1,
+            instance_name: name.to_string(),
+            fc1_structural: fc1,
             fc2_5_benchmark: FcResult::pass("skipped — FC-1 failed"),
-            fc2_capacity:    FcResult::pass("skipped — FC-1 failed"),
-            fc3_bin_pack:    None,
-            fc4_cuts:        None,
-            fc5_exact:       None,
+            fc2_capacity: FcResult::pass("skipped — FC-1 failed"),
+            fc3_bin_pack: None,
+            fc4_cuts: None,
+            fc5_exact: None,
             confidence_level: 0,
             status: FeasibilityStatus::StructuralInvalid { reason },
         };
@@ -399,13 +443,13 @@ pub fn run_pre_optimization_fcf(
     if !fc2_5.passed {
         let reason = fc2_5.reason.clone();
         return FeasibilityCertificate {
-            instance_name:   name.to_string(),
-            fc1_structural:  fc1,
+            instance_name: name.to_string(),
+            fc1_structural: fc1,
             fc2_5_benchmark: fc2_5,
-            fc2_capacity:    FcResult::pass("skipped — FC-2.5 failed"),
-            fc3_bin_pack:    None,
-            fc4_cuts:        None,
-            fc5_exact:       None,
+            fc2_capacity: FcResult::pass("skipped — FC-2.5 failed"),
+            fc3_bin_pack: None,
+            fc4_cuts: None,
+            fc5_exact: None,
             confidence_level: 0,
             status: FeasibilityStatus::BenchmarkInvalid { reason },
         };
@@ -422,13 +466,13 @@ pub fn run_pre_optimization_fcf(
     if cap.is_infeasible() {
         let reason = cap.infeasibility_reason().unwrap_or_default();
         return FeasibilityCertificate {
-            instance_name:   name.to_string(),
-            fc1_structural:  fc1,
+            instance_name: name.to_string(),
+            fc1_structural: fc1,
             fc2_5_benchmark: fc2_5,
-            fc2_capacity:    fc2_result,
-            fc3_bin_pack:    None,
-            fc4_cuts:        None,
-            fc5_exact:       None,
+            fc2_capacity: fc2_result,
+            fc3_bin_pack: None,
+            fc4_cuts: None,
+            fc5_exact: None,
             confidence_level: 2,
             status: FeasibilityStatus::ProvenInfeasible {
                 level: "FC-2".to_string(),
@@ -439,13 +483,13 @@ pub fn run_pre_optimization_fcf(
 
     // All Phase 1 checks passed — feasibility undetermined until optimizer runs
     FeasibilityCertificate {
-        instance_name:   name.to_string(),
-        fc1_structural:  fc1,
+        instance_name: name.to_string(),
+        fc1_structural: fc1,
         fc2_5_benchmark: fc2_5,
-        fc2_capacity:    fc2_result,
-        fc3_bin_pack:    None,
-        fc4_cuts:        None,
-        fc5_exact:       None,
+        fc2_capacity: fc2_result,
+        fc3_bin_pack: None,
+        fc4_cuts: None,
+        fc5_exact: None,
         confidence_level: 3,
         status: FeasibilityStatus::FeasibilityUndetermined,
     }
@@ -531,7 +575,9 @@ pub fn fc3_bin_pack_ffd(instance: &CvrpInstance) -> BinPackResult {
         for (i, remaining) in bins.iter_mut().enumerate() {
             if *remaining >= d {
                 *remaining -= d;
-                if i + 1 > bins_used { bins_used = i + 1; }
+                if i + 1 > bins_used {
+                    bins_used = i + 1;
+                }
                 placed = true;
                 break;
             }

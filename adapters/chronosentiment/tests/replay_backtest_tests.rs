@@ -2,7 +2,9 @@ use chrono::{TimeZone, Utc};
 use chronosentiment_adapter::decision_support::backtest::{
     run_replay_backtest, DecisionLedger, ReplayTick,
 };
-use chronosentiment_adapter::decision_support::policy::{BaselineTrendMappingPolicy, DecisionPolicy};
+use chronosentiment_adapter::decision_support::policy::{
+    BaselineTrendMappingPolicy, DecisionPolicy,
+};
 use chronosentiment_adapter::decision_support::replay::{
     decide_from_inputs, DecideAt, ReplayAssessment, ReplayError, ReplayInputs, ReplayObservation,
     UNFROZEN_ENGINE_VERSION,
@@ -24,7 +26,8 @@ fn lake(instrument_id: Uuid) -> InMemoryLake {
     metrics
         .metrics
         .insert("ma_50".to_string(), MetricValue::Float(2050.0));
-    let mut profile = AssessmentEngine.assess_at(&metrics, &[Concept::Trend], t(31), Some(instrument_id));
+    let mut profile =
+        AssessmentEngine.assess_at(&metrics, &[Concept::Trend], t(31), Some(instrument_id));
     let id = Uuid::from_u128(1);
     profile.metadata.artifact_id = id;
     InMemoryLake {
@@ -52,18 +55,18 @@ impl DecideAt for InMemoryLake {
     ) -> Result<chronosentiment_adapter::decision_support::TradingDecision, ReplayError> {
         decide_from_inputs(
             ReplayInputs {
-            instrument_id,
-            as_of,
-            engine_version: engine_version.to_string(),
-            produced_by: chronosentiment_adapter::decision_support::replay::REPLAY_PRODUCER
-                .to_string(),
-            assessments: self.assessments.clone(),
-            lake_decisions: vec![],
-            observations: vec![ReplayObservation {
-                id: Uuid::from_u128(11),
-                effective_from: t(31),
-            }],
-        },
+                instrument_id,
+                as_of,
+                engine_version: engine_version.to_string(),
+                produced_by: chronosentiment_adapter::decision_support::replay::REPLAY_PRODUCER
+                    .to_string(),
+                assessments: self.assessments.clone(),
+                lake_decisions: vec![],
+                observations: vec![ReplayObservation {
+                    id: Uuid::from_u128(11),
+                    effective_from: t(31),
+                }],
+            },
             policy,
         )
     }
@@ -87,20 +90,36 @@ async fn iterates_ticks_into_append_only_ledger() {
             instrument_id,
         },
     ];
-    let a = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
-        .await
-        .unwrap();
-    let b = run_replay_backtest(&adapter, &ticks, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
-        .await
-        .unwrap();
+    let a = run_replay_backtest(
+        &adapter,
+        &ticks,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await
+    .unwrap();
+    let b = run_replay_backtest(
+        &adapter,
+        &ticks,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(a.records.len(), 3);
     assert_eq!(a.identity_hash(), b.identity_hash());
     assert_eq!(a.records[0].decision_id, b.records[0].decision_id);
     assert_eq!(a.records[0].sequence, 1);
-    assert_eq!(a.records[0].as_of_timestamp, a.records[0].decision_timestamp);
+    assert_eq!(
+        a.records[0].as_of_timestamp,
+        a.records[0].decision_timestamp
+    );
     assert_eq!(a.engine_version, UNFROZEN_ENGINE_VERSION);
-    assert!(serde_json::to_value(&a).unwrap().get("outcome_return").is_none());
+    assert!(serde_json::to_value(&a)
+        .unwrap()
+        .get("outcome_return")
+        .is_none());
     assert!(serde_json::to_value(&a).unwrap()["records"][0]
         .get("outcome_return")
         .is_none());
@@ -114,9 +133,14 @@ async fn later_ticks_do_not_mutate_earlier_records() {
         as_of: t(31),
         instrument_id,
     }];
-    let prefix = run_replay_backtest(&adapter, &first_tick, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
-        .await
-        .unwrap();
+    let prefix = run_replay_backtest(
+        &adapter,
+        &first_tick,
+        UNFROZEN_ENGINE_VERSION,
+        &BaselineTrendMappingPolicy,
+    )
+    .await
+    .unwrap();
     let all = run_replay_backtest(
         &adapter,
         &[
@@ -145,7 +169,12 @@ async fn ledger_is_append_only_sequence() {
     let instrument_id = Uuid::from_u128(7);
     let adapter = lake(instrument_id);
     let decision = adapter
-        .decide_at(t(31), instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
+        .decide_at(
+            t(31),
+            instrument_id,
+            UNFROZEN_ENGINE_VERSION,
+            &BaselineTrendMappingPolicy,
+        )
         .await
         .unwrap();
     let mut ledger = DecisionLedger::new(UNFROZEN_ENGINE_VERSION);

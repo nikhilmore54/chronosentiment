@@ -4,8 +4,8 @@ use sha2::{Digest, Sha256};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
-use yahoo_finance_api as yahoo;
 use tokio;
+use yahoo_finance_api as yahoo;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Phase 2A Yahoo OHLCV Importer")]
@@ -50,15 +50,23 @@ struct CaptureManifest {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    println!("Starting Yahoo Importer for {} ({})", args.symbol, args.name);
+    println!(
+        "Starting Yahoo Importer for {} ({})",
+        args.symbol, args.name
+    );
 
-    let base_dir = PathBuf::from("chronology").join("historical").join(&args.name);
+    let base_dir = PathBuf::from("chronology")
+        .join("historical")
+        .join(&args.name);
     std::fs::create_dir_all(&base_dir).unwrap();
 
     let provider = yahoo::YahooConnector::new().unwrap();
-    
+
     // Yahoo max range for 1m interval is 7 days, we'll just fetch the last 7 days for now
-    let response = match provider.get_latest_quotes(&args.symbol, &args.interval).await {
+    let response = match provider
+        .get_latest_quotes(&args.symbol, &args.interval)
+        .await
+    {
         Ok(res) => res,
         Err(e) => {
             println!("Error fetching Yahoo data: {}", e);
@@ -82,8 +90,17 @@ async fn main() {
     let start_time = quotes.first().unwrap().timestamp * 1000;
     let end_time = quotes.last().unwrap().timestamp * 1000;
 
-    let file_path = base_dir.join(format!("{}_{}.jsonl", args.symbol.to_lowercase().replace("-", ""), start_time));
-    let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(&file_path).unwrap();
+    let file_path = base_dir.join(format!(
+        "{}_{}.jsonl",
+        args.symbol.to_lowercase().replace("-", ""),
+        start_time
+    ));
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&file_path)
+        .unwrap();
 
     let mut hasher = Sha256::new();
     let mut tick_count = 0;
@@ -106,7 +123,10 @@ async fn main() {
     }
 
     let final_hash = hasher.finalize();
-    let hash_hex = final_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let hash_hex = final_hash
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
 
     let manifest = CaptureManifest {
         substrate: args.symbol.clone(),
@@ -120,7 +140,9 @@ async fn main() {
 
     let meta_path = base_dir.join(format!("{}_{}_manifest.json", args.name, start_time));
     let mut meta_file = File::create(&meta_path).unwrap();
-    meta_file.write_all(serde_json::to_string_pretty(&manifest).unwrap().as_bytes()).unwrap();
+    meta_file
+        .write_all(serde_json::to_string_pretty(&manifest).unwrap().as_bytes())
+        .unwrap();
 
     println!("✅ Yahoo Historical Capture Complete: {} ticks", tick_count);
     println!("   Hash: {}", hash_hex);

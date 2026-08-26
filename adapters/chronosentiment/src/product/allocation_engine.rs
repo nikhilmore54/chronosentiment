@@ -50,7 +50,9 @@
 //! rather than incorrectly showing AVOID when the market signal is valid.
 
 use super::portfolio_context::PortfolioContext;
-use super::recommendation::{PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction};
+use super::recommendation::{
+    PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction,
+};
 use super::user_profile::UserProfile;
 
 /// Version string for this allocation engine. Embedded in every recommendation for provenance.
@@ -236,15 +238,15 @@ fn round_down(value: f64, granularity: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::product::portfolio_context::PortfolioContext;
-    use crate::product::user_profile::{InvestmentHorizon, RiskTolerance, UserProfile};
     use crate::product::recommendation::PortfolioAllocationRequest;
+    use crate::product::user_profile::{InvestmentHorizon, RiskTolerance, UserProfile};
     use std::collections::HashMap;
 
     fn moderate_profile() -> UserProfile {
         UserProfile {
             user_id: "user-001".into(),
             weekly_investment_inr: 5000.0,
-            risk_tolerance: RiskTolerance::Moderate,   // sizing_factor = 0.75 → max = 3750
+            risk_tolerance: RiskTolerance::Moderate, // sizing_factor = 0.75 → max = 3750
             investment_horizon: InvestmentHorizon::MediumTerm,
         }
     }
@@ -305,7 +307,11 @@ mod tests {
     fn no_trade_with_no_holding_produces_no_action() {
         // NO_TRADE + no existing position → NO_ACTION (nothing to do)
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&no_trade_request(), &moderate_profile(), &context_with_cash(10000.0));
+        let rec = engine.allocate(
+            &no_trade_request(),
+            &moderate_profile(),
+            &context_with_cash(10000.0),
+        );
         assert_eq!(rec.action, RecommendationAction::NoAction);
         assert!((rec.allocation_inr - 0.0).abs() < 1e-9);
     }
@@ -326,13 +332,25 @@ mod tests {
         // Capital constraint does NOT change the action to AVOID.
         // The market signal (ADD) remains valid; allocation_inr is ₹0 (deferred).
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&infy_long_request(), &moderate_profile(), &context_with_cash(50.0));
-        assert_eq!(rec.action, RecommendationAction::Add,
-            "insufficient cash must not change ADD to AVOID");
-        assert!((rec.allocation_inr - 0.0).abs() < 1e-9,
-            "allocation must be ₹0 when cash is below rounding threshold");
-        assert!(rec.rationale.contains("deferred"),
-            "rationale must explain deferral: {}", rec.rationale);
+        let rec = engine.allocate(
+            &infy_long_request(),
+            &moderate_profile(),
+            &context_with_cash(50.0),
+        );
+        assert_eq!(
+            rec.action,
+            RecommendationAction::Add,
+            "insufficient cash must not change ADD to AVOID"
+        );
+        assert!(
+            (rec.allocation_inr - 0.0).abs() < 1e-9,
+            "allocation must be ₹0 when cash is below rounding threshold"
+        );
+        assert!(
+            rec.rationale.contains("deferred"),
+            "rationale must explain deferral: {}",
+            rec.rationale
+        );
     }
 
     #[test]
@@ -353,10 +371,17 @@ mod tests {
         // cash = 10000 → base = min(3750, 10000) = 3750
         // round_down(3750, 100) = 3700 (3750 / 100 = 37.5 → floor = 37 → 3700)
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&infy_long_request(), &moderate_profile(), &context_with_cash(10000.0));
+        let rec = engine.allocate(
+            &infy_long_request(),
+            &moderate_profile(),
+            &context_with_cash(10000.0),
+        );
         assert_eq!(rec.action, RecommendationAction::Add);
-        assert!((rec.allocation_inr - 3700.0).abs() < 1e-6,
-            "expected 3700, got {}", rec.allocation_inr);
+        assert!(
+            (rec.allocation_inr - 3700.0).abs() < 1e-6,
+            "expected 3700, got {}",
+            rec.allocation_inr
+        );
     }
 
     #[test]
@@ -364,10 +389,17 @@ mod tests {
         // cash = 1500 < max_single (3750) → base = 1500
         // round_down(1500, 100) = 1500
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&infy_long_request(), &moderate_profile(), &context_with_cash(1500.0));
+        let rec = engine.allocate(
+            &infy_long_request(),
+            &moderate_profile(),
+            &context_with_cash(1500.0),
+        );
         assert_eq!(rec.action, RecommendationAction::Add);
-        assert!((rec.allocation_inr - 1500.0).abs() < 1e-6,
-            "expected 1500, got {}", rec.allocation_inr);
+        assert!(
+            (rec.allocation_inr - 1500.0).abs() < 1e-6,
+            "expected 1500, got {}",
+            rec.allocation_inr
+        );
     }
 
     #[test]
@@ -375,10 +407,22 @@ mod tests {
         let engine = AllocationEngine::new();
         let req = infy_long_request();
         let rec = engine.allocate(&req, &moderate_profile(), &context_with_cash(10000.0));
-        assert!((rec.target_pct - req.target_pct).abs() < 1e-9, "target_pct must be unchanged");
-        assert!((rec.risk_pct - req.risk_pct).abs() < 1e-9, "risk_pct must be unchanged");
-        assert_eq!(rec.maximum_hold_sessions, req.maximum_hold_sessions, "max hold must be unchanged");
-        assert_eq!(rec.c3_002_direction, req.c3_002_direction, "direction must be unchanged");
+        assert!(
+            (rec.target_pct - req.target_pct).abs() < 1e-9,
+            "target_pct must be unchanged"
+        );
+        assert!(
+            (rec.risk_pct - req.risk_pct).abs() < 1e-9,
+            "risk_pct must be unchanged"
+        );
+        assert_eq!(
+            rec.maximum_hold_sessions, req.maximum_hold_sessions,
+            "max hold must be unchanged"
+        );
+        assert_eq!(
+            rec.c3_002_direction, req.c3_002_direction,
+            "direction must be unchanged"
+        );
     }
 
     #[test]
@@ -394,7 +438,11 @@ mod tests {
     #[test]
     fn allocation_engine_version_is_embedded() {
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&infy_long_request(), &moderate_profile(), &context_with_cash(10000.0));
+        let rec = engine.allocate(
+            &infy_long_request(),
+            &moderate_profile(),
+            &context_with_cash(10000.0),
+        );
         assert_eq!(rec.allocation_engine_version, ALLOCATION_ENGINE_VERSION);
     }
 
@@ -411,11 +459,20 @@ mod tests {
         // cash = 99 → base = 99 → round_down(99, 100) = 0 < MIN_ALLOCATION_INR
         // Action is still ADD (signal valid); allocation_inr = ₹0 (deferred).
         let engine = AllocationEngine::new();
-        let rec = engine.allocate(&infy_long_request(), &moderate_profile(), &context_with_cash(99.0));
-        assert_eq!(rec.action, RecommendationAction::Add,
-            "sub-threshold cash must not change ADD to AVOID");
-        assert!((rec.allocation_inr - 0.0).abs() < 1e-9,
-            "allocation must be ₹0 when rounded amount is below threshold");
+        let rec = engine.allocate(
+            &infy_long_request(),
+            &moderate_profile(),
+            &context_with_cash(99.0),
+        );
+        assert_eq!(
+            rec.action,
+            RecommendationAction::Add,
+            "sub-threshold cash must not change ADD to AVOID"
+        );
+        assert!(
+            (rec.allocation_inr - 0.0).abs() < 1e-9,
+            "allocation must be ₹0 when rounded amount is below threshold"
+        );
     }
 
     #[test]

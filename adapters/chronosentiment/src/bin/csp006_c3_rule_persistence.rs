@@ -27,13 +27,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing to overwrite selected_policy.json".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not Search #2".into());
     }
     let recommendations: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_two.join("recommendations").join("recommendations.json"),
+        search_two
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
 
     let report = analyze_rule_persistence(&recommendations, &artifact)?;
@@ -42,7 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output.join("persistence.json"),
         serde_json::to_vec_pretty(&report)?,
     )?;
-    fs::write(output.join("PERSISTENCE.md"), render_rule_persistence(&report))?;
+    fs::write(
+        output.join("PERSISTENCE.md"),
+        render_rule_persistence(&report),
+    )?;
 
     println!("result=PASS");
     println!("artifact_hash={}", report.search_two_artifact_hash);
@@ -72,7 +78,9 @@ fn parse_args() -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--output" => output = Some(PathBuf::from(args.next().ok_or("missing --output")?)),
             other => return Err(format!("unknown argument {other}").into()),
@@ -80,6 +88,7 @@ fn parse_args() -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
     }
     Ok((
         search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        output.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR).join("rule_persistence")),
+        output
+            .unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR).join("rule_persistence")),
     ))
 }

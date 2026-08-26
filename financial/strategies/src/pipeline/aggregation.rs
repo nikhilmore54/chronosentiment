@@ -1,13 +1,18 @@
-use std::collections::HashMap;
+use chronosentiment_core::market_adapter::{convert_series_to_events, Candle};
 use chronosentiment_core::{MarketEvent, SimEvent};
-use chronosentiment_core::market_adapter::{Candle, convert_series_to_events};
+use std::collections::HashMap;
 
-use crate::pipeline::reporting::{MetricAggregation, SignalsSnapshot, SignalMeta, EdgeLossBreakdown};
 use crate::pipeline::old::{TradeSignal, DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR};
+use crate::pipeline::reporting::{
+    EdgeLossBreakdown, MetricAggregation, SignalMeta, SignalsSnapshot,
+};
 
 /// Groups, slices, and batches raw market data into sliceable chronology windows.
 /// It performs zero causal decision-making, semantic evaluation, or signal routing.
-pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String, Vec<MarketEvent>> {
+pub fn scenarios_from_candles(
+    asset: &str,
+    candles: &[Candle],
+) -> HashMap<String, Vec<MarketEvent>> {
     let mut scenarios: HashMap<String, Vec<MarketEvent>> = HashMap::new();
     if candles.len() < 60 {
         return scenarios;
@@ -31,7 +36,8 @@ pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String
                 side,
                 timestamp,
                 ..
-            } = ev {
+            } = ev
+            {
                 market_events.push(MarketEvent {
                     subtype,
                     price,
@@ -43,7 +49,10 @@ pub fn scenarios_from_candles(asset: &str, candles: &[Candle]) -> HashMap<String
         }
 
         if !market_events.is_empty() {
-            scenarios.insert(format!("{}_csv_window_{}", asset, scenario_id), market_events);
+            scenarios.insert(
+                format!("{}_csv_window_{}", asset, scenario_id),
+                market_events,
+            );
         }
 
         start += stride;

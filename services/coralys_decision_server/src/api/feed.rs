@@ -123,14 +123,22 @@ mod tests {
     async fn certified_decision_appears_in_feed() {
         // AC-F1, AC-F2
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server.get("/decisions").await;
         resp.assert_status_ok();
         let body: FeedResponse = resp.json();
         assert_eq!(body.total, 1);
-        assert_eq!(body.decisions[0].decision_id, "coralys-ADANIENT-20260817T101500Z-001");
+        assert_eq!(
+            body.decisions[0].decision_id,
+            "coralys-ADANIENT-20260817T101500Z-001"
+        );
         assert_eq!(body.decisions[0].instrument, "ADANIENT.NS");
     }
 
@@ -138,7 +146,12 @@ mod tests {
     async fn feed_has_no_confidence_or_allocation_fields() {
         // AC-F4, AC-F5
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server.get("/decisions").await;
@@ -156,7 +169,12 @@ mod tests {
     async fn feed_ordering_is_newest_first() {
         // AC-F6
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
         seal_sample_decision(&state, "coralys-BPCL-20260817T103000Z-002", "BPCL.NS").await;
 
         let server = TestServer::new(app);

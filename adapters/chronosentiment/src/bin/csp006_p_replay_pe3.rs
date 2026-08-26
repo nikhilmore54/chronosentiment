@@ -39,9 +39,9 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use chronosentiment_adapter::decision_support::coralys_execution_model::CORALYS_EXEC_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_yahoo_cache;
-use chronosentiment_adapter::decision_support::coralys_execution_model::CORALYS_EXEC_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::observatory_historical_pe3::{
     refuse_historical_pe3_output, replay_historical_pe3, HISTORICAL_PE3_PATH_KIND,
 };
@@ -72,10 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if CORALYS_EXEC_ARTIFACT_HASH
         != "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f"
     {
-        return Err(format!(
-            "coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
-        )
-        .into());
+        return Err(format!("coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}").into());
     }
 
     // ── Load Yahoo bar cache ──────────────────────────────────────────────────
@@ -102,7 +99,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into());
     }
     if ledger.execution_contract == "targeted_execution_v0_fixed_5pct_20_sessions" {
-        return Err("P.E.3 ledger carries P.E.2 execution_contract — contamination detected".into());
+        return Err(
+            "P.E.3 ledger carries P.E.2 execution_contract — contamination detected".into(),
+        );
     }
 
     // ── Write output ──────────────────────────────────────────────────────────
@@ -165,7 +164,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("determinism={}", ledger.determinism_pass);
     println!("lookahead_clean={}", ledger.lookahead_clean);
     println!("poison_test_pass={}", ledger.poison_test_pass);
-    println!("retrospective_characterization={}", ledger.retrospective_characterization);
+    println!(
+        "retrospective_characterization={}",
+        ledger.retrospective_characterization
+    );
     println!("output={}", args.output.display());
 
     Ok(())
@@ -187,17 +189,33 @@ fn render_pe3_report(
         ledger.coralys_artifact_hash
     ));
     md.push_str(&format!("- path kind: `{}`\n", ledger.path_kind));
-    md.push_str(&format!("- execution contract: `{}`\n", ledger.execution_contract));
+    md.push_str(&format!(
+        "- execution contract: `{}`\n",
+        ledger.execution_contract
+    ));
     md.push_str(&format!("- certified T: {}\n", ledger.certified_t));
     md.push_str(&format!("- requested clock: {}\n", ledger.requested_clock));
-    md.push_str(&format!("- peeked_returns_at_seal: {}\n", ledger.peeked_returns_at_seal));
+    md.push_str(&format!(
+        "- peeked_returns_at_seal: {}\n",
+        ledger.peeked_returns_at_seal
+    ));
     md.push_str(&format!(
         "- statistical backtest: {}\n\n",
-        if ledger.statistical_backtest { "DONE" } else { "not done" }
+        if ledger.statistical_backtest {
+            "DONE"
+        } else {
+            "not done"
+        }
     ));
     md.push_str(&format!("- decisions: {}\n", ledger.n_decisions));
-    md.push_str(&format!("- P.E.3 eligible (ATR available): {}\n", ledger.n_pe3_eligible));
-    md.push_str(&format!("- excluded (ATR unavailable): {}\n", ledger.n_excluded_no_atr));
+    md.push_str(&format!(
+        "- P.E.3 eligible (ATR available): {}\n",
+        ledger.n_pe3_eligible
+    ));
+    md.push_str(&format!(
+        "- excluded (ATR unavailable): {}\n",
+        ledger.n_excluded_no_atr
+    ));
     md.push_str(&format!("- NO_TRADE: {}\n", ledger.n_no_trade));
     md.push_str(&format!("- TARGET: {}\n", ledger.n_target));
     md.push_str(&format!("- RISK (stop): {}\n", ledger.n_risk));
@@ -205,7 +223,10 @@ fn render_pe3_report(
     md.push_str(&format!("- AMBIGUOUS: {}\n\n", ledger.n_ambiguous));
     md.push_str(&format!("- determinism: {}\n", ledger.determinism_pass));
     md.push_str(&format!("- lookahead_clean: {}\n", ledger.lookahead_clean));
-    md.push_str(&format!("- poison_test_pass: {}\n\n", ledger.poison_test_pass));
+    md.push_str(&format!(
+        "- poison_test_pass: {}\n\n",
+        ledger.poison_test_pass
+    ));
     md.push_str(&format!(
         "- retrospective_characterization: {}\n",
         ledger.retrospective_characterization
@@ -253,12 +274,10 @@ fn parse_args() -> Result<ReplayPe3Args, Box<dyn std::error::Error>> {
         }
     }
 
-    let search_two = search_two.unwrap_or_else(|| {
-        PathBuf::from("product_validation/CS-P-006/observatory")
-    });
-    let cache_dir = cache_dir.unwrap_or_else(|| {
-        PathBuf::from("product_validation/CS-P-006/yahoo_cache")
-    });
+    let search_two =
+        search_two.unwrap_or_else(|| PathBuf::from("product_validation/CS-P-006/observatory"));
+    let cache_dir =
+        cache_dir.unwrap_or_else(|| PathBuf::from("product_validation/CS-P-006/yahoo_cache"));
     let output = output.unwrap_or_else(|| {
         PathBuf::from("historical_runs/pe3_coralys_v0_2026-08-16/execution_ledger")
     });

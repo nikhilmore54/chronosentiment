@@ -121,10 +121,7 @@ impl ViolationSummary {
 
     /// Number of `Error`-severity violations.
     pub fn error_count(&self) -> usize {
-        self.by_severity
-            .get("Error")
-            .map(|v| v.len())
-            .unwrap_or(0)
+        self.by_severity.get("Error").map(|v| v.len()).unwrap_or(0)
     }
 
     /// Number of `Warning`-severity violations.
@@ -256,7 +253,8 @@ mod tests {
                 rotation_id: format!("R-{crew_id}"),
                 crew_id: crew_id.to_string(),
             },
-            1.0, 0.0,
+            1.0,
+            0.0,
             "rotation violation",
         )
     }

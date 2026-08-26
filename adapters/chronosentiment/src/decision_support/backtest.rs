@@ -76,7 +76,11 @@ impl DecisionLedger {
     }
 
     pub fn identity_hash(&self) -> String {
-        let hashes: Vec<&str> = self.records.iter().map(|r| r.content_hash.as_str()).collect();
+        let hashes: Vec<&str> = self
+            .records
+            .iter()
+            .map(|r| r.content_hash.as_str())
+            .collect();
         let bytes = serde_json::to_vec(&hashes).expect("ledger hashes serialize");
         format!("{:x}", Sha256::digest(&bytes))
     }

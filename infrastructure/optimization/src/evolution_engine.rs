@@ -5,12 +5,13 @@ use rand::SeedableRng;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
-use coralys_moga::traits::{
-    CrossoverOperator, Evaluated, FitnessEvaluator as CoralysFitnessEvaluator, Genome, GenomeFactory, MutationOperator,
-};
-use coralys_moga::engine::{EvolutionEngine, GaResult as CoralysGaResult};
 use coralys_moga::config::EvolutionConfig;
+use coralys_moga::engine::{EvolutionEngine, GaResult as CoralysGaResult};
 use coralys_moga::runtime::optimization::metric::MetricReport;
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator as CoralysFitnessEvaluator, Genome,
+    GenomeFactory, MutationOperator,
+};
 
 pub trait FitnessEvaluator<T> {
     type Evaluation;
@@ -185,16 +186,36 @@ pub fn initialize_population(config: &GaConfig, rng: &mut StdRng) -> Vec<Candida
 pub fn crossover(parent1: &Candidate, parent2: &Candidate, rng: &mut StdRng) -> Candidate {
     let mut child = parent1.clone();
 
-    if rng.gen_bool(0.5) { child.queue_threshold = parent2.queue_threshold; }
-    if rng.gen_bool(0.5) { child.base_edge = parent2.base_edge; }
-    if rng.gen_bool(0.5) { child.take_profit = parent2.take_profit; }
-    if rng.gen_bool(0.5) { child.stop_loss = parent2.stop_loss; }
-    if rng.gen_bool(0.5) { child.holding_period = parent2.holding_period; }
-    if rng.gen_bool(0.5) { child.w_conviction = parent2.w_conviction; }
-    if rng.gen_bool(0.5) { child.w_momentum = parent2.w_momentum; }
-    if rng.gen_bool(0.5) { child.w_volatility = parent2.w_volatility; }
-    if rng.gen_bool(0.5) { child.selectivity = parent2.selectivity; }
-    if rng.gen_bool(0.5) { child.archetype = parent2.archetype; }
+    if rng.gen_bool(0.5) {
+        child.queue_threshold = parent2.queue_threshold;
+    }
+    if rng.gen_bool(0.5) {
+        child.base_edge = parent2.base_edge;
+    }
+    if rng.gen_bool(0.5) {
+        child.take_profit = parent2.take_profit;
+    }
+    if rng.gen_bool(0.5) {
+        child.stop_loss = parent2.stop_loss;
+    }
+    if rng.gen_bool(0.5) {
+        child.holding_period = parent2.holding_period;
+    }
+    if rng.gen_bool(0.5) {
+        child.w_conviction = parent2.w_conviction;
+    }
+    if rng.gen_bool(0.5) {
+        child.w_momentum = parent2.w_momentum;
+    }
+    if rng.gen_bool(0.5) {
+        child.w_volatility = parent2.w_volatility;
+    }
+    if rng.gen_bool(0.5) {
+        child.selectivity = parent2.selectivity;
+    }
+    if rng.gen_bool(0.5) {
+        child.archetype = parent2.archetype;
+    }
 
     child
 }
@@ -289,9 +310,15 @@ impl Genome for Candidate {}
 
 impl Evaluated for CandidateEvaluation {
     type Genome = Candidate;
-    fn fitness(&self) -> f64 { self.fitness }
-    fn is_valid(&self) -> bool { self.evaluation_valid }
-    fn genome(&self) -> &Self::Genome { &self.candidate }
+    fn fitness(&self) -> f64 {
+        self.fitness
+    }
+    fn is_valid(&self) -> bool {
+        self.evaluation_valid
+    }
+    fn genome(&self) -> &Self::Genome {
+        &self.candidate
+    }
 }
 
 pub struct ChronoFactory {
@@ -312,7 +339,12 @@ impl MutationOperator<Candidate> for ChronoMutator {
 
 pub struct ChronoCrossover;
 impl CrossoverOperator<Candidate> for ChronoCrossover {
-    fn crossover(&self, parent_a: &Candidate, parent_b: &Candidate, rng: &mut StdRng) -> (Candidate, Candidate) {
+    fn crossover(
+        &self,
+        parent_a: &Candidate,
+        parent_b: &Candidate,
+        rng: &mut StdRng,
+    ) -> (Candidate, Candidate) {
         let child = crossover(parent_a, parent_b, rng);
         // The Coralys trait returns 2 children, but ChronoSentiment logic only returned 1.
         // We simply return the child for both, and let the caller throw one away or just use it.
@@ -334,9 +366,13 @@ pub fn coralys_run_ga_evolution(
     config: GaConfig,
     evaluator: &dyn FitnessEvaluator<Candidate, Evaluation = CandidateEvaluation>,
 ) -> GaResult {
-    let factory = ChronoFactory { config: config.clone() };
+    let factory = ChronoFactory {
+        config: config.clone(),
+    };
     let engine = EvolutionEngine::new(
-        ChronoFitnessEvaluator { legacy_evaluator: evaluator },
+        ChronoFitnessEvaluator {
+            legacy_evaluator: evaluator,
+        },
         ChronoMutator,
         ChronoCrossover,
         factory,
@@ -353,7 +389,8 @@ pub fn coralys_run_ga_evolution(
         ..Default::default()
     };
 
-    let result = engine.run_ga_evolution(coralys_config)
+    let result = engine
+        .run_ga_evolution(coralys_config)
         .expect("EvolutionEngine failed");
 
     GaResult {
@@ -404,14 +441,36 @@ mod tests {
         let legacy_result = legacy_run_ga_evolution(config.clone(), &evaluator);
         let coralys_result = coralys_run_ga_evolution(config.clone(), &evaluator);
 
-        assert_eq!(legacy_result.generation_history.len(), coralys_result.generation_history.len());
+        assert_eq!(
+            legacy_result.generation_history.len(),
+            coralys_result.generation_history.len()
+        );
 
-        for (gen, (legacy, coralys)) in legacy_result.generation_history.iter().zip(coralys_result.generation_history.iter()).enumerate() {
-            assert_eq!(legacy.fitness, coralys.fitness, "Fitness mismatch at generation {}", gen);
-            assert_eq!(legacy.candidate, coralys.candidate, "Candidate mismatch at generation {}", gen);
+        for (gen, (legacy, coralys)) in legacy_result
+            .generation_history
+            .iter()
+            .zip(coralys_result.generation_history.iter())
+            .enumerate()
+        {
+            assert_eq!(
+                legacy.fitness, coralys.fitness,
+                "Fitness mismatch at generation {}",
+                gen
+            );
+            assert_eq!(
+                legacy.candidate, coralys.candidate,
+                "Candidate mismatch at generation {}",
+                gen
+            );
         }
 
-        assert_eq!(legacy_result.global_best.fitness, coralys_result.global_best.fitness);
-        assert_eq!(legacy_result.global_best.candidate, coralys_result.global_best.candidate);
+        assert_eq!(
+            legacy_result.global_best.fitness,
+            coralys_result.global_best.fitness
+        );
+        assert_eq!(
+            legacy_result.global_best.candidate,
+            coralys_result.global_best.candidate
+        );
     }
 }

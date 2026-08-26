@@ -1,5 +1,5 @@
-use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
 use crate::validation::context::MarketEvaluationContext;
+use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
 
 pub trait MarketMetricModel {
     fn name(&self) -> &str;
@@ -12,9 +12,7 @@ pub struct MarketMetricEngine {
 
 impl MarketMetricEngine {
     pub fn new() -> Self {
-        Self {
-            models: Vec::new(),
-        }
+        Self { models: Vec::new() }
     }
 
     pub fn add_model(&mut self, model: Box<dyn MarketMetricModel>) {
@@ -41,6 +39,8 @@ impl MarketMetricModel for AdvanceDeclineMetric {
 
     fn evaluate(&self, _context: &MarketEvaluationContext, report: &mut MetricReport) {
         // Mocked logic for breadth
-        report.metrics.insert(self.name().to_string(), MetricValue::Float(1.2));
+        report
+            .metrics
+            .insert(self.name().to_string(), MetricValue::Float(1.2));
     }
 }

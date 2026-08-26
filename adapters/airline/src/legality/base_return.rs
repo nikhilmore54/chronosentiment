@@ -60,10 +60,7 @@ impl LegalityRule for BaseReturnRule {
                                 0.0,
                                 format!(
                                     "Pairing {} base is {} but crew member {} home base is {}",
-                                    pairing.id,
-                                    pairing.base,
-                                    member.id,
-                                    member.base,
+                                    pairing.id, pairing.base, member.id, member.base,
                                 ),
                             ));
                         }
@@ -122,15 +119,23 @@ mod tests {
     fn one_of_two_pairings_mismatched() {
         let crew = make_crew("C1", "LHR", &["B738"]);
         // P1: LHR-based (ok)
-        let p1 = make_pairing("P1", "LHR", vec![
-            make_duty("D1", vec![make_leg("L1", "LHR", "CDG", 8, 10)]),
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
-        ]);
+        let p1 = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                make_duty("D1", vec![make_leg("L1", "LHR", "CDG", 8, 10)]),
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
+            ],
+        );
         // P2: CDG-based (mismatch — crew is LHR)
-        let p2 = make_pairing("P2", "CDG", vec![
-            make_duty("D3", vec![make_leg("L3", "CDG", "FRA", 30, 32)]),
-            make_duty("D4", vec![make_leg("L4", "FRA", "CDG", 44, 46)]),
-        ]);
+        let p2 = make_pairing(
+            "P2",
+            "CDG",
+            vec![
+                make_duty("D3", vec![make_leg("L3", "CDG", "FRA", 30, 32)]),
+                make_duty("D4", vec![make_leg("L4", "FRA", "CDG", 44, 46)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![p1, p2]);
         let roster = make_roster_with_crew(vec![], vec![rotation], vec![crew]);
         let violations = rule().check(&roster);

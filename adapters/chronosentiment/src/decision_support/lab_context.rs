@@ -55,8 +55,8 @@ pub async fn load_decision_context(
     for row in assess_rows {
         let id: Uuid = row.try_get("id")?;
         let profile_json: serde_json::Value = row.try_get("profile_json")?;
-        let profile: AssessmentProfile =
-            serde_json::from_value(profile_json).map_err(|e| ReplayError::Profile(e.to_string()))?;
+        let profile: AssessmentProfile = serde_json::from_value(profile_json)
+            .map_err(|e| ReplayError::Profile(e.to_string()))?;
         profiles.insert(id, profile);
     }
     tx.commit().await?;
@@ -67,10 +67,7 @@ pub async fn load_decision_context(
             .get(&rec.instrument_id)
             .cloned()
             .unwrap_or_else(|| rec.instrument_id.to_string());
-        let profile = rec
-            .lineage
-            .assessment_id
-            .and_then(|id| profiles.get(&id));
+        let profile = rec.lineage.assessment_id.and_then(|id| profiles.get(&id));
         out.push(if rec.evidence.factors.is_empty() {
             let mut ctx = context_from_profile(rec.decision_id, label, profile);
             ctx.confidence_status = Some(format!("{:?}", rec.confidence_status));
@@ -131,24 +128,10 @@ pub fn context_from_record(
     instrument_label: String,
 ) -> DecisionContext {
     let factor = |name: &str| rec.evidence.factors.iter().find(|f| f.concept == name);
-    let present_dir = |name: &str| {
-        factor(name).and_then(|f| {
-            if f.present {
-                f.direction.clone()
-            } else {
-                None
-            }
-        })
-    };
-    let present_str = |name: &str| {
-        factor(name).and_then(|f| {
-            if f.present {
-                f.strength.clone()
-            } else {
-                None
-            }
-        })
-    };
+    let present_dir =
+        |name: &str| factor(name).and_then(|f| if f.present { f.direction.clone() } else { None });
+    let present_str =
+        |name: &str| factor(name).and_then(|f| if f.present { f.strength.clone() } else { None });
     DecisionContext {
         decision_id: rec.decision_id,
         instrument_label,

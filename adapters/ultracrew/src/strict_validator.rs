@@ -1,3 +1,4 @@
+use serde::Serialize;
 /// S2-01 — Strict-mode data import validator
 ///
 /// Validates a fully-parsed `ScheduleRequest` and returns a structured
@@ -40,12 +41,10 @@
 /// | V-012  | Warning  | max_hours_per_worker is less than the shortest shift duration |
 /// | V-013  | Error    | Skill name is blank or whitespace-only |
 /// | V-014  | Warning  | Historical workload references an unknown worker ID |
-
 use std::collections::{HashMap, HashSet};
-use serde::Serialize;
 
-use crate::public_contracts::ScheduleRequest;
 use crate::models::Skill;
+use crate::public_contracts::ScheduleRequest;
 
 // ─── Severity ────────────────────────────────────────────────────────────────
 
@@ -59,7 +58,7 @@ pub enum Severity {
 impl std::fmt::Display for Severity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Severity::Error   => write!(f, "ERROR"),
+            Severity::Error => write!(f, "ERROR"),
             Severity::Warning => write!(f, "WARN "),
         }
     }
@@ -81,11 +80,21 @@ pub struct ValidationIssue {
 
 impl ValidationIssue {
     fn error(code: &'static str, message: impl Into<String>, context: Option<String>) -> Self {
-        Self { code, message: message.into(), severity: Severity::Error, context }
+        Self {
+            code,
+            message: message.into(),
+            severity: Severity::Error,
+            context,
+        }
     }
 
     fn warning(code: &'static str, message: impl Into<String>, context: Option<String>) -> Self {
-        Self { code, message: message.into(), severity: Severity::Warning, context }
+        Self {
+            code,
+            message: message.into(),
+            severity: Severity::Warning,
+            context,
+        }
     }
 }
 
@@ -95,7 +104,11 @@ impl std::fmt::Display for ValidationIssue {
         if ctx.is_empty() {
             write!(f, "[{}] {} — {}", self.severity, self.code, self.message)
         } else {
-            write!(f, "[{}] {} ({}) — {}", self.severity, self.code, ctx, self.message)
+            write!(
+                f,
+                "[{}] {} ({}) — {}",
+                self.severity, self.code, ctx, self.message
+            )
         }
     }
 }
@@ -116,9 +129,20 @@ pub struct ValidationReport {
 
 impl ValidationReport {
     fn new(issues: Vec<ValidationIssue>) -> Self {
-        let error_count   = issues.iter().filter(|i| i.severity == Severity::Error).count();
-        let warning_count = issues.iter().filter(|i| i.severity == Severity::Warning).count();
-        Self { valid: error_count == 0, error_count, warning_count, issues }
+        let error_count = issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error)
+            .count();
+        let warning_count = issues
+            .iter()
+            .filter(|i| i.severity == Severity::Warning)
+            .count();
+        Self {
+            valid: error_count == 0,
+            error_count,
+            warning_count,
+            issues,
+        }
     }
 
     /// Returns `true` when there are no Error-severity issues.
@@ -149,7 +173,10 @@ impl ValidationReport {
     pub fn display(&self) -> String {
         let mut out = String::new();
         out.push_str("── Validation Report ──────────────────────────────\n");
-        out.push_str(&format!("  Status:   {}\n", if self.valid { "PASS ✓" } else { "FAIL ✗" }));
+        out.push_str(&format!(
+            "  Status:   {}\n",
+            if self.valid { "PASS ✓" } else { "FAIL ✗" }
+        ));
         out.push_str(&format!("  Errors:   {}\n", self.error_count));
         out.push_str(&format!("  Warnings: {}\n", self.warning_count));
         if !self.issues.is_empty() {
@@ -280,7 +307,8 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
     }
 
     // ── V-007: Shift end must not exceed planning horizon ─────────────────────
-    let horizon = req.scenario
+    let horizon = req
+        .scenario
         .as_ref()
         .and_then(|sc| sc.planning_horizon_hours)
         .unwrap_or(168.0) as u64;
@@ -302,10 +330,8 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
 
     // ── V-008: Every required skill must have at least one qualified worker ───
     {
-        let worker_skills: HashSet<&Skill> = req.workers
-            .iter()
-            .flat_map(|w| w.skills.iter())
-            .collect();
+        let worker_skills: HashSet<&Skill> =
+            req.workers.iter().flat_map(|w| w.skills.iter()).collect();
 
         let mut uncovered: HashMap<&str, Vec<u64>> = HashMap::new();
         for s in &req.shifts {
@@ -317,7 +343,8 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
             }
         }
         for (skill, shift_ids) in &uncovered {
-            let ids_str = shift_ids.iter()
+            let ids_str = shift_ids
+                .iter()
                 .map(|id| id.to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -335,10 +362,7 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
 
     // ── V-009 (warning): Worker with no matching shifts ───────────────────────
     {
-        let shift_skills: HashSet<&Skill> = req.shifts
-            .iter()
-            .map(|s| &s.required_skill)
-            .collect();
+        let shift_skills: HashSet<&Skill> = req.shifts.iter().map(|s| &s.required_skill).collect();
 
         for w in &req.workers {
             let has_match = w.skills.iter().any(|sk| shift_skills.contains(sk));
@@ -349,7 +373,11 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
                         "Worker {} has skills [{}] but none of the shifts require those skills. \
                          This worker will not be assigned any shifts.",
                         w.id,
-                        w.skills.iter().map(|s| s.0.as_str()).collect::<Vec<_>>().join(", ")
+                        w.skills
+                            .iter()
+                            .map(|s| s.0.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     ),
                     Some(format!("worker {}", w.id)),
                 ));
@@ -447,29 +475,46 @@ pub fn validate_json_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{Shift, Worker};
+    use crate::public_contracts::{InrcScenario, ScheduleRequest};
     use std::collections::HashMap;
-    use crate::models::{Worker, Shift};
-    use crate::public_contracts::{ScheduleRequest, InrcScenario};
 
     fn minimal_valid() -> ScheduleRequest {
         ScheduleRequest {
             workers: vec![
-                Worker { id: 1, skills: vec![Skill::new("Nurse")] },
-                Worker { id: 2, skills: vec![Skill::new("Doctor")] },
+                Worker {
+                    id: 1,
+                    skills: vec![Skill::new("Nurse")],
+                },
+                Worker {
+                    id: 2,
+                    skills: vec![Skill::new("Doctor")],
+                },
             ],
             shifts: vec![
-                Shift { id: 1, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Nurse")},
-                Shift { id: 2, start_hour: 6,  duration_hours: 8, required_skill: Skill::new("Doctor")},
+                Shift {
+                    id: 1,
+                    start_hour: 6,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Nurse"),
+                },
+                Shift {
+                    id: 2,
+                    start_hour: 6,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Doctor"),
+                },
             ],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(200),
-            scenario: Some(InrcScenario { 
-                leave_requests: None, 
-                minimum_rest_hours: Some(10), 
+            scenario: Some(InrcScenario {
+                leave_requests: None,
+                minimum_rest_hours: Some(10),
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
-            }),
+            })
+            , fatigue: FatigueConfig::default(),
         }
     }
 
@@ -501,7 +546,10 @@ mod tests {
     #[test]
     fn test_v003_duplicate_worker_id() {
         let mut req = minimal_valid();
-        req.workers.push(Worker { id: 1, skills: vec![Skill::new("Nurse")] });
+        req.workers.push(Worker {
+            id: 1,
+            skills: vec![Skill::new("Nurse")],
+        });
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-003"));
@@ -510,7 +558,12 @@ mod tests {
     #[test]
     fn test_v004_duplicate_shift_id() {
         let mut req = minimal_valid();
-        req.shifts.push(Shift { id: 1, start_hour: 20, duration_hours: 8, required_skill: Skill::new("Nurse")});
+        req.shifts.push(Shift {
+            id: 1,
+            start_hour: 20,
+            duration_hours: 8,
+            required_skill: Skill::new("Nurse"),
+        });
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-004"));
@@ -561,11 +614,20 @@ mod tests {
     #[test]
     fn test_v009_worker_no_matching_shifts_is_warning() {
         let mut req = minimal_valid();
-        req.workers.push(Worker { id: 99, skills: vec![Skill::new("Mechanic")] });
+        req.workers.push(Worker {
+            id: 99,
+            skills: vec![Skill::new("Mechanic")],
+        });
         let report = validate_request(&req);
         // V-009 is a warning — report must still be valid
-        assert!(report.is_valid(), "V-009 is a warning, report should be valid");
-        assert!(report.issues.iter().any(|i| i.code == "V-009" && i.severity == Severity::Warning));
+        assert!(
+            report.is_valid(),
+            "V-009 is a warning, report should be valid"
+        );
+        assert!(report
+            .issues
+            .iter()
+            .any(|i| i.code == "V-009" && i.severity == Severity::Warning));
     }
 
     #[test]
@@ -634,8 +696,8 @@ mod tests {
     fn test_to_json_is_valid() {
         let report = validate_request(&minimal_valid());
         let json = report.to_json();
-        let parsed: serde_json::Value = serde_json::from_str(&json)
-            .expect("report JSON must be valid");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json).expect("report JSON must be valid");
         assert!(parsed.get("valid").is_some());
         assert!(parsed.get("error_count").is_some());
         assert!(parsed.get("issues").is_some());
@@ -646,35 +708,39 @@ mod tests {
         // Inline the canonical SunAir scenario as a regression guard.
         // If this test fails, either the dataset or the validator has changed.
         let req = ScheduleRequest {
-            workers: (1u64..=20).map(|id| Worker {
-                id,
-                skills: vec![Skill::new(match id {
-                    1..=4  => "Nurse",
-                    5..=9  => "Doctor",
-                    _      => "CabinCrew",
-                })],
-            }).collect(),
-            shifts: (1u64..=42).map(|id| {
-                let block_offset: u64 = if id <= 21 { 6 } else { 78 };
-                let pos = (id - 1) % 21;
-                let skill = match pos {
-                    0..=3  => "Nurse",
-                    4..=6  => "Doctor",
-                    _      => "CabinCrew",
-                };
-                Shift {
+            workers: (1u64..=20)
+                .map(|id| Worker {
                     id,
-                    start_hour: block_offset + pos * 2,
-                    duration_hours: 8,
-                    required_skill: Skill::new(skill),
-                }
-            }).collect(),
+                    skills: vec![Skill::new(match id {
+                        1..=4 => "Nurse",
+                        5..=9 => "Doctor",
+                        _ => "CabinCrew",
+                    })],
+                })
+                .collect(),
+            shifts: (1u64..=42)
+                .map(|id| {
+                    let block_offset: u64 = if id <= 21 { 6 } else { 78 };
+                    let pos = (id - 1) % 21;
+                    let skill = match pos {
+                        0..=3 => "Nurse",
+                        4..=6 => "Doctor",
+                        _ => "CabinCrew",
+                    };
+                    Shift {
+                        id,
+                        start_hour: block_offset + pos * 2,
+                        duration_hours: 8,
+                        required_skill: Skill::new(skill),
+                    }
+                })
+                .collect(),
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: Some(500),
-            scenario: Some(InrcScenario { 
-                leave_requests: None, 
-                minimum_rest_hours: Some(10), 
+            scenario: Some(InrcScenario {
+                leave_requests: None,
+                minimum_rest_hours: Some(10),
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),

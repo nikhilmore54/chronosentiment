@@ -150,10 +150,7 @@ pub fn build_research_snapshot(
     })
 }
 
-fn available(
-    profile: &crate::reasoning::assessment::AssessmentProfile,
-    concept: Concept,
-) -> bool {
+fn available(profile: &crate::reasoning::assessment::AssessmentProfile, concept: Concept) -> bool {
     profile
         .factor_status
         .iter()
@@ -337,11 +334,7 @@ pub fn certify_research_snapshot(
     } else {
         "NOT_READY"
     };
-    let result = if failures.is_empty() {
-        "PASS"
-    } else {
-        "FAIL"
-    };
+    let result = if failures.is_empty() { "PASS" } else { "FAIL" };
     SnapshotCertification {
         result: result.to_string(),
         discovery_ready: discovery_ready.to_string(),
@@ -360,15 +353,19 @@ pub fn certify_research_snapshot(
 pub fn repeated_identity_matches(a: &ResearchSnapshot, b: &ResearchSnapshot) -> bool {
     a.identity_hash == b.identity_hash
         && a.rows.len() == b.rows.len()
-        && a.rows.iter().zip(b.rows.iter()).all(|(x, y)| {
-            x.signature_hash == y.signature_hash && x.decision_id == y.decision_id
-        })
+        && a.rows
+            .iter()
+            .zip(b.rows.iter())
+            .all(|(x, y)| x.signature_hash == y.signature_hash && x.decision_id == y.decision_id)
 }
 
 pub fn render_snapshot_certification(cert: &SnapshotCertification) -> String {
     let mut md = String::from("# CS-P-006 7-instrument research snapshot — certification\n\n");
     md.push_str(&format!("**Result:** {}\n\n", cert.result));
-    md.push_str(&format!("**Discovery-ready:** {}\n\n", cert.discovery_ready));
+    md.push_str(&format!(
+        "**Discovery-ready:** {}\n\n",
+        cert.discovery_ready
+    ));
     md.push_str("Disposable CS-P-006 research universe. **Not B4. Not B5.** Not G-GATE. Outcomes were not consumed during state construction.\n\n");
     md.push_str(&format!("- rows: {}\n", cert.n_rows));
     md.push_str(&format!("- instruments: {}\n", cert.instruments.join(", ")));
@@ -380,7 +377,10 @@ pub fn render_snapshot_certification(cert: &SnapshotCertification) -> String {
         "- five-instrument signature mismatches vs CS-P-004-E1-S1: {}\n",
         cert.five_instrument_signature_mismatches
     ));
-    md.push_str(&format!("- TMV-complete rows: {}\n", cert.tmv_complete_rows));
+    md.push_str(&format!(
+        "- TMV-complete rows: {}\n",
+        cert.tmv_complete_rows
+    ));
     md.push_str(&format!(
         "- TMV-incomplete rows: {}\n",
         cert.tmv_incomplete_rows

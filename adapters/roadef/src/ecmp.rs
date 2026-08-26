@@ -92,7 +92,9 @@ pub fn backward_dijkstra(
     // P9-H6-revised instrumentation: count calls, time, and unique targets.
     let _t_start = std::time::Instant::now();
     DIJKSTRA_CALL_COUNT.with(|c| c.set(c.get() + 1));
-    DIJKSTRA_UNIQUE_TARGETS.with(|s| { s.borrow_mut().insert(target); });
+    DIJKSTRA_UNIQUE_TARGETS.with(|s| {
+        s.borrow_mut().insert(target);
+    });
 
     let mut dist: HashMap<u64, f64> = HashMap::new();
     let mut preds: HashMap<u64, Vec<usize>> = HashMap::new();

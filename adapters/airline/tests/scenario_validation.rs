@@ -40,15 +40,11 @@ use coralys_airline::legality::{
 };
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{
-    SchedulingObjective, WorkloadBalanceObjective,
-};
+use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::greedy::GreedyScheduler;
 use coralys_airline::optimization::search::local_search::LocalSearch;
 use coralys_airline::planner::summary::ViolationSummary;
-use coralys_airline::resilience::disruption::{
-    Disruption, DisruptionKind, DisruptionRecovery,
-};
+use coralys_airline::resilience::disruption::{Disruption, DisruptionKind, DisruptionRecovery};
 use coralys_airline::resilience::robustness::RobustnessEvaluator;
 
 use chrono::{Duration, TimeZone, Utc};
@@ -93,26 +89,13 @@ fn make_roundtrip(
 ) -> (FlightLeg, FlightLeg, Pairing) {
     let out_leg = make_leg(&format!("{id}_o"), base, dest, dep_h, arr_h);
     let ret_leg = make_leg(&format!("{id}_r"), dest, base, arr_h + 2, arr_h + 4);
-    let duty = make_duty(
-        &format!("{id}_d"),
-        vec![out_leg.clone(), ret_leg.clone()],
-    );
-    let pairing = Pairing::new(
-        PairingId::new(id),
-        AirportCode::new(base),
-        vec![duty],
-    )
-    .unwrap();
+    let duty = make_duty(&format!("{id}_d"), vec![out_leg.clone(), ret_leg.clone()]);
+    let pairing = Pairing::new(PairingId::new(id), AirportCode::new(base), vec![duty]).unwrap();
     (out_leg, ret_leg, pairing)
 }
 
 fn make_rotation(rotation_id: &str, crew_id: &str, pairings: Vec<Pairing>) -> Rotation {
-    Rotation::new(
-        RotationId::new(rotation_id),
-        CrewId::new(crew_id),
-        pairings,
-    )
-    .unwrap()
+    Rotation::new(RotationId::new(rotation_id), CrewId::new(crew_id), pairings).unwrap()
 }
 
 fn make_crew(id: &str, base: &str) -> CrewMember {
@@ -143,13 +126,18 @@ fn make_roster_with_crew(
 
 struct AlwaysErrorsA;
 impl LegalityRule for AlwaysErrorsA {
-    fn rule_id(&self) -> &str { "stub_error_a" }
-    fn rule_name(&self) -> &str { "Stub Error A" }
+    fn rule_id(&self) -> &str {
+        "stub_error_a"
+    }
+    fn rule_name(&self) -> &str {
+        "Stub Error A"
+    }
     fn check(&self, _: &Roster) -> Vec<LegalityViolation> {
         vec![LegalityViolation::error(
             "stub_error_a",
             EntityRef::Roster("R1".into()),
-            1.0, 0.0,
+            1.0,
+            0.0,
             "always fires (A)",
         )]
     }
@@ -157,13 +145,18 @@ impl LegalityRule for AlwaysErrorsA {
 
 struct AlwaysErrorsB;
 impl LegalityRule for AlwaysErrorsB {
-    fn rule_id(&self) -> &str { "stub_error_b" }
-    fn rule_name(&self) -> &str { "Stub Error B" }
+    fn rule_id(&self) -> &str {
+        "stub_error_b"
+    }
+    fn rule_name(&self) -> &str {
+        "Stub Error B"
+    }
     fn check(&self, _: &Roster) -> Vec<LegalityViolation> {
         vec![LegalityViolation::error(
             "stub_error_b",
             EntityRef::Roster("R1".into()),
-            1.0, 0.0,
+            1.0,
+            0.0,
             "always fires (B)",
         )]
     }
@@ -171,13 +164,18 @@ impl LegalityRule for AlwaysErrorsB {
 
 struct AlwaysWarns;
 impl LegalityRule for AlwaysWarns {
-    fn rule_id(&self) -> &str { "stub_warn" }
-    fn rule_name(&self) -> &str { "Stub Warning" }
+    fn rule_id(&self) -> &str {
+        "stub_warn"
+    }
+    fn rule_name(&self) -> &str {
+        "Stub Warning"
+    }
     fn check(&self, _: &Roster) -> Vec<LegalityViolation> {
         vec![LegalityViolation::warning(
             "stub_warn",
             EntityRef::Roster("R1".into()),
-            1.0, 0.0,
+            1.0,
+            0.0,
             "always warns",
         )]
     }
@@ -186,22 +184,28 @@ impl LegalityRule for AlwaysWarns {
 /// Rejects any rotation that contains more than one pairing.
 struct MaxOnePairingPerRotation;
 impl LegalityRule for MaxOnePairingPerRotation {
-    fn rule_id(&self) -> &str { "max_one_pairing" }
-    fn rule_name(&self) -> &str { "Max One Pairing Per Rotation" }
+    fn rule_id(&self) -> &str {
+        "max_one_pairing"
+    }
+    fn rule_name(&self) -> &str {
+        "Max One Pairing Per Rotation"
+    }
     fn check(&self, roster: &Roster) -> Vec<LegalityViolation> {
         roster
             .rotations()
             .filter(|rot| rot.pairings().len() > 1)
-            .map(|rot| LegalityViolation::error(
-                "max_one_pairing",
-                EntityRef::Rotation {
-                    rotation_id: rot.id.to_string(),
-                    crew_id: rot.crew_id.to_string(),
-                },
-                rot.pairings().len() as f64,
-                1.0,
-                "rotation has more than one pairing",
-            ))
+            .map(|rot| {
+                LegalityViolation::error(
+                    "max_one_pairing",
+                    EntityRef::Rotation {
+                        rotation_id: rot.id.to_string(),
+                        crew_id: rot.crew_id.to_string(),
+                    },
+                    rot.pairings().len() as f64,
+                    1.0,
+                    "rotation has more than one pairing",
+                )
+            })
             .collect()
     }
 }
@@ -221,7 +225,8 @@ fn scn_001__empty_roster_no_rules_is_legal() {
         "SCN-001 FAIL: empty roster with no rules must be legal"
     );
     assert_eq!(
-        checker.errors(&roster).len(), 0,
+        checker.errors(&roster).len(),
+        0,
         "SCN-001 FAIL: no errors expected"
     );
 }
@@ -269,7 +274,8 @@ fn scn_003__error_rule_propagates_correctly() {
 
     let errors = checker.errors(&roster);
     assert_eq!(
-        errors.len(), 1,
+        errors.len(),
+        1,
         "SCN-003 FAIL: exactly one error expected, got {}",
         errors.len()
     );
@@ -278,7 +284,8 @@ fn scn_003__error_rule_propagates_correctly() {
         "SCN-003 FAIL: error must carry the correct rule_id"
     );
     assert_eq!(
-        errors[0].severity, ViolationSeverity::Error,
+        errors[0].severity,
+        ViolationSeverity::Error,
         "SCN-003 FAIL: severity must be Error"
     );
 }
@@ -314,7 +321,10 @@ fn scn_004__greedy_assigns_additional_pairings() {
     let _ = (o3, r3, o4, r4); // legs not added to roster; greedy only needs pairings
 
     let initial_total: usize = roster.rotations().map(|r| r.pairings().len()).sum();
-    assert_eq!(initial_total, 2, "SCN-004 setup: expected 2 initial pairings");
+    assert_eq!(
+        initial_total, 2,
+        "SCN-004 setup: expected 2 initial pairings"
+    );
 
     let mut evaluator = CostEvaluator::new();
     evaluator.add_objective(Box::new(WorkloadBalanceObjective));
@@ -441,7 +451,10 @@ fn scn_007__disruption_recovery_removes_cancelled_pairing() {
     let recovery = DisruptionRecovery::new(&checker);
 
     let disruption = Disruption::new(
-        DisruptionKind::PairingCancelled { rotation_index: 0, pairing_index: 0 },
+        DisruptionKind::PairingCancelled {
+            rotation_index: 0,
+            pairing_index: 0,
+        },
         "P1 cancelled due to aircraft swap",
     );
 
@@ -493,7 +506,9 @@ fn scn_008__crew_unavailable_orphans_all_pairings() {
         result.unrecovered.len() + result.recovered_count,
         original_count,
         "SCN-008 FAIL: unrecovered ({}) + recovered ({}) must equal original count ({})",
-        result.unrecovered.len(), result.recovered_count, original_count
+        result.unrecovered.len(),
+        result.recovered_count,
+        original_count
     );
 }
 
@@ -537,12 +552,14 @@ fn scn_009__generous_rest_roster_scores_higher_robustness() {
     assert!(
         generous_score.overall > dense_score.overall,
         "SCN-009 FAIL: generous overall score ({:.4}) must exceed dense ({:.4})",
-        generous_score.overall, dense_score.overall
+        generous_score.overall,
+        dense_score.overall
     );
     assert!(
         generous_score.crew_slack_ratio > dense_score.crew_slack_ratio,
         "SCN-009 FAIL: generous crew_slack_ratio ({:.4}) must exceed dense ({:.4})",
-        generous_score.crew_slack_ratio, dense_score.crew_slack_ratio
+        generous_score.crew_slack_ratio,
+        dense_score.crew_slack_ratio
     );
 }
 
@@ -561,14 +578,15 @@ fn scn_010__multi_rule_checker_accumulates_all_violations() {
     let mut checker = LegalityChecker::new();
     checker.add_rule(Box::new(AlwaysErrorsA)); // rule_id = "stub_error_a"
     checker.add_rule(Box::new(AlwaysErrorsB)); // rule_id = "stub_error_b"
-    checker.add_rule(Box::new(AlwaysWarns));   // rule_id = "stub_warn"
+    checker.add_rule(Box::new(AlwaysWarns)); // rule_id = "stub_warn"
 
     let roster = make_roster(vec![], vec![]);
 
     // Total violations = 3 (2 errors + 1 warning).
     let all_violations = checker.check(&roster);
     assert_eq!(
-        all_violations.len(), 3,
+        all_violations.len(),
+        3,
         "SCN-010 FAIL: expected 3 total violations, got {}",
         all_violations.len()
     );
@@ -576,7 +594,8 @@ fn scn_010__multi_rule_checker_accumulates_all_violations() {
     // Errors = 2 (from two distinct rules).
     let errors = checker.errors(&roster);
     assert_eq!(
-        errors.len(), 2,
+        errors.len(),
+        2,
         "SCN-010 FAIL: expected 2 errors, got {}",
         errors.len()
     );
@@ -601,7 +620,8 @@ fn scn_010__multi_rule_checker_accumulates_all_violations() {
 
     // Rule count matches registrations.
     assert_eq!(
-        checker.rule_count(), 3,
+        checker.rule_count(),
+        3,
         "SCN-010 FAIL: expected 3 registered rules, got {}",
         checker.rule_count()
     );
@@ -621,12 +641,36 @@ fn scn_011__violation_summary_faithfully_reflects_legality() {
     let summary = ViolationSummary::new(violations);
     assert_eq!(summary.total(), 2, "SCN-011 FAIL: expected 2 violations");
     assert_eq!(summary.error_count(), 1, "SCN-011 FAIL: expected 1 error");
-    assert_eq!(summary.warning_count(), 1, "SCN-011 FAIL: expected 1 warning");
-    assert!(!summary.is_legal(), "SCN-011 FAIL: summary must report illegal");
-    assert!(!checker.is_legal(&roster), "SCN-011 FAIL: checker must report illegal");
+    assert_eq!(
+        summary.warning_count(),
+        1,
+        "SCN-011 FAIL: expected 1 warning"
+    );
+    assert!(
+        !summary.is_legal(),
+        "SCN-011 FAIL: summary must report illegal"
+    );
+    assert!(
+        !checker.is_legal(&roster),
+        "SCN-011 FAIL: checker must report illegal"
+    );
     let by_rule = summary.by_rule();
-    assert!(by_rule.contains_key("stub_error_a"), "SCN-011 FAIL: missing stub_error_a");
-    assert!(by_rule.contains_key("stub_warn"), "SCN-011 FAIL: missing stub_warn");
-    assert_eq!(by_rule["stub_error_a"].len(), 1, "SCN-011 FAIL: stub_error_a count");
-    assert_eq!(by_rule["stub_warn"].len(), 1, "SCN-011 FAIL: stub_warn count");
+    assert!(
+        by_rule.contains_key("stub_error_a"),
+        "SCN-011 FAIL: missing stub_error_a"
+    );
+    assert!(
+        by_rule.contains_key("stub_warn"),
+        "SCN-011 FAIL: missing stub_warn"
+    );
+    assert_eq!(
+        by_rule["stub_error_a"].len(),
+        1,
+        "SCN-011 FAIL: stub_error_a count"
+    );
+    assert_eq!(
+        by_rule["stub_warn"].len(),
+        1,
+        "SCN-011 FAIL: stub_warn count"
+    );
 }

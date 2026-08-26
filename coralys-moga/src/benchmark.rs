@@ -43,7 +43,11 @@ impl Evaluated for DummyEval {
 struct DummyEvaluator;
 impl FitnessEvaluator<DummyGenome> for DummyEvaluator {
     type Evaluation = DummyEval;
-    fn evaluate(&self, candidate: &DummyGenome, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+    fn evaluate(
+        &self,
+        candidate: &DummyGenome,
+        _metrics: &crate::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
         DummyEval {
             fitness: candidate.value as f64,
             valid: true,

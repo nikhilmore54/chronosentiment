@@ -5,9 +5,7 @@
 
 use chrono::Duration;
 use chronosentiment_adapter::decision_support::policy::BaselineTrendMappingPolicy;
-use chronosentiment_adapter::decision_support::replay::{
-    ReplayAdapter, UNFROZEN_ENGINE_VERSION,
-};
+use chronosentiment_adapter::decision_support::replay::{ReplayAdapter, UNFROZEN_ENGINE_VERSION};
 use chronosentiment_adapter::metrics::concepts::Concept;
 use chronosentiment_adapter::reasoning::assessment::AssessmentEngine;
 use chronosentiment_adapter::repository::knowledge::KnowledgeArtifact;
@@ -20,8 +18,8 @@ fn forbidden_db(name: &str) -> bool {
 }
 
 #[tokio::test]
-async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes()
--> Result<(), Box<dyn std::error::Error>> {
+async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes(
+) -> Result<(), Box<dyn std::error::Error>> {
     let url = match std::env::var("DATABASE_URL") {
         Ok(u) => u,
         Err(_) => {
@@ -58,16 +56,29 @@ async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes()
 
     let adapter = ReplayAdapter::new(pool.clone());
     let first = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
+        .decide_at(
+            t,
+            instrument_id,
+            UNFROZEN_ENGINE_VERSION,
+            &BaselineTrendMappingPolicy,
+        )
         .await?;
     let second = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
+        .decide_at(
+            t,
+            instrument_id,
+            UNFROZEN_ENGINE_VERSION,
+            &BaselineTrendMappingPolicy,
+        )
         .await?;
 
     assert_eq!(first.as_of_timestamp, t);
     assert_eq!(first.engine_version, UNFROZEN_ENGINE_VERSION);
     assert_eq!(first.decision_id, second.decision_id);
-    assert_eq!(first.provenance.content_hash, second.provenance.content_hash);
+    assert_eq!(
+        first.provenance.content_hash,
+        second.provenance.content_hash
+    );
     assert!(first.lineage.assessment_id.is_some());
     assert!(!first.lineage.input_set_hash.is_empty());
     assert!(matches!(
@@ -153,7 +164,12 @@ async fn decide_at_is_read_only_deterministic_and_ignores_future_and_outcomes()
     .await?;
 
     let after = adapter
-        .decide_at(t, instrument_id, UNFROZEN_ENGINE_VERSION, &BaselineTrendMappingPolicy)
+        .decide_at(
+            t,
+            instrument_id,
+            UNFROZEN_ENGINE_VERSION,
+            &BaselineTrendMappingPolicy,
+        )
         .await?;
     assert_eq!(first.decision_id, after.decision_id);
     assert_eq!(first.provenance.content_hash, after.provenance.content_hash);

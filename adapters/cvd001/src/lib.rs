@@ -28,15 +28,15 @@
 //! - [`hc3::hc3_violations`]: HC3 constraint violation collection (R3)
 //! - [`hc3::hc3_feasible`]: HC3 feasibility predicate (R3)
 
-pub mod types;
 pub mod credit;
-pub mod workload;
-pub mod objective;
-pub mod hc3;
 pub mod evaluator;
 pub mod framework_adapter;
+pub mod hc3;
+pub mod objective;
+pub mod types;
+pub mod workload;
 
 // Convenience re-exports for the most common use case
-pub use types::{FlightLeg, Duty, CrewMember, Solution, ConstraintViolation, EvaluationResult};
 pub use evaluator::evaluate;
 pub use framework_adapter::Cvd001FrameworkAdapter;
+pub use types::{ConstraintViolation, CrewMember, Duty, EvaluationResult, FlightLeg, Solution};

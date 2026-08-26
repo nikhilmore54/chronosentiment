@@ -16,8 +16,7 @@
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use coralys_decision::recommendation::{
-    RecommendationEngine, RecommendationRecord,
-    engine::RecommendationAction,
+    RecommendationEngine, RecommendationRecord, engine::RecommendationAction,
 };
 use serde::{Deserialize, Serialize};
 
@@ -42,9 +41,7 @@ pub struct RecommendationSnapshot {
 ///
 /// Evaluates all certified decisions in the ledger through the Recommendation
 /// Engine and returns a ranked snapshot.
-pub async fn get_recommendations_latest(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_recommendations_latest(State(state): State<AppState>) -> impl IntoResponse {
     let evidence_store = match &state.evidence_store {
         Some(store) => store,
         None => {

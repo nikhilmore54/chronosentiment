@@ -27,15 +27,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let search_one: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_one_dir.join("recommendations").join("recommendations.json"),
+        search_one_dir
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
     let search_two: Vec<RecommendationRow> = serde_json::from_str(&fs::read_to_string(
-        search_two_dir.join("recommendations").join("recommendations.json"),
+        search_two_dir
+            .join("recommendations")
+            .join("recommendations.json"),
     )?)?;
 
     let report = analyze_state_landscape(&search_one, &search_two)?;
     fs::create_dir_all(&output)?;
-    fs::write(output.join("landscape.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        output.join("landscape.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
     fs::write(output.join("LANDSCAPE.md"), render_state_landscape(&report))?;
 
     println!("result=PASS");
@@ -68,10 +75,14 @@ fn parse_args() -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn std::error::Error
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-one-dir" => {
-                search_one = Some(PathBuf::from(args.next().ok_or("missing --search-one-dir")?))
+                search_one = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-one-dir")?,
+                ))
             }
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--output" => output = Some(PathBuf::from(args.next().ok_or("missing --output")?)),
             other => return Err(format!("unknown argument {other}").into()),
@@ -80,8 +91,6 @@ fn parse_args() -> Result<(PathBuf, PathBuf, PathBuf), Box<dyn std::error::Error
     Ok((
         search_one.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_DIR)),
         search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        output.unwrap_or_else(|| {
-            PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR).join("state_landscape")
-        }),
+        output.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR).join("state_landscape")),
     ))
 }

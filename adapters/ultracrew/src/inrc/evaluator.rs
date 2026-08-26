@@ -1,14 +1,14 @@
-use coralys_moga::traits::FitnessEvaluator;
+use super::optimization::{InrcEvaluation, InrcGenome, InrcOptimizer, SoftConstraintReport};
 use coralys_core::{EvaluationResult, Violation};
-use super::optimization::{InrcOptimizer, InrcEvaluation, InrcGenome, SoftConstraintReport};
-use coralys_matching::{BipartiteMatchingSolver, AssignmentSolver};
+use coralys_matching::{AssignmentSolver, BipartiteMatchingSolver};
+use coralys_moga::traits::FitnessEvaluator;
 use std::collections::HashMap;
 
 impl InrcOptimizer {
     pub fn get_bit(&self, genome: &InrcGenome, nurse: usize, day: usize, shift: usize) -> bool {
-        let index = nurse * (self.context.num_days * self.context.shift_types.len()) 
-                  + day * self.context.shift_types.len() 
-                  + shift;
+        let index = nurse * (self.context.num_days * self.context.shift_types.len())
+            + day * self.context.shift_types.len()
+            + shift;
         genome.bits[index]
     }
 }
@@ -16,7 +16,11 @@ impl InrcOptimizer {
 impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
     type Evaluation = InrcEvaluation;
 
-    fn evaluate(&self, genome: &InrcGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+    fn evaluate(
+        &self,
+        genome: &InrcGenome,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
         let weights = &self.context.weights;
 
         let mut hc_coverage = 0;
@@ -57,7 +61,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                         value: Some(shifts_assigned as f64),
                         expected: "1".to_string(),
                         actual: shifts_assigned.to_string(),
-                        description: format!("Nurse {} assigned to {} shifts on day {}", nurse_id, shifts_assigned, d),
+                        description: format!(
+                            "Nurse {} assigned to {} shifts on day {}",
+                            nurse_id, shifts_assigned, d
+                        ),
                         penalty: cost as i32,
                     });
                 }
@@ -67,8 +74,13 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
         // Check HC4: Forbidden Shift Successions
         for n in 0..num_nurses {
             let nurse_id = &self.context.scenario.nurses[n].id;
-            let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == nurse_id);
-            
+            let hist = self
+                .context
+                .history
+                .nurse_history
+                .iter()
+                .find(|h| &h.nurse == nurse_id);
+
             let mut previous_shift_type = if let Some(h) = hist {
                 h.last_assigned_shift_type.clone()
             } else {
@@ -84,24 +96,45 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 }
 
-                if current_shift_type != "None" && previous_shift_type != "None" && previous_shift_type != "" {
-                    if let Some(rule) = self.context.scenario.forbidden_shift_type_successions.iter().find(|r| r.preceding == previous_shift_type) {
+                if current_shift_type != "None"
+                    && previous_shift_type != "None"
+                    && previous_shift_type != ""
+                {
+                    if let Some(rule) = self
+                        .context
+                        .scenario
+                        .forbidden_shift_type_successions
+                        .iter()
+                        .find(|r| r.preceding == previous_shift_type)
+                    {
                         if rule.succeeding.contains(&current_shift_type) {
                             hc_forbidden_successions += weights.hard_constraint_violation as usize;
                             hard_violations.push(Violation {
                                 constraint_id: "HC3_ForbiddenShiftSuccession".to_string(),
                                 severity: "Hard".to_string(),
                                 value: None,
-                                expected: format!("No transition from {} to {}", previous_shift_type, current_shift_type),
-                                actual: format!("Transitioned from {} to {}", previous_shift_type, current_shift_type),
-                                description: format!("Nurse {} forbidden succession: {} followed by {} on day {}", nurse_id, previous_shift_type, current_shift_type, d),
+                                expected: format!(
+                                    "No transition from {} to {}",
+                                    previous_shift_type, current_shift_type
+                                ),
+                                actual: format!(
+                                    "Transitioned from {} to {}",
+                                    previous_shift_type, current_shift_type
+                                ),
+                                description: format!(
+                                    "Nurse {} forbidden succession: {} followed by {} on day {}",
+                                    nurse_id, previous_shift_type, current_shift_type, d
+                                ),
                                 penalty: weights.hard_constraint_violation as i32,
                             });
                         }
                     }
                 }
-                
-                if current_shift_type != "None" || previous_shift_type == "None" || previous_shift_type == "" {
+
+                if current_shift_type != "None"
+                    || previous_shift_type == "None"
+                    || previous_shift_type == ""
+                {
                     previous_shift_type = current_shift_type;
                 } else if current_shift_type == "None" {
                     previous_shift_type = "None".to_string();
@@ -110,13 +143,21 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
         }
 
         // Check HC1 & HC2: Coverage & Skills using BipartiteMatchingSolver
-        let days_map = vec!["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        
+        let days_map = vec![
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ];
+
         for d in 0..num_days {
             let day_name = days_map[d];
             for s in 0..num_shifts {
                 let shift_name = &self.context.shift_types[s];
-                
+
                 let mut demands = Vec::new();
                 for req in &self.context.week_data.requirements {
                     if req.shift_type == *shift_name {
@@ -147,7 +188,9 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                 // Check HC2: Skills
                 for &n in &available_nurses {
                     let nurse = &self.context.scenario.nurses[n];
-                    let has_valid_skill = demands.iter().any(|(skill, _)| nurse.skills.contains(skill));
+                    let has_valid_skill = demands
+                        .iter()
+                        .any(|(skill, _)| nurse.skills.contains(skill));
                     if !has_valid_skill && !demands.is_empty() {
                         hc_skills += weights.hard_constraint_violation as usize;
                         hard_violations.push(Violation {
@@ -156,14 +199,18 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             value: None,
                             expected: "Nurse possesses required skill".to_string(),
                             actual: format!("Nurse skills: {:?}", nurse.skills),
-                            description: format!("Nurse {} lacks required skill for shift {} on day {}", nurse.id, shift_name, day_name),
+                            description: format!(
+                                "Nurse {} lacks required skill for shift {} on day {}",
+                                nurse.id, shift_name, day_name
+                            ),
                             penalty: weights.hard_constraint_violation as i32,
                         });
                     }
                 }
 
                 // Run AssignmentSolver for Optimal Matching
-                let workers: Vec<(usize, Vec<String>)> = available_nurses.iter()
+                let workers: Vec<(usize, Vec<String>)> = available_nurses
+                    .iter()
                     .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
                     .collect();
 
@@ -200,7 +247,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 value: Some(missing as f64),
                                 expected: req_level.minimum.to_string(),
                                 actual: fulfilled.to_string(),
-                                description: format!("Shift {} skill {} on {} lacks {} nurses (minimum)", shift_name, req.skill, day_name, missing),
+                                description: format!(
+                                    "Shift {} skill {} on {} lacks {} nurses (minimum)",
+                                    shift_name, req.skill, day_name, missing
+                                ),
                                 penalty: cost as i32,
                             });
                         } else if fulfilled < req_level.optimal {
@@ -213,7 +263,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 value: Some(missing as f64),
                                 expected: req_level.optimal.to_string(),
                                 actual: fulfilled.to_string(),
-                                description: format!("Shift {} skill {} on {} lacks {} nurses (optimal)", shift_name, req.skill, day_name, missing),
+                                description: format!(
+                                    "Shift {} skill {} on {} lacks {} nurses (optimal)",
+                                    shift_name, req.skill, day_name, missing
+                                ),
                                 penalty: cost,
                             });
                         }
@@ -224,9 +277,14 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
 
         // Shift Off Requests (Preferences)
         for req in &self.context.week_data.shift_off_requests {
-            let n_idx = self.context.scenario.nurses.iter().position(|n| n.id == req.nurse);
+            let n_idx = self
+                .context
+                .scenario
+                .nurses
+                .iter()
+                .position(|n| n.id == req.nurse);
             let d_idx = days_map.iter().position(|&d| d == req.day);
-            
+
             if let (Some(n), Some(d)) = (n_idx, d_idx) {
                 if req.shift_type == "Any" {
                     for s in 0..num_shifts {
@@ -238,13 +296,21 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 value: None,
                                 expected: "Shift off requested".to_string(),
                                 actual: "Shift assigned".to_string(),
-                                description: format!("Nurse {} shift off request violated on day {}", req.nurse, req.day),
+                                description: format!(
+                                    "Nurse {} shift off request violated on day {}",
+                                    req.nurse, req.day
+                                ),
                                 penalty: weights.preferences,
                             });
                         }
                     }
                 } else {
-                    if let Some(s) = self.context.shift_types.iter().position(|s| s == &req.shift_type) {
+                    if let Some(s) = self
+                        .context
+                        .shift_types
+                        .iter()
+                        .position(|s| s == &req.shift_type)
+                    {
                         if self.get_bit(genome, n, d, s) {
                             preferences_penalty += weights.preferences;
                             soft_violations.push(Violation {
@@ -253,7 +319,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 value: None,
                                 expected: format!("Shift off requested: {}", req.shift_type),
                                 actual: format!("Shift assigned: {}", req.shift_type),
-                                description: format!("Nurse {} shift off request ({}) violated on day {}", req.nurse, req.shift_type, req.day),
+                                description: format!(
+                                    "Nurse {} shift off request ({}) violated on day {}",
+                                    req.nurse, req.shift_type, req.day
+                                ),
                                 penalty: weights.preferences,
                             });
                         }
@@ -265,31 +334,60 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
         // Soft Constraints: S1, S2, S3, S4, S6, S7
         for n in 0..num_nurses {
             let nurse = &self.context.scenario.nurses[n];
-            let contract = self.context.scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
-            
-            let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == &nurse.id);
-            let initial_streak = if let Some(h) = hist { h.number_of_consecutive_working_days } else { 0 };
-            let initial_off_streak = if let Some(h) = hist { h.number_of_consecutive_days_off } else { 0 };
-            let initial_shift_streak = if let Some(h) = hist { h.number_of_consecutive_assignments } else { 0 };
-            let mut current_last_shift = if let Some(h) = hist { Some(h.last_assigned_shift_type.clone()) } else { None };
-            
-            if current_last_shift.as_deref() == Some("") || current_last_shift.as_deref() == Some("None") {
+            let contract = self
+                .context
+                .scenario
+                .contracts
+                .iter()
+                .find(|c| c.id == nurse.contract)
+                .unwrap();
+
+            let hist = self
+                .context
+                .history
+                .nurse_history
+                .iter()
+                .find(|h| &h.nurse == &nurse.id);
+            let initial_streak = if let Some(h) = hist {
+                h.number_of_consecutive_working_days
+            } else {
+                0
+            };
+            let initial_off_streak = if let Some(h) = hist {
+                h.number_of_consecutive_days_off
+            } else {
+                0
+            };
+            let initial_shift_streak = if let Some(h) = hist {
+                h.number_of_consecutive_assignments
+            } else {
+                0
+            };
+            let mut current_last_shift = if let Some(h) = hist {
+                Some(h.last_assigned_shift_type.clone())
+            } else {
+                None
+            };
+
+            if current_last_shift.as_deref() == Some("")
+                || current_last_shift.as_deref() == Some("None")
+            {
                 current_last_shift = None;
             }
-            
+
             let mut current_streak = initial_streak;
             let mut current_off_streak = initial_off_streak;
             let mut current_shift_streak = initial_shift_streak;
-            
+
             let mut week_assignments = 0;
-            
+
             let mut works_saturday = false;
             let mut works_sunday = false;
-            
+
             for d in 0..num_days {
                 let mut works = false;
                 let mut worked_shift = None;
-                
+
                 for s in 0..num_shifts {
                     if self.get_bit(genome, n, d, s) {
                         works = true;
@@ -301,10 +399,14 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                 if works {
                     week_assignments += 1;
                     current_streak += 1;
-                    
-                    if d == 5 { works_saturday = true; }
-                    if d == 6 { works_sunday = true; }
-                    
+
+                    if d == 5 {
+                        works_saturday = true;
+                    }
+                    if d == 6 {
+                        works_sunday = true;
+                    }
+
                     // Day off streak ended
                     if current_off_streak > 0 {
                         if current_off_streak < contract.min_consecutive_days_off {
@@ -322,10 +424,17 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             });
                         }
                         if current_off_streak > contract.max_consecutive_days_off {
-                            let current_excess = current_off_streak - contract.max_consecutive_days_off;
-                            let initial_excess = if initial_off_streak > contract.max_consecutive_days_off { initial_off_streak - contract.max_consecutive_days_off } else { 0 };
+                            let current_excess =
+                                current_off_streak - contract.max_consecutive_days_off;
+                            let initial_excess =
+                                if initial_off_streak > contract.max_consecutive_days_off {
+                                    initial_off_streak - contract.max_consecutive_days_off
+                                } else {
+                                    0
+                                };
                             if current_excess > initial_excess {
-                                let cost = (current_excess - initial_excess) as i32 * weights.consecutive_days_off;
+                                let cost = (current_excess - initial_excess) as i32
+                                    * weights.consecutive_days_off;
                                 day_off_penalty += cost;
                                 soft_violations.push(Violation {
                                     constraint_id: "S3_ConsecutiveDaysOff".to_string(),
@@ -340,7 +449,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                         }
                         current_off_streak = 0;
                     }
-                    
+
                     // Shift Streak logic
                     if let Some(w_shift) = worked_shift {
                         if let Some(ref last) = current_last_shift {
@@ -348,8 +457,16 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 current_shift_streak += 1;
                             } else {
                                 // Ended previous shift streak
-                                let s_type = self.context.scenario.shift_types.iter().find(|st| &st.id == last).unwrap();
-                                if current_shift_streak > 0 && current_shift_streak < s_type.min_consecutive {
+                                let s_type = self
+                                    .context
+                                    .scenario
+                                    .shift_types
+                                    .iter()
+                                    .find(|st| &st.id == last)
+                                    .unwrap();
+                                if current_shift_streak > 0
+                                    && current_shift_streak < s_type.min_consecutive
+                                {
                                     let diff = s_type.min_consecutive - current_shift_streak;
                                     let cost = diff as i32 * weights.consecutive_shift_days;
                                     work_streak_penalty += cost;
@@ -364,10 +481,17 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                     });
                                 }
                                 if current_shift_streak > s_type.max_consecutive {
-                                    let current_excess = current_shift_streak - s_type.max_consecutive;
-                                    let initial_excess = if initial_shift_streak > s_type.max_consecutive { initial_shift_streak - s_type.max_consecutive } else { 0 };
+                                    let current_excess =
+                                        current_shift_streak - s_type.max_consecutive;
+                                    let initial_excess =
+                                        if initial_shift_streak > s_type.max_consecutive {
+                                            initial_shift_streak - s_type.max_consecutive
+                                        } else {
+                                            0
+                                        };
                                     if current_excess > initial_excess {
-                                        let cost = (current_excess - initial_excess) as i32 * weights.consecutive_shift_days;
+                                        let cost = (current_excess - initial_excess) as i32
+                                            * weights.consecutive_shift_days;
                                         work_streak_penalty += cost;
                                         soft_violations.push(Violation {
                                             constraint_id: "S4_ConsecutiveShiftTypes".to_string(),
@@ -390,11 +514,18 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 } else {
                     current_off_streak += 1;
-                    
+
                     // Shift Streak ended
                     if let Some(ref last) = current_last_shift {
-                        let s_type = self.context.scenario.shift_types.iter().find(|st| &st.id == last).unwrap();
-                        if current_shift_streak > 0 && current_shift_streak < s_type.min_consecutive {
+                        let s_type = self
+                            .context
+                            .scenario
+                            .shift_types
+                            .iter()
+                            .find(|st| &st.id == last)
+                            .unwrap();
+                        if current_shift_streak > 0 && current_shift_streak < s_type.min_consecutive
+                        {
                             let diff = s_type.min_consecutive - current_shift_streak;
                             let cost = diff as i32 * weights.consecutive_shift_days;
                             work_streak_penalty += cost;
@@ -410,9 +541,14 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                         }
                         if current_shift_streak > s_type.max_consecutive {
                             let current_excess = current_shift_streak - s_type.max_consecutive;
-                            let initial_excess = if initial_shift_streak > s_type.max_consecutive { initial_shift_streak - s_type.max_consecutive } else { 0 };
+                            let initial_excess = if initial_shift_streak > s_type.max_consecutive {
+                                initial_shift_streak - s_type.max_consecutive
+                            } else {
+                                0
+                            };
                             if current_excess > initial_excess {
-                                let cost = (current_excess - initial_excess) as i32 * weights.consecutive_shift_days;
+                                let cost = (current_excess - initial_excess) as i32
+                                    * weights.consecutive_shift_days;
                                 work_streak_penalty += cost;
                                 soft_violations.push(Violation {
                                     constraint_id: "S4_ConsecutiveShiftTypes".to_string(),
@@ -428,7 +564,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                         current_shift_streak = 0;
                         current_last_shift = None;
                     }
-                    
+
                     // Work streak ended
                     if current_streak > 0 {
                         if current_streak < contract.min_consecutive_working_days {
@@ -446,10 +582,17 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             });
                         }
                         if current_streak > contract.max_consecutive_working_days {
-                            let current_excess = current_streak - contract.max_consecutive_working_days;
-                            let initial_excess = if initial_streak > contract.max_consecutive_working_days { initial_streak - contract.max_consecutive_working_days } else { 0 };
+                            let current_excess =
+                                current_streak - contract.max_consecutive_working_days;
+                            let initial_excess =
+                                if initial_streak > contract.max_consecutive_working_days {
+                                    initial_streak - contract.max_consecutive_working_days
+                                } else {
+                                    0
+                                };
                             if current_excess > initial_excess {
-                                let cost = (current_excess - initial_excess) as i32 * weights.consecutive_working_days;
+                                let cost = (current_excess - initial_excess) as i32
+                                    * weights.consecutive_working_days;
                                 work_streak_penalty += cost;
                                 soft_violations.push(Violation {
                                     constraint_id: "S2_ConsecutiveWorkingDays".to_string(),
@@ -466,13 +609,18 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 }
             }
-            
+
             // End of stage handling (only MAX, MIN might continue next week)
             if current_streak > contract.max_consecutive_working_days {
                 let current_excess = current_streak - contract.max_consecutive_working_days;
-                let initial_excess = if initial_streak > contract.max_consecutive_working_days { initial_streak - contract.max_consecutive_working_days } else { 0 };
+                let initial_excess = if initial_streak > contract.max_consecutive_working_days {
+                    initial_streak - contract.max_consecutive_working_days
+                } else {
+                    0
+                };
                 if current_excess > initial_excess {
-                    let cost = (current_excess - initial_excess) as i32 * weights.consecutive_working_days;
+                    let cost =
+                        (current_excess - initial_excess) as i32 * weights.consecutive_working_days;
                     work_streak_penalty += cost;
                     soft_violations.push(Violation {
                         constraint_id: "S2_ConsecutiveWorkingDays".to_string(),
@@ -487,9 +635,14 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             }
             if current_off_streak > contract.max_consecutive_days_off {
                 let current_excess = current_off_streak - contract.max_consecutive_days_off;
-                let initial_excess = if initial_off_streak > contract.max_consecutive_days_off { initial_off_streak - contract.max_consecutive_days_off } else { 0 };
+                let initial_excess = if initial_off_streak > contract.max_consecutive_days_off {
+                    initial_off_streak - contract.max_consecutive_days_off
+                } else {
+                    0
+                };
                 if current_excess > initial_excess {
-                    let cost = (current_excess - initial_excess) as i32 * weights.consecutive_days_off;
+                    let cost =
+                        (current_excess - initial_excess) as i32 * weights.consecutive_days_off;
                     day_off_penalty += cost;
                     soft_violations.push(Violation {
                         constraint_id: "S3_ConsecutiveDaysOff".to_string(),
@@ -502,15 +655,26 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     });
                 }
             }
-            
+
             // S3: End of stage handling for shift streak (only evaluate MAX, MIN might continue next week)
             if let Some(ref last) = current_last_shift {
-                let s_type = self.context.scenario.shift_types.iter().find(|st| &st.id == last).unwrap();
+                let s_type = self
+                    .context
+                    .scenario
+                    .shift_types
+                    .iter()
+                    .find(|st| &st.id == last)
+                    .unwrap();
                 if current_shift_streak > s_type.max_consecutive {
                     let current_excess = current_shift_streak - s_type.max_consecutive;
-                    let initial_excess = if initial_shift_streak > s_type.max_consecutive { initial_shift_streak - s_type.max_consecutive } else { 0 };
+                    let initial_excess = if initial_shift_streak > s_type.max_consecutive {
+                        initial_shift_streak - s_type.max_consecutive
+                    } else {
+                        0
+                    };
                     if current_excess > initial_excess {
-                        let cost = (current_excess - initial_excess) as i32 * weights.consecutive_shift_days;
+                        let cost = (current_excess - initial_excess) as i32
+                            * weights.consecutive_shift_days;
                         work_streak_penalty += cost;
                         soft_violations.push(Violation {
                             constraint_id: "S4_ConsecutiveShiftTypes".to_string(),
@@ -524,7 +688,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 }
             }
-            
+
             // Complete Weekends
             if contract.complete_weekends > 0 {
                 if works_saturday != works_sunday {
@@ -536,7 +700,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                         value: None,
                         expected: "Complete working weekend (both worked or both off)".to_string(),
                         actual: format!("Sat: {}, Sun: {}", works_saturday, works_sunday),
-                        description: format!("Nurse {} had incomplete working weekend (Sat: {}, Sun: {})", nurse.id, works_saturday, works_sunday),
+                        description: format!(
+                            "Nurse {} had incomplete working weekend (Sat: {}, Sun: {})",
+                            nurse.id, works_saturday, works_sunday
+                        ),
                         penalty: cost,
                     });
                 }
@@ -557,15 +724,20 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     value: Some(total_working_weekends as f64),
                     expected: format!("<= {}", contract.max_working_weekends),
                     actual: total_working_weekends.to_string(),
-                    description: format!("Nurse {} exceeded max working weekends: {} (maximum {})", nurse.id, total_working_weekends, contract.max_working_weekends),
+                    description: format!(
+                        "Nurse {} exceeded max working weekends: {} (maximum {})",
+                        nurse.id, total_working_weekends, contract.max_working_weekends
+                    ),
                     penalty: cost,
                 });
             }
 
             // S1: Assignments (Scaled for 1 week)
             let weekly_min = contract.min_assignments / self.context.scenario.number_of_weeks;
-            let weekly_max = (contract.max_assignments as f64 / self.context.scenario.number_of_weeks as f64).ceil() as usize;
-            
+            let weekly_max = (contract.max_assignments as f64
+                / self.context.scenario.number_of_weeks as f64)
+                .ceil() as usize;
+
             if week_assignments < weekly_min {
                 let diff = weekly_min - week_assignments;
                 let cost = diff as i32 * weights.assignments;
@@ -576,7 +748,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     value: Some(week_assignments as f64),
                     expected: format!(">= {}", weekly_min),
                     actual: week_assignments.to_string(),
-                    description: format!("Nurse {} total assignments {} below weekly minimum {}", nurse.id, week_assignments, weekly_min),
+                    description: format!(
+                        "Nurse {} total assignments {} below weekly minimum {}",
+                        nurse.id, week_assignments, weekly_min
+                    ),
                     penalty: cost,
                 });
             }
@@ -590,7 +765,10 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     value: Some(week_assignments as f64),
                     expected: format!("<= {}", weekly_max),
                     actual: week_assignments.to_string(),
-                    description: format!("Nurse {} total assignments {} above weekly maximum {}", nurse.id, week_assignments, weekly_max),
+                    description: format!(
+                        "Nurse {} total assignments {} above weekly maximum {}",
+                        nurse.id, week_assignments, weekly_max
+                    ),
                     penalty: cost,
                 });
             }
@@ -603,11 +781,17 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             weekend_penalty,
             preferences_penalty,
             optimal_coverage_penalty,
-            total_penalty: assignment_penalty + work_streak_penalty + day_off_penalty + weekend_penalty + preferences_penalty + optimal_coverage_penalty,
+            total_penalty: assignment_penalty
+                + work_streak_penalty
+                + day_off_penalty
+                + weekend_penalty
+                + preferences_penalty
+                + optimal_coverage_penalty,
         };
 
-        let total_hc_penalty = hc_coverage + hc_skills + hc_one_shift_per_day + hc_forbidden_successions;
-        
+        let total_hc_penalty =
+            hc_coverage + hc_skills + hc_one_shift_per_day + hc_forbidden_successions;
+
         let base_fitness = 100_000.0;
         let fitness = base_fitness - total_hc_penalty as f64 - soft_report.total_penalty as f64;
 
@@ -615,14 +799,29 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
         let mut metrics = HashMap::new();
         metrics.insert("hc_coverage".to_string(), hc_coverage as f64);
         metrics.insert("hc_skills".to_string(), hc_skills as f64);
-        metrics.insert("hc_one_shift_per_day".to_string(), hc_one_shift_per_day as f64);
-        metrics.insert("hc_forbidden_successions".to_string(), hc_forbidden_successions as f64);
+        metrics.insert(
+            "hc_one_shift_per_day".to_string(),
+            hc_one_shift_per_day as f64,
+        );
+        metrics.insert(
+            "hc_forbidden_successions".to_string(),
+            hc_forbidden_successions as f64,
+        );
         metrics.insert("assignment_penalty".to_string(), assignment_penalty as f64);
-        metrics.insert("work_streak_penalty".to_string(), work_streak_penalty as f64);
+        metrics.insert(
+            "work_streak_penalty".to_string(),
+            work_streak_penalty as f64,
+        );
         metrics.insert("day_off_penalty".to_string(), day_off_penalty as f64);
         metrics.insert("weekend_penalty".to_string(), weekend_penalty as f64);
-        metrics.insert("preferences_penalty".to_string(), preferences_penalty as f64);
-        metrics.insert("optimal_coverage_penalty".to_string(), optimal_coverage_penalty as f64);
+        metrics.insert(
+            "preferences_penalty".to_string(),
+            preferences_penalty as f64,
+        );
+        metrics.insert(
+            "optimal_coverage_penalty".to_string(),
+            optimal_coverage_penalty as f64,
+        );
 
         let platform_result = EvaluationResult {
             objectives: vec![soft_report.total_penalty as f64],

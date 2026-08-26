@@ -56,8 +56,7 @@ use std::path::PathBuf;
 // ─── Frozen identity constants ─────────────────────────────────────────────────
 
 /// Frozen C3-002 artifact hash — must match what LIVE-002 and LIVE-003 recorded.
-const FROZEN_C3_002_HASH: &str =
-    "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121";
+const FROZEN_C3_002_HASH: &str = "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121";
 
 /// Frozen recommendation engine version.
 const FROZEN_ENGINE_VERSION: &str = "v1";
@@ -305,13 +304,26 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--snapshot" => { i += 1; snapshot = PathBuf::from(&args[i]); }
-            "--state"    => { i += 1; state = PathBuf::from(&args[i]); }
-            "--recommend"=> { i += 1; recommend = PathBuf::from(&args[i]); }
-            "--output"   => { i += 1; output = PathBuf::from(&args[i]); }
-            "--freshness"=> {
+            "--snapshot" => {
                 i += 1;
-                freshness_minutes = args[i].parse::<i64>()
+                snapshot = PathBuf::from(&args[i]);
+            }
+            "--state" => {
+                i += 1;
+                state = PathBuf::from(&args[i]);
+            }
+            "--recommend" => {
+                i += 1;
+                recommend = PathBuf::from(&args[i]);
+            }
+            "--output" => {
+                i += 1;
+                output = PathBuf::from(&args[i]);
+            }
+            "--freshness" => {
+                i += 1;
+                freshness_minutes = args[i]
+                    .parse::<i64>()
                     .map_err(|_| format!("--freshness must be an integer, got '{}'", args[i]))?;
             }
             other => return Err(format!("unknown argument: {other}").into()),
@@ -319,14 +331,22 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
         i += 1;
     }
 
-    Ok(Args { snapshot, state, recommend, output, freshness_minutes })
+    Ok(Args {
+        snapshot,
+        state,
+        recommend,
+        output,
+        freshness_minutes,
+    })
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-fn read_json<T: for<'de> Deserialize<'de>>(path: &PathBuf) -> Result<T, Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+fn read_json<T: for<'de> Deserialize<'de>>(
+    path: &PathBuf,
+) -> Result<T, Box<dyn std::error::Error>> {
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     serde_json::from_str(&content)
         .map_err(|e| format!("cannot parse {}: {e}", path.display()))
         .map_err(|e| e.into())
@@ -349,10 +369,13 @@ fn gate_freshness(
     let captured = match parse_utc(&snapshot.snapshot_timestamp) {
         Ok(t) => t,
         Err(e) => {
-            return (GateResult {
-                pass: false,
-                detail: format!("cannot parse snapshot_timestamp: {e}"),
-            }, i64::MAX);
+            return (
+                GateResult {
+                    pass: false,
+                    detail: format!("cannot parse snapshot_timestamp: {e}"),
+                },
+                i64::MAX,
+            );
         }
     };
     let age_minutes = now.signed_duration_since(captured).num_minutes();
@@ -383,10 +406,7 @@ fn gate_snapshot_coherence(
 
     let pass = snap_id == state_ref && snap_id == rec_ref;
     let detail = if pass {
-        format!(
-            "all artifacts reference snapshot_id={} — COHERENT",
-            snap_id
-        )
+        format!("all artifacts reference snapshot_id={} — COHERENT", snap_id)
     } else {
         format!(
             "snapshot_id mismatch: snapshot={} state.source={} recommend.source={} — INCOHERENT",
@@ -397,10 +417,7 @@ fn gate_snapshot_coherence(
 }
 
 /// Gate 3: Completeness — every tmv_complete instrument in snapshot appears in state.
-fn gate_completeness(
-    snapshot: &LiveSnapshot,
-    state: &Live002StateArtifact,
-) -> GateResult {
+fn gate_completeness(snapshot: &LiveSnapshot, state: &Live002StateArtifact) -> GateResult {
     let state_tickers: HashSet<&str> = state
         .instruments
         .iter()
@@ -424,7 +441,8 @@ fn gate_completeness(
     } else {
         format!(
             "{} tmv_complete instruments missing from state artifact: {:?} — INCOMPLETE",
-            missing.len(), missing
+            missing.len(),
+            missing
         )
     };
     GateResult { pass, detail }
@@ -580,7 +598,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[live004] snapshot:    {}", args.snapshot.display());
     println!("[live004] state:       {}", args.state.display());
     println!("[live004] recommend:   {}", args.recommend.display());
-    println!("[live004] freshness:   {}min threshold", args.freshness_minutes);
+    println!(
+        "[live004] freshness:   {}min threshold",
+        args.freshness_minutes
+    );
 
     // ── Read all three input artifacts (read-only — no modification) ──────────
     let snapshot: LiveSnapshot = read_json(&args.snapshot)?;
@@ -589,7 +610,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("[live004] snapshot_id={}", snapshot.snapshot_id);
     println!("[live004] state_id={}", state.state_id);
-    println!("[live004] recommendation_id={}", recommend.recommendation_id);
+    println!(
+        "[live004] recommendation_id={}",
+        recommend.recommendation_id
+    );
 
     let now: DateTime<Utc> = Utc::now();
     let certified_at = now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
@@ -751,7 +775,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[live004] certification_id={certification_id}");
     println!("[live004] certification_status={certification_status}");
     println!("[live004] snapshot_age_minutes={age_minutes}");
-    println!("[live004] freshness_threshold_minutes={}", args.freshness_minutes);
+    println!(
+        "[live004] freshness_threshold_minutes={}",
+        args.freshness_minutes
+    );
     println!("[live004] artifact={}", artifact_path.display());
     println!("[live004] latest={}", latest_path.display());
 

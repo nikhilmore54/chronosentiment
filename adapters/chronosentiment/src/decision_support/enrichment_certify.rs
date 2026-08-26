@@ -19,7 +19,7 @@ use crate::metrics::instrument::{
 };
 use crate::observation::ValidatedObservation;
 use crate::reasoning::assessment::{
-    AssessmentEngine, AssessmentProfile, ENRICHMENT_CONCEPTS, FactorStatus,
+    AssessmentEngine, AssessmentProfile, FactorStatus, ENRICHMENT_CONCEPTS,
 };
 use crate::validation::context::InstrumentEvaluationContext;
 
@@ -62,13 +62,16 @@ pub fn observations_from_bars(
     let translator = YahooTranslator;
     bars.iter()
         .map(|bar| {
-            let raw = translator.translate(bar.clone(), &crate::instrument::Instrument {
-                id: instrument_id,
-                exchange: "NSE".to_string(),
-                display_symbol: String::new(),
-                provider_ids: Default::default(),
-                created_at: t_epoch(),
-            });
+            let raw = translator.translate(
+                bar.clone(),
+                &crate::instrument::Instrument {
+                    id: instrument_id,
+                    exchange: "NSE".to_string(),
+                    display_symbol: String::new(),
+                    provider_ids: Default::default(),
+                    created_at: t_epoch(),
+                },
+            );
             ValidatedObservation {
                 id: Uuid::nil(),
                 research_session_id: None,
@@ -128,18 +131,23 @@ pub fn assess_from_bars_at_t(
 ) -> (AssessmentProfile, usize, Option<DateTime<Utc>>) {
     let kept = bars_at_or_before(bars, t);
     let n = kept.len();
-    let max_from = kept.last().and_then(|b| Utc.timestamp_opt(b.timestamp, 0).single());
+    let max_from = kept
+        .last()
+        .and_then(|b| Utc.timestamp_opt(b.timestamp, 0).single());
     let observations = observations_from_bars(&kept, instrument_id);
     let ctx = InstrumentEvaluationContext {
         instrument_id,
         observations,
     };
     let metrics = metric_engine().evaluate(&ctx);
-    let profile = AssessmentEngine.assess_at(&metrics, &ENRICHMENT_CONCEPTS, t, Some(instrument_id));
+    let profile =
+        AssessmentEngine.assess_at(&metrics, &ENRICHMENT_CONCEPTS, t, Some(instrument_id));
     (profile, n, max_from)
 }
 
-pub fn load_yahoo_cache_dir(dir: &Path) -> Result<BTreeMap<String, Vec<YahooHistoricalBar>>, String> {
+pub fn load_yahoo_cache_dir(
+    dir: &Path,
+) -> Result<BTreeMap<String, Vec<YahooHistoricalBar>>, String> {
     let mut out = BTreeMap::new();
     let entries = fs::read_dir(dir).map_err(|e| e.to_string())?;
     for entry in entries {
@@ -243,7 +251,8 @@ pub fn certify_snapshot(
                     ));
                 }
             }
-            if factor_status_identity(&recomputed.factor_status) != factor_status_identity(&profile.factor_status)
+            if factor_status_identity(&recomputed.factor_status)
+                != factor_status_identity(&profile.factor_status)
             {
                 factor_status_mismatches_vs_bars_le_t += 1;
                 failures.push(format!(
@@ -270,7 +279,9 @@ pub fn certify_snapshot(
     }
 }
 
-fn factor_status_identity(status: &[FactorStatus]) -> Vec<(String, String, Vec<String>, Vec<String>)> {
+fn factor_status_identity(
+    status: &[FactorStatus],
+) -> Vec<(String, String, Vec<String>, Vec<String>)> {
     let mut rows: Vec<_> = status
         .iter()
         .map(|s| {
@@ -314,7 +325,10 @@ pub fn render_certification(cert: &EnrichmentCertification) -> String {
         "- factor_status mismatches vs bars ≤ T: {}\n",
         cert.factor_status_mismatches_vs_bars_le_t
     ));
-    md.push_str(&format!("- temporal bar leaks: {}\n", cert.temporal_bar_leaks));
+    md.push_str(&format!(
+        "- temporal bar leaks: {}\n",
+        cert.temporal_bar_leaks
+    ));
     md.push_str(&format!("- identity hash: `{}`\n\n", cert.identity_hash));
     if cert.failures.is_empty() {
         md.push_str("No certification failures.\n\n");

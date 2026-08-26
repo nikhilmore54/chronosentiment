@@ -125,22 +125,14 @@ impl EvaluationService {
     fn aggregated_to_dto(strategy_id: &str, agg: &AggregatedEvaluation) -> CandidateEvaluationDto {
         CandidateEvaluationDto {
             strategy_id: strategy_id.to_string(),
-            avg: agg
-                .scenario_results
-                .iter()
-                .map(|r| r.avg_pnl)
-                .sum::<f64>()
+            avg: agg.scenario_results.iter().map(|r| r.avg_pnl).sum::<f64>()
                 / agg.domains_evaluated.max(1) as f64,
             std: agg.domain_consistency,
             fitness: agg.aggregated_execution_fitness,
             classification: classify_execution_fitness(agg.aggregated_execution_fitness),
             ga_fitness: Some(agg.aggregated_fitness),
             execution_fitness: agg.aggregated_execution_fitness,
-            total_trades: agg
-                .scenario_results
-                .iter()
-                .map(|r| r.trade_count)
-                .sum(),
+            total_trades: agg.scenario_results.iter().map(|r| r.trade_count).sum(),
         }
     }
 
@@ -253,11 +245,8 @@ impl EvaluationService {
         let evaluator = Self::default_evaluator();
         let metrics = Self::evaluate_candidate(&evaluator, &strategy_config);
 
-        let execution_trace: Vec<EventWrapper> = simulation
-            .events
-            .iter()
-            .map(sim_event_to_wrapper)
-            .collect();
+        let execution_trace: Vec<EventWrapper> =
+            simulation.events.iter().map(sim_event_to_wrapper).collect();
 
         let decision_trace: Vec<EventWrapper> = simulation
             .events
@@ -411,9 +400,7 @@ impl EvaluationService {
             execution: inspection
                 .execution
                 .iter()
-                .map(|event| {
-                    serde_json::to_value(event).unwrap_or_else(|_| serde_json::json!({}))
-                })
+                .map(|event| serde_json::to_value(event).unwrap_or_else(|_| serde_json::json!({})))
                 .collect(),
             outcome: TradeInspectorOutcome {
                 filled_qty: inspection.outcome.filled_qty,
@@ -449,7 +436,9 @@ impl EvaluationService {
         ))
     }
 
-    pub fn load_all_real_scenarios(&self) -> Result<HashMap<String, Vec<chronosentiment_core::SimEvent>>, ApiError> {
+    pub fn load_all_real_scenarios(
+        &self,
+    ) -> Result<HashMap<String, Vec<chronosentiment_core::SimEvent>>, ApiError> {
         Ok(HashMap::new())
     }
 }

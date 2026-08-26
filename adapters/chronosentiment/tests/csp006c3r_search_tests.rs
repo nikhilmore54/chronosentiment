@@ -16,7 +16,9 @@ use chronosentiment_adapter::decision_support::csp006_protocol::{
 };
 use chronosentiment_adapter::decision_support::dataset_partition::PartitionKind;
 use chronosentiment_adapter::decision_support::decision_value_fitness::score_decision_value;
-use chronosentiment_adapter::decision_support::observation_value::{ObservationRow, ObservationSlice};
+use chronosentiment_adapter::decision_support::observation_value::{
+    ObservationRow, ObservationSlice,
+};
 use chronosentiment_adapter::decision_support::policy_discovery::methodology_hash;
 use chronosentiment_adapter::decision_support::policy_genome::RuleListGenome;
 use chronosentiment_adapter::decision_support::DecisionAction;
@@ -76,19 +78,27 @@ fn c3i_gate_stays_closed_and_run_module_is_authorized() {
     assert!(!SEARCH_TWO_RUN_AUTHORIZED);
     assert!(C3_RUN_AUTHORIZED);
     assert!(c3_run_is_authorized());
-    assert!(evolve_on_development_value(synthetic_slice(PartitionKind::Development, 0.01)).is_err());
+    assert!(
+        evolve_on_development_value(synthetic_slice(PartitionKind::Development, 0.01)).is_err()
+    );
 }
 
 #[test]
 fn search_one_methodology_and_evidence_stay_immutable() {
     assert_eq!(methodology_hash(), RESEARCH_DISCOVERY_METHODOLOGY_HASH);
-    assert_ne!(decision_value_methodology_hash(), RESEARCH_DISCOVERY_METHODOLOGY_HASH);
+    assert_ne!(
+        decision_value_methodology_hash(),
+        RESEARCH_DISCOVERY_METHODOLOGY_HASH
+    );
     let search_one = workspace_root().join(RESEARCH_DISCOVERY_DIR);
     if search_one.join("selected_policy.json").exists() {
         search_one_evidence_is_immutable(&search_one).unwrap();
     }
     assert!(refuse_search_one_output(&search_one).is_err());
-    assert!(refuse_search_one_output(&PathBuf::from("product_validation/CS-P-006/discovery/20260814T195327Z")).is_err());
+    assert!(refuse_search_one_output(&PathBuf::from(
+        "product_validation/CS-P-006/discovery/20260814T195327Z"
+    ))
+    .is_err());
 }
 
 #[test]
@@ -100,7 +110,9 @@ fn evaluation_is_not_an_evolve_argument_and_cannot_be_scored() {
         rules: vec![],
         unmatched_action: DecisionAction::Long,
     };
-    assert!(score_decision_value(&genome, &synthetic_slice(PartitionKind::Evaluation, 0.01)).is_err());
+    assert!(
+        score_decision_value(&genome, &synthetic_slice(PartitionKind::Evaluation, 0.01)).is_err()
+    );
 }
 
 #[test]

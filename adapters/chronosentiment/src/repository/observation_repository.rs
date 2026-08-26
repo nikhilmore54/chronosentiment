@@ -12,9 +12,12 @@ use crate::observation::ValidatedObservation;
 #[async_trait]
 pub trait ValidatedObservationRepository: Send + Sync {
     /// Stores an enriched, validated, canonical observation envelope in the Knowledge Lake.
-    async fn store_observation(&self, observation: &ValidatedObservation) -> Result<(), Box<dyn Error>>;
+    async fn store_observation(
+        &self,
+        observation: &ValidatedObservation,
+    ) -> Result<(), Box<dyn Error>>;
 
-    /// Time-Travel Query: Retrieves all observations for a specific instrument 
+    /// Time-Travel Query: Retrieves all observations for a specific instrument
     /// that were known precisely AT or BEFORE the `evaluation_timestamp`.
     /// ValidatedObservations whose `effective_from` is after the `evaluation_timestamp` are strictly excluded.
     async fn get_observations_as_of(
@@ -24,7 +27,10 @@ pub trait ValidatedObservationRepository: Send + Sync {
     ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>>;
 
     /// Retrieves the full, unredacted historical observation timeline for an instrument.
-    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>>;
+    async fn get_complete_history(
+        &self,
+        instrument_id: Uuid,
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>>;
 }
 
 /// The Instrument Master Repository.
@@ -34,8 +40,12 @@ pub trait InstrumentRepository: Send + Sync {
     async fn store_instrument(&self, instrument: &Instrument) -> Result<(), Box<dyn Error>>;
 
     /// Looks up an instrument by its exchange and display symbol.
-    async fn get_by_symbol(&self, exchange: &str, display_symbol: &str) -> Result<Option<Instrument>, Box<dyn Error>>;
-    
+    async fn get_by_symbol(
+        &self,
+        exchange: &str,
+        display_symbol: &str,
+    ) -> Result<Option<Instrument>, Box<dyn Error>>;
+
     /// Retrieves an instrument by its unique ID.
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Instrument>, Box<dyn Error>>;
 }
@@ -52,7 +62,10 @@ impl PostgresRepository {
 
 #[async_trait]
 impl ValidatedObservationRepository for PostgresRepository {
-    async fn store_observation(&self, observation: &ValidatedObservation) -> Result<(), Box<dyn Error>> {
+    async fn store_observation(
+        &self,
+        observation: &ValidatedObservation,
+    ) -> Result<(), Box<dyn Error>> {
         let raw_payload = sqlx::types::Json(&observation.raw_payload);
         let normalized_payload = sqlx::types::Json(&observation.normalized_payload);
 
@@ -107,15 +120,16 @@ impl ValidatedObservationRepository for PostgresRepository {
             WHERE instrument_id = $1
               AND effective_from <= $2
             ORDER BY effective_from ASC
-            "#
+            "#,
         )
         .bind(instrument_id)
         .bind(evaluation_timestamp)
         .fetch_all(&self.pool)
         .await?;
 
-        let observations = records.into_iter().map(|rec| {
-            ValidatedObservation {
+        let observations = records
+            .into_iter()
+            .map(|rec| ValidatedObservation {
                 id: rec.get("id"),
                 research_session_id: None,
                 instrument_id: rec.get("instrument_id"),
@@ -126,8 +140,12 @@ impl ValidatedObservationRepository for PostgresRepository {
                 effective_from: rec.get("effective_from"),
                 effective_to: rec.get("effective_to"),
                 recorded_at: rec.get("recorded_at"),
-                raw_payload: rec.get::<sqlx::types::Json<serde_json::Value>, _>("raw_payload").0,
-                normalized_payload: rec.get::<sqlx::types::Json<serde_json::Value>, _>("normalized_payload").0,
+                raw_payload: rec
+                    .get::<sqlx::types::Json<serde_json::Value>, _>("raw_payload")
+                    .0,
+                normalized_payload: rec
+                    .get::<sqlx::types::Json<serde_json::Value>, _>("normalized_payload")
+                    .0,
                 confidence: rec.get("confidence_score"),
                 freshness: rec.get("freshness_at"),
                 coverage: rec.get("coverage"),
@@ -135,13 +153,16 @@ impl ValidatedObservationRepository for PostgresRepository {
                 quality_score: rec.get("quality_score"),
                 provenance_hash: rec.get("provenance_hash"),
                 schema_version: rec.get::<i32, _>("schema_version") as u32,
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(observations)
     }
 
-    async fn get_complete_history(&self, instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
+    async fn get_complete_history(
+        &self,
+        instrument_id: Uuid,
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
         let records = sqlx::query(
             r#"
             SELECT 
@@ -152,16 +173,17 @@ impl ValidatedObservationRepository for PostgresRepository {
             FROM observations
             WHERE instrument_id = $1
             ORDER BY effective_from ASC
-            "#
+            "#,
         )
         .bind(instrument_id)
         .fetch_all(&self.pool)
         .await?;
 
-        let observations = records.into_iter().map(|rec| {
-            ValidatedObservation {
+        let observations = records
+            .into_iter()
+            .map(|rec| ValidatedObservation {
                 id: rec.get("id"),
-                research_session_id: None, 
+                research_session_id: None,
                 instrument_id: rec.get("instrument_id"),
                 observation_type: rec.get("observation_type"),
                 source: rec.get("source_name"),
@@ -170,8 +192,12 @@ impl ValidatedObservationRepository for PostgresRepository {
                 effective_from: rec.get("effective_from"),
                 effective_to: rec.get("effective_to"),
                 recorded_at: rec.get("recorded_at"),
-                raw_payload: rec.get::<sqlx::types::Json<serde_json::Value>, _>("raw_payload").0,
-                normalized_payload: rec.get::<sqlx::types::Json<serde_json::Value>, _>("normalized_payload").0,
+                raw_payload: rec
+                    .get::<sqlx::types::Json<serde_json::Value>, _>("raw_payload")
+                    .0,
+                normalized_payload: rec
+                    .get::<sqlx::types::Json<serde_json::Value>, _>("normalized_payload")
+                    .0,
                 confidence: rec.get("confidence_score"),
                 freshness: rec.get("freshness_at"),
                 coverage: rec.get("coverage"),
@@ -179,8 +205,8 @@ impl ValidatedObservationRepository for PostgresRepository {
                 quality_score: rec.get("quality_score"),
                 provenance_hash: rec.get("provenance_hash"),
                 schema_version: rec.get::<i32, _>("schema_version") as u32,
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(observations)
     }
@@ -197,7 +223,7 @@ impl InstrumentRepository for PostgresRepository {
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (exchange, display_symbol) DO UPDATE 
             SET provider_ids = EXCLUDED.provider_ids
-            "#
+            "#,
         )
         .bind(instrument.id)
         .bind(&instrument.exchange)
@@ -210,13 +236,17 @@ impl InstrumentRepository for PostgresRepository {
         Ok(())
     }
 
-    async fn get_by_symbol(&self, exchange: &str, display_symbol: &str) -> Result<Option<Instrument>, Box<dyn Error>> {
+    async fn get_by_symbol(
+        &self,
+        exchange: &str,
+        display_symbol: &str,
+    ) -> Result<Option<Instrument>, Box<dyn Error>> {
         let record = sqlx::query(
             r#"
             SELECT id, exchange, display_symbol, provider_ids, created_at
             FROM instruments
             WHERE exchange = $1 AND display_symbol = $2
-            "#
+            "#,
         )
         .bind(exchange)
         .bind(display_symbol)
@@ -228,7 +258,11 @@ impl InstrumentRepository for PostgresRepository {
                 id: rec.get("id"),
                 exchange: rec.get("exchange"),
                 display_symbol: rec.get("display_symbol"),
-                provider_ids: rec.get::<sqlx::types::Json<std::collections::HashMap<String, String>>, _>("provider_ids").0,
+                provider_ids: rec
+                    .get::<sqlx::types::Json<std::collections::HashMap<String, String>>, _>(
+                        "provider_ids",
+                    )
+                    .0,
                 created_at: rec.get("created_at"),
             }))
         } else {
@@ -242,7 +276,7 @@ impl InstrumentRepository for PostgresRepository {
             SELECT id, exchange, display_symbol, provider_ids, created_at
             FROM instruments
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -253,7 +287,11 @@ impl InstrumentRepository for PostgresRepository {
                 id: rec.get("id"),
                 exchange: rec.get("exchange"),
                 display_symbol: rec.get("display_symbol"),
-                provider_ids: rec.get::<sqlx::types::Json<std::collections::HashMap<String, String>>, _>("provider_ids").0,
+                provider_ids: rec
+                    .get::<sqlx::types::Json<std::collections::HashMap<String, String>>, _>(
+                        "provider_ids",
+                    )
+                    .0,
                 created_at: rec.get("created_at"),
             }))
         } else {

@@ -1,10 +1,10 @@
-use serde::{Serialize, Deserialize};
 use crate::config::FatigueConfig;
+use crate::ecology::WorkforceEcology;
+use crate::models::{Shift, Worker};
+use crate::optimization::ScheduleContext;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::models::{Worker, Shift};
-use crate::optimization::ScheduleContext;
-use crate::ecology::WorkforceEcology;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaveRequest {
@@ -77,7 +77,9 @@ impl ScheduleRequest {
             shifts: Arc::new(self.shifts.clone()),
             ecology,
             rng_seed: self.rng_seed.unwrap_or(0),
-            observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
+            observatory: Arc::new(std::sync::Mutex::new(
+                crate::optimization::Observatory::new(),
+            )),
             locked_assignments: None,
             scenario: self.scenario.clone(),
         })
@@ -120,7 +122,9 @@ impl RescheduleRequest {
             shifts: Arc::new(self.request.shifts.clone()),
             ecology,
             rng_seed: self.request.rng_seed.unwrap_or(0),
-            observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
+            observatory: Arc::new(std::sync::Mutex::new(
+                crate::optimization::Observatory::new(),
+            )),
             locked_assignments: Some(locked_assignments),
             scenario: self.request.scenario.clone(),
         })

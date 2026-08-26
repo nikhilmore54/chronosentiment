@@ -113,6 +113,7 @@
 
 #![allow(non_snake_case, dead_code)]
 
+use coralys_airline::domain::crew::CrewId;
 use coralys_airline::domain::duty::{Duty, DutyId};
 use coralys_airline::domain::flight::{
     AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
@@ -120,7 +121,6 @@ use coralys_airline::domain::flight::{
 use coralys_airline::domain::pairing::{Pairing, PairingId};
 use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterId};
 use coralys_airline::domain::rotation::{Rotation, RotationId};
-use coralys_airline::domain::crew::CrewId;
 use coralys_airline::legality::LegalityChecker;
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
@@ -162,7 +162,11 @@ fn parse_utc(s: &str) -> DateTime<Utc> {
     if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
         return dt.into();
     }
-    let with_z = if s.ends_with('Z') { s.to_string() } else { format!("{s}Z") };
+    let with_z = if s.ends_with('Z') {
+        s.to_string()
+    } else {
+        format!("{s}Z")
+    };
     DateTime::parse_from_rfc3339(&with_z)
         .unwrap_or_else(|_| panic!("Cannot parse UTC timestamp: {s}"))
         .into()
@@ -174,16 +178,20 @@ fn load_flights(path: &Path) -> Vec<RawFlight> {
     for result in rdr.deserialize::<HashMap<String, String>>() {
         let row = result.expect("CSV parse error in flights.csv");
         let origin = pad_airport(row["origin"].trim());
-        let dest   = pad_airport(row["destination"].trim());
+        let dest = pad_airport(row["destination"].trim());
         flights.push(RawFlight {
             flight_id: row["flight_id"].clone(),
-            flight_number: row.get("flight_number").cloned()
+            flight_number: row
+                .get("flight_number")
+                .cloned()
                 .unwrap_or_else(|| row["flight_id"].clone()),
             origin,
             destination: dest,
             departure_utc: parse_utc(row["departure_utc"].trim()),
-            arrival_utc:   parse_utc(row["arrival_utc"].trim()),
-            aircraft_type: row.get("aircraft_type").cloned()
+            arrival_utc: parse_utc(row["arrival_utc"].trim()),
+            aircraft_type: row
+                .get("aircraft_type")
+                .cloned()
                 .unwrap_or_else(|| "B737".to_string()),
         });
     }
@@ -193,7 +201,11 @@ fn load_flights(path: &Path) -> Vec<RawFlight> {
 }
 
 fn pad_airport(s: &str) -> String {
-    if s.len() >= 3 { s[..3].to_uppercase() } else { format!("{:A<3}", s.to_uppercase()) }
+    if s.len() >= 3 {
+        s[..3].to_uppercase()
+    } else {
+        format!("{:A<3}", s.to_uppercase())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -208,11 +220,15 @@ fn load_crew(path: &Path) -> Vec<RawCrew> {
     let mut crew = Vec::new();
     for result in rdr.deserialize::<HashMap<String, String>>() {
         let row = result.expect("CSV parse error in crew.csv");
-        let base = row.get("base")
+        let base = row
+            .get("base")
             .or_else(|| row.get("home_base"))
             .cloned()
             .unwrap_or_else(|| DEFAULT_BASE.to_string());
-        crew.push(RawCrew { crew_id: row["crew_id"].clone(), base });
+        crew.push(RawCrew {
+            crew_id: row["crew_id"].clone(),
+            base,
+        });
     }
     crew
 }
@@ -243,17 +259,20 @@ fn build_pairings_from_flights(
 ) -> (Vec<FlightLeg>, Vec<Pairing>, usize, usize, usize) {
     let mut spatial_breaks = 0usize;
 
-    let legs: Vec<FlightLeg> = raw_flights.iter().map(|f| {
-        FlightLeg::new(
-            FlightLegId::new(&f.flight_id),
-            FlightNumber::new(&f.flight_number),
-            AirportCode::new(&f.origin),
-            AirportCode::new(&f.destination),
-            f.departure_utc,
-            f.arrival_utc,
-            AircraftType::new(&f.aircraft_type),
-        )
-    }).collect();
+    let legs: Vec<FlightLeg> = raw_flights
+        .iter()
+        .map(|f| {
+            FlightLeg::new(
+                FlightLegId::new(&f.flight_id),
+                FlightNumber::new(&f.flight_number),
+                AirportCode::new(&f.origin),
+                AirportCode::new(&f.destination),
+                f.departure_utc,
+                f.arrival_utc,
+                AircraftType::new(&f.aircraft_type),
+            )
+        })
+        .collect();
 
     let mut duties: Vec<Duty> = Vec::new();
     let mut current_duty_legs: Vec<FlightLeg> = Vec::new();
@@ -264,7 +283,9 @@ fn build_pairings_from_flights(
                           rejections: &mut usize,
                           duties: &mut Vec<Duty>,
                           legs: Vec<FlightLeg>| {
-        if legs.is_empty() { return; }
+        if legs.is_empty() {
+            return;
+        }
         *counter += 1;
         match Duty::new(DutyId::new(format!("D{counter}")), legs) {
             Ok(d) => duties.push(d),
@@ -273,7 +294,7 @@ fn build_pairings_from_flights(
                     eprintln!("  [duty_err sample] {:?}", e);
                 }
                 *rejections += 1;
-            },
+            }
         }
     };
 
@@ -282,8 +303,8 @@ fn build_pairings_from_flights(
             current_duty_legs.push(leg.clone());
         } else {
             let last = current_duty_legs.last().unwrap();
-            let ground_h = (leg.scheduled_departure - last.scheduled_arrival)
-                .num_seconds() as f64 / 3600.0;
+            let ground_h =
+                (leg.scheduled_departure - last.scheduled_arrival).num_seconds() as f64 / 3600.0;
             // Spatial-continuity check: airports must connect.
             // If prev.destination != next.origin, crew cannot physically
             // operate the next leg -- force a duty break regardless of time.
@@ -293,7 +314,9 @@ fn build_pairings_from_flights(
             // same duty (Duty::new would reject with OutOfOrder).
             let temporal_overlap = leg.scheduled_departure < last.scheduled_arrival;
             if ground_h >= layover_rest_hours || !airports_connect || temporal_overlap {
-                if !airports_connect { spatial_breaks += 1; }
+                if !airports_connect {
+                    spatial_breaks += 1;
+                }
                 let batch = std::mem::take(&mut current_duty_legs);
                 flush_duty(&mut duty_counter, &mut duty_rejections, &mut duties, batch);
                 current_duty_legs = vec![leg.clone()];
@@ -306,7 +329,6 @@ fn build_pairings_from_flights(
         let batch = std::mem::take(&mut current_duty_legs);
         flush_duty(&mut duty_counter, &mut duty_rejections, &mut duties, batch);
     }
-    
 
     // Single-duty pairing model: each duty is wrapped as its own pairing.
     //
@@ -338,7 +360,13 @@ fn build_pairings_from_flights(
         }
     }
 
-    (legs, pairings, spatial_breaks, duty_rejections, rejected_pairings)
+    (
+        legs,
+        pairings,
+        spatial_breaks,
+        duty_rejections,
+        rejected_pairings,
+    )
 }
 
 // ── Roster construction ───────────────────────────────────────────────────────
@@ -364,13 +392,19 @@ fn build_seeded_roster(
     let mut remaining = seed_pairings;
     // Take the first n_rotations pairings as seeds (one per rotation).
     let seeds: Vec<Pairing> = remaining.drain(..n_rotations).collect();
-    let rotations: Vec<Rotation> = crew.iter().take(n_rotations).enumerate().map(|(i, c)| {
-        Rotation::new(
-            RotationId::new(format!("ROT{}", i + 1)),
-            CrewId::new(&c.crew_id),
-            vec![seeds[i].clone()],
-        ).expect("Seeded rotation should always be valid")
-    }).collect();
+    let rotations: Vec<Rotation> = crew
+        .iter()
+        .take(n_rotations)
+        .enumerate()
+        .map(|(i, c)| {
+            Rotation::new(
+                RotationId::new(format!("ROT{}", i + 1)),
+                CrewId::new(&c.crew_id),
+                vec![seeds[i].clone()],
+            )
+            .expect("Seeded rotation should always be valid")
+        })
+        .collect();
     let roster = Roster::new(RosterId::new("GERAD"), period, legs, rotations)
         .expect("Roster construction failed");
     (roster, remaining)
@@ -414,19 +448,30 @@ fn run_experiment(
         build_pairings_from_flights(raw_flights, layover_h, DEFAULT_BASE);
     let t_pairing_ms = t_pairing_start.elapsed().as_millis();
 
-    let leg_count     = legs.len();
+    let leg_count = legs.len();
     let duty_count: usize = pairings.iter().map(|p| p.duties().len()).sum();
     let pairing_count = pairings.len();
     // Diagnostic: log rejection counts and stage timing so they appear in test output.
-    eprintln!("  [diag thr={layover_h}h] duty_rej={duty_rejections} pairing_rej={pairing_rejections} duties_in_pairings={duty_count} pairings_ok={pairing_count} pairing_build_ms={t_pairing_ms}");
+    eprintln!(
+        "  [diag thr={layover_h}h] duty_rej={duty_rejections} pairing_rej={pairing_rejections} duties_in_pairings={duty_count} pairings_ok={pairing_count} pairing_build_ms={t_pairing_ms}"
+    );
 
     // Invariant: leg count must match raw input.
-    assert_eq!(leg_count, raw_flights.len(),
+    assert_eq!(
+        leg_count,
+        raw_flights.len(),
         "leg_count ({leg_count}) != raw_flights.len() ({}): flight parsing error",
-        raw_flights.len());
+        raw_flights.len()
+    );
 
-    let period_start = raw_flights.first().map(|f| f.departure_utc).unwrap_or(Utc::now());
-    let period_end   = raw_flights.last().map(|f| f.arrival_utc).unwrap_or(Utc::now());
+    let period_start = raw_flights
+        .first()
+        .map(|f| f.departure_utc)
+        .unwrap_or(Utc::now());
+    let period_end = raw_flights
+        .last()
+        .map(|f| f.arrival_utc)
+        .unwrap_or(Utc::now());
 
     // Stage timing: roster seeding
     let t_roster_start = std::time::Instant::now();
@@ -439,8 +484,10 @@ fn run_experiment(
 
     // Invariant: rotations = min(crew, pairings).
     let expected_rotations = crew.len().min(pairing_count);
-    assert_eq!(rotation_count, expected_rotations,
-        "rotation_count ({rotation_count}) != expected ({expected_rotations}): roster construction error");
+    assert_eq!(
+        rotation_count, expected_rotations,
+        "rotation_count ({rotation_count}) != expected ({expected_rotations}): roster construction error"
+    );
 
     let mut evaluator = CostEvaluator::new();
     evaluator.add_objective(Box::new(WorkloadBalanceObjective));
@@ -452,14 +499,14 @@ fn run_experiment(
     let after_greedy = greedy.assign(&baseline, remaining_pairings, &mut greedy_metrics);
     let t_greedy_ms = t_greedy_start.elapsed().as_millis();
 
-    let assigned_after_greedy: usize = after_greedy.rotations()
-        .map(|r| r.pairings().len())
-        .sum();
+    let assigned_after_greedy: usize = after_greedy.rotations().map(|r| r.pairings().len()).sum();
 
     // Invariant: seeds + greedy-assigned = total pairings.
-    assert_eq!(assigned_after_greedy, pairing_count,
+    assert_eq!(
+        assigned_after_greedy, pairing_count,
         "assigned_after_greedy ({assigned_after_greedy}) != pairing_count ({pairing_count}): \
-         greedy scheduler dropped pairings");
+         greedy scheduler dropped pairings"
+    );
 
     let obj = WorkloadBalanceObjective;
     let greedy_score = obj.evaluate(&after_greedy);
@@ -476,16 +523,19 @@ fn run_experiment(
     let t_local_ms = t_local_start.elapsed().as_millis();
     let optimized_score = obj.evaluate(&optimized);
 
-    eprintln!("  [timing thr={layover_h}h] pairing_build={t_pairing_ms}ms roster_seed={t_roster_ms}ms greedy={t_greedy_ms}ms local_search={t_local_ms}ms");
+    eprintln!(
+        "  [timing thr={layover_h}h] pairing_build={t_pairing_ms}ms roster_seed={t_roster_ms}ms greedy={t_greedy_ms}ms local_search={t_local_ms}ms"
+    );
 
-    let assigned_after_local_search: usize = optimized.rotations()
-        .map(|r| r.pairings().len())
-        .sum();
+    let assigned_after_local_search: usize =
+        optimized.rotations().map(|r| r.pairings().len()).sum();
 
     // Invariant: local search must preserve all pairing assignments.
-    assert_eq!(assigned_after_local_search, pairing_count,
+    assert_eq!(
+        assigned_after_local_search, pairing_count,
         "assigned_after_local_search ({assigned_after_local_search}) != pairing_count \
-         ({pairing_count}): local search lost pairings");
+         ({pairing_count}): local search lost pairings"
+    );
 
     let improvement_pct = if greedy_score > 0.0 {
         (greedy_score - optimized_score) / greedy_score * 100.0
@@ -493,9 +543,8 @@ fn run_experiment(
         0.0
     };
 
-    let rotation_pairing_counts: Vec<usize> = optimized.rotations()
-        .map(|r| r.pairings().len())
-        .collect();
+    let rotation_pairing_counts: Vec<usize> =
+        optimized.rotations().map(|r| r.pairings().len()).collect();
     let min_rotation_pairings = rotation_pairing_counts.iter().copied().min().unwrap_or(0);
     let max_rotation_pairings = rotation_pairing_counts.iter().copied().max().unwrap_or(0);
 
@@ -529,11 +578,12 @@ fn run_experiment(
 #[test]
 fn gerad_e2e_threshold_experiment() {
     let workspace_root = {
-        let manifest = std::env::var("CARGO_MANIFEST_DIR")
-            .unwrap_or_else(|_| ".".to_string());
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(&manifest)
-            .parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .to_path_buf()
     };
 
@@ -558,12 +608,12 @@ fn gerad_e2e_threshold_experiment() {
     println!();
 
     let mut any_pairing_diff = false;
-    let mut any_score_diff   = false;
+    let mut any_score_diff = false;
 
     for i in 1..=7 {
         let idir = benchmark_base.join(format!("instance{i}"));
         let flights_path = idir.join("flights.csv");
-        let crew_path    = idir.join("crew.csv");
+        let crew_path = idir.join("crew.csv");
 
         if !flights_path.exists() {
             println!("instance{i}: flights.csv not found, skipping");
@@ -575,7 +625,7 @@ fn gerad_e2e_threshold_experiment() {
         }
 
         let raw_flights = load_flights(&flights_path);
-        let crew        = load_crew(&crew_path);
+        let crew = load_crew(&crew_path);
 
         // Instances 1–3 are small enough for local search (10 iterations).
         // Instances 4–7 have 500–700 pairings × 100–200 rotations; even in
@@ -585,7 +635,7 @@ fn gerad_e2e_threshold_experiment() {
         // The primary research question (does the threshold change pairing
         // count?) is answered by the greedy phase alone.
         let max_iter = if i <= 3 { 10 } else { 0 };
-        let r8  = run_experiment(&raw_flights, &crew, 8.0,  max_iter);
+        let r8 = run_experiment(&raw_flights, &crew, 8.0, max_iter);
         let r10 = run_experiment(&raw_flights, &crew, 10.0, max_iter);
 
         println!("instance{i}:");
@@ -593,44 +643,65 @@ fn gerad_e2e_threshold_experiment() {
             println!(
                 "  thr={:.1}h  legs={}  rot={}  duties={}  pairings={}  \
 spatial_breaks={}  assigned={}/{}  greedy={:.4}  opt={:.4}  impr={:.1}%  pairings/rot={}-{}",
-                r.layover_h, r.leg_count, r.rotation_count, r.duty_count, r.pairing_count,
-                r.spatial_breaks, r.assigned_after_greedy, r.assigned_after_local_search,
-                r.greedy_score, r.optimized_score, r.improvement_pct,
-                r.min_rotation_pairings, r.max_rotation_pairings,
+                r.layover_h,
+                r.leg_count,
+                r.rotation_count,
+                r.duty_count,
+                r.pairing_count,
+                r.spatial_breaks,
+                r.assigned_after_greedy,
+                r.assigned_after_local_search,
+                r.greedy_score,
+                r.optimized_score,
+                r.improvement_pct,
+                r.min_rotation_pairings,
+                r.max_rotation_pairings,
             );
         }
 
         let pairing_delta = r10.pairing_count as i64 - r8.pairing_count as i64;
-        let score_delta   = r10.optimized_score - r8.optimized_score;
+        let score_delta = r10.optimized_score - r8.optimized_score;
 
         if pairing_delta != 0 {
             any_pairing_diff = true;
-            println!("  *** PAIRING COUNT DIFFERS: 8h={} 10h={} delta={:+}",
-                r8.pairing_count, r10.pairing_count, pairing_delta);
+            println!(
+                "  *** PAIRING COUNT DIFFERS: 8h={} 10h={} delta={:+}",
+                r8.pairing_count, r10.pairing_count, pairing_delta
+            );
         }
         if score_delta.abs() > 1e-6 {
             any_score_diff = true;
-            println!("  *** OPTIMIZED SCORE DIFFERS: 8h={:.4} 10h={:.4} delta={:+.4}",
-                r8.optimized_score, r10.optimized_score, score_delta);
+            println!(
+                "  *** OPTIMIZED SCORE DIFFERS: 8h={:.4} 10h={:.4} delta={:+.4}",
+                r8.optimized_score, r10.optimized_score, score_delta
+            );
         }
         if pairing_delta == 0 && score_delta.abs() <= 1e-6 {
-            println!("  identical pairing count ({}) and optimized score under both conditions",
-                r8.pairing_count);
+            println!(
+                "  identical pairing count ({}) and optimized score under both conditions",
+                r8.pairing_count
+            );
         }
         println!();
     }
 
     println!("===========================================================");
-    println!("PAIRING COUNT: {}", if any_pairing_diff {
-        "DIFFERS between conditions in at least one instance."
-    } else {
-        "IDENTICAL under both conditions across all instances."
-    });
-    println!("OPTIMIZED SCORE: {}", if any_score_diff {
-        "DIFFERS between conditions in at least one instance."
-    } else {
-        "IDENTICAL under both conditions across all instances."
-    });
+    println!(
+        "PAIRING COUNT: {}",
+        if any_pairing_diff {
+            "DIFFERS between conditions in at least one instance."
+        } else {
+            "IDENTICAL under both conditions across all instances."
+        }
+    );
+    println!(
+        "OPTIMIZED SCORE: {}",
+        if any_score_diff {
+            "DIFFERS between conditions in at least one instance."
+        } else {
+            "IDENTICAL under both conditions across all instances."
+        }
+    );
     println!();
     println!("Interpretation:");
     if !any_pairing_diff && !any_score_diff {

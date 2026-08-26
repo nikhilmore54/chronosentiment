@@ -159,7 +159,11 @@ fn missing_horizon_is_unavailable_not_invented() {
     assert_eq!(report.horizons[0].trading.returns.n_decisions, 1);
     assert_eq!(report.horizons[0].trading.returns.n_observed, 0);
     assert_eq!(report.horizons[0].trading.returns.n_unavailable, 1);
-    assert!(report.horizons[0].trading.returns.cumulative_return.is_none());
+    assert!(report.horizons[0]
+        .trading
+        .returns
+        .cumulative_return
+        .is_none());
 }
 
 #[test]

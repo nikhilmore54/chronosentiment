@@ -297,8 +297,12 @@ pub fn compare_sealed_recommendations(
         }
         let mut fired = None;
         for (i, rule) in search_two_artifact.rules.iter().enumerate() {
-            if rule_matches_labels(rule, &two.trend_state, &two.momentum_state, &two.volatility_state)
-            {
+            if rule_matches_labels(
+                rule,
+                &two.trend_state,
+                &two.momentum_state,
+                &two.volatility_state,
+            ) {
                 fired = Some(i);
                 break;
             }

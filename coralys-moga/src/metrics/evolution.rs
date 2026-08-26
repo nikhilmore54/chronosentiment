@@ -1,6 +1,6 @@
-use std::time::Duration;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProcessorMetrics {
@@ -38,9 +38,9 @@ pub struct EvolutionMetrics {
     pub stagnation_generations: usize,
     pub evaluation_count: usize,
     pub elapsed_time: Duration,
-    
+
     pub processors: HashMap<usize, ProcessorMetrics>,
-    
+
     pub best_history: Vec<f64>,
     pub average_history: Vec<f64>,
 }

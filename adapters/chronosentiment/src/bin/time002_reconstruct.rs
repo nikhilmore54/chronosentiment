@@ -157,8 +157,8 @@ struct UniverseFile {
 fn load_universe(path: &PathBuf) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let raw = fs::read_to_string(path)
         .map_err(|e| format!("cannot read universe file {}: {e}", path.display()))?;
-    let universe: UniverseFile = serde_json::from_str(&raw)
-        .map_err(|e| format!("universe JSON parse error: {e}"))?;
+    let universe: UniverseFile =
+        serde_json::from_str(&raw).map_err(|e| format!("universe JSON parse error: {e}"))?;
     Ok(universe.instruments)
 }
 
@@ -167,7 +167,10 @@ fn load_universe(path: &PathBuf) -> Result<Vec<String>, Box<dyn std::error::Erro
 /// Compute a deterministic SHA-256 hash over all bar timestamps used (≤ T).
 /// This hash is part of the provenance tuple and allows downstream consumers
 /// to verify that the same source data was used.
-fn compute_source_hash(all_bars: &[(String, Vec<YahooHistoricalBar>)], as_of: DateTime<Utc>) -> String {
+fn compute_source_hash(
+    all_bars: &[(String, Vec<YahooHistoricalBar>)],
+    as_of: DateTime<Utc>,
+) -> String {
     let mut hasher = Sha256::new();
     // Sort by ticker for determinism.
     let mut sorted: Vec<&(String, Vec<YahooHistoricalBar>)> = all_bars.iter().collect();
@@ -222,13 +225,19 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
                 as_of_str = Some(args.next().ok_or("--as-of requires a value")?);
             }
             "--universe" => {
-                universe = Some(PathBuf::from(args.next().ok_or("--universe requires a value")?));
+                universe = Some(PathBuf::from(
+                    args.next().ok_or("--universe requires a value")?,
+                ));
             }
             "--cache-dir" => {
-                cache_dir = Some(PathBuf::from(args.next().ok_or("--cache-dir requires a value")?));
+                cache_dir = Some(PathBuf::from(
+                    args.next().ok_or("--cache-dir requires a value")?,
+                ));
             }
             "--output" => {
-                output = Some(PathBuf::from(args.next().ok_or("--output requires a value")?));
+                output = Some(PathBuf::from(
+                    args.next().ok_or("--output requires a value")?,
+                ));
             }
             other => {
                 return Err(format!("unknown argument: {other}").into());
@@ -417,7 +426,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             && atr_14.is_some();
 
         // T2-07: Every instrument gets exactly one of COMPLETE / INCOMPLETE / ERROR.
-        let status = if tmv_complete { "COMPLETE" } else { "INCOMPLETE" }.to_string();
+        let status = if tmv_complete {
+            "COMPLETE"
+        } else {
+            "INCOMPLETE"
+        }
+        .to_string();
 
         println!(
             "[time002] ticker={ticker} status={status} ref={reference_price:?} \
@@ -444,9 +458,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Accounting (T2-07) ────────────────────────────────────────────────────
 
-    let n_complete = instrument_results.iter().filter(|i| i.status == "COMPLETE").count();
-    let n_incomplete = instrument_results.iter().filter(|i| i.status == "INCOMPLETE").count();
-    let n_error = instrument_results.iter().filter(|i| i.status == "ERROR").count();
+    let n_complete = instrument_results
+        .iter()
+        .filter(|i| i.status == "COMPLETE")
+        .count();
+    let n_incomplete = instrument_results
+        .iter()
+        .filter(|i| i.status == "INCOMPLETE")
+        .count();
+    let n_error = instrument_results
+        .iter()
+        .filter(|i| i.status == "ERROR")
+        .count();
     let n_total = instrument_results.len();
 
     println!(
@@ -496,10 +519,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     fs::create_dir_all(&args.output)?;
 
-    let filename = format!(
-        "TIME002-{}.json",
-        as_of.format("%Y%m%dT%H%M%SZ")
-    );
+    let filename = format!("TIME002-{}.json", as_of.format("%Y%m%dT%H%M%SZ"));
     let artifact_path = args.output.join(&filename);
     let latest_path = args.output.join("latest.json");
 
@@ -509,10 +529,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("[time002] artifact written: {}", artifact_path.display());
     println!("[time002] latest.json updated: {}", latest_path.display());
-    println!(
-        "[time002] DONE complete={n_complete} incomplete={n_incomplete} error={n_error}"
-    );
-
+    println!("[time002] DONE complete={n_complete} incomplete={n_incomplete} error={n_error}");
 
     Ok(())
 }

@@ -15,20 +15,25 @@ use std::time::Instant;
 use anyhow::Result;
 use clap::Parser;
 use csv::Writer;
-use rand::seq::SliceRandom;
 use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use serde::Serialize;
 
-use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
-use ultracrew::inrc::parser::{parse_scenario, parse_week_data, parse_history};
-use ultracrew::ecology::WorkforceEcology;
-use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::config::EvolutionConfig;
+use coralys_moga::engine::EvolutionEngine;
+use ultracrew::ecology::WorkforceEcology;
+use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
 
 /// Command‑line arguments for the config sweep binary.
 #[derive(Parser, Debug)]
-#[command(name = "config_sweep", author, version, about = "Sweep EvolutionConfig hyperparameters for UltraCrew")]
+#[command(
+    name = "config_sweep",
+    author,
+    version,
+    about = "Sweep EvolutionConfig hyperparameters for UltraCrew"
+)]
 struct Cli {
     /// Optional path to the input dataset (JSON format). If omitted, the historic ablation dataset is used.
     #[arg(long, value_name = "FILE")]
@@ -55,8 +60,7 @@ fn main() -> Result<()> {
     let dataset_path = match args.input {
         Some(p) => p,
         None => {
-            let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/data/n030w4");
+            let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/n030w4");
             base_dir.join("Sc-n030w4.json")
         }
     };
@@ -64,14 +68,14 @@ fn main() -> Result<()> {
     // Load scenario, week data, and history using existing parser utilities.
     let base_dir = match dataset_path.parent() {
         Some(p) => p.to_path_buf(),
-        None => PathBuf::from(".")
+        None => PathBuf::from("."),
     };
-    let scenario = parse_scenario(base_dir.join("Sc-n030w4.json"))
-        .expect("Failed to parse scenario");
-    let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json"))
-        .expect("Failed to parse week data");
-    let history = parse_history(base_dir.join("H0-n030w4-0.json"))
-        .expect("Failed to parse history");
+    let scenario =
+        parse_scenario(base_dir.join("Sc-n030w4.json")).expect("Failed to parse scenario");
+    let week_data =
+        parse_week_data(base_dir.join("WD-n030w4-0.json")).expect("Failed to parse week data");
+    let history =
+        parse_history(base_dir.join("H0-n030w4-0.json")).expect("Failed to parse history");
     let ecology = WorkforceEcology::new();
     let context = InrcContext::new(scenario.clone(), week_data, history.clone(), ecology);
     let context_arc = Arc::new(context);
@@ -116,14 +120,19 @@ fn main() -> Result<()> {
 
         // Run optimizer.
         let start = Instant::now();
-        let evaluator = InrcOptimizer { context: context_arc.clone() };
+        let evaluator = InrcOptimizer {
+            context: context_arc.clone(),
+        };
         let factory = evaluator.clone();
         let mutator = evaluator.clone();
         let crossover = evaluator.clone();
         let engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
         let ga_result = match engine.run_ga_evolution(config.clone()) {
             Ok(r) => r,
-            Err(_) => { failures += 1; continue; }
+            Err(_) => {
+                failures += 1;
+                continue;
+            }
         };
         let elapsed = start.elapsed().as_millis();
         let fitness = ga_result.global_best.fitness;
@@ -168,7 +177,12 @@ fn main() -> Result<()> {
 
     let runtime_heatmap = PathBuf::from("artifacts/runtime_heatmap.csv");
     let mut w_r = Writer::from_path(&runtime_heatmap)?;
-    w_r.write_record(&["elite_count", "mutation_rate", "crossover_rate", "runtime_ms"])?;
+    w_r.write_record(&[
+        "elite_count",
+        "mutation_rate",
+        "crossover_rate",
+        "runtime_ms",
+    ])?;
     for r in &results {
         w_r.write_record(&[
             r.elite_count.to_string(),
@@ -182,8 +196,12 @@ fn main() -> Result<()> {
     // ---------------------------------------------------------------------
     // 7️⃣ Compute aggregations for the final report.
     // ---------------------------------------------------------------------
-    fn mean(sum: f64, cnt: usize) -> f64 { sum / cnt as f64 }
-    fn mean_u128(sum: u128, cnt: usize) -> f64 { sum as f64 / cnt as f64 }
+    fn mean(sum: f64, cnt: usize) -> f64 {
+        sum / cnt as f64
+    }
+    fn mean_u128(sum: u128, cnt: usize) -> f64 {
+        sum as f64 / cnt as f64
+    }
 
     // Use string keys to avoid f64 Hash/Eq issues.
     let mut elite_fitness: HashMap<String, (f64, usize)> = HashMap::new();
@@ -198,12 +216,48 @@ fn main() -> Result<()> {
         let mut_key = format!("{:.2}", r.mutation_rate);
         let cross_key = format!("{:.2}", r.crossover_rate);
 
-        elite_fitness.entry(elite_key.clone()).and_modify(|e| { e.0 += r.fitness; e.1 += 1 }).or_insert((r.fitness, 1));
-        elite_runtime.entry(elite_key.clone()).and_modify(|e| { e.0 += r.runtime_ms; e.1 += 1 }).or_insert((r.runtime_ms, 1));
-        mut_fitness.entry(mut_key.clone()).and_modify(|e| { e.0 += r.fitness; e.1 += 1 }).or_insert((r.fitness, 1));
-        mut_runtime.entry(mut_key.clone()).and_modify(|e| { e.0 += r.runtime_ms; e.1 += 1 }).or_insert((r.runtime_ms, 1));
-        cross_fitness.entry(cross_key.clone()).and_modify(|e| { e.0 += r.fitness; e.1 += 1 }).or_insert((r.fitness, 1));
-        cross_runtime.entry(cross_key.clone()).and_modify(|e| { e.0 += r.runtime_ms; e.1 += 1 }).or_insert((r.runtime_ms, 1));
+        elite_fitness
+            .entry(elite_key.clone())
+            .and_modify(|e| {
+                e.0 += r.fitness;
+                e.1 += 1
+            })
+            .or_insert((r.fitness, 1));
+        elite_runtime
+            .entry(elite_key.clone())
+            .and_modify(|e| {
+                e.0 += r.runtime_ms;
+                e.1 += 1
+            })
+            .or_insert((r.runtime_ms, 1));
+        mut_fitness
+            .entry(mut_key.clone())
+            .and_modify(|e| {
+                e.0 += r.fitness;
+                e.1 += 1
+            })
+            .or_insert((r.fitness, 1));
+        mut_runtime
+            .entry(mut_key.clone())
+            .and_modify(|e| {
+                e.0 += r.runtime_ms;
+                e.1 += 1
+            })
+            .or_insert((r.runtime_ms, 1));
+        cross_fitness
+            .entry(cross_key.clone())
+            .and_modify(|e| {
+                e.0 += r.fitness;
+                e.1 += 1
+            })
+            .or_insert((r.fitness, 1));
+        cross_runtime
+            .entry(cross_key.clone())
+            .and_modify(|e| {
+                e.0 += r.runtime_ms;
+                e.1 += 1
+            })
+            .or_insert((r.runtime_ms, 1));
     }
 
     // Sort results for top‑20.
@@ -215,16 +269,31 @@ fn main() -> Result<()> {
     // ---------------------------------------------------------------------
     let mut report = String::new();
     report.push_str("# UltraCrew Hyper‑parameter Sweep – Stage 1\n\n");
-    report.push_str(&format!("Total scheduled experiments: {}\n", elite_counts.len() * mutation_rates.len() * crossover_rates.len()));
-    report.push_str(&format!("Successful runs: {}\nFailed runs: {}\n\n", results.len(), failures));
+    report.push_str(&format!(
+        "Total scheduled experiments: {}\n",
+        elite_counts.len() * mutation_rates.len() * crossover_rates.len()
+    ));
+    report.push_str(&format!(
+        "Successful runs: {}\nFailed runs: {}\n\n",
+        results.len(),
+        failures
+    ));
 
     // Top‑20 table
     report.push_str("## Top 20 Configurations (by final fitness)\n\n");
     report.push_str("| Elite | MutRate | CrossRate | Seed | Fitness | RuntimeMs | Generations |\n");
     report.push_str("|------|--------|-----------|------|---------|-----------|-------------|\n");
     for r in &top20 {
-        report.push_str(&format!("| {} | {:.2} | {:.2} | {} | {:.2} | {} | {} |\n",
-            r.elite_count, r.mutation_rate, r.crossover_rate, r.seed, r.fitness, r.runtime_ms, r.generations));
+        report.push_str(&format!(
+            "| {} | {:.2} | {:.2} | {} | {:.2} | {} | {} |\n",
+            r.elite_count,
+            r.mutation_rate,
+            r.crossover_rate,
+            r.seed,
+            r.fitness,
+            r.runtime_ms,
+            r.generations
+        ));
     }
     report.push_str("\n");
 
@@ -244,7 +313,8 @@ fn main() -> Result<()> {
         let (sum, cnt) = mut_fitness[k];
         report.push_str(&format!("| {} | {:.2} |\n", k, mean(sum, cnt)));
     }
-    report.push_str("\n### Crossover Rate\n| CrossRate | AvgFitness |\n|----------|------------|\n");
+    report
+        .push_str("\n### Crossover Rate\n| CrossRate | AvgFitness |\n|----------|------------|\n");
     let mut cross_keys: Vec<_> = cross_fitness.keys().cloned().collect();
     cross_keys.sort_by(|a, b| a.partial_cmp(b).unwrap());
     for k in &cross_keys {
@@ -265,7 +335,9 @@ fn main() -> Result<()> {
         let (sum, cnt) = mut_runtime[k];
         report.push_str(&format!("| {} | {:.2} |\n", k, mean_u128(sum, cnt)));
     }
-    report.push_str("\n### Crossover Rate\n| CrossRate | AvgRuntimeMs |\n|----------|--------------|\n");
+    report.push_str(
+        "\n### Crossover Rate\n| CrossRate | AvgRuntimeMs |\n|----------|--------------|\n",
+    );
     for k in &cross_keys {
         let (sum, cnt) = cross_runtime[k];
         report.push_str(&format!("| {} | {:.2} |\n", k, mean_u128(sum, cnt)));
@@ -274,19 +346,52 @@ fn main() -> Result<()> {
 
     // Observed trends
     report.push_str("## Observed Trends (pre‑liminary)\n\n");
-    let best_elite = elite_fitness.iter().max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap()).map(|(k, _)| k.parse::<usize>().unwrap_or(0)).unwrap_or(0);
-    report.push_str(&format!("- Fitness improves up to elite count **{}**, then plateaus or degrades.\n", best_elite));
-    let best_mut = mut_fitness.iter().max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap()).map(|(k, _)| k.parse::<f64>().unwrap_or(0.0)).unwrap_or(0.0);
-    report.push_str(&format!("- Mutation rate shows gains until about **{:.2}**, after which returns diminish.\n", best_mut));
-    let best_cross = cross_fitness.iter().max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap()).map(|(k, _)| k.parse::<f64>().unwrap_or(0.0)).unwrap_or(0.0);
-    report.push_str(&format!("- Crossover rate peaks around **{:.2}** and plateaus beyond.\n", best_cross));
+    let best_elite = elite_fitness
+        .iter()
+        .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
+        .map(|(k, _)| k.parse::<usize>().unwrap_or(0))
+        .unwrap_or(0);
+    report.push_str(&format!(
+        "- Fitness improves up to elite count **{}**, then plateaus or degrades.\n",
+        best_elite
+    ));
+    let best_mut = mut_fitness
+        .iter()
+        .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
+        .map(|(k, _)| k.parse::<f64>().unwrap_or(0.0))
+        .unwrap_or(0.0);
+    report.push_str(&format!(
+        "- Mutation rate shows gains until about **{:.2}**, after which returns diminish.\n",
+        best_mut
+    ));
+    let best_cross = cross_fitness
+        .iter()
+        .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
+        .map(|(k, _)| k.parse::<f64>().unwrap_or(0.0))
+        .unwrap_or(0.0);
+    report.push_str(&format!(
+        "- Crossover rate peaks around **{:.2}** and plateaus beyond.\n",
+        best_cross
+    ));
     report.push_str("- Runtime grows modestly with larger elite counts and higher mutation rates, while crossover has minor impact.\n\n");
 
     // Recommendation for Stage 2
     report.push_str("## Recommended Search Region for Stage 2\n\n");
-    report.push_str(&format!("- Elite count: **{}‑{}**\n", best_elite.saturating_sub(1), best_elite + 1));
-    report.push_str(&format!("- Mutation rate: **{:.2}‑{:.2}**\n", (best_mut - 0.2).max(0.0), (best_mut + 0.2).min(1.0)));
-    report.push_str(&format!("- Crossover rate: **{:.2}‑{:.2}** (covering the plateau)\n", (best_cross - 0.2).max(0.0), (best_cross + 0.2).min(1.0)));
+    report.push_str(&format!(
+        "- Elite count: **{}‑{}**\n",
+        best_elite.saturating_sub(1),
+        best_elite + 1
+    ));
+    report.push_str(&format!(
+        "- Mutation rate: **{:.2}‑{:.2}**\n",
+        (best_mut - 0.2).max(0.0),
+        (best_mut + 0.2).min(1.0)
+    ));
+    report.push_str(&format!(
+        "- Crossover rate: **{:.2}‑{:.2}** (covering the plateau)\n",
+        (best_cross - 0.2).max(0.0),
+        (best_cross + 0.2).min(1.0)
+    ));
     report.push_str("\nThese ranges focus on the promising neighbourhood observed in Stage 1 while keeping the experiment tractable.\n");
 
     // Write report
@@ -294,9 +399,18 @@ fn main() -> Result<()> {
     std::fs::write(&report_path, report)?;
 
     // Console summary
-    println!("Sweep completed. Successful runs: {}. Failures: {}.", results.len(), failures);
-    println!("Artifacts generated:\n- {}\n- {}\n- {}\n- {}",
-        csv_path.display(), fitness_heatmap.display(), runtime_heatmap.display(), report_path.display());
+    println!(
+        "Sweep completed. Successful runs: {}. Failures: {}.",
+        results.len(),
+        failures
+    );
+    println!(
+        "Artifacts generated:\n- {}\n- {}\n- {}\n- {}",
+        csv_path.display(),
+        fitness_heatmap.display(),
+        runtime_heatmap.display(),
+        report_path.display()
+    );
 
     Ok(())
 }

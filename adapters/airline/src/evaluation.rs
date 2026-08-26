@@ -42,7 +42,7 @@ pub fn evaluate_roster(roster: &Roster, checker: &LegalityChecker) -> LegalityRe
         if violation.is_error() {
             legal = false;
         }
-        
+
         // Find the corresponding rule summary
         if let Some(summary) = rules.iter_mut().find(|r| r.rule_id == violation.rule_id) {
             summary.violations.push(violation);
@@ -96,18 +96,16 @@ pub fn compare_rosters(
     let mut resolved_violations = Vec::new();
 
     // Union of all rule ids to guarantee deterministic ordering (sorted).
-    let mut all_rule_ids: Vec<String> = base_map
-        .keys()
-        .chain(cand_map.keys())
-        .cloned()
-        .collect();
+    let mut all_rule_ids: Vec<String> = base_map.keys().chain(cand_map.keys()).cloned().collect();
     all_rule_ids.sort();
     all_rule_ids.dedup();
 
     for rule_id in all_rule_ids {
-                // Retrieve violations, defaulting to an empty slice to avoid temporary borrow issues.
-        let base_viol: &[LegalityViolation] = base_map.get(&rule_id).map(|v| v.as_slice()).unwrap_or(&[]);
-        let cand_viol: &[LegalityViolation] = cand_map.get(&rule_id).map(|v| v.as_slice()).unwrap_or(&[]);
+        // Retrieve violations, defaulting to an empty slice to avoid temporary borrow issues.
+        let base_viol: &[LegalityViolation] =
+            base_map.get(&rule_id).map(|v| v.as_slice()).unwrap_or(&[]);
+        let cand_viol: &[LegalityViolation] =
+            cand_map.get(&rule_id).map(|v| v.as_slice()).unwrap_or(&[]);
 
         if !base_viol.is_empty() && cand_viol.is_empty() {
             became_legal.push(rule_id.clone());

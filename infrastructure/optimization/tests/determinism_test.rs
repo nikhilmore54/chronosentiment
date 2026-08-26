@@ -11,7 +11,7 @@ impl FitnessEvaluator<Candidate> for MockEvaluator {
         // A pure mathematical evaluation (e.g. sum of fields)
         let sum = candidate.queue_threshold as f64 + candidate.base_edge as f64;
         let fitness = sum / 5200.0;
-        
+
         CandidateEvaluation {
             candidate_edges: vec![],
             winner_idx: 0,
@@ -78,7 +78,7 @@ impl FitnessEvaluator<Candidate> for MockEvaluator {
 fn test_candidate_generation_determinism() {
     let mut config = GaConfig::default();
     config.population_size = 10;
-    
+
     let mut rng1 = StdRng::seed_from_u64(42);
     let mut rng2 = StdRng::seed_from_u64(42);
     let mut rng3 = StdRng::seed_from_u64(43);
@@ -87,8 +87,14 @@ fn test_candidate_generation_determinism() {
     let pop2 = initialize_population(&config, &mut rng2);
     let pop3 = initialize_population(&config, &mut rng3);
 
-    assert_eq!(pop1, pop2, "Population generation from same seed must be identical");
-    assert_ne!(pop1, pop3, "Population generation from different seeds must differ");
+    assert_eq!(
+        pop1, pop2,
+        "Population generation from same seed must be identical"
+    );
+    assert_ne!(
+        pop1, pop3,
+        "Population generation from different seeds must differ"
+    );
 }
 
 #[test]
@@ -104,13 +110,16 @@ fn test_crossover_determinism() {
     let child1 = crossover(&parent1, &parent2, &mut rng1);
     let child2 = crossover(&parent1, &parent2, &mut rng2);
 
-    assert_eq!(child1, child2, "Crossover must be deterministic for the same RNG sequence");
+    assert_eq!(
+        child1, child2,
+        "Crossover must be deterministic for the same RNG sequence"
+    );
 }
 
 #[test]
 fn evolution_is_deterministic_for_fixed_seed() {
     let seed = 42;
-    
+
     let config = GaConfig {
         population_size: 20,
         generations: 5,
@@ -125,20 +134,24 @@ fn evolution_is_deterministic_for_fixed_seed() {
     let result2 = run_ga_evolution(config, &evaluator);
 
     assert_eq!(
-        result1.global_best.candidate, 
-        result2.global_best.candidate, 
+        result1.global_best.candidate, result2.global_best.candidate,
         "Best candidate divergence"
     );
     assert_eq!(
-        result1.global_best.fitness,
-        result2.global_best.fitness,
+        result1.global_best.fitness, result2.global_best.fitness,
         "Best fitness divergence"
     );
-    
-    for (idx, (h1, h2)) in result1.generation_history.iter().zip(result2.generation_history.iter()).enumerate() {
+
+    for (idx, (h1, h2)) in result1
+        .generation_history
+        .iter()
+        .zip(result2.generation_history.iter())
+        .enumerate()
+    {
         assert_eq!(
             h1.candidate, h2.candidate,
-            "History divergence at generation {}", idx
+            "History divergence at generation {}",
+            idx
         );
     }
 }

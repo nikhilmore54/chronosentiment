@@ -1,5 +1,5 @@
-use std::error::Error;
 use crate::operators::{ConstraintModel, ImprovementOperator, OperatorBudget, RepairOperator};
+use std::error::Error;
 
 pub struct EvolutionaryPipeline<G, M, E>
 where
@@ -89,7 +89,12 @@ mod tests {
     struct SuccessfulRepair;
     impl RepairOperator<DummyGenome, DummyModel> for SuccessfulRepair {
         type Error = DummyError;
-        fn repair(&self, candidate: &mut DummyGenome, _model: &DummyModel, _budget: &OperatorBudget) -> Result<bool, Self::Error> {
+        fn repair(
+            &self,
+            candidate: &mut DummyGenome,
+            _model: &DummyModel,
+            _budget: &OperatorBudget,
+        ) -> Result<bool, Self::Error> {
             candidate.val = 1;
             Ok(true)
         }
@@ -98,7 +103,12 @@ mod tests {
     struct FailedRepair;
     impl RepairOperator<DummyGenome, DummyModel> for FailedRepair {
         type Error = DummyError;
-        fn repair(&self, _candidate: &mut DummyGenome, _model: &DummyModel, _budget: &OperatorBudget) -> Result<bool, Self::Error> {
+        fn repair(
+            &self,
+            _candidate: &mut DummyGenome,
+            _model: &DummyModel,
+            _budget: &OperatorBudget,
+        ) -> Result<bool, Self::Error> {
             // Fails to repair
             Ok(false)
         }
@@ -107,7 +117,12 @@ mod tests {
     struct SafeImprovement;
     impl ImprovementOperator<DummyGenome, DummyModel> for SafeImprovement {
         type Error = DummyError;
-        fn improve(&self, candidate: &mut DummyGenome, _model: &DummyModel, _budget: &OperatorBudget) -> Result<bool, Self::Error> {
+        fn improve(
+            &self,
+            candidate: &mut DummyGenome,
+            _model: &DummyModel,
+            _budget: &OperatorBudget,
+        ) -> Result<bool, Self::Error> {
             candidate.val += 1;
             Ok(true)
         }
@@ -115,18 +130,26 @@ mod tests {
 
     #[test]
     fn test_pipeline_successful_repair() {
-        let model = DummyModel { require_positive: true };
+        let model = DummyModel {
+            require_positive: true,
+        };
         let pipeline = EvolutionaryPipeline {
             constraint_model: model,
             repair_operators: vec![Box::new(SuccessfulRepair)],
             improvement_operators: vec![Box::new(SafeImprovement)],
-            repair_budget: OperatorBudget { max_iterations: 10, max_time_ms: 100 },
-            improve_budget: OperatorBudget { max_iterations: 10, max_time_ms: 100 },
+            repair_budget: OperatorBudget {
+                max_iterations: 10,
+                max_time_ms: 100,
+            },
+            improve_budget: OperatorBudget {
+                max_iterations: 10,
+                max_time_ms: 100,
+            },
         };
 
         let mut candidate = DummyGenome { val: -5 };
         let result = pipeline.process_offspring(&mut candidate).unwrap();
-        
+
         assert!(result); // Reached evaluation
         assert!(pipeline.constraint_model.is_feasible(&candidate));
         assert_eq!(candidate.val, 2); // 1 from repair, +1 from improve
@@ -134,18 +157,26 @@ mod tests {
 
     #[test]
     fn test_pipeline_failed_repair() {
-        let model = DummyModel { require_positive: true };
+        let model = DummyModel {
+            require_positive: true,
+        };
         let pipeline = EvolutionaryPipeline {
             constraint_model: model,
             repair_operators: vec![Box::new(FailedRepair)],
             improvement_operators: vec![Box::new(SafeImprovement)],
-            repair_budget: OperatorBudget { max_iterations: 10, max_time_ms: 100 },
-            improve_budget: OperatorBudget { max_iterations: 10, max_time_ms: 100 },
+            repair_budget: OperatorBudget {
+                max_iterations: 10,
+                max_time_ms: 100,
+            },
+            improve_budget: OperatorBudget {
+                max_iterations: 10,
+                max_time_ms: 100,
+            },
         };
 
         let mut candidate = DummyGenome { val: -5 };
         let result = pipeline.process_offspring(&mut candidate).unwrap();
-        
+
         assert!(!result); // Did not reach evaluation
         assert!(!pipeline.constraint_model.is_feasible(&candidate));
         assert_eq!(candidate.val, -5); // Improve was never called

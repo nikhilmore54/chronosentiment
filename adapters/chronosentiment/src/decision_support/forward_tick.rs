@@ -60,21 +60,23 @@ pub fn decide_latest_session<P: DecisionPolicy + ?Sized>(
 
     let mut metrics = MetricReport::default();
     if let Some(ma) = sma(&closes, 20) {
-        metrics.metrics.insert("ma_20".to_string(), MetricValue::Float(ma));
+        metrics
+            .metrics
+            .insert("ma_20".to_string(), MetricValue::Float(ma));
     }
     if let Some(ma) = sma(&closes, 50) {
-        metrics.metrics.insert("ma_50".to_string(), MetricValue::Float(ma));
+        metrics
+            .metrics
+            .insert("ma_50".to_string(), MetricValue::Float(ma));
     }
     if let Some(roc) = roc(&closes, 20) {
-        metrics.metrics.insert("roc_20".to_string(), MetricValue::Float(roc));
+        metrics
+            .metrics
+            .insert("roc_20".to_string(), MetricValue::Float(roc));
     }
 
-    let mut profile = AssessmentEngine.assess_at(
-        &metrics,
-        &ENRICHMENT_CONCEPTS,
-        t,
-        Some(instrument_id),
-    );
+    let mut profile =
+        AssessmentEngine.assess_at(&metrics, &ENRICHMENT_CONCEPTS, t, Some(instrument_id));
     let assessment_id = stable_uuid(&format!("csp003.assessment.{instrument_id}.{t}"));
     profile.metadata.artifact_id = assessment_id;
     profile.metadata.created_at = t;
@@ -83,28 +85,28 @@ pub fn decide_latest_session<P: DecisionPolicy + ?Sized>(
     let observations: Vec<ReplayObservation> = known
         .iter()
         .map(|b| ReplayObservation {
-            id: stable_uuid(&format!(
-                "csp003.bar.{ticker}.{}",
-                b.timestamp.timestamp()
-            )),
+            id: stable_uuid(&format!("csp003.bar.{ticker}.{}", b.timestamp.timestamp())),
             effective_from: b.timestamp,
         })
         .collect();
 
-    decide_forward(ReplayInputs {
-        instrument_id,
-        as_of: t,
-        engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
-        produced_by: FORWARD_PRODUCER.to_string(),
-        assessments: vec![ReplayAssessment {
-            id: assessment_id,
-            evaluation_timestamp: t,
-            signature_hash: profile.to_hash(),
-            profile,
-        }],
-        lake_decisions: vec![],
-        observations,
-    }, policy)
+    decide_forward(
+        ReplayInputs {
+            instrument_id,
+            as_of: t,
+            engine_version: UNFROZEN_ENGINE_VERSION.to_string(),
+            produced_by: FORWARD_PRODUCER.to_string(),
+            assessments: vec![ReplayAssessment {
+                id: assessment_id,
+                evaluation_timestamp: t,
+                signature_hash: profile.to_hash(),
+                profile,
+            }],
+            lake_decisions: vec![],
+            observations,
+        },
+        policy,
+    )
 }
 
 pub fn price_bars_for(ticker: &str, bars: &[DailyBar], now: DateTime<Utc>) -> Vec<PriceBar> {

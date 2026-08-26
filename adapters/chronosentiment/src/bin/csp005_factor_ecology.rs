@@ -114,7 +114,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn render_constraints(report: &chronosentiment_adapter::decision_support::factor_ecology::FactorEcologyReport) -> String {
+fn render_constraints(
+    report: &chronosentiment_adapter::decision_support::factor_ecology::FactorEcologyReport,
+) -> String {
     let mut md = String::from("# Candidate-policy design constraints (not a policy)\n\n");
     for c in &report.design_constraints {
         md.push_str(&format!("- {c}\n"));
@@ -130,7 +132,9 @@ fn parse_args() -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--output" => {
-                output = Some(PathBuf::from(args.next().ok_or("--output requires a path")?));
+                output = Some(PathBuf::from(
+                    args.next().ok_or("--output requires a path")?,
+                ));
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(

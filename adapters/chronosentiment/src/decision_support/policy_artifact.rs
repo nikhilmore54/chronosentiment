@@ -115,10 +115,9 @@ impl std::fmt::Display for PolicyArtifactError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptyField(name) => write!(f, "{name} must be non-empty"),
-            Self::WrongSchema => write!(
-                f,
-                "schema_version must be {POLICY_ARTIFACT_SCHEMA_VERSION}"
-            ),
+            Self::WrongSchema => {
+                write!(f, "schema_version must be {POLICY_ARTIFACT_SCHEMA_VERSION}")
+            }
             Self::ForbiddenEngine => write!(
                 f,
                 "discovery_engine is forbidden (handwritten / threshold grid)"
@@ -126,21 +125,35 @@ impl std::fmt::Display for PolicyArtifactError {
             Self::IncompleteActionSpace => {
                 write!(f, "action_space must be exactly LONG, SHORT, NO_TRADE")
             }
-            Self::UnknownConcept(c) => write!(f, "concept {c} is not in the certified input schema"),
+            Self::UnknownConcept(c) => {
+                write!(f, "concept {c} is not in the certified input schema")
+            }
             Self::VolatilityDirectionForbidden => {
                 write!(f, "Volatility is presence-only; no direction predicate")
             }
             Self::PredicateNotInSchema => {
-                write!(f, "rule predicate is not in input_schema / factor_definitions")
+                write!(
+                    f,
+                    "rule predicate is not in input_schema / factor_definitions"
+                )
             }
             Self::WindowIncomplete => {
-                write!(f, "TRAIN / VALIDATION / TEST windows must all be present or all absent")
+                write!(
+                    f,
+                    "TRAIN / VALIDATION / TEST windows must all be present or all absent"
+                )
             }
             Self::WindowInvalid => {
-                write!(f, "windows must be non-empty and strictly TRAIN then VALIDATION then TEST")
+                write!(
+                    f,
+                    "windows must be non-empty and strictly TRAIN then VALIDATION then TEST"
+                )
             }
             Self::DiscoveredWithoutWindows => {
-                write!(f, "coralys.* artifacts require complete windows from CS-P-006-B")
+                write!(
+                    f,
+                    "coralys.* artifacts require complete windows from CS-P-006-B"
+                )
             }
             Self::FixtureWithWindows => {
                 write!(f, "contract.fixture must not carry split windows")
@@ -496,7 +509,8 @@ impl DecisionPolicy for ArtifactDecisionPolicy {
 
         let (action, consumed_concepts, action_reason) = match matched {
             Some(rule) => {
-                let mut consumed: Vec<String> = rule.when.iter().map(|p| p.concept.clone()).collect();
+                let mut consumed: Vec<String> =
+                    rule.when.iter().map(|p| p.concept.clone()).collect();
                 consumed.sort();
                 consumed.dedup();
                 let reason = format!(
@@ -531,10 +545,7 @@ impl DecisionPolicy for ArtifactDecisionPolicy {
             mapping_rule,
             action_reason,
             diagnostics,
-            evidence_refs: vec![
-                self.name().to_string(),
-                self.artifact.artifact_hash.clone(),
-            ],
+            evidence_refs: vec![self.name().to_string(), self.artifact.artifact_hash.clone()],
             factors,
             consumed_concepts,
         }

@@ -1,5 +1,5 @@
 use coralys_ecology::diagnostics::EcologyState;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// An intervention recommendation proposed by search governance logic.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -48,7 +48,10 @@ impl EcologyRecommender {
         let mean_sev_accum = state.mean_severity(name_accum, self.evaluation_window);
         if mean_conf_accum >= self.confidence_threshold {
             let mut evidence = vec![
-                format!("accumulation_failure mean confidence = {:.4}", mean_conf_accum),
+                format!(
+                    "accumulation_failure mean confidence = {:.4}",
+                    mean_conf_accum
+                ),
                 format!("accumulation_failure mean severity = {:.4}", mean_sev_accum),
             ];
             if let Some(entry) = state.history.last() {
@@ -77,9 +80,7 @@ impl EcologyRecommender {
         let mean_conf_attr = state.mean_confidence(name_attr, self.evaluation_window);
         if mean_conf_attr >= self.confidence_threshold {
             let mut attractor_idx = 0;
-            let mut evidence = vec![
-                format!("attractor mean confidence = {:.4}", mean_conf_attr),
-            ];
+            let mut evidence = vec![format!("attractor mean confidence = {:.4}", mean_conf_attr)];
             if let Some(entry) = state.history.last() {
                 if let Some(res) = entry.results.get(name_attr) {
                     for m in &res.supporting_metrics {
@@ -98,7 +99,9 @@ impl EcologyRecommender {
             });
             recommendations.push(InterventionRecommendation {
                 action: "Increase mutation scale / reweighting".to_string(),
-                rationale: "Introduce random search perturbations to break out of the attractor basin.".to_string(),
+                rationale:
+                    "Introduce random search perturbations to break out of the attractor basin."
+                        .to_string(),
                 confidence: mean_conf_attr,
                 evidence,
             });
@@ -108,9 +111,7 @@ impl EcologyRecommender {
         let name_lockin = "EcologyLockIn";
         let mean_conf_lockin = state.mean_confidence(name_lockin, self.evaluation_window);
         if mean_conf_lockin >= self.confidence_threshold {
-            let mut evidence = vec![
-                format!("lock_in mean confidence = {:.4}", mean_conf_lockin),
-            ];
+            let mut evidence = vec![format!("lock_in mean confidence = {:.4}", mean_conf_lockin)];
             if let Some(entry) = state.history.last() {
                 if let Some(res) = entry.results.get(name_lockin) {
                     for m in &res.supporting_metrics {
@@ -136,9 +137,10 @@ impl EcologyRecommender {
         let name_express = "OperatorExpressivenessFailure";
         let mean_conf_express = state.mean_confidence(name_express, self.evaluation_window);
         if mean_conf_express >= self.confidence_threshold {
-            let mut evidence = vec![
-                format!("expressiveness_failure mean confidence = {:.4}", mean_conf_express),
-            ];
+            let mut evidence = vec![format!(
+                "expressiveness_failure mean confidence = {:.4}",
+                mean_conf_express
+            )];
             if let Some(entry) = state.history.last() {
                 if let Some(res) = entry.results.get(name_express) {
                     for m in &res.supporting_metrics {
@@ -179,58 +181,85 @@ mod tests {
     fn test_recommender_accumulation_failure() {
         let mut state = EcologyState::new(10);
         let mut results = std::collections::HashMap::new();
-        results.insert("AccumulationFailure".to_string(), DiagnosticResult {
-            confidence: 0.8,
-            severity: 0.6,
-            evidence_count: 50,
-            supporting_metrics: vec![Metric::new("rejection_rate", 0.8)],
-        });
+        results.insert(
+            "AccumulationFailure".to_string(),
+            DiagnosticResult {
+                confidence: 0.8,
+                severity: 0.6,
+                evidence_count: 50,
+                supporting_metrics: vec![Metric::new("rejection_rate", 0.8)],
+            },
+        );
         state.record(100, results);
 
         let recommender = EcologyRecommender::new(0.5, 5);
         let report = recommender.recommend(&state);
         assert_eq!(report.generated_at_generation, 100);
         assert_eq!(report.recommendations.len(), 2);
-        assert_eq!(report.recommendations[0].action, "Reserve archive slots for target-improving solutions");
-        assert!(report.recommendations[0].evidence.contains(&"accumulation_failure mean confidence = 0.8000".to_string()));
-        assert!(report.recommendations[0].evidence.contains(&"latest rejection_rate = 0.8000".to_string()));
+        assert_eq!(
+            report.recommendations[0].action,
+            "Reserve archive slots for target-improving solutions"
+        );
+        assert!(
+            report.recommendations[0]
+                .evidence
+                .contains(&"accumulation_failure mean confidence = 0.8000".to_string())
+        );
+        assert!(
+            report.recommendations[0]
+                .evidence
+                .contains(&"latest rejection_rate = 0.8000".to_string())
+        );
     }
 
     #[test]
     fn test_recommender_attractor() {
         let mut state = EcologyState::new(10);
         let mut results = std::collections::HashMap::new();
-        results.insert("Attractor".to_string(), DiagnosticResult {
-            confidence: 0.9,
-            severity: 0.4,
-            evidence_count: 30,
-            supporting_metrics: vec![Metric::new("attractor_index", 3.0)],
-        });
+        results.insert(
+            "Attractor".to_string(),
+            DiagnosticResult {
+                confidence: 0.9,
+                severity: 0.4,
+                evidence_count: 30,
+                supporting_metrics: vec![Metric::new("attractor_index", 3.0)],
+            },
+        );
         state.record(200, results);
 
         let recommender = EcologyRecommender::new(0.5, 5);
         let report = recommender.recommend(&state);
         assert_eq!(report.generated_at_generation, 200);
         assert_eq!(report.recommendations.len(), 2);
-        assert!(report.recommendations[0].action.contains("attractor objective (Index 3)"));
+        assert!(
+            report.recommendations[0]
+                .action
+                .contains("attractor objective (Index 3)")
+        );
     }
 
     #[test]
     fn test_recommender_lock_in() {
         let mut state = EcologyState::new(10);
         let mut results = std::collections::HashMap::new();
-        results.insert("EcologyLockIn".to_string(), DiagnosticResult {
-            confidence: 0.7,
-            severity: 0.7,
-            evidence_count: 10,
-            supporting_metrics: vec![Metric::new("gini_coefficient", 0.05)],
-        });
+        results.insert(
+            "EcologyLockIn".to_string(),
+            DiagnosticResult {
+                confidence: 0.7,
+                severity: 0.7,
+                evidence_count: 10,
+                supporting_metrics: vec![Metric::new("gini_coefficient", 0.05)],
+            },
+        );
         state.record(300, results);
 
         let recommender = EcologyRecommender::new(0.5, 5);
         let report = recommender.recommend(&state);
         assert_eq!(report.generated_at_generation, 300);
         assert_eq!(report.recommendations.len(), 2);
-        assert_eq!(report.recommendations[0].action, "Increase mutation entropy / scaling");
+        assert_eq!(
+            report.recommendations[0].action,
+            "Increase mutation entropy / scaling"
+        );
     }
 }

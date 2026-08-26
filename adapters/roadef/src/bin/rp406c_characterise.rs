@@ -11,21 +11,20 @@
 ///
 /// The comparison against published best vectors is done in a separate
 /// Python/R script that reads the combined CSV.
-
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
-use roadef::loader::{load_network, load_traffic_matrix, load_scenario};
-use roadef::models::{Solution, SrPath};
 use roadef::evaluator::RoadefEvaluator;
+use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
+use roadef::models::{Solution, SrPath};
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 struct Config {
     set_dir: String,
     out_dir: String,
-    top_n:   usize,
+    top_n: usize,
 }
 
 impl Config {
@@ -33,18 +32,37 @@ impl Config {
         let args: Vec<String> = std::env::args().collect();
         let mut set_dir = "adapters/roadef/repo/challenge-roadef-2026-main/setA".to_string();
         let mut out_dir = set_dir.clone();
-        let mut top_n   = 30usize;
+        let mut top_n = 30usize;
         let mut i = 1;
         while i < args.len() {
             match args[i].as_str() {
-                "--set-dir" => { i += 1; if i < args.len() { set_dir = args[i].clone(); } }
-                "--out-dir" => { i += 1; if i < args.len() { out_dir = args[i].clone(); } }
-                "--top"     => { i += 1; if i < args.len() { top_n = args[i].parse().unwrap_or(30); } }
+                "--set-dir" => {
+                    i += 1;
+                    if i < args.len() {
+                        set_dir = args[i].clone();
+                    }
+                }
+                "--out-dir" => {
+                    i += 1;
+                    if i < args.len() {
+                        out_dir = args[i].clone();
+                    }
+                }
+                "--top" => {
+                    i += 1;
+                    if i < args.len() {
+                        top_n = args[i].parse().unwrap_or(30);
+                    }
+                }
                 _ => {}
             }
             i += 1;
         }
-        Config { set_dir, out_dir, top_n }
+        Config {
+            set_dir,
+            out_dir,
+            top_n,
+        }
     }
 }
 
@@ -58,7 +76,8 @@ fn load_srpaths(path: &str) -> anyhow::Result<Vec<SrPath>> {
         for item in arr {
             let d = item["d"].as_u64().unwrap_or(0) as usize;
             let t = item["t"].as_u64().unwrap_or(0) as usize;
-            let w: Vec<u64> = item["w"].as_array()
+            let w: Vec<u64> = item["w"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|x| x.as_u64()).collect())
                 .unwrap_or_default();
             srpaths.push(SrPath { d, t, w });
@@ -73,7 +92,9 @@ fn compute_sorted_util(
     ns: usize,
     cap: &HashMap<u64, f64>,
 ) -> Vec<f64> {
-    let sol = Solution { srpaths: srpaths.to_vec() };
+    let sol = Solution {
+        srpaths: srpaths.to_vec(),
+    };
     let mut combined: HashMap<u64, f64> = HashMap::new();
     for t in 0..ns {
         if let Some(loads) = ev.compute_loads(t, &sol) {
@@ -81,7 +102,9 @@ fn compute_sorted_util(
                 let c = cap.get(id).copied().unwrap_or(1.0);
                 let s = if c > 0.0 { flow / c } else { f64::INFINITY };
                 let e = combined.entry(*id).or_insert(0.0);
-                if s > *e { *e = s; }
+                if s > *e {
+                    *e = s;
+                }
             }
         }
     }
@@ -103,8 +126,10 @@ fn main() -> anyhow::Result<()> {
     writeln!(combined_csv, "instance,rank,load")?;
 
     // MLU summary header
-    println!("{:<12}  {:>16}  {:>10}  {:>6}  {:>10}  {:>8}",
-        "Instance", "Objective", "MLU", "Valid", "Overloaded", "Links");
+    println!(
+        "{:<12}  {:>16}  {:>10}  {:>6}  {:>10}  {:>8}",
+        "Instance", "Objective", "MLU", "Valid", "Overloaded", "Links"
+    );
     println!("{}", "-".repeat(72));
 
     for n in 1..=20usize {
@@ -113,22 +138,33 @@ fn main() -> anyhow::Result<()> {
         // Load instance files
         let net = match load_network(&format!("{}/setA-{}-net.json", cfg.set_dir, inst)) {
             Ok(x) => x,
-            Err(e) => { eprintln!("setA-{}: failed to load network: {}", inst, e); continue; }
+            Err(e) => {
+                eprintln!("setA-{}: failed to load network: {}", inst, e);
+                continue;
+            }
         };
         let tm = match load_traffic_matrix(&format!("{}/setA-{}-tm.json", cfg.set_dir, inst)) {
             Ok(x) => x,
-            Err(e) => { eprintln!("setA-{}: failed to load TM: {}", inst, e); continue; }
+            Err(e) => {
+                eprintln!("setA-{}: failed to load TM: {}", inst, e);
+                continue;
+            }
         };
         let sc = match load_scenario(&format!("{}/setA-{}-scenario.json", cfg.set_dir, inst)) {
             Ok(x) => x,
-            Err(e) => { eprintln!("setA-{}: failed to load scenario: {}", inst, e); continue; }
+            Err(e) => {
+                eprintln!("setA-{}: failed to load scenario: {}", inst, e);
+                continue;
+            }
         };
 
         let ns = tm.num_time_slots;
         let ev = RoadefEvaluator::new(&net, tm, sc);
 
         // Build capacity map
-        let cap: HashMap<u64, f64> = net.links.iter()
+        let cap: HashMap<u64, f64> = net
+            .links
+            .iter()
             .map(|l| (l.id, l.capacity as f64))
             .collect();
 
@@ -136,11 +172,16 @@ fn main() -> anyhow::Result<()> {
         let sol_path = format!("{}/setA-{}-srpaths-rp406b.json", cfg.set_dir, inst);
         let srpaths = match load_srpaths(&sol_path) {
             Ok(x) => x,
-            Err(e) => { eprintln!("setA-{}: failed to load solution: {}", inst, e); continue; }
+            Err(e) => {
+                eprintln!("setA-{}: failed to load solution: {}", inst, e);
+                continue;
+            }
         };
 
         // Evaluate
-        let sol = Solution { srpaths: srpaths.clone() };
+        let sol = Solution {
+            srpaths: srpaths.clone(),
+        };
         let result = ev.evaluate_solution(&sol);
 
         // Compute sorted utilisation vector
@@ -155,8 +196,10 @@ fn main() -> anyhow::Result<()> {
         } else {
             "inf".to_string()
         };
-        println!("setA-{:<8}  {:>16}  {:>10.6}  {:>6}  {:>10}  {:>8}",
-            inst, obj_str, mlu, result.valid, overloaded, n_links);
+        println!(
+            "setA-{:<8}  {:>16}  {:>10.6}  {:>6}  {:>10}  {:>8}",
+            inst, obj_str, mlu, result.valid, overloaded, n_links
+        );
 
         // Per-instance CSV
         let csv_path = format!("{}/setA-{}-loadvec-rp406b.csv", cfg.out_dir, inst);

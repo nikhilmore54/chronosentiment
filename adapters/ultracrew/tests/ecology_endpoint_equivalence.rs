@@ -6,7 +6,6 @@
 ///   interpolation math is correct at all boundary conditions
 ///
 /// These are mandatory prerequisites before running any alpha sweep experiments.
-
 use ultracrew::ecology::{EcologyPolicy, EcologyState};
 
 // ── Interpolation Math Tests ───────────────────────────────────────────────
@@ -34,7 +33,12 @@ fn test_interpolation_midpoint() {
     let policy = EcologyPolicy::new(0.5);
     let result = policy.interpolate(0.22, 0.30);
     let expected = 0.22 + 0.5 * (0.30 - 0.22); // = 0.26
-    assert!((result - expected).abs() < 1e-15, "got {}, expected {}", result, expected);
+    assert!(
+        (result - expected).abs() < 1e-15,
+        "got {}, expected {}",
+        result,
+        expected
+    );
 }
 
 #[test]
@@ -115,8 +119,11 @@ fn test_alpha_zero_factory_produces_neutral_probability() {
     let aggressive_prob = (base_prob * aggressive_bias).min(1.0); // 0.22 * 0.7 = 0.154
 
     let interpolated = policy.interpolate(base_prob, aggressive_prob);
-    assert_eq!(interpolated, base_prob,
-        "alpha=0.0 should return neutral (base_prob={}) but got {}", base_prob, interpolated);
+    assert_eq!(
+        interpolated, base_prob,
+        "alpha=0.0 should return neutral (base_prob={}) but got {}",
+        base_prob, interpolated
+    );
 }
 
 #[test]
@@ -134,8 +141,11 @@ fn test_alpha_one_factory_produces_aggressive_probability() {
     let aggressive_prob = (base_prob * aggressive_bias).min(1.0); // 0.154
 
     let interpolated = policy.interpolate(base_prob, aggressive_prob);
-    assert_eq!(interpolated, aggressive_prob,
-        "alpha=1.0 should return aggressive ({}) but got {}", aggressive_prob, interpolated);
+    assert_eq!(
+        interpolated, aggressive_prob,
+        "alpha=1.0 should return aggressive ({}) but got {}",
+        aggressive_prob, interpolated
+    );
 }
 
 #[test]
@@ -151,8 +161,11 @@ fn test_alpha_zero_factory_matches_state_only_for_all_load_levels() {
         let aggressive_prob: f64 = (base_prob * aggressive_bias).min(1.0);
 
         let result = policy_zero.interpolate(base_prob, aggressive_prob);
-        assert_eq!(result, base_prob,
-            "alpha=0 must equal base_prob for load={}", load);
+        assert_eq!(
+            result, base_prob,
+            "alpha=0 must equal base_prob for load={}",
+            load
+        );
     }
 }
 
@@ -168,9 +181,13 @@ fn test_alpha_one_factory_matches_full_ecology_for_all_load_levels() {
         let aggressive_prob: f64 = (base_prob * aggressive_bias).min(1.0);
 
         let result = policy_one.interpolate(base_prob, aggressive_prob);
-        assert!((result - aggressive_prob).abs() < 1e-15,
+        assert!(
+            (result - aggressive_prob).abs() < 1e-15,
             "alpha=1.0 must equal aggressive_prob for load={}, got {} expected {}",
-            load, result, aggressive_prob);
+            load,
+            result,
+            aggressive_prob
+        );
     }
 }
 
@@ -203,15 +220,15 @@ fn test_alpha_one_mutator_always_enters_ecology_branch() {
 // the no-ecology (InrcOptimizer-only) result, and alpha=1.0 vs the
 // legacy FULL_ECOLOGY result.
 
-use std::sync::Arc;
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::config::EvolutionConfig;
+use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::traits::GenomeFactory;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use std::sync::Arc;
 use ultracrew::ecology::WorkforceEcology;
-use ultracrew::inrc::optimization::{InrcContext, InrcOptimizer, InrcGenome};
-use ultracrew::inrc::parser::{parse_scenario, parse_history, parse_week_data};
+use ultracrew::inrc::optimization::{InrcContext, InrcGenome, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
 
 /// Run a single week with the standard InrcOptimizer (no ecology influence).
 /// This is the ground truth for STATE_ONLY.
@@ -222,7 +239,9 @@ fn run_state_only_single_week(seed: u64) -> (i32, usize) {
     let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json")).unwrap();
     let ecology = WorkforceEcology::new();
     let context = Arc::new(InrcContext::new(scenario, week_data, history, ecology));
-    let optimizer = InrcOptimizer { context: context.clone() };
+    let optimizer = InrcOptimizer {
+        context: context.clone(),
+    };
 
     let config = EvolutionConfig {
         population_size: 100,
@@ -232,10 +251,18 @@ fn run_state_only_single_week(seed: u64) -> (i32, usize) {
         ..Default::default()
     };
 
-    let engine = EvolutionEngine::new(optimizer.clone(), optimizer.clone(), optimizer.clone(), optimizer.clone());
+    let engine = EvolutionEngine::new(
+        optimizer.clone(),
+        optimizer.clone(),
+        optimizer.clone(),
+        optimizer.clone(),
+    );
     let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = result.global_best;
-    let hc = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;
+    let hc = best.hc_coverage
+        + best.hc_skills
+        + best.hc_one_shift_per_day
+        + best.hc_forbidden_successions;
     (best.soft_report.total_penalty, hc)
 }
 
@@ -249,13 +276,20 @@ fn run_alpha_single_week(seed: u64, alpha: f64) -> (i32, usize) {
     let history = parse_history(base_dir.join("H0-n030w4-0.json")).unwrap();
     let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json")).unwrap();
     let ecology_legacy = WorkforceEcology::new();
-    let context = Arc::new(InrcContext::new(scenario.clone(), week_data, history, ecology_legacy));
+    let context = Arc::new(InrcContext::new(
+        scenario.clone(),
+        week_data,
+        history,
+        ecology_legacy,
+    ));
 
     let ecology_state = EcologyState::new(num_nurses);
     let policy = EcologyPolicy::new(alpha);
 
     // Inline factory that matches the binary's EcologyGenomeFactory
-    let evaluator = InrcOptimizer { context: context.clone() };
+    let evaluator = InrcOptimizer {
+        context: context.clone(),
+    };
 
     // We need to create factory/mutator structs matching the binary.
     // Since those structs are private to the binary, we replicate the logic here.
@@ -293,14 +327,22 @@ fn run_alpha_single_week(seed: u64, alpha: f64) -> (i32, usize) {
     // But we can't instantiate the private binary structs from a test.
     // So this test verifies the interpolation math and policy behavior,
     // not full pipeline equivalence (which requires running the binary).
-    
+
     // For the pipeline test, we use InrcOptimizer for all roles.
     // The real endpoint equivalence is verified by running the binary
     // with alpha=0.0 and comparing CSV output to STATE_ONLY.
-    let engine = EvolutionEngine::new(evaluator.clone(), evaluator.clone(), evaluator.clone(), evaluator.clone());
+    let engine = EvolutionEngine::new(
+        evaluator.clone(),
+        evaluator.clone(),
+        evaluator.clone(),
+        evaluator.clone(),
+    );
     let result = engine.run_ga_evolution(config).expect("GA failed");
     let best = result.global_best;
-    let hc = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;
+    let hc = best.hc_coverage
+        + best.hc_skills
+        + best.hc_one_shift_per_day
+        + best.hc_forbidden_successions;
     (best.soft_report.total_penalty, hc)
 }
 
@@ -310,7 +352,10 @@ fn test_state_only_is_deterministic() {
     let (score1, hc1) = run_state_only_single_week(42);
     let (score2, hc2) = run_state_only_single_week(42);
     assert_eq!(score1, score2, "STATE_ONLY should be deterministic");
-    assert_eq!(hc1, hc2, "STATE_ONLY hard violations should be deterministic");
+    assert_eq!(
+        hc1, hc2,
+        "STATE_ONLY hard violations should be deterministic"
+    );
 }
 
 #[test]

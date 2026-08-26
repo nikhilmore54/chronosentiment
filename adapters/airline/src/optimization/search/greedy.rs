@@ -56,12 +56,12 @@ impl<'a> GreedyScheduler<'a> {
 
         // ── Sub-stage profiling accumulators ─────────────────────────────────
         let mut t_rotation_collect_us: u128 = 0; // collect rotations snapshot (once per pairing)
-        let mut t_pairing_clone_us: u128 = 0;    // clone pairings vec + Rotation::new()
-        let mut t_rotation_clone_us: u128 = 0;   // clone all rotations into new_rotations vec
-        let mut t_leg_clone_us: u128 = 0;        // current.legs().cloned().collect()
-        let mut t_roster_new_us: u128 = 0;       // Roster::new() construction
-        let mut t_evaluate_us: u128 = 0;         // CostEvaluator::evaluate()
-        let mut t_commit_us: u128 = 0;           // commit best_roster to current
+        let mut t_pairing_clone_us: u128 = 0; // clone pairings vec + Rotation::new()
+        let mut t_rotation_clone_us: u128 = 0; // clone all rotations into new_rotations vec
+        let mut t_leg_clone_us: u128 = 0; // current.legs().cloned().collect()
+        let mut t_roster_new_us: u128 = 0; // Roster::new() construction
+        let mut t_evaluate_us: u128 = 0; // CostEvaluator::evaluate()
+        let mut t_commit_us: u128 = 0; // commit best_roster to current
         let mut total_candidates: u64 = 0;
         let mut pairing_count: u64 = 0;
         // Object-count accumulators (not timing — counts reveal asymptotic cost)
@@ -84,8 +84,8 @@ impl<'a> GreedyScheduler<'a> {
         // Objective value distribution: across all legal candidates, how many
         // are strictly improving vs tied with best vs strictly worse?
         let mut n_obj_improving: u64 = 0; // weighted < best_cost at time of evaluation
-        let mut n_obj_tied: u64 = 0;      // weighted == best_cost (f64 exact equality)
-        let mut n_obj_worse: u64 = 0;     // weighted > best_cost
+        let mut n_obj_tied: u64 = 0; // weighted == best_cost (f64 exact equality)
+        let mut n_obj_worse: u64 = 0; // weighted > best_cost
 
         for pairing in pairings {
             pairing_count += 1;
@@ -137,7 +137,13 @@ impl<'a> GreedyScheduler<'a> {
                 let new_rotations: Vec<_> = current
                     .rotations()
                     .enumerate()
-                    .map(|(i, r)| if i == rot_idx { new_rotation.clone() } else { r.clone() })
+                    .map(|(i, r)| {
+                        if i == rot_idx {
+                            new_rotation.clone()
+                        } else {
+                            r.clone()
+                        }
+                    })
                     .collect();
                 n_rotation_clones += n_rot;
                 t_rotation_clone_us += t2a.elapsed().as_micros();
@@ -194,10 +200,18 @@ impl<'a> GreedyScheduler<'a> {
             total_rot_examined += p_rot_examined;
             total_rot_legal += p_rot_legal;
             total_rot_improving += p_rot_improving;
-            if p_rot_legal < min_rot_legal { min_rot_legal = p_rot_legal; }
-            if p_rot_legal > max_rot_legal { max_rot_legal = p_rot_legal; }
-            if p_rot_improving < min_rot_improving { min_rot_improving = p_rot_improving; }
-            if p_rot_improving > max_rot_improving { max_rot_improving = p_rot_improving; }
+            if p_rot_legal < min_rot_legal {
+                min_rot_legal = p_rot_legal;
+            }
+            if p_rot_legal > max_rot_legal {
+                max_rot_legal = p_rot_legal;
+            }
+            if p_rot_improving < min_rot_improving {
+                min_rot_improving = p_rot_improving;
+            }
+            if p_rot_improving > max_rot_improving {
+                max_rot_improving = p_rot_improving;
+            }
 
             let t4 = std::time::Instant::now();
             if let Some(better) = best_roster {
@@ -222,8 +236,16 @@ impl<'a> GreedyScheduler<'a> {
         );
 
         // Normalise min values: if no pairing was processed, leave as 0 rather than u64::MAX
-        let min_rot_legal_out     = if min_rot_legal     == u64::MAX { 0 } else { min_rot_legal };
-        let min_rot_improving_out = if min_rot_improving == u64::MAX { 0 } else { min_rot_improving };
+        let min_rot_legal_out = if min_rot_legal == u64::MAX {
+            0
+        } else {
+            min_rot_legal
+        };
+        let min_rot_improving_out = if min_rot_improving == u64::MAX {
+            0
+        } else {
+            min_rot_improving
+        };
         eprintln!(
             "  [greedy_feasibility] \
              rot_examined={total_rot_examined} \
@@ -268,8 +290,14 @@ mod tests {
         let roster = make_empty_two_rotation_roster();
 
         // p_new must start after the seed pairings end (hour 24) and be a round-trip.
-        let d_new_out = make_duty("D_new_out", vec![make_leg("L_new_out", "LHR", "CDG", 32, 34)]);
-        let d_new_ret = make_duty("D_new_ret", vec![make_leg("L_new_ret", "CDG", "LHR", 46, 48)]);
+        let d_new_out = make_duty(
+            "D_new_out",
+            vec![make_leg("L_new_out", "LHR", "CDG", 32, 34)],
+        );
+        let d_new_ret = make_duty(
+            "D_new_ret",
+            vec![make_leg("L_new_ret", "CDG", "LHR", 46, 48)],
+        );
         let p_new = make_pairing("P_new", "LHR", vec![d_new_out, d_new_ret]);
 
         let mut metrics = OptimizationMetrics::new();

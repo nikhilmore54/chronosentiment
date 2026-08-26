@@ -13,7 +13,11 @@ fn protocol_authorizes_design_not_evolution() {
     assert!(doc.contains("Find a mapping from the certified state at T"));
     assert!(doc.contains("That presupposes a cutoff"));
     assert!(doc.contains("IDEA → don't trade") || doc.contains("Dropping or down-weighting IDEA"));
-    assert!(doc.contains("Do not:** run Search #2") || doc.contains("does not:** run Search #2") || doc.contains("**Does not:** run Search #2"));
+    assert!(
+        doc.contains("Do not:** run Search #2")
+            || doc.contains("does not:** run Search #2")
+            || doc.contains("**Does not:** run Search #2")
+    );
     assert!(!doc.contains("train_policy"));
     assert!(!doc.contains("CoralysPhase"));
     assert!(!doc.contains("b5_strategy"));

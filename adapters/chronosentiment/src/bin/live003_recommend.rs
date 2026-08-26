@@ -39,8 +39,7 @@ use std::path::PathBuf;
 
 use chrono::Utc;
 use coralys_decision::recommendation::{
-    RecommendationEngineV1, RecommendationRecordV1, Rec001hStore,
-    RECOMMENDATION_POLICY_VERSION_V1,
+    Rec001hStore, RecommendationEngineV1, RecommendationRecordV1, RECOMMENDATION_POLICY_VERSION_V1,
 };
 use serde::{Deserialize, Serialize};
 
@@ -185,7 +184,11 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
         i += 1;
     }
 
-    Ok(Args { state, evidence_dir, output })
+    Ok(Args {
+        state,
+        evidence_dir,
+        output,
+    })
 }
 
 // ─── Evidence store file count (for identity recording) ───────────────────────
@@ -221,9 +224,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
 
     // ── AC-3: Load frozen REC-001-H evidence store ────────────────────────────
-    println!("[live003] loading evidence store from: {}", args.evidence_dir);
-    let store = Rec001hStore::load_from_dir(&args.evidence_dir)
-        .map_err(|e| format!("cannot load REC-001-H evidence store from {}: {e}", args.evidence_dir))?;
+    println!(
+        "[live003] loading evidence store from: {}",
+        args.evidence_dir
+    );
+    let store = Rec001hStore::load_from_dir(&args.evidence_dir).map_err(|e| {
+        format!(
+            "cannot load REC-001-H evidence store from {}: {e}",
+            args.evidence_dir
+        )
+    })?;
     let evidence_store_n_files = count_jsonl_files(&args.evidence_dir);
     println!(
         "[live003] evidence store loaded: n_files={evidence_store_n_files} dir={}",
@@ -281,7 +291,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Volatility from LIVE-002: "Available" or "Unavailable" — map to "present"/"absent"
         // for the v1 engine's VolatilityRegime::from_str()
         let volatility_raw = inst.volatility.as_deref().unwrap_or("absent");
-        let volatility = if volatility_raw == "Available" { "present" } else { "absent" };
+        let volatility = if volatility_raw == "Available" {
+            "present"
+        } else {
+            "absent"
+        };
 
         // Decision ID for this live instrument: use recommendation_id + ticker
         let decision_id = format!("{}-{}", recommendation_id, inst.ticker);
@@ -332,7 +346,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // AC-6: Accounting invariant
     // n_recommended + n_skipped_no_trade + n_skipped_excluded == n_evaluated (from LIVE-002)
     let accounting_total = n_recommended + n_skipped_no_trade + n_skipped_excluded;
-    let n_evaluated_input = state.n_evaluated + state.n_excluded_incomplete + state.n_excluded_error;
+    let n_evaluated_input =
+        state.n_evaluated + state.n_excluded_incomplete + state.n_excluded_error;
     if accounting_total != n_evaluated_input {
         return Err(format!(
             "LIVE-003 accounting invariant violated: recommended({n_recommended}) + \
@@ -343,7 +358,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Sort by rank_score descending for the output artifact
-    recommendations.sort_by(|a, b| b.rank_score.partial_cmp(&a.rank_score).unwrap_or(std::cmp::Ordering::Equal));
+    recommendations.sort_by(|a, b| {
+        b.rank_score
+            .partial_cmp(&a.rank_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let artifact = Live003RecommendationArtifact {
         recommendation_id: recommendation_id.clone(),
@@ -392,7 +411,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[live003] evidence_store_n_files={evidence_store_n_files}");
     println!("[live003] source_state_id={}", state.state_id);
     println!("[live003] source_snapshot_id={}", state.source_snapshot_id);
-    println!("[live003] c3_002_artifact_hash={}", state.c3_002_artifact_hash);
+    println!(
+        "[live003] c3_002_artifact_hash={}",
+        state.c3_002_artifact_hash
+    );
     println!("[live003] n_recommended={n_recommended}");
     println!("[live003] n_skipped_no_trade={n_skipped_no_trade}");
     println!("[live003] n_skipped_excluded={n_skipped_excluded}");

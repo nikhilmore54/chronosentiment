@@ -11,7 +11,7 @@ use crate::ingestion::yahoo::YahooHistoricalBar;
 
 use super::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use super::observatory_slice::{
-    append_observation, observation_status_of, OutcomeObservation, ObservatoryLedger,
+    append_observation, observation_status_of, ObservatoryLedger, OutcomeObservation,
     SealedDecisionRecord, UI_STATUS_OBSERVED, UI_STATUS_OBSERVING, UI_STATUS_SEALED,
 };
 
@@ -25,8 +25,7 @@ pub const HORIZON_CALENDAR_BASIS: &str = "TRADING_DAYS";
 pub const TRADING_SESSION_HORIZON_AUTHORIZED: bool = true;
 pub const HISTORICAL_REPLAY_V0_CONTRACT: &str = "historical_replay_v0_20_calendar_days";
 pub const HISTORICAL_REPLAY_V1_CONTRACT: &str = "historical_replay_v1_20_market_sessions";
-pub const SESSION_RESOLUTION_RULE: &str =
-    "latest_certified_session_at_or_before_requested_clock";
+pub const SESSION_RESOLUTION_RULE: &str = "latest_certified_session_at_or_before_requested_clock";
 
 pub fn horizon_label(sessions: u32) -> String {
     if sessions == 1 {
@@ -47,10 +46,7 @@ fn bar_time(bar: &YahooHistoricalBar) -> Option<DateTime<Utc>> {
 }
 
 /// Sessions strictly after T, in chronological order. Session 0 is T itself.
-pub fn market_sessions_after(
-    bars: &[YahooHistoricalBar],
-    t: DateTime<Utc>,
-) -> Vec<DateTime<Utc>> {
+pub fn market_sessions_after(bars: &[YahooHistoricalBar], t: DateTime<Utc>) -> Vec<DateTime<Utc>> {
     let mut sessions: Vec<DateTime<Utc>> = bars
         .iter()
         .filter_map(bar_time)
@@ -220,10 +216,7 @@ pub fn format_close_time(due: DateTime<Utc>) -> String {
     let months = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
-    let mon = months
-        .get(due.month0() as usize)
-        .copied()
-        .unwrap_or("???");
+    let mon = months.get(due.month0() as usize).copied().unwrap_or("???");
     format!(
         "{} {} {}, {:02}:{:02} UTC",
         due.day(),

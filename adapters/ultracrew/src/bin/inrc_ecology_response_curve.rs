@@ -1,22 +1,22 @@
+use std::cmp::Ordering;
 use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Instant;
-use std::cmp::Ordering;
 
 use coralys_moga::config::EvolutionConfig;
-use coralys_moga::traits::{GenomeFactory, MutationOperator, CrossoverOperator, FitnessEvaluator, Evaluated, Genome};
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
-
-use ultracrew::inrc::optimization::{
-    InrcContext, InrcOptimizer, InrcGenome, InrcEvaluation
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
 };
-use ultracrew::inrc::parser::{parse_scenario, parse_history, parse_week_data};
-use ultracrew::ecology::{WorkforceEcology};
-use ultracrew::workforce::{WorkforceEcologyAdapter, NurseId};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+
 use coralys_moga::ecology::distribution_gini;
+use ultracrew::ecology::WorkforceEcology;
 use ultracrew::inrc::history::extract_next_history;
+use ultracrew::inrc::optimization::{InrcContext, InrcEvaluation, InrcGenome, InrcOptimizer};
+use ultracrew::inrc::parser::{parse_history, parse_scenario, parse_week_data};
+use ultracrew::workforce::{NurseId, WorkforceEcologyAdapter};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Arm {
@@ -28,14 +28,19 @@ enum Arm {
 
 // calculate_gini was here but we will use distribution_gini
 
-fn compute_coverage_ratio(
-    context: &Arc<InrcContext>,
-    genome: &InrcGenome,
-) -> f64 {
+fn compute_coverage_ratio(context: &Arc<InrcContext>, genome: &InrcGenome) -> f64 {
     let num_nurses = context.num_nurses;
     let num_days = context.num_days;
     let num_shifts = context.shift_types.len();
-    let days_map = vec!["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    let days_map = vec![
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ];
 
     let mut total_required: usize = 0;
     let mut total_fulfilled: usize = 0;
@@ -118,32 +123,36 @@ impl GenomeFactory<InrcGenome> for EcologyGenomeFactory {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
         let size = self.num_nurses * self.num_days * self.num_shifts;
         let mut bits = vec![false; size];
-        let avg_assignments: f64 = (0..self.num_nurses).map(|n| self.adapter.get_assignments(n)).sum::<f64>() / self.num_nurses as f64;
-        
+        let avg_assignments: f64 = (0..self.num_nurses)
+            .map(|n| self.adapter.get_assignments(n))
+            .sum::<f64>()
+            / self.num_nurses as f64;
+
         for n in 0..self.num_nurses {
             let base_prob: f64 = 0.22;
-            
+
             let prob = if self.arm == Arm::FullEcology {
                 let aggressive_prob = if avg_assignments > 0.0 {
                     let signal = self.adapter.compute_signal(n, self.num_nurses);
-                    // If signal is under-utilized (pressure > 0), bias > 1.0. 
+                    // If signal is under-utilized (pressure > 0), bias > 1.0.
                     let bias = (1.0 + signal.pressure).max(0.7).min(1.3);
                     (base_prob * bias).min(1.0)
                 } else {
                     base_prob
                 };
-                
+
                 // Policy interpolation logic: alpha * aggressive + (1-alpha) * base
                 let alpha = self.adapter.policy.alpha.max(0.0).min(1.0);
                 alpha * aggressive_prob + (1.0 - alpha) * base_prob
             } else {
                 base_prob
             };
-            
+
             for d in 0..self.num_days {
                 if rng.gen_bool(prob.max(0.0).min(1.0)) {
                     let shift_idx = rng.gen_range(0..self.num_shifts);
-                    let idx = n * (self.num_days * self.num_shifts) + d * self.num_shifts + shift_idx;
+                    let idx =
+                        n * (self.num_days * self.num_shifts) + d * self.num_shifts + shift_idx;
                     bits[idx] = true;
                 }
             }
@@ -174,7 +183,7 @@ impl MutationOperator<InrcGenome> for EcologyMutator {
         }
 
         let rate = 1.0 / (genome.bits.len() as f64).max(1.0);
-        
+
         let (mut nurse_loads, mut avg_assignments) = {
             let mut loads = vec![0.0; self.num_nurses];
             for n in 0..self.num_nurses {
@@ -183,11 +192,11 @@ impl MutationOperator<InrcGenome> for EcologyMutator {
             let sum: f64 = loads.iter().sum();
             (loads, sum / self.num_nurses as f64)
         };
-        
+
         for i in 0..genome.bits.len() {
             if rng.gen_bool(rate) {
                 let n = i / (self.num_days * self.num_shifts);
-                
+
                 if avg_assignments > 0.0 && rng.gen_bool(self.adapter.policy.alpha.min(1.0)) {
                     let load = nurse_loads[n];
                     let is_working = genome.bits[i];
@@ -208,7 +217,7 @@ impl MutationOperator<InrcGenome> for EcologyMutator {
                     } else {
                         new_bit = !is_working;
                     }
-                    
+
                     if new_bit != is_working {
                         genome.bits[i] = new_bit;
                     }
@@ -222,7 +231,11 @@ impl MutationOperator<InrcGenome> for EcologyMutator {
 
 // ── Custom GA Loop ────────────────────────────────────────────────────────
 
-fn tournament_selection<'a>(evals: &'a [InrcEvaluation], k: usize, rng: &mut StdRng) -> &'a InrcEvaluation {
+fn tournament_selection<'a>(
+    evals: &'a [InrcEvaluation],
+    k: usize,
+    rng: &mut StdRng,
+) -> &'a InrcEvaluation {
     let mut best: Option<&'a InrcEvaluation> = None;
     for _ in 0..k {
         let idx = rng.gen_range(0..evals.len());
@@ -239,22 +252,22 @@ fn run_ablation(seed: u64, arm: Arm, scale_factor: f64, out_csv: &mut File) {
     let scenario = parse_scenario(base_dir.join("Sc-n030w4.json")).unwrap();
     let num_nurses = scenario.nurses.len();
     let num_shifts = scenario.shift_types.len();
-    
+
     let mut adapter = WorkforceEcologyAdapter::new(num_nurses, 1.0); // alpha is always 1.0 for ON arms
-    
+
     let h0 = parse_history(base_dir.join("H0-n030w4-0.json")).unwrap();
     let mut current_history = h0.clone();
-    
+
     let mean_load = 20.0;
     let base_deviation = 10.0;
-    
+
     let mut new_loads = vec![0.0; num_nurses];
     for n in 0..num_nurses {
         // Create an alternating imbalance
         let direction = if n % 2 == 0 { 1.0 } else { -1.0 };
         new_loads[n] = mean_load + scale_factor * direction * base_deviation;
     }
-    
+
     // Clamp to 0 and redistribute any shortfall to maintain exact mean
     let mut total_shortfall = 0.0;
     for n in 0..num_nurses {
@@ -263,27 +276,34 @@ fn run_ablation(seed: u64, arm: Arm, scale_factor: f64, out_csv: &mut File) {
             new_loads[n] = 0.0;
         }
     }
-    
+
     if total_shortfall > 0.0 {
         let bump = total_shortfall / num_nurses as f64;
         for n in 0..num_nurses {
             new_loads[n] += bump;
         }
     }
-    
+
     let mut initial_counts = vec![0; num_nurses];
     for n in 0..num_nurses {
         current_history.nurse_history[n].number_of_assignments = new_loads[n].round() as usize;
         initial_counts[n] = current_history.nurse_history[n].number_of_assignments;
     }
-    
+
     let initial_gini = distribution_gini(&initial_counts);
-    
+
     for w in 0..4 {
         let wd_path = base_dir.join(format!("WD-n030w4-{}.json", w));
         let week_data = parse_week_data(wd_path).unwrap();
-        let context = Arc::new(InrcContext::new(scenario.clone(), week_data, current_history.clone(), WorkforceEcology::new()));
-        let evaluator = InrcOptimizer { context: context.clone() };
+        let context = Arc::new(InrcContext::new(
+            scenario.clone(),
+            week_data,
+            current_history.clone(),
+            WorkforceEcology::new(),
+        ));
+        let evaluator = InrcOptimizer {
+            context: context.clone(),
+        };
 
         let factory = EcologyGenomeFactory {
             num_nurses,
@@ -300,35 +320,51 @@ fn run_ablation(seed: u64, arm: Arm, scale_factor: f64, out_csv: &mut File) {
             num_shifts,
             arm,
         };
-        
-        let crossover = InrcOptimizer { context: context.clone() };
+
+        let crossover = InrcOptimizer {
+            context: context.clone(),
+        };
 
         let mut rng = StdRng::seed_from_u64(seed + w as u64);
-        let mut population = (0..100).map(|_| factory.create(&mut rng)).collect::<Vec<_>>();
+        let mut population = (0..100)
+            .map(|_| factory.create(&mut rng))
+            .collect::<Vec<_>>();
         let mut best_overall: Option<InrcEvaluation> = None;
-        
+
         for gen in 0..100 {
-            let mut evals: Vec<InrcEvaluation> = population.iter()
-                .map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
+            let mut evals: Vec<InrcEvaluation> = population
+                .iter()
+                .map(|g| {
+                    evaluator.evaluate(
+                        g,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    )
+                })
                 .filter(|e| e.is_valid())
                 .collect();
-            
+
             if evals.is_empty() {
                 population = (0..100).map(|_| factory.create(&mut rng)).collect();
                 continue;
             }
-            
-            evals.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal));
+
+            evals.sort_by(|a, b| {
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal)
+            });
             let gen_best = evals[0].clone();
-            
-            if best_overall.is_none() || gen_best.fitness() > best_overall.as_ref().unwrap().fitness() {
+
+            if best_overall.is_none()
+                || gen_best.fitness() > best_overall.as_ref().unwrap().fitness()
+            {
                 best_overall = Some(gen_best.clone());
             }
-            
+
             // Selection & Next Gen
             let mut next_gen = Vec::with_capacity(100);
             next_gen.extend(evals.iter().take(5).map(|e| e.genome().clone()));
-            
+
             while next_gen.len() < 100 {
                 let p1 = tournament_selection(&evals, 3, &mut rng);
                 let p2 = tournament_selection(&evals, 3, &mut rng);
@@ -346,36 +382,67 @@ fn run_ablation(seed: u64, arm: Arm, scale_factor: f64, out_csv: &mut File) {
             }
             population = next_gen;
         }
-        
+
         let best = best_overall.unwrap();
         let next_hist = extract_next_history(&context, best.genome());
-        
+
         if w == 3 {
             // Final metrics
             let score = best.soft_report.total_penalty;
-            let hard = best.hc_coverage + best.hc_skills + best.hc_one_shift_per_day + best.hc_forbidden_successions;
-            
+            let hard = best.hc_coverage
+                + best.hc_skills
+                + best.hc_one_shift_per_day
+                + best.hc_forbidden_successions;
+
             // We use next_hist to get total assignments across all 4 weeks + H0.
             let mut counts = vec![0; num_nurses];
             for n in 0..num_nurses {
                 counts[n] = next_hist.nurse_history[n].number_of_assignments;
             }
             let mean = counts.iter().sum::<usize>() as f64 / num_nurses as f64;
-            let cv = (counts.iter().map(|&x| (x as f64 - mean).powi(2)).sum::<f64>() / num_nurses as f64).sqrt() / mean;
+            let cv = (counts
+                .iter()
+                .map(|&x| (x as f64 - mean).powi(2))
+                .sum::<f64>()
+                / num_nurses as f64)
+                .sqrt()
+                / mean;
             let gini = distribution_gini(&counts);
-            
+
             let cov = compute_coverage_ratio(&context, best.genome());
-            
-            writeln!(out_csv, "{},{:.2},{:.4},{:?},{},{},{},{},{},{},{:.4},{:.4},{:.4}", 
-                seed, scale_factor, initial_gini, arm, score, hard, 
-                best.hc_coverage, best.hc_skills, best.hc_one_shift_per_day, best.hc_forbidden_successions,
-                gini, cv, cov).unwrap();
+
+            writeln!(
+                out_csv,
+                "{},{:.2},{:.4},{:?},{},{},{},{},{},{},{:.4},{:.4},{:.4}",
+                seed,
+                scale_factor,
+                initial_gini,
+                arm,
+                score,
+                hard,
+                best.hc_coverage,
+                best.hc_skills,
+                best.hc_one_shift_per_day,
+                best.hc_forbidden_successions,
+                gini,
+                cv,
+                cov
+            )
+            .unwrap();
         }
-        
+
         // Accumulate state
         for n in 0..num_nurses {
-            adapter.accumulate_assignments(n, next_hist.nurse_history[n].number_of_assignments - current_history.nurse_history[n].number_of_assignments);
-            adapter.accumulate_weekends(n, next_hist.nurse_history[n].number_of_working_weekends - current_history.nurse_history[n].number_of_working_weekends);
+            adapter.accumulate_assignments(
+                n,
+                next_hist.nurse_history[n].number_of_assignments
+                    - current_history.nurse_history[n].number_of_assignments,
+            );
+            adapter.accumulate_weekends(
+                n,
+                next_hist.nurse_history[n].number_of_working_weekends
+                    - current_history.nurse_history[n].number_of_working_weekends,
+            );
         }
         current_history = next_hist;
     }
@@ -386,7 +453,7 @@ fn main() {
     let arms = vec![Arm::Off, Arm::FullEcology];
     let scales = vec![0.0, 0.25, 0.5, 1.0, 2.0];
     let output_file = "ecology_response_curve_30seed.csv";
-    
+
     let mut file = File::create(output_file).unwrap();
     writeln!(file, "seed,scale_factor,initial_gini,arm,score,hard,hc_coverage,hc_skills,hc_one_shift_per_day,hc_forbidden_successions,final_gini,cv,coverage").unwrap();
 
@@ -400,10 +467,16 @@ fn main() {
                 let start = Instant::now();
                 run_ablation(seed, arm, scale, &mut file);
                 let elapsed = start.elapsed();
-                println!("  Seed {} Scale {:.2} Arm {:?} completed in {:.1}s", seed, scale, arm, elapsed.as_secs_f64());
+                println!(
+                    "  Seed {} Scale {:.2} Arm {:?} completed in {:.1}s",
+                    seed,
+                    scale,
+                    arm,
+                    elapsed.as_secs_f64()
+                );
             }
         }
     }
-    
+
     println!("\nResponse Curve completed successfully.");
 }

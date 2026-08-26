@@ -52,8 +52,15 @@ pub struct OutcomeReport {
 
 impl OutcomeReport {
     pub fn identity_hash(&self) -> String {
-        let hashes: Vec<&str> = self.bundles.iter().map(|b| b.content_hash.as_str()).collect();
-        format!("{:x}", Sha256::digest(&serde_json::to_vec(&hashes).unwrap()))
+        let hashes: Vec<&str> = self
+            .bundles
+            .iter()
+            .map(|b| b.content_hash.as_str())
+            .collect();
+        format!(
+            "{:x}",
+            Sha256::digest(&serde_json::to_vec(&hashes).unwrap())
+        )
     }
 }
 

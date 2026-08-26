@@ -42,18 +42,13 @@
 //! 3. Call [`registry::AdapterRegistry::register`] with your adapter instance.
 //! 4. The adapter is now available via [`pipeline::EvaluationPipeline::run`].
 
-pub mod types;
 pub mod adapter;
-pub mod registry;
 pub mod pipeline;
+pub mod registry;
+pub mod types;
 
 // Re-export the most commonly used types at the crate root for ergonomic imports.
-pub use types::{
-    ConstraintSeverity,
-    ConstraintViolation,
-    EvaluationResult,
-    ObjectiveValue,
-};
 pub use adapter::{AdapterInfo, BenchmarkAdapter};
-pub use registry::{AdapterRegistry, RegistryError};
 pub use pipeline::EvaluationPipeline;
+pub use registry::{AdapterRegistry, RegistryError};
+pub use types::{ConstraintSeverity, ConstraintViolation, EvaluationResult, ObjectiveValue};

@@ -1,5 +1,5 @@
-use crate::types::CrewMember;
 use crate::credit::duty_credit;
+use crate::types::CrewMember;
 
 /// Compute the total credited workload W_n for one crew member.
 ///
@@ -30,7 +30,11 @@ mod tests {
             duties: duties
                 .into_iter()
                 .enumerate()
-                .map(|(i, credit)| Duty { id: i as u32 + 1, credit, legs: vec![] })
+                .map(|(i, credit)| Duty {
+                    id: i as u32 + 1,
+                    credit,
+                    legs: vec![],
+                })
                 .collect(),
         }
     }

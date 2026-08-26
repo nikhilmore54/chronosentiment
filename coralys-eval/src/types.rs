@@ -163,7 +163,12 @@ impl ObjectiveValue {
     }
 
     /// Construct a weighted objective value.
-    pub fn weighted(id: impl Into<String>, name: impl Into<String>, value: f64, weight: f64) -> Self {
+    pub fn weighted(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        value: f64,
+        weight: f64,
+    ) -> Self {
         Self {
             objective_id: id.into(),
             objective_name: name.into(),
@@ -217,7 +222,9 @@ impl EvaluationResult {
         objectives: Vec<ObjectiveValue>,
         violations: Vec<ConstraintViolation>,
     ) -> Self {
-        let feasible = violations.iter().all(|v| v.severity != ConstraintSeverity::Hard);
+        let feasible = violations
+            .iter()
+            .all(|v| v.severity != ConstraintSeverity::Hard);
         Self {
             adapter_id: adapter_id.into(),
             feasible,
@@ -230,12 +237,16 @@ impl EvaluationResult {
 
     /// Return only the hard constraint violations.
     pub fn hard_violations(&self) -> impl Iterator<Item = &ConstraintViolation> {
-        self.violations.iter().filter(|v| v.severity == ConstraintSeverity::Hard)
+        self.violations
+            .iter()
+            .filter(|v| v.severity == ConstraintSeverity::Hard)
     }
 
     /// Return only the soft constraint violations.
     pub fn soft_violations(&self) -> impl Iterator<Item = &ConstraintViolation> {
-        self.violations.iter().filter(|v| v.severity == ConstraintSeverity::Soft)
+        self.violations
+            .iter()
+            .filter(|v| v.severity == ConstraintSeverity::Soft)
     }
 
     /// Return the value of the first objective, or 0.0 if none.
@@ -247,7 +258,10 @@ impl EvaluationResult {
 
     /// Return the value of the objective with the given id, if present.
     pub fn objective_by_id(&self, id: &str) -> Option<f64> {
-        self.objectives.iter().find(|o| o.objective_id == id).map(|o| o.value)
+        self.objectives
+            .iter()
+            .find(|o| o.objective_id == id)
+            .map(|o| o.value)
     }
 }
 

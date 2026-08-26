@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 /// rp404c_bottleneck_link — RP-404C: Problem-Specific Neighbourhood (Bottleneck-Link Destroy)
 ///
 /// Research question: Does a problem-specific destroy operator that targets the
@@ -45,16 +46,14 @@
 /// Baseline: validated RP-403 construction portfolio (commit e9296dfa).
 ///
 /// Classification: Research binary (RP-404C).
-
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
+use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
-use roadef::evaluator::RoadefEvaluator;
 
 // ---------------------------------------------------------------------------
 // Command-line argument parsing (minimal, no external crate needed).
@@ -110,18 +109,23 @@ struct Lcg {
 
 impl Lcg {
     fn new(seed: u64) -> Self {
-        Lcg { state: seed.wrapping_add(1) }
+        Lcg {
+            state: seed.wrapping_add(1),
+        }
     }
 
     fn next_u64(&mut self) -> u64 {
-        self.state = self.state
+        self.state = self
+            .state
             .wrapping_mul(6364136223846793005)
             .wrapping_add(1442695040888963407);
         self.state
     }
 
     fn next_usize(&mut self, n: usize) -> usize {
-        if n == 0 { return 0; }
+        if n == 0 {
+            return 0;
+        }
         (self.next_u64() % n as u64) as usize
     }
 }
@@ -146,7 +150,9 @@ fn dijkstra_path(
             continue;
         }
         let mult = metric_multipliers.get(&link.id).copied().unwrap_or(1.0);
-        adj.entry(link.from).or_default().push((link.to, link.metric * mult));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, link.metric * mult));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -236,7 +242,9 @@ fn load_aware_path_ecmp_rp401c(
             load_penalty * sat
         };
         let effective_metric = link.metric + penalty;
-        adj.entry(link.from).or_default().push((link.to, effective_metric));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, effective_metric));
     }
     let mut dist: HashMap<u64, u64> = HashMap::new();
     let mut prev: HashMap<u64, u64> = HashMap::new();
@@ -299,7 +307,8 @@ fn load_rp403_solution(
     for entry in srpaths_json {
         let d = entry["d"].as_u64()? as usize;
         let t = entry["t"].as_u64()? as usize;
-        let w: Vec<u64> = entry["w"].as_array()?
+        let w: Vec<u64> = entry["w"]
+            .as_array()?
             .iter()
             .filter_map(|v| v.as_u64())
             .collect();
@@ -308,7 +317,9 @@ fn load_rp403_solution(
         }
     }
 
-    let sol = Solution { srpaths: srpaths.clone() };
+    let sol = Solution {
+        srpaths: srpaths.clone(),
+    };
     let result = evaluator.evaluate_solution(&sol);
     Some((srpaths, result.obj))
 }
@@ -339,13 +350,21 @@ fn build_srpaths(
     for d_idx in 0..num_demands {
         if let Some(w) = t0_assignments.get(&d_idx) {
             if !w.is_empty() {
-                srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
+                srpaths.push(SrPath {
+                    d: d_idx,
+                    t: 0,
+                    w: w.clone(),
+                });
             }
         }
         if num_slots > 1 {
             if let Some(w) = t1_assignments.get(&d_idx) {
                 if !w.is_empty() {
-                    srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                    srpaths.push(SrPath {
+                        d: d_idx,
+                        t: 1,
+                        w: w.clone(),
+                    });
                 }
             }
         }
@@ -362,7 +381,9 @@ fn compute_saturation(
     t: usize,
     link_capacity: &HashMap<u64, f64>,
 ) -> HashMap<u64, f64> {
-    let sol = Solution { srpaths: srpaths.to_vec() };
+    let sol = Solution {
+        srpaths: srpaths.to_vec(),
+    };
     let mut sat: HashMap<u64, f64> = HashMap::new();
     if let Some(loads) = evaluator.compute_loads(t, &sol) {
         for (arc_id, flow) in &loads.arc_flows {
@@ -403,7 +424,7 @@ fn destroy_bottleneck_link(
     evaluator: &RoadefEvaluator,
     link_capacity: &HashMap<u64, f64>,
     net: &Network,
-    demands: &[(usize, u64, u64, f64)],  // (d_idx, src, dst, vol)
+    demands: &[(usize, u64, u64, f64)], // (d_idx, src, dst, vol)
     k: usize,
     rng: &mut Lcg,
 ) -> Vec<usize> {
@@ -432,7 +453,9 @@ fn destroy_bottleneck_link(
     // We check if any consecutive pair (u, v) in this sequence matches (link.from, link.to).
     let mut demand_full_paths: HashMap<usize, Vec<u64>> = HashMap::new();
     for sp in srpaths {
-        if sp.t != 0 { continue; }
+        if sp.t != 0 {
+            continue;
+        }
         if let Some(&(src, dst)) = demand_src_dst.get(&sp.d) {
             let mut full = vec![src];
             full.extend_from_slice(&sp.w);
@@ -456,9 +479,15 @@ fn destroy_bottleneck_link(
 
         // Find all demands whose path traverses this directed link (from → to)
         for sp in srpaths {
-            if sp.t != 0 { continue; }
-            if seen.contains(&sp.d) { continue; }
-            if !assignments.contains_key(&sp.d) { continue; }
+            if sp.t != 0 {
+                continue;
+            }
+            if seen.contains(&sp.d) {
+                continue;
+            }
+            if !assignments.contains_key(&sp.d) {
+                continue;
+            }
 
             let traverses = if let Some(full_path) = demand_full_paths.get(&sp.d) {
                 // Check if any consecutive pair in the full path is (from, to)
@@ -480,7 +509,8 @@ fn destroy_bottleneck_link(
 
     // Pad with random demands if needed
     if selected.len() < k {
-        let mut remaining: Vec<usize> = assignments.keys()
+        let mut remaining: Vec<usize> = assignments
+            .keys()
             .copied()
             .filter(|d| !seen.contains(d))
             .collect();
@@ -518,9 +548,14 @@ fn repair_rp401c(
         assignments.remove(d);
     }
 
-    let mut partial_srpaths: Vec<SrPath> = assignments.iter()
+    let mut partial_srpaths: Vec<SrPath> = assignments
+        .iter()
         .filter(|(_, w)| !w.is_empty())
-        .map(|(&d_idx, w)| SrPath { d: d_idx, t: 0, w: w.clone() })
+        .map(|(&d_idx, w)| SrPath {
+            d: d_idx,
+            t: 0,
+            w: w.clone(),
+        })
         .collect();
 
     let mut ecmp_saturation = compute_saturation(evaluator, &partial_srpaths, 0, link_capacity);
@@ -528,7 +563,8 @@ fn repair_rp401c(
         ecmp_saturation.entry(link.id).or_insert(0.0);
     }
 
-    let mut to_repair: Vec<(usize, u64, u64, f64)> = demands.iter()
+    let mut to_repair: Vec<(usize, u64, u64, f64)> = demands
+        .iter()
         .filter(|(d_idx, _, _, _)| destroyed_set.contains(d_idx))
         .copied()
         .collect();
@@ -539,24 +575,30 @@ fn repair_rp401c(
             break;
         }
 
-        let full_path = load_aware_path_ecmp_rp401c(
-            net, *src, *dst, disabled_links, &ecmp_saturation, 100.0,
-        )
-        .or_else(|| dijkstra_path(net, *src, *dst, disabled_links, &HashMap::new()));
+        let full_path =
+            load_aware_path_ecmp_rp401c(net, *src, *dst, disabled_links, &ecmp_saturation, 100.0)
+                .or_else(|| dijkstra_path(net, *src, *dst, disabled_links, &HashMap::new()));
 
         if let Some(fp) = full_path {
             let waypoints = path_to_waypoints(&fp, max_segments);
             if !waypoints.is_empty() {
-                partial_srpaths.push(SrPath { d: *d_idx, t: 0, w: waypoints.clone() });
+                partial_srpaths.push(SrPath {
+                    d: *d_idx,
+                    t: 0,
+                    w: waypoints.clone(),
+                });
             }
             assignments.insert(*d_idx, waypoints);
 
-            let partial_sol = Solution { srpaths: partial_srpaths.clone() };
+            let partial_sol = Solution {
+                srpaths: partial_srpaths.clone(),
+            };
             if let Some(loads) = evaluator.compute_loads(0, &partial_sol) {
                 ecmp_saturation.clear();
                 for (arc_id, flow) in &loads.arc_flows {
                     let cap = link_capacity.get(arc_id).copied().unwrap_or(1.0);
-                    ecmp_saturation.insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
+                    ecmp_saturation
+                        .insert(*arc_id, if cap > 0.0 { flow / cap } else { f64::INFINITY });
                 }
             }
         }
@@ -576,7 +618,9 @@ fn evaluate_assignments(
     num_slots: usize,
 ) -> (Vec<SrPath>, f64) {
     let srpaths = build_srpaths(t0_assignments, t1_assignments, num_demands, num_slots);
-    let sol = Solution { srpaths: srpaths.clone() };
+    let sol = Solution {
+        srpaths: srpaths.clone(),
+    };
     let result = evaluator.evaluate_solution(&sol);
     (srpaths, result.obj)
 }
@@ -601,11 +645,15 @@ fn main() -> anyhow::Result<()> {
     let cfg = Config::from_args();
     let set_dir = "adapters/roadef/repo/challenge-roadef-2026-main/setA";
 
-    println!("RP-404C — Bottleneck-Link Destroy (k={}, iters={}, seed={})",
-        cfg.k, cfg.iters, cfg.seed);
+    println!(
+        "RP-404C — Bottleneck-Link Destroy (k={}, iters={}, seed={})",
+        cfg.k, cfg.iters, cfg.seed
+    );
     println!("{}", "=".repeat(100));
-    println!("{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
-        "Instance", "LNS obj", "RP-403 obj", "delta", "improved", "iters", "ms");
+    println!(
+        "{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
+        "Instance", "LNS obj", "RP-403 obj", "delta", "improved", "iters", "ms"
+    );
     println!("{}", "-".repeat(100));
 
     let mut improved_count = 0usize;
@@ -617,34 +665,44 @@ fn main() -> anyhow::Result<()> {
     for instance_id in 1..=20 {
         let inst = format!("{:02}", instance_id);
         let net_path = format!("{}/setA-{}-net.json", set_dir, inst);
-        let tm_path  = format!("{}/setA-{}-tm.json", set_dir, inst);
-        let sc_path  = format!("{}/setA-{}-scenario.json", set_dir, inst);
+        let tm_path = format!("{}/setA-{}-tm.json", set_dir, inst);
+        let sc_path = format!("{}/setA-{}-scenario.json", set_dir, inst);
 
-        let net      = load_network(&net_path)?;
-        let tm       = load_traffic_matrix(&tm_path)?;
+        let net = load_network(&net_path)?;
+        let tm = load_traffic_matrix(&tm_path)?;
         let scenario = load_scenario(&sc_path)?;
 
         let num_demands = tm.demands.len();
-        let num_slots   = tm.num_time_slots;
-        let max_seg     = if scenario.max_segments >= 0 { scenario.max_segments as usize } else { 100 };
+        let num_slots = tm.num_time_slots;
+        let max_seg = if scenario.max_segments >= 0 {
+            scenario.max_segments as usize
+        } else {
+            100
+        };
 
         let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
 
-        let disabled_t0: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t0: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 0)
             .flat_map(|i| i.links.iter().copied())
             .collect();
-        let disabled_t1: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t1: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 1)
             .flat_map(|i| i.links.iter().copied())
             .collect();
         let disabled_both: HashSet<u64> = disabled_t0.union(&disabled_t1).copied().collect();
 
-        let link_capacity: HashMap<u64, f64> = net.links.iter()
-            .map(|l| (l.id, l.capacity))
-            .collect();
+        let link_capacity: HashMap<u64, f64> =
+            net.links.iter().map(|l| (l.id, l.capacity)).collect();
 
-        let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_avg: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| {
                 let v0 = d.v[0];
                 let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
@@ -656,16 +714,23 @@ fn main() -> anyhow::Result<()> {
         let deadline = t_start + std::time::Duration::from_secs(120);
 
         // Step 1: Load RP-403 baseline solution
-        let (baseline_srpaths, baseline_obj) = match load_rp403_solution(
-            set_dir, &inst, &evaluator, num_demands,
-        ) {
-            Some(x) => x,
-            None => {
-                println!("{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
-                    format!("setA-{}", inst), "N/A", "N/A", "N/A", "N/A", 0, 0);
-                continue;
-            }
-        };
+        let (baseline_srpaths, baseline_obj) =
+            match load_rp403_solution(set_dir, &inst, &evaluator, num_demands) {
+                Some(x) => x,
+                None => {
+                    println!(
+                        "{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
+                        format!("setA-{}", inst),
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        0,
+                        0
+                    );
+                    continue;
+                }
+            };
 
         let mut best_t0 = srpaths_to_assignments(&baseline_srpaths);
         let mut best_t1: HashMap<usize, Vec<u64>> = HashMap::new();
@@ -705,14 +770,20 @@ fn main() -> anyhow::Result<()> {
 
             // Step 2b: Repair using RP-401C
             let repaired_t0 = repair_rp401c(
-                &net, &evaluator, &best_t0, &destroyed,
-                &demands_avg, &disabled_both, max_seg, &link_capacity, deadline,
+                &net,
+                &evaluator,
+                &best_t0,
+                &destroyed,
+                &demands_avg,
+                &disabled_both,
+                max_seg,
+                &link_capacity,
+                deadline,
             );
 
             // Step 2c: Evaluate repaired solution (keep t=1 from best)
-            let (_, repaired_obj) = evaluate_assignments(
-                &evaluator, &repaired_t0, &best_t1, num_demands, num_slots,
-            );
+            let (_, repaired_obj) =
+                evaluate_assignments(&evaluator, &repaired_t0, &best_t1, num_demands, num_slots);
 
             // Step 2d: Accept if improved (best-improving acceptance)
             if is_better(repaired_obj, best_obj) {
@@ -726,12 +797,16 @@ fn main() -> anyhow::Result<()> {
         let final_srpaths = build_srpaths(&best_t0, &best_t1, num_demands, num_slots);
 
         // Step 4: Validate and select output
-        let result = evaluator.evaluate_solution(&Solution { srpaths: final_srpaths.clone() });
+        let result = evaluator.evaluate_solution(&Solution {
+            srpaths: final_srpaths.clone(),
+        });
         let empty_result = evaluator.evaluate_solution(&Solution { srpaths: vec![] });
 
         let (output_srpaths, final_obj) = if !result.valid {
             (vec![], empty_result.obj)
-        } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
+        } else if result.obj.is_finite()
+            && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj)
+        {
             (final_srpaths, result.obj)
         } else if result.obj.is_infinite() && empty_result.obj.is_finite() {
             (vec![], empty_result.obj)
@@ -771,13 +846,27 @@ fn main() -> anyhow::Result<()> {
         };
 
         let elapsed_ms = t_start.elapsed().as_millis();
-        let lns_str  = if final_obj.is_finite()   { format!("{:.4}", final_obj)   } else { "inf".to_string() };
-        let base_str = if baseline_obj.is_finite() { format!("{:.4}", baseline_obj) } else { "inf".to_string() };
+        let lns_str = if final_obj.is_finite() {
+            format!("{:.4}", final_obj)
+        } else {
+            "inf".to_string()
+        };
+        let base_str = if baseline_obj.is_finite() {
+            format!("{:.4}", baseline_obj)
+        } else {
+            "inf".to_string()
+        };
 
-        println!("{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
-            format!("setA-{}", inst), lns_str, base_str, delta,
+        println!(
+            "{:<10} {:>12} {:>12} {:>10} {:>8} {:>8} {:>8}",
+            format!("setA-{}", inst),
+            lns_str,
+            base_str,
+            delta,
             if iters_improved > 0 { "yes" } else { "no" },
-            iters_improved, elapsed_ms);
+            iters_improved,
+            elapsed_ms
+        );
 
         // Step 6: Write solution file (suffix: rp404c-bottleneck)
         let out_path = format!("{}/setA-{}-srpaths-rp404c-bottleneck.json", set_dir, inst);
@@ -793,13 +882,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     println!("{}", "=".repeat(100));
-    println!("RP-404C vs RP-403: {} improved, {} regressed, {} unchanged",
-        improved_count, regressed_count, unchanged_count);
+    println!(
+        "RP-404C vs RP-403: {} improved, {} regressed, {} unchanged",
+        improved_count, regressed_count, unchanged_count
+    );
     println!("Total improvement vs RP-403: {:.4}", total_delta);
     println!("Finite solutions: {}/20", finite_count);
-    println!("Destroy operator: bottleneck-link  k={}  iters={}  seed={}",
-        cfg.k, cfg.iters, cfg.seed);
-    println!("Solution files written to {}/setA-*-srpaths-rp404c-bottleneck.json", set_dir);
+    println!(
+        "Destroy operator: bottleneck-link  k={}  iters={}  seed={}",
+        cfg.k, cfg.iters, cfg.seed
+    );
+    println!(
+        "Solution files written to {}/setA-*-srpaths-rp404c-bottleneck.json",
+        set_dir
+    );
 
     Ok(())
 }

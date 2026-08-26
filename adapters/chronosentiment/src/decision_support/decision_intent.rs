@@ -108,7 +108,9 @@ pub fn refuse_if_research_opened() -> Result<(), String> {
         || HORIZON_SEARCH_AUTHORIZED
         || TARGET_FROM_REALIZED_OUTCOME_AUTHORIZED
     {
-        return Err("refusing Experiment B while lookahead, search, or profile expansion is open".into());
+        return Err(
+            "refusing Experiment B while lookahead, search, or profile expansion is open".into(),
+        );
     }
     Ok(())
 }

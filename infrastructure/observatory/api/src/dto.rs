@@ -226,7 +226,6 @@ pub struct StrategyConfigWrapper {
     pub strategy_config: Strategy,
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct InspectStrategyRequest {
     pub strategy_id: Option<String>,
@@ -243,13 +242,11 @@ pub struct EvaluateStrategyResponse {
     pub strategy_evaluation: CandidateEvaluationDto,
 }
 
-
 #[derive(Debug, Serialize)]
 pub struct CompareStrategiesResponse {
     pub ranking: Vec<CandidateEvaluationDto>,
     pub comparison_summary: ComparisonSummary,
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct ComparisonSummary {
@@ -260,8 +257,8 @@ pub struct ComparisonSummary {
 #[derive(Debug, Serialize)]
 pub struct InspectStrategyResponse {
     pub strategy_id: String,
-    pub decision_trace: Vec<EventWrapper>, 
-    pub execution_trace: Vec<EventWrapper>, 
+    pub decision_trace: Vec<EventWrapper>,
+    pub execution_trace: Vec<EventWrapper>,
     pub metrics: CandidateEvaluationDto,
     pub event_sequence: Vec<EventWrapper>,
 }
@@ -355,7 +352,8 @@ impl RunGaQuery {
 impl From<chronosentiment_optimization::GaResult> for RunGaResponse {
     fn from(res: chronosentiment_optimization::GaResult) -> Self {
         let global_best: CandidateEvaluationDto = res.global_best.clone().into();
-        let history: Vec<CandidateEvaluationDto> = res.generation_history.into_iter().map(Into::into).collect();
+        let history: Vec<CandidateEvaluationDto> =
+            res.generation_history.into_iter().map(Into::into).collect();
         let total_generations = history.len();
         Self {
             results: vec![global_best.clone()],
@@ -473,7 +471,9 @@ impl From<chronosentiment_strategies::compatibility::TradeSignal> for TradeSigna
             confidence: s.confidence,
             action: s.action,
             entry_type: s.entry_type,
-            entry_zone: s.entry_zone.map(|(lo, hi)| (PriceDto::from_scaled(lo), PriceDto::from_scaled(hi))),
+            entry_zone: s
+                .entry_zone
+                .map(|(lo, hi)| (PriceDto::from_scaled(lo), PriceDto::from_scaled(hi))),
             stop_loss: s.stop_loss.map(PriceDto::from_scaled),
             target: s.target.map(PriceDto::from_scaled),
             expected_edge: s.expected_edge,
@@ -507,8 +507,18 @@ pub struct SignalsSnapshotDto {
     pub signals: Vec<TradeSignalDto>,
 }
 
-impl From<chronosentiment_strategies::compatibility::SignalsSnapshot<chronosentiment_strategies::compatibility::TradeSignal>> for SignalsSnapshotDto {
-    fn from(s: chronosentiment_strategies::compatibility::SignalsSnapshot<chronosentiment_strategies::compatibility::TradeSignal>) -> Self {
+impl
+    From<
+        chronosentiment_strategies::compatibility::SignalsSnapshot<
+            chronosentiment_strategies::compatibility::TradeSignal,
+        >,
+    > for SignalsSnapshotDto
+{
+    fn from(
+        s: chronosentiment_strategies::compatibility::SignalsSnapshot<
+            chronosentiment_strategies::compatibility::TradeSignal,
+        >,
+    ) -> Self {
         Self {
             timestamp: s.timestamp,
             signals: s.signals.into_iter().map(TradeSignalDto::from).collect(),

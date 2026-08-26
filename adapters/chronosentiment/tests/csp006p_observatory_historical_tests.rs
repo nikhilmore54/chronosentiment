@@ -16,10 +16,10 @@ use chronosentiment_adapter::decision_support::observatory_historical::{
     PROSPECTIVE_COHORT_MUTATION_AUTHORIZED, SEARCH_THREE_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::observatory_maturity::{
-    HORIZON_CALENDAR_BASIS, TRADING_SESSION_HORIZON_AUTHORIZED,
+    append_matured_observation, ui_lifecycle_status, UI_STATUS_OUTCOME_DUE,
 };
 use chronosentiment_adapter::decision_support::observatory_maturity::{
-    append_matured_observation, ui_lifecycle_status, UI_STATUS_OUTCOME_DUE,
+    HORIZON_CALENDAR_BASIS, TRADING_SESSION_HORIZON_AUTHORIZED,
 };
 use chronosentiment_adapter::decision_support::observatory_slice::{
     empty_ledger, observe_outcome, UI_STATUS_OBSERVING,
@@ -51,7 +51,9 @@ fn load_cache() -> Option<
         Vec<chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar>,
     >,
 > {
-    let cache_dir = workspace_root().join(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache");
+    let cache_dir = workspace_root()
+        .join(RESEARCH_SNAPSHOT_DIR)
+        .join("yahoo_cache");
     if !cache_dir.exists() {
         return None;
     }
@@ -72,7 +74,9 @@ fn historical_replay_stays_quarantined() {
         "product_validation/CS-P-006/observatory/historical_replay_v0"
     )
     .is_err());
-    assert!(refuse_prospective_output("product_validation/CS-P-006/observatory/prospective").is_err());
+    assert!(
+        refuse_prospective_output("product_validation/CS-P-006/observatory/prospective").is_err()
+    );
 }
 
 #[test]
@@ -109,7 +113,10 @@ fn determinism_and_poisoned_future_do_not_change_the_decision() {
     let a = generate_historical_replay_decision(&artifact, "INFY.NS", bars, t).unwrap();
     let b = generate_historical_replay_decision(&artifact, "INFY.NS", bars, t).unwrap();
     assert_eq!(a, b);
-    assert_eq!(a.policy_artifact_sha256, RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH);
+    assert_eq!(
+        a.policy_artifact_sha256,
+        RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH
+    );
     assert_eq!(a.decision_time, "2026-06-12T03:45:00+00:00");
     let json = serde_json::to_string(&a).unwrap();
     for forbidden in [
@@ -120,7 +127,10 @@ fn determinism_and_poisoned_future_do_not_change_the_decision() {
         "confidence",
         "realized_return",
     ] {
-        assert!(!json.contains(forbidden), "{forbidden} leaked onto the decision");
+        assert!(
+            !json.contains(forbidden),
+            "{forbidden} leaked onto the decision"
+        );
     }
     let known = decision_time_bars(bars, t);
     assert!(known.iter().all(|bar| bar.timestamp <= t.timestamp()));
@@ -151,7 +161,8 @@ fn evidence_cannot_appear_before_the_window_closes() {
     let bars = cache.get("INFY.NS").unwrap();
     let t = Utc.with_ymd_and_hms(2026, 6, 14, 3, 45, 0).unwrap();
     let decision = generate_historical_replay_decision(&artifact, "INFY.NS", bars, t).unwrap();
-    let mut ledger = chronosentiment_adapter::decision_support::observatory_historical::empty_replay_ledger();
+    let mut ledger =
+        chronosentiment_adapter::decision_support::observatory_historical::empty_replay_ledger();
     chronosentiment_adapter::decision_support::observatory_slice::seal_into_ledger(
         &mut ledger,
         decision.clone(),
@@ -203,14 +214,20 @@ fn default_cohort_is_fourteen_closed_windows_and_does_not_touch_prospective() {
     assert!(!report.prospective_cohort_mutated);
     assert_eq!(report.horizon_calendar_basis, "TRADING_DAYS");
     assert_eq!(report.horizon_unit, "MARKET_SESSIONS");
-    assert_eq!(report.replay_contract, "historical_replay_v1_20_market_sessions");
+    assert_eq!(
+        report.replay_contract,
+        "historical_replay_v1_20_market_sessions"
+    );
     assert_eq!(report.horizon_duration_days, 20);
     assert!(!report.statistical_backtest);
     assert!(report.trading_session_horizon_authorized);
-    assert!(report
-        .ticks
-        .iter()
-        .any(|t| t.session_resolved_from_request && t.decision_time == "2026-06-12T03:45:00+00:00"));
+    assert!(
+        report
+            .ticks
+            .iter()
+            .any(|t| t.session_resolved_from_request
+                && t.decision_time == "2026-06-12T03:45:00+00:00")
+    );
     let html = render_replay_html(&ledger, &report, now);
     assert!(html.contains("20 market sessions"));
     assert!(html.contains("Requested observation clock"));
@@ -223,15 +240,18 @@ fn default_cohort_is_fourteen_closed_windows_and_does_not_touch_prospective() {
     assert!(md.contains("statistical strategy backtest: not done"));
     assert!(md.contains("not a homepage metric"));
     assert!(md.contains("backtesting mechanism"));
-    assert!(md.contains("Replay integrity is not strategy validation") || md.contains("replay integrity ≠ strategy validation"));
+    assert!(
+        md.contains("Replay integrity is not strategy validation")
+            || md.contains("replay integrity ≠ strategy validation")
+    );
     assert!(md.contains("Replay v0"));
     assert!(ledger.decisions.iter().any(|d| d.instrument == "IDEA.NS"));
     assert!(ledger
         .decisions
         .iter()
         .any(|d| d.instrument == "MAHABANK.NS"));
-    let prospective_path = workspace_root()
-        .join("product_validation/CS-P-006/observatory/prospective/ledger.json");
+    let prospective_path =
+        workspace_root().join("product_validation/CS-P-006/observatory/prospective/ledger.json");
     if prospective_path.exists() {
         let prospective: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&prospective_path).unwrap()).unwrap();
@@ -250,7 +270,9 @@ fn document_is_not_c3g_and_keeps_the_live_cohort_untouched() {
     assert!(doc.contains("not C.3-G") || doc.contains("Not C.3-G"));
     assert!(doc.contains("peeked_returns"));
     assert!(doc.contains("14 August") || doc.contains("prospective"));
-    assert!(doc.contains("no lookahead") || doc.contains("No-lookahead") || doc.contains("lookahead"));
+    assert!(
+        doc.contains("no lookahead") || doc.contains("No-lookahead") || doc.contains("lookahead")
+    );
     let capability = include_str!("../../../docs/CS-P-006-P.H.1_DECISION_EVIDENCE_ENGINE.md");
     assert!(capability.contains("20 calendar days"));
     assert!(capability.contains("CALENDAR_DAYS"));
@@ -268,11 +290,15 @@ fn document_is_not_c3g_and_keeps_the_live_cohort_untouched() {
     assert!(dashboard.contains("Replay integrity"));
     assert!(dashboard.contains("IDEA and MAHABANK"));
     assert!(!dashboard.contains("Search #3 is authorized"));
-    let v0 = include_str!("../../../product_validation/CS-P-006/observatory/historical_replay_v0/REPORT.md");
+    let v0 = include_str!(
+        "../../../product_validation/CS-P-006/observatory/historical_replay_v0/REPORT.md"
+    );
     assert!(v0.contains("CALENDAR_DAYS"));
     assert!(!v0.contains("MARKET_SESSIONS"));
     assert!(v0.contains("4 Jun 2026"));
-    let v1_report = include_str!("../../../product_validation/CS-P-006/observatory/historical_replay_v1/REPORT.md");
+    let v1_report = include_str!(
+        "../../../product_validation/CS-P-006/observatory/historical_replay_v1/REPORT.md"
+    );
     assert!(v1_report.contains("MARKET_SESSIONS"));
     assert!(v1_report.contains("12 Jun 2026"));
     assert!(v1_report.contains("10 Jul 2026"));

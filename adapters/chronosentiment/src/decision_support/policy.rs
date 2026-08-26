@@ -126,11 +126,7 @@ impl DecisionPolicy for BaselineTrendMappingPolicy {
 }
 
 pub(super) fn factors_from_profile(profile: &AssessmentProfile) -> Vec<EvidenceFactor> {
-    let mut out: Vec<EvidenceFactor> = profile
-        .factor_status
-        .iter()
-        .map(status_to_factor)
-        .collect();
+    let mut out: Vec<EvidenceFactor> = profile.factor_status.iter().map(status_to_factor).collect();
     for a in &profile.assessments {
         let name = format!("{:?}", a.concept);
         if let Some(existing) = out.iter_mut().find(|f| f.concept == name) {

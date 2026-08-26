@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 /// S2-02 — TOML/YAML optimizer configuration loader
 ///
 /// Provides a file-based configuration system for the UltraCrew optimizer.
@@ -39,16 +40,14 @@
 ///
 /// All fields are optional. Missing fields fall back to built-in defaults.
 /// Unknown fields are rejected with a descriptive error (strict parsing).
-
 use std::path::Path;
-use serde::{Deserialize, Serialize};
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 const DEFAULT_GENERATION_LIMIT: usize = 200;
-const DEFAULT_POPULATION_SIZE:  usize = 50;
-const DEFAULT_HORIZON_HOURS:    f64   = 168.0;
-const DEFAULT_MAX_HOURS:        f64   = 48.0;
+const DEFAULT_POPULATION_SIZE: usize = 50;
+const DEFAULT_HORIZON_HOURS: f64 = 168.0;
+const DEFAULT_MAX_HOURS: f64 = 48.0;
 
 // ─── Config structs ───────────────────────────────────────────────────────────
 
@@ -126,9 +125,9 @@ impl ConfigFormat {
     /// Detect format from file extension.
     pub fn from_path(path: &Path) -> Option<Self> {
         match path.extension().and_then(|e| e.to_str()) {
-            Some("toml")               => Some(ConfigFormat::Toml),
+            Some("toml") => Some(ConfigFormat::Toml),
             Some("yaml") | Some("yml") => Some(ConfigFormat::Yaml),
-            _                          => None,
+            _ => None,
         }
     }
 }
@@ -377,6 +376,8 @@ scenario:
         let path = std::path::Path::new("fixtures/demo/sunair_demo.json");
         let result = load_config(path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Unrecognised config file extension"));
+        assert!(result
+            .unwrap_err()
+            .contains("Unrecognised config file extension"));
     }
 }

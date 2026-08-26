@@ -37,7 +37,9 @@
 
 use super::allocation_engine::AllocationEngine;
 use super::portfolio_context::PortfolioContext;
-use super::recommendation::{PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction};
+use super::recommendation::{
+    PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction,
+};
 use super::user_profile::UserProfile;
 
 /// Version of the recommendation engine.
@@ -151,7 +153,9 @@ impl PortfolioRecommendationEngine {
                 existing_exposure_inr: context.existing_exposure_inr.clone(),
             };
 
-            let rec = self.allocation_engine.allocate(request, profile, &budget_capped_context);
+            let rec = self
+                .allocation_engine
+                .allocate(request, profile, &budget_capped_context);
 
             // Step 4: Deduct from budget if ADD.
             if rec.action == RecommendationAction::Add {
@@ -255,15 +259,26 @@ mod tests {
         let engine = PortfolioRecommendationEngine::new();
         let mut bad_profile = moderate_profile();
         bad_profile.user_id = "".into();
-        let result = engine.recommend(&[long_request("INFY.NS", 20)], &bad_profile, &empty_context(10000.0));
-        assert!(matches!(result, Err(RecommendationEngineError::InvalidUserProfile(_))));
+        let result = engine.recommend(
+            &[long_request("INFY.NS", 20)],
+            &bad_profile,
+            &empty_context(10000.0),
+        );
+        assert!(matches!(
+            result,
+            Err(RecommendationEngineError::InvalidUserProfile(_))
+        ));
     }
 
     #[test]
     fn no_trade_direction_produces_no_action() {
         let engine = PortfolioRecommendationEngine::new();
         let recs = engine
-            .recommend(&[no_trade_request("INFY.NS")], &moderate_profile(), &empty_context(10000.0))
+            .recommend(
+                &[no_trade_request("INFY.NS")],
+                &moderate_profile(),
+                &empty_context(10000.0),
+            )
             .unwrap();
         assert_eq!(recs.len(), 1);
         assert_eq!(recs[0].action, RecommendationAction::NoAction);
@@ -274,7 +289,11 @@ mod tests {
         // Short-term profile (max 5 sessions) + request with 20 sessions → NO_ACTION
         let engine = PortfolioRecommendationEngine::new();
         let recs = engine
-            .recommend(&[long_request("INFY.NS", 20)], &short_term_profile(), &empty_context(10000.0))
+            .recommend(
+                &[long_request("INFY.NS", 20)],
+                &short_term_profile(),
+                &empty_context(10000.0),
+            )
             .unwrap();
         assert_eq!(recs[0].action, RecommendationAction::NoAction);
         assert!(recs[0].rationale.contains("horizon"));
@@ -285,7 +304,11 @@ mod tests {
         // Short-term profile (max 5 sessions) + request with 5 sessions → ADD
         let engine = PortfolioRecommendationEngine::new();
         let recs = engine
-            .recommend(&[long_request("INFY.NS", 5)], &short_term_profile(), &empty_context(10000.0))
+            .recommend(
+                &[long_request("INFY.NS", 5)],
+                &short_term_profile(),
+                &empty_context(10000.0),
+            )
             .unwrap();
         assert_eq!(recs[0].action, RecommendationAction::Add);
     }
@@ -311,10 +334,15 @@ mod tests {
         assert_eq!(recs[1].action, RecommendationAction::Add);
         assert!((recs[1].allocation_inr - 1300.0).abs() < 1e-6);
         // Third instrument: budget exhausted → ADD with ₹0 (not AVOID — signal is valid)
-        assert_eq!(recs[2].action, RecommendationAction::Add,
-            "budget exhaustion must not change ADD to AVOID");
-        assert!((recs[2].allocation_inr - 0.0).abs() < 1e-6,
-            "allocation must be ₹0 when budget is exhausted");
+        assert_eq!(
+            recs[2].action,
+            RecommendationAction::Add,
+            "budget exhaustion must not change ADD to AVOID"
+        );
+        assert!(
+            (recs[2].allocation_inr - 0.0).abs() < 1e-6,
+            "allocation must be ₹0 when budget is exhausted"
+        );
     }
 
     #[test]

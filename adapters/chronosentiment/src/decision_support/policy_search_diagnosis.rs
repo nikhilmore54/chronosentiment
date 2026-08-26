@@ -301,19 +301,16 @@ fn instrument_breakdown(
     }
 }
 
-fn tmv_labels(profile: &crate::reasoning::assessment::AssessmentProfile) -> (String, String, String) {
+fn tmv_labels(
+    profile: &crate::reasoning::assessment::AssessmentProfile,
+) -> (String, String, String) {
     let mut factors = factors_from_profile(profile);
     for concept in CERTIFIED_INPUT_CONCEPTS {
         ensure_factor(&mut factors, concept);
     }
-    let label = |concept: &str| {
-        match factors.iter().find(|f| f.concept == concept) {
-            Some(f) if f.present => f
-                .direction
-                .clone()
-                .unwrap_or_else(|| "present".to_string()),
-            _ => "absent".to_string(),
-        }
+    let label = |concept: &str| match factors.iter().find(|f| f.concept == concept) {
+        Some(f) if f.present => f.direction.clone().unwrap_or_else(|| "present".to_string()),
+        _ => "absent".to_string(),
     };
     (label("Trend"), label("Momentum"), label("Volatility"))
 }
@@ -330,7 +327,10 @@ pub fn render_diagnosis(report: &SearchDiagnosis) -> String {
     let mut md = String::from("# CS-P-006-C Search #1 — post-search diagnosis\n\n");
     md.push_str("Diagnosis of the **already sealed** Search #1 artifact. Coralys was not re-run. Evaluation figures are holdout diagnosis, not search feedback.\n\n");
     md.push_str(&format!("- artifact_hash: `{}`\n", report.artifact_hash));
-    md.push_str(&format!("- genome identity: `{}`\n\n", report.genome_identity));
+    md.push_str(&format!(
+        "- genome identity: `{}`\n\n",
+        report.genome_identity
+    ));
 
     md.push_str("## 1. Search-space utilization\n\n");
     md.push_str("The factory can sample Trend, Momentum, Volatility (presence), conjunctions, LONG, SHORT, and NO_TRADE. The **selected** artifact uses only Trend=Bearish → LONG; unmatched NO_TRADE.\n\n");
@@ -400,11 +400,7 @@ pub fn render_diagnosis(report: &SearchDiagnosis) -> String {
     md.push_str("See `search_evidence.json`. Recorded best jumped once (generation 2) and then stayed flat. Average rose from ~0.0018 toward ~0.012 and never reached the recorded best. Median/worst/diversity were not persisted, so early population collapse cannot be proven or disproven from the archive.\n\n");
 
     md.push_str("## 4–6. Sealed-policy decomposition\n\n");
-    for slice in [
-        &report.development,
-        &report.selection,
-        &report.evaluation,
-    ] {
+    for slice in [&report.development, &report.selection, &report.evaluation] {
         let role = match slice.kind {
             PartitionKind::Development => "development (search-visible)",
             PartitionKind::Selection => "selection (search-visible)",
@@ -419,10 +415,7 @@ pub fn render_diagnosis(report: &SearchDiagnosis) -> String {
             "- mean signed traded return: {:.6}\n",
             slice.mean_signed_traded_return
         ));
-        md.push_str(&format!(
-            "- Trend occupancy: {:?}\n",
-            slice.occupancy.trend
-        ));
+        md.push_str(&format!("- Trend occupancy: {:?}\n", slice.occupancy.trend));
         md.push_str(&format!(
             "- bearish n={} mean raw 20D {:?} (LONG payoff); SHORT payoff {:?}\n",
             slice.bearish.n_bearish,

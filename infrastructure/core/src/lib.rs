@@ -1,26 +1,24 @@
-pub mod topology;
-pub mod cognition;
-pub mod morphology;
-pub mod observatory;
 pub mod binance_adapter;
+pub mod cognition;
 pub mod csv_source;
 pub mod data_source;
 pub mod folder_source;
 pub mod harness;
 pub mod inspector;
 pub mod market_adapter;
+pub mod morphology;
+pub mod observatory;
+pub mod topology;
 
 pub mod replay;
 
+pub mod ese;
 pub mod selection_cap;
 pub mod test_assets;
-pub mod ese;
 
 pub use binance_adapter::load_binance_events_from_jsonl;
 pub use csv_source::*;
 pub use data_source::CandleSource;
-
-
 
 pub use folder_source::*;
 
@@ -28,16 +26,12 @@ pub use harness::{deterministic_demo_fixture, run_simulation, run_simulation_har
 pub use inspector::*;
 pub use market_adapter::*;
 
-
-
-
 pub use replay::*;
 
 pub use selection_cap::*;
 
-
-pub use test_assets::{resolve_test_assets_dir, TestAssetsPathError};
 pub use ese::*;
+pub use test_assets::{resolve_test_assets_dir, TestAssetsPathError};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NormalizedMarketEvent {
@@ -163,7 +157,6 @@ pub struct OrderIntent {
     pub sl_target: u64,
     pub holding_period: u32,
 }
-
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct CreateOrder {

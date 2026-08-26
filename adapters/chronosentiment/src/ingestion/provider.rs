@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use std::error::Error;
 use crate::instrument::Instrument;
 use crate::observation::RawObservation;
+use async_trait::async_trait;
+use std::error::Error;
 
 pub enum TimeRange {
     OneMonth,
@@ -22,9 +22,5 @@ pub trait MarketDataProvider {
 }
 
 pub trait ValidatedObservationTranslator<R> {
-    fn translate(
-        &self,
-        raw: R,
-        instrument: &Instrument,
-    ) -> RawObservation;
+    fn translate(&self, raw: R, instrument: &Instrument) -> RawObservation;
 }

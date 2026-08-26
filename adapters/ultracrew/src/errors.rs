@@ -23,7 +23,6 @@
 ///         .map_err(|e| UltraCrewError::io(path, e))
 /// }
 /// ```
-
 use std::fmt;
 
 // ─── Result alias ─────────────────────────────────────────────────────────────
@@ -37,64 +36,36 @@ pub type Result<T> = std::result::Result<T, UltraCrewError>;
 #[derive(Debug)]
 pub enum UltraCrewError {
     // ── Import stage ──────────────────────────────────────────────────────────
-
     /// A file or stream could not be read or written.
-    Io {
-        path: String,
-        message: String,
-    },
+    Io { path: String, message: String },
 
     /// JSON input could not be parsed.
-    ParseJson {
-        path: String,
-        message: String,
-    },
+    ParseJson { path: String, message: String },
 
     /// CSV input could not be parsed.
-    ParseCsv {
-        path: String,
-        message: String,
-    },
+    ParseCsv { path: String, message: String },
 
     /// Input passed JSON/CSV parsing but failed strict semantic validation.
     /// The `issues` field contains the full `ValidationReport` display string.
-    ValidationFailed {
-        path: String,
-        issues: String,
-    },
+    ValidationFailed { path: String, issues: String },
 
     // ── Engine stage ──────────────────────────────────────────────────────────
-
     /// The optimizer configuration is invalid (e.g. population_size = 0).
-    InvalidConfig {
-        message: String,
-    },
+    InvalidConfig { message: String },
 
     /// The optimizer encountered an unrecoverable error during evolution.
-    OptimizationFailed {
-        message: String,
-    },
+    OptimizationFailed { message: String },
 
     // ── Export stage ──────────────────────────────────────────────────────────
-
     /// The output could not be serialised to the requested format.
-    SerializationFailed {
-        format: String,
-        message: String,
-    },
+    SerializationFailed { format: String, message: String },
 
     /// The requested export format is not supported.
-    UnsupportedFormat {
-        format: String,
-    },
+    UnsupportedFormat { format: String },
 
     // ── Config stage ──────────────────────────────────────────────────────────
-
     /// A configuration file could not be loaded or parsed.
-    ConfigError {
-        path: String,
-        message: String,
-    },
+    ConfigError { path: String, message: String },
 }
 
 // ─── Constructors ─────────────────────────────────────────────────────────────
@@ -134,12 +105,16 @@ impl UltraCrewError {
 
     /// Construct an `InvalidConfig` error.
     pub fn invalid_config(message: impl Into<String>) -> Self {
-        UltraCrewError::InvalidConfig { message: message.into() }
+        UltraCrewError::InvalidConfig {
+            message: message.into(),
+        }
     }
 
     /// Construct an `OptimizationFailed` error.
     pub fn optimization_failed(message: impl Into<String>) -> Self {
-        UltraCrewError::OptimizationFailed { message: message.into() }
+        UltraCrewError::OptimizationFailed {
+            message: message.into(),
+        }
     }
 
     /// Construct a `SerializationFailed` error.
@@ -152,7 +127,9 @@ impl UltraCrewError {
 
     /// Construct an `UnsupportedFormat` error.
     pub fn unsupported_format(format: impl Into<String>) -> Self {
-        UltraCrewError::UnsupportedFormat { format: format.into() }
+        UltraCrewError::UnsupportedFormat {
+            format: format.into(),
+        }
     }
 
     /// Construct a `ConfigError`.
@@ -171,8 +148,9 @@ impl UltraCrewError {
             | UltraCrewError::ParseCsv { .. }
             | UltraCrewError::ValidationFailed { .. } => "import",
 
-            UltraCrewError::InvalidConfig { .. }
-            | UltraCrewError::OptimizationFailed { .. } => "engine",
+            UltraCrewError::InvalidConfig { .. } | UltraCrewError::OptimizationFailed { .. } => {
+                "engine"
+            }
 
             UltraCrewError::SerializationFailed { .. }
             | UltraCrewError::UnsupportedFormat { .. } => "export",
@@ -184,15 +162,15 @@ impl UltraCrewError {
     /// Return a stable error code string for logging and API responses.
     pub fn code(&self) -> &'static str {
         match self {
-            UltraCrewError::Io { .. }              => "UC-IO-001",
-            UltraCrewError::ParseJson { .. }       => "UC-IMP-001",
-            UltraCrewError::ParseCsv { .. }        => "UC-IMP-002",
-            UltraCrewError::ValidationFailed { .. }=> "UC-IMP-003",
-            UltraCrewError::InvalidConfig { .. }   => "UC-ENG-001",
+            UltraCrewError::Io { .. } => "UC-IO-001",
+            UltraCrewError::ParseJson { .. } => "UC-IMP-001",
+            UltraCrewError::ParseCsv { .. } => "UC-IMP-002",
+            UltraCrewError::ValidationFailed { .. } => "UC-IMP-003",
+            UltraCrewError::InvalidConfig { .. } => "UC-ENG-001",
             UltraCrewError::OptimizationFailed { .. } => "UC-ENG-002",
             UltraCrewError::SerializationFailed { .. } => "UC-EXP-001",
-            UltraCrewError::UnsupportedFormat { .. }   => "UC-EXP-002",
-            UltraCrewError::ConfigError { .. }     => "UC-CFG-001",
+            UltraCrewError::UnsupportedFormat { .. } => "UC-EXP-002",
+            UltraCrewError::ConfigError { .. } => "UC-CFG-001",
         }
     }
 }
@@ -202,32 +180,67 @@ impl UltraCrewError {
 impl fmt::Display for UltraCrewError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UltraCrewError::Io { path, message } =>
-                write!(f, "[{}] I/O error for '{}': {}", self.code(), path, message),
+            UltraCrewError::Io { path, message } => {
+                write!(f, "[{}] I/O error for '{}': {}", self.code(), path, message)
+            }
 
-            UltraCrewError::ParseJson { path, message } =>
-                write!(f, "[{}] JSON parse error in '{}': {}", self.code(), path, message),
+            UltraCrewError::ParseJson { path, message } => write!(
+                f,
+                "[{}] JSON parse error in '{}': {}",
+                self.code(),
+                path,
+                message
+            ),
 
-            UltraCrewError::ParseCsv { path, message } =>
-                write!(f, "[{}] CSV parse error in '{}': {}", self.code(), path, message),
+            UltraCrewError::ParseCsv { path, message } => write!(
+                f,
+                "[{}] CSV parse error in '{}': {}",
+                self.code(),
+                path,
+                message
+            ),
 
-            UltraCrewError::ValidationFailed { path, issues } =>
-                write!(f, "[{}] Validation failed for '{}':\n{}", self.code(), path, issues),
+            UltraCrewError::ValidationFailed { path, issues } => write!(
+                f,
+                "[{}] Validation failed for '{}':\n{}",
+                self.code(),
+                path,
+                issues
+            ),
 
-            UltraCrewError::InvalidConfig { message } =>
-                write!(f, "[{}] Invalid optimizer configuration: {}", self.code(), message),
+            UltraCrewError::InvalidConfig { message } => write!(
+                f,
+                "[{}] Invalid optimizer configuration: {}",
+                self.code(),
+                message
+            ),
 
-            UltraCrewError::OptimizationFailed { message } =>
-                write!(f, "[{}] Optimization failed: {}", self.code(), message),
+            UltraCrewError::OptimizationFailed { message } => {
+                write!(f, "[{}] Optimization failed: {}", self.code(), message)
+            }
 
-            UltraCrewError::SerializationFailed { format, message } =>
-                write!(f, "[{}] Serialization to '{}' failed: {}", self.code(), format, message),
+            UltraCrewError::SerializationFailed { format, message } => write!(
+                f,
+                "[{}] Serialization to '{}' failed: {}",
+                self.code(),
+                format,
+                message
+            ),
 
-            UltraCrewError::UnsupportedFormat { format } =>
-                write!(f, "[{}] Unsupported export format: '{}'. Supported: json, csv", self.code(), format),
+            UltraCrewError::UnsupportedFormat { format } => write!(
+                f,
+                "[{}] Unsupported export format: '{}'. Supported: json, csv",
+                self.code(),
+                format
+            ),
 
-            UltraCrewError::ConfigError { path, message } =>
-                write!(f, "[{}] Config error for '{}': {}", self.code(), path, message),
+            UltraCrewError::ConfigError { path, message } => write!(
+                f,
+                "[{}] Config error for '{}': {}",
+                self.code(),
+                path,
+                message
+            ),
         }
     }
 }
@@ -339,10 +352,16 @@ mod tests {
         assert_eq!(UltraCrewError::io("f", "e").stage(), "import");
         assert_eq!(UltraCrewError::parse_json("f", "e").stage(), "import");
         assert_eq!(UltraCrewError::parse_csv("f", "e").stage(), "import");
-        assert_eq!(UltraCrewError::validation_failed("f", "e").stage(), "import");
+        assert_eq!(
+            UltraCrewError::validation_failed("f", "e").stage(),
+            "import"
+        );
         assert_eq!(UltraCrewError::invalid_config("e").stage(), "engine");
         assert_eq!(UltraCrewError::optimization_failed("e").stage(), "engine");
-        assert_eq!(UltraCrewError::serialization_failed("json", "e").stage(), "export");
+        assert_eq!(
+            UltraCrewError::serialization_failed("json", "e").stage(),
+            "export"
+        );
         assert_eq!(UltraCrewError::unsupported_format("xml").stage(), "export");
         assert_eq!(UltraCrewError::config_error("f", "e").stage(), "config");
     }
@@ -353,11 +372,23 @@ mod tests {
         assert_eq!(UltraCrewError::io("f", "e").code(), "UC-IO-001");
         assert_eq!(UltraCrewError::parse_json("f", "e").code(), "UC-IMP-001");
         assert_eq!(UltraCrewError::parse_csv("f", "e").code(), "UC-IMP-002");
-        assert_eq!(UltraCrewError::validation_failed("f", "e").code(), "UC-IMP-003");
+        assert_eq!(
+            UltraCrewError::validation_failed("f", "e").code(),
+            "UC-IMP-003"
+        );
         assert_eq!(UltraCrewError::invalid_config("e").code(), "UC-ENG-001");
-        assert_eq!(UltraCrewError::optimization_failed("e").code(), "UC-ENG-002");
-        assert_eq!(UltraCrewError::serialization_failed("json", "e").code(), "UC-EXP-001");
-        assert_eq!(UltraCrewError::unsupported_format("xml").code(), "UC-EXP-002");
+        assert_eq!(
+            UltraCrewError::optimization_failed("e").code(),
+            "UC-ENG-002"
+        );
+        assert_eq!(
+            UltraCrewError::serialization_failed("json", "e").code(),
+            "UC-EXP-001"
+        );
+        assert_eq!(
+            UltraCrewError::unsupported_format("xml").code(),
+            "UC-EXP-002"
+        );
         assert_eq!(UltraCrewError::config_error("f", "e").code(), "UC-CFG-001");
     }
 

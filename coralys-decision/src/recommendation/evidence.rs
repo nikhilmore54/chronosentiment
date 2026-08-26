@@ -235,10 +235,7 @@ impl EvidenceStore {
                 .entry((dir.clone(), state.clone()))
                 .or_default()
                 .push(stats.clone());
-            broad_index
-                .entry(state)
-                .or_default()
-                .push(stats);
+            broad_index.entry(state).or_default().push(stats);
         }
 
         Ok(EvidenceStore {
@@ -253,12 +250,7 @@ impl EvidenceStore {
     ///   Level 1 (narrow): direction + coralys_state — if sample >= MIN_NARROW_SAMPLE
     ///   Level 2 (broad):  coralys_state only         — if Level 1 < MIN_NARROW_SAMPLE
     ///   Insufficient:     if Level 2 < MIN_BROAD_SAMPLE
-    pub fn for_decision(
-        &self,
-        direction: &str,
-        trend: &str,
-        momentum: &str,
-    ) -> HistoricalEvidence {
+    pub fn for_decision(&self, direction: &str, trend: &str, momentum: &str) -> HistoricalEvidence {
         let coralys_state = format!("{}_{}", trend, momentum);
         let dir = direction.to_uppercase();
 
@@ -535,8 +527,8 @@ struct Rec001hRecord {
 struct AnalogueObs {
     vol_regime: VolatilityRegime,
     volume_regime: VolumeRegime,
-    mfe5: f64,   // mfe_pct[4] — session-5 MFE
-    mae5: f64,   // mae_pct[4] — session-5 MAE (negative)
+    mfe5: f64, // mfe_pct[4] — session-5 MFE
+    mae5: f64, // mae_pct[4] — session-5 MAE (negative)
     outcome: String,
     sessions_to_outcome: f64,
 }
@@ -697,7 +689,12 @@ impl Rec001hStore {
             }
         }
 
-        Ok(Rec001hStore { exact, relax_vol, relax_both, state_only })
+        Ok(Rec001hStore {
+            exact,
+            relax_vol,
+            relax_both,
+            state_only,
+        })
     }
 
     /// Look up v1 evidence for a ticker in a given C3-002 state.
@@ -728,9 +725,14 @@ impl Rec001hStore {
         if let Some(pool) = self.exact.get(&exact_key) {
             if pool.len() >= MIN_V1_SAMPLE {
                 return Some(aggregate_v1(
-                    ticker, &dir, trend, momentum,
-                    Some(vol_regime.clone()), Some(volume_regime.clone()),
-                    DegradationLevel::Exact, pool,
+                    ticker,
+                    &dir,
+                    trend,
+                    momentum,
+                    Some(vol_regime.clone()),
+                    Some(volume_regime.clone()),
+                    DegradationLevel::Exact,
+                    pool,
                 ));
             }
         }
@@ -746,9 +748,14 @@ impl Rec001hStore {
         if let Some(pool) = self.relax_vol.get(&rv_key) {
             if pool.len() >= MIN_V1_SAMPLE {
                 return Some(aggregate_v1(
-                    ticker, &dir, trend, momentum,
-                    Some(vol_regime.clone()), None,
-                    DegradationLevel::RelaxVolume, pool,
+                    ticker,
+                    &dir,
+                    trend,
+                    momentum,
+                    Some(vol_regime.clone()),
+                    None,
+                    DegradationLevel::RelaxVolume,
+                    pool,
                 ));
             }
         }
@@ -763,9 +770,14 @@ impl Rec001hStore {
         if let Some(pool) = self.relax_both.get(&rb_key) {
             if pool.len() >= MIN_V1_SAMPLE {
                 return Some(aggregate_v1(
-                    ticker, &dir, trend, momentum,
-                    None, None,
-                    DegradationLevel::RelaxBoth, pool,
+                    ticker,
+                    &dir,
+                    trend,
+                    momentum,
+                    None,
+                    None,
+                    DegradationLevel::RelaxBoth,
+                    pool,
                 ));
             }
         }
@@ -778,9 +790,14 @@ impl Rec001hStore {
         if let Some(pool) = self.state_only.get(&so_key) {
             if pool.len() >= MIN_V1_SAMPLE {
                 return Some(aggregate_v1(
-                    ticker, &dir, trend, momentum,
-                    None, None,
-                    DegradationLevel::StateOnly, pool,
+                    ticker,
+                    &dir,
+                    trend,
+                    momentum,
+                    None,
+                    None,
+                    DegradationLevel::StateOnly,
+                    pool,
                 ));
             }
         }
@@ -805,8 +822,14 @@ fn aggregate_v1(
 
     // Target rate — first-exit semantics: only TARGET_BEFORE_RISK counts as a win.
     // An observation with MFE10=9.8% but outcome=RISK_BEFORE_TARGET is a loss.
-    let winners: Vec<&AnalogueObs> = pool.iter().filter(|o| o.outcome == "TARGET_BEFORE_RISK").collect();
-    let losers: Vec<&AnalogueObs> = pool.iter().filter(|o| o.outcome == "RISK_BEFORE_TARGET").collect();
+    let winners: Vec<&AnalogueObs> = pool
+        .iter()
+        .filter(|o| o.outcome == "TARGET_BEFORE_RISK")
+        .collect();
+    let losers: Vec<&AnalogueObs> = pool
+        .iter()
+        .filter(|o| o.outcome == "RISK_BEFORE_TARGET")
+        .collect();
     let target_count = winners.len();
     let target_rate = target_count as f64 / sample_size as f64;
 

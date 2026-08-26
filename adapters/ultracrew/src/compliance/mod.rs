@@ -1,3 +1,9 @@
+pub mod agreements;
+pub mod company;
+pub mod metadata;
+pub mod optimization;
+pub mod registry;
+pub mod regulatory;
 /// UltraCrew Compliance Framework
 ///
 /// The Compliance Framework is the single extension point for all scheduling
@@ -59,25 +65,13 @@
 /// Manufacturing → regulatory/ (Factory Act packs)
 /// Retail        → regulatory/ (Labor Law packs)
 /// ```
-
 pub mod traits;
-pub mod registry;
-pub mod metadata;
-pub mod regulatory;
-pub mod company;
-pub mod agreements;
-pub mod optimization;
 
 // ── Convenience re-exports ────────────────────────────────────────────────────
 
+pub use metadata::ComplianceDescriptor;
+pub use registry::ComplianceRegistry;
 pub use traits::{
-    ConstraintRule,
-    CompliancePack,
-    RuleId,
-    RuleOutcome,
-    RuleContext,
-    Severity,
+    CompliancePack, ConstraintRule, RuleContext, RuleId, RuleOutcome, Severity,
     ViolationExplanation,
 };
-pub use registry::ComplianceRegistry;
-pub use metadata::ComplianceDescriptor;

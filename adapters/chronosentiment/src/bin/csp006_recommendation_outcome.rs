@@ -28,8 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing certified database name in DATABASE_URL".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(search_dir.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        search_dir.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_ARTIFACT_HASH {
         return Err("refusing to score an artifact that is not Search #1".into());
     }
@@ -62,7 +63,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output.join("recommendations.json"),
         serde_json::to_vec_pretty(&rows)?,
     )?;
-    fs::write(output.join("scorecard.json"), serde_json::to_vec_pretty(&card)?)?;
+    fs::write(
+        output.join("scorecard.json"),
+        serde_json::to_vec_pretty(&card)?,
+    )?;
     fs::write(output.join("SCORECARD.md"), render_scorecard(&card))?;
 
     println!("result=PASS");

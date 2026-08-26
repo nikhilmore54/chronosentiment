@@ -50,9 +50,7 @@ use coralys_airline::domain::rotation::{Rotation, RotationId};
 use coralys_airline::legality::LegalityChecker;
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{
-    SchedulingObjective, WorkloadBalanceObjective,
-};
+use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::local_search::LocalSearch;
 
 use chrono::{Duration, TimeZone, Utc};
@@ -84,12 +82,7 @@ fn make_pairing(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
         vec![out.clone(), ret.clone()],
     )
     .unwrap();
-    let pairing = Pairing::new(
-        PairingId::new(id),
-        AirportCode::new("LHR"),
-        vec![duty],
-    )
-    .unwrap();
+    let pairing = Pairing::new(PairingId::new(id), AirportCode::new("LHR"), vec![duty]).unwrap();
     (vec![out, ret], pairing)
 }
 
@@ -226,9 +219,9 @@ fn run_scale(
 #[test]
 fn m6_4__scalability_small_medium_large() {
     // Iterations scale with problem size.
-    let small  = run_scale("Small",   3,  6,  200);
-    let medium = run_scale("Medium",  7, 10,  500);
-    let large  = run_scale("Large",  15, 18, 1000);
+    let small = run_scale("Small", 3, 6, 200);
+    let medium = run_scale("Medium", 7, 10, 500);
+    let large = run_scale("Large", 15, 18, 1000);
 
     // Evidence report.
     println!();
@@ -236,17 +229,33 @@ fn m6_4__scalability_small_medium_large() {
     println!("=======================");
     println!(
         "{:<8} {:>5} {:>8} {:>8} {:>10} {:>10} {:>8} {:>8} {:>8} {:>8} {:>12}",
-        "Size", "Rots", "Pairs", "MaxIter",
-        "Baseline", "Optimized", "Improv%",
-        "Evals", "Imprv", "AccRatio%", "Runtime(ms)"
+        "Size",
+        "Rots",
+        "Pairs",
+        "MaxIter",
+        "Baseline",
+        "Optimized",
+        "Improv%",
+        "Evals",
+        "Imprv",
+        "AccRatio%",
+        "Runtime(ms)"
     );
     println!("{}", "-".repeat(100));
     for r in [&small, &medium, &large] {
         println!(
             "{:<8} {:>5} {:>8} {:>8} {:>10.4} {:>10.4} {:>7.1}% {:>8} {:>8} {:>8.2}% {:>12}",
-            r.label, r.n_rotations, r.n_pairings, r.max_iterations,
-            r.baseline_score, r.optimized_score, r.improvement_pct,
-            r.evaluations, r.improvements, r.acceptance_ratio, r.runtime_ms
+            r.label,
+            r.n_rotations,
+            r.n_pairings,
+            r.max_iterations,
+            r.baseline_score,
+            r.optimized_score,
+            r.improvement_pct,
+            r.evaluations,
+            r.improvements,
+            r.acceptance_ratio,
+            r.runtime_ms
         );
     }
     println!();
@@ -258,7 +267,9 @@ fn m6_4__scalability_small_medium_large() {
         assert!(
             r.optimized_score < r.baseline_score,
             "M6.4 FAIL [{}]: optimized ({:.4}) must be < baseline ({:.4})",
-            r.label, r.optimized_score, r.baseline_score
+            r.label,
+            r.optimized_score,
+            r.baseline_score
         );
         assert!(
             r.pairings_conserved,

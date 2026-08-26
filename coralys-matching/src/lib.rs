@@ -5,11 +5,7 @@ pub trait AssignmentSolver {
     type Demand;
     type Matching;
 
-    fn assign(
-        &self,
-        workers: &[Self::Worker],
-        demands: &[Self::Demand],
-    ) -> Self::Matching;
+    fn assign(&self, workers: &[Self::Worker], demands: &[Self::Demand]) -> Self::Matching;
 }
 
 pub struct BipartiteMatchingSolver;
@@ -19,11 +15,7 @@ impl AssignmentSolver for BipartiteMatchingSolver {
     type Demand = (String, usize);
     type Matching = MatchingResult<(usize, String)>;
 
-    fn assign(
-        &self,
-        workers: &[Self::Worker],
-        demands: &[Self::Demand],
-    ) -> Self::Matching {
+    fn assign(&self, workers: &[Self::Worker], demands: &[Self::Demand]) -> Self::Matching {
         // Flatten demands into individual unit demand slots
         let mut demand_slots = Vec::new();
         for (skill, count) in demands {
@@ -85,7 +77,15 @@ fn dfs(
     for &v in &adj[u] {
         if !visited[v] {
             visited[v] = true;
-            if match_slot[v].is_none() || dfs(match_slot[v].unwrap(), adj, match_worker, match_slot, visited) {
+            if match_slot[v].is_none()
+                || dfs(
+                    match_slot[v].unwrap(),
+                    adj,
+                    match_worker,
+                    match_slot,
+                    visited,
+                )
+            {
                 match_worker[u] = Some(v);
                 match_slot[v] = Some(u);
                 return true;

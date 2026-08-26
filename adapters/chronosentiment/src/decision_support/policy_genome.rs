@@ -156,16 +156,12 @@ fn random_predicate(rng: &mut StdRng) -> FactorPredicate {
         0 => FactorPredicate {
             concept: "Trend".to_string(),
             present: Some(true),
-            direction: Some(
-                ["Bullish", "Bearish", "Neutral"][rng.gen_range(0..3)].to_string(),
-            ),
+            direction: Some(["Bullish", "Bearish", "Neutral"][rng.gen_range(0..3)].to_string()),
         },
         1 => FactorPredicate {
             concept: "Momentum".to_string(),
             present: Some(true),
-            direction: Some(
-                ["Positive", "Negative", "Neutral"][rng.gen_range(0..3)].to_string(),
-            ),
+            direction: Some(["Positive", "Negative", "Neutral"][rng.gen_range(0..3)].to_string()),
         },
         _ => FactorPredicate {
             concept: "Volatility".to_string(),

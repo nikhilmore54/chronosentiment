@@ -49,7 +49,9 @@ fn document_keeps_research_quarantined_and_the_product_paper_only() {
     assert!(doc.contains(RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH));
     assert!(doc.contains("Candidate C3-002"));
     assert!(doc.contains("Search #3"));
-    assert!(doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered"));
+    assert!(
+        doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered")
+    );
     assert!(doc.contains("paper"));
     assert!(doc.contains("Not Strategy v2"));
 }

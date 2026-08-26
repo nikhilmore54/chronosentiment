@@ -1,18 +1,18 @@
-pub mod ecology;
+pub mod compliance;
 pub mod config;
+pub mod ecology;
+pub mod inrc;
 pub mod models;
 pub mod optimization;
-pub mod inrc;
 pub mod workforce;
-pub mod compliance;
 
 pub mod helpers {
     use super::ecology::WorkforceEcology;
     use super::models::{Shift, Skill, Worker};
     use super::optimization::{ScheduleContext, ScheduleOptimizer};
+    use crate::optimization::ScheduleEvaluation;
     use coralys_moga::config::EvolutionConfig;
     use coralys_moga::engine::{EvolutionEngine, GaResult};
-    use crate::optimization::ScheduleEvaluation;
     use std::sync::Arc;
 
     pub fn generate_scenario(
@@ -39,7 +39,7 @@ pub mod helpers {
 
         let mut shifts = Vec::new();
         for i in 0..num_shifts {
-            let start = (i * 3) % 160; 
+            let start = (i * 3) % 160;
             shifts.push(Shift {
                 id: i as u64,
                 start_hour: start as u64,
@@ -59,7 +59,9 @@ pub mod helpers {
             shifts: Arc::new(shifts),
             ecology,
             rng_seed: 0,
-            observatory: Arc::new(std::sync::Mutex::new(crate::optimization::Observatory::new())),
+            observatory: Arc::new(std::sync::Mutex::new(
+                crate::optimization::Observatory::new(),
+            )),
             locked_assignments: None,
             scenario: None,
         })
@@ -75,8 +77,10 @@ pub mod helpers {
         let evaluator = ScheduleOptimizer::new(context.clone());
 
         let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
-        engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
-        
+        engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine {
+            context: context.clone(),
+        }));
+
         // let mut satisfaction_engine = coralys_moga::runtime::optimization::satisfaction::DefaultRepairEngine::new(
         //     coralys_moga::runtime::optimization::constraint::ConstraintSatisfactionConfig::default()
         // ).with_metric_engine(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
@@ -89,24 +93,24 @@ pub mod helpers {
         // EvolutionEngine now returns Result to surface configuration validation errors.
         // For the demo/pilot we unwrap here because configs are generated internally.
         // TODO: Propagate this Result through the UltraCrew API when production‑ready.
-        engine.run_ga_evolution(config)
+        engine
+            .run_ga_evolution(config)
             .expect("Invalid EvolutionConfig – engine failed")
     }
 }
 
-
-pub mod pipeline;
-pub mod decision_intelligence;
-pub mod schedule_solution;
-pub mod public_contracts;
 pub mod constraint_engine;
-pub mod recommendation;
-pub mod generic_import;
+pub mod decision_intelligence;
+pub mod errors;
 pub mod generic_export;
+pub mod generic_import;
+pub mod health;
+pub mod metrics;
+pub mod observability;
+pub mod pipeline;
+pub mod public_contracts;
+pub mod recommendation;
+pub mod repair;
+pub mod schedule_solution;
 pub mod strict_validator;
 pub mod telemetry;
-pub mod errors;
-pub mod health;
-pub mod repair;
-pub mod observability;
-pub mod metrics;

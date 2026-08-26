@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 /// campaign_engine — ROADEF 2026 Dataset A Submission Generator
 ///
 /// Runs on all 20 setA instances and writes srpaths.json solution files.
@@ -16,15 +17,13 @@
 ///
 /// The empty solution (srpaths=[]) is always valid. This solver attempts to
 /// improve on it by steering traffic away from saturated links.
-
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Reverse;
 use std::fs::File;
 use std::io::Write;
 
+use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
-use roadef::evaluator::RoadefEvaluator;
 
 // ---------------------------------------------------------------------------
 // Dijkstra shortest path (metric-weighted, ignoring disabled arcs)
@@ -47,7 +46,9 @@ fn dijkstra_path(
         if disabled_links.contains(&link.id) {
             continue;
         }
-        adj.entry(link.from).or_default().push((link.to, link.metric));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, link.metric));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -124,7 +125,9 @@ fn load_aware_path(
             load_penalty * sat
         };
         let effective_metric = link.metric + penalty;
-        adj.entry(link.from).or_default().push((link.to, effective_metric));
+        adj.entry(link.from)
+            .or_default()
+            .push((link.to, effective_metric));
     }
 
     let mut dist: HashMap<u64, u64> = HashMap::new();
@@ -267,27 +270,53 @@ fn main() -> anyhow::Result<()> {
 
         let num_demands = tm.demands.len();
         let num_slots = tm.num_time_slots;
-        let max_seg = if scenario.max_segments >= 0 { scenario.max_segments as usize } else { 100 };
-        let budget_t1 = scenario.budget.iter().find(|b| b.t == 1).map(|b| b.value).unwrap_or(0);
+        let max_seg = if scenario.max_segments >= 0 {
+            scenario.max_segments as usize
+        } else {
+            100
+        };
+        let budget_t1 = scenario
+            .budget
+            .iter()
+            .find(|b| b.t == 1)
+            .map(|b| b.value)
+            .unwrap_or(0);
 
-        print!("setA-{}: {} nodes, {} links, {} demands, {} slots, budget_t1={} ... ",
-            inst, net.nodes.len(), net.links.len(), num_demands, num_slots, budget_t1);
+        print!(
+            "setA-{}: {} nodes, {} links, {} demands, {} slots, budget_t1={} ... ",
+            inst,
+            net.nodes.len(),
+            net.links.len(),
+            num_demands,
+            num_slots,
+            budget_t1
+        );
 
         // Disabled links at each time slot
-        let disabled_t0: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t0: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 0)
             .flat_map(|i| i.links.iter().copied())
             .collect();
-        let disabled_t1: HashSet<u64> = scenario.interventions.iter()
+        let disabled_t1: HashSet<u64> = scenario
+            .interventions
+            .iter()
             .filter(|i| i.t == 1)
             .flat_map(|i| i.links.iter().copied())
             .collect();
 
         // Build demand lists for each time slot
-        let demands_t0: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_t0: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| (i, d.s, d.t, d.v[0]))
             .collect();
-        let demands_t1: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_t1: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| (i, d.s, d.t, if d.v.len() > 1 { d.v[1] } else { d.v[0] }))
             .collect();
 
@@ -297,7 +326,10 @@ fn main() -> anyhow::Result<()> {
         let disabled_both: HashSet<u64> = disabled_t0.union(&disabled_t1).copied().collect();
 
         // Use average volume for routing priority
-        let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
+        let demands_avg: Vec<(usize, u64, u64, f64)> = tm
+            .demands
+            .iter()
+            .enumerate()
             .map(|(i, d)| {
                 let v0 = d.v[0];
                 let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
@@ -315,9 +347,17 @@ fn main() -> anyhow::Result<()> {
             if let Some(w) = shared_assign.get(&d_idx) {
                 if !w.is_empty() {
                     // Emit same waypoints for both t=0 and t=1
-                    srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
+                    srpaths.push(SrPath {
+                        d: d_idx,
+                        t: 0,
+                        w: w.clone(),
+                    });
                     if num_slots > 1 {
-                        srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                        srpaths.push(SrPath {
+                            d: d_idx,
+                            t: 1,
+                            w: w.clone(),
+                        });
                     }
                 }
             }
@@ -325,7 +365,9 @@ fn main() -> anyhow::Result<()> {
 
         // Validate and compare against empty solution
         let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
-        let solution = Solution { srpaths: srpaths.clone() };
+        let solution = Solution {
+            srpaths: srpaths.clone(),
+        };
         let result = evaluator.evaluate_solution(&solution);
 
         let empty_sol = Solution { srpaths: vec![] };
@@ -335,7 +377,9 @@ fn main() -> anyhow::Result<()> {
             // Our solution is structurally invalid (budget/segment violation) — use empty
             println!("INVALID → empty (obj={:.4})", empty_result.obj);
             vec![]
-        } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
+        } else if result.obj.is_finite()
+            && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj)
+        {
             // Our solution is finite and better than or equal to empty
             println!("obj={:.4} (empty={:.4})", result.obj, empty_result.obj);
             srpaths
@@ -349,7 +393,10 @@ fn main() -> anyhow::Result<()> {
             srpaths
         } else {
             // Our solution is worse than empty — use empty
-            println!("obj={:.4} worse than empty={:.4} → using empty", result.obj, empty_result.obj);
+            println!(
+                "obj={:.4} worse than empty={:.4} → using empty",
+                result.obj, empty_result.obj
+            );
             vec![]
         };
 

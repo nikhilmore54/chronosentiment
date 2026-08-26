@@ -5,11 +5,11 @@ use crate::metrics::concepts::Concept;
 pub trait EvaluationProfile {
     fn name(&self) -> &str;
     fn version(&self) -> &str;
-    
+
     /// The high-level ontological concepts this profile cares about.
     fn active_concepts(&self) -> Vec<Concept>;
-    
-    /// Given a concept, returns the names of the specific metric models 
+
+    /// Given a concept, returns the names of the specific metric models
     /// that should be used as evidence providers for this concept.
     fn metrics_for_concept(&self, concept: &Concept) -> Vec<&'static str>;
 }
@@ -21,7 +21,7 @@ impl EvaluationProfile for LargeCapCoreProfile {
     fn name(&self) -> &str {
         "LargeCapCore"
     }
-    
+
     fn version(&self) -> &str {
         "1.0.0"
     }

@@ -31,7 +31,11 @@ impl RobustnessScore {
     fn new(rest_buffer_ratio: f64, crew_slack_ratio: f64, rest_weight: f64) -> Self {
         let slack_weight = 1.0 - rest_weight;
         let overall = rest_buffer_ratio * rest_weight + crew_slack_ratio * slack_weight;
-        Self { rest_buffer_ratio, crew_slack_ratio, overall }
+        Self {
+            rest_buffer_ratio,
+            crew_slack_ratio,
+            overall,
+        }
     }
 }
 
@@ -63,7 +67,10 @@ impl RobustnessEvaluator {
         max_pairings_per_rotation: usize,
         rest_weight: f64,
     ) -> Self {
-        assert!((0.0..=1.0).contains(&rest_weight), "rest_weight must be in [0, 1]");
+        assert!(
+            (0.0..=1.0).contains(&rest_weight),
+            "rest_weight must be in [0, 1]"
+        );
         Self {
             min_rest_minutes,
             buffer_threshold_minutes,
@@ -128,10 +135,10 @@ mod tests {
 
     fn make_evaluator() -> RobustnessEvaluator {
         RobustnessEvaluator::new(
-            480.0,  // 8 h minimum rest
-            60.0,   // 1 h buffer threshold
-            3,      // max 3 pairings per rotation
-            0.5,    // equal weights
+            480.0, // 8 h minimum rest
+            60.0,  // 1 h buffer threshold
+            3,     // max 3 pairings per rotation
+            0.5,   // equal weights
         )
     }
 

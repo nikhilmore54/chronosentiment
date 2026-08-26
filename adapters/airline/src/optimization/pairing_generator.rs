@@ -1,7 +1,7 @@
-use chrono::Duration;
 use crate::domain::duty::{Duty, DutyId};
 use crate::domain::flight::{AirportCode, FlightLeg};
 use crate::domain::pairing::{Pairing, PairingId};
+use chrono::Duration;
 
 pub struct PairingGenerator {
     pub min_sit_mins: i64,
@@ -108,13 +108,23 @@ impl PairingGenerator {
         for i in 0..sorted_duties.len() {
             if sorted_duties[i].report_station() == base {
                 let mut current_duties = vec![sorted_duties[i].clone()];
-                self.dfs_pairing(&sorted_duties, i, base, &mut current_duties, &mut valid_pairings);
+                self.dfs_pairing(
+                    &sorted_duties,
+                    i,
+                    base,
+                    &mut current_duties,
+                    &mut valid_pairings,
+                );
             }
         }
 
         let mut pairings = Vec::new();
         for (idx, duties_seq) in valid_pairings.into_iter().enumerate() {
-            if let Ok(pairing) = Pairing::new(PairingId::new(format!("P{}", idx)), base.clone(), duties_seq) {
+            if let Ok(pairing) = Pairing::new(
+                PairingId::new(format!("P{}", idx)),
+                base.clone(),
+                duties_seq,
+            ) {
                 pairings.push(pairing);
             }
         }
@@ -183,8 +193,8 @@ impl PairingGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone, Utc};
     use crate::domain::flight::{AircraftType, FlightLegId, FlightNumber};
+    use chrono::{TimeZone, Utc};
 
     fn make_leg(id: &str, origin: &str, dest: &str, dep_h: u32, arr_h: u32) -> FlightLeg {
         let base_time = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();

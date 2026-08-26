@@ -1,21 +1,32 @@
 use crate::config::EvolutionConfig;
-use crate::traits::{
-    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
-    ImprovementOperator,
-};
-use crate::observatory::{GenerationObserver, PipelineObserver, ProcessingEvent};
 use crate::metrics::evolution::{EvolutionMetrics, ProcessorMetrics};
+use crate::observatory::{GenerationObserver, PipelineObserver, ProcessingEvent};
+use crate::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, ImprovementOperator,
+    MutationOperator,
+};
 use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use std::cmp::Ordering;
 
 pub trait PipelineAdapter<G> {
-    fn process_offspring(&self, candidate: &mut G) -> Result<bool, Box<dyn std::error::Error + Send + Sync>>;
+    fn process_offspring(
+        &self,
+        candidate: &mut G,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>>;
 }
 
-impl<G: Genome, CM: coralys_core::operators::ConstraintModel<G>, E: std::error::Error + Send + Sync + 'static> PipelineAdapter<G> for coralys_core::pipeline::EvolutionaryPipeline<G, CM, E> {
-    fn process_offspring(&self, candidate: &mut G) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+impl<
+    G: Genome,
+    CM: coralys_core::operators::ConstraintModel<G>,
+    E: std::error::Error + Send + Sync + 'static,
+> PipelineAdapter<G> for coralys_core::pipeline::EvolutionaryPipeline<G, CM, E>
+{
+    fn process_offspring(
+        &self,
+        candidate: &mut G,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         coralys_core::pipeline::EvolutionaryPipeline::process_offspring(self, candidate)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
@@ -45,7 +56,8 @@ pub struct EvolutionEngine<
     pub factory: Factory,
     pub observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
     pub generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
-    pub metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
+    pub metric_engine:
+        Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     pub pipeline_adapter: Option<Box<dyn PipelineAdapter<G>>>,
     metrics: Option<std::sync::Mutex<EvolutionMetrics>>,
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
@@ -108,7 +120,8 @@ where
     processors: Vec<Box<dyn ImprovementOperator<G>>>,
     observer: Option<std::sync::Arc<dyn PipelineObserver<G>>>,
     generation_observer: Option<std::sync::Arc<dyn GenerationObserver<G, F::Evaluation>>>,
-    metric_engine: Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
+    metric_engine:
+        Option<std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>>,
     pipeline_adapter: Option<Box<dyn PipelineAdapter<G>>>,
     metrics_enabled: bool,
     _marker: std::marker::PhantomData<G>,
@@ -163,7 +176,10 @@ where
         self
     }
 
-    pub fn with_metric_engine(mut self, engine: std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>) -> Self {
+    pub fn with_metric_engine(
+        mut self,
+        engine: std::sync::Arc<dyn crate::runtime::optimization::metric::MetricEngine<G>>,
+    ) -> Self {
         self.metric_engine = Some(engine);
         self
     }
@@ -214,10 +230,18 @@ where
     }
 
     pub fn build(self) -> Result<EvolutionEngine<G, F, M, C, Factory>, String> {
-        let evaluator = self.evaluator.ok_or_else(|| "evaluator is required".to_string())?;
-        let mutator = self.mutator.ok_or_else(|| "mutator is required".to_string())?;
-        let crossover = self.crossover.ok_or_else(|| "crossover is required".to_string())?;
-        let factory = self.factory.ok_or_else(|| "factory is required".to_string())?;
+        let evaluator = self
+            .evaluator
+            .ok_or_else(|| "evaluator is required".to_string())?;
+        let mutator = self
+            .mutator
+            .ok_or_else(|| "mutator is required".to_string())?;
+        let crossover = self
+            .crossover
+            .ok_or_else(|| "crossover is required".to_string())?;
+        let factory = self
+            .factory
+            .ok_or_else(|| "factory is required".to_string())?;
         let metrics = if self.metrics_enabled {
             Some(std::sync::Mutex::new(EvolutionMetrics::default()))
         } else {
@@ -247,7 +271,6 @@ impl<
     Factory: GenomeFactory<G>,
 > EvolutionEngine<G, F, M, C, Factory>
 {
-
     pub fn initialize_population(&self, config: &EvolutionConfig, rng: &mut StdRng) -> Vec<G> {
         (0..config.population_size)
             .map(|_| self.factory.create(rng))
@@ -299,12 +322,18 @@ impl<
         // Configuration validation removed for now.
         let mut _gen = 0;
         let mut stddev = 0.0;
-        let policy = config.termination_policy.clone().unwrap_or(crate::termination::TerminationPolicy::FixedGenerations(config.generation_limit));
+        let policy = config.termination_policy.clone().unwrap_or(
+            crate::termination::TerminationPolicy::FixedGenerations(config.generation_limit),
+        );
 
         loop {
             // Check termination policy
             let elapsed = start.elapsed();
-            let avg_fitness = if history.is_empty() { 0.0 } else { average_history.last().copied().unwrap_or(0.0) };
+            let avg_fitness = if history.is_empty() {
+                0.0
+            } else {
+                average_history.last().copied().unwrap_or(0.0)
+            };
             let term_state = crate::termination::TerminationState {
                 generation: _gen,
                 elapsed_time: elapsed,
@@ -324,7 +353,8 @@ impl<
             let mut evals: Vec<F::Evaluation> = population
                 .iter()
                 .map(|c| {
-                    let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
+                    let empty_metrics =
+                        crate::runtime::optimization::metric::MetricReport::default();
                     let current_metrics = match &self.metric_engine {
                         Some(engine) => engine.evaluate(c),
                         None => empty_metrics,
@@ -353,7 +383,10 @@ impl<
                 let first = evals.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
                 let second = evals.get(1).map(|e| e.fitness()).unwrap_or(f64::NAN);
                 let last = evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
-                eprintln!("[INSTR] Sorted distances: best={:.1}, second={:.1}, worst={:.1}", first, second, last);
+                eprintln!(
+                    "[INSTR] Sorted distances: best={:.1}, second={:.1}, worst={:.1}",
+                    first, second, last
+                );
             }
             // Top fitness after sort log removed
             // Bottom fitness after sort log removed
@@ -375,10 +408,17 @@ impl<
             }
 
             if instrument {
-                let new_global = if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
+                let new_global = if global_best.is_none()
+                    || gen_best.fitness() > global_best.as_ref().unwrap().fitness()
+                {
                     Some(gen_best.clone())
-                } else { global_best.clone() };
-                let prev_dist = prev_global_best.as_ref().map(|g| g.fitness()).unwrap_or(f64::NAN);
+                } else {
+                    global_best.clone()
+                };
+                let prev_dist = prev_global_best
+                    .as_ref()
+                    .map(|g| g.fitness())
+                    .unwrap_or(f64::NAN);
                 let pop_best_dist = evals[0].fitness();
                 let new_dist = new_global.as_ref().map(|g| g.fitness()).unwrap_or(f64::NAN);
                 eprintln!("[INSTR] Prev Global Best dist: {:.1}", prev_dist);
@@ -386,7 +426,9 @@ impl<
                 eprintln!("[INSTR] New Global Best dist: {:.1}", new_dist);
                 global_best = new_global;
             } else {
-                if global_best.is_none() || gen_best.fitness() > global_best.as_ref().unwrap().fitness() {
+                if global_best.is_none()
+                    || gen_best.fitness() > global_best.as_ref().unwrap().fitness()
+                {
                     global_best = Some(gen_best.clone());
                 }
             }
@@ -399,17 +441,22 @@ impl<
             let variance = if evals.is_empty() {
                 0.0
             } else {
-                evals.iter()
+                evals
+                    .iter()
                     .map(|e| {
                         let diff = e.fitness() - avg_fitness;
                         diff * diff
                     })
-                    .sum::<f64>() / evals.len() as f64
+                    .sum::<f64>()
+                    / evals.len() as f64
             };
             stddev = variance.sqrt();
 
             total_evaluations += evals.len();
-            let initial_best = history.first().map(|e: &F::Evaluation| e.fitness()).unwrap_or(gen_best.fitness());
+            let initial_best = history
+                .first()
+                .map(|e: &F::Evaluation| e.fitness())
+                .unwrap_or(gen_best.fitness());
             let convergence_rate = gen_best.fitness() - initial_best;
             let elapsed = start.elapsed();
 
@@ -424,7 +471,7 @@ impl<
                 m.stagnation_generations = stagnation_counter;
                 m.evaluation_count = total_evaluations;
                 m.elapsed_time = elapsed;
-                
+
                 m.best_history.push(gen_best.fitness());
                 m.average_history.push(avg_fitness);
             }
@@ -446,13 +493,19 @@ impl<
                 let pop_best_dist = evals[0].fitness();
                 let pop_worst_dist = evals.last().map(|e| e.fitness()).unwrap_or(f64::NAN);
                 // Count unique distances in elite to detect homogeneity
-                let unique_elite = elite_slice.iter()
+                let unique_elite = elite_slice
+                    .iter()
                     .map(|e| (e.fitness() * 10000.0).round() as i64)
-                    .collect::<std::collections::HashSet<_>>().len();
-                eprintln!("[INSTR] Elite count: {} | unique: {} | best dist: {:.1} | worst dist: {:.1}",
-                    config.elite_count, unique_elite, elite_best_dist, elite_worst_dist);
-                eprintln!("[INSTR] Population best dist: {:.1} | worst dist: {:.1}",
-                    pop_best_dist, pop_worst_dist);
+                    .collect::<std::collections::HashSet<_>>()
+                    .len();
+                eprintln!(
+                    "[INSTR] Elite count: {} | unique: {} | best dist: {:.1} | worst dist: {:.1}",
+                    config.elite_count, unique_elite, elite_best_dist, elite_worst_dist
+                );
+                eprintln!(
+                    "[INSTR] Population best dist: {:.1} | worst dist: {:.1}",
+                    pop_best_dist, pop_worst_dist
+                );
             }
             let mut unique_elites = Vec::with_capacity(config.elite_count);
             let mut seen_fitness = std::collections::HashSet::new();
@@ -508,7 +561,7 @@ impl<
                     mutation_ops += 1;
                     self.mutator.mutate(&mut child, &mut rng);
                 }
-                
+
                 // If neither crossover nor mutation was applied, the child is an exact clone of the parent.
                 // Force a mutation to maintain population diversity.
                 if !crossover_applied && !mutation_applied {
@@ -518,26 +571,29 @@ impl<
                 let mut pipeline_result = Ok(true);
                 if let Some(ref pipeline) = self.pipeline_adapter {
                     pipeline_result = pipeline.process_offspring(&mut child);
-                } else {                    for (idx, processor) in self.processors.iter().enumerate() {
+                } else {
+                    for (idx, processor) in self.processors.iter().enumerate() {
                         let start_time = std::time::Instant::now();
                         processor.improve(&mut child);
                         let duration = start_time.elapsed();
 
                         if let Some(ref m_lock) = self.metrics {
                             let mut m = m_lock.lock().unwrap();
-                            let proc_m = m.processors.entry(idx).or_insert_with(|| ProcessorMetrics {
-                                processor_name: format!("Processor {}", idx),
-                                invocation_count: 0,
-                                total_runtime: std::time::Duration::ZERO,
-                                average_runtime: std::time::Duration::ZERO,
-                                maximum_runtime: std::time::Duration::ZERO,
-                                minimum_runtime: std::time::Duration::MAX,
-                                candidates_processed: 0,
-                            });
+                            let proc_m =
+                                m.processors.entry(idx).or_insert_with(|| ProcessorMetrics {
+                                    processor_name: format!("Processor {}", idx),
+                                    invocation_count: 0,
+                                    total_runtime: std::time::Duration::ZERO,
+                                    average_runtime: std::time::Duration::ZERO,
+                                    maximum_runtime: std::time::Duration::ZERO,
+                                    minimum_runtime: std::time::Duration::MAX,
+                                    candidates_processed: 0,
+                                });
                             proc_m.invocation_count += 1;
                             proc_m.candidates_processed += 1;
                             proc_m.total_runtime += duration;
-                            proc_m.average_runtime = proc_m.total_runtime / proc_m.invocation_count as u32;
+                            proc_m.average_runtime =
+                                proc_m.total_runtime / proc_m.invocation_count as u32;
                             if duration > proc_m.maximum_runtime {
                                 proc_m.maximum_runtime = duration;
                             }
@@ -635,7 +691,11 @@ where
 {
     type Evaluation = MogaOutcomeWrapper<G>;
 
-    fn evaluate(&self, genome: &G, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+    fn evaluate(
+        &self,
+        genome: &G,
+        _metrics: &crate::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
         let payload = serde_json::to_value(genome).unwrap();
         let proposal = coralys_core::DecisionProposal {
             priority: 1.0,
@@ -794,7 +854,11 @@ mod tests {
     struct DummyEvaluator;
     impl FitnessEvaluator<BitGenome> for DummyEvaluator {
         type Evaluation = BitEvaluation;
-        fn evaluate(&self, _candidate: &BitGenome, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+        fn evaluate(
+            &self,
+            _candidate: &BitGenome,
+            _metrics: &crate::runtime::optimization::metric::MetricReport,
+        ) -> Self::Evaluation {
             BitEvaluation {
                 fitness: 1.0,
                 valid: true,
@@ -840,4 +904,3 @@ mod tests {
         assert!(ga_result.global_best.fitness() > 0.0);
     }
 }
-

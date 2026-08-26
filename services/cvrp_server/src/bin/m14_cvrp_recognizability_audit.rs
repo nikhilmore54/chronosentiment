@@ -1,12 +1,15 @@
-use cvrp::{CvrpInstance, CvrpCandidate, RadiusPolicy, CvrpGenomeFactory};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpLocalSearch, CvrpCrossover};
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, LocalSearchOperator, GenomeFactory, CrossoverOperator, RegionIdentifier};
-use std::collections::{HashSet, HashMap};
+use coralys_moga::traits::{
+    CrossoverOperator, FitnessEvaluator, GenomeFactory, LocalSearchOperator, MutationOperator,
+    RegionIdentifier,
+};
+use cvrp::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpCandidate, CvrpGenomeFactory, CvrpInstance, RadiusPolicy};
+use rand::Rng;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
-use rand::Rng;
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 
 fn decode_routes(cand: &CvrpCandidate, instance: &CvrpInstance) -> Vec<Vec<usize>> {
@@ -38,7 +41,11 @@ fn extract_edges(routes: &Vec<Vec<usize>>) -> HashSet<(usize, usize)> {
             edges.insert(e);
             prev = c;
         }
-        let e = if prev < usize::MAX { (prev, usize::MAX) } else { (usize::MAX, prev) };
+        let e = if prev < usize::MAX {
+            (prev, usize::MAX)
+        } else {
+            (usize::MAX, prev)
+        };
         edges.insert(e);
     }
     edges
@@ -53,7 +60,8 @@ impl RegionIdentifier<CvrpCandidate> for CvrpRegionIdentifier {
 
     fn region_of(&self, state: &CvrpCandidate) -> Self::RegionId {
         let routes = decode_routes(state, &self.instance);
-        let mut partitioned_sets: Vec<Vec<usize>> = routes.iter()
+        let mut partitioned_sets: Vec<Vec<usize>> = routes
+            .iter()
             .map(|r| {
                 let mut sorted = r.clone();
                 sorted.sort();
@@ -77,20 +85,28 @@ fn flatten_routes(routes: Vec<Vec<usize>>) -> Vec<usize> {
 
 fn main() {
     let instance = CvrpInstance::a_n32_k5();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    let ls = CvrpLocalSearch { instance: instance.clone() };
+    let ls = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
     let crossover = CvrpCrossover;
     let random_mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    let region_id = CvrpRegionIdentifier { instance: instance.clone() };
-    
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+    let region_id = CvrpRegionIdentifier {
+        instance: instance.clone(),
+    };
+
     println!("Collecting Parents & Elite Backbone...");
     let mut elite_pool = Vec::new();
     let mut good_pool = Vec::new();
     let mut root_cand = factory.create(&mut rng);
     let mut root_dist = f64::MAX;
-    
+
     let mut edge_counts: HashMap<(usize, usize), usize> = HashMap::new();
     let mut num_elites = 0;
 
@@ -98,12 +114,21 @@ fn main() {
     for _ in 0..5000 {
         let mut child = curr_cand.clone();
         random_mutator.mutate(&mut child, &mut rng);
-        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-        coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget).unwrap();
-        let eval = evaluator.evaluate(&child, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+        let model = cvrp::moga_impl::CvrpConstraintModel {
+            instance: instance.clone(),
+        };
+        let budget = coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        };
+        coralys_core::operators::ImprovementOperator::improve(&ls, &mut child, &model, &budget)
+            .unwrap();
+        let eval = evaluator.evaluate(
+            &child,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
         let d = eval.eval.total_distance;
-        
+
         if d <= 810.0 {
             elite_pool.push(child.clone());
             num_elites += 1;
@@ -115,25 +140,27 @@ fn main() {
         } else if d <= 850.0 {
             good_pool.push(child.clone());
         }
-        
+
         if d < root_dist {
             root_dist = d;
             root_cand = child.clone();
         }
         curr_cand = child;
     }
-    
+
     // Identify Backbone (top 50 edges that appear in at least 50% of elites)
-    let mut backbone: Vec<((usize, usize), usize)> = edge_counts.into_iter()
+    let mut backbone: Vec<((usize, usize), usize)> = edge_counts
+        .into_iter()
         .filter(|&(_, c)| c > num_elites / 2)
         .collect();
     backbone.sort_by(|a, b| b.1.cmp(&a.1));
-    let backbone_edges: HashSet<(usize, usize)> = backbone.into_iter().take(50).map(|(e, _)| e).collect();
+    let backbone_edges: HashSet<(usize, usize)> =
+        backbone.into_iter().take(50).map(|(e, _)| e).collect();
 
     let root_region = region_id.region_of(&root_cand);
     let root_routes = decode_routes(&root_cand, &instance);
     let root_edges = extract_edges(&root_routes);
-    
+
     println!("Root Distance: {}", root_dist);
     println!("Backbone Size: {}", backbone_edges.len());
     let num_samples = 500;
@@ -144,7 +171,7 @@ fn main() {
     let mut evaluate_child = |s1: &mut CvrpCandidate, level: &str| {
         let s1_routes = decode_routes(s1, &instance);
         let s1_edges = extract_edges(&s1_routes);
-        
+
         // 1. Capacity Violations
         let mut capacity_violations = 0;
         for r in &s1_routes {
@@ -163,18 +190,24 @@ fn main() {
 
         // 4. Backbone Preservation
         let preserved_backbone = backbone_edges.intersection(&s1_edges).count();
-        let backbone_preservation = if backbone_edges.is_empty() { 0.0 } else { preserved_backbone as f64 / backbone_edges.len() as f64 };
+        let backbone_preservation = if backbone_edges.is_empty() {
+            0.0
+        } else {
+            preserved_backbone as f64 / backbone_edges.len() as f64
+        };
 
         // 5. Signature Overlap & Partition Dist
         let mut r1_matched = vec![false; s1_routes.len()];
         let mut total_intersection = 0;
         let mut surviving_signatures = 0;
-        
+
         for r0 in &root_routes {
             let mut best_match = None;
             let mut best_inter = 0;
             for (i, r1) in s1_routes.iter().enumerate() {
-                if r1_matched[i] { continue; }
+                if r1_matched[i] {
+                    continue;
+                }
                 let inter = r0.iter().filter(|x| r1.contains(x)).count();
                 if inter > best_inter {
                     best_inter = inter;
@@ -184,14 +217,14 @@ fn main() {
             if let Some(i) = best_match {
                 r1_matched[i] = true;
                 total_intersection += best_inter;
-                
+
                 // Signature survives if >= 75% of original customers are preserved in the matching route
                 if best_inter as f64 >= 0.75 * (r0.len() as f64) {
                     surviving_signatures += 1;
                 }
             }
         }
-        
+
         let signature_overlap = surviving_signatures as f64 / root_routes.len() as f64;
         let total_customers = root_routes.iter().map(|r| r.len()).sum::<usize>();
         let partition_dist = (total_customers - total_intersection) as f64;
@@ -199,11 +232,20 @@ fn main() {
 
         // Repair phase
         let mut s2 = s1.clone();
-        let model = cvrp::moga_impl::CvrpConstraintModel { instance: instance.clone() };
-        let budget = coralys_core::operators::OperatorBudget { max_iterations: 1, max_time_ms: 1000 };
-        coralys_core::operators::ImprovementOperator::improve(&ls, &mut s2, &model, &budget).unwrap();
-        let s2_eval = evaluator.evaluate(&s2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-        
+        let model = cvrp::moga_impl::CvrpConstraintModel {
+            instance: instance.clone(),
+        };
+        let budget = coralys_core::operators::OperatorBudget {
+            max_iterations: 1,
+            max_time_ms: 1000,
+        };
+        coralys_core::operators::ImprovementOperator::improve(&ls, &mut s2, &model, &budget)
+            .unwrap();
+        let s2_eval = evaluator.evaluate(
+            &s2,
+            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+        );
+
         // Final State (S2) Measurements
         let s2_routes = decode_routes(&s2, &instance);
         let mut r2_matched = vec![false; s2_routes.len()];
@@ -212,7 +254,9 @@ fn main() {
             let mut best_match = None;
             let mut best_inter = 0;
             for (i, r2) in s2_routes.iter().enumerate() {
-                if r2_matched[i] { continue; }
+                if r2_matched[i] {
+                    continue;
+                }
                 let inter = r0.iter().filter(|x| r2.contains(x)).count();
                 if inter > best_inter {
                     best_inter = inter;
@@ -225,20 +269,21 @@ fn main() {
             }
         }
         let residual_magnitude = (total_customers - s2_intersection) as f64;
-        
+
         let ar = if raw_magnitude > 0.0 {
             (raw_magnitude - residual_magnitude) / raw_magnitude
         } else {
             0.0 // No damage
         };
-        
+
         let s2_region = region_id.region_of(&s2);
         let returned = s2_region == root_region;
         let elite = s2_eval.eval.total_distance <= 810.0;
-        
+
         writeln!(
-            file, "{},{},{},{:.4},{:.4},{:.4},{},{:.4},{:.4},{},{}", 
-            level, 
+            file,
+            "{},{},{},{:.4},{:.4},{:.4},{},{:.4},{:.4},{},{}",
+            level,
             capacity_violations,
             route_count_diff,
             edge_preservation,
@@ -249,13 +294,19 @@ fn main() {
             s2_eval.eval.total_distance,
             returned,
             elite
-        ).unwrap();
+        )
+        .unwrap();
     };
 
     println!("Running L0: Intra-Route Swap");
     for _ in 0..num_samples {
         let mut routes = root_routes.clone();
-        let valid_routes: Vec<usize> = routes.iter().enumerate().filter(|(_, r)| r.len() >= 2).map(|(i, _)| i).collect();
+        let valid_routes: Vec<usize> = routes
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.len() >= 2)
+            .map(|(i, _)| i)
+            .collect();
         if !valid_routes.is_empty() {
             let r_idx = *valid_routes.choose(&mut rng).unwrap();
             let n = routes[r_idx].len();
@@ -275,12 +326,18 @@ fn main() {
         let mut r2 = rng.gen_range(0..routes.len());
         while r2 == r1 || routes[r1].is_empty() {
             r2 = rng.gen_range(0..routes.len());
-            if routes.iter().all(|r| r.is_empty()) { break; }
+            if routes.iter().all(|r| r.is_empty()) {
+                break;
+            }
         }
         if !routes[r1].is_empty() {
             let i = rng.gen_range(0..routes[r1].len());
             let c = routes[r1].remove(i);
-            let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
+            let j = if routes[r2].is_empty() {
+                0
+            } else {
+                rng.gen_range(0..=routes[r2].len())
+            };
             routes[r2].insert(j, c);
             let mut child = root_cand.clone();
             child.permutation = flatten_routes(routes);
@@ -296,12 +353,18 @@ fn main() {
             let mut r2 = rng.gen_range(0..routes.len());
             while r2 == r1 || routes[r1].is_empty() {
                 r2 = rng.gen_range(0..routes.len());
-                if routes.iter().all(|r| r.is_empty()) { break; }
+                if routes.iter().all(|r| r.is_empty()) {
+                    break;
+                }
             }
             if !routes[r1].is_empty() {
                 let i = rng.gen_range(0..routes[r1].len());
                 let c = routes[r1].remove(i);
-                let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
+                let j = if routes[r2].is_empty() {
+                    0
+                } else {
+                    rng.gen_range(0..=routes[r2].len())
+                };
                 routes[r2].insert(j, c);
             }
         }
@@ -313,23 +376,34 @@ fn main() {
     println!("Running L3: Segment Exchange");
     for _ in 0..num_samples {
         let mut routes = root_routes.clone();
-        let valid: Vec<usize> = routes.iter().enumerate().filter(|(_, r)| r.len() >= 2).map(|(i, _)| i).collect();
+        let valid: Vec<usize> = routes
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.len() >= 2)
+            .map(|(i, _)| i)
+            .collect();
         if !valid.is_empty() {
             let r1 = *valid.choose(&mut rng).unwrap();
             let mut r2 = rng.gen_range(0..routes.len());
-            while r2 == r1 { r2 = rng.gen_range(0..routes.len()); }
-            
+            while r2 == r1 {
+                r2 = rng.gen_range(0..routes.len());
+            }
+
             let n = routes[r1].len();
             let len = rng.gen_range(2..=std::cmp::min(4, n));
             let start = rng.gen_range(0..=(n - len));
-            
-            let segment: Vec<usize> = routes[r1].drain(start..start+len).collect();
-            let j = if routes[r2].is_empty() { 0 } else { rng.gen_range(0..=routes[r2].len()) };
-            
+
+            let segment: Vec<usize> = routes[r1].drain(start..start + len).collect();
+            let j = if routes[r2].is_empty() {
+                0
+            } else {
+                rng.gen_range(0..=routes[r2].len())
+            };
+
             for (k, &c) in segment.iter().enumerate() {
                 routes[r2].insert(j + k, c);
             }
-            
+
             let mut child = root_cand.clone();
             child.permutation = flatten_routes(routes);
             evaluate_child(&mut child, "L3");
@@ -358,6 +432,6 @@ fn main() {
         let (mut c1, _) = crossover.crossover(&root_cand, &p2, &mut rng);
         evaluate_child(&mut c1, "L4C");
     }
-    
+
     println!("M14 Audit Complete.");
 }

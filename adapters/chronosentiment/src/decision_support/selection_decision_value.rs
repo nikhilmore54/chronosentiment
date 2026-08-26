@@ -403,7 +403,9 @@ pub fn review_selection(
 
 pub fn render_review(report: &SelectionDecisionValueReport) -> String {
     let mut out = String::from("# Search #1 selection and decision-value review\n\n");
-    out.push_str("Existing Search #1 evidence only. Not Search #2. No borderline cutoff is frozen.\n\n");
+    out.push_str(
+        "Existing Search #1 evidence only. Not Search #2. No borderline cutoff is frozen.\n\n",
+    );
     out.push_str(&format!(
         "- artifact: `{}`\n- archived genomes reviewed: {}\n- presented to selection: {}\n- near-best that beat selected on selection protocol mean: {}\n- Momentum-rich among those: {}\n\n",
         report.policy_artifact_hash,

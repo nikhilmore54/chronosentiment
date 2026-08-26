@@ -47,7 +47,9 @@ fn prospective_seal_has_no_outcome_and_status_is_observing() {
     let Some(artifact) = load_c3_002() else {
         return;
     };
-    let cache_dir = workspace_root().join(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache");
+    let cache_dir = workspace_root()
+        .join(RESEARCH_SNAPSHOT_DIR)
+        .join("yahoo_cache");
     if !cache_dir.exists() {
         return;
     }
@@ -71,7 +73,10 @@ fn prospective_seal_has_no_outcome_and_status_is_observing() {
         "confidence",
         "realized_return",
     ] {
-        assert!(!json.contains(forbidden), "{forbidden} leaked onto the decision");
+        assert!(
+            !json.contains(forbidden),
+            "{forbidden} leaked onto the decision"
+        );
     }
     let mut ledger = empty_prospective_ledger();
     assert_eq!(ledger.path_kind, PROSPECTIVE_PATH_KIND);
@@ -95,8 +100,8 @@ fn prospective_seal_has_no_outcome_and_status_is_observing() {
 
 #[test]
 fn product_html_keeps_historical_pass_separate_from_profit() {
-    let historical_path = workspace_root()
-        .join("product_validation/CS-P-006/observatory/ledger.json");
+    let historical_path =
+        workspace_root().join("product_validation/CS-P-006/observatory/ledger.json");
     if !historical_path.exists() {
         return;
     }
@@ -127,5 +132,7 @@ fn document_records_the_lifecycle_pass_and_prospective_gate() {
     assert!(doc.contains("lifecycle PASS") || doc.contains("91 / 91"));
     assert!(doc.contains("not a profitability claim") || doc.contains("Not a profitability claim"));
     assert!(doc.contains("prospective"));
-    assert!(doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered"));
+    assert!(
+        doc.contains("C.3-G remains a question") || doc.contains("C.3-G remains an unanswered")
+    );
 }

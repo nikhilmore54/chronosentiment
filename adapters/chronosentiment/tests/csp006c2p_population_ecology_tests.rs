@@ -18,20 +18,24 @@ use chronosentiment_adapter::decision_support::DecisionAction;
 
 fn genome(id: &str, fitness: f64, momentum: bool, short: bool) -> SerializedGenome {
     let mut rules = vec![DecisionRule {
-        when: vec![chronosentiment_adapter::decision_support::policy_artifact::FactorPredicate {
-            concept: "Trend".to_string(),
-            present: Some(true),
-            direction: Some("Bearish".to_string()),
-        }],
+        when: vec![
+            chronosentiment_adapter::decision_support::policy_artifact::FactorPredicate {
+                concept: "Trend".to_string(),
+                present: Some(true),
+                direction: Some("Bearish".to_string()),
+            },
+        ],
         action: DecisionAction::Long,
     }];
     if momentum {
         rules.push(DecisionRule {
-            when: vec![chronosentiment_adapter::decision_support::policy_artifact::FactorPredicate {
-                concept: "Momentum".to_string(),
-                present: Some(true),
-                direction: Some("Positive".to_string()),
-            }],
+            when: vec![
+                chronosentiment_adapter::decision_support::policy_artifact::FactorPredicate {
+                    concept: "Momentum".to_string(),
+                    present: Some(true),
+                    direction: Some("Positive".to_string()),
+                },
+            ],
             action: DecisionAction::Long,
         });
     }
@@ -118,10 +122,7 @@ fn thin_momentum_and_short_is_under_explored() {
     assert_eq!(report.verdict, VERDICT_UNDER_EXPLORED);
     assert_eq!(report.momentum.occupancy, FamilyOccupancy::Absent);
     assert_eq!(report.short_action.occupancy, FamilyOccupancy::Absent);
-    assert_eq!(
-        report.momentum_question,
-        MomentumQuestion::BarelyExplored
-    );
+    assert_eq!(report.momentum_question, MomentumQuestion::BarelyExplored);
     assert!(!report.search_two_authorized);
     assert!(!report.evaluation_scored);
 }

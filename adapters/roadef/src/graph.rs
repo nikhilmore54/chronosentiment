@@ -24,7 +24,7 @@ impl Digraph {
         for node in &network.nodes {
             nodes.push(node.id);
         }
-        
+
         let mut arcs = Vec::new();
         let mut out_arcs: HashMap<u64, Vec<usize>> = HashMap::new();
         let mut in_arcs: HashMap<u64, Vec<usize>> = HashMap::new();

@@ -14,10 +14,7 @@ const PRIMARY_ORDER_ID: &str = "O1";
 
 /// Deterministic inspect simulation: strategy parameters influence order sizing;
 /// market substrate remains the certified demo fixture (replay-stable).
-pub fn run_inspect_simulation(
-    strategy: &Candidate,
-    seed: u64,
-) -> (SimulationResult, String) {
+pub fn run_inspect_simulation(strategy: &Candidate, seed: u64) -> (SimulationResult, String) {
     let (market_events, mut orders) = deterministic_demo_fixture();
 
     if let Some(primary) = orders.iter_mut().find(|o| o.order_id == PRIMARY_ORDER_ID) {
@@ -54,7 +51,10 @@ pub fn minimal_to_wrapper(minimal: &MinimalEvent, source: &SimEvent) -> EventWra
         payload.insert("order_id".to_string(), json!(order_id));
     }
     if let SimEvent::OrderIntent { side, quantity, .. } = source {
-        payload.insert("side".to_string(), json!(format!("{:?}", side).to_uppercase()));
+        payload.insert(
+            "side".to_string(),
+            json!(format!("{:?}", side).to_uppercase()),
+        );
         payload.insert("quantity".to_string(), json!(quantity));
     }
 

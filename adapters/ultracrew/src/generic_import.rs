@@ -32,13 +32,12 @@
 /// # Error handling
 /// All functions return `ImportError` with a descriptive message.
 /// No `unwrap()` or `expect()` calls — all errors are propagated.
-
 use std::collections::HashMap;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
-use crate::models::{Skill, Worker, Shift};
-use crate::public_contracts::{ScheduleRequest, InrcScenario};
+use crate::models::{Shift, Skill, Worker};
+use crate::public_contracts::{InrcScenario, ScheduleRequest};
 
 // ─── Error type ──────────────────────────────────────────────────────────────
 
@@ -49,7 +48,9 @@ pub struct ImportError {
 
 impl ImportError {
     fn new(msg: impl Into<String>) -> Self {
-        Self { message: msg.into() }
+        Self {
+            message: msg.into(),
+        }
     }
 }
 
@@ -69,9 +70,8 @@ impl std::error::Error for ImportError {}
 /// Use `export_request_template()` to generate a template.
 pub fn load_from_json<P: AsRef<Path>>(path: P) -> Result<ScheduleRequest, ImportError> {
     let path = path.as_ref();
-    let data = fs::read_to_string(path).map_err(|e| {
-        ImportError::new(format!("Cannot read file '{}': {}", path.display(), e))
-    })?;
+    let data = fs::read_to_string(path)
+        .map_err(|e| ImportError::new(format!("Cannot read file '{}': {}", path.display(), e)))?;
     serde_json::from_str::<ScheduleRequest>(&data).map_err(|e| {
         ImportError::new(format!(
             "JSON parse error in '{}': {}. Use export_request_template() to see the expected schema.",
@@ -100,10 +100,18 @@ pub fn load_from_csv<P: AsRef<Path>>(
     let shifts_path = shifts_path.as_ref();
 
     let workers_data = fs::read_to_string(workers_path).map_err(|e| {
-        ImportError::new(format!("Cannot read workers file '{}': {}", workers_path.display(), e))
+        ImportError::new(format!(
+            "Cannot read workers file '{}': {}",
+            workers_path.display(),
+            e
+        ))
     })?;
     let shifts_data = fs::read_to_string(shifts_path).map_err(|e| {
-        ImportError::new(format!("Cannot read shifts file '{}': {}", shifts_path.display(), e))
+        ImportError::new(format!(
+            "Cannot read shifts file '{}': {}",
+            shifts_path.display(),
+            e
+        ))
     })?;
 
     let (workers, historical_workloads) = parse_workers_csv(&workers_data, workers_path)?;
@@ -116,7 +124,11 @@ pub fn load_from_csv<P: AsRef<Path>>(
     Ok(ScheduleRequest {
         workers,
         shifts,
-        historical_workloads: if historical_workloads.is_empty() { None } else { Some(historical_workloads) },
+        historical_workloads: if historical_workloads.is_empty() {
+            None
+        } else {
+            Some(historical_workloads)
+        },
         rng_seed,
         generation_limit,
         scenario,
@@ -134,9 +146,9 @@ fn parse_workers_csv(
     let mut lines = data.lines().enumerate();
 
     // Header line
-    let (_, header) = lines.next().ok_or_else(|| {
-        ImportError::new(format!("Workers file '{}' is empty", source.display()))
-    })?;
+    let (_, header) = lines
+        .next()
+        .ok_or_else(|| ImportError::new(format!("Workers file '{}' is empty", source.display())))?;
 
     let headers: Vec<&str> = header.split(',').map(str::trim).collect();
     let id_col = find_column(&headers, "id", source)?;
@@ -145,7 +157,9 @@ fn parse_workers_csv(
 
     for (line_num, line) in lines {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
         // Handle quoted fields (skills may contain commas inside quotes)
         let fields = split_csv_line(line);
@@ -153,20 +167,24 @@ fn parse_workers_csv(
         let id_str = fields.get(id_col).ok_or_else(|| {
             ImportError::new(format!(
                 "Workers file '{}' line {}: missing 'id' column",
-                source.display(), line_num + 1
+                source.display(),
+                line_num + 1
             ))
         })?;
         let id: u64 = id_str.trim().parse().map_err(|_| {
             ImportError::new(format!(
                 "Workers file '{}' line {}: 'id' must be an unsigned integer, got '{}'",
-                source.display(), line_num + 1, id_str
+                source.display(),
+                line_num + 1,
+                id_str
             ))
         })?;
 
         let skills_str = fields.get(skills_col).ok_or_else(|| {
             ImportError::new(format!(
                 "Workers file '{}' line {}: missing 'skills' column",
-                source.display(), line_num + 1
+                source.display(),
+                line_num + 1
             ))
         })?;
         let skills: Vec<Skill> = skills_str
@@ -196,7 +214,9 @@ fn parse_workers_csv(
                         .map(|s| s.parse::<f64>())
                         .collect();
                     match hours {
-                        Ok(h) => { historical_workloads.insert(id, h); }
+                        Ok(h) => {
+                            historical_workloads.insert(id, h);
+                        }
                         Err(_) => {
                             return Err(ImportError::new(format!(
                                 "Workers file '{}' line {}: 'historical_hours' must be semicolon-separated numbers, got '{}'",
@@ -218,9 +238,9 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
     let mut shifts = Vec::new();
     let mut lines = data.lines().enumerate();
 
-    let (_, header) = lines.next().ok_or_else(|| {
-        ImportError::new(format!("Shifts file '{}' is empty", source.display()))
-    })?;
+    let (_, header) = lines
+        .next()
+        .ok_or_else(|| ImportError::new(format!("Shifts file '{}' is empty", source.display())))?;
 
     let headers: Vec<&str> = header.split(',').map(str::trim).collect();
     let id_col = find_column(&headers, "id", source)?;
@@ -230,18 +250,23 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
 
     for (line_num, line) in lines {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
         let fields = split_csv_line(line);
 
         let id: u64 = parse_u64_field(&fields, id_col, "id", line_num + 1, source)?;
-        let start_hour: u64 = parse_u64_field(&fields, start_col, "start_hour", line_num + 1, source)?;
-        let duration_hours: u64 = parse_u64_field(&fields, dur_col, "duration_hours", line_num + 1, source)?;
+        let start_hour: u64 =
+            parse_u64_field(&fields, start_col, "start_hour", line_num + 1, source)?;
+        let duration_hours: u64 =
+            parse_u64_field(&fields, dur_col, "duration_hours", line_num + 1, source)?;
 
         let skill_str = fields.get(skill_col).ok_or_else(|| {
             ImportError::new(format!(
                 "Shifts file '{}' line {}: missing 'required_skill' column",
-                source.display(), line_num + 1
+                source.display(),
+                line_num + 1
             ))
         })?;
         let required_skill = Skill::new(skill_str.trim().trim_matches('"'));
@@ -253,7 +278,12 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
             )));
         }
 
-        shifts.push(Shift { id, start_hour, duration_hours, required_skill});
+        shifts.push(Shift {
+            id,
+            start_hour,
+            duration_hours,
+            required_skill,
+        });
     }
 
     Ok(shifts)
@@ -263,13 +293,16 @@ fn parse_shifts_csv(data: &str, source: &Path) -> Result<Vec<Shift>, ImportError
 
 fn validate_workers(workers: &[Worker]) -> Result<(), ImportError> {
     if workers.is_empty() {
-        return Err(ImportError::new("Workers list is empty. At least one worker is required."));
+        return Err(ImportError::new(
+            "Workers list is empty. At least one worker is required.",
+        ));
     }
     let mut seen_ids = std::collections::HashSet::new();
     for w in workers {
         if !seen_ids.insert(w.id) {
             return Err(ImportError::new(format!(
-                "Duplicate worker id: {}. Worker ids must be unique.", w.id
+                "Duplicate worker id: {}. Worker ids must be unique.",
+                w.id
             )));
         }
     }
@@ -278,13 +311,16 @@ fn validate_workers(workers: &[Worker]) -> Result<(), ImportError> {
 
 fn validate_shifts(shifts: &[Shift]) -> Result<(), ImportError> {
     if shifts.is_empty() {
-        return Err(ImportError::new("Shifts list is empty. At least one shift is required."));
+        return Err(ImportError::new(
+            "Shifts list is empty. At least one shift is required.",
+        ));
     }
     let mut seen_ids = std::collections::HashSet::new();
     for s in shifts {
         if !seen_ids.insert(s.id) {
             return Err(ImportError::new(format!(
-                "Duplicate shift id: {}. Shift ids must be unique.", s.id
+                "Duplicate shift id: {}. Shift ids must be unique.",
+                s.id
             )));
         }
     }
@@ -295,10 +331,8 @@ fn validate_shifts(shifts: &[Shift]) -> Result<(), ImportError> {
 /// This is a soft validation — it returns an error to surface the issue early
 /// rather than letting the optimizer silently produce HC1 violations.
 fn validate_skill_coverage(workers: &[Worker], shifts: &[Shift]) -> Result<(), ImportError> {
-    let all_skills: std::collections::HashSet<&Skill> = workers
-        .iter()
-        .flat_map(|w| w.skills.iter())
-        .collect();
+    let all_skills: std::collections::HashSet<&Skill> =
+        workers.iter().flat_map(|w| w.skills.iter()).collect();
 
     let uncovered: Vec<String> = shifts
         .iter()
@@ -350,7 +384,7 @@ pub fn export_request_template() -> String {
             let mut m = HashMap::new();
             m.insert(1u64, vec![40.0, 38.0]);
             m.insert(2u64, vec![36.0]);
-                m
+            m
         }),
         rng_seed: Some(42),
         generation_limit: Some(200),
@@ -360,7 +394,9 @@ pub fn export_request_template() -> String {
             minimum_rest_hours: Some(11),
             leave_requests: None,
         }),
-    };
+        fatigue: FatigueConfig::default(),
+    }
+
     serde_json::to_string_pretty(&template).unwrap_or_else(|_| "{}".to_string())
 }
 
@@ -387,7 +423,9 @@ fn find_column(headers: &[&str], name: &str, source: &Path) -> Result<usize, Imp
     headers.iter().position(|h| *h == name).ok_or_else(|| {
         ImportError::new(format!(
             "File '{}': required column '{}' not found in header. Found: {}",
-            source.display(), name, headers.join(", ")
+            source.display(),
+            name,
+            headers.join(", ")
         ))
     })
 }
@@ -402,13 +440,18 @@ fn parse_u64_field(
     let val = fields.get(col).ok_or_else(|| {
         ImportError::new(format!(
             "File '{}' line {}: missing '{}' column",
-            source.display(), line_num, name
+            source.display(),
+            line_num,
+            name
         ))
     })?;
     val.trim().parse::<u64>().map_err(|_| {
         ImportError::new(format!(
             "File '{}' line {}: '{}' must be an unsigned integer, got '{}'",
-            source.display(), line_num, name, val
+            source.display(),
+            line_num,
+            name,
+            val
         ))
     })
 }
@@ -422,12 +465,16 @@ fn split_csv_line(line: &str) -> Vec<String> {
 
     for ch in line.chars() {
         match ch {
-            '"' => { in_quotes = !in_quotes; }
+            '"' => {
+                in_quotes = !in_quotes;
+            }
             ',' if !in_quotes => {
                 fields.push(current.trim().to_string());
                 current = String::new();
             }
-            _ => { current.push(ch); }
+            _ => {
+                current.push(ch);
+            }
         }
     }
     fields.push(current.trim().to_string());
@@ -485,8 +532,16 @@ mod tests {
 
     #[test]
     fn test_uncovered_skill_rejected() {
-        let workers = vec![Worker { id: 1, skills: vec![Skill::new("Nurse")] }];
-        let shifts = vec![Shift { id: 1, start_hour: 0, duration_hours: 8, required_skill: Skill::new("ICU")}];
+        let workers = vec![Worker {
+            id: 1,
+            skills: vec![Skill::new("Nurse")],
+        }];
+        let shifts = vec![Shift {
+            id: 1,
+            start_hour: 0,
+            duration_hours: 8,
+            required_skill: Skill::new("ICU"),
+        }];
         let result = validate_skill_coverage(&workers, &shifts);
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("No worker possesses"));
@@ -504,7 +559,11 @@ mod tests {
     fn test_export_request_template_is_valid_json() {
         let template = export_request_template();
         let parsed: Result<ScheduleRequest, _> = serde_json::from_str(&template);
-        assert!(parsed.is_ok(), "Template JSON should be valid: {:?}", parsed.err());
+        assert!(
+            parsed.is_ok(),
+            "Template JSON should be valid: {:?}",
+            parsed.err()
+        );
     }
 
     #[test]

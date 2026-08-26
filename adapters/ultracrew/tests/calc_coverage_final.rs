@@ -17,15 +17,19 @@ fn main() {
                     let min_opt: Vec<&str> = req.split(',').collect();
                     let min: usize = min_opt[0].parse().unwrap();
                     let opt: usize = min_opt[1].parse().unwrap();
-                    demands.insert((days[d].to_string(), shift.to_string(), skill.to_string()), (min, opt));
+                    demands.insert(
+                        (days[d].to_string(), shift.to_string(), skill.to_string()),
+                        (min, opt),
+                    );
                 }
             }
         }
     }
-    
+
     let mut assigned = HashMap::new(); // (Day, Shift, Skill) -> count
-    
-    let sol_content = fs::read_to_string("adapters/ultracrew/tests/data/n030w4/sol-empty.txt").unwrap();
+
+    let sol_content =
+        fs::read_to_string("adapters/ultracrew/tests/data/n030w4/sol-empty.txt").unwrap();
     for line in sol_content.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() == 4 && parts[0] != "ASSIGNMENTS" {
@@ -35,10 +39,12 @@ fn main() {
             *assigned.entry((day, shift, skill)).or_insert(0) += 1;
         }
     }
-    
+
     let mut penalty = 0;
     for ((day, shift, skill), (min, opt)) in &demands {
-        let count = *assigned.get(&(day.clone(), shift.clone(), skill.clone())).unwrap_or(&0);
+        let count = *assigned
+            .get(&(day.clone(), shift.clone(), skill.clone()))
+            .unwrap_or(&0);
         if count >= *min && count < *opt {
             penalty += (*opt - count) * 30;
         }

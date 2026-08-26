@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use rand::Rng;
-use coralys_moga::engine_proof::{Genome, Evaluator, MutationPolicy, FitnessVector};
 use crate::inrc::models::InrcScenario;
 use crate::inrc::validator::validate_schedule;
+use coralys_moga::engine_proof::{Evaluator, FitnessVector, Genome, MutationPolicy};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct AssignmentSlot {
@@ -16,10 +16,10 @@ pub struct AssignmentSlot {
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 /// **Compatibility Implementation / Legacy Operational Model**
-/// 
-/// Architecturally, `ScheduleGenome` is no longer the primary structural 
-/// representation of the domain. It serves as a compatibility implementation 
-/// of the Coralys `OperationalModel` during the migration to the Native 
+///
+/// Architecturally, `ScheduleGenome` is no longer the primary structural
+/// representation of the domain. It serves as a compatibility implementation
+/// of the Coralys `OperationalModel` during the migration to the Native
 /// Operational Model (OEN).
 pub struct ScheduleGenome {
     pub slots: Vec<AssignmentSlot>,
@@ -42,8 +42,8 @@ impl ScheduleGenome {
     }
 
     pub fn signatures(&self) -> Vec<u64> {
-        use std::hash::{Hash, Hasher};
         use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
         let mut sigs = Vec::with_capacity(self.slots.len());
         for slot in &self.slots {
             let mut hasher = DefaultHasher::new();
@@ -133,8 +133,7 @@ impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
             weekend_counts.push(total_weekends as f64);
         }
 
-        let mean_assign =
-            assigned_counts.iter().sum::<f64>() / assigned_counts.len() as f64;
+        let mean_assign = assigned_counts.iter().sum::<f64>() / assigned_counts.len() as f64;
         let workload_balance = assigned_counts
             .iter()
             .map(|v| (v - mean_assign).powi(2))

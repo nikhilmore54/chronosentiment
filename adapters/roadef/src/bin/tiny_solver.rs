@@ -1,4 +1,6 @@
-use coralys_moga::ecology::{LifecycleState, Memory, MemoryPolicy, Observation, PolicyVault, VaultEntry};
+use coralys_moga::ecology::{
+    LifecycleState, Memory, MemoryPolicy, Observation, PolicyVault, VaultEntry,
+};
 use std::collections::{HashMap, HashSet};
 
 pub type Tag = String;
@@ -25,13 +27,20 @@ impl MemoryPolicy<MarketChain, Vec<Tag>, MarketObservation> for ChronoPolicy {
         true
     }
 
-    fn strengthen(&self, existing: &mut VaultEntry<MarketChain, Vec<Tag>, MarketObservation>, new_obs: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) {
+    fn strengthen(
+        &self,
+        existing: &mut VaultEntry<MarketChain, Vec<Tag>, MarketObservation>,
+        new_obs: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>,
+    ) {
         existing.support += 1;
         existing.score += new_obs.score;
         existing.timestamp = new_obs.timestamp;
     }
 
-    fn merge(&self, entries: &[VaultEntry<MarketChain, Vec<Tag>, MarketObservation>]) -> Option<VaultEntry<MarketChain, Vec<Tag>, MarketObservation>> {
+    fn merge(
+        &self,
+        entries: &[VaultEntry<MarketChain, Vec<Tag>, MarketObservation>],
+    ) -> Option<VaultEntry<MarketChain, Vec<Tag>, MarketObservation>> {
         if let Some(last) = entries.last() {
             for existing in entries.iter().take(entries.len().saturating_sub(1)) {
                 let tail = existing.structure.sequence.last().unwrap();
@@ -47,9 +56,17 @@ impl MemoryPolicy<MarketChain, Vec<Tag>, MarketObservation> for ChronoPolicy {
                     }
                     let merged = VaultEntry {
                         structure: MarketChain {
-                            id: existing.structure.id.wrapping_add(last.structure.id.wrapping_mul(1000)),
+                            id: existing
+                                .structure
+                                .id
+                                .wrapping_add(last.structure.id.wrapping_mul(1000)),
                             sequence: new_seq,
-                            hop_support: vec![1; existing.structure.sequence.len() + last.structure.sequence.len() - 1],
+                            hop_support: vec![
+                                1;
+                                existing.structure.sequence.len()
+                                    + last.structure.sequence.len()
+                                    - 1
+                            ],
                         },
                         context: existing.context.clone(),
                         evidence: ev,
@@ -75,7 +92,12 @@ struct ChronoDiscovery {
 }
 
 impl ChronoDiscovery {
-    fn discover(&mut self, tags: Vec<Tag>, current_time: u64, obs_id: u64) -> VaultEntry<MarketChain, Vec<Tag>, MarketObservation> {
+    fn discover(
+        &mut self,
+        tags: Vec<Tag>,
+        current_time: u64,
+        obs_id: u64,
+    ) -> VaultEntry<MarketChain, Vec<Tag>, MarketObservation> {
         let obs = MarketObservation {
             id: obs_id,
             date: current_time.to_string(),
@@ -135,7 +157,9 @@ struct SolverState {
 
 impl SolverState {
     fn query_coralys(&self, active_event: &str) -> bool {
-        if !self.use_coralys { return false; }
+        if !self.use_coralys {
+            return false;
+        }
         // Look for chains starting with active_event that lead to BudgetExhausted
         for entry in &self.vault.entries {
             if entry.structure.sequence.first().unwrap() == active_event {
@@ -148,7 +172,9 @@ impl SolverState {
     }
 
     fn emit_causal_edge(&mut self, cause: String, effect: String) {
-        let chain = self.discovery.discover(vec![cause, effect], self.time, self.obs_id);
+        let chain = self
+            .discovery
+            .discover(vec![cause, effect], self.time, self.obs_id);
         self.vault.store(chain);
         self.vault.forget(); // Apply merges
         self.time += 1;
@@ -161,7 +187,12 @@ impl SolverState {
             vec![
                 vec!["A".to_string(), "B".to_string(), "D".to_string()],
                 vec!["A".to_string(), "C".to_string(), "D".to_string()],
-                vec!["A".to_string(), "B".to_string(), "C".to_string(), "D".to_string()],
+                vec![
+                    "A".to_string(),
+                    "B".to_string(),
+                    "C".to_string(),
+                    "D".to_string(),
+                ],
             ]
         } else {
             vec![]
@@ -176,7 +207,7 @@ impl SolverState {
         budget: usize,
     ) -> bool {
         self.nodes_visited += 1;
-        
+
         if budget == 0 {
             return false;
         }
@@ -191,16 +222,20 @@ impl SolverState {
 
         for path in paths {
             let decision_tag = format!("Route(D{}, {:?})", demand.id, path);
-            let context_tag = if demand_idx == 0 { format!("Intervention({})", intervention) } else { decision_tag.clone() };
+            let context_tag = if demand_idx == 0 {
+                format!("Intervention({})", intervention)
+            } else {
+                decision_tag.clone()
+            };
 
             // 1. CORALYS PRUNING CHECK
             let will_fail = self.query_coralys(&context_tag);
-            
+
             // Check true failure to track false prunes
             let mut true_failure = false;
             let mut next_allocs = current_allocations.clone();
-            for i in 0..path.len()-1 {
-                let link = Link(path[i].clone(), path[i+1].clone());
+            for i in 0..path.len() - 1 {
+                let link = Link(path[i].clone(), path[i + 1].clone());
                 if link == Link("A".to_string(), "C".to_string()) && intervention == "A->C" {
                     true_failure = true;
                     break;
@@ -248,9 +283,24 @@ fn main() {
 
     let network = ToyNetwork { capacities: caps };
     let demands = vec![
-        ToyDemand { id: 1, src: "A".to_string(), dst: "D".to_string(), vol: 7 },
-        ToyDemand { id: 2, src: "A".to_string(), dst: "D".to_string(), vol: 7 },
-        ToyDemand { id: 3, src: "A".to_string(), dst: "D".to_string(), vol: 7 },
+        ToyDemand {
+            id: 1,
+            src: "A".to_string(),
+            dst: "D".to_string(),
+            vol: 7,
+        },
+        ToyDemand {
+            id: 2,
+            src: "A".to_string(),
+            dst: "D".to_string(),
+            vol: 7,
+        },
+        ToyDemand {
+            id: 3,
+            src: "A".to_string(),
+            dst: "D".to_string(),
+            vol: 7,
+        },
     ]; // Total demand 21. Max throughput A->D with A->C down is 15. So it's heavily constrained.
 
     let mut state = SolverState {
@@ -281,12 +331,12 @@ fn main() {
     state.false_prunes = 0;
     state.found_solution = false;
     state.use_coralys = true;
-    
+
     state.solve(0, &allocs, "A->C", 100);
     println!("Nodes Visited: {}", state.nodes_visited);
     println!("False Prunes: {}", state.false_prunes);
     println!("Solution Found: {}", state.found_solution);
-    
+
     if baseline_visited > 0.0 {
         let reduction = 100.0 * (1.0 - (state.nodes_visited as f64 / baseline_visited));
         println!("Search Node Reduction: {:.1}%", reduction);

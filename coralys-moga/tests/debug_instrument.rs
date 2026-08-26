@@ -1,9 +1,11 @@
 // Temporary test to capture instrumentation logs for generation 98
-use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::config::EvolutionConfig;
-use coralys_moga::traits::{Genome, GenomeFactory, FitnessEvaluator, MutationOperator, CrossoverOperator, Evaluated};
-use rand::rngs::StdRng;
+use coralys_moga::engine::EvolutionEngine;
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
+};
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 #[derive(Clone, Debug, PartialEq)]
 struct DummyGenome {
@@ -26,16 +28,30 @@ struct DummyEval {
 }
 impl Evaluated for DummyEval {
     type Genome = DummyGenome;
-    fn fitness(&self) -> f64 { self.fitness }
-    fn is_valid(&self) -> bool { self.valid }
-    fn genome(&self) -> &Self::Genome { &self.genome }
+    fn fitness(&self) -> f64 {
+        self.fitness
+    }
+    fn is_valid(&self) -> bool {
+        self.valid
+    }
+    fn genome(&self) -> &Self::Genome {
+        &self.genome
+    }
 }
 
 struct DummyEvaluator;
 impl FitnessEvaluator<DummyGenome> for DummyEvaluator {
     type Evaluation = DummyEval;
-    fn evaluate(&self, candidate: &DummyGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
-        DummyEval { fitness: rand::random::<f64>() * 10000.0, valid: true, genome: candidate.clone() }
+    fn evaluate(
+        &self,
+        candidate: &DummyGenome,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
+        DummyEval {
+            fitness: rand::random::<f64>() * 10000.0,
+            valid: true,
+            genome: candidate.clone(),
+        }
     }
 }
 
@@ -46,7 +62,12 @@ impl MutationOperator<DummyGenome> for DummyMutator {
 
 struct DummyCrossover;
 impl CrossoverOperator<DummyGenome> for DummyCrossover {
-    fn crossover(&self, p1: &DummyGenome, p2: &DummyGenome, _rng: &mut StdRng) -> (DummyGenome, DummyGenome) {
+    fn crossover(
+        &self,
+        p1: &DummyGenome,
+        p2: &DummyGenome,
+        _rng: &mut StdRng,
+    ) -> (DummyGenome, DummyGenome) {
         (p1.clone(), p2.clone())
     }
 }

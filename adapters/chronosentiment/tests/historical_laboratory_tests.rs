@@ -248,10 +248,7 @@ fn long_bullish_slice_is_not_the_aggregate() {
         .find(|h| h.horizon_days == 60)
         .unwrap();
     assert_eq!(h60.trading.returns.n_observed, 3);
-    assert_eq!(
-        h60.trading.returns.mean,
-        Some((0.10 - 0.05 + 0.02) / 3.0)
-    );
+    assert_eq!(h60.trading.returns.mean, Some((0.10 - 0.05 + 0.02) / 3.0));
 }
 
 #[test]

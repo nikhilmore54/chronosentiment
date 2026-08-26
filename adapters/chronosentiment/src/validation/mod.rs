@@ -1,8 +1,8 @@
+use crate::observation::ValidatedObservation;
 use chrono::Utc;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use sha2::{Sha256, Digest};
-use crate::observation::ValidatedObservation;
 
 pub mod context;
 pub mod replay;
@@ -21,7 +21,7 @@ impl ValidationEngine {
         coverage: &str,
     ) -> ValidatedObservation {
         let now = Utc::now();
-        
+
         let mut obs = ValidatedObservation {
             id: Uuid::new_v4(),
             research_session_id: None,
@@ -43,11 +43,11 @@ impl ValidationEngine {
             provenance_hash: String::new(),
             schema_version: 1,
         };
-        
+
         obs.provenance_hash = Self::compute_hash(&obs);
         obs
     }
-    
+
     /// Computes a cryptographic hash to ensure immutability
     fn compute_hash(obs: &ValidatedObservation) -> String {
         let mut hasher = Sha256::new();
@@ -55,10 +55,10 @@ impl ValidationEngine {
         hasher.update(obs.observation_type.as_bytes());
         hasher.update(obs.observed_at.timestamp().to_be_bytes());
         hasher.update(obs.raw_payload.to_string().as_bytes());
-        
+
         format!("{:x}", hasher.finalize())
     }
 }
-pub mod replay_decision;
-pub mod outcome;
 pub mod calibration;
+pub mod outcome;
+pub mod replay_decision;

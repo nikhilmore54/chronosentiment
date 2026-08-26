@@ -11,35 +11,31 @@
 
 pub mod evidence;
 pub mod hypothesis;
-pub mod timeline;
-pub mod workspace;
-pub mod learning;
-pub mod observation;
-pub mod instrument;
 pub mod ingestion;
-pub mod validation;
-pub mod portfolio;
-pub mod policy;
-pub mod repository;
+pub mod instrument;
+pub mod learning;
 pub mod metrics;
+pub mod observation;
+pub mod policy;
+pub mod portfolio;
 pub mod reasoning;
+pub mod repository;
+pub mod timeline;
+pub mod validation;
+pub mod workspace;
 
-pub use evidence::{EvidenceItem, EvidenceSourceType, EvidenceDossier};
-pub use hypothesis::{InvestmentThesis, ThesisStatus, ThesisReview, ReviewVerdict};
-pub use timeline::{TimelineEvent, TimelineEventKind, TimelineView};
-pub use workspace::{InvestmentWorkspace, WorkspaceStatus, InvestmentOutcome, OutcomeResult};
+pub use evidence::{EvidenceDossier, EvidenceItem, EvidenceSourceType};
+pub use hypothesis::{InvestmentThesis, ReviewVerdict, ThesisReview, ThesisStatus};
 pub use learning::{
-    PersonalInvestmentLearningLoop,
-    InvestmentPattern,
-    InvestmentPatternType,
-    PatternMaturity,
-    InvestmentInsight,
-    QuarterlyReviewReport,
+    InvestmentInsight, InvestmentPattern, InvestmentPatternType, PatternMaturity,
+    PersonalInvestmentLearningLoop, QuarterlyReviewReport,
 };
-pub mod universe;
+pub use timeline::{TimelineEvent, TimelineEventKind, TimelineView};
+pub use workspace::{InvestmentOutcome, InvestmentWorkspace, OutcomeResult, WorkspaceStatus};
 pub mod decision_support;
 pub mod product;
 pub mod time_machine;
+pub mod universe;
 
 #[cfg(feature = "research")]
 #[path = "../research/src/mod.rs"]

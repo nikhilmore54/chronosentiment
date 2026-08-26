@@ -1,13 +1,13 @@
 use crate::reasoning::assessment::AssessmentProfile;
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use std::error::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct HistoricalCase {
     pub case_id: Uuid,
     pub historical_date: DateTime<Utc>,
-    pub decision_outcome: String, 
+    pub decision_outcome: String,
     pub holding_period_days: u32,
     pub exit_reason: String,
     pub mfe: f64,
@@ -59,7 +59,12 @@ impl HistoricalReasoningEngine {
             })
     }
 
-    pub fn evaluate_with_cases(&self, _profile: &AssessmentProfile, evaluation_timestamp: DateTime<Utc>, cases: Vec<HistoricalCase>) -> Result<HistoricalReasoningReport, TemporalViolation> {
+    pub fn evaluate_with_cases(
+        &self,
+        _profile: &AssessmentProfile,
+        evaluation_timestamp: DateTime<Utc>,
+        cases: Vec<HistoricalCase>,
+    ) -> Result<HistoricalReasoningReport, TemporalViolation> {
         let mut valid_cases = Vec::new();
         for case in cases {
             if case.historical_date > evaluation_timestamp {
@@ -85,7 +90,12 @@ impl HistoricalReasoningEngine {
     pub fn mock_case(&self) -> HistoricalCase {
         HistoricalCase {
             case_id: Uuid::new_v4(),
-            historical_date: chrono::TimeZone::from_utc_datetime(&chrono::Utc, &chrono::NaiveDate::from_ymd_opt(2019, 1, 1).unwrap().and_time(chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())),
+            historical_date: chrono::TimeZone::from_utc_datetime(
+                &chrono::Utc,
+                &chrono::NaiveDate::from_ymd_opt(2019, 1, 1)
+                    .unwrap()
+                    .and_time(chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+            ),
             decision_outcome: "Positive".to_string(),
             holding_period_days: 47,
             exit_reason: "Target Reached".to_string(),

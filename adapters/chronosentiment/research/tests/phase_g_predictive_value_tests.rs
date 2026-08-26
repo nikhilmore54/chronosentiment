@@ -2,20 +2,22 @@ use chrono::{TimeZone, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use chronosentiment_adapter::research::dataset::{ArtifactPopulation, DateRange, ResearchDataset};
 use chronosentiment_adapter::reasoning::strategy::Horizon;
+use chronosentiment_adapter::research::dataset::{ArtifactPopulation, DateRange, ResearchDataset};
 use chronosentiment_adapter::research::experiment::ResearchExperiment;
 use chronosentiment_adapter::research::predictive_value::PredictiveValueExperiment;
 
 #[sqlx::test]
-async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_phase_g_predictive_value_experiment(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations to ensure schema
     sqlx::migrate!("./migrations").run(&pool).await?;
 
     // We can insert some mock data into the database to verify the SQL logic.
     let instrument_id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO instruments (id, exchange, display_symbol) VALUES ($1, 'TEST', 'PHASE_G')"
+        "INSERT INTO instruments (id, exchange, display_symbol) VALUES ($1, 'TEST', 'PHASE_G')",
     )
     .bind(instrument_id)
     .execute(&pool)
@@ -38,7 +40,7 @@ async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Bo
             id, instrument_id, evaluation_timestamp,
             signature, signature_hash, metadata_json, profile_json
         ) VALUES ($1, $2, $3, $4, $5, '{}', '{}')
-        "#
+        "#,
     )
     .bind(assessment_id)
     .bind(instrument_id)
@@ -59,7 +61,7 @@ async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Bo
         INSERT INTO knowledge_decisions (
             id, instrument_id, evaluation_timestamp, opportunity, metadata_json, decision_json
         ) VALUES ($1, $2, $3, 'Positive', $4, '{}')
-        "#
+        "#,
     )
     .bind(decision_id)
     .bind(instrument_id)
@@ -79,7 +81,7 @@ async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Bo
         INSERT INTO knowledge_strategies (
             id, decision_id, expected_horizon, metadata_json, strategy_json
         ) VALUES ($1, $2, '5D', $3, '{}')
-        "#
+        "#,
     )
     .bind(strategy_id)
     .bind(decision_id)
@@ -109,7 +111,7 @@ async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Bo
 
     // Run the Phase G Experiment
     let experiment = PredictiveValueExperiment::new(pool.clone());
-    
+
     let dataset = ResearchDataset::new(
         "Phase G Dataset".to_string(),
         "1.0".to_string(),
@@ -124,14 +126,14 @@ async fn test_phase_g_predictive_value_experiment(pool: PgPool) -> Result<(), Bo
         ArtifactPopulation {
             artifact_types: vec!["Outcome".to_string()],
             population_rules: serde_json::json!({}),
-        }
+        },
     );
 
     let measurements = experiment.execute(&dataset).await.unwrap();
 
     // Verify findings structure
     assert_eq!(measurements.findings.len(), 3);
-    
+
     let aggregate_matrix = &measurements.findings[0]["data"];
     assert!(aggregate_matrix.is_array());
     let agg = &aggregate_matrix[0];

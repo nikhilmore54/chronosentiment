@@ -1,6 +1,6 @@
-use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
-use crate::validation::context::InstrumentEvaluationContext;
 use crate::metrics::concepts::{Concept, ConceptModel};
+use crate::validation::context::InstrumentEvaluationContext;
+use coralys_moga::runtime::optimization::metric::{MetricEngine, MetricReport, MetricValue};
 
 pub trait InstrumentMetricModel: ConceptModel {
     fn evaluate(&self, context: &InstrumentEvaluationContext, report: &mut MetricReport);
@@ -12,9 +12,7 @@ pub struct InstrumentMetricEngine {
 
 impl InstrumentMetricEngine {
     pub fn new() -> Self {
-        Self {
-            models: Vec::new(),
-        }
+        Self { models: Vec::new() }
     }
 
     pub fn add_model(&mut self, model: Box<dyn InstrumentMetricModel>) {
@@ -63,15 +61,19 @@ impl ConceptModel for SimpleMovingAverageMetric {
 
 impl InstrumentMetricModel for SimpleMovingAverageMetric {
     fn evaluate(&self, context: &InstrumentEvaluationContext, report: &mut MetricReport) {
-        let closes: Vec<f64> = context.observations.iter()
+        let closes: Vec<f64> = context
+            .observations
+            .iter()
             .filter(|obs| obs.observation_type == "MarketPrice")
             .filter_map(|obs| obs.normalized_payload.get("close").and_then(|v| v.as_f64()))
             .collect();
-            
+
         if closes.len() >= self.window {
             let sum: f64 = closes[closes.len() - self.window..].iter().sum();
             let ma = sum / self.window as f64;
-            report.metrics.insert(self.name().to_string(), MetricValue::Float(ma));
+            report
+                .metrics
+                .insert(self.name().to_string(), MetricValue::Float(ma));
         }
     }
 }
@@ -98,17 +100,21 @@ impl ConceptModel for RateOfChangeMetric {
 
 impl InstrumentMetricModel for RateOfChangeMetric {
     fn evaluate(&self, context: &InstrumentEvaluationContext, report: &mut MetricReport) {
-        let closes: Vec<f64> = context.observations.iter()
+        let closes: Vec<f64> = context
+            .observations
+            .iter()
             .filter(|obs| obs.observation_type == "MarketPrice")
             .filter_map(|obs| obs.normalized_payload.get("close").and_then(|v| v.as_f64()))
             .collect();
-            
+
         if closes.len() >= self.window + 1 {
             let current = closes.last().unwrap();
             let previous = closes[closes.len() - self.window - 1];
             if previous > 0.0 {
                 let roc = ((current - previous) / previous) * 100.0;
-                report.metrics.insert(self.name().to_string(), MetricValue::Float(roc));
+                report
+                    .metrics
+                    .insert(self.name().to_string(), MetricValue::Float(roc));
             }
         }
     }
@@ -136,19 +142,30 @@ impl ConceptModel for AverageTrueRangeMetric {
 
 impl InstrumentMetricModel for AverageTrueRangeMetric {
     fn evaluate(&self, context: &InstrumentEvaluationContext, report: &mut MetricReport) {
-        let obs_list: Vec<_> = context.observations.iter()
+        let obs_list: Vec<_> = context
+            .observations
+            .iter()
             .filter(|obs| obs.observation_type == "MarketPrice")
             .collect();
-            
+
         if obs_list.len() >= self.window + 1 {
             let mut true_ranges = Vec::with_capacity(self.window);
             for i in (obs_list.len() - self.window)..obs_list.len() {
                 let current = &obs_list[i];
                 let previous = &obs_list[i - 1];
 
-                let high = current.normalized_payload.get("high").and_then(|v| v.as_f64());
-                let low = current.normalized_payload.get("low").and_then(|v| v.as_f64());
-                let prev_close = previous.normalized_payload.get("close").and_then(|v| v.as_f64());
+                let high = current
+                    .normalized_payload
+                    .get("high")
+                    .and_then(|v| v.as_f64());
+                let low = current
+                    .normalized_payload
+                    .get("low")
+                    .and_then(|v| v.as_f64());
+                let prev_close = previous
+                    .normalized_payload
+                    .get("close")
+                    .and_then(|v| v.as_f64());
                 let (Some(high), Some(low), Some(prev_close)) = (high, low, prev_close) else {
                     return;
                 };
@@ -168,7 +185,9 @@ impl InstrumentMetricModel for AverageTrueRangeMetric {
                 true_ranges.push(tr1.max(tr2).max(tr3));
             }
             let atr = true_ranges.iter().sum::<f64>() / self.window as f64;
-            report.metrics.insert(self.name().to_string(), MetricValue::Float(atr));
+            report
+                .metrics
+                .insert(self.name().to_string(), MetricValue::Float(atr));
         }
     }
 }
@@ -195,15 +214,23 @@ impl ConceptModel for VolumeAverageMetric {
 
 impl InstrumentMetricModel for VolumeAverageMetric {
     fn evaluate(&self, context: &InstrumentEvaluationContext, report: &mut MetricReport) {
-        let volumes: Vec<f64> = context.observations.iter()
+        let volumes: Vec<f64> = context
+            .observations
+            .iter()
             .filter(|obs| obs.observation_type == "MarketPrice")
-            .filter_map(|obs| obs.normalized_payload.get("volume").and_then(|v| v.as_f64()))
+            .filter_map(|obs| {
+                obs.normalized_payload
+                    .get("volume")
+                    .and_then(|v| v.as_f64())
+            })
             .collect();
-            
+
         if volumes.len() >= self.window {
             let sum: f64 = volumes[volumes.len() - self.window..].iter().sum();
             let avg = sum / self.window as f64;
-            report.metrics.insert(self.name().to_string(), MetricValue::Float(avg));
+            report
+                .metrics
+                .insert(self.name().to_string(), MetricValue::Float(avg));
         }
     }
 }

@@ -124,7 +124,9 @@ fn parse_args() -> Result<(PathBuf, PathBuf, Option<PathBuf>), Box<dyn std::erro
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--output" => {
-                output = Some(PathBuf::from(args.next().ok_or("--output requires a path")?));
+                output = Some(PathBuf::from(
+                    args.next().ok_or("--output requires a path")?,
+                ));
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(

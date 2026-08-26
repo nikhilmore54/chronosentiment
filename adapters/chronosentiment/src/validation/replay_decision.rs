@@ -1,12 +1,12 @@
-use chrono::{DateTime, Utc};
-use std::collections::HashSet;
-use uuid::Uuid;
 use crate::reasoning::assessment::AssessmentProfile;
+use crate::reasoning::decision::Decision;
 use crate::reasoning::evidence::EvidenceSet;
 use crate::reasoning::historical_reasoning::HistoricalReasoningReport;
 use crate::reasoning::hypothesis::CompetingHypotheses;
-use crate::reasoning::decision::Decision;
 use crate::reasoning::strategy::OpportunityStrategy;
+use chrono::{DateTime, Utc};
+use std::collections::HashSet;
+use uuid::Uuid;
 
 /// The central artifact of Phase 4.1 to 4.3: Decision Replay
 /// This captures exactly what the system knew and decided at timestamp `T`.
@@ -15,7 +15,7 @@ pub struct DecisionReplay {
     pub decision_id: Uuid,
     pub evaluation_timestamp: DateTime<Utc>,
     pub replay_context_hash: String,
-    
+
     // The frozen reasoning chain at time T
     pub assessment_profile: AssessmentProfile,
     pub evidence_set: EvidenceSet,
@@ -32,7 +32,9 @@ pub struct TemporalFirewall {
 
 impl TemporalFirewall {
     pub fn new(evaluation_timestamp: DateTime<Utc>) -> Self {
-        Self { evaluation_timestamp }
+        Self {
+            evaluation_timestamp,
+        }
     }
 
     /// Verifies that a given observation or historical case occurred BEFORE the evaluation timestamp.

@@ -20,13 +20,13 @@
 //! aggregates [`LegalityViolation`]s.  Each violation carries enough
 //! structured information to drive both API responses and planner UIs.
 
+pub mod base_return;
 pub mod coverage;
 pub mod duty_connectivity;
 pub mod duty_time;
 pub mod fdp;
 pub mod minimum_rest;
 pub mod qualification;
-pub mod base_return;
 
 use crate::domain::roster::Roster;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,10 @@ pub enum EntityRef {
     /// A specific pairing.
     Pairing(String),
     /// A specific rotation (crew member).
-    Rotation { rotation_id: String, crew_id: String },
+    Rotation {
+        rotation_id: String,
+        crew_id: String,
+    },
     /// The roster as a whole.
     Roster(String),
 }
@@ -77,7 +80,10 @@ impl std::fmt::Display for EntityRef {
             EntityRef::Leg(id) => write!(f, "Leg({id})"),
             EntityRef::Duty(id) => write!(f, "Duty({id})"),
             EntityRef::Pairing(id) => write!(f, "Pairing({id})"),
-            EntityRef::Rotation { rotation_id, crew_id } => {
+            EntityRef::Rotation {
+                rotation_id,
+                crew_id,
+            } => {
                 write!(f, "Rotation({rotation_id}, crew={crew_id})")
             }
             EntityRef::Roster(id) => write!(f, "Roster({id})"),
@@ -139,7 +145,14 @@ impl LegalityViolation {
         threshold: f64,
         message: impl Into<String>,
     ) -> Self {
-        Self::new(rule_id, ViolationSeverity::Error, entity, observed, threshold, message)
+        Self::new(
+            rule_id,
+            ViolationSeverity::Error,
+            entity,
+            observed,
+            threshold,
+            message,
+        )
     }
 
     /// Convenience constructor for `Warning`-severity violations.
@@ -150,7 +163,14 @@ impl LegalityViolation {
         threshold: f64,
         message: impl Into<String>,
     ) -> Self {
-        Self::new(rule_id, ViolationSeverity::Warning, entity, observed, threshold, message)
+        Self::new(
+            rule_id,
+            ViolationSeverity::Warning,
+            entity,
+            observed,
+            threshold,
+            message,
+        )
     }
 
     /// Returns `true` if this violation has `Error` severity.
@@ -217,7 +237,10 @@ impl LegalityChecker {
 
     /// Run all rules and return only `Error`-severity violations.
     pub fn errors(&self, roster: &Roster) -> Vec<LegalityViolation> {
-        self.check(roster).into_iter().filter(|v| v.is_error()).collect()
+        self.check(roster)
+            .into_iter()
+            .filter(|v| v.is_error())
+            .collect()
     }
 
     /// Returns `true` if the roster has no `Error`-severity violations.
@@ -255,9 +278,7 @@ pub(crate) mod test_helpers {
 
     use crate::domain::crew::{CrewId, CrewMember, CrewRole, Qualification};
     use crate::domain::duty::{Duty, DutyId};
-    use crate::domain::flight::{
-        AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
-    };
+    use crate::domain::flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
     use crate::domain::pairing::{Pairing, PairingId};
     use crate::domain::roster::{PlanningPeriod, Roster, RosterId};
     use crate::domain::rotation::{Rotation, RotationId};
@@ -267,13 +288,7 @@ pub(crate) mod test_helpers {
         Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap()
     }
 
-    pub fn make_leg(
-        id: &str,
-        origin: &str,
-        dest: &str,
-        dep_h: i64,
-        arr_h: i64,
-    ) -> FlightLeg {
+    pub fn make_leg(id: &str, origin: &str, dest: &str, dep_h: i64, arr_h: i64) -> FlightLeg {
         FlightLeg::new(
             FlightLegId::new(id),
             FlightNumber::new(format!("XX{id}")),
@@ -313,12 +328,7 @@ pub(crate) mod test_helpers {
     }
 
     pub fn make_rotation(rotation_id: &str, crew_id: &str, pairings: Vec<Pairing>) -> Rotation {
-        Rotation::new(
-            RotationId::new(rotation_id),
-            CrewId::new(crew_id),
-            pairings,
-        )
-        .unwrap()
+        Rotation::new(RotationId::new(rotation_id), CrewId::new(crew_id), pairings).unwrap()
     }
 
     pub fn make_crew(id: &str, base: &str, aircraft_types: &[&str]) -> CrewMember {
@@ -334,14 +344,8 @@ pub(crate) mod test_helpers {
         )
     }
 
-    pub fn make_roster(
-        legs: Vec<FlightLeg>,
-        rotations: Vec<Rotation>,
-    ) -> Roster {
-        let period = PlanningPeriod::new(
-            base_time(),
-            base_time() + Duration::days(30),
-        );
+    pub fn make_roster(legs: Vec<FlightLeg>, rotations: Vec<Rotation>) -> Roster {
+        let period = PlanningPeriod::new(base_time(), base_time() + Duration::days(30));
         Roster::new(RosterId::new("R1"), period, legs, rotations).unwrap()
     }
 
@@ -350,10 +354,7 @@ pub(crate) mod test_helpers {
         rotations: Vec<Rotation>,
         crew_members: Vec<crate::domain::crew::CrewMember>,
     ) -> Roster {
-        let period = PlanningPeriod::new(
-            base_time(),
-            base_time() + Duration::days(30),
-        );
+        let period = PlanningPeriod::new(base_time(), base_time() + Duration::days(30));
         Roster::with_crew(RosterId::new("R1"), period, legs, rotations, crew_members).unwrap()
     }
 }
@@ -365,13 +366,18 @@ mod tests {
 
     struct AlwaysErrors;
     impl LegalityRule for AlwaysErrors {
-        fn rule_id(&self) -> &str { "always_errors" }
-        fn rule_name(&self) -> &str { "Always Errors" }
+        fn rule_id(&self) -> &str {
+            "always_errors"
+        }
+        fn rule_name(&self) -> &str {
+            "Always Errors"
+        }
         fn check(&self, _: &Roster) -> Vec<LegalityViolation> {
             vec![LegalityViolation::error(
                 "always_errors",
                 EntityRef::Roster("R1".into()),
-                1.0, 0.0,
+                1.0,
+                0.0,
                 "stub error",
             )]
         }
@@ -379,13 +385,18 @@ mod tests {
 
     struct AlwaysWarns;
     impl LegalityRule for AlwaysWarns {
-        fn rule_id(&self) -> &str { "always_warns" }
-        fn rule_name(&self) -> &str { "Always Warns" }
+        fn rule_id(&self) -> &str {
+            "always_warns"
+        }
+        fn rule_name(&self) -> &str {
+            "Always Warns"
+        }
         fn check(&self, _: &Roster) -> Vec<LegalityViolation> {
             vec![LegalityViolation::warning(
                 "always_warns",
                 EntityRef::Roster("R1".into()),
-                1.0, 0.0,
+                1.0,
+                0.0,
                 "stub warning",
             )]
         }

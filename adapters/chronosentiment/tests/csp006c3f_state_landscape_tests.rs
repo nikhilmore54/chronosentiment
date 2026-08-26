@@ -49,7 +49,10 @@ fn landscape_covers_certified_states_and_keeps_actions_as_counterfactuals() {
     let search_two: Vec<RecommendationRow> =
         serde_json::from_str(&std::fs::read_to_string(two_path).unwrap()).unwrap();
     let report = analyze_state_landscape(&search_one, &search_two).unwrap();
-    assert_eq!(report.search_one_artifact_hash, RESEARCH_DISCOVERY_ARTIFACT_HASH);
+    assert_eq!(
+        report.search_one_artifact_hash,
+        RESEARCH_DISCOVERY_ARTIFACT_HASH
+    );
     assert_eq!(
         report.search_two_artifact_hash,
         RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH

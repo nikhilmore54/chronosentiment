@@ -61,7 +61,8 @@ impl EvaluationPipeline {
         problem_json: &[u8],
         solution_json: &[u8],
     ) -> Result<EvaluationResult, RegistryError> {
-        self.registry.evaluate(adapter_id, problem_json, solution_json)
+        self.registry
+            .evaluate(adapter_id, problem_json, solution_json)
     }
 
     /// Return the underlying registry (read-only).
@@ -88,23 +89,37 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize)]
-    struct P { pub scale: f64 }
+    struct P {
+        pub scale: f64,
+    }
 
     #[derive(Serialize, Deserialize)]
-    struct S { pub value: f64 }
+    struct S {
+        pub value: f64,
+    }
 
     struct PipelineStubAdapter;
 
     impl BenchmarkAdapter for PipelineStubAdapter {
         type Problem = P;
         type Solution = S;
-        fn adapter_id(&self) -> &'static str { "pipeline-stub" }
-        fn adapter_name(&self) -> &'static str { "Pipeline Stub" }
-        fn adapter_version(&self) -> &'static str { "0.0.1" }
+        fn adapter_id(&self) -> &'static str {
+            "pipeline-stub"
+        }
+        fn adapter_name(&self) -> &'static str {
+            "Pipeline Stub"
+        }
+        fn adapter_version(&self) -> &'static str {
+            "0.0.1"
+        }
         fn evaluate(&self, problem: &P, solution: &S) -> EvaluationResult {
             EvaluationResult::new(
                 self.adapter_id(),
-                vec![ObjectiveValue::new("obj", "Objective", solution.value * problem.scale)],
+                vec![ObjectiveValue::new(
+                    "obj",
+                    "Objective",
+                    solution.value * problem.scale,
+                )],
                 vec![],
             )
         }

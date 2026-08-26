@@ -143,15 +143,16 @@ pub fn empty_pe3_ledger(status: &str, certified_t: Option<String>) -> Pe3LiveLed
 /// Uses the same `metrics_from_bars_at_t` pipeline as the rest of the system.
 /// Returns None if ATR is unavailable or zero — the caller must treat this as
 /// `CoralysExecutionResult::Invalid` (excluded from P.E.3 sample, not a +5% fallback).
-pub fn atr_14_at_t(
-    bars: &[YahooHistoricalBar],
-    t: DateTime<Utc>,
-) -> Option<f64> {
+pub fn atr_14_at_t(bars: &[YahooHistoricalBar], t: DateTime<Utc>) -> Option<f64> {
     // Use a stable instrument_id for metric computation (not stored, just for the engine).
     let instrument_id = Uuid::nil();
     let report = metrics_from_bars_at_t(bars, t, instrument_id);
     let atr = report.get_float("atr_14")?;
-    if atr > 0.0 { Some(atr) } else { None }
+    if atr > 0.0 {
+        Some(atr)
+    } else {
+        None
+    }
 }
 
 // ─── Intent conversion ────────────────────────────────────────────────────────
@@ -250,8 +251,11 @@ fn recount(ledger: &mut Pe3LiveLedger) {
 fn exit_is_terminal(reason: ExitReason) -> bool {
     matches!(
         reason,
-        ExitReason::Target | ExitReason::Horizon | ExitReason::Stop
-            | ExitReason::NoTrade | ExitReason::Ambiguous
+        ExitReason::Target
+            | ExitReason::Horizon
+            | ExitReason::Stop
+            | ExitReason::NoTrade
+            | ExitReason::Ambiguous
     )
 }
 
@@ -299,13 +303,8 @@ pub fn run_pe3_live_execution(
     existing: Option<Pe3LiveLedger>,
 ) -> Result<Pe3LiveLedger, String> {
     // Gate: refuse if any research flag is open.
-    if TARGET_PATH_OPTIMIZATION_AUTHORIZED
-        || STOP_EXIT_AUTHORIZED
-        || C3G_EXPERIMENT_AUTHORIZED
-    {
-        return Err(
-            "P.E.3 live execution refuses to run with research gates open".into(),
-        );
+    if TARGET_PATH_OPTIMIZATION_AUTHORIZED || STOP_EXIT_AUTHORIZED || C3G_EXPERIMENT_AUTHORIZED {
+        return Err("P.E.3 live execution refuses to run with research gates open".into());
     }
     if !PE3_LIVE_EXECUTION_AUTHORIZED {
         return Err("PE3_LIVE_EXECUTION_AUTHORIZED is false".into());
@@ -317,7 +316,9 @@ pub fn run_pe3_live_execution(
 
     let mut ledger = existing.unwrap_or_else(|| empty_pe3_ledger(PE3_STATUS_AWAITING, None));
     if ledger.path_kind != PE3_LIVE_EXECUTION_PATH_KIND {
-        return Err("P.E.3 live execution belongs on the prospective_execution_pe3_v0 ledger".into());
+        return Err(
+            "P.E.3 live execution belongs on the prospective_execution_pe3_v0 ledger".into(),
+        );
     }
     if ledger.coralys_artifact_hash != CORALYS_EXEC_ARTIFACT_HASH {
         return Err(format!(
@@ -359,7 +360,9 @@ pub fn run_pe3_live_execution(
             let decision = generate_prospective_decision(artifact, instrument, bars, now)?;
             let t = super::observatory_maturity::parse_decision_time(&decision.decision_time)?;
             if is_protected_direction_only_clock(t) {
-                return Err("P.E.3 refusing to seal coralys-exec-v0 on the 14 August cohort".into());
+                return Err(
+                    "P.E.3 refusing to seal coralys-exec-v0 on the 14 August cohort".into(),
+                );
             }
 
             // Entry price = last adj_close at or before T (next session open approximation).
@@ -376,7 +379,10 @@ pub fn run_pe3_live_execution(
                 .max_by_key(|(ts, _)| *ts)
                 .map(|(_, c)| c)
                 .ok_or_else(|| {
-                    format!("no entry close at {} for {instrument}", decision.decision_time)
+                    format!(
+                        "no entry close at {} for {instrument}",
+                        decision.decision_time
+                    )
                 })?;
 
             // ATR(14) from bars ≤ T.
@@ -393,45 +399,71 @@ pub fn run_pe3_live_execution(
             // the actual next session open is the true E but we don't have it yet).
             let entry_time = decision.decision_time.clone();
 
-            let (pe3_eligible, exclusion_reason, coralys_intent_hash,
-                 coralys_target_pct, coralys_risk_pct, coralys_atr_14_at_t,
-                 coralys_tmv_state, mut sealed_intent) =
-                if direction_str == "NO_TRADE" {
-                    // NO_TRADE: excluded from P.E.3 treatment (no execution intent needed).
-                    // Use a placeholder intent so first_exit() can return NoTrade.
-                    let placeholder = placeholder_no_trade_intent(&decision);
-                    (false, Some("NO_TRADE: no execution intent".to_string()),
-                     None, None, None, None, None, placeholder)
-                } else {
-                    match seal_coralys_execution_intent(
-                        instrument,
-                        &decision.decision_time,
-                        &entry_time,
-                        direction_str,
-                        entry,
-                        atr,
-                        &decision.state.trend,
-                        &decision.state.momentum,
-                        &decision.state.state_hash,
-                    )? {
-                        CoralysExecutionResult::Intent(ci) => {
-                            let sealed = coralys_intent_to_sealed(&ci);
-                            (true, None,
-                             Some(ci.intent_hash.clone()),
-                             Some(ci.target_pct),
-                             Some(ci.risk_pct),
-                             Some(ci.atr_14_at_t),
-                             Some(ci.tmv_state.clone()),
-                             sealed)
-                        }
-                        CoralysExecutionResult::Invalid { reason, .. } => {
-                            // ATR unavailable — excluded from P.E.3 sample.
-                            // Do NOT fall back to +5%. That would contaminate the P.E.2 comparison.
-                            let placeholder = placeholder_no_trade_intent(&decision);
-                            (false, Some(reason), None, None, None, None, None, placeholder)
-                        }
+            let (
+                pe3_eligible,
+                exclusion_reason,
+                coralys_intent_hash,
+                coralys_target_pct,
+                coralys_risk_pct,
+                coralys_atr_14_at_t,
+                coralys_tmv_state,
+                mut sealed_intent,
+            ) = if direction_str == "NO_TRADE" {
+                // NO_TRADE: excluded from P.E.3 treatment (no execution intent needed).
+                // Use a placeholder intent so first_exit() can return NoTrade.
+                let placeholder = placeholder_no_trade_intent(&decision);
+                (
+                    false,
+                    Some("NO_TRADE: no execution intent".to_string()),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    placeholder,
+                )
+            } else {
+                match seal_coralys_execution_intent(
+                    instrument,
+                    &decision.decision_time,
+                    &entry_time,
+                    direction_str,
+                    entry,
+                    atr,
+                    &decision.state.trend,
+                    &decision.state.momentum,
+                    &decision.state.state_hash,
+                )? {
+                    CoralysExecutionResult::Intent(ci) => {
+                        let sealed = coralys_intent_to_sealed(&ci);
+                        (
+                            true,
+                            None,
+                            Some(ci.intent_hash.clone()),
+                            Some(ci.target_pct),
+                            Some(ci.risk_pct),
+                            Some(ci.atr_14_at_t),
+                            Some(ci.tmv_state.clone()),
+                            sealed,
+                        )
                     }
-                };
+                    CoralysExecutionResult::Invalid { reason, .. } => {
+                        // ATR unavailable — excluded from P.E.3 sample.
+                        // Do NOT fall back to +5%. That would contaminate the P.E.2 comparison.
+                        let placeholder = placeholder_no_trade_intent(&decision);
+                        (
+                            false,
+                            Some(reason),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            placeholder,
+                        )
+                    }
+                }
+            };
 
             // Patch decision_id into the sealed intent so first_exit() can match it.
             sealed_intent.decision_id = decision.decision_id.clone();
@@ -502,21 +534,36 @@ pub fn render_pe3_live_report(ledger: &Pe3LiveLedger) -> String {
         "- certified T: {}\n",
         ledger.certified_t.as_deref().unwrap_or("—")
     ));
-    md.push_str(&format!("- peeked_returns_at_seal: {}\n", ledger.peeked_returns_at_seal));
+    md.push_str(&format!(
+        "- peeked_returns_at_seal: {}\n",
+        ledger.peeked_returns_at_seal
+    ));
     md.push_str(&format!(
         "- statistical strategy backtest: {}\n\n",
-        if ledger.statistical_backtest { "DONE" } else { "not done" }
+        if ledger.statistical_backtest {
+            "DONE"
+        } else {
+            "not done"
+        }
     ));
     md.push_str(&format!("- decisions: {}\n", ledger.n_decisions));
-    md.push_str(&format!("- P.E.3 eligible (ATR available): {}\n", ledger.n_pe3_eligible));
-    md.push_str(&format!("- excluded (ATR unavailable): {}\n", ledger.n_excluded_no_atr));
+    md.push_str(&format!(
+        "- P.E.3 eligible (ATR available): {}\n",
+        ledger.n_pe3_eligible
+    ));
+    md.push_str(&format!(
+        "- excluded (ATR unavailable): {}\n",
+        ledger.n_excluded_no_atr
+    ));
     md.push_str(&format!("- OBSERVING: {}\n", ledger.n_observing));
     md.push_str(&format!("- TARGET: {}\n", ledger.n_target));
     md.push_str(&format!("- HORIZON: {}\n", ledger.n_horizon));
     md.push_str(&format!("- RISK (stop): {}\n\n", ledger.n_risk));
 
     if ledger.seal_status == PE3_STATUS_AWAITING {
-        md.push_str("AWAITING_NEXT_SESSION — no eligible session after 2026-08-14T03:45:00Z yet.\n");
+        md.push_str(
+            "AWAITING_NEXT_SESSION — no eligible session after 2026-08-14T03:45:00Z yet.\n",
+        );
         return md;
     }
 
@@ -528,21 +575,28 @@ pub fn render_pe3_live_report(ledger: &Pe3LiveLedger) -> String {
             record.instrument,
             if record.pe3_eligible { "YES" } else { "NO" },
             record.intent.action,
-            record.coralys_atr_14_at_t
+            record
+                .coralys_atr_14_at_t
                 .map(|v| format!("{v:.2}"))
                 .unwrap_or_else(|| "—".into()),
             record.coralys_tmv_state.as_deref().unwrap_or("—"),
-            record.coralys_target_pct
+            record
+                .coralys_target_pct
                 .map(|v| format!("{:+.1}%", v * 100.0))
                 .unwrap_or_else(|| "—".into()),
-            record.coralys_risk_pct
+            record
+                .coralys_risk_pct
                 .map(|v| format!("{:.1}%", v * 100.0))
                 .unwrap_or_else(|| "—".into()),
             exit_label(record.exit.exit_reason),
-            record.exit.holding_sessions
+            record
+                .exit
+                .holding_sessions
                 .map(|n| n.to_string())
                 .unwrap_or_else(|| "—".into()),
-            record.exit.decision_value
+            record
+                .exit
+                .decision_value
                 .map(pct)
                 .unwrap_or_else(|| "—".into()),
         ));
@@ -595,7 +649,10 @@ mod tests {
 
     #[test]
     fn pe3_live_execution_authorized() {
-        assert!(PE3_LIVE_EXECUTION_AUTHORIZED, "P.E.3 live execution must be authorized");
+        assert!(
+            PE3_LIVE_EXECUTION_AUTHORIZED,
+            "P.E.3 live execution must be authorized"
+        );
     }
 
     #[test]
@@ -603,8 +660,7 @@ mod tests {
         // P.E.3 and P.E.2 must use different path_kind strings to prevent ledger confusion.
         use super::super::observatory_live_execution::LIVE_EXECUTION_PATH_KIND;
         assert_ne!(
-            PE3_LIVE_EXECUTION_PATH_KIND,
-            LIVE_EXECUTION_PATH_KIND,
+            PE3_LIVE_EXECUTION_PATH_KIND, LIVE_EXECUTION_PATH_KIND,
             "P.E.3 path_kind must be distinct from P.E.2 path_kind"
         );
     }
@@ -613,8 +669,7 @@ mod tests {
     fn pe3_contract_id_distinct_from_pe2() {
         use super::super::observatory_execution::EXECUTION_CONTRACT_ID;
         assert_ne!(
-            PE3_EXECUTION_CONTRACT_ID,
-            EXECUTION_CONTRACT_ID,
+            PE3_EXECUTION_CONTRACT_ID, EXECUTION_CONTRACT_ID,
             "P.E.3 contract ID must be distinct from P.E.2 contract ID"
         );
     }

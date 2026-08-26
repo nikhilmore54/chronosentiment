@@ -1,9 +1,7 @@
-
-
 use crate::exit::ExitReason;
-use serde::{Serialize, Deserialize};
+use chronosentiment_core::market_adapter::{convert_series_to_events, Candle};
 use chronosentiment_core::{MarketEvent, SimEvent};
-use chronosentiment_core::market_adapter::{Candle, convert_series_to_events};
+use serde::{Deserialize, Serialize};
 
 const VOLATILITY_THRESHOLD: f64 = 0.01;
 const TREND_THRESHOLD: f64 = 0.01;
@@ -12,7 +10,6 @@ pub const DEFAULT_CONFIDENCE_FLOOR: f64 = 0.30;
 pub const DEFAULT_SCORE_FLOOR: f64 = 0.40;
 
 use crate::pipeline::reporting::*;
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SignalAction {
@@ -184,23 +181,15 @@ fn detect_regime_from_events(events: &[MarketEvent]) -> (Regime, f64) {
 
     let dominance_denominator = trend_strength + vol_strength + 1e-6;
     let confidence = match regime {
-        Regime::TrendingUp | Regime::TrendingDown => {
-            trend_strength / dominance_denominator
-        }
-        Regime::Volatile => {
-            vol_strength / dominance_denominator
-        }
-        Regime::Sideways => {
-            1.0 - trend_strength.max(vol_strength)
-        }
+        Regime::TrendingUp | Regime::TrendingDown => trend_strength / dominance_denominator,
+        Regime::Volatile => vol_strength / dominance_denominator,
+        Regime::Sideways => 1.0 - trend_strength.max(vol_strength),
         Regime::Mixed => 0.0,
     }
     .clamp(0.0, 1.0);
 
     (regime, confidence)
 }
-
-
 
 fn should_trade(execution_fitness: f64) -> bool {
     execution_fitness.is_finite() && execution_fitness > 0.0
@@ -310,88 +299,101 @@ fn build_trade_signal(
     atr: f64,
 ) -> TradeSignal {
     let trade_allowed = gate.trade_allowed;
-    let (action, entry_type, entry_zone, stop_loss, target, expected_holding_time, reason) = if trade_allowed {
-        match regime {
-            Regime::TrendingUp => {
-                let entry_zone = (last_price * 0.996, last_price * 1.000);
-                let effective_atr = atr.max(last_price * 0.003);
-                let stop_loss = last_price - (1.5 * effective_atr);
-                let risk = (last_price - stop_loss).abs();
-                let target = last_price + (2.0 * risk);
-                assert!(target > entry_zone.1, "Target must exceed entry zone for BUY");
-                assert!(stop_loss < entry_zone.0, "Stop loss must be below entry zone for BUY");
-                (
-                    SignalAction::BUY,
-                    EntryType::PULLBACK,
-                    Some(entry_zone),
-                    Some(stop_loss),
-                    Some(target),
-                    "30m-2h".to_string(),
-                    format!(
-                        "Regime={} with confidence {:.2}, execution fitness {:.2}",
-                        regime.as_str(),
-                        confidence,
-                        report_fitness
-                    ),
-                )
+    let (action, entry_type, entry_zone, stop_loss, target, expected_holding_time, reason) =
+        if trade_allowed {
+            match regime {
+                Regime::TrendingUp => {
+                    let entry_zone = (last_price * 0.996, last_price * 1.000);
+                    let effective_atr = atr.max(last_price * 0.003);
+                    let stop_loss = last_price - (1.5 * effective_atr);
+                    let risk = (last_price - stop_loss).abs();
+                    let target = last_price + (2.0 * risk);
+                    assert!(
+                        target > entry_zone.1,
+                        "Target must exceed entry zone for BUY"
+                    );
+                    assert!(
+                        stop_loss < entry_zone.0,
+                        "Stop loss must be below entry zone for BUY"
+                    );
+                    (
+                        SignalAction::BUY,
+                        EntryType::PULLBACK,
+                        Some(entry_zone),
+                        Some(stop_loss),
+                        Some(target),
+                        "30m-2h".to_string(),
+                        format!(
+                            "Regime={} with confidence {:.2}, execution fitness {:.2}",
+                            regime.as_str(),
+                            confidence,
+                            report_fitness
+                        ),
+                    )
+                }
+                Regime::TrendingDown => {
+                    let entry_zone = (last_price * 1.000, last_price * 1.004);
+                    let effective_atr = atr.max(last_price * 0.003);
+                    let stop_loss = last_price + (1.5 * effective_atr);
+                    let risk = (stop_loss - last_price).abs();
+                    let target = last_price - (2.0 * risk);
+                    assert!(
+                        target < entry_zone.0,
+                        "Target must be below entry zone for SELL"
+                    );
+                    assert!(
+                        stop_loss > entry_zone.1,
+                        "Stop loss must be above entry zone for SELL"
+                    );
+                    (
+                        SignalAction::SELL,
+                        EntryType::PULLBACK,
+                        Some(entry_zone),
+                        Some(stop_loss),
+                        Some(target),
+                        "30m-2h".to_string(),
+                        format!(
+                            "Regime={} with confidence {:.2}, execution fitness {:.2}",
+                            regime.as_str(),
+                            confidence,
+                            report_fitness
+                        ),
+                    )
+                }
+                Regime::Sideways => (
+                    SignalAction::HOLD,
+                    EntryType::MARKET,
+                    None,
+                    None,
+                    None,
+                    "N/A".to_string(),
+                    "Low directional edge (sideways regime)".to_string(),
+                ),
+                _ => (
+                    SignalAction::HOLD,
+                    EntryType::MARKET,
+                    None,
+                    None,
+                    None,
+                    "N/A".to_string(),
+                    "Non-directional regime routed to HOLD for phase-1 safety".to_string(),
+                ),
             }
-            Regime::TrendingDown => {
-                let entry_zone = (last_price * 1.000, last_price * 1.004);
-                let effective_atr = atr.max(last_price * 0.003);
-                let stop_loss = last_price + (1.5 * effective_atr);
-                let risk = (stop_loss - last_price).abs();
-                let target = last_price - (2.0 * risk);
-                assert!(target < entry_zone.0, "Target must be below entry zone for SELL");
-                assert!(stop_loss > entry_zone.1, "Stop loss must be above entry zone for SELL");
-                (
-                    SignalAction::SELL,
-                    EntryType::PULLBACK,
-                    Some(entry_zone),
-                    Some(stop_loss),
-                    Some(target),
-                    "30m-2h".to_string(),
-                    format!(
-                        "Regime={} with confidence {:.2}, execution fitness {:.2}",
-                        regime.as_str(),
-                        confidence,
-                        report_fitness
-                    ),
-                )
-            }
-            Regime::Sideways => (
+        } else {
+            let reject_code = gate
+                .reject_reason
+                .map(|r| r.as_str())
+                .unwrap_or("REJECT_UNKNOWN");
+            (
                 SignalAction::HOLD,
                 EntryType::MARKET,
                 None,
                 None,
                 None,
                 "N/A".to_string(),
-                "Low directional edge (sideways regime)".to_string(),
-            ),
-            _ => (
-                SignalAction::HOLD,
-                EntryType::MARKET,
-                None,
-                None,
-                None,
-                "N/A".to_string(),
-                "Non-directional regime routed to HOLD for phase-1 safety".to_string(),
-            ),
-        }   
-    } else {
-        let reject_code = gate
-            .reject_reason
-            .map(|r| r.as_str())
-            .unwrap_or("REJECT_UNKNOWN");
-        (
-            SignalAction::HOLD,
-            EntryType::MARKET,
-            None,
-            None,
-            None,
-            "N/A".to_string(),
-            format!("Rejected by gate: {}", reject_code),
-        )
-    };
+                format!("Rejected by gate: {}", reject_code),
+            )
+        };
 
     let risk_reward = match (entry_zone, stop_loss, target, &action) {
         (Some((entry_lo, entry_hi)), Some(sl), Some(tp), SignalAction::BUY) => {
@@ -409,7 +411,11 @@ fn build_trade_signal(
         _ => 0.0,
     };
     if matches!(action, SignalAction::BUY | SignalAction::SELL) {
-        assert!(risk_reward >= 1.5, "Risk-reward below minimum threshold: {}", risk_reward);
+        assert!(
+            risk_reward >= 1.5,
+            "Risk-reward below minimum threshold: {}",
+            risk_reward
+        );
     }
 
     TradeSignal {
@@ -424,7 +430,11 @@ fn build_trade_signal(
         expected_edge: report_fitness,
         scenario_pnl: if trade_allowed { report_pnl } else { 0.0 },
         risk_reward,
-        position_size: if trade_allowed { gate.position_size } else { 0.0 },
+        position_size: if trade_allowed {
+            gate.position_size
+        } else {
+            0.0
+        },
         conviction: confidence * report_fitness.max(0.0),
         composite_score: gate.composite_score,
         reject_reason: gate.reject_reason.map(|r| r.as_str().to_string()),
@@ -445,25 +455,42 @@ fn build_trade_signal(
     }
 }
 
-
-
-
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chronosentiment_core::MarketEventType;
 
-
     #[test]
     fn test_detect_regime_is_deterministic() {
         let events = vec![
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 1 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 101, quantity: 1, side: None, exchange_ts: 2 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 102, quantity: 1, side: None, exchange_ts: 3 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 103, quantity: 1, side: None, exchange_ts: 4 },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 1,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 101,
+                quantity: 1,
+                side: None,
+                exchange_ts: 2,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 102,
+                quantity: 1,
+                side: None,
+                exchange_ts: 3,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 103,
+                quantity: 1,
+                side: None,
+                exchange_ts: 4,
+            },
         ];
         let r1 = detect_regime_from_events(&events);
         let r2 = detect_regime_from_events(&events);
@@ -474,10 +501,34 @@ mod tests {
     #[test]
     fn test_detect_regime_flat_is_sideways_or_mixed_with_high_confidence() {
         let events = vec![
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 1 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 2 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 3 },
-            MarketEvent { subtype: MarketEventType::Trade, price: 100, quantity: 1, side: None, exchange_ts: 4 },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 1,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 2,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 3,
+            },
+            MarketEvent {
+                subtype: MarketEventType::Trade,
+                price: 100,
+                quantity: 1,
+                side: None,
+                exchange_ts: 4,
+            },
         ];
         let (regime, confidence) = detect_regime_from_events(&events);
         assert!(matches!(regime, Regime::Sideways | Regime::Mixed));

@@ -50,9 +50,9 @@
 
 // ── Internal modules (not part of the public API) ─────────────────────────────
 
+pub(crate) mod mapper;
 pub(crate) mod models;
 pub(crate) mod parser;
-pub(crate) mod mapper;
 pub(crate) mod validator;
 
 // ── Public API ────────────────────────────────────────────────────────────────

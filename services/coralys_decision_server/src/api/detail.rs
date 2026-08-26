@@ -60,7 +60,11 @@ pub async fn get_decision_by_id(
             let response = DetailResponse {
                 decision: DecisionResponse::from(record),
             };
-            (StatusCode::OK, Json(serde_json::to_value(response).unwrap())).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::to_value(response).unwrap()),
+            )
+                .into_response()
         }
         Err(_) => {
             let not_found = NotFoundResponse {
@@ -87,7 +91,12 @@ mod tests {
     async fn known_decision_returns_200_with_full_record() {
         // AC-D1
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -118,7 +127,12 @@ mod tests {
     async fn all_four_provenance_fields_are_present() {
         // AC-D3
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -126,7 +140,12 @@ mod tests {
             .await;
         let body: Value = resp.json();
         let cert = &body["decision"]["certification"];
-        assert!(!cert["policy_artifact_hash"].as_str().unwrap_or("").is_empty());
+        assert!(
+            !cert["policy_artifact_hash"]
+                .as_str()
+                .unwrap_or("")
+                .is_empty()
+        );
         assert!(!cert["decision_pipeline"].as_str().unwrap_or("").is_empty());
         assert!(!cert["data_snapshot_id"].as_str().unwrap_or("").is_empty());
         // execution_artifact_hash may be null (optional) but key must exist.
@@ -137,24 +156,31 @@ mod tests {
     async fn certification_status_is_certified() {
         // AC-D5
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
             .get("/decisions/coralys-ADANIENT-20260817T101500Z-001")
             .await;
         let body: Value = resp.json();
-        assert_eq!(
-            body["decision"]["certification"]["status"],
-            "CERTIFIED"
-        );
+        assert_eq!(body["decision"]["certification"]["status"], "CERTIFIED");
     }
 
     #[tokio::test]
     async fn execution_defaults_to_not_recorded() {
         // AC-D6
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -169,7 +195,12 @@ mod tests {
     async fn outcome_defaults_to_open() {
         // AC-D7
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -183,7 +214,12 @@ mod tests {
     async fn evidence_fields_are_null_before_enrichment() {
         // AC-D8
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -200,7 +236,12 @@ mod tests {
     async fn no_confidence_or_allocation_in_detail_response() {
         // AC-D9
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server
@@ -219,7 +260,12 @@ mod tests {
     async fn decision_timestamp_matches_sealed_record() {
         // AC-D4
         let (app, state) = make_app_with_state().await;
-        seal_sample_decision(&state, "coralys-ADANIENT-20260817T101500Z-001", "ADANIENT.NS").await;
+        seal_sample_decision(
+            &state,
+            "coralys-ADANIENT-20260817T101500Z-001",
+            "ADANIENT.NS",
+        )
+        .await;
 
         let server = TestServer::new(app);
         let resp = server

@@ -59,13 +59,27 @@ struct CaptureManifest {
 
 fn main() {
     let args = Args::parse();
-    println!("Starting Historical Importer for {} ({})", args.symbol, args.name);
+    println!(
+        "Starting Historical Importer for {} ({})",
+        args.symbol, args.name
+    );
 
-    let base_dir = PathBuf::from("chronology").join("historical").join(&args.name);
+    let base_dir = PathBuf::from("chronology")
+        .join("historical")
+        .join(&args.name);
     std::fs::create_dir_all(&base_dir).unwrap();
 
-    let file_path = base_dir.join(format!("{}_{}.jsonl", args.symbol.to_lowercase(), args.start_time));
-    let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(&file_path).unwrap();
+    let file_path = base_dir.join(format!(
+        "{}_{}.jsonl",
+        args.symbol.to_lowercase(),
+        args.start_time
+    ));
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&file_path)
+        .unwrap();
 
     let client = Client::new();
     let mut current_start = args.start_time;
@@ -148,7 +162,7 @@ fn main() {
             file.write_all(line.as_bytes()).unwrap();
             hasher.update(line.as_bytes());
             tick_count += 1;
-            
+
             if is_tick {
                 current_start = std::cmp::max(current_start, ts + 1);
             } else {
@@ -156,14 +170,23 @@ fn main() {
             }
         }
 
-        println!("Fetched {} ticks. Current ts: {}", tick_count, current_start);
+        println!(
+            "Fetched {} ticks. Current ts: {}",
+            tick_count, current_start
+        );
         std::thread::sleep(std::time::Duration::from_millis(100)); // Respect rate limits
     }
 
     let final_hash = hasher.finalize();
-    let hash_hex = final_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let hash_hex = final_hash
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
 
-    let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let import_timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
     let manifest = CaptureManifest {
         source: "Binance Historical API".to_string(),
@@ -180,7 +203,9 @@ fn main() {
 
     let meta_path = base_dir.join(format!("{}_{}_manifest.json", args.name, args.start_time));
     let mut meta_file = File::create(&meta_path).unwrap();
-    meta_file.write_all(serde_json::to_string_pretty(&manifest).unwrap().as_bytes()).unwrap();
+    meta_file
+        .write_all(serde_json::to_string_pretty(&manifest).unwrap().as_bytes())
+        .unwrap();
 
     println!("✅ Historical Capture Complete: {} ticks", tick_count);
     println!("   Hash: {}", hash_hex);

@@ -84,13 +84,17 @@ impl HistoricalClock {
 
     /// Create a Live clock.  `now()` will return `Utc::now()`.
     pub fn live() -> Self {
-        Self { mode: ClockMode::Live }
+        Self {
+            mode: ClockMode::Live,
+        }
     }
 
     /// Create a Replay clock fixed at `as_of`.
     /// `now()` will always return `as_of` — never the wall clock.
     pub fn replay(as_of: DateTime<Utc>) -> Self {
-        Self { mode: ClockMode::Replay { as_of } }
+        Self {
+            mode: ClockMode::Replay { as_of },
+        }
     }
 
     /// Parse a Replay clock from an RFC 3339 string.
@@ -182,7 +186,11 @@ impl std::fmt::Display for HistoricalClock {
         match &self.mode {
             ClockMode::Live => write!(f, "HistoricalClock(LIVE)"),
             ClockMode::Replay { as_of } => {
-                write!(f, "HistoricalClock(REPLAY as_of={})", as_of.format("%Y-%m-%dT%H:%M:%SZ"))
+                write!(
+                    f,
+                    "HistoricalClock(REPLAY as_of={})",
+                    as_of.format("%Y-%m-%dT%H:%M:%SZ")
+                )
             }
         }
     }
@@ -205,7 +213,10 @@ mod tests {
         let clock = HistoricalClock::live();
         let t = clock.now();
         // Wall clock must be after the Unix epoch
-        assert!(t.timestamp() > 0, "Live clock must return a positive timestamp");
+        assert!(
+            t.timestamp() > 0,
+            "Live clock must return a positive timestamp"
+        );
         assert!(clock.is_live());
         assert!(!clock.is_replay());
         assert_eq!(clock.as_of(), None);
@@ -252,7 +263,10 @@ mod tests {
         let result = HistoricalClock::replay_from_str("not-a-date");
         assert!(result.is_err(), "Invalid RFC3339 must return Err");
         let msg = result.unwrap_err();
-        assert!(msg.contains("--as-of must be RFC3339"), "Error message must mention --as-of");
+        assert!(
+            msg.contains("--as-of must be RFC3339"),
+            "Error message must mention --as-of"
+        );
     }
 
     // AC-T1-06: from_cli_arg(None) → Live
@@ -293,7 +307,10 @@ mod tests {
     #[test]
     fn ac_t1_10_display_replay() {
         let clock = HistoricalClock::replay(fixed_ts());
-        assert_eq!(format!("{clock}"), "HistoricalClock(REPLAY as_of=2024-01-15T09:30:00Z)");
+        assert_eq!(
+            format!("{clock}"),
+            "HistoricalClock(REPLAY as_of=2024-01-15T09:30:00Z)"
+        );
     }
 
     // AC-T1-11: Serde round-trip — clock survives JSON serialization

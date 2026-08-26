@@ -260,21 +260,36 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--ledger" => { i += 1; ledger = PathBuf::from(&args[i]); }
-            "--cache"  => { i += 1; cache = PathBuf::from(&args[i]); }
-            "--output" => { i += 1; output = PathBuf::from(&args[i]); }
+            "--ledger" => {
+                i += 1;
+                ledger = PathBuf::from(&args[i]);
+            }
+            "--cache" => {
+                i += 1;
+                cache = PathBuf::from(&args[i]);
+            }
+            "--output" => {
+                i += 1;
+                output = PathBuf::from(&args[i]);
+            }
             other => return Err(format!("unknown argument: {other}").into()),
         }
         i += 1;
     }
 
-    Ok(Args { ledger, cache, output })
+    Ok(Args {
+        ledger,
+        cache,
+        output,
+    })
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /// Load all TIME-004 ledger entries from the entries/ subdirectory.
-fn load_ledger_entries(ledger_dir: &PathBuf) -> Result<Vec<LedgerEntry>, Box<dyn std::error::Error>> {
+fn load_ledger_entries(
+    ledger_dir: &PathBuf,
+) -> Result<Vec<LedgerEntry>, Box<dyn std::error::Error>> {
     let entries_dir = ledger_dir.join("entries");
     let mut entries = Vec::new();
     for entry in fs::read_dir(&entries_dir)? {
@@ -357,12 +372,24 @@ fn compute_observation(
         } else {
             (reference_price - bar.high) / reference_price
         };
-        if bar_mfe > mfe { mfe = bar_mfe; }
-        if bar_mae < mae { mae = bar_mae; }
+        if bar_mfe > mfe {
+            mfe = bar_mfe;
+        }
+        if bar_mae < mae {
+            mae = bar_mae;
+        }
 
         // Check gap-through on open.
-        let open_crosses_target = if is_long { bar.open >= target } else { bar.open <= target };
-        let open_crosses_risk   = if is_long { bar.open <= risk   } else { bar.open >= risk   };
+        let open_crosses_target = if is_long {
+            bar.open >= target
+        } else {
+            bar.open <= target
+        };
+        let open_crosses_risk = if is_long {
+            bar.open <= risk
+        } else {
+            bar.open >= risk
+        };
 
         if open_crosses_target {
             let ret = if is_long {
@@ -370,7 +397,14 @@ fn compute_observation(
             } else {
                 (reference_price - bar.open) / reference_price
             };
-            return (ExitReason::TargetGapThrough, Some(i), Some(bar.open), mfe, mae, ret);
+            return (
+                ExitReason::TargetGapThrough,
+                Some(i),
+                Some(bar.open),
+                mfe,
+                mae,
+                ret,
+            );
         }
         if open_crosses_risk {
             let ret = if is_long {
@@ -378,12 +412,27 @@ fn compute_observation(
             } else {
                 (reference_price - bar.open) / reference_price
             };
-            return (ExitReason::RiskGapThrough, Some(i), Some(bar.open), mfe, mae, ret);
+            return (
+                ExitReason::RiskGapThrough,
+                Some(i),
+                Some(bar.open),
+                mfe,
+                mae,
+                ret,
+            );
         }
 
         // Check intraday target and risk.
-        let target_hit = if is_long { bar.high >= target } else { bar.low <= target };
-        let risk_hit   = if is_long { bar.low  <= risk   } else { bar.high >= risk   };
+        let target_hit = if is_long {
+            bar.high >= target
+        } else {
+            bar.low <= target
+        };
+        let risk_hit = if is_long {
+            bar.low <= risk
+        } else {
+            bar.high >= risk
+        };
 
         if target_hit && risk_hit {
             // Both crossed in same bar — ambiguous.
@@ -392,7 +441,14 @@ fn compute_observation(
             } else {
                 (reference_price - bar.close) / reference_price
             };
-            return (ExitReason::Ambiguous, Some(i), Some(bar.close), mfe, mae, ret);
+            return (
+                ExitReason::Ambiguous,
+                Some(i),
+                Some(bar.close),
+                mfe,
+                mae,
+                ret,
+            );
         }
         if target_hit {
             let ret = if is_long {
@@ -419,7 +475,14 @@ fn compute_observation(
     } else {
         (reference_price - last_close) / reference_price
     };
-    (ExitReason::Horizon, Some(window.len().saturating_sub(1)), Some(last_close), mfe, mae, ret)
+    (
+        ExitReason::Horizon,
+        Some(window.len().saturating_sub(1)),
+        Some(last_close),
+        mfe,
+        mae,
+        ret,
+    )
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -469,7 +532,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let observed_at = now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
     let run_id = format!(
         "TIME005-{}-gen{}",
-        as_of_str.replace(':', "").replace('-', "").replace('T', "T").replace('Z', "Z"),
+        as_of_str
+            .replace(':', "")
+            .replace('-', "")
+            .replace('T', "T")
+            .replace('Z', "Z"),
         now.format("%Y%m%dT%H%M%S%6fZ")
     );
 
@@ -512,10 +579,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(b) => b,
             None => {
                 n_insufficient_data += 1;
-                println!(
-                    "[time005] SKIP ticker={} — no cache entry",
-                    entry.ticker
-                );
+                println!("[time005] SKIP ticker={} — no cache entry", entry.ticker);
                 continue;
             }
         };
@@ -534,14 +598,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let is_no_trade = entry.action == "NoTrade" || entry.action == "NO_TRADE";
 
         // Determine horizon.
-        let horizon = entry.adaptive_horizon_sessions
+        let horizon = entry
+            .adaptive_horizon_sessions
             .map(|h| h.ceil() as usize)
             .unwrap_or(20)
             .max(1);
 
         let n_bars_in_horizon = bars_after_t0.len().min(horizon);
         let last_bar_ts = if n_bars_in_horizon > 0 {
-            bars_after_t0.get(n_bars_in_horizon - 1).map(|b| b.timestamp)
+            bars_after_t0
+                .get(n_bars_in_horizon - 1)
+                .map(|b| b.timestamp)
         } else {
             None
         };
@@ -555,7 +622,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 (ExitReason::InsufficientData, None, None, 0.0, 0.0, 0.0)
             } else {
                 let (_, idx, price, mfe, mae, ret) = compute_observation(
-                    &entry.direction, reference_price, target, risk, horizon, &bars_after_t0,
+                    &entry.direction,
+                    reference_price,
+                    target,
+                    risk,
+                    horizon,
+                    &bars_after_t0,
                 );
                 (ExitReason::NoTrade, idx, price, mfe, mae, ret)
             }
@@ -576,25 +648,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(r) => r,
                 None => {
                     n_insufficient_data += 1;
-                    println!(
-                        "[time005] SKIP ticker={} — no adaptive_risk",
-                        entry.ticker
-                    );
+                    println!("[time005] SKIP ticker={} — no adaptive_risk", entry.ticker);
                     continue;
                 }
             };
 
             if bars_after_t0.is_empty() {
                 n_insufficient_data += 1;
-                println!(
-                    "[time005] SKIP ticker={} — no bars after T0",
-                    entry.ticker
-                );
+                println!("[time005] SKIP ticker={} — no bars after T0", entry.ticker);
                 continue;
             }
 
             compute_observation(
-                &entry.direction, reference_price, target, risk, horizon, &bars_after_t0,
+                &entry.direction,
+                reference_price,
+                target,
+                risk,
+                horizon,
+                &bars_after_t0,
             )
         };
 
@@ -648,7 +719,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             last_bar_in_horizon: last_bar_ts,
             exit_reason: exit_reason.label().to_string(),
             exit_bar_index: exit_bar_idx,
-            exit_bar_timestamp: exit_bar_idx.and_then(|i| bars_after_t0.get(i).map(|b| b.timestamp)),
+            exit_bar_timestamp: exit_bar_idx
+                .and_then(|i| bars_after_t0.get(i).map(|b| b.timestamp)),
             exit_price,
             sessions_to_outcome: exit_bar_idx.map(|i| i + 1),
             target_reached: exit_reason.target_reached(),

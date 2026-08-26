@@ -1,1 +1,1 @@
-pub use coralys_ecology::models::{TopologyField, DeformationState};
+pub use coralys_ecology::models::{DeformationState, TopologyField};

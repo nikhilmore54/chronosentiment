@@ -42,8 +42,7 @@ impl PortfolioPosition {
 
     /// Unrealised P&L in INR, if current value is available.
     pub fn unrealised_pnl_inr(&self) -> Option<f64> {
-        self.current_value_inr
-            .map(|v| v - self.cost_basis_inr())
+        self.current_value_inr.map(|v| v - self.cost_basis_inr())
     }
 }
 
@@ -132,7 +131,10 @@ impl std::fmt::Display for PortfolioContextError {
                 write!(f, "all holdings must have a non-empty instrument symbol")
             }
             PortfolioContextError::InvalidAverageCost(sym) => {
-                write!(f, "average_cost_inr for {sym} must be a non-negative finite number")
+                write!(
+                    f,
+                    "average_cost_inr for {sym} must be a non-negative finite number"
+                )
             }
         }
     }

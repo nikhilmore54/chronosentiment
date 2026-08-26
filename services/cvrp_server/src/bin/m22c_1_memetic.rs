@@ -1,13 +1,15 @@
-use serde::Serialize;
-use std::collections::HashSet;
 use cvrp::CvrpCandidate;
-use std::cmp::Ordering;
 use rand::SeedableRng;
+use serde::Serialize;
+use std::cmp::Ordering;
+use std::collections::HashSet;
 
-use coralys_moga::traits::{FitnessEvaluator, MutationOperator, CrossoverOperator, GenomeFactory, Evaluated, Genome};
 use coralys_core::memory::InnovationTracker;
-use cvrp::{CvrpInstance, moga_impl::*};
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
+};
 use cvrp::CvrpGenomeFactory;
+use cvrp::{CvrpInstance, moga_impl::*};
 
 #[derive(Serialize, Clone, Default)]
 struct RunTelemetryAverages {
@@ -51,7 +53,9 @@ struct Report {
 
 fn aggregate_telemetry(runs: &[SeedRunResult]) -> RunTelemetryAverages {
     let mut avg = RunTelemetryAverages::default();
-    if runs.is_empty() { return avg; }
+    if runs.is_empty() {
+        return avg;
+    }
     for r in runs {
         let t = &r.avg_telemetry;
         avg.pop_diversity += t.pop_diversity;
@@ -82,22 +86,37 @@ fn aggregate_telemetry(runs: &[SeedRunResult]) -> RunTelemetryAverages {
 use rand::Rng;
 
 fn get_node_demand(instance: &CvrpInstance, id: usize) -> i32 {
-    if id == 1 { 0 } else { instance.customers.iter().find(|c| c.id == id).unwrap().demand }
+    if id == 1 {
+        0
+    } else {
+        instance
+            .customers
+            .iter()
+            .find(|c| c.id == id)
+            .unwrap()
+            .demand
+    }
 }
 
 fn get_node_by_id<'a>(instance: &'a CvrpInstance, id: usize) -> &'a cvrp::Node {
-    if id == 1 { &instance.depot } else { instance.customers.iter().find(|c| c.id == id).unwrap() }
+    if id == 1 {
+        &instance.depot
+    } else {
+        instance.customers.iter().find(|c| c.id == id).unwrap()
+    }
 }
 
 fn calc_route_distance(instance: &CvrpInstance, route: &Vec<usize>) -> f64 {
-    if route.is_empty() { return 0.0; }
+    if route.is_empty() {
+        return 0.0;
+    }
     let mut dist = 0.0;
     let depot = &instance.depot;
     let first = get_node_by_id(instance, route[0]);
     dist += instance.distance(depot, first);
     for i in 0..(route.len() - 1) {
         let a = get_node_by_id(instance, route[i]);
-        let b = get_node_by_id(instance, route[i+1]);
+        let b = get_node_by_id(instance, route[i + 1]);
         dist += instance.distance(a, b);
     }
     let last = get_node_by_id(instance, *route.last().unwrap());
@@ -106,70 +125,100 @@ fn calc_route_distance(instance: &CvrpInstance, route: &Vec<usize>) -> f64 {
 }
 
 fn calc_total_dist(instance: &CvrpInstance, routes: &Vec<Vec<usize>>) -> f64 {
-    routes.iter().map(|r| calc_route_distance(instance, r)).sum()
+    routes
+        .iter()
+        .map(|r| calc_route_distance(instance, r))
+        .sum()
 }
 
-fn random_neighbor(instance: &CvrpInstance, routes: &Vec<Vec<usize>>, rng: &mut impl Rng) -> Option<Vec<Vec<usize>>> {
+fn random_neighbor(
+    instance: &CvrpInstance,
+    routes: &Vec<Vec<usize>>,
+    rng: &mut impl Rng,
+) -> Option<Vec<Vec<usize>>> {
     let num_routes = routes.len();
-    if num_routes == 0 { return None; }
+    if num_routes == 0 {
+        return None;
+    }
 
-    for _ in 0..100 { 
+    for _ in 0..100 {
         let op = rng.gen_range(0..4);
         let mut new_routes = routes.clone();
-        
+
         match op {
-            0 => { // Relocate
+            0 => {
+                // Relocate
                 let r1 = rng.gen_range(0..num_routes);
-                if new_routes[r1].is_empty() { continue; }
+                if new_routes[r1].is_empty() {
+                    continue;
+                }
                 let i = rng.gen_range(0..new_routes[r1].len());
                 let node = new_routes[r1].remove(i);
-                
+
                 let r2 = rng.gen_range(0..num_routes);
                 let j = rng.gen_range(0..=new_routes[r2].len());
                 new_routes[r2].insert(j, node);
-            },
-            1 => { // Exchange
+            }
+            1 => {
+                // Exchange
                 let r1 = rng.gen_range(0..num_routes);
                 let r2 = rng.gen_range(0..num_routes);
-                if new_routes[r1].is_empty() || new_routes[r2].is_empty() { continue; }
+                if new_routes[r1].is_empty() || new_routes[r2].is_empty() {
+                    continue;
+                }
                 let i = rng.gen_range(0..new_routes[r1].len());
                 let j = rng.gen_range(0..new_routes[r2].len());
                 let temp = new_routes[r1][i];
                 new_routes[r1][i] = new_routes[r2][j];
                 new_routes[r2][j] = temp;
-            },
-            2 => { // 2-opt
+            }
+            2 => {
+                // 2-opt
                 let r1 = rng.gen_range(0..num_routes);
                 let len = new_routes[r1].len();
-                if len < 2 { continue; }
+                if len < 2 {
+                    continue;
+                }
                 let i = rng.gen_range(0..len - 1);
                 let j = rng.gen_range(i + 1..len);
                 new_routes[r1][i..=j].reverse();
-            },
-            3 => { // 2-opt*
-                if num_routes < 2 { continue; }
+            }
+            3 => {
+                // 2-opt*
+                if num_routes < 2 {
+                    continue;
+                }
                 let r1 = rng.gen_range(0..num_routes);
                 let mut r2 = rng.gen_range(0..num_routes);
-                while r1 == r2 { r2 = rng.gen_range(0..num_routes); }
+                while r1 == r2 {
+                    r2 = rng.gen_range(0..num_routes);
+                }
                 let i = rng.gen_range(0..=new_routes[r1].len());
                 let j = rng.gen_range(0..=new_routes[r2].len());
                 let tail1: Vec<usize> = new_routes[r1].drain(i..).collect();
                 let tail2: Vec<usize> = new_routes[r2].drain(j..).collect();
                 new_routes[r1].extend(tail2);
                 new_routes[r2].extend(tail1);
-            },
+            }
             _ => unreachable!(),
         }
 
         new_routes.retain(|r| !r.is_empty());
-        
+
         let mut valid = true;
         for r in &new_routes {
             let mut load = 0;
-            for &n in r { load += get_node_demand(instance, n); }
-            if load > instance.capacity { valid = false; break; }
+            for &n in r {
+                load += get_node_demand(instance, n);
+            }
+            if load > instance.capacity {
+                valid = false;
+                break;
+            }
         }
-        if valid { return Some(new_routes); }
+        if valid {
+            return Some(new_routes);
+        }
     }
     None
 }
@@ -178,7 +227,9 @@ fn get_canonical_edges(routes: &Vec<Vec<usize>>) -> HashSet<(usize, usize)> {
     let mut edges = HashSet::new();
     let depot_id = 1;
     for r in routes {
-        if r.is_empty() { continue; }
+        if r.is_empty() {
+            continue;
+        }
         let mut prev = depot_id;
         for &node in r {
             edges.insert((prev.min(node), prev.max(node)));
@@ -191,18 +242,22 @@ fn get_canonical_edges(routes: &Vec<Vec<usize>>) -> HashSet<(usize, usize)> {
 
 fn main() {
     let instance = CvrpInstance::a_n32_k5();
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mut mutator = CvrpMutator::new(instance.clone(), cvrp::RadiusPolicy::Control);
     mutator.entropy_scale = 1.0;
     let crossover = cvrp::moga_impl::CvrpCrossoverVariant::OX1(cvrp::moga_impl::CvrpCrossover);
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
 
     let r_bks = vec![
         vec![15, 29, 12, 5, 24, 4, 3, 7],
         vec![27, 8, 14, 18, 20, 32, 22],
         vec![30, 19, 9, 10, 23, 16, 11, 26, 6, 21],
         vec![13, 2, 17, 31],
-        vec![28, 25]
+        vec![28, 25],
     ];
     let bks_edges = get_canonical_edges(&r_bks);
 
@@ -213,7 +268,10 @@ fn main() {
     let mut results = Vec::new();
 
     println!("=== M22C-1: Archive-Guided Route-Aware SA ===");
-    println!("Running {} seeds for {} generations...", num_seeds, generations);
+    println!(
+        "Running {} seeds for {} generations...",
+        num_seeds, generations
+    );
 
     for seed_idx in 0..num_seeds {
         let seed = 42 + seed_idx as u64 * 100;
@@ -233,7 +291,8 @@ fn main() {
         let mut sum_telemetry = RunTelemetryAverages::default();
 
         // (dist, genome, edges, added_generation)
-        let mut passive_archive: Vec<(f64, CvrpCandidate, HashSet<(usize, usize)>, usize)> = Vec::new();
+        let mut passive_archive: Vec<(f64, CvrpCandidate, HashSet<(usize, usize)>, usize)> =
+            Vec::new();
         let mut eviction_lifetimes = Vec::new();
 
         let mut sa_total_start = 0.0;
@@ -246,19 +305,30 @@ fn main() {
         for generation in 1..=generations {
             let mut evals: Vec<_> = population
                 .iter()
-                .map(|c| evaluator.evaluate(c, &coralys_moga::runtime::optimization::metric::MetricReport::default()))
+                .map(|c| {
+                    evaluator.evaluate(
+                        c,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    )
+                })
                 .filter(|e| e.is_valid())
                 .collect();
 
             if evals.is_empty() {
-                population = (0..population_size).map(|_| factory.create(&mut rng)).collect();
+                population = (0..population_size)
+                    .map(|_| factory.create(&mut rng))
+                    .collect();
                 continue;
             }
 
-            evals.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(Ordering::Equal));
+            evals.sort_by(|a, b| {
+                b.fitness()
+                    .partial_cmp(&a.fitness())
+                    .unwrap_or(Ordering::Equal)
+            });
             let gen_best = evals[0].clone();
             let best_dist = gen_best.eval.total_distance;
-            
+
             if best_dist < global_best_distance {
                 global_best_distance = best_dist;
                 if gen_first_improvement == 0 {
@@ -295,19 +365,26 @@ fn main() {
                         if dist < worst_dist {
                             let (_, _, _, added_gen) = passive_archive[worst_idx];
                             eviction_lifetimes.push(generation - added_gen);
-                            passive_archive[worst_idx] = (dist, eval.genome().clone(), edges, generation);
+                            passive_archive[worst_idx] =
+                                (dist, eval.genome().clone(), edges, generation);
                         }
                     }
                 }
             }
 
-            let mut unique_dists: Vec<_> = evals.iter().map(|e| (e.eval.total_distance * 1000.0).round() as i64).collect();
+            let mut unique_dists: Vec<_> = evals
+                .iter()
+                .map(|e| (e.eval.total_distance * 1000.0).round() as i64)
+                .collect();
             unique_dists.sort_unstable();
             unique_dists.dedup();
             let diversity_score = unique_dists.len() as f64 / evals.len() as f64;
 
             let num_elites = (evals.len() / 5).max(1);
-            let mut unique_elite_dists: Vec<_> = evals[0..num_elites].iter().map(|e| (e.eval.total_distance * 1000.0).round() as i64).collect();
+            let mut unique_elite_dists: Vec<_> = evals[0..num_elites]
+                .iter()
+                .map(|e| (e.eval.total_distance * 1000.0).round() as i64)
+                .collect();
             unique_elite_dists.sort_unstable();
             unique_elite_dists.dedup();
             let elite_diversity_score = unique_elite_dists.len() as f64 / num_elites as f64;
@@ -316,7 +393,7 @@ fn main() {
             let median_fitness = evals[evals.len() / 2].fitness();
 
             let mut next_gen = Vec::with_capacity(population_size);
-            
+
             let mut elite_count = 0;
             let mut iter = evals.iter();
             while elite_count < 10 {
@@ -337,84 +414,115 @@ fn main() {
 
             while next_gen.len() < population_size {
                 use rand::seq::SliceRandom;
-                
+
                 let tournament = |rng: &mut rand::rngs::StdRng| {
                     let mut best = evals.choose(rng).unwrap();
                     for _ in 0..4 {
                         let candidate = evals.choose(rng).unwrap();
-                        if candidate.fitness() > best.fitness() { best = candidate; }
+                        if candidate.fitness() > best.fitness() {
+                            best = candidate;
+                        }
                     }
                     best
                 };
 
                 let p1_eval = tournament(&mut rng);
-                
+
                 if rand::Rng::gen_bool(&mut rng, 0.8) {
                     let p2_eval = tournament(&mut rng);
-                    let (mut c1, mut c2) = crossover.crossover(p1_eval.genome(), p2_eval.genome(), &mut rng);
-                    
+                    let (mut c1, mut c2) =
+                        crossover.crossover(p1_eval.genome(), p2_eval.genome(), &mut rng);
+
                     let size = p1_eval.genome().permutation.len();
                     let mut identical_parents = 0;
                     for k in 0..size {
-                        if p1_eval.genome().permutation[k] == p2_eval.genome().permutation[k] { identical_parents += 1; }
+                        if p1_eval.genome().permutation[k] == p2_eval.genome().permutation[k] {
+                            identical_parents += 1;
+                        }
                     }
                     total_parent_sim += identical_parents as f64 / size as f64;
 
                     for c in [&c1, &c2] {
-                        let mut ident_p1 = 0; let mut ident_p2 = 0;
+                        let mut ident_p1 = 0;
+                        let mut ident_p2 = 0;
                         for k in 0..size {
-                            if c.permutation[k] == p1_eval.genome().permutation[k] { ident_p1 += 1; }
-                            if c.permutation[k] == p2_eval.genome().permutation[k] { ident_p2 += 1; }
+                            if c.permutation[k] == p1_eval.genome().permutation[k] {
+                                ident_p1 += 1;
+                            }
+                            if c.permutation[k] == p2_eval.genome().permutation[k] {
+                                ident_p2 += 1;
+                            }
                         }
-                        total_offspring_nov += 1.0 - (ident_p1 as f64 / size as f64).max(ident_p2 as f64 / size as f64);
+                        total_offspring_nov += 1.0
+                            - (ident_p1 as f64 / size as f64).max(ident_p2 as f64 / size as f64);
                         num_offspring += 1.0;
                     }
 
                     mutator.mutate(&mut c1, &mut rng);
                     mutator.mutate(&mut c2, &mut rng);
 
-                    let c1_eval = evaluator.evaluate(&c1, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                    let c2_eval = evaluator.evaluate(&c2, &coralys_moga::runtime::optimization::metric::MetricReport::default());
+                    let c1_eval = evaluator.evaluate(
+                        &c1,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    );
+                    let c2_eval = evaluator.evaluate(
+                        &c2,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    );
 
-                    if c1_eval.fitness() > median_fitness { children_better_than_median += 1; }
-                    if c2_eval.fitness() > median_fitness { children_better_than_median += 1; }
+                    if c1_eval.fitness() > median_fitness {
+                        children_better_than_median += 1;
+                    }
+                    if c2_eval.fitness() > median_fitness {
+                        children_better_than_median += 1;
+                    }
 
                     for c_eval in [&c1_eval, &c2_eval] {
                         for route in &c_eval.eval.routes {
                             for window in route.windows(2) {
-                                let a = window[0]; let b = window[1];
+                                let a = window[0];
+                                let b = window[1];
                                 let mut preserved = false;
                                 for p_eval in [&p1_eval, &p2_eval] {
-                                    if p_eval.eval.routes.iter().any(|r| r.windows(2).any(|w| (w[0]==a && w[1]==b) || (w[0]==b && w[1]==a))) {
-                                        preserved = true; break;
+                                    if p_eval.eval.routes.iter().any(|r| {
+                                        r.windows(2).any(|w| {
+                                            (w[0] == a && w[1] == b) || (w[0] == b && w[1] == a)
+                                        })
+                                    }) {
+                                        preserved = true;
+                                        break;
                                     }
                                 }
                                 total_pairs += 1;
-                                if preserved { total_preserved_pairs += 1; }
+                                if preserved {
+                                    total_preserved_pairs += 1;
+                                }
                             }
                         }
                     }
                     next_gen.push(c1);
-                    if next_gen.len() < population_size { next_gen.push(c2); }
+                    if next_gen.len() < population_size {
+                        next_gen.push(c2);
+                    }
                 } else {
                     let mut child = p1_eval.genome().clone();
                     mutator.mutate(&mut child, &mut rng);
                     next_gen.push(child);
                 }
             }
-            
+
             if generation % 10 == 0 && passive_archive.len() > 0 {
                 // Archive + SA
                 let num_samples = 5.min(passive_archive.len());
-                
+
                 // Sort archive by fitness
                 passive_archive.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-                
+
                 let mut sampled_indices = HashSet::new();
-                
+
                 // Bias: 3 exploit (top 20%), 1 novelty (max edge diff from best), 1 random
                 let top_20_count = (passive_archive.len() as f64 * 0.2).ceil() as usize;
-                
+
                 let mut current_samples = 0;
                 let num_exploit = 3.min(top_20_count);
                 let mut current_exploit = 0;
@@ -425,17 +533,24 @@ fn main() {
                         current_samples += 1;
                     }
                 }
-                
+
                 // Find novelty (max distance from already sampled)
                 let mut best_novelty_idx = 0;
                 let mut best_novelty_score = -1.0;
                 if current_samples < num_samples && passive_archive.len() > sampled_indices.len() {
                     for i in 0..passive_archive.len() {
-                        if sampled_indices.contains(&i) { continue; }
+                        if sampled_indices.contains(&i) {
+                            continue;
+                        }
                         let mut min_diff = std::usize::MAX;
                         for &s_idx in &sampled_indices {
-                            let diff = passive_archive[i].2.symmetric_difference(&passive_archive[s_idx].2).count();
-                            if diff < min_diff { min_diff = diff; }
+                            let diff = passive_archive[i]
+                                .2
+                                .symmetric_difference(&passive_archive[s_idx].2)
+                                .count();
+                            if diff < min_diff {
+                                min_diff = diff;
+                            }
                         }
                         if min_diff as f64 > best_novelty_score {
                             best_novelty_score = min_diff as f64;
@@ -447,7 +562,8 @@ fn main() {
                     }
                 }
 
-                let num_random = (num_samples - current_samples).min(passive_archive.len() - sampled_indices.len());
+                let num_random = (num_samples - current_samples)
+                    .min(passive_archive.len() - sampled_indices.len());
                 let mut current_random = 0;
                 while current_random < num_random {
                     let idx = rng.gen_range(0..passive_archive.len());
@@ -456,42 +572,59 @@ fn main() {
                         current_samples += 1;
                     }
                 }
-                
+
                 let mut new_reinjects = Vec::new();
 
                 for &idx in &sampled_indices {
                     let (start_dist, cand, _, _) = &passive_archive[idx];
-                    let mut current_routes = evaluator.evaluate(cand, &coralys_moga::runtime::optimization::metric::MetricReport::default()).eval.routes.clone();
+                    let mut current_routes = evaluator
+                        .evaluate(
+                            cand,
+                            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                        )
+                        .eval
+                        .routes
+                        .clone();
                     let mut current_dist = *start_dist;
-                    
+
                     let mut best_dist = current_dist;
                     let mut best_routes = current_routes.clone();
-                    
+
                     let sa_steps = 2500;
                     let t_start = 115.0; // Quick calibration approx
                     let ceiling = 900.0;
                     let alpha = (0.01_f64 / t_start).powf(1.0 / sa_steps as f64);
                     let mut t = t_start;
-                    
+
                     let mut dist_at_500 = current_dist;
                     let mut dist_at_1000 = current_dist;
-                    
+
                     for step in 0..sa_steps {
-                        if step == 500 { dist_at_500 = best_dist; }
-                        if step == 1000 { dist_at_1000 = best_dist; }
-                        if let Some(new_routes) = random_neighbor(&instance, &current_routes, &mut rng) {
+                        if step == 500 {
+                            dist_at_500 = best_dist;
+                        }
+                        if step == 1000 {
+                            dist_at_1000 = best_dist;
+                        }
+                        if let Some(new_routes) =
+                            random_neighbor(&instance, &current_routes, &mut rng)
+                        {
                             let new_dist = calc_total_dist(&instance, &new_routes);
-                            
-                            if new_dist > ceiling { continue; }
-                            
+
+                            if new_dist > ceiling {
+                                continue;
+                            }
+
                             let delta = new_dist - current_dist;
                             let mut accept = false;
                             if delta < 0.0 {
                                 accept = true;
                             } else {
-                                if rng.gen_range(0.0..1.0) < (-delta / t).exp() { accept = true; }
+                                if rng.gen_range(0.0..1.0) < (-delta / t).exp() {
+                                    accept = true;
+                                }
                             }
-                            
+
                             if accept {
                                 current_routes = new_routes;
                                 current_dist = new_dist;
@@ -503,34 +636,38 @@ fn main() {
                         }
                         t *= alpha;
                     }
-                    
+
                     let mut valid_reinject = false;
                     sa_total_start += *start_dist;
                     sa_total_end += best_dist;
                     if best_dist < *start_dist {
                         sa_total_imp += (*start_dist - best_dist);
                         sa_successes += 1;
-                        
+
                         // Try Reinjection
                         let mut flattened = Vec::new();
                         for r in &best_routes {
                             for &id in r {
-                                let idx = instance.customers.iter().position(|c| c.id == id).unwrap();
+                                let idx =
+                                    instance.customers.iter().position(|c| c.id == id).unwrap();
                                 flattened.push(idx);
                             }
                         }
-                        
-                        let reinject_cand = CvrpCandidate { 
+
+                        let reinject_cand = CvrpCandidate {
                             permutation: flattened,
                             last_mutation_op: Some("sa_reinject".to_string()),
                             last_mutation_radius: Some(0),
                             route_boundary_changes: Some(0),
                         };
-                        let reinject_eval = evaluator.evaluate(&reinject_cand, &coralys_moga::runtime::optimization::metric::MetricReport::default());
-                        
+                        let reinject_eval = evaluator.evaluate(
+                            &reinject_cand,
+                            &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                        );
+
                         let sa_edges = get_canonical_edges(&best_routes);
                         let ga_edges = get_canonical_edges(&reinject_eval.eval.routes);
-                        
+
                         if sa_edges == ga_edges {
                             // Survival validated!
                             new_reinjects.push(reinject_cand);
@@ -539,13 +676,13 @@ fn main() {
                         }
                     }
                     sa_bursts += 1;
-                    
+
                     // Detailed log
-                    // println!("    Burst {}/{} -> Start: {:.2} | @500: {:.2} | @1000: {:.2} | @2500: {:.2} | Valid Reinject: {}", 
-                    //     sa_bursts, sampled_indices.len(), *start_dist, dist_at_500, dist_at_1000, best_dist, 
+                    // println!("    Burst {}/{} -> Start: {:.2} | @500: {:.2} | @1000: {:.2} | @2500: {:.2} | Valid Reinject: {}",
+                    //     sa_bursts, sampled_indices.len(), *start_dist, dist_at_500, dist_at_1000, best_dist,
                     //     if valid_reinject { "Yes" } else { "No" });
                 }
-                
+
                 // Inject them
                 for cand in new_reinjects {
                     // Replace worst in next_gen
@@ -556,10 +693,26 @@ fn main() {
                 }
             }
 
-            let structural_damage = if total_pairs > 0 { 1.0 - (total_preserved_pairs as f64 / total_pairs as f64) } else { 0.0 };
-            let parent_similarity = if num_offspring > 0.0 { total_parent_sim / (num_offspring / 2.0) } else { 0.0 };
-            let offspring_novelty = if num_offspring > 0.0 { total_offspring_nov / num_offspring } else { 0.0 };
-            let elite_survival = if num_offspring > 0.0 { children_better_than_median as f64 / num_offspring } else { 0.0 };
+            let structural_damage = if total_pairs > 0 {
+                1.0 - (total_preserved_pairs as f64 / total_pairs as f64)
+            } else {
+                0.0
+            };
+            let parent_similarity = if num_offspring > 0.0 {
+                total_parent_sim / (num_offspring / 2.0)
+            } else {
+                0.0
+            };
+            let offspring_novelty = if num_offspring > 0.0 {
+                total_offspring_nov / num_offspring
+            } else {
+                0.0
+            };
+            let elite_survival = if num_offspring > 0.0 {
+                children_better_than_median as f64 / num_offspring
+            } else {
+                0.0
+            };
 
             let mut generation_signatures = Vec::new();
             for eval in &evals {
@@ -574,9 +727,10 @@ fn main() {
                     generation_signatures.push(sig);
                 }
             }
-            
+
             if generation == 1000 {
-                gen_1000_progress = Some(progress_tracker.observe_minimization(generation, best_dist));
+                gen_1000_progress =
+                    Some(progress_tracker.observe_minimization(generation, best_dist));
             } else {
                 progress_tracker.observe_minimization(generation, best_dist);
             }
@@ -614,27 +768,56 @@ fn main() {
         let mut best_archive_dist = 9999.0;
         let mut max_bks_overlap = 0;
         for (d, _, edges, added_gen) in &passive_archive {
-            if *d < best_archive_dist { best_archive_dist = *d; }
+            if *d < best_archive_dist {
+                best_archive_dist = *d;
+            }
             let overlap = edges.intersection(&bks_edges).count();
-            if overlap > max_bks_overlap { max_bks_overlap = overlap; }
+            if overlap > max_bks_overlap {
+                max_bks_overlap = overlap;
+            }
             eviction_lifetimes.push(generations - added_gen + 1); // For the ones surviving till the end
         }
-        
-        let avg_lifetime = if eviction_lifetimes.is_empty() { 
-            0.0 
-        } else { 
-            eviction_lifetimes.iter().sum::<usize>() as f64 / eviction_lifetimes.len() as f64 
+
+        let avg_lifetime = if eviction_lifetimes.is_empty() {
+            0.0
+        } else {
+            eviction_lifetimes.iter().sum::<usize>() as f64 / eviction_lifetimes.len() as f64
         };
 
-        let avg_sa_start = if sa_bursts > 0 { sa_total_start / sa_bursts as f64 } else { 0.0 };
-        let avg_sa_end = if sa_bursts > 0 { sa_total_end / sa_bursts as f64 } else { 0.0 };
-        let avg_sa_imp = if sa_bursts > 0 { sa_total_imp / sa_bursts as f64 } else { 0.0 };
-        let sa_success_rate = if sa_bursts > 0 { sa_successes as f64 / sa_bursts as f64 * 100.0 } else { 0.0 };
+        let avg_sa_start = if sa_bursts > 0 {
+            sa_total_start / sa_bursts as f64
+        } else {
+            0.0
+        };
+        let avg_sa_end = if sa_bursts > 0 {
+            sa_total_end / sa_bursts as f64
+        } else {
+            0.0
+        };
+        let avg_sa_imp = if sa_bursts > 0 {
+            sa_total_imp / sa_bursts as f64
+        } else {
+            0.0
+        };
+        let sa_success_rate = if sa_bursts > 0 {
+            sa_successes as f64 / sa_bursts as f64 * 100.0
+        } else {
+            0.0
+        };
 
-        println!("Seed {} -> Dist: {:.2} | Archive Best: {:.2} | Archive Families: {} | Max BKS Overlap: {} | Avg Lifetime: {:.1}", 
-            seed, global_best_distance, best_archive_dist, passive_archive.len(), max_bks_overlap, avg_lifetime);
-        println!("SA ROI -> Bursts: {} | Start: {:.2} | End: {:.2} | Avg Imp: {:.2} | Success: {:.1}% | Valid Reinjections: {}", 
-            sa_bursts, avg_sa_start, avg_sa_end, avg_sa_imp, sa_success_rate, sa_reinjections);
+        println!(
+            "Seed {} -> Dist: {:.2} | Archive Best: {:.2} | Archive Families: {} | Max BKS Overlap: {} | Avg Lifetime: {:.1}",
+            seed,
+            global_best_distance,
+            best_archive_dist,
+            passive_archive.len(),
+            max_bks_overlap,
+            avg_lifetime
+        );
+        println!(
+            "SA ROI -> Bursts: {} | Start: {:.2} | End: {:.2} | Avg Imp: {:.2} | Success: {:.1}% | Valid Reinjections: {}",
+            sa_bursts, avg_sa_start, avg_sa_end, avg_sa_imp, sa_success_rate, sa_reinjections
+        );
 
         results.push(SeedRunResult {
             seed,
@@ -646,7 +829,11 @@ fn main() {
         });
     }
 
-    results.sort_by(|a, b| a.best_final_distance.partial_cmp(&b.best_final_distance).unwrap());
+    results.sort_by(|a, b| {
+        a.best_final_distance
+            .partial_cmp(&b.best_final_distance)
+            .unwrap()
+    });
 
     let top_10_count = num_seeds / 10;
     let top_10 = &results[0..top_10_count];
@@ -655,15 +842,48 @@ fn main() {
     let report = Report {
         top_10_percent_avg_telemetry: aggregate_telemetry(top_10),
         bottom_10_percent_avg_telemetry: aggregate_telemetry(bottom_10),
-        top_10_percent_avg_distance: top_10.iter().map(|r| r.best_final_distance).sum::<f64>() / top_10_count as f64,
-        bottom_10_percent_avg_distance: bottom_10.iter().map(|r| r.best_final_distance).sum::<f64>() / top_10_count as f64,
-        top_10_avg_gen_first_improvement: top_10.iter().map(|r| r.generation_of_first_elite_improvement as f64).sum::<f64>() / top_10_count as f64,
-        top_10_avg_gen_final_improvement: top_10.iter().map(|r| r.generation_of_first_elite_improvement as f64).sum::<f64>() / top_10_count as f64,
-        bottom_10_avg_time_in_final_basin: bottom_10.iter().map(|r| r.time_spent_in_final_basin as f64).sum::<f64>() / bottom_10.len() as f64,
-        top_10_gen1000_basin_residency: top_10.iter().map(|r| r.progress_at_1000.basin_residency_ratio).sum::<f64>() / top_10.len() as f64,
-        bottom_10_gen1000_basin_residency: bottom_10.iter().map(|r| r.progress_at_1000.basin_residency_ratio).sum::<f64>() / bottom_10.len() as f64,
-        top_10_gen1000_improvement_rate_100: top_10.iter().map(|r| r.progress_at_1000.improvement_rate_100).sum::<f64>() / top_10.len() as f64,
-        bottom_10_gen1000_improvement_rate_100: bottom_10.iter().map(|r| r.progress_at_1000.improvement_rate_100).sum::<f64>() / bottom_10.len() as f64,
+        top_10_percent_avg_distance: top_10.iter().map(|r| r.best_final_distance).sum::<f64>()
+            / top_10_count as f64,
+        bottom_10_percent_avg_distance: bottom_10
+            .iter()
+            .map(|r| r.best_final_distance)
+            .sum::<f64>()
+            / top_10_count as f64,
+        top_10_avg_gen_first_improvement: top_10
+            .iter()
+            .map(|r| r.generation_of_first_elite_improvement as f64)
+            .sum::<f64>()
+            / top_10_count as f64,
+        top_10_avg_gen_final_improvement: top_10
+            .iter()
+            .map(|r| r.generation_of_first_elite_improvement as f64)
+            .sum::<f64>()
+            / top_10_count as f64,
+        bottom_10_avg_time_in_final_basin: bottom_10
+            .iter()
+            .map(|r| r.time_spent_in_final_basin as f64)
+            .sum::<f64>()
+            / bottom_10.len() as f64,
+        top_10_gen1000_basin_residency: top_10
+            .iter()
+            .map(|r| r.progress_at_1000.basin_residency_ratio)
+            .sum::<f64>()
+            / top_10.len() as f64,
+        bottom_10_gen1000_basin_residency: bottom_10
+            .iter()
+            .map(|r| r.progress_at_1000.basin_residency_ratio)
+            .sum::<f64>()
+            / bottom_10.len() as f64,
+        top_10_gen1000_improvement_rate_100: top_10
+            .iter()
+            .map(|r| r.progress_at_1000.improvement_rate_100)
+            .sum::<f64>()
+            / top_10.len() as f64,
+        bottom_10_gen1000_improvement_rate_100: bottom_10
+            .iter()
+            .map(|r| r.progress_at_1000.improvement_rate_100)
+            .sum::<f64>()
+            / bottom_10.len() as f64,
         all_runs: results.clone(),
     };
 

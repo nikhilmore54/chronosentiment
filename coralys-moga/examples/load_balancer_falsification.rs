@@ -76,7 +76,11 @@ impl Evaluated for LbEvaluation {
 impl FitnessEvaluator<LbGenome> for LbEvaluator {
     type Evaluation = LbEvaluation;
 
-    fn evaluate(&self, genome: &LbGenome, _metrics: &coralys_moga::runtime::optimization::metric::MetricReport) -> LbEvaluation {
+    fn evaluate(
+        &self,
+        genome: &LbGenome,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> LbEvaluation {
         let mut loads = vec![0; self.num_nodes];
         let mut unassigned_cost = 0;
 
@@ -339,8 +343,15 @@ fn run_falsification(seed: u64, arm: Arm, out_csv: &mut File) {
         let mut best_overall: Option<LbEvaluation> = None;
 
         for _gen in 0..200 {
-            let mut evals: Vec<LbEvaluation> =
-                population.iter().map(|g| evaluator.evaluate(g, &coralys_moga::runtime::optimization::metric::MetricReport::default())).collect();
+            let mut evals: Vec<LbEvaluation> = population
+                .iter()
+                .map(|g| {
+                    evaluator.evaluate(
+                        g,
+                        &coralys_moga::runtime::optimization::metric::MetricReport::default(),
+                    )
+                })
+                .collect();
 
             evals.sort_by(|a, b| {
                 b.fitness()

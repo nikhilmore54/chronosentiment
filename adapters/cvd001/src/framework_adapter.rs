@@ -36,14 +36,12 @@
 //!
 //! for all oracle inputs (OI1, OI2, O1–O8).
 
-use coralys_eval::{
-    BenchmarkAdapter,
-    ConstraintViolation as EvalViolation,
-    EvaluationResult as EvalResult,
-    ObjectiveValue,
-};
 use crate::evaluator::evaluate as standalone_evaluate;
 use crate::types::Solution;
+use coralys_eval::{
+    BenchmarkAdapter, ConstraintViolation as EvalViolation, EvaluationResult as EvalResult,
+    ObjectiveValue,
+};
 
 // ---------------------------------------------------------------------------
 // Cvd001FrameworkAdapter
@@ -73,32 +71,34 @@ impl BenchmarkAdapter for Cvd001FrameworkAdapter {
         "1.0.0"
     }
 
-    fn evaluate(
-        &self,
-        _problem: &Self::Problem,
-        solution: &Self::Solution,
-    ) -> EvalResult {
+    fn evaluate(&self, _problem: &Self::Problem, solution: &Self::Solution) -> EvalResult {
         // Delegate to the frozen standalone evaluator — no logic duplication.
         let r = standalone_evaluate(solution);
 
         // Map violations: cvd001::ConstraintViolation → coralys_eval::ConstraintViolation
-        let violations: Vec<EvalViolation> = r.violations.iter().map(|v| {
-            let mut ev = EvalViolation::hard(
-                v.constraint,
-                v.constraint,
-                v.workload,
-                v.threshold,
-            );
-            ev.entity_id = Some(v.crew_member_id as u64);
-            ev.entity_index = Some(v.crew_member_index);
-            ev
-        }).collect();
+        let violations: Vec<EvalViolation> = r
+            .violations
+            .iter()
+            .map(|v| {
+                let mut ev =
+                    EvalViolation::hard(v.constraint, v.constraint, v.workload, v.threshold);
+                ev.entity_id = Some(v.crew_member_id as u64);
+                ev.entity_index = Some(v.crew_member_index);
+                ev
+            })
+            .collect();
 
         // Map objective: Z = Σ_n Δ_n (INFINITY when infeasible)
-        let obj_value = if r.feasible { r.objective } else { f64::INFINITY };
-        let objectives = vec![
-            ObjectiveValue::new("workload_balance", "Workload Balance (Z = Σ|W_n − t_n|)", obj_value),
-        ];
+        let obj_value = if r.feasible {
+            r.objective
+        } else {
+            f64::INFINITY
+        };
+        let objectives = vec![ObjectiveValue::new(
+            "workload_balance",
+            "Workload Balance (Z = Σ|W_n − t_n|)",
+            obj_value,
+        )];
 
         // Build the framework result; feasible is derived from violations.
         let mut result = EvalResult::new(self.adapter_id(), objectives, violations);
@@ -127,15 +127,19 @@ impl BenchmarkAdapter for Cvd001FrameworkAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coralys_eval::ConstraintSeverity;
     use crate::types::{CrewMember, Duty, Solution};
+    use coralys_eval::ConstraintSeverity;
 
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
     fn make_duty(id: u32, credit: f64) -> Duty {
-        Duty { id, credit, legs: vec![] }
+        Duty {
+            id,
+            credit,
+            legs: vec![],
+        }
     }
 
     fn make_member(id: u32, max_workload: f64, target: f64, duty_credits: Vec<f64>) -> CrewMember {
@@ -172,7 +176,10 @@ mod tests {
         let standalone_obj = standalone.objective;
         let framework_obj = framework.primary_objective();
         if standalone_obj.is_infinite() {
-            assert!(framework_obj.is_infinite(), "{label}: expected INFINITY objective");
+            assert!(
+                framework_obj.is_infinite(),
+                "{label}: expected INFINITY objective"
+            );
         } else {
             assert!(
                 (standalone_obj - framework_obj).abs() < 1e-9,
@@ -181,13 +188,20 @@ mod tests {
         }
 
         // Violation field parity
-        for (i, (sv, fv)) in standalone.violations.iter().zip(framework.violations.iter()).enumerate() {
+        for (i, (sv, fv)) in standalone
+            .violations
+            .iter()
+            .zip(framework.violations.iter())
+            .enumerate()
+        {
             assert_eq!(
-                sv.crew_member_id, fv.entity_id.unwrap() as u32,
+                sv.crew_member_id,
+                fv.entity_id.unwrap() as u32,
                 "{label}: violation[{i}] crew_member_id mismatch"
             );
             assert_eq!(
-                sv.crew_member_index, fv.entity_index.unwrap(),
+                sv.crew_member_index,
+                fv.entity_index.unwrap(),
                 "{label}: violation[{i}] crew_member_index mismatch"
             );
             assert!(
@@ -199,7 +213,8 @@ mod tests {
                 "{label}: violation[{i}] threshold mismatch"
             );
             assert_eq!(
-                fv.severity, ConstraintSeverity::Hard,
+                fv.severity,
+                ConstraintSeverity::Hard,
                 "{label}: violation[{i}] should be Hard"
             );
         }
@@ -332,9 +347,9 @@ mod tests {
     fn o7_parity_mixed_feasibility() {
         let solution = Solution {
             crew: vec![
-                make_member(1, 500.0, 200.0, vec![100.0, 100.0]),  // feasible
-                make_member(2, 100.0, 80.0, vec![150.0]),           // HC3 violation
-                make_member(3, 500.0, 300.0, vec![150.0, 150.0]),   // feasible
+                make_member(1, 500.0, 200.0, vec![100.0, 100.0]), // feasible
+                make_member(2, 100.0, 80.0, vec![150.0]),         // HC3 violation
+                make_member(3, 500.0, 300.0, vec![150.0, 150.0]), // feasible
             ],
         };
         assert_parity(&solution, "O7");
@@ -347,10 +362,12 @@ mod tests {
     #[test]
     fn o8_parity_large_objective() {
         let solution = Solution {
-            crew: (1..=10u32).map(|i| {
-                // Each member has W_n = 100, t_n = 0 → Δ_n = 100
-                make_member(i, 1000.0, 0.0, vec![100.0])
-            }).collect(),
+            crew: (1..=10u32)
+                .map(|i| {
+                    // Each member has W_n = 100, t_n = 0 → Δ_n = 100
+                    make_member(i, 1000.0, 0.0, vec![100.0])
+                })
+                .collect(),
         };
         assert_parity(&solution, "O8");
     }

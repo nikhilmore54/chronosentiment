@@ -20,31 +20,31 @@ pub struct RawObservation {
 pub struct ValidatedObservation {
     /// Globally unique identifier for this observation
     pub id: Uuid,
-    
+
     /// The research session this observation was collected for (optional)
     pub research_session_id: Option<Uuid>,
 
     /// The instrument this observation relates to (links to Instrument Master)
     pub instrument_id: Option<Uuid>,
-    
+
     /// The type of observation (e.g., 'MarketPrice', 'MacroRelease', 'EarningsReport')
     pub observation_type: String,
 
     /// The gateway/provider that sourced this observation (e.g., 'Kite', 'FRED', 'EDGAR')
     pub source: String,
-    
+
     /// The provider's internal identifier for this observation (if any)
     pub source_identifier: Option<String>,
 
     /// When the event actually occurred in the real world
     pub observed_at: DateTime<Utc>,
-    
+
     /// When this observation becomes valid/effective for reasoning (prevents look-ahead bias)
     pub effective_from: DateTime<Utc>,
-    
+
     /// When this observation is superseded or expires (optional)
     pub effective_to: Option<DateTime<Utc>>,
-    
+
     /// When ChronoSentiment permanently recorded this observation
     pub recorded_at: DateTime<Utc>,
 
@@ -56,7 +56,7 @@ pub struct ValidatedObservation {
 
     /// Knowledge Confidence scoring
     pub confidence: f64,
-    pub freshness: f64, // e.g., age in hours when recorded
+    pub freshness: f64,   // e.g., age in hours when recorded
     pub coverage: String, // 'Complete', 'Partial'
     pub consistency: Option<f64>,
     pub quality_score: f64, // Aggregated quality metric

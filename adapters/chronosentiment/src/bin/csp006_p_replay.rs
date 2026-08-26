@@ -36,39 +36,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || PEEKED_RETURNS_AT_SEAL
         || PROSPECTIVE_COHORT_MUTATION_AUTHORIZED
     {
-        return Err("refusing a replay that authorizes lookahead, peeking, or prospective mutation".into());
+        return Err(
+            "refusing a replay that authorizes lookahead, peeking, or prospective mutation".into(),
+        );
     }
     if !TRADING_SESSION_HORIZON_AUTHORIZED {
         return Err("Replay v1 requires the 20 market-session Observatory contract".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(args.search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        args.search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
     let cache = load_required_yahoo_cache(&args.cache_dir).map_err(|e| e.to_string())?;
-    let (ledger, report) = replay_selected(&artifact, &cache, &args.clocks, &args.instruments, args.now)?;
+    let (ledger, report) =
+        replay_selected(&artifact, &cache, &args.clocks, &args.instruments, args.now)?;
 
     fs::create_dir_all(&args.output)?;
-    fs::write(args.output.join("ledger.json"), serde_json::to_vec_pretty(&ledger)?)?;
+    fs::write(
+        args.output.join("ledger.json"),
+        serde_json::to_vec_pretty(&ledger)?,
+    )?;
     fs::write(args.output.join("REPORT.md"), render_replay_report(&report))?;
     fs::write(
         args.output.join("observatory.html"),
         render_replay_html(&ledger, &report, args.now),
     )?;
-    fs::write(args.output.join("report.json"), serde_json::to_vec_pretty(&report)?)?;
+    fs::write(
+        args.output.join("report.json"),
+        serde_json::to_vec_pretty(&report)?,
+    )?;
 
     println!("result=PASS");
     println!("path_kind={}", ledger.path_kind);
     println!("sealed={}", report.n_decisions);
     println!("observed={}", report.n_observed);
-    println!("horizon={} {}", report.horizon_duration_days, report.horizon_calendar_basis);
+    println!(
+        "horizon={} {}",
+        report.horizon_duration_days, report.horizon_calendar_basis
+    );
     println!("peeked_returns={}", report.peeked_returns);
     println!("determinism={}", report.determinism_pass);
     println!("lookahead_clean={}", report.lookahead_clean);
     println!("statistical_backtest={}", report.statistical_backtest);
-    println!("prospective_cohort_mutated={}", report.prospective_cohort_mutated);
+    println!(
+        "prospective_cohort_mutated={}",
+        report.prospective_cohort_mutated
+    );
     println!("search_three_authorized={}", ledger.search_three_authorized);
     println!("output={}", args.output.display());
     Ok(())
@@ -94,7 +110,9 @@ fn parse_args() -> Result<ReplayArgs, Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(args.next().ok_or("missing --yahoo-cache")?))
@@ -110,7 +128,9 @@ fn parse_args() -> Result<ReplayArgs, Box<dyn std::error::Error>> {
         }
     }
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
     let clocks = if clocks_raw.is_empty() {
@@ -135,7 +155,8 @@ fn parse_args() -> Result<ReplayArgs, Box<dyn std::error::Error>> {
     };
     Ok(ReplayArgs {
         search_two: search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        cache_dir: cache.unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
+        cache_dir: cache
+            .unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
         output: output.unwrap_or_else(|| {
             PathBuf::from("product_validation/CS-P-006/observatory/historical_replay_v1")
         }),

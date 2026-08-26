@@ -1,13 +1,12 @@
 pub mod concepts;
-pub mod profile;
-pub mod market;
 pub mod instrument;
+pub mod market;
+pub mod profile;
 
 pub use concepts::{Concept, ConceptModel};
-pub use profile::{EvaluationProfile, LargeCapCoreProfile, ProfileAssigner};
-pub use market::{MarketMetricEngine, MarketMetricModel, AdvanceDeclineMetric};
 pub use instrument::{
-    InstrumentMetricEngine, InstrumentMetricModel, 
-    SimpleMovingAverageMetric, RateOfChangeMetric, 
-    AverageTrueRangeMetric, VolumeAverageMetric
+    AverageTrueRangeMetric, InstrumentMetricEngine, InstrumentMetricModel, RateOfChangeMetric,
+    SimpleMovingAverageMetric, VolumeAverageMetric,
 };
+pub use market::{AdvanceDeclineMetric, MarketMetricEngine, MarketMetricModel};
+pub use profile::{EvaluationProfile, LargeCapCoreProfile, ProfileAssigner};

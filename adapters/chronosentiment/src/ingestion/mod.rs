@@ -1,6 +1,6 @@
-pub mod kite;
-pub mod yahoo;
 pub mod fred;
+pub mod kite;
+pub mod pipeline;
 pub mod provider;
 pub mod validator;
-pub mod pipeline;
+pub mod yahoo;

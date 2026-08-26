@@ -5,17 +5,17 @@ pub struct CalibrationRecord {
     pub assessment_profile_hash: String,
     pub hypothesis_name: String,
     pub horizon: Horizon,
-    
+
     pub sample_count: usize,
     pub win_rate: f64,
-    
+
     pub median_return: f64,
     pub median_mfe: f64,
     pub median_mae: f64,
-    
+
     pub target_hit_rate: f64,
     pub stop_hit_rate: f64,
-    
+
     pub confidence_calibration: f64,
 }
 

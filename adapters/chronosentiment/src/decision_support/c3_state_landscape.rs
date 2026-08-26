@@ -159,7 +159,9 @@ fn build_state(
     one_actions: &[DecisionAction],
 ) -> Result<ObservedState, String> {
     if two.iter().any(|r| r.actual_forward_return.is_none()) {
-        return Err(format!("state {trend}/{momentum}/{volatility} missing return"));
+        return Err(format!(
+            "state {trend}/{momentum}/{volatility} missing return"
+        ));
     }
     let all_r = returns_of(two.iter().copied());
     let eval_r = returns_of(
@@ -189,7 +191,8 @@ fn build_state(
     }
     let mut instruments = Vec::new();
     for ticker in RESEARCH_UNIVERSE {
-        let subset: Vec<&&RecommendationRow> = two.iter().filter(|r| r.instrument == *ticker).collect();
+        let subset: Vec<&&RecommendationRow> =
+            two.iter().filter(|r| r.instrument == *ticker).collect();
         let rs = returns_of(subset.iter().copied().copied());
         let evals = returns_of(
             subset
@@ -289,7 +292,10 @@ pub fn analyze_state_landscape(
         }
         let state = state_of(two);
         buckets.entry(state.clone()).or_default().push(two);
-        one_actions.entry(state).or_default().push(one.recommendation);
+        one_actions
+            .entry(state)
+            .or_default()
+            .push(one.recommendation);
     }
 
     let mut states = Vec::new();
@@ -373,7 +379,9 @@ pub fn render_state_landscape(report: &StateLandscapeReport) -> String {
         ));
     }
     out.push_str("\nSHORT V is the sign flip of LONG V. NO_TRADE is 0. ");
-    out.push_str("Search columns are what each sealed policy chose, not the object of measurement. ");
+    out.push_str(
+        "Search columns are what each sealed policy chose, not the object of measurement. ",
+    );
     out.push_str("No threshold decides whether a state is useful. Search #3 is not authorized.\n");
     out
 }

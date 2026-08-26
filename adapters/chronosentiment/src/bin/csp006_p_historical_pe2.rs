@@ -36,8 +36,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("refusing a historical P.E.2 run that opens research".into());
     }
 
-    let artifact: PolicyArtifact =
-        serde_json::from_str(&fs::read_to_string(args.search_two.join("selected_policy.json"))?)?;
+    let artifact: PolicyArtifact = serde_json::from_str(&fs::read_to_string(
+        args.search_two.join("selected_policy.json"),
+    )?)?;
     if artifact.artifact_hash != RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH {
         return Err("refusing an artifact that is not C3-002 / Search #2".into());
     }
@@ -74,14 +75,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("high_reached={}", ledger.n_high_reached);
     println!("low_reached={}", ledger.n_low_reached);
     println!("session_close={}", ledger.n_session_close);
-    println!("determinism={}", if ledger.determinism_pass { "PASS" } else { "FAIL" });
+    println!(
+        "determinism={}",
+        if ledger.determinism_pass {
+            "PASS"
+        } else {
+            "FAIL"
+        }
+    );
     println!(
         "no_lookahead={}",
-        if ledger.lookahead_clean { "PASS" } else { "FAIL" }
+        if ledger.lookahead_clean {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
     println!(
         "poison_test={}",
-        if ledger.poison_test_pass { "PASS" } else { "FAIL" }
+        if ledger.poison_test_pass {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
     println!(
         "prospective_cohort_mutated={}",
@@ -117,21 +133,26 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--search-two-dir" => {
-                search_two = Some(PathBuf::from(args.next().ok_or("missing --search-two-dir")?))
+                search_two = Some(PathBuf::from(
+                    args.next().ok_or("missing --search-two-dir")?,
+                ))
             }
             "--yahoo-cache" => {
                 cache = Some(PathBuf::from(args.next().ok_or("missing --yahoo-cache")?))
             }
             "--output" => output = Some(PathBuf::from(args.next().ok_or("missing --output")?)),
             "--target" | "--target-pct" | "--now" => {
-                return Err("historical P.E.2 uses the frozen 15 Jul 2026 clock and +5.0% contract".into())
+                return Err(
+                    "historical P.E.2 uses the frozen 15 Jul 2026 clock and +5.0% contract".into(),
+                )
             }
             other => return Err(format!("unknown argument {other}").into()),
         }
     }
     Ok(Args {
         search_two: search_two.unwrap_or_else(|| PathBuf::from(RESEARCH_DISCOVERY_TWO_DIR)),
-        cache_dir: cache.unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
+        cache_dir: cache
+            .unwrap_or_else(|| PathBuf::from(RESEARCH_SNAPSHOT_DIR).join("yahoo_cache")),
         output: output.unwrap_or_else(|| {
             PathBuf::from("product_validation/CS-P-006/observatory/historical_pe2_replay")
         }),

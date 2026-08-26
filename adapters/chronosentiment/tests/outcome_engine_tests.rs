@@ -77,7 +77,10 @@ fn four_horizons_and_lineage_to_ledger_decision() {
         HORIZON_DAYS.to_vec()
     );
     assert!(bundle.horizons.iter().all(|h| h.available));
-    assert_eq!(bundle.horizons[0].lake_outcome_id, Some(Uuid::from_u128(10)));
+    assert_eq!(
+        bundle.horizons[0].lake_outcome_id,
+        Some(Uuid::from_u128(10))
+    );
 }
 
 #[test]
@@ -87,7 +90,10 @@ fn future_parent_decision_is_excluded() {
     let future = t0() + chrono::Duration::days(365);
     rows.push(row("5D", future, 99));
     let bundle = measure_record(&rec, &rows);
-    assert_eq!(bundle.horizons[0].lake_outcome_id, Some(Uuid::from_u128(10)));
+    assert_eq!(
+        bundle.horizons[0].lake_outcome_id,
+        Some(Uuid::from_u128(10))
+    );
     assert!(!bundle
         .horizons
         .iter()

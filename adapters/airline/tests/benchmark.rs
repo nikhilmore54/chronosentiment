@@ -40,12 +40,10 @@ use coralys_airline::domain::flight::{
 use coralys_airline::domain::pairing::{Pairing, PairingId};
 use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterId};
 use coralys_airline::domain::rotation::{Rotation, RotationId};
-use coralys_airline::legality::{LegalityChecker};
+use coralys_airline::legality::LegalityChecker;
 use coralys_airline::optimization::cost::CostEvaluator;
 use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{
-    SchedulingObjective, WorkloadBalanceObjective,
-};
+use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
 use coralys_airline::optimization::search::local_search::LocalSearch;
 
 use chrono::{Duration, TimeZone, Utc};
@@ -77,12 +75,7 @@ fn make_pairing_2leg(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
         vec![out.clone(), ret.clone()],
     )
     .unwrap();
-    let pairing = Pairing::new(
-        PairingId::new(id),
-        AirportCode::new("LHR"),
-        vec![duty],
-    )
-    .unwrap();
+    let pairing = Pairing::new(PairingId::new(id), AirportCode::new("LHR"), vec![duty]).unwrap();
     (vec![out, ret], pairing)
 }
 
@@ -92,8 +85,8 @@ fn make_pairing_2leg(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
 /// 9-hour rest between duties satisfies the 10h minimum rest rule... but since
 /// we use a bare LegalityChecker (no rules registered), this is not checked.
 fn make_pairing_4leg(id: &str, dep_h: i64) -> (Vec<FlightLeg>, Pairing) {
-    let l1 = make_leg(&format!("{id}_l1"), "LHR", "CDG", dep_h,      dep_h + 2);
-    let l2 = make_leg(&format!("{id}_l2"), "CDG", "AMS", dep_h + 3,  dep_h + 5);
+    let l1 = make_leg(&format!("{id}_l1"), "LHR", "CDG", dep_h, dep_h + 2);
+    let l2 = make_leg(&format!("{id}_l2"), "CDG", "AMS", dep_h + 3, dep_h + 5);
     let l3 = make_leg(&format!("{id}_l3"), "AMS", "CDG", dep_h + 15, dep_h + 17);
     let l4 = make_leg(&format!("{id}_l4"), "CDG", "LHR", dep_h + 18, dep_h + 20);
     let duty1 = Duty::new(
@@ -124,10 +117,7 @@ fn make_roster(legs: Vec<FlightLeg>, rotations: Vec<Rotation>) -> Roster {
     Roster::new(RosterId::new("R1"), period, legs, rotations).unwrap()
 }
 
-fn run_optimizer(
-    baseline: &Roster,
-    max_iterations: usize,
-) -> (Roster, OptimizationMetrics) {
+fn run_optimizer(baseline: &Roster, max_iterations: usize) -> (Roster, OptimizationMetrics) {
     let mut evaluator = CostEvaluator::new();
     evaluator.add_objective(Box::new(WorkloadBalanceObjective));
     let checker = LegalityChecker::new();
@@ -216,30 +206,43 @@ fn bm_1__small_uniform() {
         .map(|i| make_pairing_2leg(&format!("B1P{i:02}"), (i * 6) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairings.iter()
-        .flat_map(|(legs, _)| legs.clone())
-        .collect();
+    let all_legs: Vec<FlightLeg> = pairings.iter().flat_map(|(legs, _)| legs.clone()).collect();
 
     // Light rotations hold EARLIEST pairings (P00..P05); heavy holds LATEST (P06..P15).
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT2", "C2", vec![
-                pairings[0].1.clone(), pairings[1].1.clone(),
-            ]),
-            make_rotation("ROT3", "C3", vec![
-                pairings[2].1.clone(), pairings[3].1.clone(),
-            ]),
-            make_rotation("ROT4", "C4", vec![
-                pairings[4].1.clone(), pairings[5].1.clone(),
-            ]),
-            make_rotation("ROT1", "C1", vec![
-                pairings[6].1.clone(),  pairings[7].1.clone(),
-                pairings[8].1.clone(),  pairings[9].1.clone(),
-                pairings[10].1.clone(), pairings[11].1.clone(),
-                pairings[12].1.clone(), pairings[13].1.clone(),
-                pairings[14].1.clone(), pairings[15].1.clone(),
-            ]),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![pairings[0].1.clone(), pairings[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairings[2].1.clone(), pairings[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT4",
+                "C4",
+                vec![pairings[4].1.clone(), pairings[5].1.clone()],
+            ),
+            make_rotation(
+                "ROT1",
+                "C1",
+                vec![
+                    pairings[6].1.clone(),
+                    pairings[7].1.clone(),
+                    pairings[8].1.clone(),
+                    pairings[9].1.clone(),
+                    pairings[10].1.clone(),
+                    pairings[11].1.clone(),
+                    pairings[12].1.clone(),
+                    pairings[13].1.clone(),
+                    pairings[14].1.clone(),
+                    pairings[15].1.clone(),
+                ],
+            ),
         ],
     );
 
@@ -255,22 +258,33 @@ fn bm_1__small_uniform() {
 
     let result = BenchmarkResult::new(
         "BM-1",
-        4, 16,
-        baseline_score, optimized_score,
-        metrics.evaluations(), metrics.improvements(),
+        4,
+        16,
+        baseline_score,
+        optimized_score,
+        metrics.evaluations(),
+        metrics.improvements(),
     );
 
     println!();
     println!("BM-1: Small, Uniform (4 rot / 16 pairs / 2 legs each)");
     result.print();
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
     assert!(
         optimized_score < baseline_score,
         "BM-1 FAIL: optimized ({:.4}) must be < baseline ({:.4})",
-        optimized_score, baseline_score
+        optimized_score,
+        baseline_score
     );
-    assert!(optimized_pairings == baseline_pairings, "BM-1 FAIL: pairings not conserved");
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "BM-1 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "BM-1 FAIL: optimized roster is not legal");
 }
 
@@ -291,32 +305,71 @@ fn bm_2__medium_imbalanced() {
         .map(|i| make_pairing_2leg(&format!("B2P{i:02}"), (i * 6) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairings.iter()
-        .flat_map(|(legs, _)| legs.clone())
-        .collect();
+    let all_legs: Vec<FlightLeg> = pairings.iter().flat_map(|(legs, _)| legs.clone()).collect();
 
     // Light rotations hold EARLIEST pairings (P00..P13); heavy holds LATEST (P14..P31).
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT2", "C2", vec![pairings[0].1.clone(),  pairings[1].1.clone()]),
-            make_rotation("ROT3", "C3", vec![pairings[2].1.clone(),  pairings[3].1.clone()]),
-            make_rotation("ROT4", "C4", vec![pairings[4].1.clone(),  pairings[5].1.clone()]),
-            make_rotation("ROT5", "C5", vec![pairings[6].1.clone(),  pairings[7].1.clone()]),
-            make_rotation("ROT6", "C6", vec![pairings[8].1.clone(),  pairings[9].1.clone()]),
-            make_rotation("ROT7", "C7", vec![pairings[10].1.clone(), pairings[11].1.clone()]),
-            make_rotation("ROT8", "C8", vec![pairings[12].1.clone(), pairings[13].1.clone()]),
-            make_rotation("ROT1", "C1", vec![
-                pairings[14].1.clone(), pairings[15].1.clone(),
-                pairings[16].1.clone(), pairings[17].1.clone(),
-                pairings[18].1.clone(), pairings[19].1.clone(),
-                pairings[20].1.clone(), pairings[21].1.clone(),
-                pairings[22].1.clone(), pairings[23].1.clone(),
-                pairings[24].1.clone(), pairings[25].1.clone(),
-                pairings[26].1.clone(), pairings[27].1.clone(),
-                pairings[28].1.clone(), pairings[29].1.clone(),
-                pairings[30].1.clone(), pairings[31].1.clone(),
-            ]),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![pairings[0].1.clone(), pairings[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairings[2].1.clone(), pairings[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT4",
+                "C4",
+                vec![pairings[4].1.clone(), pairings[5].1.clone()],
+            ),
+            make_rotation(
+                "ROT5",
+                "C5",
+                vec![pairings[6].1.clone(), pairings[7].1.clone()],
+            ),
+            make_rotation(
+                "ROT6",
+                "C6",
+                vec![pairings[8].1.clone(), pairings[9].1.clone()],
+            ),
+            make_rotation(
+                "ROT7",
+                "C7",
+                vec![pairings[10].1.clone(), pairings[11].1.clone()],
+            ),
+            make_rotation(
+                "ROT8",
+                "C8",
+                vec![pairings[12].1.clone(), pairings[13].1.clone()],
+            ),
+            make_rotation(
+                "ROT1",
+                "C1",
+                vec![
+                    pairings[14].1.clone(),
+                    pairings[15].1.clone(),
+                    pairings[16].1.clone(),
+                    pairings[17].1.clone(),
+                    pairings[18].1.clone(),
+                    pairings[19].1.clone(),
+                    pairings[20].1.clone(),
+                    pairings[21].1.clone(),
+                    pairings[22].1.clone(),
+                    pairings[23].1.clone(),
+                    pairings[24].1.clone(),
+                    pairings[25].1.clone(),
+                    pairings[26].1.clone(),
+                    pairings[27].1.clone(),
+                    pairings[28].1.clone(),
+                    pairings[29].1.clone(),
+                    pairings[30].1.clone(),
+                    pairings[31].1.clone(),
+                ],
+            ),
         ],
     );
 
@@ -332,22 +385,33 @@ fn bm_2__medium_imbalanced() {
 
     let result = BenchmarkResult::new(
         "BM-2",
-        8, 32,
-        baseline_score, optimized_score,
-        metrics.evaluations(), metrics.improvements(),
+        8,
+        32,
+        baseline_score,
+        optimized_score,
+        metrics.evaluations(),
+        metrics.improvements(),
     );
 
     println!();
     println!("BM-2: Medium, Maximally Imbalanced (8 rot / 32 pairs / 2 legs each)");
     result.print();
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
     assert!(
         optimized_score < baseline_score,
         "BM-2 FAIL: optimized ({:.4}) must be < baseline ({:.4})",
-        optimized_score, baseline_score
+        optimized_score,
+        baseline_score
     );
-    assert!(optimized_pairings == baseline_pairings, "BM-2 FAIL: pairings not conserved");
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "BM-2 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "BM-2 FAIL: optimized roster is not legal");
 }
 
@@ -368,21 +432,25 @@ fn bm_3__large_uniform() {
         .map(|i| make_pairing_2leg(&format!("B3P{i:02}"), (i * 6) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairings.iter()
-        .flat_map(|(legs, _)| legs.clone())
-        .collect();
+    let all_legs: Vec<FlightLeg> = pairings.iter().flat_map(|(legs, _)| legs.clone()).collect();
 
     // Light rotations hold EARLIEST pairings (P00..P27); heavy holds LATEST (P28..P63).
-    let light: Vec<Rotation> = (0..15).map(|r| {
-        let base = r * 2;
-        make_rotation(
-            &format!("ROT{}", r + 2),
-            &format!("C{}", r + 2),
-            vec![pairings[base].1.clone(), pairings[base + 1].1.clone()],
-        )
-    }).collect();
+    let light: Vec<Rotation> = (0..15)
+        .map(|r| {
+            let base = r * 2;
+            make_rotation(
+                &format!("ROT{}", r + 2),
+                &format!("C{}", r + 2),
+                vec![pairings[base].1.clone(), pairings[base + 1].1.clone()],
+            )
+        })
+        .collect();
 
-    let heavy = make_rotation("ROT1", "C1", (28..64).map(|i| pairings[i].1.clone()).collect());
+    let heavy = make_rotation(
+        "ROT1",
+        "C1",
+        (28..64).map(|i| pairings[i].1.clone()).collect(),
+    );
 
     let mut rotations = light;
     rotations.push(heavy);
@@ -401,22 +469,33 @@ fn bm_3__large_uniform() {
 
     let result = BenchmarkResult::new(
         "BM-3",
-        16, 64,
-        baseline_score, optimized_score,
-        metrics.evaluations(), metrics.improvements(),
+        16,
+        64,
+        baseline_score,
+        optimized_score,
+        metrics.evaluations(),
+        metrics.improvements(),
     );
 
     println!();
     println!("BM-3: Large, Uniform (16 rot / 64 pairs / 2 legs each)");
     result.print();
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
     assert!(
         optimized_score < baseline_score,
         "BM-3 FAIL: optimized ({:.4}) must be < baseline ({:.4})",
-        optimized_score, baseline_score
+        optimized_score,
+        baseline_score
     );
-    assert!(optimized_pairings == baseline_pairings, "BM-3 FAIL: pairings not conserved");
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "BM-3 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "BM-3 FAIL: optimized roster is not legal");
 }
 
@@ -447,7 +526,8 @@ fn bm_4__medium_heterogeneous() {
         .map(|i| make_pairing_4leg(&format!("B4L{i:02}"), 100 + (i * 24) as i64))
         .collect();
 
-    let all_legs: Vec<FlightLeg> = pairs_2leg.iter()
+    let all_legs: Vec<FlightLeg> = pairs_2leg
+        .iter()
         .flat_map(|(legs, _)| legs.clone())
         .chain(pairs_4leg.iter().flat_map(|(legs, _)| legs.clone()))
         .collect();
@@ -459,19 +539,44 @@ fn bm_4__medium_heterogeneous() {
     let baseline = make_roster(
         all_legs,
         vec![
-            make_rotation("ROT2", "C2", vec![pairs_2leg[0].1.clone(),  pairs_2leg[1].1.clone()]),
-            make_rotation("ROT3", "C3", vec![pairs_2leg[2].1.clone(),  pairs_2leg[3].1.clone()]),
-            make_rotation("ROT4", "C4", vec![pairs_2leg[4].1.clone(),  pairs_2leg[5].1.clone()]),
-            make_rotation("ROT5", "C5", vec![pairs_2leg[6].1.clone(),  pairs_2leg[7].1.clone()]),
-            make_rotation("ROT6", "C6", vec![pairs_2leg[8].1.clone(),  pairs_2leg[9].1.clone()]),
-            make_rotation("ROT7", "C7", vec![pairs_2leg[10].1.clone(), pairs_2leg[11].1.clone()]),
-            make_rotation("ROT8", "C8", vec![pairs_2leg[12].1.clone(), pairs_2leg[13].1.clone()]),
+            make_rotation(
+                "ROT2",
+                "C2",
+                vec![pairs_2leg[0].1.clone(), pairs_2leg[1].1.clone()],
+            ),
+            make_rotation(
+                "ROT3",
+                "C3",
+                vec![pairs_2leg[2].1.clone(), pairs_2leg[3].1.clone()],
+            ),
+            make_rotation(
+                "ROT4",
+                "C4",
+                vec![pairs_2leg[4].1.clone(), pairs_2leg[5].1.clone()],
+            ),
+            make_rotation(
+                "ROT5",
+                "C5",
+                vec![pairs_2leg[6].1.clone(), pairs_2leg[7].1.clone()],
+            ),
+            make_rotation(
+                "ROT6",
+                "C6",
+                vec![pairs_2leg[8].1.clone(), pairs_2leg[9].1.clone()],
+            ),
+            make_rotation(
+                "ROT7",
+                "C7",
+                vec![pairs_2leg[10].1.clone(), pairs_2leg[11].1.clone()],
+            ),
+            make_rotation(
+                "ROT8",
+                "C8",
+                vec![pairs_2leg[12].1.clone(), pairs_2leg[13].1.clone()],
+            ),
             make_rotation("ROT1", "C1", {
                 // EARLY 2-leg pairings first, then LATE 4-leg pairings.
-                let mut v: Vec<Pairing> = vec![
-                    pairs_2leg[14].1.clone(),
-                    pairs_2leg[15].1.clone(),
-                ];
+                let mut v: Vec<Pairing> = vec![pairs_2leg[14].1.clone(), pairs_2leg[15].1.clone()];
                 v.extend(pairs_4leg.iter().map(|(_, p)| p.clone()));
                 v
             }),
@@ -490,21 +595,32 @@ fn bm_4__medium_heterogeneous() {
 
     let result = BenchmarkResult::new(
         "BM-4",
-        8, 32,
-        baseline_score, optimized_score,
-        metrics.evaluations(), metrics.improvements(),
+        8,
+        32,
+        baseline_score,
+        optimized_score,
+        metrics.evaluations(),
+        metrics.improvements(),
     );
 
     println!();
     println!("BM-4: Medium, Heterogeneous Leg Counts (8 rot / 32 pairs / mixed 2+4 legs)");
     result.print();
-    println!("  Legal: {}  Pairings conserved: {}", optimized_legal, optimized_pairings == baseline_pairings);
+    println!(
+        "  Legal: {}  Pairings conserved: {}",
+        optimized_legal,
+        optimized_pairings == baseline_pairings
+    );
 
     assert!(
         optimized_score < baseline_score,
         "BM-4 FAIL: optimized ({:.4}) must be < baseline ({:.4})",
-        optimized_score, baseline_score
+        optimized_score,
+        baseline_score
     );
-    assert!(optimized_pairings == baseline_pairings, "BM-4 FAIL: pairings not conserved");
+    assert!(
+        optimized_pairings == baseline_pairings,
+        "BM-4 FAIL: pairings not conserved"
+    );
     assert!(optimized_legal, "BM-4 FAIL: optimized roster is not legal");
 }

@@ -36,8 +36,7 @@ use std::collections::HashMap;
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use coralys_decision::recommendation::{
-    RecommendationEngineV1, RecommendationRecordV1,
-    engine::RecommendationAction,
+    RecommendationEngineV1, RecommendationRecordV1, engine::RecommendationAction,
 };
 use serde::{Deserialize, Serialize};
 
@@ -148,9 +147,7 @@ fn snapshot_from_recs(recommendations: Vec<RecommendationRecordV1>) -> Recommend
 /// each instrument. Older observations are excluded (use `/history` for those).
 ///
 /// Deduplication: group by ticker → sort by decision_timestamp desc → take newest.
-pub async fn get_recommendations_v1_latest(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_recommendations_v1_latest(State(state): State<AppState>) -> impl IntoResponse {
     let rec001h_store = match &state.rec001h_store {
         Some(store) => store,
         None => {
@@ -202,9 +199,7 @@ pub async fn get_recommendations_v1_latest(
 /// sorted by rank_score descending. Used by the History/Replay screen.
 ///
 /// No deduplication is applied. Use `/latest` for the operational live view.
-pub async fn get_recommendations_v1_history(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_recommendations_v1_history(State(state): State<AppState>) -> impl IntoResponse {
     let rec001h_store = match &state.rec001h_store {
         Some(store) => store,
         None => {

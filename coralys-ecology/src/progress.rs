@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,11 +38,16 @@ impl ProgressTracker {
         }
     }
 
-    pub fn observe_minimization(&mut self, generation: usize, current_cost: f64) -> ProgressObservation {
+    pub fn observe_minimization(
+        &mut self,
+        generation: usize,
+        current_cost: f64,
+    ) -> ProgressObservation {
         if let Some(prev) = self.last_fitness {
             if current_cost < prev {
                 let size = prev - current_cost;
-                self.improvements.push_back(ImprovementEvent { generation, size });
+                self.improvements
+                    .push_back(ImprovementEvent { generation, size });
                 self.total_improvements += 1;
                 self.sum_improvements += size;
                 if size > self.largest_improvement {
@@ -56,11 +61,16 @@ impl ProgressTracker {
         self.compute_observation(generation)
     }
 
-    pub fn observe_maximization(&mut self, generation: usize, current_fitness: f64) -> ProgressObservation {
+    pub fn observe_maximization(
+        &mut self,
+        generation: usize,
+        current_fitness: f64,
+    ) -> ProgressObservation {
         if let Some(prev) = self.last_fitness {
             if current_fitness > prev {
                 let size = current_fitness - prev;
-                self.improvements.push_back(ImprovementEvent { generation, size });
+                self.improvements
+                    .push_back(ImprovementEvent { generation, size });
                 self.total_improvements += 1;
                 self.sum_improvements += size;
                 if size > self.largest_improvement {
@@ -75,7 +85,6 @@ impl ProgressTracker {
     }
 
     fn compute_observation(&mut self, generation: usize) -> ProgressObservation {
-
         // Remove old events outside the maximum window we care about (500)
         while let Some(evt) = self.improvements.front() {
             if evt.generation + 500 < generation {
@@ -103,10 +112,18 @@ impl ProgressTracker {
 
         let improvement_rate_100 = improvements_100 as f64 / 100.0;
         let improvement_rate_500 = improvements_500 as f64 / 500.0;
-        let average_improvement_size_100 = if improvements_100 > 0 { sum_size_100 / improvements_100 as f64 } else { 0.0 };
-        let average_improvement_size_all_time = if self.total_improvements > 0 { self.sum_improvements / self.total_improvements as f64 } else { 0.0 };
+        let average_improvement_size_100 = if improvements_100 > 0 {
+            sum_size_100 / improvements_100 as f64
+        } else {
+            0.0
+        };
+        let average_improvement_size_all_time = if self.total_improvements > 0 {
+            self.sum_improvements / self.total_improvements as f64
+        } else {
+            0.0
+        };
         let stagnation_duration = generation.saturating_sub(self.last_improvement_generation);
-        
+
         let basin_residency_ratio = if generation > 0 {
             stagnation_duration as f64 / generation as f64
         } else {

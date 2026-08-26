@@ -89,10 +89,7 @@ async fn emit_to_server(
         .decision_time
         .parse()
         .map_err(|e| format!("bad decision_time '{}': {e}", decision.decision_time))?;
-    let data_snapshot_id = format!(
-        "yahoo-daily-{}",
-        decision_ts.format("%Y%m%dT%H%M%SZ")
-    );
+    let data_snapshot_id = format!("yahoo-daily-{}", decision_ts.format("%Y%m%dT%H%M%SZ"));
     let effective_session = next_trading_session(decision_ts);
     let body = serde_json::json!({
         "decision_id": decision.decision_id,
@@ -142,8 +139,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load the sealed prospective ledger (immutable — we do not write it back).
     let raw = fs::read_to_string(&ledger_path)
         .map_err(|e| format!("cannot read ledger {}: {e}", ledger_path.display()))?;
-    let ledger: ObservatoryLedger = serde_json::from_str(&raw)
-        .map_err(|e| format!("ledger JSON parse error: {e}"))?;
+    let ledger: ObservatoryLedger =
+        serde_json::from_str(&raw).map_err(|e| format!("ledger JSON parse error: {e}"))?;
 
     let decisions: Vec<SealedDecisionRecord> = ledger.decisions;
     println!(
@@ -256,9 +253,7 @@ fn parse_args() -> Result<(PathBuf, String, DateTime<Utc>), Box<dyn std::error::
     let mut now_raw = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--ledger" => {
-                ledger_path = Some(PathBuf::from(args.next().ok_or("missing --ledger")?))
-            }
+            "--ledger" => ledger_path = Some(PathBuf::from(args.next().ok_or("missing --ledger")?)),
             "--emit-url" => emit_url = Some(args.next().ok_or("missing --emit-url")?),
             "--now" => now_raw = Some(args.next().ok_or("missing --now")?),
             other => return Err(format!("unknown argument {other}").into()),
@@ -269,7 +264,9 @@ fn parse_args() -> Result<(PathBuf, String, DateTime<Utc>), Box<dyn std::error::
     });
     let url = emit_url.ok_or("--emit-url is required")?;
     let now = match now_raw {
-        Some(s) => s.parse().map_err(|e| format!("--now must be RFC3339: {e}"))?,
+        Some(s) => s
+            .parse()
+            .map_err(|e| format!("--now must be RFC3339: {e}"))?,
         None => Utc::now(),
     };
     Ok((ledger, url, now))

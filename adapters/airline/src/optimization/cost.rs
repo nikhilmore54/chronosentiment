@@ -31,7 +31,10 @@ impl CostVector {
             objective_ids.len(),
             "scores and objective_ids must have the same length"
         );
-        Self { scores, objective_ids }
+        Self {
+            scores,
+            objective_ids,
+        }
     }
 
     /// The score for objective at position `index`.
@@ -91,8 +94,16 @@ impl CostVector {
         if self.scores.len() != other.scores.len() {
             return false;
         }
-        let all_le = self.scores.iter().zip(other.scores.iter()).all(|(a, b)| a <= b);
-        let any_lt = self.scores.iter().zip(other.scores.iter()).any(|(a, b)| a < b);
+        let all_le = self
+            .scores
+            .iter()
+            .zip(other.scores.iter())
+            .all(|(a, b)| a <= b);
+        let any_lt = self
+            .scores
+            .iter()
+            .zip(other.scores.iter())
+            .any(|(a, b)| a < b);
         all_le && any_lt
     }
 }
@@ -122,7 +133,9 @@ pub struct CostEvaluator {
 impl CostEvaluator {
     /// Create an empty [`CostEvaluator`].
     pub fn new() -> Self {
-        Self { objectives: Vec::new() }
+        Self {
+            objectives: Vec::new(),
+        }
     }
 
     /// Register an objective.
@@ -133,7 +146,11 @@ impl CostEvaluator {
     /// Evaluate the roster and return a [`CostVector`].
     pub fn evaluate(&self, roster: &Roster) -> CostVector {
         let scores: Vec<f64> = self.objectives.iter().map(|o| o.evaluate(roster)).collect();
-        let ids: Vec<String> = self.objectives.iter().map(|o| o.objective_id().to_string()).collect();
+        let ids: Vec<String> = self
+            .objectives
+            .iter()
+            .map(|o| o.objective_id().to_string())
+            .collect();
         CostVector::new(scores, ids)
     }
 
@@ -159,8 +176,8 @@ impl Default for CostEvaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::optimization::objective::{CoverageCostObjective, WorkloadBalanceObjective};
     use crate::legality::test_helpers::*;
+    use crate::optimization::objective::{CoverageCostObjective, WorkloadBalanceObjective};
 
     fn make_two_rotation_roster() -> Roster {
         let d1a = make_duty("D1a", vec![make_leg("L1a", "LHR", "CDG", 8, 10)]);
@@ -178,7 +195,10 @@ mod tests {
 
     #[test]
     fn cost_vector_score_by_index() {
-        let cv = CostVector::new(vec![1.0, 2.0, 3.0], vec!["a".into(), "b".into(), "c".into()]);
+        let cv = CostVector::new(
+            vec![1.0, 2.0, 3.0],
+            vec!["a".into(), "b".into(), "c".into()],
+        );
         assert_eq!(cv.score(0), 1.0);
         assert_eq!(cv.score(1), 2.0);
         assert_eq!(cv.score(2), 3.0);
@@ -186,7 +206,10 @@ mod tests {
 
     #[test]
     fn cost_vector_score_for_id() {
-        let cv = CostVector::new(vec![1.0, 2.0], vec!["workload_balance".into(), "coverage_cost".into()]);
+        let cv = CostVector::new(
+            vec![1.0, 2.0],
+            vec!["workload_balance".into(), "coverage_cost".into()],
+        );
         assert_eq!(cv.score_for("workload_balance"), Some(1.0));
         assert_eq!(cv.score_for("coverage_cost"), Some(2.0));
         assert_eq!(cv.score_for("nonexistent"), None);
@@ -201,7 +224,7 @@ mod tests {
     #[test]
     fn cost_vector_dominates() {
         let better = CostVector::new(vec![1.0, 2.0], vec!["a".into(), "b".into()]);
-        let worse  = CostVector::new(vec![2.0, 3.0], vec!["a".into(), "b".into()]);
+        let worse = CostVector::new(vec![2.0, 3.0], vec!["a".into(), "b".into()]);
         assert!(better.dominates(&worse));
         assert!(!worse.dominates(&better));
     }

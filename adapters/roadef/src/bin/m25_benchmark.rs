@@ -1,4 +1,6 @@
-use coralys_moga::ecology::{LifecycleState, Memory, MemoryPolicy, Observation, PolicyVault, VaultEntry};
+use coralys_moga::ecology::{
+    LifecycleState, Memory, MemoryPolicy, Observation, PolicyVault, VaultEntry,
+};
 use std::collections::{HashMap, HashSet};
 
 pub type Tag = String;
@@ -21,13 +23,22 @@ pub struct MarketObservation {
 
 pub struct ChronoPolicy;
 impl MemoryPolicy<MarketChain, Vec<Tag>, MarketObservation> for ChronoPolicy {
-    fn should_store(&self, _entry: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) -> bool { true }
-    fn strengthen(&self, existing: &mut VaultEntry<MarketChain, Vec<Tag>, MarketObservation>, new_obs: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) {
+    fn should_store(&self, _entry: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) -> bool {
+        true
+    }
+    fn strengthen(
+        &self,
+        existing: &mut VaultEntry<MarketChain, Vec<Tag>, MarketObservation>,
+        new_obs: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>,
+    ) {
         existing.support += 1;
         existing.score += new_obs.score;
         existing.timestamp = new_obs.timestamp;
     }
-    fn merge(&self, entries: &[VaultEntry<MarketChain, Vec<Tag>, MarketObservation>]) -> Option<VaultEntry<MarketChain, Vec<Tag>, MarketObservation>> {
+    fn merge(
+        &self,
+        entries: &[VaultEntry<MarketChain, Vec<Tag>, MarketObservation>],
+    ) -> Option<VaultEntry<MarketChain, Vec<Tag>, MarketObservation>> {
         if let Some(last) = entries.last() {
             for existing in entries.iter().take(entries.len().saturating_sub(1)) {
                 let tail = existing.structure.sequence.last().unwrap();
@@ -37,9 +48,17 @@ impl MemoryPolicy<MarketChain, Vec<Tag>, MarketObservation> for ChronoPolicy {
                     new_seq.extend(last.structure.sequence[1..].iter().cloned());
                     let merged = VaultEntry {
                         structure: MarketChain {
-                            id: existing.structure.id.wrapping_add(last.structure.id.wrapping_mul(1000)),
+                            id: existing
+                                .structure
+                                .id
+                                .wrapping_add(last.structure.id.wrapping_mul(1000)),
                             sequence: new_seq,
-                            hop_support: vec![1; existing.structure.sequence.len() + last.structure.sequence.len() - 1],
+                            hop_support: vec![
+                                1;
+                                existing.structure.sequence.len()
+                                    + last.structure.sequence.len()
+                                    - 1
+                            ],
                         },
                         context: existing.context.clone(),
                         evidence: vec![],
@@ -54,18 +73,32 @@ impl MemoryPolicy<MarketChain, Vec<Tag>, MarketObservation> for ChronoPolicy {
         }
         None
     }
-    fn should_evict(&self, entry: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) -> bool { false }
+    fn should_evict(&self, entry: &VaultEntry<MarketChain, Vec<Tag>, MarketObservation>) -> bool {
+        false
+    }
 }
 
-struct ChronoDiscovery { next_id: u64 }
+struct ChronoDiscovery {
+    next_id: u64,
+}
 impl ChronoDiscovery {
-    fn discover(&mut self, tags: Vec<Tag>, current_time: u64) -> VaultEntry<MarketChain, Vec<Tag>, MarketObservation> {
+    fn discover(
+        &mut self,
+        tags: Vec<Tag>,
+        current_time: u64,
+    ) -> VaultEntry<MarketChain, Vec<Tag>, MarketObservation> {
         let chain = VaultEntry {
-            structure: MarketChain { id: self.next_id, sequence: tags.clone(), hop_support: vec![1] },
+            structure: MarketChain {
+                id: self.next_id,
+                sequence: tags.clone(),
+                hop_support: vec![1],
+            },
             context: vec![tags[0].clone()],
             evidence: vec![],
             state: LifecycleState::Candidate,
-            support: 1, score: 1.0, timestamp: current_time,
+            support: 1,
+            score: 1.0,
+            timestamp: current_time,
         };
         self.next_id += 1;
         chain
@@ -106,10 +139,12 @@ impl NetworkGraph {
         let mut capacities = HashMap::new();
         // Deterministic pseudo-random for reproducible benchmarks
         let mut seed: u32 = 42;
-        
+
         for i in 0..nodes {
             for j in 0..nodes {
-                if i == j { continue; }
+                if i == j {
+                    continue;
+                }
                 seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                 if (seed % 100) as f64 / 100.0 < edge_prob {
                     adj[i].push(j);
@@ -118,11 +153,15 @@ impl NetworkGraph {
             }
         }
         // Ensure there is at least one path by injecting a backbone
-        for i in 0..nodes-1 {
-            adj[i].push(i+1);
-            capacities.insert(Link(i, i+1), 10);
+        for i in 0..nodes - 1 {
+            adj[i].push(i + 1);
+            capacities.insert(Link(i, i + 1), 10);
         }
-        Self { num_nodes: nodes, capacities, adj }
+        Self {
+            num_nodes: nodes,
+            capacities,
+            adj,
+        }
     }
 }
 
@@ -170,10 +209,18 @@ pub struct SolverState {
 
 impl SolverState {
     fn query_coralys(&self, active_event: &str) -> ConstraintSignal {
-        if self.memory_mode == MemoryMode::Disabled { 
-            return ConstraintSignal { confidence: 0.0, pressure: 0.0, velocity: 0.0, acceleration: 0.0, success_count: 0, failure_count: 0, last_seen_epoch: 0 }; 
+        if self.memory_mode == MemoryMode::Disabled {
+            return ConstraintSignal {
+                confidence: 0.0,
+                pressure: 0.0,
+                velocity: 0.0,
+                acceleration: 0.0,
+                success_count: 0,
+                failure_count: 0,
+                last_seen_epoch: 0,
+            };
         }
-        
+
         let mut pressure_sum = 0.0;
         let mut failures = 0;
         let mut successes = 0;
@@ -191,13 +238,17 @@ impl SolverState {
                 }
             }
         }
-        
-        let total = failures + successes;
-        let pressure = if total > 0 { failures as f64 / total as f64 } else { 0.0 };
 
-        ConstraintSignal { 
-            confidence: total as f64, 
-            pressure, 
+        let total = failures + successes;
+        let pressure = if total > 0 {
+            failures as f64 / total as f64
+        } else {
+            0.0
+        };
+
+        ConstraintSignal {
+            confidence: total as f64,
+            pressure,
             velocity: 0.0, // Future trend tracking
             acceleration: 0.0,
             success_count: successes,
@@ -214,7 +265,14 @@ impl SolverState {
         self.obs_id += 1;
     }
 
-    pub fn solve(&mut self, scenario: &Scenario, demand_idx: usize, current_allocs: &HashMap<Link, usize>, current_cost: usize, precomputed_paths: &Vec<Vec<Vec<usize>>>) {
+    pub fn solve(
+        &mut self,
+        scenario: &Scenario,
+        demand_idx: usize,
+        current_allocs: &HashMap<Link, usize>,
+        current_cost: usize,
+        precomputed_paths: &Vec<Vec<Vec<usize>>>,
+    ) {
         // B&B Pruning: If cost exceeds best found, prune immediately
         if self.mode == SearchMode::BranchAndBound && current_cost >= self.best_objective {
             return;
@@ -237,13 +295,13 @@ impl SolverState {
         }
 
         let demand = &scenario.demands[demand_idx];
-        
+
         let paths = precomputed_paths[demand_idx].clone();
         let mut sorted_paths = paths;
         if self.mode == SearchMode::BranchAndBound {
             sorted_paths.sort_by_key(|p| p.len()); // Best-first
         }
-        
+
         if self.shuffle_seed > 0 {
             let mut seed = self.shuffle_seed;
             for i in (1..sorted_paths.len()).rev() {
@@ -267,7 +325,9 @@ impl SolverState {
 
         if self.memory_mode == MemoryMode::RankedAdvisory {
             path_risks.sort_by(|a, b| {
-                a.2.pressure.partial_cmp(&b.2.pressure).unwrap_or(std::cmp::Ordering::Equal)
+                a.2.pressure
+                    .partial_cmp(&b.2.pressure)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
         } else if self.memory_mode == MemoryMode::BinaryAdvisory {
             let mut safe = Vec::new();
@@ -286,20 +346,29 @@ impl SolverState {
             self.nodes_visited += 1;
 
             if self.memory_mode == MemoryMode::Authoritative && signal.pressure > 0.5 {
-                self.action_log.push(format!("AUTHORITATIVE PRUNE | Pressure: {} | Context: {}", signal.pressure, context_tag));
-                self.false_prunes += 1; 
+                self.action_log.push(format!(
+                    "AUTHORITATIVE PRUNE | Pressure: {} | Context: {}",
+                    signal.pressure, context_tag
+                ));
+                self.false_prunes += 1;
                 continue;
             }
 
-            if (self.memory_mode == MemoryMode::RankedAdvisory || self.memory_mode == MemoryMode::BinaryAdvisory) && signal.pressure > 0.0 {
-                self.action_log.push(format!("ADVISORY REORDER | Pressure: {} | Context: {}", signal.pressure, context_tag));
+            if (self.memory_mode == MemoryMode::RankedAdvisory
+                || self.memory_mode == MemoryMode::BinaryAdvisory)
+                && signal.pressure > 0.0
+            {
+                self.action_log.push(format!(
+                    "ADVISORY REORDER | Pressure: {} | Context: {}",
+                    signal.pressure, context_tag
+                ));
             }
 
             let mut true_failure = false;
             let mut next_allocs = current_allocs.clone();
-            
-            for i in 0..path.len()-1 {
-                let link = Link(path[i], path[i+1]);
+
+            for i in 0..path.len() - 1 {
+                let link = Link(path[i], path[i + 1]);
                 if let Some(inv) = &scenario.intervention {
                     if link == *inv {
                         true_failure = true;
@@ -320,23 +389,33 @@ impl SolverState {
                 continue;
             }
 
-            self.solve(scenario, demand_idx + 1, &next_allocs, current_cost + path.len(), precomputed_paths);
+            self.solve(
+                scenario,
+                demand_idx + 1,
+                &next_allocs,
+                current_cost + path.len(),
+                precomputed_paths,
+            );
         }
     }
 
     fn find_all_paths(&self, net: &NetworkGraph, src: usize, dst: usize) -> Vec<Vec<usize>> {
         let mut paths = Vec::new();
         let mut queue = vec![vec![src]];
-        
+
         while let Some(path) = queue.pop() {
             let last = *path.last().unwrap();
             if last == dst {
                 paths.push(path);
-            if paths.len() > 15 { break; } // limit arbitrarily to prevent total OOM
-            continue;
-        }
-        if path.len() > 5 { continue; } // Max depth limit
-            
+                if paths.len() > 15 {
+                    break;
+                } // limit arbitrarily to prevent total OOM
+                continue;
+            }
+            if path.len() > 5 {
+                continue;
+            } // Max depth limit
+
             for &next in &net.adj[last] {
                 if !path.contains(&next) {
                     let mut new_path = path.clone();
@@ -353,8 +432,6 @@ impl SolverState {
 // M25 EXPERIMENT RUNNERS
 // ==========================================
 
-
-
 fn run_m25_7_trap_corridor() {
     println!("=== M25.7A Pressure-Guided Search (Combinatorial Trap Learning Curve) ===");
     let nodes = 20;
@@ -362,19 +439,41 @@ fn run_m25_7_trap_corridor() {
 
     let mut demands = Vec::new();
     for id in 1..=4 {
-        demands.push(Demand { id, src: 0, dst: nodes - 1, vol: 2 });
+        demands.push(Demand {
+            id,
+            src: 0,
+            dst: nodes - 1,
+            vol: 2,
+        });
     }
 
-    let scenario = Scenario { network: net.clone(), demands, budget: 1000, intervention: None };
+    let scenario = Scenario {
+        network: net.clone(),
+        demands,
+        budget: 1000,
+        intervention: None,
+    };
 
     // Baseline run (Disabled Memory)
     let mut baseline = SolverState {
-        nodes_visited: 0, false_prunes: 0, solution_found: false, best_objective: usize::MAX,
-        first_solution_visited: 0, best_solution_visited: 0,
-        mode: SearchMode::BranchAndBound, memory_mode: MemoryMode::Disabled,
-        vault: PolicyVault { entries: vec![], policy: ChronoPolicy, max_capacity: 1000 }, 
+        nodes_visited: 0,
+        false_prunes: 0,
+        solution_found: false,
+        best_objective: usize::MAX,
+        first_solution_visited: 0,
+        best_solution_visited: 0,
+        mode: SearchMode::BranchAndBound,
+        memory_mode: MemoryMode::Disabled,
+        vault: PolicyVault {
+            entries: vec![],
+            policy: ChronoPolicy,
+            max_capacity: 1000,
+        },
         discovery: ChronoDiscovery { next_id: 1 },
-        time: 1, obs_id: 1, shuffle_seed: 0, action_log: vec![],
+        time: 1,
+        obs_id: 1,
+        shuffle_seed: 0,
+        action_log: vec![],
     };
     // Precompute paths
     let mut precomputed_paths = Vec::new();
@@ -384,32 +483,60 @@ fn run_m25_7_trap_corridor() {
     }
 
     baseline.solve(&scenario, 0, &HashMap::new(), 0, &precomputed_paths);
-    println!("Baseline (No Memory) | Best@Node: {:<8} | Total Nodes: {}", baseline.best_solution_visited, baseline.nodes_visited);
+    println!(
+        "Baseline (No Memory) | Best@Node: {:<8} | Total Nodes: {}",
+        baseline.best_solution_visited, baseline.nodes_visited
+    );
     println!("{:-<75}", "");
 
     // Learning Curve
-    let mut coralys_vault = PolicyVault { entries: vec![], policy: ChronoPolicy, max_capacity: 1000 };
-    println!("{:<6} | {:<12} | {:<10} | {:<10} | {}", "Run", "Nodes Visited", "1st@Node", "Best@Node", "Hard FP");
+    let mut coralys_vault = PolicyVault {
+        entries: vec![],
+        policy: ChronoPolicy,
+        max_capacity: 1000,
+    };
+    println!(
+        "{:<6} | {:<12} | {:<10} | {:<10} | {}",
+        "Run", "Nodes Visited", "1st@Node", "Best@Node", "Hard FP"
+    );
     println!("{:-<75}", "");
 
     for run in 1..=10 {
         let mut state = SolverState {
-            nodes_visited: 0, false_prunes: 0, solution_found: false, best_objective: usize::MAX,
-            first_solution_visited: 0, best_solution_visited: 0,
-            mode: SearchMode::BranchAndBound, memory_mode: MemoryMode::RankedAdvisory,
-            vault: PolicyVault { entries: coralys_vault.entries.clone(), policy: ChronoPolicy, max_capacity: 1000 }, 
+            nodes_visited: 0,
+            false_prunes: 0,
+            solution_found: false,
+            best_objective: usize::MAX,
+            first_solution_visited: 0,
+            best_solution_visited: 0,
+            mode: SearchMode::BranchAndBound,
+            memory_mode: MemoryMode::RankedAdvisory,
+            vault: PolicyVault {
+                entries: coralys_vault.entries.clone(),
+                policy: ChronoPolicy,
+                max_capacity: 1000,
+            },
             discovery: ChronoDiscovery { next_id: 1 },
-            time: run as u64, obs_id: 1, shuffle_seed: 0, action_log: vec![],
+            time: run as u64,
+            obs_id: 1,
+            shuffle_seed: 0,
+            action_log: vec![],
         };
 
         state.solve(&scenario, 0, &HashMap::new(), 0, &precomputed_paths);
-        
+
         coralys_vault = state.vault; // Accumulate memory
 
         let hard_fp = !state.solution_found || state.best_objective > baseline.best_objective;
-        
-        println!("{:<6} | {:<12} | {:<10} | {:<10} | {}", 
-            run, state.nodes_visited, state.first_solution_visited, state.best_solution_visited, hard_fp);
+
+        println!(
+            "{:<6} | {:<12} | {:<10} | {:<10} | {}",
+            run,
+            state.nodes_visited,
+            state.first_solution_visited,
+            state.best_solution_visited,
+            hard_fp
+        );
     }
 }
 
@@ -425,7 +552,12 @@ impl Clone for NetworkGraph {
 
 impl Clone for Demand {
     fn clone(&self) -> Self {
-        Self { id: self.id, src: self.src, dst: self.dst, vol: self.vol }
+        Self {
+            id: self.id,
+            src: self.src,
+            dst: self.dst,
+            vol: self.vol,
+        }
     }
 }
 

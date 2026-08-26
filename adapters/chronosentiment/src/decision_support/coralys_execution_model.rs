@@ -219,9 +219,7 @@ pub fn refuse_if_not_ready() -> Result<(), String> {
         );
     }
     if CORALYS_TARGET_SEARCH_AUTHORIZED {
-        return Err(
-            "coralys-exec-v0: refusing — CORALYS_TARGET_SEARCH_AUTHORIZED is true".into(),
-        );
+        return Err("coralys-exec-v0: refusing — CORALYS_TARGET_SEARCH_AUTHORIZED is true".into());
     }
     if TARGET_FROM_REALIZED_OUTCOME_AUTHORIZED {
         return Err(
@@ -423,14 +421,19 @@ mod tests {
     #[test]
     fn bullish_positive_long_produces_2x_atr_target() {
         let params = compute_execution_params(
-            Some(50.0),  // ATR = ₹50
-            1000.0,      // entry = ₹1000
+            Some(50.0), // ATR = ₹50
+            1000.0,     // entry = ₹1000
             "Bullish",
             "Positive",
             "LONG",
-        ).expect("should produce params");
+        )
+        .expect("should produce params");
         // base = 50/1000 = 0.05; multiplier = 2.0 → target = 0.10
-        assert!((params.target_pct - 0.10).abs() < 1e-9, "target_pct={}", params.target_pct);
+        assert!(
+            (params.target_pct - 0.10).abs() < 1e-9,
+            "target_pct={}",
+            params.target_pct
+        );
         assert!((params.target_price - 1100.0).abs() < 1e-6);
         // risk multiplier = 1.0 → risk = 0.05
         assert!((params.risk_pct - 0.05).abs() < 1e-9);
@@ -439,13 +442,8 @@ mod tests {
 
     #[test]
     fn bearish_negative_long_produces_1x_atr_target() {
-        let params = compute_execution_params(
-            Some(50.0),
-            1000.0,
-            "Bearish",
-            "Negative",
-            "LONG",
-        ).expect("should produce params");
+        let params = compute_execution_params(Some(50.0), 1000.0, "Bearish", "Negative", "LONG")
+            .expect("should produce params");
         // base = 0.05; multiplier = 1.0 → target = 0.05
         assert!((params.target_pct - 0.05).abs() < 1e-9);
         // risk multiplier = 0.5 → risk = 0.025
@@ -454,15 +452,16 @@ mod tests {
 
     #[test]
     fn short_direction_inverts_target_and_risk() {
-        let params = compute_execution_params(
-            Some(50.0),
-            1000.0,
-            "Bullish",
-            "Positive",
-            "SHORT",
-        ).expect("should produce params");
-        assert!(params.target_price < 1000.0, "SHORT target should be below entry");
-        assert!(params.risk_boundary > 1000.0, "SHORT risk should be above entry");
+        let params = compute_execution_params(Some(50.0), 1000.0, "Bullish", "Positive", "SHORT")
+            .expect("should produce params");
+        assert!(
+            params.target_price < 1000.0,
+            "SHORT target should be below entry"
+        );
+        assert!(
+            params.risk_boundary > 1000.0,
+            "SHORT risk should be above entry"
+        );
     }
 
     #[test]
@@ -470,38 +469,34 @@ mod tests {
         // ATR=0 must return None, not fall back to +5%.
         // Falling back would blend the treatment with the P.E.2 control.
         let result = compute_execution_params(Some(0.0), 1000.0, "Bullish", "Positive", "LONG");
-        assert!(result.is_none(), "ATR=0 must return None (NO_CORALYS_EXECUTION), not a fallback");
+        assert!(
+            result.is_none(),
+            "ATR=0 must return None (NO_CORALYS_EXECUTION), not a fallback"
+        );
     }
 
     #[test]
     fn none_atr_returns_none_not_fallback() {
         let result = compute_execution_params(None, 1000.0, "Bullish", "Positive", "LONG");
-        assert!(result.is_none(), "ATR=None must return None (NO_CORALYS_EXECUTION), not a fallback");
+        assert!(
+            result.is_none(),
+            "ATR=None must return None (NO_CORALYS_EXECUTION), not a fallback"
+        );
     }
 
     #[test]
     fn very_high_atr_is_clamped_to_max_target() {
         // ATR = ₹500 on ₹1000 entry → base = 0.5; × 2.0 = 1.0 → clamped to 0.15
-        let params = compute_execution_params(
-            Some(500.0),
-            1000.0,
-            "Bullish",
-            "Positive",
-            "LONG",
-        ).expect("should produce params");
+        let params = compute_execution_params(Some(500.0), 1000.0, "Bullish", "Positive", "LONG")
+            .expect("should produce params");
         assert!((params.target_pct - TARGET_PCT_MAX).abs() < 1e-9);
     }
 
     #[test]
     fn very_low_atr_is_clamped_to_min_target() {
         // ATR = ₹1 on ₹1000 entry → base = 0.001; × 2.0 = 0.002 → clamped to 0.02
-        let params = compute_execution_params(
-            Some(1.0),
-            1000.0,
-            "Bullish",
-            "Positive",
-            "LONG",
-        ).expect("should produce params");
+        let params = compute_execution_params(Some(1.0), 1000.0, "Bullish", "Positive", "LONG")
+            .expect("should produce params");
         assert!((params.target_pct - TARGET_PCT_MIN).abs() < 1e-9);
     }
 
@@ -532,12 +527,16 @@ mod tests {
         // Same absolute distances
         let long_target_dist = (long_p.target_price - 1000.0).abs();
         let short_target_dist = (short_p.target_price - 1000.0).abs();
-        assert!((long_target_dist - short_target_dist).abs() < 1e-6,
-            "LONG target dist={long_target_dist}, SHORT target dist={short_target_dist}");
+        assert!(
+            (long_target_dist - short_target_dist).abs() < 1e-6,
+            "LONG target dist={long_target_dist}, SHORT target dist={short_target_dist}"
+        );
         let long_risk_dist = (long_p.risk_boundary - 1000.0).abs();
         let short_risk_dist = (short_p.risk_boundary - 1000.0).abs();
-        assert!((long_risk_dist - short_risk_dist).abs() < 1e-6,
-            "LONG risk dist={long_risk_dist}, SHORT risk dist={short_risk_dist}");
+        assert!(
+            (long_risk_dist - short_risk_dist).abs() < 1e-6,
+            "LONG risk dist={long_risk_dist}, SHORT risk dist={short_risk_dist}"
+        );
         // LONG target above entry, SHORT target below
         assert!(long_p.target_price > 1000.0);
         assert!(short_p.target_price < 1000.0);
@@ -622,10 +621,15 @@ mod tests {
             sealed_at_entry: true,
             direction_sealed_at_t: true,
         };
-        assert!(intent.sealed_at_entry, "execution intent must seal at entry (E)");
+        assert!(
+            intent.sealed_at_entry,
+            "execution intent must seal at entry (E)"
+        );
         assert!(intent.direction_sealed_at_t, "direction must seal at T");
         assert_eq!(intent.entry_source, ENTRY_SOURCE_NEXT_SESSION_OPEN);
-        assert_ne!(intent.decision_information_cutoff, intent.execution_information_cutoff,
-            "T and E must be different timestamps");
+        assert_ne!(
+            intent.decision_information_cutoff, intent.execution_information_cutoff,
+            "T and E must be different timestamps"
+        );
     }
 }

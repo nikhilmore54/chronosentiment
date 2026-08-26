@@ -1,8 +1,8 @@
-use serde::{Serialize, Deserialize};
+use super::decision_proposal::DecisionProposal;
+use super::evaluation_result::EvaluationResult;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-use super::evaluation_result::EvaluationResult;
-use super::decision_proposal::DecisionProposal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineageNode {

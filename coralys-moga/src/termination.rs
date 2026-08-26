@@ -27,8 +27,12 @@ impl TerminationPolicy {
             TerminationPolicy::TargetFitness(target) => state.best_fitness >= *target,
             TerminationPolicy::NoImprovement(limit) => state.stagnation_generations >= *limit,
             TerminationPolicy::MaxRuntime(limit) => state.elapsed_time >= *limit,
-            TerminationPolicy::And(p1, p2) => p1.should_terminate(state) && p2.should_terminate(state),
-            TerminationPolicy::Or(p1, p2) => p1.should_terminate(state) || p2.should_terminate(state),
+            TerminationPolicy::And(p1, p2) => {
+                p1.should_terminate(state) && p2.should_terminate(state)
+            }
+            TerminationPolicy::Or(p1, p2) => {
+                p1.should_terminate(state) || p2.should_terminate(state)
+            }
         }
     }
 
@@ -92,6 +96,10 @@ mod tests {
         assert!(!p1.clone().and(p2.clone()).should_terminate(&state));
 
         // Or
-        assert!(p1.and(p2).or(TerminationPolicy::NoImprovement(3)).should_terminate(&state));
+        assert!(
+            p1.and(p2)
+                .or(TerminationPolicy::NoImprovement(3))
+                .should_terminate(&state)
+        );
     }
 }

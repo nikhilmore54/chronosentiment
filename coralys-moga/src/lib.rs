@@ -1,32 +1,36 @@
-pub mod runtime;
 pub mod benchmark;
 pub mod benchmark_framework;
 pub mod config;
 pub mod ecology;
 pub mod engine;
 pub mod engine_proof;
-pub mod state;
-pub mod traits;
 pub mod metrics;
+pub mod runtime;
+pub mod state;
 pub mod termination;
+pub mod traits;
 
 pub mod observatory;
 
 pub use metrics::evolution::{EvolutionMetrics, ProcessorMetrics};
 
-pub use benchmark_framework::{MogaBenchmarkReport, SolutionQuality, ExecutionMetrics, EngineMetrics, ConvergenceMetrics};
+pub use benchmark_framework::{
+    ConvergenceMetrics, EngineMetrics, ExecutionMetrics, MogaBenchmarkReport, SolutionQuality,
+};
 
 pub use config::EvolutionConfig;
-pub use engine::{MogaOutcomeWrapper, MogaReasoningEngine, PluginFitnessEvaluator, EvolutionEngineBuilder};
-pub use termination::{TerminationPolicy, TerminationState};
-pub use state::{EliteArchive, EvolutionState, GenerationResult, Organism, Population};
+pub use engine::{
+    EvolutionEngineBuilder, MogaOutcomeWrapper, MogaReasoningEngine, PluginFitnessEvaluator,
+};
 pub use observatory::{
     GenerationObserver, PipelineObserver, ProcessingEvent, ProcessingMetricsCollector,
 };
+pub use state::{EliteArchive, EvolutionState, GenerationResult, Organism, Population};
+pub use termination::{TerminationPolicy, TerminationState};
 pub use traits::{
     AssignmentSolver, CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory,
-    MutationOperator, SelectionStrategy, ImprovementOperator, NoOpImprovement, LocalSearchOperator,
-    ObservedTransitionMetric, RegionIdentifier,
+    ImprovementOperator, LocalSearchOperator, MutationOperator, NoOpImprovement,
+    ObservedTransitionMetric, RegionIdentifier, SelectionStrategy,
 };
 
 #[cfg(test)]
@@ -62,7 +66,11 @@ mod tests {
     struct DummyEvaluator;
     impl FitnessEvaluator<TestGenome> for DummyEvaluator {
         type Evaluation = TestEvaluation;
-        fn evaluate(&self, genome: &TestGenome, _metrics: &crate::runtime::optimization::metric::MetricReport) -> Self::Evaluation {
+        fn evaluate(
+            &self,
+            genome: &TestGenome,
+            _metrics: &crate::runtime::optimization::metric::MetricReport,
+        ) -> Self::Evaluation {
             TestEvaluation {
                 fitness: genome.value,
                 valid: true,
@@ -123,7 +131,10 @@ mod tests {
         assert_eq!(child1.value, 1.0);
         assert_eq!(child2.value, 1.0);
 
-        let pop = vec![evaluator.evaluate(&genome, &crate::runtime::optimization::metric::MetricReport::default())];
+        let pop = vec![evaluator.evaluate(
+            &genome,
+            &crate::runtime::optimization::metric::MetricReport::default(),
+        )];
         let selected = selection.select(&pop, 1);
         assert_eq!(selected.len(), 1);
         assert_eq!(selected[0].fitness(), 1.0);
@@ -182,7 +193,7 @@ mod tests {
             .with_mutator(DummyMutation)
             .with_crossover(DummyCrossover)
             .with_factory(DummyGenomeFactory);
-        
+
         let engine = builder.build().unwrap();
         let config = EvolutionConfig {
             population_size: 10,
@@ -203,7 +214,7 @@ mod tests {
             .with_crossover(DummyCrossover)
             .with_factory(DummyGenomeFactory)
             .with_improvement(IncrementImprovement);
-        
+
         let engine = builder.build().unwrap();
         let config = EvolutionConfig {
             population_size: 10,
@@ -231,8 +242,8 @@ mod tests {
             .with_crossover(DummyCrossover)
             .with_factory(DummyGenomeFactory)
             .add_processor(IncrementImprovement) // adds 10.0
-            .add_processor(DoubleImprovement);   // multiplies by 2.0 (order matters!)
-        
+            .add_processor(DoubleImprovement); // multiplies by 2.0 (order matters!)
+
         let mut engine = builder.build().unwrap();
         assert_eq!(engine.processor_count(), 2);
 
@@ -267,7 +278,7 @@ mod tests {
             .add_processor(IncrementImprovement)
             .add_processor(DoubleImprovement)
             .with_observer(metrics.clone());
-        
+
         let engine = builder.build().unwrap();
         let config = EvolutionConfig {
             population_size: 10,
@@ -276,17 +287,17 @@ mod tests {
             ..Default::default()
         };
         let _result = engine.run_ga_evolution(config).unwrap();
-        
+
         // Ensure metrics are collected
         let count = *metrics.processed_count.lock().unwrap();
         assert!(count > 0, "processed count should be greater than zero");
-        
+
         {
             let counts = metrics.execution_counts.lock().unwrap();
             assert_eq!(*counts.get(&0).unwrap_or(&0), count / 2);
             assert_eq!(*counts.get(&1).unwrap_or(&0), count / 2);
         }
-        
+
         // average_time check (should execute and return a valid duration)
         let avg_time_0 = metrics.average_time(0);
         let avg_time_1 = metrics.average_time(1);
@@ -304,7 +315,7 @@ mod tests {
             .add_processor(IncrementImprovement)
             .add_processor(DoubleImprovement)
             .enable_metrics(true);
-        
+
         let engine = builder.build().unwrap();
         let config = EvolutionConfig {
             population_size: 10,
@@ -313,9 +324,11 @@ mod tests {
             ..Default::default()
         };
         let _result = engine.run_ga_evolution(config).unwrap();
-        
+
         // Assert metrics accumulation on the snapshot
-        let m = engine.metrics_snapshot().expect("metrics should be enabled");
+        let m = engine
+            .metrics_snapshot()
+            .expect("metrics should be enabled");
         assert_eq!(m.generation, 4); // generation limit is 5, so 0 to 4
         assert!(m.best_fitness >= 20.0);
         assert!(m.worst_fitness > 0.0);
@@ -323,10 +336,10 @@ mod tests {
         assert!(m.fitness_stddev >= 0.0);
         assert!(m.evaluation_count > 0);
         assert!(m.elapsed_time > std::time::Duration::ZERO);
-        
+
         assert_eq!(m.best_history.len(), 5);
         assert_eq!(m.average_history.len(), 5);
-        
+
         // Assert processor metrics
         assert!(m.processors.contains_key(&0));
         assert!(m.processors.contains_key(&1));
@@ -339,7 +352,7 @@ mod tests {
         assert!(p0.average_runtime > std::time::Duration::ZERO);
         assert!(p0.maximum_runtime > std::time::Duration::ZERO);
         assert!(p0.minimum_runtime <= p0.maximum_runtime);
-        
+
         // Verify disabled metrics returns None
         let disabled_builder = EvolutionEngineBuilder::new()
             .with_evaluator(DummyEvaluator)

@@ -1,6 +1,6 @@
+use crate::domain::StrategyEvaluation;
 use chronosentiment_core::Side;
 use serde::{Deserialize, Serialize};
-use crate::domain::StrategyEvaluation;
 use std::collections::HashMap;
 
 /// [V4.1.0] Final structured result of the Recommendation Engine.
@@ -114,7 +114,11 @@ impl RecommendationEngine {
         // 1. Calculate population stats and filter strategies
         let n = population.len() as f64;
         let mean = population.iter().map(|c| c.fitness).sum::<f64>() / n.max(1.0);
-        let variance = population.iter().map(|c| (c.fitness - mean).powi(2)).sum::<f64>() / n.max(1.0);
+        let variance = population
+            .iter()
+            .map(|c| (c.fitness - mean).powi(2))
+            .sum::<f64>()
+            / n.max(1.0);
         let std = variance.sqrt();
         let mut strategies: Vec<&StrategyEvaluation> = population
             .iter()
@@ -158,7 +162,8 @@ impl RecommendationEngine {
         }
 
         // 3. Cluster by behavioral axes
-        let mut clusters: std::collections::HashMap<String, Vec<&StrategyEvaluation>> = std::collections::HashMap::new();
+        let mut clusters: std::collections::HashMap<String, Vec<&StrategyEvaluation>> =
+            std::collections::HashMap::new();
         for &e in &strategies {
             let sig_str = format!("{:?}", e.behavioral_signature);
             clusters.entry(sig_str).or_insert(vec![]).push(e);
@@ -176,10 +181,15 @@ impl RecommendationEngine {
         for (axes, members) in &clusters {
             let size = members.len() as f64;
             let avg_fitness = members.iter().map(|e| e.fitness).sum::<f64>() / size;
-            
+
             // Stability: cluster fitness dispersion; if the cluster is a singleton (or numerically flat),
             // use population-wide fitness std so different assets get different scores.
-            let cluster_std = (members.iter().map(|e| (e.fitness - avg_fitness).powi(2)).sum::<f64>() / size).sqrt();
+            let cluster_std = (members
+                .iter()
+                .map(|e| (e.fitness - avg_fitness).powi(2))
+                .sum::<f64>()
+                / size)
+                .sqrt();
             let stability = if size >= 2.0 && cluster_std > 1e-9 {
                 (avg_fitness / (cluster_std + 1e-6)).min(5.0)
             } else {
@@ -201,16 +211,21 @@ impl RecommendationEngine {
 
             // Adaptive Dual-Awareness Consensus: Smooth Regime Interpolation
             let agreement_global = size / total_pop_size;
-            let agreement_local = if pool_size > 0.0 { size / pool_size } else { 0.0 };
-            
+            let agreement_local = if pool_size > 0.0 {
+                size / pool_size
+            } else {
+                0.0
+            };
+
             // Continuous alpha blend: 0 -> Discovery (elite), 1 -> Confirmation (collective)
             let alpha = ((agreement_global - 0.2) / 0.2).clamp(0.0, 1.0);
-            
+
             // Interpolate weights: G (0.4 -> 0.7), L (0.6 -> 0.3)
             let weight_global = 0.4 + alpha * (0.7 - 0.4);
-            let weight_local  = 0.6 - alpha * (0.6 - 0.3);
-            
-            let combined_agreement = weight_global * agreement_global + weight_local * agreement_local;
+            let weight_local = 0.6 - alpha * (0.6 - 0.3);
+
+            let combined_agreement =
+                weight_global * agreement_global + weight_local * agreement_local;
 
             if energy > max_energy {
                 max_energy = energy;
@@ -248,14 +263,24 @@ impl RecommendationEngine {
 
         let axes = match best_cluster_axes {
             Some(a) => a,
-            None => return RecommendationResult::NoTrade { reason: NoTradeReason::LowConsensus, metrics: best_metrics },
+            None => {
+                return RecommendationResult::NoTrade {
+                    reason: NoTradeReason::LowConsensus,
+                    metrics: best_metrics,
+                }
+            }
         };
 
         // 5. Select Medoid (Strategy closest to cluster center with tie-break)
         let cluster_members = clusters.get(&axes).unwrap();
         let medoid_eval = match Self::calculate_medoid(cluster_members) {
             Some(m) => m,
-            None => return RecommendationResult::NoTrade { reason: NoTradeReason::LowConsensus, metrics: best_metrics },
+            None => {
+                return RecommendationResult::NoTrade {
+                    reason: NoTradeReason::LowConsensus,
+                    metrics: best_metrics,
+                }
+            }
         };
 
         // 7. Derive execution quality from GA's proven ExecutionMetrics (not shadow sim).
@@ -269,41 +294,45 @@ impl RecommendationEngine {
         best_metrics.medoid_fitness = medoid_eval.fitness;
 
         // 10. Gating Logic
-        let action = if medoid_eval.avg_conviction > 0.0 { Side::Buy } else { Side::Sell };
-        
+        let action = if medoid_eval.avg_conviction > 0.0 {
+            Side::Buy
+        } else {
+            Side::Sell
+        };
+
         // 🔥 Consensus Tension: Context-Aware Maturity
         let g = best_metrics.agreement_global;
         let l = best_metrics.agreement_local;
         let stability = best_metrics.stability;
         let cohesion = best_metrics.cohesion;
-        
+
         // Maturity Signal: Blend broad popularity with internal consistency & variance
         let stab_norm = (stability / 5.0).clamp(0.0, 1.0); // 2.0-5.0 range
         let variance_penalty = cohesion.clamp(0.5, 1.0); // Cohesion is 1.0 - genomic variance
         let stability_signal = stab_norm.sqrt() * variance_penalty;
-        
+
         let maturity = (0.6 * g + 0.4 * stability_signal).clamp(0.0, 1.0);
-        
+
         // Continuous alpha blend: 0 -> Discovery (elite), 1 -> Confirmation (collective)
         let alpha = ((maturity - 0.2) / 0.2).clamp(0.0, 1.0);
-        
+
         // Interpolate weights: G (0.4 -> 0.7), L (0.6 -> 0.3)
         let weight_global = 0.4 + alpha * (0.7 - 0.4);
-        let weight_local  = 0.6 - alpha * (0.6 - 0.3);
-        
+        let weight_local = 0.6 - alpha * (0.6 - 0.3);
+
         let agreement = weight_global * g + weight_local * l;
         let raw_consensus = agreement * agreement;
-        
+
         // Final Consensus Confidence with Entropy Penalty (Phase D.1.22)
         let diversity_factor = (stability / 2.0).clamp(0.7, 1.0);
         let mut consensus_conf = (raw_consensus * diversity_factor).clamp(0.1, 0.95);
-        
+
         // Apply Entropy Penalty: punish unoriginal/homogeneous consensus
         consensus_conf *= 1.0 - 0.3 * entropy_penalty;
-        
+
         let execution_conf = best_metrics.execution_score.min(0.95);
         let capture_conf = ((best_metrics.capture_efficiency + 1.0) / 2.0).clamp(0.0, 1.0);
-        
+
         let total_conf = 0.45 * consensus_conf + 0.35 * execution_conf + 0.20 * capture_conf;
 
         // Optional: very chatty; enable with RECO_DEBUG=1 when tuning the reco layer.
@@ -340,26 +369,38 @@ impl RecommendationEngine {
         };
 
         // Emit final Decision
-        if best_metrics.agreement >= config.min_agreement 
+        if best_metrics.agreement >= config.min_agreement
             && best_metrics.stability >= config.min_stability
             && best_metrics.execution_score >= config.min_execution_score
-            && best_metrics.capture_efficiency >= config.min_capture_efficiency 
+            && best_metrics.capture_efficiency >= config.min_capture_efficiency
         {
             RecommendationResult::Trade(rec)
         } else if best_metrics.agreement >= config.min_agreement * 0.8 && total_conf > 0.6 {
             RecommendationResult::WeakSignal(rec)
         } else {
-            let reason = if best_metrics.agreement < config.min_agreement { NoTradeReason::LowConsensus }
-                        else if best_metrics.stability < config.min_stability { NoTradeReason::LowStability }
-                        else if best_metrics.execution_score < config.min_execution_score { NoTradeReason::PoorExecution }
-                        else { NoTradeReason::LowCapture };
-            RecommendationResult::NoTrade { reason, metrics: best_metrics }
+            let reason = if best_metrics.agreement < config.min_agreement {
+                NoTradeReason::LowConsensus
+            } else if best_metrics.stability < config.min_stability {
+                NoTradeReason::LowStability
+            } else if best_metrics.execution_score < config.min_execution_score {
+                NoTradeReason::PoorExecution
+            } else {
+                NoTradeReason::LowCapture
+            };
+            RecommendationResult::NoTrade {
+                reason,
+                metrics: best_metrics,
+            }
         }
     }
 
     fn calculate_medoid<'a>(members: &[&'a StrategyEvaluation]) -> Option<&'a StrategyEvaluation> {
-        if members.is_empty() { return None; }
-        if members.len() == 1 { return Some(members[0]); }
+        if members.is_empty() {
+            return None;
+        }
+        if members.len() == 1 {
+            return Some(members[0]);
+        }
 
         let mut min_total_dist = f64::MAX;
         let mut best_member = members[0];
@@ -367,7 +408,9 @@ impl RecommendationEngine {
         for i in 0..members.len() {
             let mut total_dist = 0.0;
             for j in 0..members.len() {
-                if i == j { continue; }
+                if i == j {
+                    continue;
+                }
                 // total_dist += calculate_genotype_distance_normalized
                 total_dist += 0.0;
             }
@@ -399,13 +442,13 @@ impl RecommendationEngine {
         // actually happened, treat execution as proven (1.0) so the reco layer
         // doesn't veto something the GA already demonstrated works.
         let fill_probability = if eval.trade_count > 0 && em.win_rate == 0.0 {
-            1.0  // GA recorded real trades; old fill_rate was not updated — trust trades
+            1.0 // GA recorded real trades; old fill_rate was not updated — trust trades
         } else {
-            em.win_rate as f64  // Measured fill rate from GA round-trip
+            em.win_rate as f64 // Measured fill rate from GA round-trip
         };
 
         let latency_impact = (em.execution_friction).clamp(0.0, 1.0);
-        let avg_slippage   = em.execution_friction.clamp(0.0, 1.0);
+        let avg_slippage = em.execution_friction.clamp(0.0, 1.0);
 
         // Replicate the same weighting formula so the score is comparable
         let score = 0.5 * fill_probability

@@ -18,7 +18,9 @@ use super::observatory_maturity::{
 use super::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use super::decision_value_landscape::action_value;
 use super::observatory_registry::{candidate_c3_002, CANDIDATE_C3_002};
-use super::policy_artifact::{first_match_action_from_tmv, PolicyArtifact, CERTIFIED_INPUT_CONCEPTS};
+use super::policy_artifact::{
+    first_match_action_from_tmv, PolicyArtifact, CERTIFIED_INPUT_CONCEPTS,
+};
 use super::DecisionAction;
 
 pub const OBSERVATORY_SLICE_CONTRACT_ID: &str = "csp006p.observatory_slice.1";
@@ -219,8 +221,7 @@ pub fn empty_ledger() -> ObservatoryLedger {
         paper_only: true,
         path_kind: HISTORICAL_PATH_DEMONSTRATION.to_string(),
         search_three_authorized: registry.search_three_authorized,
-        regime_persistence_experiment_authorized: registry
-            .regime_persistence_experiment_authorized,
+        regime_persistence_experiment_authorized: registry.regime_persistence_experiment_authorized,
         decisions: Vec::new(),
         observations: Vec::new(),
     }
@@ -453,7 +454,8 @@ fn render_observatory_pages(
         ));
     }
     if period_rows.is_empty() {
-        period_rows = "<tr><td colspan=\"5\">No decision timestamps in this ledger.</td></tr>".into();
+        period_rows =
+            "<tr><td colspan=\"5\">No decision timestamps in this ledger.</td></tr>".into();
     }
 
     let mut maturity_rows = String::new();
@@ -482,8 +484,7 @@ fn render_observatory_pages(
         ));
     }
     if maturity_rows.is_empty() {
-        maturity_rows =
-            "<tr><td colspan=\"5\">No open observation windows.</td></tr>".into();
+        maturity_rows = "<tr><td colspan=\"5\">No open observation windows.</td></tr>".into();
     }
 
     let mut order: Vec<usize> = (0..ledger.decisions.len()).collect();

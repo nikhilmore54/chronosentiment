@@ -23,18 +23,11 @@ pub enum DisruptionKind {
         pairing_index: usize,
     },
     /// A crew member is unavailable; all pairings in their rotation are orphaned.
-    CrewUnavailable {
-        rotation_index: usize,
-    },
+    CrewUnavailable { rotation_index: usize },
     /// A flight is delayed, pushing back its scheduled times.
-    FlightDelayed {
-        leg_id: String,
-        delay_mins: i64,
-    },
+    FlightDelayed { leg_id: String, delay_mins: i64 },
     /// A flight is cancelled and must be removed from its duty.
-    FlightCancelled {
-        leg_id: String,
-    },
+    FlightCancelled { leg_id: String },
 }
 
 /// A single disruption event.
@@ -46,7 +39,10 @@ pub struct Disruption {
 
 impl Disruption {
     pub fn new(kind: DisruptionKind, description: impl Into<String>) -> Self {
-        Self { kind, description: description.into() }
+        Self {
+            kind,
+            description: description.into(),
+        }
     }
 }
 
@@ -85,7 +81,10 @@ impl<'a> DisruptionRecovery<'a> {
 
         for disruption in disruptions {
             match &disruption.kind {
-                DisruptionKind::PairingCancelled { rotation_index, pairing_index } => {
+                DisruptionKind::PairingCancelled {
+                    rotation_index,
+                    pairing_index,
+                } => {
                     if let Some(rot) = rotations.get(*rotation_index) {
                         if *pairing_index < rot.pairings().len() {
                             let pairing = rot.pairings()[*pairing_index].clone();
@@ -97,11 +96,9 @@ impl<'a> DisruptionRecovery<'a> {
                                 .filter(|(i, _)| *i != *pairing_index)
                                 .map(|(_, p)| p.clone())
                                 .collect();
-                            if let Ok(new_rot) = Rotation::new(
-                                rot.id.clone(),
-                                rot.crew_id.clone(),
-                                new_pairings,
-                            ) {
+                            if let Ok(new_rot) =
+                                Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings)
+                            {
                                 rotations[*rotation_index] = new_rot;
                             }
                         }
@@ -114,15 +111,29 @@ impl<'a> DisruptionRecovery<'a> {
                     crew_unavailable_indices.push(*rotation_index);
                 }
                 DisruptionKind::FlightDelayed { leg_id, delay_mins } => {
-                    self.apply_flight_mod(roster.period.clone(), leg_id, &mut rotations, &mut orphaned, &mut unrecovered, |leg| {
-                        let mut new_leg = leg.clone();
-                        new_leg.scheduled_departure += Duration::minutes(*delay_mins);
-                        new_leg.scheduled_arrival += Duration::minutes(*delay_mins);
-                        Some(new_leg)
-                    });
+                    self.apply_flight_mod(
+                        roster.period.clone(),
+                        leg_id,
+                        &mut rotations,
+                        &mut orphaned,
+                        &mut unrecovered,
+                        |leg| {
+                            let mut new_leg = leg.clone();
+                            new_leg.scheduled_departure += Duration::minutes(*delay_mins);
+                            new_leg.scheduled_arrival += Duration::minutes(*delay_mins);
+                            Some(new_leg)
+                        },
+                    );
                 }
                 DisruptionKind::FlightCancelled { leg_id } => {
-                    self.apply_flight_mod(roster.period.clone(), leg_id, &mut rotations, &mut orphaned, &mut unrecovered, |_| None);
+                    self.apply_flight_mod(
+                        roster.period.clone(),
+                        leg_id,
+                        &mut rotations,
+                        &mut orphaned,
+                        &mut unrecovered,
+                        |_| None,
+                    );
                 }
             }
         }
@@ -144,11 +155,9 @@ impl<'a> DisruptionRecovery<'a> {
                 new_pairings.push(pairing.clone());
                 new_pairings.sort_by_key(|p| p.duties()[0].start());
 
-                if let Ok(new_rot) = Rotation::new(
-                    rot.id.clone(),
-                    rot.crew_id.clone(),
-                    new_pairings,
-                ) {
+                if let Ok(new_rot) =
+                    Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings)
+                {
                     let temp_roster = Roster::new(
                         roster.id.clone(),
                         roster.period.clone(),
@@ -177,7 +186,11 @@ impl<'a> DisruptionRecovery<'a> {
         )
         .unwrap_or_else(|_| roster.clone());
 
-        RecoveryResult { roster: new_roster, unrecovered, recovered_count }
+        RecoveryResult {
+            roster: new_roster,
+            unrecovered,
+            recovered_count,
+        }
     }
 
     /// Helper to find a flight leg and modify or remove it.
@@ -194,7 +207,11 @@ impl<'a> DisruptionRecovery<'a> {
     {
         for (rot_idx, rot) in rotations.clone().iter().enumerate() {
             for (p_idx, pairing) in rot.pairings().iter().enumerate() {
-                if pairing.duties().iter().any(|d| d.legs().iter().any(|l| l.id.as_str() == leg_id)) {
+                if pairing
+                    .duties()
+                    .iter()
+                    .any(|d| d.legs().iter().any(|l| l.id.as_str() == leg_id))
+                {
                     // We found the pairing containing the leg. Rebuild it.
                     let mut rebuild_failed = false;
                     let mut new_duties = Vec::new();
@@ -210,12 +227,14 @@ impl<'a> DisruptionRecovery<'a> {
                                 new_legs.push(leg.clone());
                             }
                         }
-                        
+
                         if new_legs.is_empty() {
                             continue; // Duty is empty now, skip it.
                         }
-                        
-                        if let Ok(new_duty) = crate::domain::duty::Duty::new(duty.id.clone(), new_legs) {
+
+                        if let Ok(new_duty) =
+                            crate::domain::duty::Duty::new(duty.id.clone(), new_legs)
+                        {
                             new_duties.push(new_duty);
                         } else {
                             rebuild_failed = true;
@@ -229,7 +248,9 @@ impl<'a> DisruptionRecovery<'a> {
 
                     let mut new_pairing_opt = None;
                     if !rebuild_failed {
-                        if let Ok(new_pairing) = Pairing::new(pairing.id.clone(), pairing.base.clone(), new_duties) {
+                        if let Ok(new_pairing) =
+                            Pairing::new(pairing.id.clone(), pairing.base.clone(), new_duties)
+                        {
                             new_pairing_opt = Some(new_pairing);
                         } else {
                             rebuild_failed = true;
@@ -245,27 +266,36 @@ impl<'a> DisruptionRecovery<'a> {
                             let mut temp_pairings = new_pairings.clone();
                             temp_pairings.push(new_pairing.clone());
                             temp_pairings.sort_by_key(|p| p.duties()[0].start());
-                            
+
                             let mut is_legal_for_crew = false;
-                            if let Ok(test_rot) = Rotation::new(rot.id.clone(), rot.crew_id.clone(), temp_pairings) {
+                            if let Ok(test_rot) =
+                                Rotation::new(rot.id.clone(), rot.crew_id.clone(), temp_pairings)
+                            {
                                 if let Ok(test_roster) = Roster::new(
                                     crate::domain::roster::RosterId::new("temp"),
                                     period.clone(),
                                     vec![],
-                                    vec![test_rot.clone()]
+                                    vec![test_rot.clone()],
                                 ) {
-                                    if !self.checker.check(&test_roster).iter().any(|v| v.is_error()) {
+                                    if !self
+                                        .checker
+                                        .check(&test_roster)
+                                        .iter()
+                                        .any(|v| v.is_error())
+                                    {
                                         is_legal_for_crew = true;
                                         rotations[rot_idx] = test_rot;
                                     }
                                 }
                             }
-                            
+
                             if !is_legal_for_crew {
                                 orphaned.push(new_pairing);
                                 if new_pairings.is_empty() {
                                     rotations.remove(rot_idx);
-                                } else if let Ok(new_rot) = Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings) {
+                                } else if let Ok(new_rot) =
+                                    Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings)
+                                {
                                     rotations[rot_idx] = new_rot;
                                 }
                             }
@@ -274,11 +304,13 @@ impl<'a> DisruptionRecovery<'a> {
                         unrecovered.push(pairing.clone());
                         if new_pairings.is_empty() {
                             rotations.remove(rot_idx);
-                        } else if let Ok(new_rot) = Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings) {
+                        } else if let Ok(new_rot) =
+                            Rotation::new(rot.id.clone(), rot.crew_id.clone(), new_pairings)
+                        {
                             rotations[rot_idx] = new_rot;
                         }
                     }
-                    
+
                     return; // Done
                 }
             }
@@ -291,7 +323,7 @@ impl<'a> DisruptionRecovery<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::legality::{test_helpers::*, LegalityChecker};
+    use crate::legality::{LegalityChecker, test_helpers::*};
 
     fn make_checker() -> LegalityChecker {
         LegalityChecker::new()
@@ -317,10 +349,13 @@ mod tests {
 
     #[test]
     fn flight_delayed_legal_stays_assigned() {
-        let d1 = make_duty("D1", vec![
-            make_leg("L1", "LHR", "CDG", 8, 10),
-            make_leg("L2", "CDG", "LHR", 12, 14),
-        ]);
+        let d1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1", "LHR", "CDG", 8, 10),
+                make_leg("L2", "CDG", "LHR", 12, 14),
+            ],
+        );
         let p1 = make_pairing("P1", "LHR", vec![d1]);
         let r1 = make_rotation("R1", "C1", vec![p1]);
         let roster = make_roster(vec![], vec![r1]);
@@ -328,7 +363,10 @@ mod tests {
         let checker = make_checker();
         let recovery = DisruptionRecovery::new(&checker);
         let disruption = Disruption::new(
-            DisruptionKind::FlightDelayed { leg_id: "L1".to_string(), delay_mins: 60 },
+            DisruptionKind::FlightDelayed {
+                leg_id: "L1".to_string(),
+                delay_mins: 60,
+            },
             "L1 delayed 1h",
         );
         let result = recovery.recover(&roster, &[disruption]);
@@ -339,14 +377,17 @@ mod tests {
         assert_eq!(result.unrecovered.len(), 0);
         assert_eq!(result.recovered_count, 0);
     }
-    
+
     #[test]
     fn flight_cancelled_breaks_pairing() {
-        let d1 = make_duty("D1", vec![
-            make_leg("L1", "LHR", "CDG", 8, 10),
-            make_leg("L2", "CDG", "FRA", 12, 14),
-            make_leg("L3", "FRA", "LHR", 16, 18),
-        ]);
+        let d1 = make_duty(
+            "D1",
+            vec![
+                make_leg("L1", "LHR", "CDG", 8, 10),
+                make_leg("L2", "CDG", "FRA", 12, 14),
+                make_leg("L3", "FRA", "LHR", 16, 18),
+            ],
+        );
         let p1 = make_pairing("P1", "LHR", vec![d1]);
         let r1 = make_rotation("R1", "C1", vec![p1]);
         let roster = make_roster(vec![], vec![r1]);
@@ -354,7 +395,9 @@ mod tests {
         let checker = make_checker();
         let recovery = DisruptionRecovery::new(&checker);
         let disruption = Disruption::new(
-            DisruptionKind::FlightCancelled { leg_id: "L2".to_string() },
+            DisruptionKind::FlightCancelled {
+                leg_id: "L2".to_string(),
+            },
             "L2 cancelled",
         );
         let result = recovery.recover(&roster, &[disruption]);

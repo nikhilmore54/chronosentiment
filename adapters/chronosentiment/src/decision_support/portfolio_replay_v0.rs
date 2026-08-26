@@ -43,8 +43,8 @@ use super::coralys_execution_model::{
 };
 use super::csp006_protocol::{RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH, RESEARCH_UNIVERSE};
 use super::observatory_execution::{
-    entry_close, first_exit, first_exit_with_optional_stop, seal_execution_intent,
-    ExitReason, SealedExecutionIntent, EXECUTION_TARGET_PCT,
+    entry_close, first_exit, first_exit_with_optional_stop, seal_execution_intent, ExitReason,
+    SealedExecutionIntent, EXECUTION_TARGET_PCT,
 };
 use super::observatory_historical::{decision_time_bars, generate_historical_replay_decision};
 use super::observatory_live_execution_pe3::atr_14_at_t;
@@ -306,7 +306,10 @@ impl PortfolioArm {
             .iter()
             .filter(|p| !p.status.is_closed())
             .map(|p| {
-                let mark = mark_prices.get(&p.instrument).copied().unwrap_or(p.entry_price);
+                let mark = mark_prices
+                    .get(&p.instrument)
+                    .copied()
+                    .unwrap_or(p.entry_price);
                 p.market_value_inr(mark)
             })
             .sum();
@@ -326,7 +329,10 @@ impl PortfolioArm {
             .iter()
             .filter(|p| !p.status.is_closed())
             .map(|p| {
-                let mark = mark_prices.get(&p.instrument).copied().unwrap_or(p.entry_price);
+                let mark = mark_prices
+                    .get(&p.instrument)
+                    .copied()
+                    .unwrap_or(p.entry_price);
                 p.unrealized_pnl_inr(mark)
             })
             .sum()
@@ -649,8 +655,11 @@ pub fn run_portfolio_replay(
     }
 
     let mut pe2_arm = PortfolioArm::new("pe2", PE2_ARM_CONTRACT, config.initial_capital_inr);
-    let mut coralys_arm =
-        PortfolioArm::new("coralys_v0", CORALYS_ARM_CONTRACT, config.initial_capital_inr);
+    let mut coralys_arm = PortfolioArm::new(
+        "coralys_v0",
+        CORALYS_ARM_CONTRACT,
+        config.initial_capital_inr,
+    );
 
     // Phase 1: collect decisions
     struct Plan {
@@ -806,9 +815,11 @@ pub fn run_portfolio_replay(
                 intent_hash: String::new(),
             };
             let exit = first_exit(&plan.decision, &intent, bars)?;
-            if let (Some(ep), Some(et), Some(hs)) =
-                (exit.exit_price, exit.exit_time.as_deref(), exit.holding_sessions)
-            {
+            if let (Some(ep), Some(et), Some(hs)) = (
+                exit.exit_price,
+                exit.exit_time.as_deref(),
+                exit.holding_sessions,
+            ) {
                 // Collect post-entry closes for TradePath
                 let post_entry_closes: Vec<f64> = bars
                     .iter()
@@ -868,16 +879,13 @@ pub fn run_portfolio_replay(
                 sealed_at_t: false,
                 intent_hash: String::new(),
             };
-            let exit = first_exit_with_optional_stop(
-                &plan.decision,
-                &intent,
-                bars,
-                stop_price,
-                true,
-            )?;
-            if let (Some(ep), Some(et), Some(hs)) =
-                (exit.exit_price, exit.exit_time.as_deref(), exit.holding_sessions)
-            {
+            let exit =
+                first_exit_with_optional_stop(&plan.decision, &intent, bars, stop_price, true)?;
+            if let (Some(ep), Some(et), Some(hs)) = (
+                exit.exit_price,
+                exit.exit_time.as_deref(),
+                exit.holding_sessions,
+            ) {
                 // Collect post-entry closes for TradePath
                 let post_entry_closes: Vec<f64> = bars
                     .iter()
@@ -1045,15 +1053,25 @@ mod tests {
             realized_return_pct: None,
             status: PositionStatus::Open,
             trade_path: None,
-            realized_pnl_inr: Some(0.0)
+            realized_pnl_inr: Some(0.0),
         });
         arm.n_positions_opened = 1;
         arm.cash_inr = 4000.0;
 
-        arm.close_position("INFY.NS", 1050.0, "2026-07-25T03:45:00Z", ExitReason::Target, 8);
+        arm.close_position(
+            "INFY.NS",
+            1050.0,
+            "2026-07-25T03:45:00Z",
+            ExitReason::Target,
+            8,
+        );
 
         assert_eq!(arm.n_target, 1);
-        assert!((arm.cash_inr - 5050.0).abs() < 0.01, "cash={}", arm.cash_inr);
+        assert!(
+            (arm.cash_inr - 5050.0).abs() < 0.01,
+            "cash={}",
+            arm.cash_inr
+        );
         assert!((arm.total_realized_pnl_inr - 50.0).abs() < 0.01);
         assert_eq!(arm.positions[0].status, PositionStatus::ClosedTarget);
     }
@@ -1080,11 +1098,17 @@ mod tests {
             realized_return_pct: None,
             status: PositionStatus::Open,
             trade_path: None,
-            realized_pnl_inr: Some(0.0)
+            realized_pnl_inr: Some(0.0),
         });
         arm.cash_inr = 4000.0;
 
-        arm.close_position("TCS.NS", 1920.0, "2026-07-18T03:45:00Z", ExitReason::Stop, 3);
+        arm.close_position(
+            "TCS.NS",
+            1920.0,
+            "2026-07-18T03:45:00Z",
+            ExitReason::Stop,
+            3,
+        );
 
         assert_eq!(arm.n_stop, 1);
         assert!((arm.total_realized_pnl_inr - (-40.0)).abs() < 0.01);
@@ -1094,7 +1118,10 @@ mod tests {
     #[test]
     fn pe2_arm_contract_distinct_from_coralys() {
         assert_ne!(PE2_ARM_CONTRACT, CORALYS_ARM_CONTRACT);
-        assert_eq!(PE2_ARM_CONTRACT, "targeted_execution_v0_fixed_5pct_20_sessions");
+        assert_eq!(
+            PE2_ARM_CONTRACT,
+            "targeted_execution_v0_fixed_5pct_20_sessions"
+        );
         assert_eq!(
             CORALYS_ARM_CONTRACT,
             "coralys_exec_v0_atr_tmv_stop_enforced_20_sessions"
@@ -1108,6 +1135,9 @@ mod tests {
 
     #[test]
     fn requested_clock_matches_pe2_period() {
-        assert_eq!(PORTFOLIO_REPLAY_REQUESTED_CLOCK, "2026-07-15T03:45:00+00:00");
+        assert_eq!(
+            PORTFOLIO_REPLAY_REQUESTED_CLOCK,
+            "2026-07-15T03:45:00+00:00"
+        );
     }
 }

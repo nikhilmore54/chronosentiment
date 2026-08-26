@@ -57,12 +57,11 @@ use serde::{Deserialize, Serialize};
 use chronosentiment_adapter::decision_support::coralys_execution_model::CORALYS_EXEC_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use chronosentiment_adapter::decision_support::csp006_snapshot::load_required_yahoo_cache;
-use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
 use chronosentiment_adapter::decision_support::observatory_execution::ExitReason;
+use chronosentiment_adapter::decision_support::policy_artifact::PolicyArtifact;
 use chronosentiment_adapter::decision_support::portfolio_replay_v021::{
-    refuse_v021_output, run_continuous_portfolio_replay_with_config,
-    AllocationModel, ContinuousPortfolioConfig, ContinuousPortfolioLedger,
-    TradeLot, CONTINUOUS_REPLAY_VERSION,
+    refuse_v021_output, run_continuous_portfolio_replay_with_config, AllocationModel,
+    ContinuousPortfolioConfig, ContinuousPortfolioLedger, TradeLot, CONTINUOUS_REPLAY_VERSION,
 };
 use chronosentiment_adapter::ingestion::yahoo::YahooHistoricalBar;
 
@@ -130,7 +129,10 @@ fn classify_stops(
     config_label: &str,
 ) -> StopLossAnalysis {
     let end_ts: Option<chrono::DateTime<chrono::Utc>> = {
-        let all_exit_times = ledger.pe2_arm.trade_log.iter()
+        let all_exit_times = ledger
+            .pe2_arm
+            .trade_log
+            .iter()
             .chain(ledger.coralys_arm.trade_log.iter())
             .filter_map(|l| l.exit_time.as_deref())
             .filter_map(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
@@ -149,46 +151,81 @@ fn classify_stops(
     let mut diagnostics: Vec<StopDiagnostic> = Vec::new();
 
     for lot in stop_lots {
-        let stop_price = match lot.stop_price { Some(p) => p, None => continue };
-        let exit_price = match lot.exit_price { Some(p) => p, None => continue };
-        let exit_time_str = match &lot.exit_time { Some(t) => t.clone(), None => continue };
+        let stop_price = match lot.stop_price {
+            Some(p) => p,
+            None => continue,
+        };
+        let exit_price = match lot.exit_price {
+            Some(p) => p,
+            None => continue,
+        };
+        let exit_time_str = match &lot.exit_time {
+            Some(t) => t.clone(),
+            None => continue,
+        };
         let holding = lot.holding_sessions.unwrap_or(0);
         let realized_pnl = lot.realized_pnl_inr.unwrap_or(0.0);
         let is_long = lot.direction == "LONG";
 
         let gap_magnitude_pct = if stop_price > 0.0 {
-            if is_long { (stop_price - exit_price) / stop_price }
-            else { (exit_price - stop_price) / stop_price }
-        } else { 0.0 };
+            if is_long {
+                (stop_price - exit_price) / stop_price
+            } else {
+                (exit_price - stop_price) / stop_price
+            }
+        } else {
+            0.0
+        };
 
         let stop_tightness_pct = if lot.entry_price > 0.0 {
             (stop_price - lot.entry_price).abs() / lot.entry_price
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         let bars = cache.get(&lot.instrument);
-        let (post_stop_max_favorable_pct, target_reached_after_stop,
-             recovered_after_stop_within_5, continued_adverse_5_sessions,
-             counterfactual_pnl_inr) = if let Some(bars) = bars {
+        let (
+            post_stop_max_favorable_pct,
+            target_reached_after_stop,
+            recovered_after_stop_within_5,
+            continued_adverse_5_sessions,
+            counterfactual_pnl_inr,
+        ) = if let Some(bars) = bars {
             let exit_ts = chrono::DateTime::parse_from_rfc3339(&exit_time_str)
-                .map(|t| t.with_timezone(&chrono::Utc)).ok();
+                .map(|t| t.with_timezone(&chrono::Utc))
+                .ok();
             let post_stop_bars: Vec<&YahooHistoricalBar> = if let Some(exit_ts) = exit_ts {
-                bars.iter().filter(|b| {
-                    let bar_ts = chrono::DateTime::from_timestamp(b.timestamp, 0);
-                    let after_exit = bar_ts.map(|t| t > exit_ts).unwrap_or(false);
-                    let before_end = end_ts.map(|end| bar_ts.map(|t| t <= end).unwrap_or(false)).unwrap_or(true);
-                    after_exit && before_end
-                }).collect()
-            } else { vec![] };
+                bars.iter()
+                    .filter(|b| {
+                        let bar_ts = chrono::DateTime::from_timestamp(b.timestamp, 0);
+                        let after_exit = bar_ts.map(|t| t > exit_ts).unwrap_or(false);
+                        let before_end = end_ts
+                            .map(|end| bar_ts.map(|t| t <= end).unwrap_or(false))
+                            .unwrap_or(true);
+                        after_exit && before_end
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
             let within_5 = &post_stop_bars[..post_stop_bars.len().min(5)];
             let max_favorable_pct = if !within_5.is_empty() && exit_price > 0.0 {
                 if is_long {
-                    let max_close = within_5.iter().map(|b| b.close).fold(f64::NEG_INFINITY, f64::max);
+                    let max_close = within_5
+                        .iter()
+                        .map(|b| b.close)
+                        .fold(f64::NEG_INFINITY, f64::max);
                     Some((max_close - exit_price) / exit_price)
                 } else {
-                    let min_close = within_5.iter().map(|b| b.close).fold(f64::INFINITY, f64::min);
+                    let min_close = within_5
+                        .iter()
+                        .map(|b| b.close)
+                        .fold(f64::INFINITY, f64::min);
                     Some((exit_price - min_close) / exit_price)
                 }
-            } else { None };
+            } else {
+                None
+            };
             let target_reached = if is_long {
                 within_5.iter().take(3).any(|b| b.close >= lot.target_price)
             } else {
@@ -199,63 +236,118 @@ fn classify_stops(
             } else {
                 within_5.iter().any(|b| b.close < lot.entry_price)
             };
-            let continued_adverse = within_5.len() >= 5 && if is_long {
-                within_5.iter().all(|b| b.close < lot.entry_price)
-            } else {
-                within_5.iter().all(|b| b.close > lot.entry_price)
-            };
+            let continued_adverse = within_5.len() >= 5
+                && if is_long {
+                    within_5.iter().all(|b| b.close < lot.entry_price)
+                } else {
+                    within_5.iter().all(|b| b.close > lot.entry_price)
+                };
             let last_bar_in_window = post_stop_bars.last().map(|b| b.close);
             let counterfactual = last_bar_in_window.map(|close| {
-                let ret = if is_long { (close - lot.entry_price) / lot.entry_price }
-                          else { (lot.entry_price - close) / lot.entry_price };
+                let ret = if is_long {
+                    (close - lot.entry_price) / lot.entry_price
+                } else {
+                    (lot.entry_price - close) / lot.entry_price
+                };
                 lot.allocation_inr * ret
             });
-            (max_favorable_pct, target_reached, recovered, continued_adverse, counterfactual)
-        } else { (None, false, false, false, None) };
+            (
+                max_favorable_pct,
+                target_reached,
+                recovered,
+                continued_adverse,
+                counterfactual,
+            )
+        } else {
+            (None, false, false, false, None)
+        };
 
         let opportunity_cost_inr = counterfactual_pnl_inr.map(|cf| cf - realized_pnl);
-        let category = if stop_tightness_pct < 0.01 { StopCategory::StopTooTight }
-            else if gap_magnitude_pct > 0.005 { StopCategory::GapThrough }
-            else if target_reached_after_stop { StopCategory::PrematureStop }
-            else if recovered_after_stop_within_5 { StopCategory::TemporaryExcursion }
-            else if continued_adverse_5_sessions { StopCategory::DirectionFailure }
-            else { StopCategory::GenuineAdverse };
+        let category = if stop_tightness_pct < 0.01 {
+            StopCategory::StopTooTight
+        } else if gap_magnitude_pct > 0.005 {
+            StopCategory::GapThrough
+        } else if target_reached_after_stop {
+            StopCategory::PrematureStop
+        } else if recovered_after_stop_within_5 {
+            StopCategory::TemporaryExcursion
+        } else if continued_adverse_5_sessions {
+            StopCategory::DirectionFailure
+        } else {
+            StopCategory::GenuineAdverse
+        };
 
         diagnostics.push(StopDiagnostic {
             trade_id: lot.trade_id.clone(),
             instrument: lot.instrument.clone(),
             direction: lot.direction.clone(),
             entry_price: lot.entry_price,
-            stop_price, exit_price,
+            stop_price,
+            exit_price,
             entry_time: lot.entry_time.clone(),
             exit_time: exit_time_str,
             holding_sessions: holding,
             realized_pnl_inr: realized_pnl,
             allocation_inr: lot.allocation_inr,
-            gap_magnitude_pct, post_stop_max_favorable_pct,
+            gap_magnitude_pct,
+            post_stop_max_favorable_pct,
             target_reached_after_stop,
             recovered_after_stop_within_5,
             continued_adverse_5_sessions,
-            stop_tightness_pct, counterfactual_pnl_inr, opportunity_cost_inr, category,
+            stop_tightness_pct,
+            counterfactual_pnl_inr,
+            opportunity_cost_inr,
+            category,
         });
     }
 
-    let n_gap_through = diagnostics.iter().filter(|d| d.category == StopCategory::GapThrough).count();
-    let n_premature = diagnostics.iter().filter(|d| d.category == StopCategory::PrematureStop).count();
-    let n_temporary = diagnostics.iter().filter(|d| d.category == StopCategory::TemporaryExcursion).count();
-    let n_tight = diagnostics.iter().filter(|d| d.category == StopCategory::StopTooTight).count();
-    let n_direction = diagnostics.iter().filter(|d| d.category == StopCategory::DirectionFailure).count();
-    let n_genuine = diagnostics.iter().filter(|d| d.category == StopCategory::GenuineAdverse).count();
+    let n_gap_through = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::GapThrough)
+        .count();
+    let n_premature = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::PrematureStop)
+        .count();
+    let n_temporary = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::TemporaryExcursion)
+        .count();
+    let n_tight = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::StopTooTight)
+        .count();
+    let n_direction = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::DirectionFailure)
+        .count();
+    let n_genuine = diagnostics
+        .iter()
+        .filter(|d| d.category == StopCategory::GenuineAdverse)
+        .count();
     let total_stop_pnl: f64 = diagnostics.iter().map(|d| d.realized_pnl_inr).sum();
-    let total_opp_cost: f64 = diagnostics.iter().filter_map(|d| d.opportunity_cost_inr).sum();
-    let total_cf_pnl: f64 = diagnostics.iter().filter_map(|d| d.counterfactual_pnl_inr).sum();
+    let total_opp_cost: f64 = diagnostics
+        .iter()
+        .filter_map(|d| d.opportunity_cost_inr)
+        .sum();
+    let total_cf_pnl: f64 = diagnostics
+        .iter()
+        .filter_map(|d| d.counterfactual_pnl_inr)
+        .sum();
     let net_benefit = total_stop_pnl - total_cf_pnl;
-    let pct = |k: usize| if n > 0 { k as f64 / n as f64 * 100.0 } else { 0.0 };
+    let pct = |k: usize| {
+        if n > 0 {
+            k as f64 / n as f64 * 100.0
+        } else {
+            0.0
+        }
+    };
 
     StopLossAnalysis {
         config_label: config_label.to_string(),
         n_coralys_stops: n,
-        n_gap_through, n_premature,
+        n_gap_through,
+        n_premature,
         n_temporary_excursion: n_temporary,
         n_stop_too_tight: n_tight,
         n_direction_failure: n_direction,
@@ -307,10 +399,21 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--search-two" => { i += 1; search_two_dir = Some(PathBuf::from(&args[i])); }
-            "--cache-dir"  => { i += 1; cache_dir = Some(PathBuf::from(&args[i])); }
-            "--output-base" => { i += 1; output_base = Some(PathBuf::from(&args[i])); }
-            "--strict" => { strict = true; }
+            "--search-two" => {
+                i += 1;
+                search_two_dir = Some(PathBuf::from(&args[i]));
+            }
+            "--cache-dir" => {
+                i += 1;
+                cache_dir = Some(PathBuf::from(&args[i]));
+            }
+            "--output-base" => {
+                i += 1;
+                output_base = Some(PathBuf::from(&args[i]));
+            }
+            "--strict" => {
+                strict = true;
+            }
             _ => {}
         }
         i += 1;
@@ -328,17 +431,58 @@ fn parse_args() -> Result<Args, Box<dyn std::error::Error>> {
 
 /// 52 instruments — identical across all 3 configs (controlled experiment).
 const UNIVERSE_50: &[&str] = &[
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-    "LT.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS",
-    "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "NESTLEIND.NS",
-    "POWERGRID.NS", "NTPC.NS", "TECHM.NS", "HCLTECH.NS", "ONGC.NS",
-    "BAJAJFINSV.NS", "JSWSTEEL.NS", "TMPV.NS", "ADANIENT.NS", "ADANIPORTS.NS",
-    "COALINDIA.NS", "DIVISLAB.NS", "DRREDDY.NS", "EICHERMOT.NS", "GRASIM.NS",
-    "HEROMOTOCO.NS", "HINDALCO.NS", "INDUSINDBK.NS", "M&M.NS", "SBILIFE.NS",
-    "TATACONSUM.NS", "TATASTEEL.NS", "UPL.NS", "VEDL.NS", "BPCL.NS",
-    "CIPLA.NS", "HDFCLIFE.NS", "PIDILITIND.NS", "SHREECEM.NS", "UNITDSPR.NS",
-    "MAHABANK.NS", "IDEA.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
+    "SUNPHARMA.NS",
+    "WIPRO.NS",
+    "ULTRACEMCO.NS",
+    "BAJFINANCE.NS",
+    "NESTLEIND.NS",
+    "POWERGRID.NS",
+    "NTPC.NS",
+    "TECHM.NS",
+    "HCLTECH.NS",
+    "ONGC.NS",
+    "BAJAJFINSV.NS",
+    "JSWSTEEL.NS",
+    "TMPV.NS",
+    "ADANIENT.NS",
+    "ADANIPORTS.NS",
+    "COALINDIA.NS",
+    "DIVISLAB.NS",
+    "DRREDDY.NS",
+    "EICHERMOT.NS",
+    "GRASIM.NS",
+    "HEROMOTOCO.NS",
+    "HINDALCO.NS",
+    "INDUSINDBK.NS",
+    "M&M.NS",
+    "SBILIFE.NS",
+    "TATACONSUM.NS",
+    "TATASTEEL.NS",
+    "UPL.NS",
+    "VEDL.NS",
+    "BPCL.NS",
+    "CIPLA.NS",
+    "HDFCLIFE.NS",
+    "PIDILITIND.NS",
+    "SHREECEM.NS",
+    "UNITDSPR.NS",
+    "MAHABANK.NS",
+    "IDEA.NS",
 ];
 
 // ─── Decision-realization ledger ──────────────────────────────────────────────
@@ -402,15 +546,17 @@ fn build_decision_realization_ledger(
     let mut decision_meta: BTreeMap<String, (String, String, f64, f64, f64)> = BTreeMap::new();
     for ledger in ledgers {
         for lot in &ledger.coralys_arm.trade_log {
-            decision_meta.entry(lot.decision_id.clone()).or_insert_with(|| {
-                (
-                    lot.instrument.clone(),
-                    lot.direction.clone(),
-                    lot.entry_price,
-                    lot.target_price,
-                    lot.stop_price.unwrap_or(0.0),
-                )
-            });
+            decision_meta
+                .entry(lot.decision_id.clone())
+                .or_insert_with(|| {
+                    (
+                        lot.instrument.clone(),
+                        lot.direction.clone(),
+                        lot.entry_price,
+                        lot.target_price,
+                        lot.stop_price.unwrap_or(0.0),
+                    )
+                });
         }
     }
 
@@ -431,41 +577,52 @@ fn build_decision_realization_ledger(
 
     let mut records: Vec<DecisionRealizationRecord> = decision_meta
         .iter()
-        .map(|(decision_id, (instrument, direction, entry_price, target_price, stop_price))| {
-            let mut configs: BTreeMap<String, ConfigRealization> = BTreeMap::new();
-            for (i, label) in config_labels.iter().enumerate() {
-                let in_universe = universe_set.contains(instrument);
-                let allocation_inr = realized_per_config[i]
-                    .get(decision_id)
-                    .copied()
-                    .unwrap_or(0.0);
-                let realized = allocation_inr > 0.0;
-                configs.insert(
-                    label.clone(),
-                    ConfigRealization { in_universe, realized, allocation_inr },
-                );
-            }
-            DecisionRealizationRecord {
-                decision_id: decision_id.clone(),
-                instrument: instrument.clone(),
-                direction: direction.clone(),
-                entry_price: *entry_price,
-                target_price: *target_price,
-                stop_price: *stop_price,
-                configs,
-            }
-        })
+        .map(
+            |(decision_id, (instrument, direction, entry_price, target_price, stop_price))| {
+                let mut configs: BTreeMap<String, ConfigRealization> = BTreeMap::new();
+                for (i, label) in config_labels.iter().enumerate() {
+                    let in_universe = universe_set.contains(instrument);
+                    let allocation_inr = realized_per_config[i]
+                        .get(decision_id)
+                        .copied()
+                        .unwrap_or(0.0);
+                    let realized = allocation_inr > 0.0;
+                    configs.insert(
+                        label.clone(),
+                        ConfigRealization {
+                            in_universe,
+                            realized,
+                            allocation_inr,
+                        },
+                    );
+                }
+                DecisionRealizationRecord {
+                    decision_id: decision_id.clone(),
+                    instrument: instrument.clone(),
+                    direction: direction.clone(),
+                    entry_price: *entry_price,
+                    target_price: *target_price,
+                    stop_price: *stop_price,
+                    configs,
+                }
+            },
+        )
         .collect();
 
     // Sort by instrument then decision_id for deterministic output.
-    records.sort_by(|a, b| a.instrument.cmp(&b.instrument).then(a.decision_id.cmp(&b.decision_id)));
+    records.sort_by(|a, b| {
+        a.instrument
+            .cmp(&b.instrument)
+            .then(a.decision_id.cmp(&b.decision_id))
+    });
 
     let mut n_realized_per_config: BTreeMap<String, usize> = BTreeMap::new();
     let mut n_not_realized_per_config: BTreeMap<String, usize> = BTreeMap::new();
     for label in config_labels {
-        let realized = records.iter().filter(|r| {
-            r.configs.get(label).map(|c| c.realized).unwrap_or(false)
-        }).count();
+        let realized = records
+            .iter()
+            .filter(|r| r.configs.get(label).map(|c| c.realized).unwrap_or(false))
+            .count();
         n_realized_per_config.insert(label.clone(), realized);
         n_not_realized_per_config.insert(label.clone(), n_eligible - realized);
     }
@@ -598,15 +755,10 @@ fn render_comparison_report(
     let b = &configs[1];
     let c = &configs[2];
 
-    let fmt_pct = |v: &serde_json::Value| -> String {
-        format!("{:.2}%", v.as_f64().unwrap_or(0.0))
-    };
-    let fmt_f = |v: &serde_json::Value| -> String {
-        format!("{:.2}", v.as_f64().unwrap_or(0.0))
-    };
-    let fmt_i = |v: &serde_json::Value| -> String {
-        format!("{}", v.as_i64().unwrap_or(0))
-    };
+    let fmt_pct =
+        |v: &serde_json::Value| -> String { format!("{:.2}%", v.as_f64().unwrap_or(0.0)) };
+    let fmt_f = |v: &serde_json::Value| -> String { format!("{:.2}", v.as_f64().unwrap_or(0.0)) };
+    let fmt_i = |v: &serde_json::Value| -> String { format!("{}", v.as_i64().unwrap_or(0)) };
     let fmt_inr = |v: &serde_json::Value| -> String {
         let x = v.as_f64().unwrap_or(0.0);
         if x.abs() >= 1_000_000.0 {
@@ -635,8 +787,12 @@ fn render_comparison_report(
     // ── Capital × Allocation Matrix ──
     md.push_str("## Capital × Allocation Matrix\n\n");
     md.push_str("### Coralys Arm\n\n");
-    md.push_str("| Config | Capital | Allocation | Lots | Return | Velocity | Max DD | Stop Rate |\n");
-    md.push_str("|--------|--------:|------------|-----:|-------:|---------:|-------:|----------:|\n");
+    md.push_str(
+        "| Config | Capital | Allocation | Lots | Return | Velocity | Max DD | Stop Rate |\n",
+    );
+    md.push_str(
+        "|--------|--------:|------------|-----:|-------:|---------:|-------:|----------:|\n",
+    );
     for cfg in configs {
         let label = cfg["label"].as_str().unwrap_or("");
         let capital = cfg["initial_capital_inr"].as_f64().unwrap_or(0.0);
@@ -645,7 +801,11 @@ fn render_comparison_report(
         md.push_str(&format!(
             "| {} | {} | {} | {} | {} | {}x | {} | {} |\n",
             label,
-            if capital >= 1_000_000.0 { "Rs.1M".to_string() } else { format!("Rs.{:.0}", capital) },
+            if capital >= 1_000_000.0 {
+                "Rs.1M".to_string()
+            } else {
+                format!("Rs.{:.0}", capital)
+            },
             alloc,
             fmt_i(&c["lots"]),
             fmt_pct(&c["return_pct"]),
@@ -667,7 +827,11 @@ fn render_comparison_report(
         md.push_str(&format!(
             "| {} | {} | {} | {} | {} | {}x | {} |\n",
             label,
-            if capital >= 1_000_000.0 { "Rs.1M".to_string() } else { format!("Rs.{:.0}", capital) },
+            if capital >= 1_000_000.0 {
+                "Rs.1M".to_string()
+            } else {
+                format!("Rs.{:.0}", capital)
+            },
             alloc,
             fmt_i(&p["lots"]),
             fmt_pct(&p["return_pct"]),
@@ -679,37 +843,89 @@ fn render_comparison_report(
 
     // ── Decision Realization Matrix ──
     md.push_str("## Decision Realization Matrix\n\n");
-    md.push_str("The most important output: which certified Coralys decisions were actually realized\n");
+    md.push_str(
+        "The most important output: which certified Coralys decisions were actually realized\n",
+    );
     md.push_str("as portfolio trades under each capital/allocation condition.\n\n");
     md.push_str("| Metric | Config A (5K Equal) | Config B (1M Equal) | Config C (1M MaxLot) |\n");
     md.push_str("|--------|--------------------:|--------------------:|---------------------:|\n");
 
     let n_elig = realization_ledger.n_eligible;
-    let n_a = realization_ledger.n_realized_per_config.get(&config_labels[0]).copied().unwrap_or(0);
-    let n_b = realization_ledger.n_realized_per_config.get(&config_labels[1]).copied().unwrap_or(0);
-    let n_c = realization_ledger.n_realized_per_config.get(&config_labels[2]).copied().unwrap_or(0);
-    let not_a = realization_ledger.n_not_realized_per_config.get(&config_labels[0]).copied().unwrap_or(0);
-    let not_b = realization_ledger.n_not_realized_per_config.get(&config_labels[1]).copied().unwrap_or(0);
-    let not_c = realization_ledger.n_not_realized_per_config.get(&config_labels[2]).copied().unwrap_or(0);
+    let n_a = realization_ledger
+        .n_realized_per_config
+        .get(&config_labels[0])
+        .copied()
+        .unwrap_or(0);
+    let n_b = realization_ledger
+        .n_realized_per_config
+        .get(&config_labels[1])
+        .copied()
+        .unwrap_or(0);
+    let n_c = realization_ledger
+        .n_realized_per_config
+        .get(&config_labels[2])
+        .copied()
+        .unwrap_or(0);
+    let not_a = realization_ledger
+        .n_not_realized_per_config
+        .get(&config_labels[0])
+        .copied()
+        .unwrap_or(0);
+    let not_b = realization_ledger
+        .n_not_realized_per_config
+        .get(&config_labels[1])
+        .copied()
+        .unwrap_or(0);
+    let not_c = realization_ledger
+        .n_not_realized_per_config
+        .get(&config_labels[2])
+        .copied()
+        .unwrap_or(0);
 
     let pct = |n: usize, d: usize| -> String {
-        if d == 0 { "0.00%".to_string() } else { format!("{:.2}%", n as f64 / d as f64 * 100.0) }
+        if d == 0 {
+            "0.00%".to_string()
+        } else {
+            format!("{:.2}%", n as f64 / d as f64 * 100.0)
+        }
     };
 
-    md.push_str(&format!("| Eligible decisions (LONG/SHORT) | {} | {} | {} |\n", n_elig, n_elig, n_elig));
-    md.push_str(&format!("| Realized (lot opened) | {} ({}) | {} ({}) | {} ({}) |\n",
-        n_a, pct(n_a, n_elig), n_b, pct(n_b, n_elig), n_c, pct(n_c, n_elig)));
-    md.push_str(&format!("| Not realized (capital exhausted) | {} ({}) | {} ({}) | {} ({}) |\n",
-        not_a, pct(not_a, n_elig), not_b, pct(not_b, n_elig), not_c, pct(not_c, n_elig)));
+    md.push_str(&format!(
+        "| Eligible decisions (LONG/SHORT) | {} | {} | {} |\n",
+        n_elig, n_elig, n_elig
+    ));
+    md.push_str(&format!(
+        "| Realized (lot opened) | {} ({}) | {} ({}) | {} ({}) |\n",
+        n_a,
+        pct(n_a, n_elig),
+        n_b,
+        pct(n_b, n_elig),
+        n_c,
+        pct(n_c, n_elig)
+    ));
+    md.push_str(&format!(
+        "| Not realized (capital exhausted) | {} ({}) | {} ({}) | {} ({}) |\n",
+        not_a,
+        pct(not_a, n_elig),
+        not_b,
+        pct(not_b, n_elig),
+        not_c,
+        pct(not_c, n_elig)
+    ));
 
     // Coralys lots from ledger
     let lots_a = ledgers[0].coralys_summary.n_lots_opened;
     let lots_b = ledgers[1].coralys_summary.n_lots_opened;
     let lots_c = ledgers[2].coralys_summary.n_lots_opened;
-    md.push_str(&format!("| Lots opened (incl. position upgrades) | {} | {} | {} |\n", lots_a, lots_b, lots_c));
+    md.push_str(&format!(
+        "| Lots opened (incl. position upgrades) | {} | {} | {} |\n",
+        lots_a, lots_b, lots_c
+    ));
     md.push('\n');
 
-    md.push_str("> **Note:** Lots opened may exceed realized decisions because the engine allows\n");
+    md.push_str(
+        "> **Note:** Lots opened may exceed realized decisions because the engine allows\n",
+    );
     md.push_str("> position upgrades (multiple lots per instrument per decision sequence).\n");
     md.push_str("> The realization ledger counts unique decision_ids, not lots.\n\n");
 
@@ -718,16 +934,23 @@ fn render_comparison_report(
     md.push_str("| Metric | Config A (5K Equal) | Config B (1M Equal) | Config C (1M MaxLot) |\n");
     md.push_str("|--------|--------------------:|--------------------:|---------------------:|\n");
     let stop_row = |label: &str, field: &str| -> String {
-        let vals: Vec<String> = configs.iter().map(|cfg| {
-            fmt_pct(&cfg["coralys"][field])
-        }).collect();
+        let vals: Vec<String> = configs
+            .iter()
+            .map(|cfg| fmt_pct(&cfg["coralys"][field]))
+            .collect();
         format!("| {} | {} | {} | {} |\n", label, vals[0], vals[1], vals[2])
     };
     md.push_str(&stop_row("Stop rate", "stop_rate_pct"));
     md.push_str(&stop_row("Premature stop rate", "premature_stop_rate_pct"));
-    md.push_str(&stop_row("Temporary excursion rate", "temporary_excursion_rate_pct"));
+    md.push_str(&stop_row(
+        "Temporary excursion rate",
+        "temporary_excursion_rate_pct",
+    ));
     md.push_str(&stop_row("Stop too tight rate", "stop_too_tight_rate_pct"));
-    md.push_str(&stop_row("Genuine adverse rate", "genuine_adverse_rate_pct"));
+    md.push_str(&stop_row(
+        "Genuine adverse rate",
+        "genuine_adverse_rate_pct",
+    ));
     md.push('\n');
 
     // ── Capital Effect ──
@@ -735,8 +958,12 @@ fn render_comparison_report(
     md.push_str("**Comparison:** Config A (Rs.5K EqualWeight) vs Config B (Rs.1M EqualWeight)\n\n");
     md.push_str("**Question:** What changes when only available capital changes?\n\n");
     {
-        let pa = &a["pe2"]; let ca = &a["coralys"]; let ra = &a["decision_realization"];
-        let pb = &b["pe2"]; let cb = &b["coralys"]; let rb = &b["decision_realization"];
+        let pa = &a["pe2"];
+        let ca = &a["coralys"];
+        let ra = &a["decision_realization"];
+        let pb = &b["pe2"];
+        let cb = &b["coralys"];
+        let rb = &b["decision_realization"];
         md.push_str("| Metric | Config A (Rs.5K) | Config B (Rs.1M) | Delta |\n");
         md.push_str("|--------|----------------:|----------------:|------:|\n");
         let delta_pct = |va: f64, vb: f64| -> String { format!("{:+.2}%", vb - va) };
@@ -751,27 +978,58 @@ fn render_comparison_report(
         let nb_real = rb["realized"].as_i64().unwrap_or(0);
         let na_not = ra["not_realized_due_to_capital"].as_i64().unwrap_or(0);
         let nb_not = rb["not_realized_due_to_capital"].as_i64().unwrap_or(0);
-        md.push_str(&format!("| Coralys return | {} | {} | {} |\n",
-            fmt_pct(&ca["return_pct"]), fmt_pct(&cb["return_pct"]), delta_pct(ca_ret, cb_ret)));
-        md.push_str(&format!("| Coralys velocity | {}x | {}x | {} |\n",
-            fmt_f(&ca["capital_velocity"]), fmt_f(&cb["capital_velocity"]), delta_x(ca_vel, cb_vel)));
-        md.push_str(&format!("| P.E.2 return | {} | {} | {} |\n",
-            fmt_pct(&pa["return_pct"]), fmt_pct(&pb["return_pct"]), delta_pct(pa_ret, pb_ret)));
-        md.push_str(&format!("| Coralys lots | {} | {} | {:+} |\n",
-            fmt_i(&ca["lots"]), fmt_i(&cb["lots"]),
-            cb["lots"].as_i64().unwrap_or(0) - ca["lots"].as_i64().unwrap_or(0)));
-        md.push_str(&format!("| Decisions realized | {} | {} | {:+} |\n", na_real, nb_real, nb_real - na_real));
-        md.push_str(&format!("| Decisions not realized | {} | {} | {:+} |\n", na_not, nb_not, nb_not - na_not));
+        md.push_str(&format!(
+            "| Coralys return | {} | {} | {} |\n",
+            fmt_pct(&ca["return_pct"]),
+            fmt_pct(&cb["return_pct"]),
+            delta_pct(ca_ret, cb_ret)
+        ));
+        md.push_str(&format!(
+            "| Coralys velocity | {}x | {}x | {} |\n",
+            fmt_f(&ca["capital_velocity"]),
+            fmt_f(&cb["capital_velocity"]),
+            delta_x(ca_vel, cb_vel)
+        ));
+        md.push_str(&format!(
+            "| P.E.2 return | {} | {} | {} |\n",
+            fmt_pct(&pa["return_pct"]),
+            fmt_pct(&pb["return_pct"]),
+            delta_pct(pa_ret, pb_ret)
+        ));
+        md.push_str(&format!(
+            "| Coralys lots | {} | {} | {:+} |\n",
+            fmt_i(&ca["lots"]),
+            fmt_i(&cb["lots"]),
+            cb["lots"].as_i64().unwrap_or(0) - ca["lots"].as_i64().unwrap_or(0)
+        ));
+        md.push_str(&format!(
+            "| Decisions realized | {} | {} | {:+} |\n",
+            na_real,
+            nb_real,
+            nb_real - na_real
+        ));
+        md.push_str(&format!(
+            "| Decisions not realized | {} | {} | {:+} |\n",
+            na_not,
+            nb_not,
+            nb_not - na_not
+        ));
         md.push('\n');
     }
 
     // ── Allocation Effect ──
     md.push_str("## B. Allocation Effect\n\n");
-    md.push_str("**Comparison:** Config B (Rs.1M EqualWeight) vs Config C (Rs.1M MaxPerLot Rs.20K)\n\n");
+    md.push_str(
+        "**Comparison:** Config B (Rs.1M EqualWeight) vs Config C (Rs.1M MaxPerLot Rs.20K)\n\n",
+    );
     md.push_str("**Question:** What changes when only allocation policy changes?\n\n");
     {
-        let pb = &b["pe2"]; let cb = &b["coralys"]; let rb = &b["decision_realization"];
-        let pc = &c["pe2"]; let cc = &c["coralys"]; let rc = &c["decision_realization"];
+        let pb = &b["pe2"];
+        let cb = &b["coralys"];
+        let rb = &b["decision_realization"];
+        let pc = &c["pe2"];
+        let cc = &c["coralys"];
+        let rc = &c["decision_realization"];
         md.push_str("| Metric | Config B (1M Equal) | Config C (1M MaxLot) | Delta |\n");
         md.push_str("|--------|--------------------:|---------------------:|------:|\n");
         let delta_pct = |va: f64, vb: f64| -> String { format!("{:+.2}%", vb - va) };
@@ -786,17 +1044,42 @@ fn render_comparison_report(
         let nc_real = rc["realized"].as_i64().unwrap_or(0);
         let nb_not = rb["not_realized_due_to_capital"].as_i64().unwrap_or(0);
         let nc_not = rc["not_realized_due_to_capital"].as_i64().unwrap_or(0);
-        md.push_str(&format!("| Coralys return | {} | {} | {} |\n",
-            fmt_pct(&cb["return_pct"]), fmt_pct(&cc["return_pct"]), delta_pct(cb_ret, cc_ret)));
-        md.push_str(&format!("| Coralys velocity | {}x | {}x | {} |\n",
-            fmt_f(&cb["capital_velocity"]), fmt_f(&cc["capital_velocity"]), delta_x(cb_vel, cc_vel)));
-        md.push_str(&format!("| P.E.2 return | {} | {} | {} |\n",
-            fmt_pct(&pb["return_pct"]), fmt_pct(&pc["return_pct"]), delta_pct(pb_ret, pc_ret)));
-        md.push_str(&format!("| Coralys lots | {} | {} | {:+} |\n",
-            fmt_i(&cb["lots"]), fmt_i(&cc["lots"]),
-            cc["lots"].as_i64().unwrap_or(0) - cb["lots"].as_i64().unwrap_or(0)));
-        md.push_str(&format!("| Decisions realized | {} | {} | {:+} |\n", nb_real, nc_real, nc_real - nb_real));
-        md.push_str(&format!("| Decisions not realized | {} | {} | {:+} |\n", nb_not, nc_not, nc_not - nb_not));
+        md.push_str(&format!(
+            "| Coralys return | {} | {} | {} |\n",
+            fmt_pct(&cb["return_pct"]),
+            fmt_pct(&cc["return_pct"]),
+            delta_pct(cb_ret, cc_ret)
+        ));
+        md.push_str(&format!(
+            "| Coralys velocity | {}x | {}x | {} |\n",
+            fmt_f(&cb["capital_velocity"]),
+            fmt_f(&cc["capital_velocity"]),
+            delta_x(cb_vel, cc_vel)
+        ));
+        md.push_str(&format!(
+            "| P.E.2 return | {} | {} | {} |\n",
+            fmt_pct(&pb["return_pct"]),
+            fmt_pct(&pc["return_pct"]),
+            delta_pct(pb_ret, pc_ret)
+        ));
+        md.push_str(&format!(
+            "| Coralys lots | {} | {} | {:+} |\n",
+            fmt_i(&cb["lots"]),
+            fmt_i(&cc["lots"]),
+            cc["lots"].as_i64().unwrap_or(0) - cb["lots"].as_i64().unwrap_or(0)
+        ));
+        md.push_str(&format!(
+            "| Decisions realized | {} | {} | {:+} |\n",
+            nb_real,
+            nc_real,
+            nc_real - nb_real
+        ));
+        md.push_str(&format!(
+            "| Decisions not realized | {} | {} | {:+} |\n",
+            nb_not,
+            nc_not,
+            nc_not - nb_not
+        ));
         md.push('\n');
     }
 
@@ -814,12 +1097,16 @@ fn render_comparison_report(
     md.push_str("[See stop behaviour matrix above]\n\n");
 
     md.push_str("## Interpretation\n\n");
-    md.push_str("Capital availability explains changes in decision realization rate and lot count.\n");
+    md.push_str(
+        "Capital availability explains changes in decision realization rate and lot count.\n",
+    );
     md.push_str("Allocation policy explains changes in velocity and per-lot sizing.\n");
     md.push_str("Coralys decision behaviour itself remains unchanged across all configs.\n\n");
 
     md.push_str("## Decision\n\n");
-    md.push_str("[What the evidence permits us to conclude — to be filled after reviewing results]\n\n");
+    md.push_str(
+        "[What the evidence permits us to conclude — to be filled after reviewing results]\n\n",
+    );
 
     md.push_str("## What remains unresolved\n\n");
     md.push_str("- Does MaxPerLot improve risk-adjusted return at all universe sizes?\n");
@@ -827,7 +1114,8 @@ fn render_comparison_report(
     md.push_str("- How does decision realization rate interact with stop behaviour?\n\n");
 
     md.push_str("---\n\n");
-    md.push_str(&format!("*Generated by csp012_portfolio_v041 | C3-002: {} | Coralys: {}*\n",
+    md.push_str(&format!(
+        "*Generated by csp012_portfolio_v041 | C3-002: {} | Coralys: {}*\n",
         &RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH[..16],
         &CORALYS_EXEC_ARTIFACT_HASH[..16],
     ));
@@ -850,32 +1138,62 @@ fn render_config_report(
     md.push_str(&format!("# Portfolio Replay v0.4.1 — Config: {label}\n\n"));
     md.push_str(&format!("- **Capital:** Rs.{:.0}\n", capital));
     md.push_str(&format!("- **Allocation:** {alloc_desc}\n"));
-    md.push_str(&format!("- **Universe:** {} instruments\n", ledger.universe.len()));
-    md.push_str(&format!("- **Sessions simulated:** {}\n\n", ledger.n_sessions_simulated));
+    md.push_str(&format!(
+        "- **Universe:** {} instruments\n",
+        ledger.universe.len()
+    ));
+    md.push_str(&format!(
+        "- **Sessions simulated:** {}\n\n",
+        ledger.n_sessions_simulated
+    ));
 
     md.push_str("## P.E.2 Arm\n\n");
-    md.push_str(&format!("- Lots: {}  TARGET: {}  HORIZON: {}  Open: {}\n",
-        p.n_lots_opened, p.n_target, p.n_horizon, p.n_open_at_end));
-    md.push_str(&format!("- Return: {:.2}%  Velocity: {:.2}x  Max DD: {:.2}%\n\n",
-        p.total_return_pct * 100.0, p.capital_velocity_ratio, p.max_drawdown_pct * 100.0));
+    md.push_str(&format!(
+        "- Lots: {}  TARGET: {}  HORIZON: {}  Open: {}\n",
+        p.n_lots_opened, p.n_target, p.n_horizon, p.n_open_at_end
+    ));
+    md.push_str(&format!(
+        "- Return: {:.2}%  Velocity: {:.2}x  Max DD: {:.2}%\n\n",
+        p.total_return_pct * 100.0,
+        p.capital_velocity_ratio,
+        p.max_drawdown_pct * 100.0
+    ));
 
     md.push_str("## Coralys Arm\n\n");
-    md.push_str(&format!("- Lots: {}  TARGET: {}  STOP: {}  HORIZON: {}  Open: {}\n",
-        c.n_lots_opened, c.n_target, c.n_stop, c.n_horizon, c.n_open_at_end));
-    md.push_str(&format!("- Return: {:.2}%  Velocity: {:.2}x  Max DD: {:.2}%\n\n",
-        c.total_return_pct * 100.0, c.capital_velocity_ratio, c.max_drawdown_pct * 100.0));
+    md.push_str(&format!(
+        "- Lots: {}  TARGET: {}  STOP: {}  HORIZON: {}  Open: {}\n",
+        c.n_lots_opened, c.n_target, c.n_stop, c.n_horizon, c.n_open_at_end
+    ));
+    md.push_str(&format!(
+        "- Return: {:.2}%  Velocity: {:.2}x  Max DD: {:.2}%\n\n",
+        c.total_return_pct * 100.0,
+        c.capital_velocity_ratio,
+        c.max_drawdown_pct * 100.0
+    ));
 
     if stop.n_coralys_stops > 0 {
         md.push_str("## Stop Classification\n\n");
         md.push_str(&format!("- Total stops: {}\n", stop.n_coralys_stops));
-        md.push_str(&format!("- Premature: {} ({:.1}%)\n",
-            stop.n_premature, stop.n_premature as f64 / stop.n_coralys_stops as f64 * 100.0));
-        md.push_str(&format!("- Temporary excursion: {} ({:.1}%)\n",
-            stop.n_temporary_excursion, stop.n_temporary_excursion as f64 / stop.n_coralys_stops as f64 * 100.0));
-        md.push_str(&format!("- Stop too tight: {} ({:.1}%)\n",
-            stop.n_stop_too_tight, stop.n_stop_too_tight as f64 / stop.n_coralys_stops as f64 * 100.0));
-        md.push_str(&format!("- Genuine adverse: {} ({:.1}%)\n\n",
-            stop.n_genuine_adverse, stop.n_genuine_adverse as f64 / stop.n_coralys_stops as f64 * 100.0));
+        md.push_str(&format!(
+            "- Premature: {} ({:.1}%)\n",
+            stop.n_premature,
+            stop.n_premature as f64 / stop.n_coralys_stops as f64 * 100.0
+        ));
+        md.push_str(&format!(
+            "- Temporary excursion: {} ({:.1}%)\n",
+            stop.n_temporary_excursion,
+            stop.n_temporary_excursion as f64 / stop.n_coralys_stops as f64 * 100.0
+        ));
+        md.push_str(&format!(
+            "- Stop too tight: {} ({:.1}%)\n",
+            stop.n_stop_too_tight,
+            stop.n_stop_too_tight as f64 / stop.n_coralys_stops as f64 * 100.0
+        ));
+        md.push_str(&format!(
+            "- Genuine adverse: {} ({:.1}%)\n\n",
+            stop.n_genuine_adverse,
+            stop.n_genuine_adverse as f64 / stop.n_coralys_stops as f64 * 100.0
+        ));
     }
     md
 }
@@ -899,9 +1217,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Artifact hash guard ───────────────────────────────────────────────────
     if CORALYS_EXEC_ARTIFACT_HASH != CORALYS_EXEC_ARTIFACT_HASH_GUARD {
-        return Err(format!(
-            "coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}"
-        ).into());
+        return Err(format!("coralys artifact hash mismatch: {CORALYS_EXEC_ARTIFACT_HASH}").into());
     }
 
     // ── Load C3-002 artifact ──────────────────────────────────────────────────
@@ -924,7 +1240,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Config A: Rs.5K EqualWeight (v0.3 baseline)
     // Config B: Rs.1M EqualWeight (capital effect)
     // Config C: Rs.1M MaxPerLot Rs.20K (allocation effect)
-    let configs: Vec<(String, String, f64, AllocationModel, ContinuousPortfolioConfig)> = vec![
+    let configs: Vec<(
+        String,
+        String,
+        f64,
+        AllocationModel,
+        ContinuousPortfolioConfig,
+    )> = vec![
         (
             "v04_1_A_50_5k_equal".to_string(),
             "EqualWeight".to_string(),
@@ -944,7 +1266,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "v04_1_C_50_1m_maxlot".to_string(),
             format!("MaxPerLot Rs.{:.0}", V041_MAX_PER_LOT_INR),
             V041_CAPITAL_1M,
-            AllocationModel::MaxPerLot { max_per_lot_inr: V041_MAX_PER_LOT_INR },
+            AllocationModel::MaxPerLot {
+                max_per_lot_inr: V041_MAX_PER_LOT_INR,
+            },
             ContinuousPortfolioConfig::v04_max_per_lot(
                 UNIVERSE_50,
                 "v04_1_C_50_1m_maxlot",
@@ -964,7 +1288,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config_capitals: Vec<f64> = Vec::new();
 
     for (label, alloc_desc, capital, alloc_model, config) in &configs {
-        let available = config.universe.iter().filter(|s| cache.contains_key(s.as_str())).count();
+        let available = config
+            .universe
+            .iter()
+            .filter(|s| cache.contains_key(s.as_str()))
+            .count();
         let requested_size = config.universe.len();
 
         if args.strict && available < requested_size {
@@ -973,7 +1301,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ).into());
         }
 
-        println!("\n--- Running config: {label} ({available}/{requested_size} instruments in cache) ---");
+        println!(
+            "\n--- Running config: {label} ({available}/{requested_size} instruments in cache) ---"
+        );
         println!("    capital   : Rs.{:.0}", capital);
         println!("    allocation: {alloc_desc}");
 
@@ -984,7 +1314,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(format!(
                 "unexpected path_kind for {label}: expected {CONTINUOUS_REPLAY_VERSION}, got {}",
                 ledger.path_kind
-            ).into());
+            )
+            .into());
         }
 
         let stop_analysis = classify_stops(&ledger, &cache, label);
@@ -1042,26 +1373,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  universe_available={}", ledger.universe.len());
         println!(
             "  P.E.2:     lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
-            p.n_lots_opened, p.n_target, p.n_stop, p.n_horizon,
-            p.total_return_pct * 100.0, p.capital_velocity_ratio
+            p.n_lots_opened,
+            p.n_target,
+            p.n_stop,
+            p.n_horizon,
+            p.total_return_pct * 100.0,
+            p.capital_velocity_ratio
         );
         println!(
             "  Coralys:   lots={} TARGET={} STOP={} HORIZON={} return={:+.2}% velocity={:.2}x",
-            c.n_lots_opened, c.n_target, c.n_stop, c.n_horizon,
-            c.total_return_pct * 100.0, c.capital_velocity_ratio
+            c.n_lots_opened,
+            c.n_target,
+            c.n_stop,
+            c.n_horizon,
+            c.total_return_pct * 100.0,
+            c.capital_velocity_ratio
         );
         let stop_rate = if c.n_lots_opened > 0 {
             c.n_stop as f64 / c.n_lots_opened as f64 * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let premature_rate = if stop_analysis.n_coralys_stops > 0 {
             stop_analysis.n_premature as f64 / stop_analysis.n_coralys_stops as f64 * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let excursion_rate = if stop_analysis.n_coralys_stops > 0 {
-            stop_analysis.n_temporary_excursion as f64 / stop_analysis.n_coralys_stops as f64 * 100.0
-        } else { 0.0 };
+            stop_analysis.n_temporary_excursion as f64 / stop_analysis.n_coralys_stops as f64
+                * 100.0
+        } else {
+            0.0
+        };
         let genuine_rate = if stop_analysis.n_coralys_stops > 0 {
             stop_analysis.n_genuine_adverse as f64 / stop_analysis.n_coralys_stops as f64 * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         println!(
             "  stop_rate={:.1}%  premature={:.1}%  excursion={:.1}%  genuine={:.1}%",
             stop_rate, premature_rate, excursion_rate, genuine_rate
@@ -1078,17 +1426,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── Build decision-realization ledger ─────────────────────────────────────
     println!("\n--- Building decision-realization ledger ---");
     let universe_strings: Vec<String> = UNIVERSE_50.iter().map(|s| s.to_string()).collect();
-    let realization_ledger = build_decision_realization_ledger(
-        &config_labels,
-        &all_ledgers,
-        &universe_strings,
-    );
+    let realization_ledger =
+        build_decision_realization_ledger(&config_labels, &all_ledgers, &universe_strings);
     println!(
         "  eligible_decisions={} realized_A={} realized_B={} realized_C={}",
         realization_ledger.n_eligible,
-        realization_ledger.n_realized_per_config.get(&config_labels[0]).copied().unwrap_or(0),
-        realization_ledger.n_realized_per_config.get(&config_labels[1]).copied().unwrap_or(0),
-        realization_ledger.n_realized_per_config.get(&config_labels[2]).copied().unwrap_or(0),
+        realization_ledger
+            .n_realized_per_config
+            .get(&config_labels[0])
+            .copied()
+            .unwrap_or(0),
+        realization_ledger
+            .n_realized_per_config
+            .get(&config_labels[1])
+            .copied()
+            .unwrap_or(0),
+        realization_ledger
+            .n_realized_per_config
+            .get(&config_labels[2])
+            .copied()
+            .unwrap_or(0),
     );
 
     fs::write(

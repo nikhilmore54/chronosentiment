@@ -1,8 +1,8 @@
-use std::time::Instant;
 use coralys_matching::{AssignmentSolver, BipartiteMatchingSolver};
-use rand::SeedableRng;
 use rand::rngs::StdRng;
 use rand::Rng;
+use rand::SeedableRng;
+use std::time::Instant;
 
 #[test]
 fn test_assignment_scalability_benchmarks() {
@@ -17,7 +17,12 @@ fn test_assignment_scalability_benchmarks() {
 
     for size in sizes {
         // Generate synthetic workers with random skills
-        let skills = vec!["HeadNurse".to_string(), "Nurse".to_string(), "Caretaker".to_string(), "Trainee".to_string()];
+        let skills = vec![
+            "HeadNurse".to_string(),
+            "Nurse".to_string(),
+            "Caretaker".to_string(),
+            "Trainee".to_string(),
+        ];
         let mut workers = Vec::new();
         for id in 0..size {
             let num_skills = rng.gen_range(1..=3);
@@ -53,7 +58,13 @@ fn test_assignment_scalability_benchmarks() {
         let result = BipartiteMatchingSolver.assign(&workers, &demands);
         let duration = start.elapsed();
 
-        println!(" {:<7} | {:<7} | {:<7} | {:.3} ms", size, demand_size, result.cardinality, duration.as_secs_f64() * 1000.0);
+        println!(
+            " {:<7} | {:<7} | {:<7} | {:.3} ms",
+            size,
+            demand_size,
+            result.cardinality,
+            duration.as_secs_f64() * 1000.0
+        );
     }
     println!("=======================================================\n");
 }

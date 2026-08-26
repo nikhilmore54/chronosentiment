@@ -24,7 +24,6 @@
 /// `status` is `"ok"` when all checks pass, `"degraded"` when at least one
 /// check fails but the adapter can still serve requests, or `"error"` when
 /// the adapter cannot function.
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -50,9 +49,9 @@ pub enum HealthStatus {
 impl std::fmt::Display for HealthStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HealthStatus::Ok      => write!(f, "ok"),
+            HealthStatus::Ok => write!(f, "ok"),
             HealthStatus::Degraded => write!(f, "degraded"),
-            HealthStatus::Error   => write!(f, "error"),
+            HealthStatus::Error => write!(f, "error"),
         }
     }
 }
@@ -100,18 +99,30 @@ pub fn health_check() -> HealthResponse {
     let config_ok = check_config();
     checks.insert(
         "config".to_string(),
-        if config_ok { "ok".to_string() } else { "config subsystem unavailable".to_string() },
+        if config_ok {
+            "ok".to_string()
+        } else {
+            "config subsystem unavailable".to_string()
+        },
     );
 
     // Check 2: validator subsystem
     let validator_ok = check_validator();
     checks.insert(
         "validator".to_string(),
-        if validator_ok { "ok".to_string() } else { "validator subsystem unavailable".to_string() },
+        if validator_ok {
+            "ok".to_string()
+        } else {
+            "validator subsystem unavailable".to_string()
+        },
     );
 
     let all_ok = config_ok && validator_ok;
-    let status = if all_ok { HealthStatus::Ok } else { HealthStatus::Degraded };
+    let status = if all_ok {
+        HealthStatus::Ok
+    } else {
+        HealthStatus::Degraded
+    };
 
     HealthResponse {
         status,
@@ -124,19 +135,32 @@ pub fn health_check() -> HealthResponse {
 /// Verify the config subsystem by constructing a default `OptimizerConfig`.
 fn check_config() -> bool {
     // parse_config with empty TOML should always succeed (all fields optional).
-    crate::config::optimizer_config::parse_config("", crate::config::optimizer_config::ConfigFormat::Toml).is_ok()
+    crate::config::optimizer_config::parse_config(
+        "",
+        crate::config::optimizer_config::ConfigFormat::Toml,
+    )
+    .is_ok()
 }
 
 /// Verify the validator subsystem by running a minimal valid request through it.
 fn check_validator() -> bool {
-    use crate::models::{Shift, Worker};
-    use crate::public_contracts::{ScheduleRequest, InrcScenario};
-    use crate::strict_validator::validate_request;
     use crate::models::Skill;
+    use crate::models::{Shift, Worker};
+    use crate::public_contracts::{InrcScenario, ScheduleRequest};
+    use crate::strict_validator::validate_request;
+    use crate::models::FatigueConfig;
 
     let req = ScheduleRequest {
-        workers: vec![Worker { id: 1, skills: vec![Skill::new("Nurse")] }],
-        shifts:  vec![Shift  { id: 1, start_hour: 6, duration_hours: 8, required_skill: Skill::new("Nurse")}],
+        workers: vec![Worker {
+            id: 1,
+            skills: vec![Skill::new("Nurse")],
+        }],
+        shifts: vec![Shift {
+            id: 1,
+            start_hour: 6,
+            duration_hours: 8,
+            required_skill: Skill::new("Nurse"),
+        }],
         historical_workloads: None,
         rng_seed: Some(42),
         generation_limit: Some(10),
@@ -146,6 +170,7 @@ fn check_validator() -> bool {
             minimum_rest_hours: Some(10),
             leave_requests: None,
         }),
+        fatigue: FatigueConfig::default(),
     };
     validate_request(&req).is_valid()
 }
@@ -159,7 +184,12 @@ mod tests {
     #[test]
     fn test_health_check_returns_ok() {
         let resp = health_check();
-        assert_eq!(resp.status, HealthStatus::Ok, "Health check must return ok: {:?}", resp);
+        assert_eq!(
+            resp.status,
+            HealthStatus::Ok,
+            "Health check must return ok: {:?}",
+            resp
+        );
         assert!(resp.is_ok());
     }
 
@@ -168,7 +198,11 @@ mod tests {
         let resp = health_check();
         assert!(!resp.version.is_empty(), "Version must not be empty");
         // Version must look like semver (at least one dot).
-        assert!(resp.version.contains('.'), "Version must be semver: {}", resp.version);
+        assert!(
+            resp.version.contains('.'),
+            "Version must be semver: {}",
+            resp.version
+        );
     }
 
     #[test]
@@ -181,7 +215,10 @@ mod tests {
     fn test_health_check_all_subsystems_present() {
         let resp = health_check();
         assert!(resp.checks.contains_key("config"), "config check missing");
-        assert!(resp.checks.contains_key("validator"), "validator check missing");
+        assert!(
+            resp.checks.contains_key("validator"),
+            "validator check missing"
+        );
     }
 
     #[test]
@@ -195,8 +232,8 @@ mod tests {
     fn test_health_response_to_json() {
         let resp = health_check();
         let json = resp.to_json();
-        let parsed: serde_json::Value = serde_json::from_str(&json)
-            .expect("health response JSON must be valid");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json).expect("health response JSON must be valid");
         assert_eq!(parsed["status"], "ok");
         assert_eq!(parsed["adapter"], "ultracrew");
         assert!(parsed["version"].is_string());

@@ -17,12 +17,15 @@ fn main() {
                     let min_opt: Vec<&str> = req.split(',').collect();
                     let min: usize = min_opt[0].parse().unwrap();
                     let opt: usize = min_opt[1].parse().unwrap();
-                    demands.insert((days[d].to_string(), shift.to_string(), skill.to_string()), (min, opt));
+                    demands.insert(
+                        (days[d].to_string(), shift.to_string(), skill.to_string()),
+                        (min, opt),
+                    );
                 }
             }
         }
     }
-    
+
     let mut sum_opt_minus_min = 0;
     for (_, (min, opt)) in &demands {
         if *opt > *min {

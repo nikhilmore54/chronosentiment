@@ -18,24 +18,23 @@
 ///
 /// Admittance model: admitted = fitness > archive_best_before_this_generation
 use chronosentiment_optimization::{
-    GaConfig, Candidate, CandidateEvaluation, FitnessEvaluator,
-    initialize_population, tournament_selection, crossover, mutate_candidate,
+    Candidate, CandidateEvaluation, FitnessEvaluator, GaConfig, crossover, initialize_population,
+    mutate_candidate, tournament_selection,
 };
+use coralys_core::memory::InnovationTracker;
 use coralys_ecology::diagnostics::{
-    DiagnosticDetector, DiagnosticResult, EcologyState,
-    AttractorDetector, TradeoffBasinDetector, EcologyLockInDetector,
-    AccumulationFailureDetector, ProxySuppressionDetector,
+    AccumulationFailureDetector, AttractorDetector, DiagnosticDetector, DiagnosticResult,
+    EcologyLockInDetector, EcologyState, ProxySuppressionDetector, TradeoffBasinDetector,
 };
+use coralys_policy::{PolicyEngine, RecommendationMirrorPolicy};
 use coralys_recommendation::EcologyRecommender;
-use coralys_policy::{RecommendationMirrorPolicy, PolicyEngine};
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
-use std::cmp::Ordering;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
-use std::hash::{Hash, Hasher};
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
-use coralys_core::memory::InnovationTracker;
+use std::hash::{Hash, Hasher};
 
 const MAX_GENERATIONS: usize = 1000;
 const POPULATION_SIZE: usize = 50;
@@ -128,10 +127,10 @@ fn main() {
         let mut telemetry = Vec::new();
         let mut ecology_state = EcologyState::new(MAX_GENERATIONS);
 
-        let attractor_detector   = AttractorDetector::default();
-        let tradeoff_detector    = TradeoffBasinDetector::new(0, 1, -0.5);
-        let lockin_detector      = EcologyLockInDetector::new(0, 0.15, 100);
-        let accum_detector       = AccumulationFailureDetector::new(0, 0.75);
+        let attractor_detector = AttractorDetector::default();
+        let tradeoff_detector = TradeoffBasinDetector::new(0, 1, -0.5);
+        let lockin_detector = EcologyLockInDetector::new(0, 0.15, 100);
+        let accum_detector = AccumulationFailureDetector::new(0, 0.75);
         let suppression_detector = ProxySuppressionDetector::new(0, vec![0], 0.80);
 
         let mut innovation_tracker = InnovationTracker::new();
@@ -180,13 +179,13 @@ fn main() {
                 hasher.write_usize(3);
                 cand.stop_loss.hash(&mut hasher);
                 gen_signatures.push(hasher.finish());
-                
+
                 hasher = DefaultHasher::new();
                 hasher.write_usize(4);
                 cand.holding_period.hash(&mut hasher);
                 gen_signatures.push(hasher.finish());
             }
-            
+
             let innovation_telemetry = innovation_tracker.observe(&gen_signatures);
 
             let attachments = vec![coralys_core::telemetry::TelemetryAttachment {
@@ -196,13 +195,21 @@ fn main() {
             }];
 
             // Build observation using the adapter (M6 measurement: only adapter code)
-            let obs = build_cs_observation(generation, gen_best, archive_best_before, &evals, attachments);
+            let obs = build_cs_observation(
+                generation,
+                gen_best,
+                archive_best_before,
+                &evals,
+                attachments,
+            );
             telemetry.push(obs);
 
             // Evolve next generation (elitism + tournament + crossover + mutation)
             let mut next_gen = Vec::with_capacity(config.population_size);
             next_gen.push(evals[0].candidate.clone());
-            if evals.len() > 1 { next_gen.push(evals[1].candidate.clone()); }
+            if evals.len() > 1 {
+                next_gen.push(evals[1].candidate.clone());
+            }
 
             while next_gen.len() < config.population_size {
                 let p1 = tournament_selection(&evals, 3, &mut rng).candidate.clone();
@@ -217,25 +224,43 @@ fn main() {
             let start_idx = telemetry.len().saturating_sub(OBS_WINDOW);
             let obs_slice = &telemetry[start_idx..];
             let mut results = HashMap::new();
-            results.insert("Attractor".to_string(),           attractor_detector.evaluate(obs_slice));
-            results.insert("TradeoffBasin".to_string(),       tradeoff_detector.evaluate(obs_slice));
-            results.insert("EcologyLockIn".to_string(),       lockin_detector.evaluate(obs_slice));
-            results.insert("AccumulationFailure".to_string(), accum_detector.evaluate(obs_slice));
-            results.insert("ProxySuppression".to_string(),    suppression_detector.evaluate(obs_slice));
+            results.insert(
+                "Attractor".to_string(),
+                attractor_detector.evaluate(obs_slice),
+            );
+            results.insert(
+                "TradeoffBasin".to_string(),
+                tradeoff_detector.evaluate(obs_slice),
+            );
+            results.insert(
+                "EcologyLockIn".to_string(),
+                lockin_detector.evaluate(obs_slice),
+            );
+            results.insert(
+                "AccumulationFailure".to_string(),
+                accum_detector.evaluate(obs_slice),
+            );
+            results.insert(
+                "ProxySuppression".to_string(),
+                suppression_detector.evaluate(obs_slice),
+            );
             ecology_state.record(generation, results);
 
             if generation % 200 == 0 {
-                println!("  Gen {:>4}/{} | best_fitness={:.6}", generation, MAX_GENERATIONS, global_best_fitness);
+                println!(
+                    "  Gen {:>4}/{} | best_fitness={:.6}",
+                    generation, MAX_GENERATIONS, global_best_fitness
+                );
             }
         }
 
         // Final diagnostic snapshot
         let final_start = telemetry.len().saturating_sub(OBS_WINDOW);
         let final_obs = &telemetry[final_start..];
-        let res_accum      = accum_detector.evaluate(final_obs);
-        let res_lockin     = lockin_detector.evaluate(final_obs);
-        let res_attractor  = attractor_detector.evaluate(final_obs);
-        let res_tradeoff   = tradeoff_detector.evaluate(final_obs);
+        let res_accum = accum_detector.evaluate(final_obs);
+        let res_lockin = lockin_detector.evaluate(final_obs);
+        let res_attractor = attractor_detector.evaluate(final_obs);
+        let res_tradeoff = tradeoff_detector.evaluate(final_obs);
         let res_suppression = suppression_detector.evaluate(final_obs);
 
         // Detector Applicability Matrix
@@ -274,9 +299,9 @@ fn main() {
 
         // Recommendation and policy (unchanged governance layer)
         let recommender = EcologyRecommender::new(0.5, EVAL_WINDOW);
-        let rec_report  = recommender.recommend(&ecology_state);
-        let policy      = RecommendationMirrorPolicy;
-        let decision    = policy.evaluate(&ecology_state, &rec_report);
+        let rec_report = recommender.recommend(&ecology_state);
+        let policy = RecommendationMirrorPolicy;
+        let decision = policy.evaluate(&ecology_state, &rec_report);
 
         // Print M6 results
         println!();
@@ -284,9 +309,15 @@ fn main() {
         println!();
         println!("  === Detector Applicability Matrix ===");
         for (name, result) in &matrix {
-            let tag = if result.applicable { "APPLICABLE" } else { "N/A       " };
-            println!("  [{}] {:22} conf={:.4}  sev={:.4}",
-                tag, name, result.confidence, result.severity);
+            let tag = if result.applicable {
+                "APPLICABLE"
+            } else {
+                "N/A       "
+            };
+            println!(
+                "  [{}] {:22} conf={:.4}  sev={:.4}",
+                tag, name, result.confidence, result.severity
+            );
             println!("           → {}", result.note);
         }
         println!();
@@ -325,7 +356,9 @@ fn main() {
     println!();
     println!("Detector classification:");
     println!("  Category A – Search-Universal  : AccumulationFailure, EcologyLockIn");
-    println!("  Category B – Multi-obj Specific: AttractorDetector, TradeoffBasin, ProxySuppression");
+    println!(
+        "  Category B – Multi-obj Specific: AttractorDetector, TradeoffBasin, ProxySuppression"
+    );
     println!();
     println!("M6 pass criteria:");
     println!("  A. Zero changes outside adapter? ✅");
@@ -340,8 +373,8 @@ fn build_cs_observation(
     evals: &[CandidateEvaluation],
     attachments: Vec<coralys_core::telemetry::TelemetryAttachment>,
 ) -> coralys_ecology::diagnostics::SearchObservation {
-    use coralys_ecology::diagnostics::{SearchObservation, CandidateObservation, ObjectiveVector};
-    use coralys_core::telemetry::{SearchTelemetry, PopulationTelemetry};
+    use coralys_core::telemetry::{PopulationTelemetry, SearchTelemetry};
+    use coralys_ecology::diagnostics::{CandidateObservation, ObjectiveVector, SearchObservation};
 
     let admitted = gen_best.fitness > archive_best_before;
 
@@ -352,7 +385,10 @@ fn build_cs_observation(
         parent_objectives: None,
     };
 
-    let archive_objectives = evals.iter().map(|e| ObjectiveVector::new(vec![e.fitness])).collect();
+    let archive_objectives = evals
+        .iter()
+        .map(|e| ObjectiveVector::new(vec![e.fitness]))
+        .collect();
 
     SearchObservation {
         generation,
@@ -374,4 +410,3 @@ fn build_cs_observation(
         }),
     }
 }
-

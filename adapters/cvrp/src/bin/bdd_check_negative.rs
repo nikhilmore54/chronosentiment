@@ -1,17 +1,19 @@
-use std::fs;
-use cvrp::{CvrpInstance, CvrpGenomeFactory, DistanceMetric, RadiusPolicy, Node};
-use cvrp::moga_impl::{CvrpEvaluator, CvrpMutator, CvrpCrossover, CvrpLocalSearch};
 use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
+use cvrp::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};
+use cvrp::{CvrpGenomeFactory, CvrpInstance, DistanceMetric, Node, RadiusPolicy};
+use std::fs;
 
 fn parse_vrp_file(content: &str) -> CvrpInstance {
     let mut capacity = 0;
     let mut coords = Vec::new();
     let mut demands = Vec::new();
-    
+
     let mut section = "";
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         if line.starts_with("CAPACITY") {
             let parts: Vec<&str> = line.split(':').collect();
             capacity = parts[1].trim().parse().unwrap();
@@ -25,7 +27,7 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
             section = "";
             continue;
         }
-        
+
         if section == "coords" {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 3 {
@@ -43,18 +45,30 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
             }
         }
     }
-    
+
     let depot_coord = coords.iter().find(|(id, _, _)| *id == 1).unwrap();
     let depot_demand = demands.iter().find(|(id, _)| *id == 1).unwrap();
-    let depot = Node { id: depot_coord.0, x: depot_coord.1, y: depot_coord.2, demand: depot_demand.1 };
-    
+    let depot = Node {
+        id: depot_coord.0,
+        x: depot_coord.1,
+        y: depot_coord.2,
+        demand: depot_demand.1,
+    };
+
     let mut customers = Vec::new();
     for coord in coords {
-        if coord.0 == 1 { continue; }
+        if coord.0 == 1 {
+            continue;
+        }
         let demand = demands.iter().find(|(id, _)| *id == coord.0).unwrap();
-        customers.push(Node { id: coord.0, x: coord.1, y: coord.2, demand: demand.1 });
+        customers.push(Node {
+            id: coord.0,
+            x: coord.1,
+            y: coord.2,
+            demand: demand.1,
+        });
     }
-    
+
     CvrpInstance {
         capacity,
         depot,
@@ -67,18 +81,27 @@ fn parse_vrp_file(content: &str) -> CvrpInstance {
 
 fn check_instance(name: &str, target_bks: f64) {
     println!("\n=== Checking Coralys Solution for {} ===", name);
-    let vrp_path = format!("/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances/{}.vrp", name);
+    let vrp_path = format!(
+        "/Users/nikhil/ChronoSentiment_MEGA_FINAL/adapters/cvrp/data/instances/{}.vrp",
+        name
+    );
     let content = fs::read_to_string(vrp_path).unwrap();
     let mut instance = parse_vrp_file(&content);
     let k_limit: usize = name.split("-k").last().unwrap().parse().unwrap();
     instance.max_vehicles = Some(k_limit);
-    
-    let evaluator = CvrpEvaluator { instance: instance.clone() };
+
+    let evaluator = CvrpEvaluator {
+        instance: instance.clone(),
+    };
     let mutator = CvrpMutator::new(instance.clone(), RadiusPolicy::Control);
     let crossover = CvrpCrossover;
-    let factory = CvrpGenomeFactory { num_customers: instance.customers.len() };
-    let local_search = CvrpLocalSearch { instance: instance.clone() };
-    
+    let factory = CvrpGenomeFactory {
+        num_customers: instance.customers.len(),
+    };
+    let local_search = CvrpLocalSearch {
+        instance: instance.clone(),
+    };
+
     let config = EvolutionConfig {
         population_size: 200,
         elite_count: 20,
@@ -89,7 +112,7 @@ fn check_instance(name: &str, target_bks: f64) {
         tournament_size: Some(5),
         ..Default::default()
     };
-    
+
     let engine = EvolutionEngineBuilder::new()
         .with_evaluator(evaluator)
         .with_mutator(mutator)
@@ -97,28 +120,42 @@ fn check_instance(name: &str, target_bks: f64) {
         .with_factory(factory)
         .build()
         .unwrap();
-        
+
     let result = engine.run_ga_evolution(config).unwrap();
     let best = result.global_best;
-    
+
     println!("Coralys Result Cost: {}", best.eval.total_distance_integer);
     println!("Coralys Result Vehicles: {}", best.eval.num_vehicles);
     println!("Published BKS Cost: {}", target_bks);
-    
+
     // Print all routes and their demands
     let mut all_visited = std::collections::HashSet::new();
     let mut capacity_violations = 0;
-    
+
     for (r_idx, route) in best.eval.routes.iter().enumerate() {
-        let load: i32 = route.iter().map(|&node_id| {
-            if node_id == instance.depot.id {
-                0
-            } else {
-                instance.customers.iter().find(|c| c.id == node_id).unwrap().demand
-            }
-        }).sum();
-        
-        println!("  Route #{}: {:?} (Load: {}/{})", r_idx + 1, route, load, instance.capacity);
+        let load: i32 = route
+            .iter()
+            .map(|&node_id| {
+                if node_id == instance.depot.id {
+                    0
+                } else {
+                    instance
+                        .customers
+                        .iter()
+                        .find(|c| c.id == node_id)
+                        .unwrap()
+                        .demand
+                }
+            })
+            .sum();
+
+        println!(
+            "  Route #{}: {:?} (Load: {}/{})",
+            r_idx + 1,
+            route,
+            load,
+            instance.capacity
+        );
         if load > instance.capacity {
             capacity_violations += 1;
         }
@@ -126,9 +163,13 @@ fn check_instance(name: &str, target_bks: f64) {
             all_visited.insert(node_id);
         }
     }
-    
+
     println!("Capacity violations: {}", capacity_violations);
-    println!("Unique customers visited: {} (Expected {})", all_visited.len(), instance.customers.len());
+    println!(
+        "Unique customers visited: {} (Expected {})",
+        all_visited.len(),
+        instance.customers.len()
+    );
 }
 
 fn main() {

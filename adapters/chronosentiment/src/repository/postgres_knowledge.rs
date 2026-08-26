@@ -1,15 +1,15 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Row};
 use std::error::Error;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
-use crate::repository::knowledge::{
-    ArtifactMetadata, ArtifactRepository, ArtifactType, AssessmentQueries, KnowledgeArtifact,
-};
 use crate::reasoning::assessment::AssessmentProfile;
 use crate::reasoning::decision::Decision;
 use crate::reasoning::strategy::OpportunityStrategy;
+use crate::repository::knowledge::{
+    ArtifactMetadata, ArtifactRepository, ArtifactType, AssessmentQueries, KnowledgeArtifact,
+};
 use crate::validation::outcome::OutcomeRecord;
 
 pub struct PostgresKnowledgeRepository {
@@ -28,7 +28,7 @@ impl ArtifactRepository<AssessmentProfile> for PostgresKnowledgeRepository {
         let meta = artifact.metadata();
         let metadata_json = serde_json::to_value(meta)?;
         let profile_json = serde_json::to_value(artifact)?;
-        
+
         let signature = artifact.to_signature();
         let signature_json = serde_json::Value::String(signature.clone());
         let signature_hash = artifact.to_hash();
@@ -40,7 +40,7 @@ impl ArtifactRepository<AssessmentProfile> for PostgresKnowledgeRepository {
                 signature, signature_hash, metadata_json, profile_json
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            "#
+            "#,
         )
         .bind(meta.artifact_id)
         .bind(artifact.instrument_id())
@@ -61,7 +61,7 @@ impl ArtifactRepository<AssessmentProfile> for PostgresKnowledgeRepository {
             SELECT profile_json
             FROM knowledge_assessments
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -84,7 +84,7 @@ impl ArtifactRepository<OutcomeRecord> for PostgresKnowledgeRepository {
         let meta = artifact.metadata();
         let metadata_json = serde_json::to_value(meta)?;
         let outcome_json = serde_json::to_value(artifact)?;
-        
+
         sqlx::query(
             r#"
             INSERT INTO knowledge_outcomes (
@@ -95,7 +95,7 @@ impl ArtifactRepository<OutcomeRecord> for PostgresKnowledgeRepository {
                 metadata_json, outcome_json
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-            "#
+            "#,
         )
         .bind(meta.artifact_id)
         .bind(artifact.decision_id)
@@ -127,7 +127,7 @@ impl ArtifactRepository<OutcomeRecord> for PostgresKnowledgeRepository {
             SELECT outcome_json
             FROM knowledge_outcomes
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -151,7 +151,7 @@ impl ArtifactRepository<Decision> for PostgresKnowledgeRepository {
         let metadata_json = serde_json::to_value(meta)?;
         let decision_json = serde_json::to_value(artifact)?;
         let opp_str = format!("{:?}", artifact.opportunity);
-        
+
         sqlx::query(
             r#"
             INSERT INTO knowledge_decisions (
@@ -159,7 +159,7 @@ impl ArtifactRepository<Decision> for PostgresKnowledgeRepository {
                 opportunity, metadata_json, decision_json
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            "#
+            "#,
         )
         .bind(meta.artifact_id)
         .bind(artifact.instrument_id)
@@ -180,7 +180,7 @@ impl ArtifactRepository<Decision> for PostgresKnowledgeRepository {
             SELECT decision_json
             FROM knowledge_decisions
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -204,7 +204,7 @@ impl ArtifactRepository<OpportunityStrategy> for PostgresKnowledgeRepository {
         let metadata_json = serde_json::to_value(meta)?;
         let strategy_json = serde_json::to_value(artifact)?;
         let horizon_str = format!("{:?}", artifact.expected_horizon);
-        
+
         sqlx::query(
             r#"
             INSERT INTO knowledge_strategies (
@@ -212,7 +212,7 @@ impl ArtifactRepository<OpportunityStrategy> for PostgresKnowledgeRepository {
                 metadata_json, strategy_json
             )
             VALUES ($1, $2, $3, $4, $5)
-            "#
+            "#,
         )
         .bind(meta.artifact_id)
         .bind(artifact.decision_id)
@@ -231,7 +231,7 @@ impl ArtifactRepository<OpportunityStrategy> for PostgresKnowledgeRepository {
             SELECT strategy_json
             FROM knowledge_strategies
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)

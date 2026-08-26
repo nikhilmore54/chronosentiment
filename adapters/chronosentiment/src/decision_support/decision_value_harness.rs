@@ -41,7 +41,9 @@ impl ProtocolValue {
             .keys()
             .any(|k| !RESEARCH_UNIVERSE.iter().any(|t| t == k))
         {
-            return Err("protocol value contains an instrument outside the certified universe".into());
+            return Err(
+                "protocol value contains an instrument outside the certified universe".into(),
+            );
         }
         let mut instrument_means = BTreeMap::new();
         for ticker in RESEARCH_UNIVERSE {
@@ -259,7 +261,11 @@ fn table_b_row(
         slice: slice_label(kind),
         n: rows.len() as u32,
         mean_v: mean(&values),
-        median_v: if values.is_empty() { 0.0 } else { median(&values) },
+        median_v: if values.is_empty() {
+            0.0
+        } else {
+            median(&values)
+        },
         mean_regret: mean(&regrets),
         unique_best_n: unique,
         unique_best_share: if rows.is_empty() {
@@ -276,7 +282,10 @@ fn table_b_row(
     }
 }
 
-fn slice_harness(kind: Option<PartitionKind>, rows: &[&DecisionValueRow]) -> Result<SliceHarness, String> {
+fn slice_harness(
+    kind: Option<PartitionKind>,
+    rows: &[&DecisionValueRow],
+) -> Result<SliceHarness, String> {
     let protocol = ProtocolValue::from_per_instrument_v(&per_instrument_v(rows))?;
     Ok(SliceHarness {
         slice: slice_label(kind),
@@ -426,8 +435,12 @@ pub fn render_harness(report: &HarnessReport) -> String {
     ));
 
     out.push_str("## Table A — Decision distribution by symbol\n\n");
-    out.push_str("| Symbol | Slice | LONG | SHORT | NO_TRADE | Total | % LONG | % SHORT | % NO_TRADE |\n");
-    out.push_str("|--------|-------|-----:|------:|---------:|------:|-------:|--------:|-----------:|\n");
+    out.push_str(
+        "| Symbol | Slice | LONG | SHORT | NO_TRADE | Total | % LONG | % SHORT | % NO_TRADE |\n",
+    );
+    out.push_str(
+        "|--------|-------|-----:|------:|---------:|------:|-------:|--------:|-----------:|\n",
+    );
     for row in &report.table_a_decision_distribution {
         out.push_str(&format!(
             "| {} | {} | {} | {} | {} | {} | {:.1}% | {:.1}% | {:.1}% |\n",

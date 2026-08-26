@@ -103,11 +103,21 @@ impl SubsetStats {
             };
         }
         let count = members.len();
-        let best  = members.iter().map(|m| m.official_total).min();
+        let best = members.iter().map(|m| m.official_total).min();
         let worst = members.iter().map(|m| m.official_total).max();
-        let mean_hc   = members.iter().map(|m| m.total_hc_violations as f64).sum::<f64>() / count as f64;
+        let mean_hc = members
+            .iter()
+            .map(|m| m.total_hc_violations as f64)
+            .sum::<f64>()
+            / count as f64;
         let mean_soft = members.iter().map(|m| m.soft_total as f64).sum::<f64>() / count as f64;
-        Self { count, best_official_score: best, worst_official_score: worst, mean_hc_violations: mean_hc, mean_soft_total: mean_soft }
+        Self {
+            count,
+            best_official_score: best,
+            worst_official_score: worst,
+            mean_hc_violations: mean_hc,
+            mean_soft_total: mean_soft,
+        }
     }
 }
 
@@ -153,13 +163,13 @@ impl FeasibilitySnapshot {
             self.feasible_count += 1;
             self.best_feasible_score = Some(match self.best_feasible_score {
                 Some(prev) => prev.min(score),
-                None       => score,
+                None => score,
             });
         } else {
             self.infeasible_count += 1;
             self.best_infeasible_score = Some(match self.best_infeasible_score {
                 Some(prev) => prev.min(score),
-                None       => score,
+                None => score,
             });
         }
 
@@ -173,7 +183,7 @@ impl FeasibilitySnapshot {
         if hc <= 10 {
             self.best_near_feasible_score = Some(match self.best_near_feasible_score {
                 Some(prev) => prev.min(score),
-                None       => score,
+                None => score,
             });
         }
 
@@ -195,7 +205,9 @@ impl FeasibilitySnapshot {
     }
 
     pub fn near_feasible_stats(&self, max_violations: usize) -> SubsetStats {
-        let subset: Vec<&MemberSnapshot> = self.members.iter()
+        let subset: Vec<&MemberSnapshot> = self
+            .members
+            .iter()
             .filter(|m| m.total_hc_violations <= max_violations)
             .collect();
         SubsetStats::from_members(&subset)
@@ -214,7 +226,10 @@ impl FeasibilitySnapshot {
 
     /// Print a human-readable report to stdout.
     pub fn print_report(&self) {
-        println!("=== Feasibility Distribution Audit (Gen {}) ===", self.generation);
+        println!(
+            "=== Feasibility Distribution Audit (Gen {}) ===",
+            self.generation
+        );
         println!("  Archive Size        : {}", self.archive_size());
         println!("  Feasible            : {}", self.feasible_count);
         println!("  Near-Feasible (≤5)  : {}", self.near_feasible_5);
@@ -223,8 +238,14 @@ impl FeasibilitySnapshot {
         println!();
 
         println!("  Best Feasible Score     : {:?}", self.best_feasible_score);
-        println!("  Best Near-Feasible Score: {:?}", self.best_near_feasible_score);
-        println!("  Best Infeasible Score   : {:?}", self.best_infeasible_score);
+        println!(
+            "  Best Near-Feasible Score: {:?}",
+            self.best_near_feasible_score
+        );
+        println!(
+            "  Best Infeasible Score   : {:?}",
+            self.best_infeasible_score
+        );
         println!();
 
         let fs = self.feasible_stats();
@@ -270,10 +291,13 @@ impl FeasibilitySnapshot {
         println!();
 
         println!("  Per-Member Detail:");
-        println!("    {:>4}  {:>6}  {:>6}  {:>6}  {:>6}  {:>8}  {:>10}  {}",
-            "Idx", "HC_Cov", "HC_Skl", "HC_Suc", "HC_1Sh", "SoftTot", "Official", "Feasible");
+        println!(
+            "    {:>4}  {:>6}  {:>6}  {:>6}  {:>6}  {:>8}  {:>10}  {}",
+            "Idx", "HC_Cov", "HC_Skl", "HC_Suc", "HC_1Sh", "SoftTot", "Official", "Feasible"
+        );
         for m in &self.members {
-            println!("    {:>4}  {:>6}  {:>6}  {:>6}  {:>6}  {:>8}  {:>10}  {}",
+            println!(
+                "    {:>4}  {:>6}  {:>6}  {:>6}  {:>6}  {:>8}  {:>10}  {}",
                 m.archive_index,
                 m.hc_coverage,
                 m.hc_skills,
@@ -302,7 +326,11 @@ impl FeasibilitySnapshot {
             self.best_infeasible_score,
         ));
         for m in &self.members {
-            let proxy: Vec<String> = m.objective_vector.iter().map(|v| format!("{:.4}", v)).collect();
+            let proxy: Vec<String> = m
+                .objective_vector
+                .iter()
+                .map(|v| format!("{:.4}", v))
+                .collect();
             lines.push(format!(
                 r#"{{"type":"fda_member","idx":{},"hc_cov":{},"hc_skl":{},"hc_suc":{},"hc_1sh":{},"hc_total":{},"soft_total":{},"official":{},"feasible":{},"proxy":[{}]}}"#,
                 m.archive_index,
@@ -326,7 +354,13 @@ mod tests {
     use super::*;
     use crate::inrc::optimization::{InrcEvaluation, InrcGenome, SoftConstraintReport};
 
-    fn make_eval(hc_cov: usize, hc_skl: usize, hc_suc: usize, hc_1sh: usize, soft: i32) -> InrcEvaluation {
+    fn make_eval(
+        hc_cov: usize,
+        hc_skl: usize,
+        hc_suc: usize,
+        hc_1sh: usize,
+        soft: i32,
+    ) -> InrcEvaluation {
         let total_hc = hc_cov + hc_skl + hc_suc + hc_1sh;
         let soft_report = SoftConstraintReport {
             assignment_penalty: soft,
@@ -368,16 +402,28 @@ mod tests {
         let mut snap = FeasibilitySnapshot::new(5000);
 
         // Fully feasible
-        snap.add_member(MemberSnapshot::from_evaluation(0, &make_eval(0, 0, 0, 0, 1000), vec![0.9, 0.1]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            0,
+            &make_eval(0, 0, 0, 0, 1000),
+            vec![0.9, 0.1],
+        ));
         // Near-feasible (3 violations)
-        snap.add_member(MemberSnapshot::from_evaluation(1, &make_eval(2, 1, 0, 0, 800), vec![0.7, 0.3]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            1,
+            &make_eval(2, 1, 0, 0, 800),
+            vec![0.7, 0.3],
+        ));
         // Infeasible (12 violations)
-        snap.add_member(MemberSnapshot::from_evaluation(2, &make_eval(5, 4, 2, 1, 500), vec![0.5, 0.5]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            2,
+            &make_eval(5, 4, 2, 1, 500),
+            vec![0.5, 0.5],
+        ));
 
         assert_eq!(snap.archive_size(), 3);
         assert_eq!(snap.feasible_count, 1);
-        assert_eq!(snap.near_feasible_5, 2);   // 0 and 3 violations
-        assert_eq!(snap.near_feasible_10, 2);  // 0 and 3 violations
+        assert_eq!(snap.near_feasible_5, 2); // 0 and 3 violations
+        assert_eq!(snap.near_feasible_10, 2); // 0 and 3 violations
         assert_eq!(snap.infeasible_count, 2);
     }
 
@@ -386,11 +432,23 @@ mod tests {
         let mut snap = FeasibilitySnapshot::new(5000);
 
         // Feasible, soft=1000 → official = 0*1000 + 1000 = 1000
-        snap.add_member(MemberSnapshot::from_evaluation(0, &make_eval(0, 0, 0, 0, 1000), vec![0.9, 0.1]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            0,
+            &make_eval(0, 0, 0, 0, 1000),
+            vec![0.9, 0.1],
+        ));
         // Feasible, soft=800 → official = 800
-        snap.add_member(MemberSnapshot::from_evaluation(1, &make_eval(0, 0, 0, 0, 800), vec![0.8, 0.2]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            1,
+            &make_eval(0, 0, 0, 0, 800),
+            vec![0.8, 0.2],
+        ));
         // Infeasible, 2 HC, soft=500 → official = 2000 + 500 = 2500
-        snap.add_member(MemberSnapshot::from_evaluation(2, &make_eval(1, 1, 0, 0, 500), vec![0.5, 0.5]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            2,
+            &make_eval(1, 1, 0, 0, 500),
+            vec![0.5, 0.5],
+        ));
 
         assert_eq!(snap.best_feasible_score, Some(800));
         assert_eq!(snap.best_infeasible_score, Some(2500));
@@ -399,10 +457,26 @@ mod tests {
     #[test]
     fn test_hc_histogram() {
         let mut snap = FeasibilitySnapshot::new(5000);
-        snap.add_member(MemberSnapshot::from_evaluation(0, &make_eval(0, 0, 0, 0, 100), vec![]));
-        snap.add_member(MemberSnapshot::from_evaluation(1, &make_eval(0, 0, 0, 0, 200), vec![]));
-        snap.add_member(MemberSnapshot::from_evaluation(2, &make_eval(1, 0, 0, 0, 100), vec![]));
-        snap.add_member(MemberSnapshot::from_evaluation(3, &make_eval(3, 0, 0, 0, 100), vec![]));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            0,
+            &make_eval(0, 0, 0, 0, 100),
+            vec![],
+        ));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            1,
+            &make_eval(0, 0, 0, 0, 200),
+            vec![],
+        ));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            2,
+            &make_eval(1, 0, 0, 0, 100),
+            vec![],
+        ));
+        snap.add_member(MemberSnapshot::from_evaluation(
+            3,
+            &make_eval(3, 0, 0, 0, 100),
+            vec![],
+        ));
 
         let hist = snap.hc_violation_histogram();
         // HC=0: 2 members, HC=1: 1 member, HC=3: 1 member

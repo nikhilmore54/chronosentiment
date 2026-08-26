@@ -158,7 +158,8 @@ mod tests {
             FlightNumber::new("XX001"),
             AirportCode::new("LHR"),
             AirportCode::new("CDG"),
-            dep1, arr1,
+            dep1,
+            arr1,
             AircraftType::new("B738"),
         );
         let l2 = FlightLeg::new(
@@ -166,7 +167,8 @@ mod tests {
             FlightNumber::new("XX002"),
             AirportCode::new("CDG"),
             AirportCode::new("LHR"),
-            dep2, arr2,
+            dep2,
+            arr2,
             AircraftType::new("B738"),
         );
         let duty = make_duty("D1", vec![l1, l2]);
@@ -188,10 +190,14 @@ mod tests {
     fn single_leg_duty_fdp_is_zero() {
         // Single leg: dep == dep → FDP = 0
         let duty = make_duty("D1", vec![make_leg("L1", "LHR", "CDG", 8, 10)]);
-        let pairing = make_pairing("P1", "LHR", vec![
-            duty,
-            make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
-        ]);
+        let pairing = make_pairing(
+            "P1",
+            "LHR",
+            vec![
+                duty,
+                make_duty("D2", vec![make_leg("L2", "CDG", "LHR", 22, 24)]),
+            ],
+        );
         let rotation = make_rotation("R1", "C1", vec![pairing]);
         let roster = make_roster(vec![], vec![rotation]);
         assert!(rule_13h().check(&roster).is_empty());
@@ -208,7 +214,8 @@ mod tests {
             FlightNumber::new("XX1a"),
             AirportCode::new("LHR"),
             AirportCode::new("CDG"),
-            base, base + Duration::hours(2),
+            base,
+            base + Duration::hours(2),
             AircraftType::new("B738"),
         );
         let l1b = FlightLeg::new(
@@ -216,7 +223,8 @@ mod tests {
             FlightNumber::new("XX1b"),
             AirportCode::new("CDG"),
             AirportCode::new("LHR"),
-            base + Duration::hours(14), base + Duration::hours(16),
+            base + Duration::hours(14),
+            base + Duration::hours(16),
             AircraftType::new("B738"),
         );
         // D2: dep 30h, dep 44h → FDP 14h (over 13h)
@@ -225,7 +233,8 @@ mod tests {
             FlightNumber::new("XX2a"),
             AirportCode::new("LHR"),
             AirportCode::new("CDG"),
-            base + Duration::hours(30), base + Duration::hours(32),
+            base + Duration::hours(30),
+            base + Duration::hours(32),
             AircraftType::new("B738"),
         );
         let l2b = FlightLeg::new(
@@ -233,7 +242,8 @@ mod tests {
             FlightNumber::new("XX2b"),
             AirportCode::new("CDG"),
             AirportCode::new("LHR"),
-            base + Duration::hours(44), base + Duration::hours(46),
+            base + Duration::hours(44),
+            base + Duration::hours(46),
             AircraftType::new("B738"),
         );
         let d1 = make_duty("D1", vec![l1a, l1b]);
