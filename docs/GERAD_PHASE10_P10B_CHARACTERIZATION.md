@@ -300,6 +300,29 @@ From code reading, the repair operator has no internal loop — it calls `evalua
 exactly once. Therefore the per-repair cost is dominated by a single `evaluate_violations()`
 call, which scales with demand count × topology complexity via Dijkstra.
 
+**D.5.1 Unanswered: why does repair have 0% success?**
+
+P10-B measures that repair always fails. It does not explain why. Three distinct mechanisms
+could produce 0% success:
+
+1. **Representation mismatch** — the repair operator operates on a representation that cannot
+   effectively resolve the violations produced by the evolutionary operators.
+2. **Constraint interaction** — repair makes changes (waypoint clearing), but those changes
+   cannot simultaneously satisfy the interacting constraints.
+3. **Infeasibility structure** — the particular offspring entering repair are inherently
+   difficult or impossible for the current repair strategy to recover.
+
+A useful precursor to P10-C would be to instrument the repair attempt to measure whether it
+*changes* the offspring in any useful sense, even when it ultimately remains infeasible:
+- Does violation count decrease after repair?
+- Does violation magnitude decrease?
+- Does the offspring approach feasibility, or does it remain equally infeasible?
+- Or does repair simply spend time and return the same infeasible structure?
+
+This would distinguish "repair is structurally incapable" (supports H-SKIP) from "repair
+makes partial progress but not enough" (supports H-CONSTRUCT or a better repair algorithm).
+That distinction is required before H-SKIP can be authorized with confidence.
+
 ---
 
 ## E. Hypothesis Disposition
