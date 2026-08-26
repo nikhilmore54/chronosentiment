@@ -1,30 +1,32 @@
-
-use ultracrew::constraint_engine::DomainConstraintEvaluator;
 use axum::{
-    routing::{get, post, put, delete},
-    Router,
-    Json,
+    Json, Router,
     extract::{Path as AxPath, Path, State},
-    response::{IntoResponse, Response},
     http::{Method, StatusCode},
+    response::{IntoResponse, Response},
+    routing::{delete, get, post, put},
 };
 use serde::{Deserialize, Serialize};
-use tower_http::cors::{Any, CorsLayer};
-use tower_governor::GovernorLayer;
-use tower_governor::governor::GovernorConfigBuilder;
-use serde_json::json;
-use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
-use ultracrew_server::simulation::{SkillCoverageAudit, SkillDeficit, ValidationReport};
-use ultracrew::inrc::models::{InrcScenario, InrcNurse};
+use crate::config::FatigueConfig;
+
+use std::collections::HashMap;
 use std::path::{Path as StdPath, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
-use ultracrew_server::models::{DecisionCase, ScheduleVersion, DecisionLog};
-use ultracrew_server::persistence::{load_collection, save_item, delete_item};
+use tower_governor::GovernorLayer;
+use tower_governor::governor::GovernorConfigBuilder;
+use tower_http::cors::{Any, CorsLayer};
+use ultracrew::constraint_engine::DomainConstraintEvaluator;
+use ultracrew::inrc::models::{InrcNurse, InrcScenario};
+use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
 use ultracrew::inrc::validator::validate_schedule;
-use ultracrew_server::simulation::{ConstraintAudit, WorkloadAudit, FeasibilityReport, ParetoFrontierSolution, Bottleneck, can_recover, NurseBalance, BalanceChange, SimulationState, Dashboard, Coverage, CoverageAudit, Alert, RosterHealth, BaselineStatus, VerificationReports, RecoveryPlan, CandidateType, BlockedRecovery, RecoveryAudit};
-
-
+use ultracrew_server::models::{DecisionCase, DecisionLog, ScheduleVersion};
+use ultracrew_server::persistence::{delete_item, load_collection, save_item};
+use ultracrew_server::simulation::{
+    Alert, BalanceChange, BaselineStatus, BlockedRecovery, Bottleneck, CandidateType,
+    ConstraintAudit, Coverage, CoverageAudit, Dashboard, FeasibilityReport, NurseBalance,
+    ParetoFrontierSolution, RecoveryAudit, RecoveryPlan, RosterHealth, SimulationState,
+    VerificationReports, WorkloadAudit, can_recover,
+};
+use ultracrew_server::simulation::{SkillCoverageAudit, SkillDeficit, ValidationReport};
 
 #[derive(Serialize, Deserialize)]
 struct StatusResponse {
@@ -64,7 +66,7 @@ fn make_dynamic_dashboard(
     let mut total_req_slots = 0;
     let mut filled_req_slots = 0;
     let num_days = (scenario.number_of_weeks * 7) as usize;
-    
+
     for d in 0..num_days {
         let weekday = d % 7;
         for req in &week_data.requirements {
@@ -78,23 +80,25 @@ fn make_dynamic_dashboard(
                 6 => req.sunday.optimal,
                 _ => 0,
             };
-            
+
             if required > 0 {
                 let mapped_shift = req.shift_type.as_str();
-                
+
                 let mut assigned = 0;
                 for nurse in &scenario.nurses {
                     let sched_day = &schedule[&nurse.id][d];
-                    if sched_day == mapped_shift || sched_day.ends_with(&format!("-{}", mapped_shift)) {
+                    if sched_day == mapped_shift
+                        || sched_day.ends_with(&format!("-{}", mapped_shift))
+                    {
                         if nurse.skills.contains(&req.skill) {
                             assigned += 1;
                         }
                     }
                 }
-                
+
                 total_req_slots += required;
                 filled_req_slots += std::cmp::min(assigned, required);
-                
+
                 let deficit = required as i32 - assigned as i32;
                 if deficit > 0 {
                     skill_deficits.push(SkillDeficit {
@@ -109,23 +113,31 @@ fn make_dynamic_dashboard(
             }
         }
     }
-    
+
     let mut skill_counts = HashMap::new();
     let mut shift_counts = HashMap::new();
     for d in &skill_deficits {
         *skill_counts.entry(d.skill.clone()).or_insert(0) += d.deficit;
         *shift_counts.entry(d.shift.clone()).or_insert(0) += d.deficit;
     }
-    
-    let worst_skill = skill_counts.into_iter().max_by_key(|&(_, v)| v).map(|(k, _)| k).unwrap_or_else(|| "None".to_string());
-    let worst_shift = shift_counts.into_iter().max_by_key(|&(_, v)| v).map(|(k, _)| k).unwrap_or_else(|| "None".to_string());
-    
+
+    let worst_skill = skill_counts
+        .into_iter()
+        .max_by_key(|&(_, v)| v)
+        .map(|(k, _)| k)
+        .unwrap_or_else(|| "None".to_string());
+    let worst_shift = shift_counts
+        .into_iter()
+        .max_by_key(|&(_, v)| v)
+        .map(|(k, _)| k)
+        .unwrap_or_else(|| "None".to_string());
+
     let skill_coverage_percentage = if total_req_slots > 0 {
         (filled_req_slots as f64 / total_req_slots as f64) * 100.0
     } else {
         100.0
     };
-    
+
     let skill_coverage_audit = SkillCoverageAudit {
         skill_coverage_percentage,
         total_skill_deficits: skill_deficits.len(),
@@ -133,7 +145,7 @@ fn make_dynamic_dashboard(
         worst_shift,
         deficits: skill_deficits,
     };
-    
+
     let mut actual_assignments = 0;
     let mut daily_assignments = vec![0; num_days];
     for shifts in schedule.values() {
@@ -145,23 +157,27 @@ fn make_dynamic_dashboard(
             }
         }
     }
-    
+
     let required_assignments = 16 * num_days;
     let coverage_percentage = (actual_assignments as f64 / required_assignments as f64) * 100.0;
-    
+
     let coverage_audit = CoverageAudit {
         required_assignments,
         actual_assignments,
         coverage_percentage,
         daily_assignments,
     };
-    
+
     let mut understaffed = 0;
     let mut critical = 0;
     for def in &skill_coverage_audit.deficits {
         understaffed += def.deficit;
         let weekday = def.day % 7;
-        let req = week_data.requirements.iter().find(|r| r.shift_type == def.shift && r.skill == def.skill).unwrap();
+        let req = week_data
+            .requirements
+            .iter()
+            .find(|r| r.shift_type == def.shift && r.skill == def.skill)
+            .unwrap();
         let minimum = match weekday {
             0 => req.monday.minimum,
             1 => req.tuesday.minimum,
@@ -176,20 +192,28 @@ fn make_dynamic_dashboard(
             critical += (minimum as i32 - def.assigned as i32).max(0);
         }
     }
-    
+
     let mut constraint_audit = Vec::new();
     for nurse in &scenario.nurses {
         let mut min_work = 0;
         let mut max_work = 0;
         let mut min_off = 0;
         let mut max_off = 0;
-        
+
         for det in &validation_report.details {
             if det.nurse_id == nurse.id {
-                if det.constraint == "min_consecutive_working_days" { min_work += 1; }
-                if det.constraint == "max_consecutive_working_days" { max_work += 1; }
-                if det.constraint == "min_consecutive_days_off" { min_off += 1; }
-                if det.constraint == "max_consecutive_days_off" { max_off += 1; }
+                if det.constraint == "min_consecutive_working_days" {
+                    min_work += 1;
+                }
+                if det.constraint == "max_consecutive_working_days" {
+                    max_work += 1;
+                }
+                if det.constraint == "min_consecutive_days_off" {
+                    min_off += 1;
+                }
+                if det.constraint == "max_consecutive_days_off" {
+                    max_off += 1;
+                }
             }
         }
         constraint_audit.push(ConstraintAudit {
@@ -203,12 +227,19 @@ fn make_dynamic_dashboard(
 
     let mut workload_audit = Vec::new();
     for nurse in &scenario.nurses {
-        let contract = scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
+        let contract = scenario
+            .contracts
+            .iter()
+            .find(|c| c.id == nurse.contract)
+            .unwrap();
         let scale = 56.0 / (scenario.number_of_weeks as f64 * 7.0);
         let min_assign = (contract.min_assignments as f64 * scale) as i32;
         let max_assign = (contract.max_assignments as f64 * scale) as i32;
         let expected = (min_assign + max_assign) / 2;
-        let actual = schedule[&nurse.id].iter().filter(|s| !s.is_empty() && !s.contains("SICK-")).count() as i32;
+        let actual = schedule[&nurse.id]
+            .iter()
+            .filter(|s| !s.is_empty() && !s.contains("SICK-"))
+            .count() as i32;
         let mut max_work = 0;
         let mut max_off = 0;
         let mut curr_work = 0;
@@ -218,14 +249,18 @@ fn make_dynamic_dashboard(
             if !shift.is_empty() && !shift.contains("SICK-") {
                 curr_work += 1;
                 curr_off = 0;
-                if curr_work > max_work { max_work = curr_work; }
+                if curr_work > max_work {
+                    max_work = curr_work;
+                }
             } else {
                 curr_off += 1;
                 curr_work = 0;
-                if curr_off > max_off { max_off = curr_off; }
+                if curr_off > max_off {
+                    max_off = curr_off;
+                }
             }
         }
-        
+
         workload_audit.push(WorkloadAudit {
             nurse_id: nurse.id.clone(),
             expected_assignments: expected,
@@ -236,20 +271,28 @@ fn make_dynamic_dashboard(
         });
     }
 
-    let legality_score = if validation_report.is_legal { 100 } else { 
+    let legality_score = if validation_report.is_legal {
+        100
+    } else {
         let v = validation_report.details.len() as i32;
         std::cmp::max(0, 100 - (v * 5))
     };
     let coverage_score = coverage_percentage as i32;
-    
+
     let mut max_dev = 0;
     for wa in &workload_audit {
-        if wa.deviation.abs() > max_dev { max_dev = wa.deviation.abs(); }
+        if wa.deviation.abs() > max_dev {
+            max_dev = wa.deviation.abs();
+        }
     }
     let balance_score = std::cmp::max(0, 100 - (max_dev * 10));
     let fragmentation_score = std::cmp::max(0, 100 - (validation_report.details.len() as i32 * 2));
-    let recovery_score = if validation_report.is_legal { 100 } else { std::cmp::max(0, 100 - (validation_report.details.len() as i32 * 5)) };
-    
+    let recovery_score = if validation_report.is_legal {
+        100
+    } else {
+        std::cmp::max(0, 100 - (validation_report.details.len() as i32 * 5))
+    };
+
     let roster_health = RosterHealth {
         legality_score,
         coverage_score,
@@ -257,9 +300,13 @@ fn make_dynamic_dashboard(
         fragmentation_score,
         recovery_score,
     };
-    
+
     let baseline_status = BaselineStatus {
-        state: if validation_report.is_legal { "Legal".to_string() } else { "RepairFailed".to_string() },
+        state: if validation_report.is_legal {
+            "Legal".to_string()
+        } else {
+            "RepairFailed".to_string()
+        },
         is_legal: validation_report.is_legal,
         repair_attempts: 50,
         exhausted_search: !validation_report.is_legal,
@@ -269,11 +316,25 @@ fn make_dynamic_dashboard(
     let mut seen_alerts = std::collections::HashSet::new();
     for detail in &validation_report.details {
         let message = match detail.constraint.as_str() {
-            "min_consecutive_days_off" => format!("Consecutive days off of {} is below minimum {}", detail.actual, detail.required),
-            "max_consecutive_days_off" => format!("Consecutive days off of {} exceeds maximum {}", detail.actual, detail.required),
-            "max_consecutive_working_days" => format!("Consecutive working days of {} exceeds maximum {}", detail.actual, detail.required),
-            "min_consecutive_working_days" => format!("Consecutive working days of {} is below minimum {}", detail.actual, detail.required),
-            "forbidden_shift_type_successions" => "Forbidden shift succession (rest violation)".to_string(),
+            "min_consecutive_days_off" => format!(
+                "Consecutive days off of {} is below minimum {}",
+                detail.actual, detail.required
+            ),
+            "max_consecutive_days_off" => format!(
+                "Consecutive days off of {} exceeds maximum {}",
+                detail.actual, detail.required
+            ),
+            "max_consecutive_working_days" => format!(
+                "Consecutive working days of {} exceeds maximum {}",
+                detail.actual, detail.required
+            ),
+            "min_consecutive_working_days" => format!(
+                "Consecutive working days of {} is below minimum {}",
+                detail.actual, detail.required
+            ),
+            "forbidden_shift_type_successions" => {
+                "Forbidden shift succession (rest violation)".to_string()
+            }
             _ => format!("Violation of {}", detail.constraint),
         };
         let alert_key = (detail.nurse_id.clone(), message.clone());
@@ -291,15 +352,15 @@ fn make_dynamic_dashboard(
             });
         }
     }
-    
+
     let mut constraint_report = ultracrew::constraint_engine::ConstraintReport {
         fitness: 0.0,
         is_valid: validation_report.is_legal,
-        hard_violations: validation_report.max_consecutive_work_violations 
-                       + validation_report.min_consecutive_work_violations 
-                       + validation_report.forbidden_successions 
-                       + validation_report.min_days_off_violations 
-                       + validation_report.max_days_off_violations,
+        hard_violations: validation_report.max_consecutive_work_violations
+            + validation_report.min_consecutive_work_violations
+            + validation_report.forbidden_successions
+            + validation_report.min_days_off_violations
+            + validation_report.max_days_off_violations,
         soft_violations: 0,
         warnings: Vec::new(),
         constraint_scores: HashMap::new(),
@@ -309,22 +370,24 @@ fn make_dynamic_dashboard(
         hc2_violations: 0,
         hc3_violations: 0,
         hc4_violations: 0,
-        rest_violations: validation_report.forbidden_successions + validation_report.min_days_off_violations,
+        rest_violations: validation_report.forbidden_successions
+            + validation_report.min_days_off_violations,
         fairness_penalty: 0.0,
         fatigue_penalty: 0.0,
     };
-    
+
     let rec_engine = ultracrew::recommendation::RecommendationEngine::new();
     let rec_report = rec_engine.generate_recommendations(&constraint_report);
-    let mut recommendations = rec_report.into_iter().map(|r| {
-        format!("{}: {}", r.explanation, r.recommended_action)
-    }).collect::<Vec<String>>();
+    let mut recommendations = rec_report
+        .into_iter()
+        .map(|r| format!("{}: {}", r.explanation, r.recommended_action))
+        .collect::<Vec<String>>();
 
     if recommendations.is_empty() {
         recommendations.push("Roster is fully legal. All operational constraints and skills coverage requirements are satisfied.".to_string());
         recommendations.push("Monitor fatigue accumulation in upcoming weeks to ensure workload equity remains optimal.".to_string());
     }
-    
+
     Dashboard {
         feasibility_report,
         skill_coverage_audit: Some(skill_coverage_audit),
@@ -382,7 +445,11 @@ async fn get_decision_case(
     let app_state = state.lock().unwrap();
     match app_state.decisions.iter().find(|c| c.id == id) {
         Some(case) => (StatusCode::OK, Json(case.clone())).into_response(),
-        None => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Decision case not found"}))).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Decision case not found"})),
+        )
+            .into_response(),
     }
 }
 
@@ -418,7 +485,11 @@ async fn update_decision_case(
         save_item(dir, &case.id, case);
         (StatusCode::OK, Json(case.clone())).into_response()
     } else {
-        (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Decision case not found"}))).into_response()
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Decision case not found"})),
+        )
+            .into_response()
     }
 }
 
@@ -433,7 +504,10 @@ async fn delete_decision_case(
         delete_item(dir, &id);
         (StatusCode::NO_CONTENT, Json(serde_json::json!({})))
     } else {
-        (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Decision case not found"})))
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Decision case not found"})),
+        )
     }
 }
 
@@ -451,18 +525,18 @@ async fn commit_schedule_version(
 ) -> Response {
     let mut app_state = state.lock().unwrap();
     if app_state.decisions.iter().any(|c| c.id == id) {
-        let version = ScheduleVersion::new(
-            id.clone(),
-            input.schedule,
-            input.author,
-            input.description,
-        );
+        let version =
+            ScheduleVersion::new(id.clone(), input.schedule, input.author, input.description);
         let dir = StdPath::new("data/schedule_versions");
         save_item(dir, &version.version_id, &version);
         app_state.schedule_versions.push(version.clone());
         (StatusCode::CREATED, Json(version)).into_response()
     } else {
-        (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Decision case not found"}))).into_response()
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Decision case not found"})),
+        )
+            .into_response()
     }
 }
 
@@ -472,11 +546,20 @@ async fn export_decision_case_csv(
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let app_state = state.lock().unwrap();
     if let Some(case) = app_state.decisions.iter().find(|c| c.id == id) {
-        let csv = format!("id,title,description\n{},{},{}\n", case.id, case.title, case.description);
-        let header = [(axum::http::header::CONTENT_TYPE, axum::http::HeaderValue::from_static("text/csv"))];
+        let csv = format!(
+            "id,title,description\n{},{},{}\n",
+            case.id, case.title, case.description
+        );
+        let header = [(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/csv"),
+        )];
         Ok((StatusCode::OK, header, csv))
     } else {
-        Err((StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Decision case not found"}))))
+        Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Decision case not found"})),
+        ))
     }
 }
 
@@ -502,9 +585,7 @@ struct CsrfTokenResponse {
 /// per-request token stored in a shared atomic string. This is sufficient
 /// for the pilot environment and can be upgraded to a proper session-based
 /// CSRF scheme before production deployment.
-async fn csrf_token_handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-) -> impl IntoResponse {
+async fn csrf_token_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let token = uuid::Uuid::new_v4().to_string();
     {
         let mut s = state.lock().unwrap();
@@ -577,58 +658,75 @@ async fn simulate_sick_leave(
             return Json(current_state).into_response();
         }
     };
-    
+
     let mut new_schedule = current_state.schedule.clone();
     let mut missed_total = 0;
     let mut creditors: HashMap<String, i32> = HashMap::new();
-    
+
     for &day_index in &req.sick_days {
         let shifts = new_schedule.get_mut(nurse_id).unwrap();
         let shift = shifts[day_index].clone();
-        
+
         if !shift.is_empty() && !shift.contains("SICK-") && day_index >= today_index {
             shifts[day_index] = format!("SICK-{}", shift);
             missed_total += 1;
-            
-            let mut pool: Vec<&ultracrew::inrc::models::InrcNurse> = scenario.nurses.iter().filter(|n| {
-                n.id != *nurse_id && new_schedule[&n.id][day_index].is_empty() && n.skills[0] == sick_nurse.skills[0]
-            }).collect();
-            
+
+            let mut pool: Vec<&ultracrew::inrc::models::InrcNurse> = scenario
+                .nurses
+                .iter()
+                .filter(|n| {
+                    n.id != *nurse_id
+                        && new_schedule[&n.id][day_index].is_empty()
+                        && n.skills[0] == sick_nurse.skills[0]
+                })
+                .collect();
+
             if pool.is_empty() {
-                pool = scenario.nurses.iter().filter(|n| {
-                    n.id != *nurse_id && new_schedule[&n.id][day_index].is_empty()
-                }).collect();
+                pool = scenario
+                    .nurses
+                    .iter()
+                    .filter(|n| n.id != *nurse_id && new_schedule[&n.id][day_index].is_empty())
+                    .collect();
             }
-            
+
             if !pool.is_empty() {
                 let replacement = pool[0];
-                new_schedule.get_mut(&replacement.id).unwrap()[day_index] = format!("NEW-{}", shift);
+                new_schedule.get_mut(&replacement.id).unwrap()[day_index] =
+                    format!("NEW-{}", shift);
                 *creditors.entry(replacement.id.clone()).or_insert(0) += 1;
             }
         }
     }
-    
+
     let sickness_validation = validate_schedule(&new_schedule, scenario);
-    
+
     let recovery_start = today_index + 7;
     let mut max_recovery_day = today_index;
     let mut recovered_shifts = 0;
     let mut requested_shifts = 0;
     let mut feasible_shifts = 0;
-    
+
     let mut creditors_to_process = creditors.clone();
-    
+
     let mut blocked_recoveries = Vec::new();
-    
+
     let mut audit_trail = Vec::new();
     let mut remaining_to_recover = missed_total;
     requested_shifts = missed_total;
-    
+
     let get_balance = |n_id: &String, sched: &HashMap<String, Vec<String>>| -> i32 {
-        let base = current_state.balances.iter().find(|b| b.nurse_id == *n_id).map(|b| b.balance).unwrap_or(0);
+        let base = current_state
+            .balances
+            .iter()
+            .find(|b| b.nurse_id == *n_id)
+            .map(|b| b.balance)
+            .unwrap_or(0);
         let shifts = sched.get(n_id).unwrap();
         let sick_count = shifts.iter().filter(|s| s.starts_with("SICK-")).count() as i32;
-        let recovered_count = shifts.iter().filter(|s| s.starts_with("RECOVERED-")).count() as i32;
+        let recovered_count = shifts
+            .iter()
+            .filter(|s| s.starts_with("RECOVERED-"))
+            .count() as i32;
         let new_count = shifts.iter().filter(|s| s.starts_with("NEW-")).count() as i32;
         let returned_count = shifts.iter().filter(|s| s.starts_with("RETURNED-")).count() as i32;
         base - sick_count + recovered_count + new_count - returned_count
@@ -636,41 +734,54 @@ async fn simulate_sick_leave(
 
     let num_days = (scenario.number_of_weeks * 7) as usize;
     for day_index in recovery_start..num_days {
-        if remaining_to_recover <= 0 { break; }
-        
+        if remaining_to_recover <= 0 {
+            break;
+        }
+
         let sick_nurse_shifts = new_schedule.get(nurse_id).unwrap();
         if !sick_nurse_shifts[day_index].is_empty() {
             continue;
         }
-        
+
         let shift_candidates = vec!["Early".to_string(), "Late".to_string(), "Night".to_string()];
-        
+
         for shift_cand in shift_candidates {
-            if remaining_to_recover <= 0 { break; }
-            
+            if remaining_to_recover <= 0 {
+                break;
+            }
+
             let mut sick_nurse_legal = true;
             let mut blocked_reason = None;
-            
+
             match can_recover(nurse_id, day_index, &shift_cand, &new_schedule, scenario) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(reason) => {
                     sick_nurse_legal = false;
                     blocked_reason = Some(reason.clone());
                     blocked_recoveries.push(BlockedRecovery {
                         day: day_index,
                         reason: reason.clone(),
-                        constraint: if reason.contains("succession") { "ShiftSuccession".to_string() } else if reason.contains("consecutive") { "Streak".to_string() } else { "Other".to_string() },
+                        constraint: if reason.contains("succession") {
+                            "ShiftSuccession".to_string()
+                        } else if reason.contains("consecutive") {
+                            "Streak".to_string()
+                        } else {
+                            "Other".to_string()
+                        },
                     });
                 }
             }
-            
+
             let mut creditor_opt = None;
             let mut candidate_type = CandidateType::OpenSlot;
-            
+
             for (cred_id, &shifts_owed) in &creditors {
                 if shifts_owed > 0 {
                     let cred_shift = new_schedule[cred_id][day_index].clone();
-                    let clean_shift = cred_shift.replace("NEW-", "").replace("RECOVERED-", "").replace("RETURNED-", "");
+                    let clean_shift = cred_shift
+                        .replace("NEW-", "")
+                        .replace("RECOVERED-", "")
+                        .replace("RETURNED-", "");
                     if clean_shift == shift_cand {
                         creditor_opt = Some(cred_id.clone());
                         candidate_type = CandidateType::CreditorSwap;
@@ -678,7 +789,7 @@ async fn simulate_sick_leave(
                     }
                 }
             }
-            
+
             if creditor_opt.is_none() {
                 let mut currently_assigned = 0;
                 for shifts in new_schedule.values() {
@@ -691,49 +802,54 @@ async fn simulate_sick_leave(
                     candidate_type = CandidateType::CoverageGap;
                 }
             }
-            
+
             let creditor_legal = true;
             let mut accepted = false;
-            
+
             let current_imbalance_sick = get_balance(nurse_id, &new_schedule).abs();
             let mut current_imbalance_cred = 0;
             if let Some(ref c_id) = creditor_opt {
                 current_imbalance_cred = get_balance(c_id, &new_schedule).abs();
             }
             let total_current_imbalance = current_imbalance_sick + current_imbalance_cred;
-            
+
             if sick_nurse_legal {
-                new_schedule.get_mut(nurse_id).unwrap()[day_index] = format!("RECOVERED-{}", shift_cand);
+                new_schedule.get_mut(nurse_id).unwrap()[day_index] =
+                    format!("RECOVERED-{}", shift_cand);
                 if let Some(ref c_id) = creditor_opt {
                     let old_shift = new_schedule[c_id][day_index].clone();
-                    new_schedule.get_mut(c_id).unwrap()[day_index] = format!("RETURNED-{}", old_shift);
+                    new_schedule.get_mut(c_id).unwrap()[day_index] =
+                        format!("RETURNED-{}", old_shift);
                 }
-                
+
                 let next_imbalance_sick = get_balance(nurse_id, &new_schedule).abs();
                 let mut next_imbalance_cred = 0;
                 if let Some(ref c_id) = creditor_opt {
                     next_imbalance_cred = get_balance(c_id, &new_schedule).abs();
                 }
                 let total_next_imbalance = next_imbalance_sick + next_imbalance_cred;
-                
+
                 if total_next_imbalance < total_current_imbalance {
                     accepted = true;
                     remaining_to_recover -= 1;
                     recovered_shifts += 1;
                     feasible_shifts += 1;
-                    if day_index > max_recovery_day { max_recovery_day = day_index; }
-                    
+                    if day_index > max_recovery_day {
+                        max_recovery_day = day_index;
+                    }
+
                     if let Some(ref c_id) = creditor_opt {
                         *creditors.get_mut(c_id).unwrap() -= 1;
                     }
                 } else {
-                    blocked_reason = Some("Recovery would unfairly overload another employee".to_string());
+                    blocked_reason =
+                        Some("Recovery would unfairly overload another employee".to_string());
                     blocked_recoveries.push(BlockedRecovery {
                         day: day_index,
                         reason: blocked_reason.clone().unwrap(),
                         constraint: "Fairness / Monotonicity".to_string(),
                     });
-                    
+
                     new_schedule.get_mut(nurse_id).unwrap()[day_index] = "".to_string();
                     if let Some(ref c_id) = creditor_opt {
                         let old_shift = new_schedule[c_id][day_index].replace("RETURNED-", "");
@@ -741,13 +857,13 @@ async fn simulate_sick_leave(
                     }
                 }
             }
-            
+
             let next_imbalance_sick = get_balance(nurse_id, &new_schedule).abs();
             let mut next_imbalance_cred = 0;
             if let Some(ref c_id) = creditor_opt {
                 next_imbalance_cred = get_balance(c_id, &new_schedule).abs();
             }
-            
+
             audit_trail.push(RecoveryAudit {
                 day: day_index,
                 candidate_type,
@@ -760,7 +876,7 @@ async fn simulate_sick_leave(
                 imbalance_after: next_imbalance_sick + next_imbalance_cred,
                 blocked_reason,
             });
-            
+
             if accepted {
                 break;
             }
@@ -771,71 +887,126 @@ async fn simulate_sick_leave(
     } else {
         0
     };
-    
+
     let mut balance_changes: HashMap<String, BalanceChange> = HashMap::new();
-    
+
     let covered_sickness: i32 = creditors.values().sum();
     if covered_sickness > 0 {
-        let sick_nurse_balance = current_state.balances.iter().find(|b| b.nurse_id == *nurse_id).map(|b| b.balance).unwrap_or(0);
-        balance_changes.insert(nurse_id.clone(), BalanceChange {
-            previous: sick_nurse_balance,
-            current: sick_nurse_balance - covered_sickness,
-        });
+        let sick_nurse_balance = current_state
+            .balances
+            .iter()
+            .find(|b| b.nurse_id == *nurse_id)
+            .map(|b| b.balance)
+            .unwrap_or(0);
+        balance_changes.insert(
+            nurse_id.clone(),
+            BalanceChange {
+                previous: sick_nurse_balance,
+                current: sick_nurse_balance - covered_sickness,
+            },
+        );
     }
-    
+
     for (cred_id, &shifts_owed) in &creditors_to_process {
         if shifts_owed > 0 {
-            let cred_balance = current_state.balances.iter().find(|b| b.nurse_id == *cred_id).map(|b| b.balance).unwrap_or(0);
-            balance_changes.insert(cred_id.clone(), BalanceChange {
-                previous: cred_balance,
-                current: cred_balance + shifts_owed,
-            });
+            let cred_balance = current_state
+                .balances
+                .iter()
+                .find(|b| b.nurse_id == *cred_id)
+                .map(|b| b.balance)
+                .unwrap_or(0);
+            balance_changes.insert(
+                cred_id.clone(),
+                BalanceChange {
+                    previous: cred_balance,
+                    current: cred_balance + shifts_owed,
+                },
+            );
         }
     }
-    
+
     if recovered_shifts > 0 {
-        let sick_nurse_balance = balance_changes.get(nurse_id.as_str()).map(|bc| bc.current).unwrap_or_else(|| {
-            current_state.balances.iter().find(|b| b.nurse_id == *nurse_id).map(|b| b.balance).unwrap_or(0)
-        });
-        let prev = balance_changes.get(nurse_id.as_str()).map(|bc| bc.previous).unwrap_or_else(|| {
-            current_state.balances.iter().find(|b| b.nurse_id == *nurse_id).map(|b| b.balance).unwrap_or(0)
-        });
-        balance_changes.insert(nurse_id.clone(), BalanceChange {
-            previous: prev,
-            current: sick_nurse_balance + recovered_shifts,
-        });
-        
+        let sick_nurse_balance = balance_changes
+            .get(nurse_id.as_str())
+            .map(|bc| bc.current)
+            .unwrap_or_else(|| {
+                current_state
+                    .balances
+                    .iter()
+                    .find(|b| b.nurse_id == *nurse_id)
+                    .map(|b| b.balance)
+                    .unwrap_or(0)
+            });
+        let prev = balance_changes
+            .get(nurse_id.as_str())
+            .map(|bc| bc.previous)
+            .unwrap_or_else(|| {
+                current_state
+                    .balances
+                    .iter()
+                    .find(|b| b.nurse_id == *nurse_id)
+                    .map(|b| b.balance)
+                    .unwrap_or(0)
+            });
+        balance_changes.insert(
+            nurse_id.clone(),
+            BalanceChange {
+                previous: prev,
+                current: sick_nurse_balance + recovered_shifts,
+            },
+        );
+
         for audit in &audit_trail {
             if audit.accepted {
                 if let Some(ref cred_id) = audit.creditor {
-                    let cred_balance = balance_changes.get(cred_id.as_str()).map(|bc| bc.current).unwrap_or_else(|| {
-                        current_state.balances.iter().find(|b| b.nurse_id == *cred_id).map(|b| b.balance).unwrap_or(0)
-                    });
-                    let prev = balance_changes.get(cred_id.as_str()).map(|bc| bc.previous).unwrap_or_else(|| {
-                        current_state.balances.iter().find(|b| b.nurse_id == *cred_id).map(|b| b.balance).unwrap_or(0)
-                    });
-                    balance_changes.insert(cred_id.clone(), BalanceChange {
-                        previous: prev,
-                        current: cred_balance - 1,
-                    });
+                    let cred_balance = balance_changes
+                        .get(cred_id.as_str())
+                        .map(|bc| bc.current)
+                        .unwrap_or_else(|| {
+                            current_state
+                                .balances
+                                .iter()
+                                .find(|b| b.nurse_id == *cred_id)
+                                .map(|b| b.balance)
+                                .unwrap_or(0)
+                        });
+                    let prev = balance_changes
+                        .get(cred_id.as_str())
+                        .map(|bc| bc.previous)
+                        .unwrap_or_else(|| {
+                            current_state
+                                .balances
+                                .iter()
+                                .find(|b| b.nurse_id == *cred_id)
+                                .map(|b| b.balance)
+                                .unwrap_or(0)
+                        });
+                    balance_changes.insert(
+                        cred_id.clone(),
+                        BalanceChange {
+                            previous: prev,
+                            current: cred_balance - 1,
+                        },
+                    );
                 }
             }
         }
     }
-    
+
     let post_recovery_validation = validate_schedule(&new_schedule, scenario);
-    
+
     current_state.schedule = new_schedule.clone();
     current_state.verification_reports.sickness = Some(sickness_validation);
     current_state.verification_reports.recovery = Some(post_recovery_validation.clone());
-    
+
     for b in current_state.balances.iter_mut() {
         if let Some(bc) = balance_changes.get(b.nurse_id.as_str()) {
             b.balance = bc.current;
         }
     }
-    
-    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../adapters/ultracrew/tests/data/n030w4");
+
+    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../adapters/ultracrew/tests/data/n030w4");
     let week_data = parse_week_data(base_dir.join("WD-n030w4-0.json")).unwrap();
     let dynamic_dash = make_dynamic_dashboard(
         &new_schedule,
@@ -847,12 +1018,15 @@ async fn simulate_sick_leave(
     );
     current_state.dashboard = dynamic_dash;
 
-    current_state.dashboard.alerts.insert(0, Alert {
-        employee: nurse_id.clone(),
-        severity: "high".to_string(),
-        message: format!("Behind schedule by {} shifts due to sickness", missed_total),
-    });
-    
+    current_state.dashboard.alerts.insert(
+        0,
+        Alert {
+            employee: nurse_id.clone(),
+            severity: "high".to_string(),
+            message: format!("Behind schedule by {} shifts due to sickness", missed_total),
+        },
+    );
+
     current_state.recovery_plan = Some(RecoveryPlan {
         affected_nurse: req.employee_id.clone(),
         missed_shifts: missed_total,
@@ -866,11 +1040,11 @@ async fn simulate_sick_leave(
         feasible_shifts,
         blocked_recoveries,
     });
-    
+
     current_state.dashboard.validation_report = post_recovery_validation;
-    
+
     state.baseline_state = Some(current_state.clone());
-    
+
     Json(current_state).into_response()
 }
 
@@ -908,18 +1082,24 @@ async fn load_scenario_handler(
 
     let scenario = match parse_scenario(scenario_path) {
         Ok(s) => s,
-        Err(e) => return (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            Json(serde_json::json!({"error": format!("Failed to parse scenario: {}", e)})),
-        ).into_response(),
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(serde_json::json!({"error": format!("Failed to parse scenario: {}", e)})),
+            )
+                .into_response();
+        }
     };
 
     let week_data = match parse_week_data(week_data_path) {
         Ok(w) => w,
-        Err(e) => return (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            Json(serde_json::json!({"error": format!("Failed to parse week data: {}", e)})),
-        ).into_response(),
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(serde_json::json!({"error": format!("Failed to parse week data: {}", e)})),
+            )
+                .into_response();
+        }
     };
 
     // Build a baseline schedule from the scenario + requirements
@@ -939,13 +1119,15 @@ async fn load_scenario_handler(
 
     let validation_report = ultracrew::inrc::validator::validate_schedule(&schedule, &scenario);
 
-    let balances: Vec<ultracrew_server::simulation::NurseBalance> = scenario.nurses.iter().map(|n| {
-        ultracrew_server::simulation::NurseBalance {
+    let balances: Vec<ultracrew_server::simulation::NurseBalance> = scenario
+        .nurses
+        .iter()
+        .map(|n| ultracrew_server::simulation::NurseBalance {
             nurse_id: n.id.clone(),
             balance: 0,
             explanation: vec!["Baseline — no adjustments yet".to_string()],
-        }
-    }).collect();
+        })
+        .collect();
 
     let dashboard = make_dynamic_dashboard(
         &schedule,
@@ -984,7 +1166,8 @@ async fn load_scenario_handler(
             "weeks": weeks,
             "message": format!("INRC scenario loaded: {} nurses, {} weeks", nurses, weeks)
         })),
-    ).into_response()
+    )
+        .into_response()
 }
 
 #[derive(Serialize)]
@@ -1012,23 +1195,38 @@ async fn schedule_handler(
     Json(req): Json<ultracrew::public_contracts::ScheduleRequest>,
 ) -> Result<Json<ScheduleResponse>, (axum::http::StatusCode, String)> {
     let context = req.to_context();
-    
+
     if let Err(e) = ultracrew::constraint_engine::validate_context(&context) {
-        return Err((axum::http::StatusCode::BAD_REQUEST, format!("Dataset validation failed: {}", e)));
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("Dataset validation failed: {}", e),
+        ));
     }
-    
+
     let solution = ultracrew::pipeline::run_pipeline_from_request(
         context.clone(),
         req.generation_limit,
-        None, None, None, None, None,
-    ).map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Optimization failed: {}", e)))?;
-        
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Optimization failed: {}", e),
+        )
+    })?;
+
     let mut app_state = state.lock().unwrap();
     app_state.last_solution = Some(solution.clone());
     app_state.last_request = Some(req);
 
     let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
-    let genome = ultracrew::optimization::ScheduleGenome { assignments: solution.assignments.clone() };
+    let genome = ultracrew::optimization::ScheduleGenome {
+        assignments: solution.assignments.clone(),
+    };
     let report = constraint_engine.evaluate(&genome);
 
     let rec_engine = ultracrew::recommendation::RecommendationEngine::new();
@@ -1043,7 +1241,7 @@ async fn schedule_handler(
         recommendations,
         telemetry: solution.telemetry.clone(),
     };
-    
+
     Ok(Json(response))
 }
 
@@ -1061,13 +1259,21 @@ async fn reschedule_handler(
         req.mutation_rate,
         req.crossover_rate,
         req.elite_count,
-    ).map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("Rescheduling failed: {}", e)))?;
-        
+    )
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Rescheduling failed: {}", e),
+        )
+    })?;
+
     let mut app_state = state.lock().unwrap();
     app_state.last_solution = Some(solution.clone());
-    
+
     let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
-    let genome = ultracrew::optimization::ScheduleGenome { assignments: solution.assignments.clone() };
+    let genome = ultracrew::optimization::ScheduleGenome {
+        assignments: solution.assignments.clone(),
+    };
     let report = constraint_engine.evaluate(&genome);
 
     let rec_engine = ultracrew::recommendation::RecommendationEngine::new();
@@ -1082,20 +1288,20 @@ async fn reschedule_handler(
         recommendations,
         telemetry: solution.telemetry.clone(),
     };
-    
+
     Ok(Json(response))
 }
-
-
 
 async fn validate_handler(
     State(_state): State<Arc<Mutex<AppState>>>,
     Json(req): Json<ultracrew::public_contracts::ValidateRequest>,
 ) -> Result<Json<ScheduleResponse>, (axum::http::StatusCode, String)> {
     let context = req.request.to_context();
-    
+
     let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
-    let genome = ultracrew::optimization::ScheduleGenome { assignments: req.assignments.clone() };
+    let genome = ultracrew::optimization::ScheduleGenome {
+        assignments: req.assignments.clone(),
+    };
     let report = constraint_engine.evaluate(&genome);
 
     let rec_engine = ultracrew::recommendation::RecommendationEngine::new();
@@ -1121,7 +1327,7 @@ async fn validate_handler(
         recommendations,
         telemetry: None,
     };
-    
+
     Ok(Json(response))
 }
 
@@ -1168,11 +1374,11 @@ fn max_fdp_hours(sector_count: usize, report_hour: u64) -> f64 {
     let is_night = report_hour <= 5;
     match (sector_count, is_night) {
         (0..=2, false) => 13.0,
-        (0..=2, true)  => 12.0,
+        (0..=2, true) => 12.0,
         (3..=4, false) => 12.0,
-        (3..=4, true)  => 11.0,
-        (_,     false) => 11.0,
-        (_,     true)  => 10.0,
+        (3..=4, true) => 11.0,
+        (_, false) => 11.0,
+        (_, true) => 10.0,
     }
 }
 
@@ -1308,9 +1514,13 @@ struct PairingsResponse {
 async fn pairings_handler(
     axum::Json(_req): axum::Json<ScheduleAnalysisRequest>,
 ) -> Result<axum::Json<PairingsResponse>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::UNPROCESSABLE_ENTITY, "DOMAIN_CONCEPT_NOT_SUPPORTED
+    Err((
+        axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+        "DOMAIN_CONCEPT_NOT_SUPPORTED
 domain=inrc
-concept=pairing".to_string()))
+concept=pairing"
+            .to_string(),
+    ))
 }
 
 // ─── Duties: per-worker duty periods with FDP compliance ─────────────────────
@@ -1345,9 +1555,13 @@ struct DutiesResponse {
 async fn duties_handler(
     axum::Json(_req): axum::Json<ScheduleAnalysisRequest>,
 ) -> Result<axum::Json<DutiesResponse>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::UNPROCESSABLE_ENTITY, "DOMAIN_CONCEPT_NOT_SUPPORTED
+    Err((
+        axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+        "DOMAIN_CONCEPT_NOT_SUPPORTED
 domain=inrc
-concept=duty".to_string()))
+concept=duty"
+            .to_string(),
+    ))
 }
 
 // ─── Swap Exchanges: feasible worker swaps for a given shift ─────────────────
@@ -1378,14 +1592,19 @@ struct SwapExchangesResponse {
 async fn swap_exchanges_handler(
     Json(req): Json<ScheduleAnalysisRequest>,
 ) -> Result<Json<SwapExchangesResponse>, (StatusCode, String)> {
-    let shift_map: HashMap<u64, ShiftInput> = req.shifts.iter().map(|s| (s.id, s.clone())).collect();
-    let worker_map: HashMap<u64, WorkerInput> = req.workers.iter().map(|w| (w.id, w.clone())).collect();
+    let shift_map: HashMap<u64, ShiftInput> =
+        req.shifts.iter().map(|s| (s.id, s.clone())).collect();
+    let worker_map: HashMap<u64, WorkerInput> =
+        req.workers.iter().map(|w| (w.id, w.clone())).collect();
 
     // Build per-worker shift lists
     let mut worker_shifts: HashMap<u64, Vec<ShiftInput>> = HashMap::new();
     for (shift_id, worker_id) in &req.schedule {
         if let Some(shift) = shift_map.get(shift_id) {
-            worker_shifts.entry(*worker_id).or_default().push(shift.clone());
+            worker_shifts
+                .entry(*worker_id)
+                .or_default()
+                .push(shift.clone());
         }
     }
     // Sort each worker's shifts
@@ -1396,12 +1615,19 @@ async fn swap_exchanges_handler(
     let mut swaps: Vec<SwapCandidate> = Vec::new();
 
     for (shift_id, current_worker_id) in &req.schedule {
-        let shift = match shift_map.get(shift_id) { Some(s) => s, None => continue };
+        let shift = match shift_map.get(shift_id) {
+            Some(s) => s,
+            None => continue,
+        };
 
         // Find candidate workers: same skill, not already assigned at this time
         for worker in &req.workers {
-            if worker.id == *current_worker_id { continue; }
-            if !worker.skills.contains(&shift.required_skill) { continue; }
+            if worker.id == *current_worker_id {
+                continue;
+            }
+            if !worker.skills.contains(&shift.required_skill) {
+                continue;
+            }
 
             // Check if candidate is free during this shift
             let candidate_shifts = worker_shifts.get(&worker.id).cloned().unwrap_or_default();
@@ -1419,7 +1645,10 @@ async fn swap_exchanges_handler(
                     candidate_worker_id: worker.id,
                     candidate_skill: worker.skills.first().cloned().unwrap_or_default(),
                     feasible: false,
-                    reason: Some("Scheduling conflict: candidate already assigned during this period".to_string()),
+                    reason: Some(
+                        "Scheduling conflict: candidate already assigned during this period"
+                            .to_string(),
+                    ),
                     candidate_fdp_after: 0.0,
                     candidate_fdp_compliant: false,
                 });
@@ -1428,28 +1657,43 @@ async fn swap_exchanges_handler(
 
             // Check FDP: would adding this shift violate FDP for the candidate?
             // Find adjacent shifts for candidate to compute new FDP span
-            let prev_shift = candidate_shifts.iter().rev()
+            let prev_shift = candidate_shifts
+                .iter()
+                .rev()
                 .find(|cs| cs.start_hour + cs.duration_hours <= shift.start_hour);
-            let next_shift = candidate_shifts.iter()
+            let next_shift = candidate_shifts
+                .iter()
                 .find(|cs| cs.start_hour >= shift.start_hour + shift.duration_hours);
 
             // Check rest before
-            let rest_before_ok = prev_shift.map(|ps| {
-                (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) >= LAYOVER_REST_HOURS
-            }).unwrap_or(true);
+            let rest_before_ok = prev_shift
+                .map(|ps| {
+                    (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64)
+                        >= LAYOVER_REST_HOURS
+                })
+                .unwrap_or(true);
 
             // Check rest after
-            let rest_after_ok = next_shift.map(|ns| {
-                (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) >= LAYOVER_REST_HOURS
-            }).unwrap_or(true);
+            let rest_after_ok = next_shift
+                .map(|ns| {
+                    (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64)
+                        >= LAYOVER_REST_HOURS
+                })
+                .unwrap_or(true);
 
             // Compute FDP span if this shift is added (worst case: adjacent to prev/next)
             let fdp_start = prev_shift
-                .filter(|ps| (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64) < LAYOVER_REST_HOURS)
+                .filter(|ps| {
+                    (shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64)
+                        < LAYOVER_REST_HOURS
+                })
                 .map(|ps| ps.start_hour)
                 .unwrap_or(shift.start_hour);
             let fdp_end = next_shift
-                .filter(|ns| (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64) < LAYOVER_REST_HOURS)
+                .filter(|ns| {
+                    (ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64)
+                        < LAYOVER_REST_HOURS
+                })
                 .map(|ns| ns.start_hour + ns.duration_hours)
                 .unwrap_or(shift.start_hour + shift.duration_hours);
             let candidate_fdp_after = (fdp_end - fdp_start) as f64;
@@ -1461,11 +1705,32 @@ async fn swap_exchanges_handler(
             let feasible = rest_before_ok && rest_after_ok && candidate_fdp_compliant;
             let reason = if !feasible {
                 let mut reasons = Vec::new();
-                if !rest_before_ok { reasons.push(format!("Insufficient rest before ({:.1}h < {:.1}h)",
-                    prev_shift.map(|ps| shift.start_hour as f64 - (ps.start_hour + ps.duration_hours) as f64).unwrap_or(0.0), LAYOVER_REST_HOURS)); }
-                if !rest_after_ok { reasons.push(format!("Insufficient rest after ({:.1}h < {:.1}h)",
-                    next_shift.map(|ns| ns.start_hour as f64 - (shift.start_hour + shift.duration_hours) as f64).unwrap_or(0.0), LAYOVER_REST_HOURS)); }
-                if !candidate_fdp_compliant { reasons.push(format!("FDP would be {:.1}h > {:.1}h", candidate_fdp_after, candidate_fdp_limit)); }
+                if !rest_before_ok {
+                    reasons.push(format!(
+                        "Insufficient rest before ({:.1}h < {:.1}h)",
+                        prev_shift
+                            .map(|ps| shift.start_hour as f64
+                                - (ps.start_hour + ps.duration_hours) as f64)
+                            .unwrap_or(0.0),
+                        LAYOVER_REST_HOURS
+                    ));
+                }
+                if !rest_after_ok {
+                    reasons.push(format!(
+                        "Insufficient rest after ({:.1}h < {:.1}h)",
+                        next_shift
+                            .map(|ns| ns.start_hour as f64
+                                - (shift.start_hour + shift.duration_hours) as f64)
+                            .unwrap_or(0.0),
+                        LAYOVER_REST_HOURS
+                    ));
+                }
+                if !candidate_fdp_compliant {
+                    reasons.push(format!(
+                        "FDP would be {:.1}h > {:.1}h",
+                        candidate_fdp_after, candidate_fdp_limit
+                    ));
+                }
                 Some(reasons.join("; "))
             } else {
                 None
@@ -1484,12 +1749,20 @@ async fn swap_exchanges_handler(
         }
     }
 
-    swaps.sort_by(|a, b| a.shift_id.cmp(&b.shift_id).then(b.feasible.cmp(&a.feasible)));
+    swaps.sort_by(|a, b| {
+        a.shift_id
+            .cmp(&b.shift_id)
+            .then(b.feasible.cmp(&a.feasible))
+    });
 
     let feasible_swaps = swaps.iter().filter(|s| s.feasible).count();
     let total_candidates = swaps.len();
 
-    Ok(Json(SwapExchangesResponse { swaps, total_candidates, feasible_swaps }))
+    Ok(Json(SwapExchangesResponse {
+        swaps,
+        total_candidates,
+        feasible_swaps,
+    }))
 }
 
 // ─── INRC Compliance Endpoint ─────────────────────────────────────────────────
@@ -1555,29 +1828,39 @@ async fn inrc_compliance_handler(
     let app_state = state.lock().unwrap();
     let scenario = match app_state.scenario.as_ref() {
         Some(s) => s,
-        None => return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "No INRC scenario loaded. Call POST /api/load-scenario first."
-            })),
-        ).into_response(),
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "error": "No INRC scenario loaded. Call POST /api/load-scenario first."
+                })),
+            )
+                .into_response();
+        }
     };
 
     let report = ultracrew::inrc::validator::validate_schedule(&req.schedule, scenario);
 
     // Build per-nurse summaries
-    let mut nurse_map: HashMap<String, NurseComplianceSummary> = scenario.nurses.iter().map(|n| {
-        (n.id.clone(), NurseComplianceSummary {
-            nurse_id: n.id.clone(),
-            is_compliant: true,
-            forbidden_succession_violations: 0,
-            max_consecutive_work_violations: 0,
-            min_consecutive_work_violations: 0,
-            min_days_off_violations: 0,
-            max_days_off_violations: 0,
-            total_violations: 0,
+    let mut nurse_map: HashMap<String, NurseComplianceSummary> = scenario
+        .nurses
+        .iter()
+        .map(|n| {
+            (
+                n.id.clone(),
+                NurseComplianceSummary {
+                    nurse_id: n.id.clone(),
+                    is_compliant: true,
+                    forbidden_succession_violations: 0,
+                    max_consecutive_work_violations: 0,
+                    min_consecutive_work_violations: 0,
+                    min_days_off_violations: 0,
+                    max_days_off_violations: 0,
+                    total_violations: 0,
+                },
+            )
         })
-    }).collect();
+        .collect();
 
     let mut violations_json: Vec<serde_json::Value> = Vec::new();
 
@@ -1594,17 +1877,19 @@ async fn inrc_compliance_handler(
             ns.total_violations += 1;
             ns.is_compliant = false;
             match detail.constraint.as_str() {
-                "forbidden_shift_type_successions"  => ns.forbidden_succession_violations += 1,
-                "max_consecutive_working_days"      => ns.max_consecutive_work_violations += 1,
-                "min_consecutive_working_days"      => ns.min_consecutive_work_violations += 1,
-                "min_consecutive_days_off"          => ns.min_days_off_violations += 1,
-                "max_consecutive_days_off"          => ns.max_days_off_violations += 1,
+                "forbidden_shift_type_successions" => ns.forbidden_succession_violations += 1,
+                "max_consecutive_working_days" => ns.max_consecutive_work_violations += 1,
+                "min_consecutive_working_days" => ns.min_consecutive_work_violations += 1,
+                "min_consecutive_days_off" => ns.min_days_off_violations += 1,
+                "max_consecutive_days_off" => ns.max_days_off_violations += 1,
                 _ => {}
             }
         }
     }
 
-    let nurses: Vec<NurseComplianceSummary> = scenario.nurses.iter()
+    let nurses: Vec<NurseComplianceSummary> = scenario
+        .nurses
+        .iter()
         .filter_map(|n| nurse_map.remove(&n.id))
         .collect();
 
@@ -1627,7 +1912,11 @@ async fn inrc_compliance_handler(
         violations: violations_json,
     };
 
-    (StatusCode::OK, Json(serde_json::to_value(response).unwrap())).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(response).unwrap()),
+    )
+        .into_response()
 }
 
 async fn recommendations_handler(
@@ -1638,7 +1927,10 @@ async fn recommendations_handler(
         let recommendations = ultracrew::decision_intelligence::generate_insights(sol);
         Ok(Json(RecommendationsResponse { recommendations }))
     } else {
-        Err((axum::http::StatusCode::NOT_FOUND, "No active schedule solution found. Please call /api/schedule first.".to_string()))
+        Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "No active schedule solution found. Please call /api/schedule first.".to_string(),
+        ))
     }
 }
 
@@ -1650,7 +1942,10 @@ async fn metrics_handler(
         let metrics = ultracrew::decision_intelligence::analyze_solution(sol);
         Ok(Json(metrics))
     } else {
-        Err((axum::http::StatusCode::NOT_FOUND, "No active schedule solution found. Please call /api/schedule first.".to_string()))
+        Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "No active schedule solution found. Please call /api/schedule first.".to_string(),
+        ))
     }
 }
 
@@ -1775,7 +2070,10 @@ async fn pilot_session_handler(
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         if stored.is_empty() || provided != stored.as_str() {
-            return Err((StatusCode::FORBIDDEN, "CSRF token invalid or missing. Call GET /api/csrf-token first.".to_string()));
+            return Err((
+                StatusCode::FORBIDDEN,
+                "CSRF token invalid or missing. Call GET /api/csrf-token first.".to_string(),
+            ));
         }
     }
 
@@ -1832,34 +2130,57 @@ async fn pilot_session_handler(
                 .json(&record)
                 .send()
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase request failed: {}", e)))?;
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Supabase request failed: {}", e),
+                    )
+                })?;
 
             if !resp.status().is_success() {
                 let status = resp.status();
                 let body = resp.text().await.unwrap_or_default();
-                return Err((StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Supabase insert failed ({}): {}", status, body)));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Supabase insert failed ({}): {}", status, body),
+                ));
             }
             println!("Pilot session persisted to Supabase: {}", dsp_id);
         }
         _ => {
             // Local disk fallback (development / no Supabase configured)
             let dir = std::path::Path::new("pilot_sessions");
-            std::fs::create_dir_all(dir)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create pilot_sessions dir: {}", e)))?;
+            std::fs::create_dir_all(dir).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create pilot_sessions dir: {}", e),
+                )
+            })?;
             let file_path = dir.join(format!("{}.json", dsp_id));
-            let json = serde_json::to_string_pretty(&record)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Serialization failed: {}", e)))?;
-            std::fs::write(&file_path, &json)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write session record: {}", e)))?;
-            println!("Pilot session recorded to disk (no Supabase): {} -> {:?}", dsp_id, file_path);
+            let json = serde_json::to_string_pretty(&record).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Serialization failed: {}", e),
+                )
+            })?;
+            std::fs::write(&file_path, &json).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to write session record: {}", e),
+                )
+            })?;
+            println!(
+                "Pilot session recorded to disk (no Supabase): {} -> {:?}",
+                dsp_id, file_path
+            );
         }
     }
 
     Ok(Json(record))
 }
 
-async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, (StatusCode, String)> {
+async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, (StatusCode, String)>
+{
     let supabase_url = std::env::var("SUPABASE_URL").ok();
     let supabase_key = std::env::var("SUPABASE_ANON_KEY").ok();
 
@@ -1878,19 +2199,28 @@ async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, 
                 .header("Accept", "application/json")
                 .send()
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase request failed: {}", e)))?;
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Supabase request failed: {}", e),
+                    )
+                })?;
 
             if !resp.status().is_success() {
                 let status = resp.status();
                 let body = resp.text().await.unwrap_or_default();
-                return Err((StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Supabase select failed ({}): {}", status, body)));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Supabase select failed ({}): {}", status, body),
+                ));
             }
 
-            let records: Vec<PilotSessionRecord> = resp
-                .json()
-                .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Supabase response parse failed: {}", e)))?;
+            let records: Vec<PilotSessionRecord> = resp.json().await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Supabase response parse failed: {}", e),
+                )
+            })?;
             Ok(Json(records))
         }
         _ => {
@@ -1900,10 +2230,19 @@ async fn list_pilot_sessions_handler() -> Result<Json<Vec<PilotSessionRecord>>, 
                 return Ok(Json(vec![]));
             }
             let mut records = Vec::new();
-            let entries = std::fs::read_dir(dir)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read pilot_sessions: {}", e)))?;
+            let entries = std::fs::read_dir(dir).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to read pilot_sessions: {}", e),
+                )
+            })?;
             for entry in entries.flatten() {
-                if entry.path().extension().map(|e| e == "json").unwrap_or(false) {
+                if entry
+                    .path()
+                    .extension()
+                    .map(|e| e == "json")
+                    .unwrap_or(false)
+                {
                     if let Ok(content) = std::fs::read_to_string(entry.path()) {
                         if let Ok(record) = serde_json::from_str::<PilotSessionRecord>(&content) {
                             records.push(record);
@@ -1942,7 +2281,10 @@ async fn export_solution_handler(
     let config = ExportConfig {
         format: fmt.clone(),
         pretty_json: params.get("pretty").map(|v| v == "true").unwrap_or(false),
-        include_telemetry: params.get("telemetry").map(|v| v != "false").unwrap_or(true),
+        include_telemetry: params
+            .get("telemetry")
+            .map(|v| v != "false")
+            .unwrap_or(true),
         include_recommendations: params
             .get("recommendations")
             .map(|v| v != "false")
@@ -1960,16 +2302,15 @@ async fn export_solution_handler(
         axum::http::StatusCode::OK,
         [(
             axum::http::header::CONTENT_TYPE,
-            axum::http::HeaderValue::from_str(&mime)
-                .unwrap_or(axum::http::HeaderValue::from_static("application/octet-stream")),
+            axum::http::HeaderValue::from_str(&mime).unwrap_or(
+                axum::http::HeaderValue::from_static("application/octet-stream"),
+            ),
         )],
         body,
     ))
 }
 
-async fn get_balance_handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-) -> impl IntoResponse {
+async fn get_balance_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let state = state.lock().unwrap();
     match &state.baseline_state {
         Some(s) => (StatusCode::OK, Json(serde_json::to_value(&s.balances).unwrap())).into_response(),
@@ -1977,9 +2318,7 @@ async fn get_balance_handler(
     }
 }
 
-async fn get_dashboard_handler(
-    State(state): State<Arc<Mutex<AppState>>>,
-) -> impl IntoResponse {
+async fn get_dashboard_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl IntoResponse {
     let state = state.lock().unwrap();
     match &state.baseline_state {
         Some(s) => (StatusCode::OK, Json(serde_json::to_value(&s.dashboard).unwrap())).into_response(),
@@ -2044,10 +2383,24 @@ async fn main() {
         .route("/api/export/formats", get(export_formats_handler))
         .route("/api/export/{format}", post(export_solution_handler))
         // Decision workspace endpoints
-        .route("/api/decision_cases", get(list_decision_cases).post(create_decision_case))
-        .route("/api/decision_cases/{id}", get(get_decision_case).put(update_decision_case).delete(delete_decision_case))
-        .route("/api/decision_cases/{id}/commit", post(commit_schedule_version))
-        .route("/api/decision_cases/{id}/export", get(export_decision_case_csv))
+        .route(
+            "/api/decision_cases",
+            get(list_decision_cases).post(create_decision_case),
+        )
+        .route(
+            "/api/decision_cases/{id}",
+            get(get_decision_case)
+                .put(update_decision_case)
+                .delete(delete_decision_case),
+        )
+        .route(
+            "/api/decision_cases/{id}/commit",
+            post(commit_schedule_version),
+        )
+        .route(
+            "/api/decision_cases/{id}/export",
+            get(export_decision_case_csv),
+        )
         // Flight duty analysis endpoints (pairings / duties / swap exchanges)
         .route("/api/pairings", post(pairings_handler))
         .route("/api/duties", post(duties_handler))
@@ -2059,14 +2412,21 @@ async fn main() {
         // INRC nurse rostering compliance endpoint
         .route("/api/inrc/compliance", post(inrc_compliance_handler))
         .with_state(app_state)
-        .layer(GovernorLayer { config: governor_conf })
+        .layer(GovernorLayer {
+            config: governor_conf,
+        })
         .layer(cors);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
     let bind_addr = format!("0.0.0.0:{}", port);
     let addr = tokio::net::TcpListener::bind(&bind_addr).await.unwrap();
     println!("UltraCrew Server running on http://0.0.0.0:{}", port);
-    axum::serve(addr, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.unwrap();
+    axum::serve(
+        addr,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 #[cfg(test)]
@@ -2081,7 +2441,7 @@ mod server_endpoints_tests {
             .allow_origin(Any)
             .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
             .allow_headers(Any);
-            
+
         let scenario = InrcScenario {
             id: "test-sc".to_string(),
             number_of_weeks: 1,
@@ -2091,13 +2451,17 @@ mod server_endpoints_tests {
             nurses: vec![],
             forbidden_shift_type_successions: vec![],
         };
-        
+
         let baseline_state = SimulationState {
             schedule: HashMap::new(),
             dashboard: Dashboard {
                 feasibility_report: None,
                 skill_coverage_audit: None,
-                coverage: Coverage { covered: 0, understaffed: 0, critical: 0 },
+                coverage: Coverage {
+                    covered: 0,
+                    understaffed: 0,
+                    critical: 0,
+                },
                 coverage_audit: CoverageAudit {
                     required_assignments: 0,
                     actual_assignments: 0,
@@ -2169,12 +2533,19 @@ mod server_endpoints_tests {
     async fn test_health_check_endpoint() {
         let app = setup_test_app();
         let response = app
-            .oneshot(Request::builder().uri("/api/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(response.into_body(), 10000).await.unwrap();
+        let body = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
         let resp: StatusResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(resp.status, "ok");
     }
@@ -2182,7 +2553,7 @@ mod server_endpoints_tests {
     #[tokio::test]
     async fn test_schedule_endpoint_validation_failure() {
         let app = setup_test_app();
-        
+
         let request = ultracrew::public_contracts::ScheduleRequest {
             workers: vec![],
             shifts: vec![],
@@ -2190,8 +2561,9 @@ mod server_endpoints_tests {
             rng_seed: None,
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
-        
+
         let response = app
             .oneshot(
                 Request::builder()
@@ -2210,21 +2582,26 @@ mod server_endpoints_tests {
     #[tokio::test]
     async fn test_schedule_endpoint_success() {
         let app = setup_test_app();
-        
-        use ultracrew::models::{Worker, Shift, Skill};
+
+        use ultracrew::models::{Shift, Skill, Worker};
         let request = ultracrew::public_contracts::ScheduleRequest {
-            workers: vec![
-                Worker { id: 1, skills: vec![Skill::new("Forklift")] }
-            ],
-            shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")}
-            ],
+            workers: vec![Worker {
+                id: 1,
+                skills: vec![Skill::new("Forklift")],
+            }],
+            shifts: vec![Shift {
+                id: 101,
+                start_hour: 8,
+                duration_hours: 8,
+                required_skill: Skill::new("Forklift"),
+            }],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
-        
+
         let response = app
             .oneshot(
                 Request::builder()
@@ -2238,10 +2615,12 @@ mod server_endpoints_tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        
-        let body = axum::body::to_bytes(response.into_body(), 50000).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 50000)
+            .await
+            .unwrap();
         let resp: ScheduleResponse = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(resp.schedule.len(), 1);
         assert!(!resp.metrics.is_empty());
         assert!(resp.constraint_report.is_some());
@@ -2251,21 +2630,26 @@ mod server_endpoints_tests {
     #[tokio::test]
     async fn test_validate_endpoint() {
         let app = setup_test_app();
-        
-        use ultracrew::models::{Worker, Shift, Skill};
+
+        use ultracrew::models::{Shift, Skill, Worker};
         let request = ultracrew::public_contracts::ScheduleRequest {
-            workers: vec![
-                Worker { id: 1, skills: vec![Skill::new("Forklift")] }
-            ],
-            shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")}
-            ],
+            workers: vec![Worker {
+                id: 1,
+                skills: vec![Skill::new("Forklift")],
+            }],
+            shifts: vec![Shift {
+                id: 101,
+                start_hour: 8,
+                duration_hours: 8,
+                required_skill: Skill::new("Forklift"),
+            }],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
-        
+
         let mut assignments = std::collections::HashMap::new();
         assignments.insert(101, 1);
 
@@ -2273,7 +2657,7 @@ mod server_endpoints_tests {
             request,
             assignments,
         };
-        
+
         let response = app
             .oneshot(
                 Request::builder()
@@ -2287,10 +2671,12 @@ mod server_endpoints_tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        
-        let body = axum::body::to_bytes(response.into_body(), 50000).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 50000)
+            .await
+            .unwrap();
         let resp: ScheduleResponse = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(resp.schedule.len(), 1);
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);
         assert!(resp.constraint_report.is_some());
@@ -2300,23 +2686,40 @@ mod server_endpoints_tests {
     #[tokio::test]
     async fn test_reschedule_endpoint() {
         let app = setup_test_app();
-        
-        use ultracrew::models::{Worker, Shift, Skill};
+
+        use ultracrew::models::{Shift, Skill, Worker};
         let request = ultracrew::public_contracts::ScheduleRequest {
             workers: vec![
-                Worker { id: 1, skills: vec![Skill::new("Forklift")] },
-                Worker { id: 2, skills: vec![Skill::new("Forklift")] }
+                Worker {
+                    id: 1,
+                    skills: vec![Skill::new("Forklift")],
+                },
+                Worker {
+                    id: 2,
+                    skills: vec![Skill::new("Forklift")],
+                },
             ],
             shifts: vec![
-                Shift { id: 101, start_hour: 8, duration_hours: 8, required_skill: Skill::new("Forklift")},
-                Shift { id: 102, start_hour: 16, duration_hours: 8, required_skill: Skill::new("Forklift")}
+                Shift {
+                    id: 101,
+                    start_hour: 8,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Forklift"),
+                },
+                Shift {
+                    id: 102,
+                    start_hour: 16,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Forklift"),
+                },
             ],
             historical_workloads: None,
             rng_seed: Some(42),
             generation_limit: None,
             scenario: None,
+            fatigue: FatigueConfig::default(),
         };
-        
+
         let mut existing_assignments = std::collections::HashMap::new();
         existing_assignments.insert(101, 1);
         existing_assignments.insert(102, 2);
@@ -2332,7 +2735,7 @@ mod server_endpoints_tests {
             crossover_rate: None,
             elite_count: None,
         };
-        
+
         let response = app
             .oneshot(
                 Request::builder()
@@ -2346,10 +2749,12 @@ mod server_endpoints_tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        
-        let body = axum::body::to_bytes(response.into_body(), 50000).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 50000)
+            .await
+            .unwrap();
         let resp: ScheduleResponse = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(resp.schedule.len(), 2);
         // Verify locked assignment is preserved
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);

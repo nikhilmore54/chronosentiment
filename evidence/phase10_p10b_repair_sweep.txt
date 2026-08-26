@@ -1,0 +1,182 @@
+=== setA-04 ===
+  nodes=50, time_slots=2, demands=200
+  generations_run=5, seed=42
+  wall_ms=18607.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 225
+  infeasible_entering_repair        : 2  (0.9%)
+  feasible_entering_improve         : 223  (99.1%)
+  avg_infeasible_per_gen            : 0.4
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 2
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 2  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 27.0
+  total_improve_ms                  : 1582.9
+  repair_ms / (repair+improve)      : 1.7%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 13.477 ms/individual
+  repair_ms / demand                : 0.135 ms/demand
+  improve_ms / feasible_individual  : 7.098 ms/individual
+
+=== setA-06 ===
+  nodes=100, time_slots=2, demands=500
+  generations_run=5, seed=42
+  wall_ms=97196.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 225
+  infeasible_entering_repair        : 24  (10.7%)
+  feasible_entering_improve         : 201  (89.3%)
+  avg_infeasible_per_gen            : 4.8
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 24
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 24  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 1551.5
+  total_improve_ms                  : 7430.6
+  repair_ms / (repair+improve)      : 17.3%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 64.645 ms/individual
+  repair_ms / demand                : 3.103 ms/demand
+  improve_ms / feasible_individual  : 36.968 ms/individual
+
+=== setA-10 ===
+  nodes=150, time_slots=2, demands=1000
+  generations_run=5, seed=42
+  wall_ms=332737.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 225
+  infeasible_entering_repair        : 33  (14.7%)
+  feasible_entering_improve         : 192  (85.3%)
+  avg_infeasible_per_gen            : 6.6
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 33
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 33  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 5701.1
+  total_improve_ms                  : 21946.7
+  repair_ms / (repair+improve)      : 20.6%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 172.762 ms/individual
+  repair_ms / demand                : 5.701 ms/demand
+  improve_ms / feasible_individual  : 114.306 ms/individual
+
+=== setA-13 ===
+  nodes=200, time_slots=2, demands=2000
+  generations_run=5, seed=42
+  wall_ms=1110128.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 230
+  infeasible_entering_repair        : 131  (57.0%)
+  feasible_entering_improve         : 99  (43.0%)
+  avg_infeasible_per_gen            : 26.2
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 131
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 131  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 71049.0
+  total_improve_ms                  : 33013.0
+  repair_ms / (repair+improve)      : 68.3%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 542.359 ms/individual
+  repair_ms / demand                : 35.524 ms/demand
+  improve_ms / feasible_individual  : 333.465 ms/individual
+
+=== setA-14 ===
+  nodes=250, time_slots=2, demands=600
+  generations_run=5, seed=42
+  wall_ms=353462.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 225
+  infeasible_entering_repair        : 9  (4.0%)
+  feasible_entering_improve         : 216  (96.0%)
+  avg_infeasible_per_gen            : 1.8
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 9
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 9  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 1849.6
+  total_improve_ms                  : 25334.6
+  repair_ms / (repair+improve)      : 6.8%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 205.514 ms/individual
+  repair_ms / demand                : 3.083 ms/demand
+  improve_ms / feasible_individual  : 117.290 ms/individual
+
+=== setA-16 ===
+  nodes=250, time_slots=2, demands=4800
+  generations_run=5, seed=42
+  wall_ms=3619943.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 250
+  infeasible_entering_repair        : 250  (100.0%)
+  feasible_entering_improve         : 0  (0.0%)
+  avg_infeasible_per_gen            : 50.0
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 250
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 250  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 363306.0
+  total_improve_ms                  : 0.0
+  repair_ms / (repair+improve)      : 100.0%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 1453.224 ms/individual
+  repair_ms / demand                : 75.689 ms/demand
+  improve_ms / feasible_individual  : NaN ms/individual
+
+=== setA-19 ===
+  nodes=300, time_slots=2, demands=6000
+  generations_run=5, seed=42
+  wall_ms=5348967.0
+
+--- P10-B: Offspring routing ---
+  total_offspring                   : 230
+  infeasible_entering_repair        : 110  (47.8%)
+  feasible_entering_improve         : 120  (52.2%)
+  avg_infeasible_per_gen            : 22.0
+
+--- P10-B: Repair outcomes ---
+  repair_attempts                   : 110
+  repair_successes                  : 0  (0.0%)
+  repair_failures                   : 110  (100.0%)
+
+--- P10-B: Timing decomposition ---
+  total_repair_ms                   : 258718.0
+  total_improve_ms                  : 180781.2
+  repair_ms / (repair+improve)      : 58.9%
+
+--- P10-B: Key normalizations ---
+  repair_ms / infeasible_individual : 2351.981 ms/individual
+  repair_ms / demand                : 43.120 ms/demand
+  improve_ms / feasible_individual  : 1506.510 ms/individual
+
