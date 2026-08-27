@@ -980,3 +980,104 @@ Gen    0/5 | best_obj=229.0428 mlu=0.9485 | valid=1/50 | stagnation=0 | 2864.0s
 [c1b] gen=0 origin=crossover_ca arc=968 flow=2093.676500000 cap=2000.000000000 sat=1.046838250 viol_count=1
 [c1b] gen=0 origin=crossover_cb arc=968 flow=2004.683500000 cap=2000.000000000 sat=1.002341750 viol_count=2
 [c1b] gen=0 origin=crossover_cb arc=968 flow=2023.419000000 cap=2000.000000000 sat=1.011709500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=968 flow=2215.456200000 cap=2000.000000000 sat=1.107728100 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=968 flow=2084.308800000 cap=2000.000000000 sat=1.042154400 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=968 flow=2000.000100000 cap=2000.000000000 sat=1.000000050 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=968 flow=2182.669300000 cap=2000.000000000 sat=1.091334650 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=968 flow=2088.993100000 cap=2000.000000000 sat=1.044496550 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=968 flow=2220.139900000 cap=2000.000000000 sat=1.110069950 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=968 flow=2051.522000000 cap=2000.000000000 sat=1.025761000 viol_count=4
+[c1b] gen=0 origin=mutation arc=968 flow=2187.353300000 cap=2000.000000000 sat=1.093676650 viol_count=4
+[c1b] gen=0 origin=mutation arc=968 flow=2028.103000000 cap=2000.000000000 sat=1.014051500 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=968 flow=2449.648200000 cap=2000.000000000 sat=1.224824100 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=968 flow=2140.515100000 cap=2000.000000000 sat=1.070257550 viol_count=4
+[IMPROVE] Gen    1  obj: 229.0428 → 166.5846  mlu: 0.8712  valid: true
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900 viol_count=1
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2046.837800000 cap=2000.000000000 sat=1.023418900 viol_count=1
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2009.367100000 cap=2000.000000000 sat=1.004683550 viol_count=1
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2435.596800000 cap=2000.000000000 sat=1.217798400 viol_count=4
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2149.883000000 cap=2000.000000000 sat=1.074941500 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2051.522400000 cap=2000.000000000 sat=1.025761200 viol_count=4
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650 viol_count=4
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2051.522400000 cap=2000.000000000 sat=1.025761200 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2379.390900000 cap=2000.000000000 sat=1.189695450 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2056.206000000 cap=2000.000000000 sat=1.028103000 viol_count=2
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2084.309300000 cap=2000.000000000 sat=1.042154650 viol_count=3
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2140.514800000 cap=2000.000000000 sat=1.070257400 viol_count=1
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2168.618100000 cap=2000.000000000 sat=1.084309050 viol_count=1
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2042.153900000 cap=2000.000000000 sat=1.021076950 viol_count=4
+[c1b] gen=1 origin=crossover_cb arc=968 flow=1999.999800000 cap=2000.000000000 sat=0.999999900 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2196.720900000 cap=2000.000000000 sat=1.098360450 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2163.934500000 cap=2000.000000000 sat=1.081967250 viol_count=4
+[c1b] gen=1 origin=mutation arc=968 flow=2107.727900000 cap=2000.000000000 sat=1.053863950 viol_count=1
+[c1b] gen=1 origin=mutation arc=968 flow=2084.308900000 cap=2000.000000000 sat=1.042154450 viol_count=4
+[c1b] gen=1 origin=mutation arc=968 flow=2042.154400000 cap=2000.000000000 sat=1.021077200 viol_count=4
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2309.132800000 cap=2000.000000000 sat=1.154566400 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2140.515200000 cap=2000.000000000 sat=1.070257600 viol_count=2
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2070.257100000 cap=2000.000000000 sat=1.035128550 viol_count=3
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2121.779500000 cap=2000.000000000 sat=1.060889750 viol_count=3
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2009.367500000 cap=2000.000000000 sat=1.004683750 viol_count=1
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2140.514900000 cap=2000.000000000 sat=1.070257450 viol_count=3
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2145.198400000 cap=2000.000000000 sat=1.072599200 viol_count=5
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2276.346400000 cap=2000.000000000 sat=1.138173200 viol_count=3
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2252.927200000 cap=2000.000000000 sat=1.126463600 viol_count=3
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2009.367700000 cap=2000.000000000 sat=1.004683850 viol_count=1
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2074.941000000 cap=2000.000000000 sat=1.037470500 viol_count=3
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2004.683700000 cap=2000.000000000 sat=1.002341850 viol_count=3
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2234.191400000 cap=2000.000000000 sat=1.117095700 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2103.044000000 cap=2000.000000000 sat=1.051522000 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2206.088400000 cap=2000.000000000 sat=1.103044200 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2088.992800000 cap=2000.000000000 sat=1.044496400 viol_count=2
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2341.920000000 cap=2000.000000000 sat=1.170960000 viol_count=2
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2182.669600000 cap=2000.000000000 sat=1.091334800 viol_count=2
+[c1b] gen=1 origin=crossover_ca arc=968 flow=2257.610700000 cap=2000.000000000 sat=1.128805350 viol_count=3
+[c1b] gen=1 origin=crossover_cb arc=968 flow=2271.662600000 cap=2000.000000000 sat=1.135831300 viol_count=1
+[IMPROVE] Gen    2  obj: 166.5846 → 166.1174  mlu: 0.8841  valid: true
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2140.515100000 cap=2000.000000000 sat=1.070257550 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2004.683600000 cap=2000.000000000 sat=1.002341800 viol_count=2
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2168.617700000 cap=2000.000000000 sat=1.084308850 viol_count=3
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2032.786900000 cap=2000.000000000 sat=1.016393450 viol_count=3
+[c1b] gen=2 origin=mutation arc=968 flow=2192.037300000 cap=2000.000000000 sat=1.096018650 viol_count=4
+[c1b] gen=2 origin=mutation arc=968 flow=2051.522400000 cap=2000.000000000 sat=1.025761200 viol_count=4
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2051.522100000 cap=2000.000000000 sat=1.025761050 viol_count=3
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2004.683600000 cap=2000.000000000 sat=1.002341800 viol_count=3
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2126.463500000 cap=2000.000000000 sat=1.063231750 viol_count=1
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2046.838100000 cap=2000.000000000 sat=1.023419050 viol_count=3
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2238.875400000 cap=2000.000000000 sat=1.119437700 viol_count=1
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2009.367500000 cap=2000.000000000 sat=1.004683750 viol_count=1
+[c1b] gen=2 origin=mutation arc=968 flow=2187.353200000 cap=2000.000000000 sat=1.093676600 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2177.985600000 cap=2000.000000000 sat=1.088992800 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2084.308900000 cap=2000.000000000 sat=1.042154450 viol_count=2
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2281.029900000 cap=2000.000000000 sat=1.140514950 viol_count=2
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2206.089000000 cap=2000.000000000 sat=1.103044500 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2032.786500000 cap=2000.000000000 sat=1.016393250 viol_count=1
+[c1b] gen=2 origin=mutation arc=968 flow=2154.566200000 cap=2000.000000000 sat=1.077283100 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2079.624800000 cap=2000.000000000 sat=1.039812400 viol_count=2
+[c1b] gen=2 origin=crossover_ca arc=968 flow=2088.992500000 cap=2000.000000000 sat=1.044496250 viol_count=1
+[c1b] gen=2 origin=crossover_cb arc=968 flow=1999.999500000 cap=2000.000000000 sat=0.999999750 viol_count=1
+[c1b] gen=2 origin=crossover_cb arc=968 flow=2084.308700000 cap=2000.000000000 sat=1.042154350 viol_count=1
+[IMPROVE] Gen    3  obj: 166.1174 → 162.5522  mlu: 0.8864  valid: true
+[c1b] gen=3 origin=crossover_ca arc=968 flow=2187.353200000 cap=2000.000000000 sat=1.093676600 viol_count=4
+[c1b] gen=3 origin=crossover_ca arc=968 flow=2159.250500000 cap=2000.000000000 sat=1.079625250 viol_count=4
+[c1b] gen=3 origin=crossover_ca arc=968 flow=2126.463200000 cap=2000.000000000 sat=1.063231600 viol_count=2
+[c1b] gen=3 origin=crossover_ca arc=968 flow=2145.199100000 cap=2000.000000000 sat=1.072599550 viol_count=2
+[IMPROVE] Gen    4  obj: 162.5522 → 148.7175  mlu: 0.8208  valid: true
+
+[TERMINATION]
+  Reason       : GenerationLimit(5)
+  Generations  : 5
+  Best obj     : 148.7175
+  Best MLU     : 0.8208
+  Valid        : true
+  Best at gen  : 4
+  Runtime      : 5410654ms
+
+=========================================
+Finished      : 2026-08-26T17:37:46.511984+00:00
+Runtime       : 5410654ms
+Termination   : GenerationLimit(5)
+Best Objective: 148.7175
+Best MLU      : 0.8208
+Valid         : true
+=========================================
