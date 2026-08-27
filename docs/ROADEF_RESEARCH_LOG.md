@@ -143,7 +143,71 @@ Arcs 968, 606, 303 reported `overloaded=false` across all displayed initial memb
 
 **Causal status:** For arc 658 / setA-13, the evidence strongly supports **inherited** classification: the bottleneck is present in the initial constructed genomes before any evolutionary operator executes. Crossover and mutation are propagating/recombining an already-infeasible population.
 
-**Pending:** setA-16 (arcs 606/303) and setA-19 (arc 968) sweep results still running. Arc 968 showed `mutation` as first origin in C1-B — C1-C must determine whether arc 968 is also already overloaded in the initial population for setA-19.
+**setA-19 sweep complete** (`63dac87ad`). All three instances now have authoritative C1-C data.
+
+---
+
+#### C1-C Finding — setA-13 (corrected instrumentation, authoritative)
+
+**Evidence source:** `evidence/phase10_p10c1c_initial_scan_corrected_raw.txt` (`6e2be7f17`)
+
+One record per `(member, arc)`, `overloaded = max_sat > 1.0` (strict).
+
+| Arc | Overloaded=true | Overloaded=false | % overloaded |
+|-----|----------------|-----------------|--------------|
+| 658 | **47** | 3 | **94%** |
+| 606 | 0 | 50 | 0% |
+| 303 | 0 | 50 | 0% |
+| 968 | 0 | 50 | 0% |
+
+**Causal classification — arc 658 / setA-13: INHERITED**
+> 47 of 50 initial constructed genomes already carry arc 658 overload before any evolutionary operator executes.
+
+---
+
+#### C1-C Finding — setA-16 (preliminary sweep, authoritative for overloaded=false)
+
+**Evidence source:** `evidence/phase10_p10c1c_initial_scan_raw.txt` (setA-16 section, `957ff1242`)
+
+Note: old instrumentation emits per-time-slot lines, but since all results are `overloaded=false`, there are no duplicate lines — old and corrected instrumentation produce identical output when no violations exist. This data is therefore authoritative.
+
+| Arc | Overloaded=true | Overloaded=false | % overloaded |
+|-----|----------------|-----------------|--------------|
+| 606 | **0** | 50 | **0%** |
+| 303 | **0** | 50 | **0%** |
+
+**Causal classification — arcs 606/303 / setA-16: CROSSOVER-CREATED**
+> None of the 50 initial constructed genomes carry arc 606 or arc 303 overload. The gen-0 crossover events observed in C1-B are creating the overload, not propagating an inherited bottleneck.
+
+---
+
+#### C1-C Finding — setA-19 (corrected instrumentation, authoritative)
+
+**Evidence source:** `evidence/phase10_p10c1c_seta19_raw.txt` (`63dac87ad`)
+
+| Arc | Overloaded=true | Overloaded=false | % overloaded |
+|-----|----------------|-----------------|--------------|
+| 968 | **45** | 5 | **90%** |
+| 658 | 0 | 50 | 0% |
+| 606 | 0 | 50 | 0% |
+
+**Causal classification — arc 968 / setA-19: INHERITED**
+> 45 of 50 initial constructed genomes already carry arc 968 overload before any evolutionary operator executes. The C1-B `mutation` first-origin label was observational, not causal — the overload pre-exists mutation.
+
+---
+
+#### C1-C Complete Cross-Instance Summary
+
+| Instance | Arc | Initial overloaded | % | C1-B first origin | Causal classification |
+|----------|-----|-------------------|---|-------------------|-----------------------|
+| setA-13 | 658 | 47/50 | 94% | crossover_ca | **INHERITED** |
+| setA-16 | 606 | 0/50 | 0% | crossover_ca | **CROSSOVER-CREATED** |
+| setA-16 | 303 | 0/50 | 0% | crossover_cb | **CROSSOVER-CREATED** |
+| setA-19 | 968 | 45/50 | 90% | mutation | **INHERITED** |
+
+**Key finding:** The C1-B `first_origin` label is not a reliable indicator of causal origin. Arc 658 (setA-13) and arc 606 (setA-16) both show `crossover_ca` as first origin in C1-B, but have opposite causal classifications in C1-C. The `first_origin` label records where the overload was first *observed* in the evolutionary pipeline, not where it *originated*.
+
+**C1-C status: COMPLETE** (`63dac87ad`)
 
 ---
 
