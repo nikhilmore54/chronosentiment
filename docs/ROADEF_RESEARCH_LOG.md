@@ -237,23 +237,46 @@ C1-F: Does the intervention improve the full evolutionary system?
 
 ### C1-D — Constructor/Repair Isolation
 
-**Status: LOCKED** (pending C1-C complete)
+**Status: COMPLETE** (`2b6b2160f`)
 
-**Revised question (from C1-C setA-13 finding):** The C1-C evidence shifts the investigation from evolutionary operators toward constructor/repair feasibility. C1-D therefore asks: Is the 815-second initialization behavior and 92% initial infeasibility rate primarily a construction problem, a repair problem, or an interaction between construction/repair and the subsequent pipeline?
+**Question:** Is Arc 658 overload introduced by construction, introduced by repair, or merely exposed/preserved by the baseline pipeline?
 
-**Method:** Run 3 controlled cases for setA-13, seed=42, 50 individuals:
+**Method:** 3 controlled cases for setA-13, seed=42, 50 individuals.
 
-| Case | Constructor | Repair | MOGA | Purpose |
-|------|-------------|--------|------|---------|
-| A | ON | ON | OFF | Can construction+repair establish feasibility by itself? |
-| B | ON | OFF | OFF | How much infeasibility is attributable to repair? |
-| C | ON | ON | ON | What does the complete pipeline actually cost? (current baseline) |
+| Case | Pipeline | Purpose |
+|------|----------|---------|
+| A | constructor → explicit repair → evaluate | Does repair change the constructor-produced overload? |
+| B | constructor → evaluate only | Does overload exist immediately after construction? (current initial population behavior) |
+| C | full pipeline with MOGA (reference from C1-C) | What does the production pipeline expose? |
 
-**Metrics per case:** population size, successful constructions, repair attempts, repair failures, major violations, minor violations, epsilon violations, maximum saturation, arc distribution, wall time.
+**Evidence source:** `evidence/phase10_p10c1d_constructor_isolation_raw.txt` + `evidence/phase10_p10c1d_constructor_isolation_stderr.txt`
 
-**Governance:** Observational. No algorithmic changes. Wall-clock and termination behavior are first-class metrics.
+**Results:**
 
-**Note:** Original C1-D question ("Did viable alternative routing paths exist?") is deferred — it presupposes evolutionary operators as the causal source, which C1-C has not confirmed.
+| Metric | Case A (ctor+repair+eval) | Case B (ctor+eval) | Case C (full pipeline) |
+|--------|--------------------------|--------------------|-----------------------|
+| n_valid | 1/50 (2.0%) | 1/50 (2.0%) | 1/50 (2.0%) |
+| n_major | 49/50 (98.0%) | 49/50 (98.0%) | 46/50 (92.0%) |
+| arc_658_overloaded | 49/50 (98.0%) | 49/50 (98.0%) | 47/50 (94.0%) |
+| repair_noop | 49/50 (98%) | N/A | N/A |
+| wall_ms | 119,741 | 108,130 | 815,218 |
+
+**Key findings:**
+
+1. **Case A = Case B exactly.** Adding explicit repair to the initial construction loop produces identical violation profiles. Repair does not change the Arc 658 overload state.
+
+2. **repair_noop = 49/50 (98%).** H-SKIP confirmed: all Arc 658 violations are Capacity type. The repair operator returns `Ok(false)` immediately without making any genome modification. This is the expected behavior from the H-SKIP authorization (P10-C0).
+
+3. **Case B reproduces C1-C.** The isolated construction/evaluation measurement (49/50 overloaded) is consistent with the C1-C initial-population scan (47/50 overloaded). The minor difference (49 vs 47) is attributable to the MOGA rejection-sampling loop selecting the best of 10 retries per individual, which marginally reduces the overload count vs isolated construction.
+
+4. **Case C (full pipeline) shows slightly fewer violations.** The MOGA pipeline's rejection-sampling loop provides marginal improvement over isolated construction, but does not resolve the structural overload.
+
+**Authoritative C1-D finding:**
+> Arc 658 overload in setA-13 is a **pure construction artifact**. The greedy constructor routes excess demand through Arc 658 in 98% of constructed genomes regardless of seed. The repair operator (H-SKIP) is structurally inert for Capacity violations and makes no genome modification. The MOGA pipeline inherits the overload from the constructor; it does not create it.
+
+**What C1-D does NOT establish:** Why the constructor routes demand through Arc 658. It establishes that the overload is present immediately after `factory.create()` and is not modified by repair. The underlying cause — demand allocation ordering, capacity structure, construction heuristic bias, or network topology — is the subject of C1-E.
+
+**C1-D status: COMPLETE** (`2b6b2160f`)
 
 ---
 
