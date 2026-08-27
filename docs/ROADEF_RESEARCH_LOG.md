@@ -280,11 +280,33 @@ C1-F: Does the intervention improve the full evolutionary system?
 
 ---
 
-### C1-E — Representation Test
+### C1-E — Construction Mechanism Investigation
 
-**Status: LOCKED** (pending C1-C)
+**Status: UNLOCKED** (C1-D complete)
 
-**Question:** Can the genome/topology representation express those alternatives, or does the representation itself constrain the available choices?
+**Reframed question (from C1-D):** C1-D established that Arc 658 overload is a pure construction artifact — the repair layer and evolutionary layer are not responsible. C1-E therefore asks:
+
+> **What decision in the constructor causes Arc 658 to become the preferred/forced route, and at what point does that decision make the eventual overload inevitable?**
+
+**Candidate explanations:**
+1. **Demand allocation ordering** — demands are allocated in an order that fills Arc 658 early, leaving no capacity for later demands
+2. **Capacity structure** — Arc 658 has insufficient capacity relative to the demand set that must traverse it
+3. **Construction heuristic bias** — the greedy heuristic systematically prefers routes through Arc 658 (e.g. shortest path, load-aware scoring)
+4. **Network topology** — Arc 658 is a structural bottleneck (cut arc or near-cut) that all feasible routes must traverse
+
+**Wall-time decomposition from C1-D:**
+
+| Stage | Wall time | Interpretation |
+|-------|-----------|----------------|
+| Constructor + evaluate (Case B) | 108,130 ms | Cost of producing 50 initial genomes |
+| Constructor + repair + evaluate (Case A) | 119,741 ms | Repair adds ~11s overhead (no genome change) |
+| Full pipeline with MOGA (Case C) | 815,218 ms | MOGA evolutionary loop adds ~696s |
+
+**Key implication:** The constructor is not the principal runtime cost. The MOGA evolutionary layer accounts for ~85% of the full pipeline runtime. Fixing the constructor's Arc 658 bias will not resolve the runtime problem — but it will resolve the structural infeasibility that the MOGA loop is unable to overcome.
+
+**Governance:** Observational. No algorithmic changes before C1-E evidence is reviewed. The current pathological behavior is valuable experimental evidence — do not modify the constructor until the mechanism is understood.
+
+**Method (to be determined):** Instrument the constructor to record per-demand allocation decisions, routing choices, and Arc 658 load at each step. Identify the demand or ordering decision that first commits Arc 658 to overload.
 
 ---
 
