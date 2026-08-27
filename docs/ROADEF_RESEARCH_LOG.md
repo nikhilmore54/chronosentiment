@@ -207,7 +207,31 @@ Note: old instrumentation emits per-time-slot lines, but since all results are `
 
 **Key finding:** The C1-B `first_origin` label is not a reliable indicator of causal origin. Arc 658 (setA-13) and arc 606 (setA-16) both show `crossover_ca` as first origin in C1-B, but have opposite causal classifications in C1-C. The `first_origin` label records where the overload was first *observed* in the evolutionary pipeline, not where it *originated*.
 
-**C1-C status: COMPLETE** (`63dac87ad`)
+**Rejection-sampling observation:**
+
+| Instance | Rejection sampling result |
+|----------|--------------------------|
+| setA-13 | 494 retries / 1 success |
+| setA-16 | 500 retries / 0 successes |
+
+Both instances exhaust rejection sampling, yet C1-C proceeds with 50-member populations via fallback construction. The initial population's violation structure is therefore itself an experimental object — the constructor/initialization pipeline is producing populations with structurally different overload profiles despite similar rejection-sampling failure rates.
+
+**Authoritative C1-C finding (research language):**
+> C1-C establishes that evolutionary-stage `first_origin` is an observational provenance label rather than a causal-origin label. Cross-instance tracing separates inherited initial-population violations from genuinely operator-created violations. In setA-13, Arc 658 is already overloaded in the initial constructed population and is therefore classified INHERITED despite subsequently appearing with `crossover_ca` as its first C1-B origin. Conversely, setA-16 begins with zero overloads on Arcs 606 and 303 across all 50 initial genomes; their subsequent first appearance following crossover establishes them as CROSSOVER-CREATED. Arc 968 in setA-19 is similarly classified INHERITED based on its initial-population prevalence.
+
+**What C1-C does NOT establish:** Why the constructor produces Arc 658 overloads in setA-13. It establishes where in the pipeline the violation already exists, not whether the underlying cause is demand allocation, capacity structure, construction ordering, repair behavior, representation, saturation characteristics, or some interaction among these. That is the subject of C1-D.
+
+**C1-C status: COMPLETE** (`21ec1971a`)
+
+**Causal progression:**
+```
+C1-A: What violations exist?
+C1-B: Where are they first observed?
+C1-C: Where did they actually originate? ← COMPLETE
+C1-D: How are the inherited violations produced?
+C1-E: What repair mechanism can remove them?
+C1-F: Does the intervention improve the full evolutionary system?
+```
 
 ---
 
