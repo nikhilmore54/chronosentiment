@@ -72,17 +72,20 @@ These four arcs are the C1-B/C1-C/C1-D/C1-E/C1-F target arcs.
 
 ### C1-C — Parent Comparison
 
-**Status: PENDING**
+**Status: IN PROGRESS** (`64f8c03c7` — instrumentation + binary; sweep running)
 
 **Question:** Were arcs 658/606/303/968 already overloaded in the initial constructed genomes before any evolutionary operator executed, or did the gen-0 evolutionary transition create or propagate the overload?
 
-**Method:** Instrument the initial population **before any evolutionary operator executes**. For each initial genome member, record for arcs 968/658/606/303:
+**Method:** Instrument the initial population **before any evolutionary operator executes**. For each initial genome member, emit exactly one record per `(member, arc)`:
 
 ```
-[c1c] stage=initial member=N arc=ARC sat=S overloaded=true/false
+[c1c] stage=initial member=N arc=ARC max_flow=F cap=C max_sat=S overloaded=true/false
 ```
 
-Then track parent→child relationships through gen-0 crossover.
+`max_sat` = maximum saturation across all time slots for that arc.
+`overloaded` = `max_sat > 1.0` (strict: flow strictly exceeds capacity).
+
+Then cross-reference with gen-0 `[c1b]` lines for parent→child correlation.
 
 **Causal taxonomy:**
 
@@ -96,6 +99,51 @@ Then track parent→child relationships through gen-0 crossover.
 The child being feasible means this evolutionary transition did not create the target overload, regardless of parent states.
 
 **Governance:** Pure instrumentation. No behavioral changes.
+
+---
+
+#### C1-C Partial Finding — setA-13 (seed=42, 1 gen)
+
+**Evidence source:** `evidence/phase10_p10c1c_initial_scan_raw.txt` + `evidence/phase10_p10c1c_initial_scan_stderr.txt`
+
+**Key observations:**
+
+| Metric | Value | Source |
+|--------|-------|--------|
+| Population size | 50 | config |
+| Valid individuals at gen-0 | 1/50 (2%) | stderr |
+| Initial major violations | **46** | `[rc002] gen=0 initial: maj=46` |
+| Crossover-created violations | **0** | `[rc002] crossover: maj=0` |
+| Mutation-created violations | **0** | `[rc002] mutation: maj=0` |
+| Constructor rejection sampling | 494 retries, 1 success | stderr |
+| Wall time (1 gen, 50 individuals) | ~815 seconds (~13.6 min) | stderr |
+| Best solution found at gen | 0 | stderr |
+
+**Arc 658 initial overload (selected members):**
+
+| Member | max_sat (approx) |
+|--------|-----------------|
+| 1 | 1.077 |
+| 3 | 1.081 |
+| 9 | 1.222 |
+| 16 | 1.201 |
+| 26 | 1.261 |
+| 49 | 1.081 |
+
+Arcs 968, 606, 303 reported `overloaded=false` across all displayed initial members.
+
+**Note — instrumentation issues (not reasons to discard the result):**
+- Old instrumentation (pre-fix) emitted one line per time-slot violation per arc, causing duplicate lines per member. Fixed in `64f8c03c7` to emit one line per `(member, arc)` using max saturation.
+- `sat=0.999999 overloaded=true` boundary case: `evaluate_violations()` uses `sat >= 1.0 - 1e-6`; the corrected `[c1c]` instrumentation uses strict `> 1.0`.
+- Arc 659 appears in some `[diag]` lines alongside arc 658 — relationship between 658/659 not yet established.
+- `max_sat` in `[diag]` header sometimes differs from the displayed `arc_overloaded` sat value — diagnostic display issue, not a causal finding.
+
+**C1-C finding — setA-13 (defensible statement):**
+> The dominant infeasibility is introduced during initial population construction following failed repair, not demonstrated to be created by crossover or mutation. The initial population contains 46 major violation events, predominantly on arc 658, with only 1 of 50 individuals valid. Gen-0 crossover and mutation produce zero classified causal violation events. The result therefore shifts the investigation from evolutionary operators toward constructor/repair feasibility and performance.
+
+**Causal status:** For arc 658 / setA-13, the evidence strongly supports **inherited** classification: the bottleneck is present in the initial constructed genomes before any evolutionary operator executes. Crossover and mutation are propagating/recombining an already-infeasible population.
+
+**Pending:** setA-16 (arcs 606/303) and setA-19 (arc 968) sweep results still running. Arc 968 showed `mutation` as first origin in C1-B — C1-C must determine whether arc 968 is also already overloaded in the initial population for setA-19.
 
 ---
 
