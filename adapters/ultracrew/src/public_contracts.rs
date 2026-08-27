@@ -82,6 +82,10 @@ impl ScheduleRequest {
             scenario: self.scenario.clone(),
             enable_fatigue: self.fatigue.enable_fatigue,
             fatigue_weight: self.fatigue.fatigue_weight,
+            hc3_aware_initialization: false,
+            temporal_scarcity_construction: false,
+            disable_global_constructor: false,
+            precomputed_seeds: None,
         })
     }
 }
@@ -127,6 +131,10 @@ impl RescheduleRequest {
             scenario: self.request.scenario.clone(),
             enable_fatigue: self.request.fatigue.enable_fatigue,
             fatigue_weight: self.request.fatigue.fatigue_weight,
+            hc3_aware_initialization: false,
+            temporal_scarcity_construction: false,
+            disable_global_constructor: false,
+            precomputed_seeds: None,
         })
     }
 }

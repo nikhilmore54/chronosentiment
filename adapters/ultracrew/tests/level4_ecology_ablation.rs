@@ -36,10 +36,15 @@ fn generate_sequential_scenario(week: usize, ecology: WorkforceEcology, rng: &mu
         workers: Arc::new(workers),
         shifts: Arc::new(shifts),
         ecology,
-        rng_seed: 0,
+        rng_seed: 42,
         observatory: Arc::new(std::sync::Mutex::new(ultracrew::optimization::Observatory::new())),
         locked_assignments: None,
-        scenario: None,
+        hc3_aware_initialization: false,
+        temporal_scarcity_construction: false,
+        disable_global_constructor: false,
+        precomputed_seeds: None,
+        enable_fatigue: true,
+        fatigue_weight: 2.0,
     })
 }
 

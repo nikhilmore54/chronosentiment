@@ -23,6 +23,12 @@ fn build_context(scenario: Option<InrcScenario>, shifts: Vec<Shift>) -> Arc<Sche
         observatory: Arc::new(std::sync::Mutex::new(Observatory::new())),
         locked_assignments: None,
         scenario,
+        enable_fatigue: false,
+        fatigue_weight: 0.0,
+        hc3_aware_initialization: false,
+        temporal_scarcity_construction: false,
+        disable_global_constructor: false,
+        precomputed_seeds: None,
     })
 }
 

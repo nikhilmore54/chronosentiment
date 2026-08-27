@@ -198,6 +198,10 @@ mod contract_tests {
             scenario: Some(crate::public_contracts::InrcScenario { minimum_rest_hours: Some(10), max_hours_per_worker: Some(40.0), planning_horizon_hours: None, leave_requests: None }),
             enable_fatigue: false,
             fatigue_weight: 0.0,
+            hc3_aware_initialization: false,
+            temporal_scarcity_construction: false,
+            disable_global_constructor: false,
+            precomputed_seeds: None,
         })
     }
 

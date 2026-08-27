@@ -2,6 +2,8 @@ pub mod ecology;
 pub mod config;
 pub mod models;
 pub mod optimization;
+pub mod public_contracts;
+pub mod global_constructor;
 pub mod inrc;
 pub mod workforce;
 pub mod compliance;
@@ -64,6 +66,10 @@ pub mod helpers {
             scenario: None,
             enable_fatigue: false,
             fatigue_weight: 0.0,
+            hc3_aware_initialization: false,
+            temporal_scarcity_construction: false,
+            disable_global_constructor: false,
+            precomputed_seeds: None,
         })
     }
 
@@ -71,28 +77,50 @@ pub mod helpers {
         context: Arc<ScheduleContext>,
         config: EvolutionConfig,
     ) -> GaResult<ScheduleEvaluation> {
-        let factory = ScheduleOptimizer::new(context.clone());
         let mutator = ScheduleOptimizer::new(context.clone());
         let crossover = ScheduleOptimizer::new(context.clone());
         let evaluator = ScheduleOptimizer::new(context.clone());
-
-        let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
-        engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
         
-        // let mut satisfaction_engine = coralys_moga::runtime::optimization::satisfaction::DefaultRepairEngine::new(
-        //     coralys_moga::runtime::optimization::constraint::ConstraintSatisfactionConfig::default()
-        // ).with_metric_engine(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
-        // satisfaction_engine.add_model(Box::new(crate::repair::RestConstraint { context: context.clone() }));
-        // satisfaction_engine.add_model(Box::new(crate::repair::SkillConstraint { context: context.clone() }));
-        // satisfaction_engine.add_operator(Box::new(crate::repair::ReassignRepairOperator { context: context.clone() }));
-        // engine.satisfaction_engine = Some(Box::new(satisfaction_engine));
+        let total_required: u64 = context.shifts.iter().map(|s| s.duration_hours).sum();
+        let total_capacity: u64 = context.workers.len() as u64 * 40; // max hc3
+        let utilization = total_required as f64 / total_capacity as f64;
+        
+        let mut seeded_factory = None;
+        if !context.disable_global_constructor {
+            let mut seed_opt = None;
+            if let Some(ref seeds_arc) = context.precomputed_seeds {
+                let seeds = seeds_arc.lock().unwrap();
+                if !seeds.is_empty() {
+                    seed_opt = Some(seeds[0].clone());
+                }
+            } else {
+                seed_opt = crate::global_constructor::generate_feasible_seed(&context.shifts, &context.workers, 8, 40);
+            }
+            if let Some(seed) = seed_opt {
+                let metrics = coralys_moga::runtime::optimization::metric::MetricReport::default();
+                use coralys_moga::traits::FitnessEvaluator;
+                let eval = evaluator.evaluate(&seed, &metrics);
+                let hard_violations = eval.hc1_violations + eval.hc2_violations + eval.hc3_violations + eval.rest_violations;
+                
+                if eval.is_valid && hard_violations == 0 {
+                    seeded_factory = Some(crate::optimization::SeededScheduleFactory {
+                        seeds: std::cell::RefCell::new(vec![seed]),
+                        base_optimizer: ScheduleOptimizer::new(context.clone()),
+                    });
+                }
+            }
+        }
 
-        // Temporary compatibility shim.
-        // EvolutionEngine now returns Result to surface configuration validation errors.
-        // For the demo/pilot we unwrap here because configs are generated internally.
-        // TODO: Propagate this Result through the UltraCrew API when production‑ready.
-        engine.run_ga_evolution(config)
-            .expect("Invalid EvolutionConfig – engine failed")
+        if let Some(factory) = seeded_factory {
+            let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
+            engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
+            engine.run_ga_evolution(config).expect("Invalid EvolutionConfig – engine failed")
+        } else {
+            let factory = ScheduleOptimizer::new(context.clone());
+            let mut engine = EvolutionEngine::new(evaluator, mutator, crossover, factory);
+            engine.metric_engine = Some(Arc::new(crate::metrics::UltraCrewMetricEngine { context: context.clone() }));
+            engine.run_ga_evolution(config).expect("Invalid EvolutionConfig – engine failed")
+        }
     }
 }
 
@@ -100,7 +128,7 @@ pub mod helpers {
 pub mod pipeline;
 pub mod decision_intelligence;
 pub mod schedule_solution;
-pub mod public_contracts;
+
 pub mod constraint_engine;
 pub mod recommendation;
 pub mod generic_import;

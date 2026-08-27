@@ -469,8 +469,9 @@ mod tests {
                 leave_requests: None, 
                 minimum_rest_hours: Some(10), 
                 planning_horizon_hours: Some(168.0),
-            fatigue: FatigueConfig::default(),
+                max_hours_per_worker: None,
             }),
+            fatigue: crate::config::FatigueConfig::default(),
         }
     }
 
@@ -679,6 +680,7 @@ mod tests {
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),
+            fatigue: crate::config::FatigueConfig::default(),
         };
         let report = validate_request(&req);
         assert!(
