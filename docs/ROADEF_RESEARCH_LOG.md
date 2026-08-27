@@ -74,7 +74,7 @@ These four arcs are the C1-B/C1-C/C1-D/C1-E/C1-F target arcs.
 
 **Status: PENDING**
 
-**Question:** Were arcs 658/606/303/968 already overloaded in the initial constructed genomes before gen=0 crossover, or did gen=0 crossover/mutation introduce the overload from individually-feasible parents?
+**Question:** Were arcs 658/606/303/968 already overloaded in the initial constructed genomes before any evolutionary operator executed, or did the gen-0 evolutionary transition create or propagate the overload?
 
 **Method:** Instrument the initial population **before any evolutionary operator executes**. For each initial genome member, record for arcs 968/658/606/303:
 
