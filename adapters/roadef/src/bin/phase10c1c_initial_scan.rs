@@ -77,6 +77,8 @@ fn main() {
     // Default: 1 generation — enough to capture [c1c] initial scan + gen-0 [c1b] events.
     let mut generation_limit: usize = 1;
     let mut seed: u64 = 42;
+    // Optional: run only specific instances (e.g. --only setA-16,setA-19)
+    let mut only_instances: Option<Vec<String>> = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -88,6 +90,11 @@ fn main() {
             "--seed" => {
                 if let Some(v) = args.next() {
                     seed = v.parse().unwrap_or(42);
+                }
+            }
+            "--only" => {
+                if let Some(v) = args.next() {
+                    only_instances = Some(v.split(',').map(|s| s.trim().to_string()).collect());
                 }
             }
             _ => {}
@@ -114,6 +121,13 @@ fn main() {
     let mut log_sink = stdout.lock();
 
     for instance_name in INSTANCES {
+        // --only filter: skip instances not in the list.
+        if let Some(ref only) = only_instances {
+            if !only.iter().any(|o| o == instance_name) {
+                eprintln!("  skipping {} (not in --only list)", instance_name);
+                continue;
+            }
+        }
         let net_path = format!("{}/{}-net.json", INSTANCE_DIR, instance_name);
         let tm_path = format!("{}/{}-tm.json", INSTANCE_DIR, instance_name);
         let scenario_path = format!("{}/{}-scenario.json", INSTANCE_DIR, instance_name);
