@@ -1,0 +1,412 @@
+warning: unused import: `LocalSearchOperator`
+ --> coralys-moga/src/observatory.rs:2:42
+  |
+2 |     Evaluated, FitnessEvaluator, Genome, LocalSearchOperator, ObservedTransitionMetric,
+  |                                          ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:312:17
+    |
+312 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:313:17
+    |
+313 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:314:17
+    |
+314 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:488:13
+    |
+488 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `coralys-moga` (lib) generated 5 warnings (run `cargo fix --lib -p coralys-moga` to apply 1 suggestion)
+warning: unused import: `expand_sr_path`
+ --> adapters/roadef/src/constraints.rs:1:19
+  |
+1 | use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+  |                   ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `termination_reason` is never read
+    --> adapters/roadef/src/moga_impl.rs:1532:13
+     |
+1532 |     let mut termination_reason = String::new(); // set before every break in the loop below
+     |             ^^^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+    --> adapters/roadef/src/moga_impl.rs:1582:17
+     |
+1582 |         let mut t_telemetry_ms: f64 = 0.0;
+     |                 ^^^^^^^^^^^^^^
+     |
+     = note: consider using `_t_telemetry_ms` instead
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/moga_impl.rs:2272:13
+     |
+2272 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/moga_impl.rs:2655:9
+     |
+2655 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `g`
+    --> adapters/roadef/src/moga_impl.rs:2789:21
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     ^
+     |
+help: if this is intentional, prefix it with an underscore
+     |
+2789 |             let mut _g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     +
+help: you might have meant to pattern match on the similarly named constant `_`
+     |
+2789 -             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+2789 +             let mut telemetry::_ = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2809:29
+     |
+2809 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2852:29
+     |
+2852 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/moga_impl.rs:2645:5
+     |
+2645 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2789:17
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                 ----^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2792:22
+     |
+2792 |                 let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+     |                      ----^^^^^^
+     |                      |
+     |                      help: remove this `mut`
+
+warning: unused variable: `evaluation_cache`
+  --> adapters/roadef/src/pipeline_impl.rs:63:13
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_evaluation_cache`
+
+warning: value assigned to `termination_reason` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:289:13
+    |
+289 |     let mut termination_reason = String::new(); // set before every break in the loop below
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `trajectory`
+   --> adapters/roadef/src/pipeline_impl.rs:316:13
+    |
+316 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trajectory`
+
+warning: unused variable: `gen_start`
+   --> adapters/roadef/src/pipeline_impl.rs:318:13
+    |
+318 |         let gen_start = std::time::Instant::now();
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gen_start`
+
+warning: unused variable: `t_eval_ms`
+   --> adapters/roadef/src/pipeline_impl.rs:346:17
+    |
+346 |         let mut t_eval_ms: f64 = 0.0;
+    |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_ms`
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+   --> adapters/roadef/src/pipeline_impl.rs:347:17
+    |
+347 |         let mut t_telemetry_ms: f64 = 0.0;
+    |                 ^^^^^^^^^^^^^^
+    |
+    = note: consider using `_t_telemetry_ms` instead
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:674:25
+    |
+674 |                 let mut ca_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:675:25
+    |
+675 |                 let mut cb_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:680:21
+    |
+680 |                     ca_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:684:21
+    |
+684 |                     cb_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `child_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:959:25
+    |
+959 |                 let mut child_tag = "mutation";
+    |                         ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `t_eval_start`
+    --> adapters/roadef/src/pipeline_impl.rs:1078:13
+     |
+1078 |         let t_eval_start = Instant::now();
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: unused variable: `t_eval_start`
+    --> adapters/roadef/src/pipeline_impl.rs:1094:13
+     |
+1094 |         let t_eval_start = std::time::Instant::now();
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1347:13
+     |
+1347 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+  --> adapters/roadef/src/pipeline_impl.rs:63:9
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:316:9
+    |
+316 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:346:13
+    |
+346 |         let mut t_eval_ms: f64 = 0.0;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/pipeline_impl.rs:1677:9
+     |
+1677 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `t_health`
+    --> adapters/roadef/src/pipeline_impl.rs:1781:13
+     |
+1781 |     let mut t_health = Instant::now();
+     |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_health`
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1903:25
+     |
+1903 |                 let mut tag = "crossover_mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1962:25
+     |
+1962 |                 let mut tag = "mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/pipeline_impl.rs:1664:5
+     |
+1664 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1781:9
+     |
+1781 |     let mut t_health = Instant::now();
+     |         ----^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1805:13
+     |
+1805 |         let mut t_feasibility_ms: f64 = 0.0;
+     |             ----^^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1831:13
+     |
+1831 |         let mut n_cross_repair = 0;
+     |             ----^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1832:13
+     |
+1832 |         let mut n_mut_repair = 0;
+     |             ----^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1833:13
+     |
+1833 |         let mut n_cross_maj = 0;
+     |             ----^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1834:13
+     |
+1834 |         let mut n_mut_maj = 0;
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: `roadef` (lib) generated 39 warnings (run `cargo fix --lib -p roadef` to apply 13 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.87s
+     Running `target/release/phase10c1c_initial_scan --gens 1 --seed 42`
+=== P10-C1 C1-C: Initial Population Scan ===
+Governance: OBSERVATIONAL — no behavioral changes
+Generations: 1
+Seed       : 42
+Instances  : setA-13, setA-16, setA-19
+Target arcs: 968 (setA-19), 658 (setA-13), 606/303 (setA-16)
+Output     : [c1c] lines (initial scan) + [c1b] lines (gen-0 operators) on stdout
+
+Causal taxonomy:
+  overloaded + overloaded -> overloaded = inherited
+  feasible   + feasible   -> overloaded = crossover-created
+  overloaded + feasible   -> overloaded = inherited/propagated
+  any        + any        -> feasible   = no causal event
+
+=== setA-13 ===
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.166665500 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.153845000 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.081195500 | arc_overloaded: t=0 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.153845000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.132477500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.051281000 | arc_overloaded: t=0 arc=659 flow=1038.460500000 cap=1000.000000000 sat=1.038460500
+[diag] origin=repair_failed overload=major max_sat=1.205127000 | arc_overloaded: t=0 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.145298000 | arc_overloaded: t=0 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.111110000 | arc_overloaded: t=0 arc=659 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.029913500 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.051281000 | arc_overloaded: t=0 arc=659 flow=1038.460500000 cap=1000.000000000 sat=1.038460500
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1260.682500000 cap=1000.000000000 sat=1.260682500
+[diag] origin=repair_failed overload=major max_sat=1.235041500 | arc_overloaded: t=0 arc=658 flow=1200.853500000 cap=1000.000000000 sat=1.200853500
+[diag] origin=repair_failed overload=major max_sat=1.136751000 | arc_overloaded: t=0 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000
+[diag] origin=repair_failed overload=major max_sat=1.260682500 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.094016000 | arc_overloaded: t=0 arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000
+[diag] origin=repair_failed overload=major max_sat=1.115383500 | arc_overloaded: t=0 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000
+[diag] origin=repair_failed overload=major max_sat=1.175212500 | arc_overloaded: t=0 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500
+[diag] origin=repair_failed overload=major max_sat=1.170939000 | arc_overloaded: t=0 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000
+[diag] origin=repair_failed overload=major max_sat=1.217947500 | arc_overloaded: t=0 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000
+[diag] origin=repair_failed overload=major max_sat=1.089742500 | arc_overloaded: t=0 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500
+[diag] origin=repair_failed overload=major max_sat=1.123930500 | arc_overloaded: t=0 arc=658 flow=1055.554500000 cap=1000.000000000 sat=1.055554500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.188033000 | arc_overloaded: t=0 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000
+[diag] origin=repair_failed overload=major max_sat=1.209400500 | arc_overloaded: t=0 arc=658 flow=1098.289500000 cap=1000.000000000 sat=1.098289500
+[diag] origin=repair_failed overload=major max_sat=1.029913500 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.222221000 | arc_overloaded: t=0 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[diag] origin=repair_failed overload=major max_sat=1.149571500 | arc_overloaded: t=0 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500
+[diag] origin=repair_failed overload=major max_sat=1.102563000 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.102563000 | arc_overloaded: t=0 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000
+[diag] origin=repair_failed overload=major max_sat=1.106836500 | arc_overloaded: t=0 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500
+[diag] origin=repair_failed overload=major max_sat=1.017093000 | arc_overloaded: t=1 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000
+[rc002] gen=   0  initial: eps=0 min=0 maj=46 str=0  crossover: eps=0 min=0 maj=0 str=0  mutation: eps=0 min=0 maj=0 str=0  elite: eps=0 min=0 maj=0 str=0
+  done: wall_ms=815218
+=== setA-16 ===

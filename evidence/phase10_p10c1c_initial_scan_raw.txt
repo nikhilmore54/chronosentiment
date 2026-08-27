@@ -1,0 +1,643 @@
+=== setA-13 ===
+[init] rejection sampling: 494 retries, 1 successes (0% repair rate)
+[c1c] stage=initial member=0 arc=968 overloaded=false
+[c1c] stage=initial member=0 arc=658 overloaded=false
+[c1c] stage=initial member=0 arc=606 overloaded=false
+[c1c] stage=initial member=0 arc=303 overloaded=false
+[c1c] stage=initial member=1 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000 overloaded=true
+[c1c] stage=initial member=1 arc=658 flow=1059.828000000 cap=1000.000000000 sat=1.059828000 overloaded=true
+[c1c] stage=initial member=1 arc=968 overloaded=false
+[c1c] stage=initial member=1 arc=606 overloaded=false
+[c1c] stage=initial member=1 arc=303 overloaded=false
+[c1c] stage=initial member=2 arc=968 overloaded=false
+[c1c] stage=initial member=2 arc=658 overloaded=false
+[c1c] stage=initial member=2 arc=606 overloaded=false
+[c1c] stage=initial member=2 arc=303 overloaded=false
+[c1c] stage=initial member=3 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500 overloaded=true
+[c1c] stage=initial member=3 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000 overloaded=true
+[c1c] stage=initial member=3 arc=968 overloaded=false
+[c1c] stage=initial member=3 arc=606 overloaded=false
+[c1c] stage=initial member=3 arc=303 overloaded=false
+[c1c] stage=initial member=4 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000 overloaded=true
+[c1c] stage=initial member=4 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=4 arc=968 overloaded=false
+[c1c] stage=initial member=4 arc=606 overloaded=false
+[c1c] stage=initial member=4 arc=303 overloaded=false
+[c1c] stage=initial member=5 arc=658 flow=999.999000000 cap=1000.000000000 sat=0.999999000 overloaded=true
+[c1c] stage=initial member=5 arc=658 flow=1115.383500000 cap=1000.000000000 sat=1.115383500 overloaded=true
+[c1c] stage=initial member=5 arc=968 overloaded=false
+[c1c] stage=initial member=5 arc=606 overloaded=false
+[c1c] stage=initial member=5 arc=303 overloaded=false
+[c1c] stage=initial member=6 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 overloaded=true
+[c1c] stage=initial member=6 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000 overloaded=true
+[c1c] stage=initial member=6 arc=968 overloaded=false
+[c1c] stage=initial member=6 arc=606 overloaded=false
+[c1c] stage=initial member=6 arc=303 overloaded=false
+[c1c] stage=initial member=7 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500 overloaded=true
+[c1c] stage=initial member=7 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 overloaded=true
+[c1c] stage=initial member=7 arc=968 overloaded=false
+[c1c] stage=initial member=7 arc=606 overloaded=false
+[c1c] stage=initial member=7 arc=303 overloaded=false
+[c1c] stage=initial member=8 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 overloaded=true
+[c1c] stage=initial member=8 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=8 arc=968 overloaded=false
+[c1c] stage=initial member=8 arc=606 overloaded=false
+[c1c] stage=initial member=8 arc=303 overloaded=false
+[c1c] stage=initial member=9 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000 overloaded=true
+[c1c] stage=initial member=9 arc=658 flow=1260.682500000 cap=1000.000000000 sat=1.260682500 overloaded=true
+[c1c] stage=initial member=9 arc=968 overloaded=false
+[c1c] stage=initial member=9 arc=606 overloaded=false
+[c1c] stage=initial member=9 arc=303 overloaded=false
+[c1c] stage=initial member=10 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000 overloaded=true
+[c1c] stage=initial member=10 arc=658 flow=1106.836500000 cap=1000.000000000 sat=1.106836500 overloaded=true
+[c1c] stage=initial member=10 arc=968 overloaded=false
+[c1c] stage=initial member=10 arc=606 overloaded=false
+[c1c] stage=initial member=10 arc=303 overloaded=false
+[c1c] stage=initial member=11 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000 overloaded=true
+[c1c] stage=initial member=11 arc=658 flow=1102.563000000 cap=1000.000000000 sat=1.102563000 overloaded=true
+[c1c] stage=initial member=11 arc=968 overloaded=false
+[c1c] stage=initial member=11 arc=606 overloaded=false
+[c1c] stage=initial member=11 arc=303 overloaded=false
+[c1c] stage=initial member=12 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 overloaded=true
+[c1c] stage=initial member=12 arc=658 flow=1166.665500000 cap=1000.000000000 sat=1.166665500 overloaded=true
+[c1c] stage=initial member=12 arc=968 overloaded=false
+[c1c] stage=initial member=12 arc=606 overloaded=false
+[c1c] stage=initial member=12 arc=303 overloaded=false
+[c1c] stage=initial member=13 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 overloaded=true
+[c1c] stage=initial member=13 arc=658 flow=1102.563000000 cap=1000.000000000 sat=1.102563000 overloaded=true
+[c1c] stage=initial member=13 arc=968 overloaded=false
+[c1c] stage=initial member=13 arc=606 overloaded=false
+[c1c] stage=initial member=13 arc=303 overloaded=false
+[c1c] stage=initial member=14 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=14 arc=658 flow=1141.024500000 cap=1000.000000000 sat=1.141024500 overloaded=true
+[c1c] stage=initial member=14 arc=968 overloaded=false
+[c1c] stage=initial member=14 arc=606 overloaded=false
+[c1c] stage=initial member=14 arc=303 overloaded=false
+[c1c] stage=initial member=15 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000 overloaded=true
+[c1c] stage=initial member=15 arc=658 flow=1055.554500000 cap=1000.000000000 sat=1.055554500 overloaded=true
+[c1c] stage=initial member=15 arc=968 overloaded=false
+[c1c] stage=initial member=15 arc=606 overloaded=false
+[c1c] stage=initial member=15 arc=303 overloaded=false
+[c1c] stage=initial member=16 arc=658 flow=1200.853500000 cap=1000.000000000 sat=1.200853500 overloaded=true
+[c1c] stage=initial member=16 arc=658 flow=1235.041500000 cap=1000.000000000 sat=1.235041500 overloaded=true
+[c1c] stage=initial member=16 arc=968 overloaded=false
+[c1c] stage=initial member=16 arc=606 overloaded=false
+[c1c] stage=initial member=16 arc=303 overloaded=false
+[c1c] stage=initial member=17 arc=658 flow=1200.853500000 cap=1000.000000000 sat=1.200853500 overloaded=true
+[c1c] stage=initial member=17 arc=658 flow=1098.289500000 cap=1000.000000000 sat=1.098289500 overloaded=true
+[c1c] stage=initial member=17 arc=968 overloaded=false
+[c1c] stage=initial member=17 arc=606 overloaded=false
+[c1c] stage=initial member=17 arc=303 overloaded=false
+[c1c] stage=initial member=18 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500 overloaded=true
+[c1c] stage=initial member=18 arc=658 flow=1012.819500000 cap=1000.000000000 sat=1.012819500 overloaded=true
+[c1c] stage=initial member=18 arc=968 overloaded=false
+[c1c] stage=initial member=18 arc=606 overloaded=false
+[c1c] stage=initial member=18 arc=303 overloaded=false
+[c1c] stage=initial member=19 arc=658 flow=1008.546000000 cap=1000.000000000 sat=1.008546000 overloaded=true
+[c1c] stage=initial member=19 arc=968 overloaded=false
+[c1c] stage=initial member=19 arc=606 overloaded=false
+[c1c] stage=initial member=19 arc=303 overloaded=false
+[c1c] stage=initial member=20 arc=658 flow=1055.554500000 cap=1000.000000000 sat=1.055554500 overloaded=true
+[c1c] stage=initial member=20 arc=658 flow=1094.016000000 cap=1000.000000000 sat=1.094016000 overloaded=true
+[c1c] stage=initial member=20 arc=968 overloaded=false
+[c1c] stage=initial member=20 arc=606 overloaded=false
+[c1c] stage=initial member=20 arc=303 overloaded=false
+[c1c] stage=initial member=21 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500 overloaded=true
+[c1c] stage=initial member=21 arc=658 flow=1021.366500000 cap=1000.000000000 sat=1.021366500 overloaded=true
+[c1c] stage=initial member=21 arc=968 overloaded=false
+[c1c] stage=initial member=21 arc=606 overloaded=false
+[c1c] stage=initial member=21 arc=303 overloaded=false
+[c1c] stage=initial member=22 arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 overloaded=true
+[c1c] stage=initial member=22 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500 overloaded=true
+[c1c] stage=initial member=22 arc=968 overloaded=false
+[c1c] stage=initial member=22 arc=606 overloaded=false
+[c1c] stage=initial member=22 arc=303 overloaded=false
+[c1c] stage=initial member=23 arc=658 flow=1128.204000000 cap=1000.000000000 sat=1.128204000 overloaded=true
+[c1c] stage=initial member=23 arc=658 flow=1042.734000000 cap=1000.000000000 sat=1.042734000 overloaded=true
+[c1c] stage=initial member=23 arc=968 overloaded=false
+[c1c] stage=initial member=23 arc=606 overloaded=false
+[c1c] stage=initial member=23 arc=303 overloaded=false
+[c1c] stage=initial member=24 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 overloaded=true
+[c1c] stage=initial member=24 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 overloaded=true
+[c1c] stage=initial member=24 arc=968 overloaded=false
+[c1c] stage=initial member=24 arc=606 overloaded=false
+[c1c] stage=initial member=24 arc=303 overloaded=false
+[c1c] stage=initial member=25 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500 overloaded=true
+[c1c] stage=initial member=25 arc=658 flow=1162.392000000 cap=1000.000000000 sat=1.162392000 overloaded=true
+[c1c] stage=initial member=25 arc=968 overloaded=false
+[c1c] stage=initial member=25 arc=606 overloaded=false
+[c1c] stage=initial member=25 arc=303 overloaded=false
+[c1c] stage=initial member=26 arc=658 flow=1260.682500000 cap=1000.000000000 sat=1.260682500 overloaded=true
+[c1c] stage=initial member=26 arc=658 flow=1034.187000000 cap=1000.000000000 sat=1.034187000 overloaded=true
+[c1c] stage=initial member=26 arc=968 overloaded=false
+[c1c] stage=initial member=26 arc=606 overloaded=false
+[c1c] stage=initial member=26 arc=303 overloaded=false
+[c1c] stage=initial member=27 arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000 overloaded=true
+[c1c] stage=initial member=27 arc=658 flow=1123.930500000 cap=1000.000000000 sat=1.123930500 overloaded=true
+[c1c] stage=initial member=27 arc=968 overloaded=false
+[c1c] stage=initial member=27 arc=606 overloaded=false
+[c1c] stage=initial member=27 arc=303 overloaded=false
+[c1c] stage=initial member=28 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 overloaded=true
+[c1c] stage=initial member=28 arc=968 overloaded=false
+[c1c] stage=initial member=28 arc=606 overloaded=false
+[c1c] stage=initial member=28 arc=303 overloaded=false
+[c1c] stage=initial member=29 arc=968 overloaded=false
+[c1c] stage=initial member=29 arc=658 overloaded=false
+[c1c] stage=initial member=29 arc=606 overloaded=false
+[c1c] stage=initial member=29 arc=303 overloaded=false
+[c1c] stage=initial member=30 arc=658 flow=1196.580000000 cap=1000.000000000 sat=1.196580000 overloaded=true
+[c1c] stage=initial member=30 arc=658 flow=1141.024500000 cap=1000.000000000 sat=1.141024500 overloaded=true
+[c1c] stage=initial member=30 arc=968 overloaded=false
+[c1c] stage=initial member=30 arc=606 overloaded=false
+[c1c] stage=initial member=30 arc=303 overloaded=false
+[c1c] stage=initial member=31 arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 overloaded=true
+[c1c] stage=initial member=31 arc=658 flow=1170.939000000 cap=1000.000000000 sat=1.170939000 overloaded=true
+[c1c] stage=initial member=31 arc=968 overloaded=false
+[c1c] stage=initial member=31 arc=606 overloaded=false
+[c1c] stage=initial member=31 arc=303 overloaded=false
+[c1c] stage=initial member=32 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000 overloaded=true
+[c1c] stage=initial member=32 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=32 arc=968 overloaded=false
+[c1c] stage=initial member=32 arc=606 overloaded=false
+[c1c] stage=initial member=32 arc=303 overloaded=false
+[c1c] stage=initial member=33 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=33 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 overloaded=true
+[c1c] stage=initial member=33 arc=968 overloaded=false
+[c1c] stage=initial member=33 arc=606 overloaded=false
+[c1c] stage=initial member=33 arc=303 overloaded=false
+[c1c] stage=initial member=34 arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000 overloaded=true
+[c1c] stage=initial member=34 arc=658 flow=1128.204000000 cap=1000.000000000 sat=1.128204000 overloaded=true
+[c1c] stage=initial member=34 arc=968 overloaded=false
+[c1c] stage=initial member=34 arc=606 overloaded=false
+[c1c] stage=initial member=34 arc=303 overloaded=false
+[c1c] stage=initial member=35 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000 overloaded=true
+[c1c] stage=initial member=35 arc=658 flow=1205.127000000 cap=1000.000000000 sat=1.205127000 overloaded=true
+[c1c] stage=initial member=35 arc=968 overloaded=false
+[c1c] stage=initial member=35 arc=606 overloaded=false
+[c1c] stage=initial member=35 arc=303 overloaded=false
+[c1c] stage=initial member=36 arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 overloaded=true
+[c1c] stage=initial member=36 arc=658 flow=1008.546000000 cap=1000.000000000 sat=1.008546000 overloaded=true
+[c1c] stage=initial member=36 arc=968 overloaded=false
+[c1c] stage=initial member=36 arc=606 overloaded=false
+[c1c] stage=initial member=36 arc=303 overloaded=false
+[c1c] stage=initial member=37 arc=658 flow=1175.212500000 cap=1000.000000000 sat=1.175212500 overloaded=true
+[c1c] stage=initial member=37 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 overloaded=true
+[c1c] stage=initial member=37 arc=968 overloaded=false
+[c1c] stage=initial member=37 arc=606 overloaded=false
+[c1c] stage=initial member=37 arc=303 overloaded=false
+[c1c] stage=initial member=38 arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 overloaded=true
+[c1c] stage=initial member=38 arc=658 flow=1149.571500000 cap=1000.000000000 sat=1.149571500 overloaded=true
+[c1c] stage=initial member=38 arc=968 overloaded=false
+[c1c] stage=initial member=38 arc=606 overloaded=false
+[c1c] stage=initial member=38 arc=303 overloaded=false
+[c1c] stage=initial member=39 arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500 overloaded=true
+[c1c] stage=initial member=39 arc=658 flow=1102.563000000 cap=1000.000000000 sat=1.102563000 overloaded=true
+[c1c] stage=initial member=39 arc=968 overloaded=false
+[c1c] stage=initial member=39 arc=606 overloaded=false
+[c1c] stage=initial member=39 arc=303 overloaded=false
+[c1c] stage=initial member=40 arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000 overloaded=true
+[c1c] stage=initial member=40 arc=658 flow=1004.272500000 cap=1000.000000000 sat=1.004272500 overloaded=true
+[c1c] stage=initial member=40 arc=968 overloaded=false
+[c1c] stage=initial member=40 arc=606 overloaded=false
+[c1c] stage=initial member=40 arc=303 overloaded=false
+[c1c] stage=initial member=41 arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 overloaded=true
+[c1c] stage=initial member=41 arc=968 overloaded=false
+[c1c] stage=initial member=41 arc=606 overloaded=false
+[c1c] stage=initial member=41 arc=303 overloaded=false
+[c1c] stage=initial member=42 arc=658 flow=1098.289500000 cap=1000.000000000 sat=1.098289500 overloaded=true
+[c1c] stage=initial member=42 arc=968 overloaded=false
+[c1c] stage=initial member=42 arc=606 overloaded=false
+[c1c] stage=initial member=42 arc=303 overloaded=false
+[c1c] stage=initial member=43 arc=658 flow=1222.221000000 cap=1000.000000000 sat=1.222221000 overloaded=true
+[c1c] stage=initial member=43 arc=658 flow=1188.033000000 cap=1000.000000000 sat=1.188033000 overloaded=true
+[c1c] stage=initial member=43 arc=968 overloaded=false
+[c1c] stage=initial member=43 arc=606 overloaded=false
+[c1c] stage=initial member=43 arc=303 overloaded=false
+[c1c] stage=initial member=44 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=44 arc=658 flow=1076.922000000 cap=1000.000000000 sat=1.076922000 overloaded=true
+[c1c] stage=initial member=44 arc=968 overloaded=false
+[c1c] stage=initial member=44 arc=606 overloaded=false
+[c1c] stage=initial member=44 arc=303 overloaded=false
+[c1c] stage=initial member=45 arc=658 flow=1094.016000000 cap=1000.000000000 sat=1.094016000 overloaded=true
+[c1c] stage=initial member=45 arc=658 flow=1094.016000000 cap=1000.000000000 sat=1.094016000 overloaded=true
+[c1c] stage=initial member=45 arc=968 overloaded=false
+[c1c] stage=initial member=45 arc=606 overloaded=false
+[c1c] stage=initial member=45 arc=303 overloaded=false
+[c1c] stage=initial member=46 arc=658 flow=1141.024500000 cap=1000.000000000 sat=1.141024500 overloaded=true
+[c1c] stage=initial member=46 arc=658 flow=1085.469000000 cap=1000.000000000 sat=1.085469000 overloaded=true
+[c1c] stage=initial member=46 arc=968 overloaded=false
+[c1c] stage=initial member=46 arc=606 overloaded=false
+[c1c] stage=initial member=46 arc=303 overloaded=false
+[c1c] stage=initial member=47 arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000 overloaded=true
+[c1c] stage=initial member=47 arc=658 flow=1119.657000000 cap=1000.000000000 sat=1.119657000 overloaded=true
+[c1c] stage=initial member=47 arc=968 overloaded=false
+[c1c] stage=initial member=47 arc=606 overloaded=false
+[c1c] stage=initial member=47 arc=303 overloaded=false
+[c1c] stage=initial member=48 arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 overloaded=true
+[c1c] stage=initial member=48 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500 overloaded=true
+[c1c] stage=initial member=48 arc=968 overloaded=false
+[c1c] stage=initial member=48 arc=606 overloaded=false
+[c1c] stage=initial member=48 arc=303 overloaded=false
+[c1c] stage=initial member=49 arc=658 flow=1081.195500000 cap=1000.000000000 sat=1.081195500 overloaded=true
+[c1c] stage=initial member=49 arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 overloaded=true
+[c1c] stage=initial member=49 arc=968 overloaded=false
+[c1c] stage=initial member=49 arc=606 overloaded=false
+[c1c] stage=initial member=49 arc=303 overloaded=false
+=========================================
+ROADEF Campaign — Research Harness
+Instance      : setA-13
+Population    : 50
+Elite         : 5
+Generations   : 1
+NoImprove     : 2
+Mutation rate : 0.3
+Crossover rate: 0.7
+Crossover     : Uniform (per-demand)
+Seed          : 42
+Started       : 2026-08-27T03:30:33.108015+00:00
+=========================================
+
+[IMPROVE] Gen    0  obj: inf → 987099.7628  mlu: 0.9722  valid: true
+Gen    0/1 | best_obj=987099.7628 mlu=0.9722 | valid=1/50 | stagnation=0 | 656.7s
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1209.400500000 cap=1000.000000000 sat=1.209400500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1162.392000000 cap=1000.000000000 sat=1.162392000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1068.375000000 cap=1000.000000000 sat=1.068375000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1012.819500000 cap=1000.000000000 sat=1.012819500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1213.674000000 cap=1000.000000000 sat=1.213674000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1243.588500000 cap=1000.000000000 sat=1.243588500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1123.930500000 cap=1000.000000000 sat=1.123930500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1047.007500000 cap=1000.000000000 sat=1.047007500 viol_count=2
+[c1b] gen=0 origin=mutation arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 viol_count=4
+[c1b] gen=0 origin=mutation arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1038.460500000 cap=1000.000000000 sat=1.038460500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1179.486000000 cap=1000.000000000 sat=1.179486000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1038.460500000 cap=1000.000000000 sat=1.038460500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1064.101500000 cap=1000.000000000 sat=1.064101500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1162.392000000 cap=1000.000000000 sat=1.162392000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1051.281000000 cap=1000.000000000 sat=1.051281000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1119.657000000 cap=1000.000000000 sat=1.119657000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1217.947500000 cap=1000.000000000 sat=1.217947500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1209.400500000 cap=1000.000000000 sat=1.209400500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1012.819500000 cap=1000.000000000 sat=1.012819500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1243.588500000 cap=1000.000000000 sat=1.243588500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1166.665500000 cap=1000.000000000 sat=1.166665500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1064.101500000 cap=1000.000000000 sat=1.064101500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1205.127000000 cap=1000.000000000 sat=1.205127000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1008.546000000 cap=1000.000000000 sat=1.008546000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1226.494500000 cap=1000.000000000 sat=1.226494500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1158.118500000 cap=1000.000000000 sat=1.158118500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1235.041500000 cap=1000.000000000 sat=1.235041500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1111.110000000 cap=1000.000000000 sat=1.111110000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1068.375000000 cap=1000.000000000 sat=1.068375000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1034.187000000 cap=1000.000000000 sat=1.034187000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1012.819500000 cap=1000.000000000 sat=1.012819500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1059.828000000 cap=1000.000000000 sat=1.059828000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1196.580000000 cap=1000.000000000 sat=1.196580000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1188.033000000 cap=1000.000000000 sat=1.188033000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1106.836500000 cap=1000.000000000 sat=1.106836500 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1162.392000000 cap=1000.000000000 sat=1.162392000 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1264.956000000 cap=1000.000000000 sat=1.264956000 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1307.691000000 cap=1000.000000000 sat=1.307691000 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1004.272500000 cap=1000.000000000 sat=1.004272500 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1128.204000000 cap=1000.000000000 sat=1.128204000 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1106.836500000 cap=1000.000000000 sat=1.106836500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1115.383500000 cap=1000.000000000 sat=1.115383500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1149.571500000 cap=1000.000000000 sat=1.149571500 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1136.751000000 cap=1000.000000000 sat=1.136751000 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1145.298000000 cap=1000.000000000 sat=1.145298000 viol_count=4
+[c1b] gen=0 origin=mutation arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 viol_count=2
+[c1b] gen=0 origin=mutation arc=658 flow=1170.939000000 cap=1000.000000000 sat=1.170939000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1188.033000000 cap=1000.000000000 sat=1.188033000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1149.571500000 cap=1000.000000000 sat=1.149571500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1038.460500000 cap=1000.000000000 sat=1.038460500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1012.819500000 cap=1000.000000000 sat=1.012819500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1021.366500000 cap=1000.000000000 sat=1.021366500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1119.657000000 cap=1000.000000000 sat=1.119657000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1179.486000000 cap=1000.000000000 sat=1.179486000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1119.657000000 cap=1000.000000000 sat=1.119657000 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1132.477500000 cap=1000.000000000 sat=1.132477500 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1029.913500000 cap=1000.000000000 sat=1.029913500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1141.024500000 cap=1000.000000000 sat=1.141024500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1119.657000000 cap=1000.000000000 sat=1.119657000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1179.486000000 cap=1000.000000000 sat=1.179486000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1166.665500000 cap=1000.000000000 sat=1.166665500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1034.187000000 cap=1000.000000000 sat=1.034187000 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1038.460500000 cap=1000.000000000 sat=1.038460500 viol_count=3
+[c1b] gen=0 origin=mutation arc=658 flow=1017.093000000 cap=1000.000000000 sat=1.017093000 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1192.306500000 cap=1000.000000000 sat=1.192306500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 viol_count=3
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1059.828000000 cap=1000.000000000 sat=1.059828000 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1072.648500000 cap=1000.000000000 sat=1.072648500 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1153.845000000 cap=1000.000000000 sat=1.153845000 viol_count=2
+[c1b] gen=0 origin=crossover_cb arc=658 flow=1089.742500000 cap=1000.000000000 sat=1.089742500 viol_count=2
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1209.400500000 cap=1000.000000000 sat=1.209400500 viol_count=3
+[c1b] gen=0 origin=crossover_ca arc=658 flow=1252.135500000 cap=1000.000000000 sat=1.252135500 viol_count=3
+
+[TERMINATION]
+  Reason       : GenerationLimit(1)
+  Generations  : 1
+  Best obj     : 987099.7628
+  Best MLU     : 0.9722
+  Valid        : true
+  Best at gen  : 0
+  Runtime      : 815216ms
+
+=========================================
+Finished      : 2026-08-27T03:33:11.657466+00:00
+Runtime       : 815216ms
+Termination   : GenerationLimit(1)
+Best Objective: 987099.7628
+Best MLU      : 0.9722
+Valid         : true
+=========================================
+=== setA-16 ===
+[init] rejection sampling: 500 retries, 0 successes (0% repair rate)
+[c1c] stage=initial member=0 arc=968 overloaded=false
+[c1c] stage=initial member=0 arc=658 overloaded=false
+[c1c] stage=initial member=0 arc=606 overloaded=false
+[c1c] stage=initial member=0 arc=303 overloaded=false
+[c1c] stage=initial member=1 arc=968 overloaded=false
+[c1c] stage=initial member=1 arc=658 overloaded=false
+[c1c] stage=initial member=1 arc=606 overloaded=false
+[c1c] stage=initial member=1 arc=303 overloaded=false
+[c1c] stage=initial member=2 arc=968 overloaded=false
+[c1c] stage=initial member=2 arc=658 overloaded=false
+[c1c] stage=initial member=2 arc=606 overloaded=false
+[c1c] stage=initial member=2 arc=303 overloaded=false
+[c1c] stage=initial member=3 arc=968 overloaded=false
+[c1c] stage=initial member=3 arc=658 overloaded=false
+[c1c] stage=initial member=3 arc=606 overloaded=false
+[c1c] stage=initial member=3 arc=303 overloaded=false
+[c1c] stage=initial member=4 arc=968 overloaded=false
+[c1c] stage=initial member=4 arc=658 overloaded=false
+[c1c] stage=initial member=4 arc=606 overloaded=false
+[c1c] stage=initial member=4 arc=303 overloaded=false
+[c1c] stage=initial member=5 arc=968 overloaded=false
+[c1c] stage=initial member=5 arc=658 overloaded=false
+[c1c] stage=initial member=5 arc=606 overloaded=false
+[c1c] stage=initial member=5 arc=303 overloaded=false
+[c1c] stage=initial member=6 arc=968 overloaded=false
+[c1c] stage=initial member=6 arc=658 overloaded=false
+[c1c] stage=initial member=6 arc=606 overloaded=false
+[c1c] stage=initial member=6 arc=303 overloaded=false
+[c1c] stage=initial member=7 arc=968 overloaded=false
+[c1c] stage=initial member=7 arc=658 overloaded=false
+[c1c] stage=initial member=7 arc=606 overloaded=false
+[c1c] stage=initial member=7 arc=303 overloaded=false
+[c1c] stage=initial member=8 arc=968 overloaded=false
+[c1c] stage=initial member=8 arc=658 overloaded=false
+[c1c] stage=initial member=8 arc=606 overloaded=false
+[c1c] stage=initial member=8 arc=303 overloaded=false
+[c1c] stage=initial member=9 arc=968 overloaded=false
+[c1c] stage=initial member=9 arc=658 overloaded=false
+[c1c] stage=initial member=9 arc=606 overloaded=false
+[c1c] stage=initial member=9 arc=303 overloaded=false
+[c1c] stage=initial member=10 arc=968 overloaded=false
+[c1c] stage=initial member=10 arc=658 overloaded=false
+[c1c] stage=initial member=10 arc=606 overloaded=false
+[c1c] stage=initial member=10 arc=303 overloaded=false
+[c1c] stage=initial member=11 arc=968 overloaded=false
+[c1c] stage=initial member=11 arc=658 overloaded=false
+[c1c] stage=initial member=11 arc=606 overloaded=false
+[c1c] stage=initial member=11 arc=303 overloaded=false
+[c1c] stage=initial member=12 arc=968 overloaded=false
+[c1c] stage=initial member=12 arc=658 overloaded=false
+[c1c] stage=initial member=12 arc=606 overloaded=false
+[c1c] stage=initial member=12 arc=303 overloaded=false
+[c1c] stage=initial member=13 arc=968 overloaded=false
+[c1c] stage=initial member=13 arc=658 overloaded=false
+[c1c] stage=initial member=13 arc=606 overloaded=false
+[c1c] stage=initial member=13 arc=303 overloaded=false
+[c1c] stage=initial member=14 arc=968 overloaded=false
+[c1c] stage=initial member=14 arc=658 overloaded=false
+[c1c] stage=initial member=14 arc=606 overloaded=false
+[c1c] stage=initial member=14 arc=303 overloaded=false
+[c1c] stage=initial member=15 arc=968 overloaded=false
+[c1c] stage=initial member=15 arc=658 overloaded=false
+[c1c] stage=initial member=15 arc=606 overloaded=false
+[c1c] stage=initial member=15 arc=303 overloaded=false
+[c1c] stage=initial member=16 arc=968 overloaded=false
+[c1c] stage=initial member=16 arc=658 overloaded=false
+[c1c] stage=initial member=16 arc=606 overloaded=false
+[c1c] stage=initial member=16 arc=303 overloaded=false
+[c1c] stage=initial member=17 arc=968 overloaded=false
+[c1c] stage=initial member=17 arc=658 overloaded=false
+[c1c] stage=initial member=17 arc=606 overloaded=false
+[c1c] stage=initial member=17 arc=303 overloaded=false
+[c1c] stage=initial member=18 arc=968 overloaded=false
+[c1c] stage=initial member=18 arc=658 overloaded=false
+[c1c] stage=initial member=18 arc=606 overloaded=false
+[c1c] stage=initial member=18 arc=303 overloaded=false
+[c1c] stage=initial member=19 arc=968 overloaded=false
+[c1c] stage=initial member=19 arc=658 overloaded=false
+[c1c] stage=initial member=19 arc=606 overloaded=false
+[c1c] stage=initial member=19 arc=303 overloaded=false
+[c1c] stage=initial member=20 arc=968 overloaded=false
+[c1c] stage=initial member=20 arc=658 overloaded=false
+[c1c] stage=initial member=20 arc=606 overloaded=false
+[c1c] stage=initial member=20 arc=303 overloaded=false
+[c1c] stage=initial member=21 arc=968 overloaded=false
+[c1c] stage=initial member=21 arc=658 overloaded=false
+[c1c] stage=initial member=21 arc=606 overloaded=false
+[c1c] stage=initial member=21 arc=303 overloaded=false
+[c1c] stage=initial member=22 arc=968 overloaded=false
+[c1c] stage=initial member=22 arc=658 overloaded=false
+[c1c] stage=initial member=22 arc=606 overloaded=false
+[c1c] stage=initial member=22 arc=303 overloaded=false
+[c1c] stage=initial member=23 arc=968 overloaded=false
+[c1c] stage=initial member=23 arc=658 overloaded=false
+[c1c] stage=initial member=23 arc=606 overloaded=false
+[c1c] stage=initial member=23 arc=303 overloaded=false
+[c1c] stage=initial member=24 arc=968 overloaded=false
+[c1c] stage=initial member=24 arc=658 overloaded=false
+[c1c] stage=initial member=24 arc=606 overloaded=false
+[c1c] stage=initial member=24 arc=303 overloaded=false
+[c1c] stage=initial member=25 arc=968 overloaded=false
+[c1c] stage=initial member=25 arc=658 overloaded=false
+[c1c] stage=initial member=25 arc=606 overloaded=false
+[c1c] stage=initial member=25 arc=303 overloaded=false
+[c1c] stage=initial member=26 arc=968 overloaded=false
+[c1c] stage=initial member=26 arc=658 overloaded=false
+[c1c] stage=initial member=26 arc=606 overloaded=false
+[c1c] stage=initial member=26 arc=303 overloaded=false
+[c1c] stage=initial member=27 arc=968 overloaded=false
+[c1c] stage=initial member=27 arc=658 overloaded=false
+[c1c] stage=initial member=27 arc=606 overloaded=false
+[c1c] stage=initial member=27 arc=303 overloaded=false
+[c1c] stage=initial member=28 arc=968 overloaded=false
+[c1c] stage=initial member=28 arc=658 overloaded=false
+[c1c] stage=initial member=28 arc=606 overloaded=false
+[c1c] stage=initial member=28 arc=303 overloaded=false
+[c1c] stage=initial member=29 arc=968 overloaded=false
+[c1c] stage=initial member=29 arc=658 overloaded=false
+[c1c] stage=initial member=29 arc=606 overloaded=false
+[c1c] stage=initial member=29 arc=303 overloaded=false
+[c1c] stage=initial member=30 arc=968 overloaded=false
+[c1c] stage=initial member=30 arc=658 overloaded=false
+[c1c] stage=initial member=30 arc=606 overloaded=false
+[c1c] stage=initial member=30 arc=303 overloaded=false
+[c1c] stage=initial member=31 arc=968 overloaded=false
+[c1c] stage=initial member=31 arc=658 overloaded=false
+[c1c] stage=initial member=31 arc=606 overloaded=false
+[c1c] stage=initial member=31 arc=303 overloaded=false
+[c1c] stage=initial member=32 arc=968 overloaded=false
+[c1c] stage=initial member=32 arc=658 overloaded=false
+[c1c] stage=initial member=32 arc=606 overloaded=false
+[c1c] stage=initial member=32 arc=303 overloaded=false
+[c1c] stage=initial member=33 arc=968 overloaded=false
+[c1c] stage=initial member=33 arc=658 overloaded=false
+[c1c] stage=initial member=33 arc=606 overloaded=false
+[c1c] stage=initial member=33 arc=303 overloaded=false
+[c1c] stage=initial member=34 arc=968 overloaded=false
+[c1c] stage=initial member=34 arc=658 overloaded=false
+[c1c] stage=initial member=34 arc=606 overloaded=false
+[c1c] stage=initial member=34 arc=303 overloaded=false
+[c1c] stage=initial member=35 arc=968 overloaded=false
+[c1c] stage=initial member=35 arc=658 overloaded=false
+[c1c] stage=initial member=35 arc=606 overloaded=false
+[c1c] stage=initial member=35 arc=303 overloaded=false
+[c1c] stage=initial member=36 arc=968 overloaded=false
+[c1c] stage=initial member=36 arc=658 overloaded=false
+[c1c] stage=initial member=36 arc=606 overloaded=false
+[c1c] stage=initial member=36 arc=303 overloaded=false
+[c1c] stage=initial member=37 arc=968 overloaded=false
+[c1c] stage=initial member=37 arc=658 overloaded=false
+[c1c] stage=initial member=37 arc=606 overloaded=false
+[c1c] stage=initial member=37 arc=303 overloaded=false
+[c1c] stage=initial member=38 arc=968 overloaded=false
+[c1c] stage=initial member=38 arc=658 overloaded=false
+[c1c] stage=initial member=38 arc=606 overloaded=false
+[c1c] stage=initial member=38 arc=303 overloaded=false
+[c1c] stage=initial member=39 arc=968 overloaded=false
+[c1c] stage=initial member=39 arc=658 overloaded=false
+[c1c] stage=initial member=39 arc=606 overloaded=false
+[c1c] stage=initial member=39 arc=303 overloaded=false
+[c1c] stage=initial member=40 arc=968 overloaded=false
+[c1c] stage=initial member=40 arc=658 overloaded=false
+[c1c] stage=initial member=40 arc=606 overloaded=false
+[c1c] stage=initial member=40 arc=303 overloaded=false
+[c1c] stage=initial member=41 arc=968 overloaded=false
+[c1c] stage=initial member=41 arc=658 overloaded=false
+[c1c] stage=initial member=41 arc=606 overloaded=false
+[c1c] stage=initial member=41 arc=303 overloaded=false
+[c1c] stage=initial member=42 arc=968 overloaded=false
+[c1c] stage=initial member=42 arc=658 overloaded=false
+[c1c] stage=initial member=42 arc=606 overloaded=false
+[c1c] stage=initial member=42 arc=303 overloaded=false
+[c1c] stage=initial member=43 arc=968 overloaded=false
+[c1c] stage=initial member=43 arc=658 overloaded=false
+[c1c] stage=initial member=43 arc=606 overloaded=false
+[c1c] stage=initial member=43 arc=303 overloaded=false
+[c1c] stage=initial member=44 arc=968 overloaded=false
+[c1c] stage=initial member=44 arc=658 overloaded=false
+[c1c] stage=initial member=44 arc=606 overloaded=false
+[c1c] stage=initial member=44 arc=303 overloaded=false
+[c1c] stage=initial member=45 arc=968 overloaded=false
+[c1c] stage=initial member=45 arc=658 overloaded=false
+[c1c] stage=initial member=45 arc=606 overloaded=false
+[c1c] stage=initial member=45 arc=303 overloaded=false
+[c1c] stage=initial member=46 arc=968 overloaded=false
+[c1c] stage=initial member=46 arc=658 overloaded=false
+[c1c] stage=initial member=46 arc=606 overloaded=false
+[c1c] stage=initial member=46 arc=303 overloaded=false
+[c1c] stage=initial member=47 arc=968 overloaded=false
+[c1c] stage=initial member=47 arc=658 overloaded=false
+[c1c] stage=initial member=47 arc=606 overloaded=false
+[c1c] stage=initial member=47 arc=303 overloaded=false
+[c1c] stage=initial member=48 arc=968 overloaded=false
+[c1c] stage=initial member=48 arc=658 overloaded=false
+[c1c] stage=initial member=48 arc=606 overloaded=false
+[c1c] stage=initial member=48 arc=303 overloaded=false
+[c1c] stage=initial member=49 arc=968 overloaded=false
+[c1c] stage=initial member=49 arc=658 overloaded=false
+[c1c] stage=initial member=49 arc=606 overloaded=false
+[c1c] stage=initial member=49 arc=303 overloaded=false
+=========================================
+ROADEF Campaign — Research Harness
+Instance      : setA-16
+Population    : 50
+Elite         : 5
+Generations   : 1
+NoImprove     : 2
+Mutation rate : 0.3
+Crossover rate: 0.7
+Crossover     : Uniform (per-demand)
+Seed          : 42
+Started       : 2026-08-27T04:05:50.258809+00:00
+=========================================
+
+[IMPROVE] Gen    0  obj: inf → inf  mlu: inf  valid: false
+Gen    0/1 | best_obj=inf mlu=inf | valid=0/50 | stagnation=0 | 1958.6s
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1135.245500000 cap=1000.000000000 sat=1.135245500 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1254.098000000 cap=1000.000000000 sat=1.254098000 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1102.458600000 cap=1000.000000000 sat=1.102458600 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1151.638600000 cap=1000.000000000 sat=1.151638600 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1327.868500000 cap=1000.000000000 sat=1.327868500 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=303 flow=999.999800000 cap=1000.000000000 sat=0.999999800 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1303.278400000 cap=1000.000000000 sat=1.303278400 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1286.884800000 cap=1000.000000000 sat=1.286884800 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1389.344200000 cap=1000.000000000 sat=1.389344200 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1143.442900000 cap=1000.000000000 sat=1.143442900 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1209.016100000 cap=1000.000000000 sat=1.209016100 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1004.098300000 cap=1000.000000000 sat=1.004098300 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1114.753800000 cap=1000.000000000 sat=1.114753800 viol_count=8
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1098.360700000 cap=1000.000000000 sat=1.098360700 viol_count=6
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1180.327500000 cap=1000.000000000 sat=1.180327500 viol_count=6
+[c1b] gen=0 origin=mutation arc=303 flow=1028.688800000 cap=1000.000000000 sat=1.028688800 viol_count=7
+[c1b] gen=0 origin=mutation arc=606 flow=1286.884900000 cap=1000.000000000 sat=1.286884900 viol_count=7
+[c1b] gen=0 origin=mutation arc=303 flow=1094.262000000 cap=1000.000000000 sat=1.094262000 viol_count=7
+[c1b] gen=0 origin=mutation arc=606 flow=1303.278500000 cap=1000.000000000 sat=1.303278500 viol_count=7
+[c1b] gen=0 origin=mutation arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100 viol_count=5
+[c1b] gen=0 origin=mutation arc=606 flow=1221.311100000 cap=1000.000000000 sat=1.221311100 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1237.704800000 cap=1000.000000000 sat=1.237704800 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1094.262100000 cap=1000.000000000 sat=1.094262100 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1143.442500000 cap=1000.000000000 sat=1.143442500 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1040.983400000 cap=1000.000000000 sat=1.040983400 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1258.196300000 cap=1000.000000000 sat=1.258196300 viol_count=7
+[c1b] gen=0 origin=mutation arc=303 flow=1061.475700000 cap=1000.000000000 sat=1.061475700 viol_count=6
+[c1b] gen=0 origin=mutation arc=606 flow=1139.344200000 cap=1000.000000000 sat=1.139344200 viol_count=6
+[c1b] gen=0 origin=mutation arc=303 flow=1045.081800000 cap=1000.000000000 sat=1.045081800 viol_count=6
+[c1b] gen=0 origin=mutation arc=606 flow=1118.852200000 cap=1000.000000000 sat=1.118852200 viol_count=6
+[c1b] gen=0 origin=mutation arc=303 flow=1184.426400000 cap=1000.000000000 sat=1.184426400 viol_count=9
+[c1b] gen=0 origin=mutation arc=606 flow=1233.606600000 cap=1000.000000000 sat=1.233606600 viol_count=9
+[c1b] gen=0 origin=mutation arc=303 flow=1176.229400000 cap=1000.000000000 sat=1.176229400 viol_count=9
+[c1b] gen=0 origin=mutation arc=606 flow=1245.901400000 cap=1000.000000000 sat=1.245901400 viol_count=9
+[c1b] gen=0 origin=mutation arc=606 flow=1229.508000000 cap=1000.000000000 sat=1.229508000 viol_count=4
+[c1b] gen=0 origin=mutation arc=606 flow=1184.425900000 cap=1000.000000000 sat=1.184425900 viol_count=4
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1250.000300000 cap=1000.000000000 sat=1.250000300 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1229.508200000 cap=1000.000000000 sat=1.229508200 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1245.901500000 cap=1000.000000000 sat=1.245901500 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1225.409700000 cap=1000.000000000 sat=1.225409700 viol_count=8
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1225.409700000 cap=1000.000000000 sat=1.225409700 viol_count=6
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1139.344100000 cap=1000.000000000 sat=1.139344100 viol_count=6
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1077.869100000 cap=1000.000000000 sat=1.077869100 viol_count=6
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1131.147500000 cap=1000.000000000 sat=1.131147500 viol_count=6
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1204.917800000 cap=1000.000000000 sat=1.204917800 viol_count=6
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1176.228900000 cap=1000.000000000 sat=1.176228900 viol_count=6
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1229.508000000 cap=1000.000000000 sat=1.229508000 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1336.065200000 cap=1000.000000000 sat=1.336065200 viol_count=7
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1065.573600000 cap=1000.000000000 sat=1.065573600 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1155.737500000 cap=1000.000000000 sat=1.155737500 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1024.590400000 cap=1000.000000000 sat=1.024590400 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1241.803100000 cap=1000.000000000 sat=1.241803100 viol_count=5
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1303.278100000 cap=1000.000000000 sat=1.303278100 viol_count=5
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1008.196900000 cap=1000.000000000 sat=1.008196900 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1196.721100000 cap=1000.000000000 sat=1.196721100 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=303 flow=1036.885100000 cap=1000.000000000 sat=1.036885100 viol_count=8
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1196.721000000 cap=1000.000000000 sat=1.196721000 viol_count=8
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1004.098700000 cap=1000.000000000 sat=1.004098700 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1098.360600000 cap=1000.000000000 sat=1.098360600 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1057.376900000 cap=1000.000000000 sat=1.057376900 viol_count=7
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1168.032300000 cap=1000.000000000 sat=1.168032300 viol_count=7
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1385.245500000 cap=1000.000000000 sat=1.385245500 viol_count=6
+[c1b] gen=0 origin=crossover_ca arc=606 flow=1372.950400000 cap=1000.000000000 sat=1.372950400 viol_count=6
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1012.295400000 cap=1000.000000000 sat=1.012295400 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=303 flow=1020.491700000 cap=1000.000000000 sat=1.020491700 viol_count=4
+[c1b] gen=0 origin=crossover_cb arc=606 flow=1053.278400000 cap=1000.000000000 sat=1.053278400 viol_count=4

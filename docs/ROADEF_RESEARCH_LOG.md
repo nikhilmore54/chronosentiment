@@ -147,11 +147,25 @@ Arcs 968, 606, 303 reported `overloaded=false` across all displayed initial memb
 
 ---
 
-### C1-D — Alternative-Path Availability
+### C1-D — Constructor/Repair Isolation
 
-**Status: LOCKED** (pending C1-C)
+**Status: LOCKED** (pending C1-C complete)
 
-**Question:** Did viable alternative routing paths exist for the demands that load the bottleneck arcs?
+**Revised question (from C1-C setA-13 finding):** The C1-C evidence shifts the investigation from evolutionary operators toward constructor/repair feasibility. C1-D therefore asks: Is the 815-second initialization behavior and 92% initial infeasibility rate primarily a construction problem, a repair problem, or an interaction between construction/repair and the subsequent pipeline?
+
+**Method:** Run 3 controlled cases for setA-13, seed=42, 50 individuals:
+
+| Case | Constructor | Repair | MOGA | Purpose |
+|------|-------------|--------|------|---------|
+| A | ON | ON | OFF | Can construction+repair establish feasibility by itself? |
+| B | ON | OFF | OFF | How much infeasibility is attributable to repair? |
+| C | ON | ON | ON | What does the complete pipeline actually cost? (current baseline) |
+
+**Metrics per case:** population size, successful constructions, repair attempts, repair failures, major violations, minor violations, epsilon violations, maximum saturation, arc distribution, wall time.
+
+**Governance:** Observational. No algorithmic changes. Wall-clock and termination behavior are first-class metrics.
+
+**Note:** Original C1-D question ("Did viable alternative routing paths exist?") is deferred — it presupposes evolutionary operators as the causal source, which C1-C has not confirmed.
 
 ---
 
