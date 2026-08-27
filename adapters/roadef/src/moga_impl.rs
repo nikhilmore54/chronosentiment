@@ -604,7 +604,7 @@ impl RoadefGenomeFactory {
 // ---------------------------------------------------------------------------
 // RC-001 helper: extract intermediate waypoints from a full node path.
 // ---------------------------------------------------------------------------
-fn path_to_waypoints_rc001(full_path: &[u64], max_segments: usize) -> Vec<u64> {
+pub fn path_to_waypoints_rc001(full_path: &[u64], max_segments: usize) -> Vec<u64> {
     if full_path.len() <= 2 {
         return vec![];
     }
@@ -643,7 +643,7 @@ fn path_to_waypoints_rc001(full_path: &[u64], max_segments: usize) -> Vec<u64> {
 // This preserves the load-aware signal while restoring population diversity.
 // Set metric_noise_pct = 0.0 to disable (deterministic mode).
 // ---------------------------------------------------------------------------
-fn greedy_load_aware_dijkstra(
+pub fn greedy_load_aware_dijkstra(
     net: &Network,
     src: u64,
     dst: u64,
@@ -736,7 +736,7 @@ fn greedy_load_aware_dijkstra(
 // ---------------------------------------------------------------------------
 // RC-001 helper: plain shortest-path Dijkstra (fallback when load-aware fails).
 // ---------------------------------------------------------------------------
-fn greedy_shortest_path(
+pub fn greedy_shortest_path(
     net: &Network,
     src: u64,
     dst: u64,
