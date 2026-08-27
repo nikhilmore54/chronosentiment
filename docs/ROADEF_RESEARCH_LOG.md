@@ -306,7 +306,32 @@ C1-F: Does the intervention improve the full evolutionary system?
 
 **Governance:** Observational. No algorithmic changes before C1-E evidence is reviewed. The current pathological behavior is valuable experimental evidence — do not modify the constructor until the mechanism is understood.
 
-**Method (to be determined):** Instrument the constructor to record per-demand allocation decisions, routing choices, and Arc 658 load at each step. Identify the demand or ordering decision that first commits Arc 658 to overload.
+**Hypothesis space (locked):**
+
+| Hypothesis | C1-E question | Evidence required |
+|------------|---------------|-------------------|
+| **H1 — Allocation ordering** | Does demand processing order cause Arc 658 to receive demand before better alternatives? | Per-demand allocation trace |
+| **H2 — Capacity structure** | Does residual capacity make Arc 658 the only/first apparently feasible choice? | Candidate capacity/residual-capacity trace |
+| **H3 — Heuristic bias** | Does the constructor's selection/tie-breaking rule systematically prefer Arc 658? | Candidate ranking + selected candidate |
+| **H4 — Network topology** | Is Arc 658 structurally unavoidable for a large subset of demands? | Demand → feasible route/path analysis |
+
+**Method:** For every constructor allocation that routes demand through Arc 658, capture:
+- demand ID and allocation step N
+- candidate alternatives considered
+- Arc 658 presence in each candidate
+- residual capacity before decision
+- candidate feasibility and ranking
+- selected candidate and selection reason/tie-break
+
+**Critical methodological guardrail:** Instrument ALL allocations — not only overloaded ones. Must capture:
+- allocations that eventually overload Arc 658
+- allocations using alternatives
+- allocations where Arc 658 was feasible but not selected
+- allocations where Arc 658 was effectively unavoidable
+
+Without this, C1-E can establish that Arc 658 was used, but not **why it was preferred**.
+
+**Target question:** Was Arc 658 selected because it was unavoidable, because it was the first feasible option, because the heuristic ranked it highest, or because an ordering/tie-break rule made it win?
 
 ---
 
