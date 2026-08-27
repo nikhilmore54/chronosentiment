@@ -388,6 +388,16 @@ Only after C1-F should a behavioral intervention be authorized.
 - P10-C0: CLOSED (commit `66674fc96`; all 7 instances; 559 total failed repairs; 0% genome change; 100% violation unchanged)
 - P10-C hypothesis selection: CLOSED — H-SKIP+CONSTRUCT authorized 2026-08-26
 - H-SKIP: CLOSED (`1ddc6fa84`) — performance correction implemented and behaviorally safe; quantitative timing benefit not yet characterized (no A/B runtime measurement exists)
-- P10-C1: AUTHORIZED — Bottleneck Arc Characterization (C1-A through C1-F, observational only)
-- P10-C2+: LOCKED — requires P10-C1 evidence and explicit hypothesis discrimination
+- P10-C1: CLOSED — Bottleneck Arc Characterization (C1-A through C1-F) COMPLETE. Arc 658 classified CONSTRUCTED (heuristic-biased). Final commit `188d5b32e`.
+- P10-C2: AUTHORIZED (2026-08-27) — Saturation-penalty sweep in `adapters/roadef` only. Coralys core FROZEN.
+  - Scope: `greedy_load_aware_dijkstra` saturation penalty coefficient only
+  - Primary experiment: penalty sweep — control=100, candidates=200/400/800/1600
+  - Secondary (only after individual effects measured): capacity-aware route pre-filter
+  - Combined intervention: only after individual effects are measured
+  - Measurements: Arc-658 selection count, overloaded genomes, feasible genomes, construction time
+  - Gate (hard): 5/5 trajectory invariants bit-exact vs Phase 9 baseline (commit `1919018aa`)
+  - Gate (hard): T_net > 0 on setA-14 (medium) AND setA-16/setA-19 (large)
+  - No-go: no coefficient change in production code before experiment completes
+  - Authorization basis: P10-C1 C1-A–C1-F evidence; causal mechanism identified (sat_before×100≈12 insufficient to overcome Arc 658 base metric advantage)
+- P10-C3+: LOCKED — requires P10-C2 evidence
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
