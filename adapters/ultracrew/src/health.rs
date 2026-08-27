@@ -148,7 +148,7 @@ fn check_validator() -> bool {
     use crate::models::{Shift, Worker};
     use crate::public_contracts::{InrcScenario, ScheduleRequest};
     use crate::strict_validator::validate_request;
-    use crate::models::FatigueConfig;
+    use crate::config::FatigueConfig;
 
     let req = ScheduleRequest {
         workers: vec![Worker {

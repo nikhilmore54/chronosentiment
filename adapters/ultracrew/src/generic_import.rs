@@ -36,6 +36,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use crate::config::FatigueConfig;
 use crate::models::{Shift, Skill, Worker};
 use crate::public_contracts::{InrcScenario, ScheduleRequest};
 
@@ -132,6 +133,7 @@ pub fn load_from_csv<P: AsRef<Path>>(
         rng_seed,
         generation_limit,
         scenario,
+        fatigue: FatigueConfig::default(),
     })
 }
 
@@ -395,7 +397,7 @@ pub fn export_request_template() -> String {
             leave_requests: None,
         }),
         fatigue: FatigueConfig::default(),
-    }
+    };
 
     serde_json::to_string_pretty(&template).unwrap_or_else(|_| "{}".to_string())
 }

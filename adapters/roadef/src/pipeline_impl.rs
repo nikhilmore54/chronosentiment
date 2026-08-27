@@ -240,6 +240,54 @@ where
         telemetry.emit_construction(&construction_rec);
     }
 
+    // C1-C: scan initial population for target arc overloads BEFORE any evolutionary operator.
+    // This answers: "Were arcs 658/606/303/968 already overloaded in the initial constructed
+    // genomes before any evolutionary operator executed, or did the gen-0 evolutionary
+    // transition create or propagate the overload?"
+    //
+    // Format: exactly ONE record per (member, arc):
+    //   [c1c] stage=initial member=N arc=ARC max_sat=S overloaded=true/false
+    //
+    // max_sat = maximum saturation (flow/capacity) across all time slots for this arc.
+    // overloaded = max_sat > 1.0  (strict: flow strictly exceeds capacity).
+    //   Note: evaluate_violations() uses sat >= 1.0 - 1e-6 as its threshold, which
+    //   can flag sat=0.999999 as a violation. We use strict > 1.0 here to avoid
+    //   boundary ambiguity in the causal classification.
+    //
+    // Observational only — no genome modification.
+    {
+        const C1C_TARGET_ARCS: &[u64] = &[968, 658, 606, 303];
+        for (member_idx, ev) in evals.iter().enumerate() {
+            let violations = pipeline.constraint_model.evaluate_violations(&ev.genome);
+            // For each target arc, find the maximum saturation across all time slots.
+            for &target_arc in C1C_TARGET_ARCS {
+                // Collect all Capacity violations for this arc (one per time slot).
+                let mut max_sat: f64 = 0.0;
+                let mut max_flow: f64 = 0.0;
+                let mut cap_for_arc: f64 = 0.0;
+                for v in &violations {
+                    if let crate::constraints::RoadefViolation::Capacity {
+                        arc_id, flow, capacity, sat, ..
+                    } = v
+                    {
+                        if *arc_id == target_arc && *sat > max_sat {
+                            max_sat = *sat;
+                            max_flow = *flow;
+                            cap_for_arc = *capacity;
+                        }
+                    }
+                }
+                // overloaded = strictly flow > capacity (max_sat > 1.0).
+                let overloaded = max_sat > 1.0;
+                let _ = writeln!(
+                    log_sink,
+                    "[c1c] stage=initial member={} arc={} max_flow={:.9} cap={:.9} max_sat={:.9} overloaded={}",
+                    member_idx, target_arc, max_flow, cap_for_arc, max_sat, overloaded
+                );
+            }
+        }
+    }
+
     let mut global_best: Option<RoadefEvaluation> = None;
     let mut best_found_at_gen = 0usize;
     let mut stagnation = 0usize;
