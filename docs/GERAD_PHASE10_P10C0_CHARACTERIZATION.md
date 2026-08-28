@@ -418,11 +418,23 @@ Only after C1-F should a behavioral intervention be authorized.
   - Intervention: add capacity-aware pre-filter to `greedy_load_aware_dijkstra` or
     to the construction loop — reject routes that would push any arc above a
     configurable saturation threshold (e.g. 0.9 or 1.0).
-  - Measurements: Arc-658 selection count, overloaded genomes, feasible genomes,
-    construction time, genome max_sat distribution.
+  - Measurements:
+    - Arc-658 selection count (primary — must fall to demonstrate mechanism)
+    - candidate_rejections_due_to_capacity (arc 658 specifically vs other arcs)
+    - candidates_remaining_after_filter (per demand, to detect over-filtering)
+    - overloaded genomes / feasible genomes
+    - construction time (pre-filter must not materially increase ctor cost)
+    - genome max_sat distribution
+  - Mechanism evidence required: demonstrate Arc 658 rejected by filter → next-best
+    feasible route selected → no Arc 658 overload. Not just a better aggregate score.
+  - Saturation coefficient: 100.0 UNCHANGED. C3 isolates the pre-filter effect only.
+    Do not combine with penalty tuning — C2 has already ruled that out.
   - Gate (hard): 5/5 trajectory invariants bit-exact vs Phase 9 baseline (commit `1919018aa`)
   - Gate (hard): T_net > 0 on setA-14 (medium) AND setA-16/setA-19 (large)
   - No-go: no production change before experiment completes and gates pass.
   - Authorization basis: P10-C2 negative result; penalty is non-binding; pre-filter
-    is the next logical intervention in the causal chain.
+    changes the candidate set itself rather than re-weighting an already-dominated term.
+  - Architectural significance: if C3 succeeds with gates passing, this demonstrates
+    the Adapter-Owned Capability Model in practice — domain-specific construction
+    intelligence (capacity feasibility) belongs in the adapter, not Coralys core.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
