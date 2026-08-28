@@ -80,10 +80,30 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
         }
     }
 
+    use std::time::Instant;
+
+    struct DfsState {
+        nodes: u64,
+        backtracks: u64,
+        max_depth: usize,
+        start_time: Instant,
+        budget_ms: u128,
+        timed_out: bool,
+    }
+
     // Generic DFS for non-block-aligned workloads
     let mut worker_hours = vec![0u64; num_workers + 1];
     let mut worker_assignments: Vec<Vec<Shift>> = vec![Vec::new(); num_workers + 1];
     let mut shift_assignments = HashMap::new();
+    
+    let mut state = DfsState {
+        nodes: 0,
+        backtracks: 0,
+        max_depth: 0,
+        start_time: Instant::now(),
+        budget_ms: 1000, // Bounded search budget (1 second)
+        timed_out: false,
+    };
     
     fn solve(
         shift_idx: usize,
@@ -94,10 +114,22 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
         shift_assignments: &mut HashMap<u64, u64>,
         min_rest: u64,
         hc3_limit: u64,
+        state: &mut DfsState,
     ) -> bool {
+        if state.start_time.elapsed().as_millis() > state.budget_ms {
+            state.timed_out = true;
+            return false;
+        }
+        
+        if shift_idx > state.max_depth {
+            state.max_depth = shift_idx;
+        }
+        
         if shift_idx == sorted_shifts.len() {
             return true;
         }
+        
+        state.nodes += 1;
         
         let shift = &sorted_shifts[shift_idx];
         let mut candidates = Vec::new();
@@ -125,10 +157,13 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
             worker_assignments[wid].push(shift.clone());
             shift_assignments.insert(shift.id, wid as u64);
             
-            if solve(shift_idx + 1, sorted_shifts, workers, worker_hours, worker_assignments, shift_assignments, min_rest, hc3_limit) {
+            if solve(shift_idx + 1, sorted_shifts, workers, worker_hours, worker_assignments, shift_assignments, min_rest, hc3_limit, state) {
                 return true;
             }
             
+            if state.timed_out { return false; }
+            
+            state.backtracks += 1;
             worker_hours[wid] -= shift.duration_hours;
             worker_assignments[wid].pop();
             shift_assignments.remove(&shift.id);
@@ -137,7 +172,20 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
         false
     }
     
-    if solve(0, &sorted_shifts, workers, &mut worker_hours, &mut worker_assignments, &mut shift_assignments, min_rest_hours, hc3_limit) {
+    let result = solve(0, &sorted_shifts, workers, &mut worker_hours, &mut worker_assignments, &mut shift_assignments, min_rest_hours, hc3_limit, &mut state);
+    
+    let elapsed = state.start_time.elapsed().as_millis();
+    let status = if state.timed_out { "timeout" } else if result { "feasible" } else { "infeasible" };
+    println!("[constructor] status={} fallback={} elapsed_ms={} nodes={} backtracks={} max_depth={}", 
+        status, 
+        if state.timed_out || !result { "moga" } else { "none" },
+        elapsed, 
+        state.nodes, 
+        state.backtracks, 
+        state.max_depth
+    );
+    
+    if result {
         Some(ScheduleGenome { assignments: shift_assignments })
     } else {
         None

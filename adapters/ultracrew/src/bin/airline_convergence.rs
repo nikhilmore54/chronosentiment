@@ -51,6 +51,7 @@ fn main() {
         scenario: Some(scenario),
         enable_fatigue: false,
         fatigue_weight: 0.0,
+        hc3_aware_initialization: false, disable_global_constructor: false, precomputed_seeds: None, temporal_scarcity_construction: false,
     });
 
     let config = EvolutionConfig {

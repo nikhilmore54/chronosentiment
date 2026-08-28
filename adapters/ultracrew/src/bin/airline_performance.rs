@@ -129,6 +129,7 @@ fn build_context(id: &str, num_workers: usize, num_shifts: usize, seed: u64) -> 
         scenario: Some(scenario),
         enable_fatigue: false,
         fatigue_weight: 0.0,
+        hc3_aware_initialization: false, disable_global_constructor: false, precomputed_seeds: None, temporal_scarcity_construction: false,
     });
     
     (ctx, start.elapsed())
@@ -167,13 +168,6 @@ fn run_workload(id: &str, workers: usize, shifts: usize, reps: usize) -> Workloa
             iteration: i + 1,
             generation_ms: gen_ms,
             scheduling_ms: sched_ms,
-            hc3_aware_initialization: false,
-        temporal_scarcity_construction: false,
-        disable_global_constructor: false,
-        precomputed_seeds: None,
-            temporal_scarcity_construction: false,
-            disable_global_constructor: false,
-            precomputed_seeds: None,
             validity: best.is_valid,
             hard_violations: hard,
             fitness: best.fitness,

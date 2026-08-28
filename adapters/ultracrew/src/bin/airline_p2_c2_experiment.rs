@@ -253,7 +253,7 @@ fn run_experiment(num_workers: usize, num_shifts: usize, seed: u64, hc3_aware: b
         enable_fatigue: false,
         fatigue_weight: 0.0,
         hc3_aware_initialization: hc3_aware,
-        best_fit_capacity_construction: best_fit,
+        temporal_scarcity_construction: best_fit, disable_global_constructor: false, precomputed_seeds: None,
     });
 
     let config = EvolutionConfig {

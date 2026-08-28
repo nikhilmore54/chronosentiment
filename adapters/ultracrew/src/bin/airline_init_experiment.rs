@@ -64,6 +64,7 @@ fn run_experiment(num_workers: usize, num_shifts: usize, seed: u64, hc3_aware: b
         enable_fatigue: false,
         fatigue_weight: 0.0,
         hc3_aware_initialization: hc3_aware,
+        disable_global_constructor: false, precomputed_seeds: None, temporal_scarcity_construction: false,
     });
 
     let config = EvolutionConfig {

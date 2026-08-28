@@ -58,6 +58,7 @@ fn build_context(enable_fatigue: bool, fatigue_weight: f64) -> Arc<ScheduleConte
         scenario: Some(scenario),
         enable_fatigue,
         fatigue_weight,
+        hc3_aware_initialization: false, disable_global_constructor: false, precomputed_seeds: None, temporal_scarcity_construction: false,
     })
 }
 

@@ -108,7 +108,7 @@ fn run_workload(utilization_pct: usize, seed_val: u64) -> String {
         workers: Arc::new(workers), shifts: Arc::new(shifts), ecology: WorkforceEcology::new(),
         rng_seed: seed_val, observatory: Arc::new(Mutex::new(Observatory::new())), locked_assignments: None,
         scenario: Some(scenario), enable_fatigue: false, fatigue_weight: 0.0, hc3_aware_initialization: true, temporal_scarcity_construction: false,
-        precomputed_seeds: None,
+        precomputed_seeds: None, disable_global_constructor: false,
     });
 
     let config = EvolutionConfig {

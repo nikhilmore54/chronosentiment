@@ -138,7 +138,7 @@ fn run_experiment(mode: &str) -> ExperimentResult {
         hc3_aware_initialization: true,
         temporal_scarcity_construction: false,
         disable_global_constructor: false,
-        precomputed_seeds: Some(Arc::new(std::sync::Mutex::new(portfolio))),
+        precomputed_seeds: None,
     });
 
     let config = EvolutionConfig {
