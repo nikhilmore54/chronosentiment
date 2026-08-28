@@ -410,31 +410,37 @@ Only after C1-F should a behavioral intervention be authorized.
   - Causal chain established: Demand → candidate routes → metric comparison →
     Arc 658 repeatedly wins → saturation penalty has negligible influence → overload.
     NOT: penalty too small → increase penalty → problem solved.
-- P10-C3: AUTHORIZED (2026-08-28) — Capacity-aware pre-filter experiment.
-  - Hypothesis: a capacity feasibility check at route-selection time (before ranking)
-    will prevent Arc 658 from winning when it is structurally incapable of satisfying
-    capacity constraints, regardless of its base metric advantage.
-  - Scope: `adapters/roadef` only. Coralys core FROZEN.
-  - Intervention: add capacity-aware pre-filter to `greedy_load_aware_dijkstra` or
-    to the construction loop — reject routes that would push any arc above a
-    configurable saturation threshold (e.g. 0.9 or 1.0).
-  - Measurements:
-    - Arc-658 selection count (primary — must fall to demonstrate mechanism)
-    - candidate_rejections_due_to_capacity (arc 658 specifically vs other arcs)
-    - candidates_remaining_after_filter (per demand, to detect over-filtering)
-    - overloaded genomes / feasible genomes
-    - construction time (pre-filter must not materially increase ctor cost)
-    - genome max_sat distribution
-  - Mechanism evidence required: demonstrate Arc 658 rejected by filter → next-best
-    feasible route selected → no Arc 658 overload. Not just a better aggregate score.
-  - Saturation coefficient: 100.0 UNCHANGED. C3 isolates the pre-filter effect only.
-    Do not combine with penalty tuning — C2 has already ruled that out.
-  - Gate (hard): 5/5 trajectory invariants bit-exact vs Phase 9 baseline (commit `1919018aa`)
-  - Gate (hard): T_net > 0 on setA-14 (medium) AND setA-16/setA-19 (large)
-  - No-go: no production change before experiment completes and gates pass.
-  - Authorization basis: P10-C2 negative result; penalty is non-binding; pre-filter
-    changes the candidate set itself rather than re-weighting an already-dominated term.
-  - Architectural significance: if C3 succeeds with gates passing, this demonstrates
-    the Adapter-Owned Capability Model in practice — domain-specific construction
-    intelligence (capacity feasibility) belongs in the adapter, not Coralys core.
+- P10-C3: CLOSED (2026-08-28) — NEGATIVE RESULT (diagnostic). Capacity pre-filter inactive.
+  - Binary: `adapters/roadef/src/bin/phase10c3_capacity_prefilter.rs` (commit `333bb1f27`)
+  - Evidence: commit `333bb1f27` (4 files: none/capacity raw+stderr)
+  - Results (seed=42, genomes=50, authoritative evaluator path):
+    - filter=none:     overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128, wall=310.2s
+    - filter=capacity: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128, wall=414.4s
+  - Finding: capacity pre-filter (sat >= 1.0 threshold) NEVER FIRES.
+    arc658_rejections=0 in both conditions. Filter is completely inactive.
+  - Root cause: Arc 658 is selected early in construction when its running saturation
+    is ~0.12 (established in C1-E). Adding one demand's flow at that point does not
+    push any arc above sat=1.0. The overload only emerges cumulatively after many
+    demands are routed through Arc 658 across the full construction sequence.
+  - Causal refinement: the bottleneck is NOT detectable per-demand at the time of
+    selection — it is a cumulative routing concentration problem. A per-demand
+    threshold=1.0 check cannot detect cumulative overload.
+  - Diagnostic value: Arc 658 operates as a sharp boundary constraint. Overloaded
+    cases are extremely close to the boundary (max_sat=1.0128 vs feasible=0.9915).
+    The useful intervention is preventing the marginal routing decisions that push
+    an otherwise nearly-feasible genome from ≤1.0 to >1.0.
+  - Production coefficient: UNCHANGED. No production change justified.
+  - Baseline established: 74% initial feasibility (37/50), 26% overloaded (13/50).
+    This is the authoritative baseline for any future C3-variant experiments.
+  - Next intervention direction: lower threshold (e.g. 0.5 or 0.8 of capacity),
+    look-ahead routing, or route diversity enforcement. The threshold=1.0 is wrong
+    because it fires only after cumulative overload has already developed.
+- P10-C4+: LOCKED — requires P10-C3 causal refinement and explicit authorization.
+  - Candidate interventions (not yet authorized):
+    - C3-variant: lower capacity threshold (e.g. 0.5×capacity) to fire before
+      cumulative overload develops
+    - Look-ahead: simulate full demand set routing before committing each path
+    - Route diversity: enforce minimum path diversity to prevent concentration
+  - Scientific sequence: C1 → C2 (negative) → C3 (negative, diagnostic) →
+    C3-variant or C4 (next authorized intervention)
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
