@@ -6,8 +6,8 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use serde::{Deserialize, Serialize};
-use crate::config::FatigueConfig;
-
+use serde_json::json;
+use ultracrew::config::FatigueConfig;
 use std::collections::HashMap;
 use std::path::{Path as StdPath, PathBuf};
 use std::sync::{Arc, Mutex};
