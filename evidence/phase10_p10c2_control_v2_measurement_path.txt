@@ -1,0 +1,69 @@
+P10-C2 Control v2 — Measurement Path Correction Record
+=======================================================
+
+Date: 2026-08-28
+Commit lineage: d4223807f → [this record]
+
+SUPERSESSION NOTICE
+-------------------
+The v1 saturation telemetry from the first control run (penalty=100, seed=42,
+genomes=50) is SUPERSEDED and must not be used as P10-C2 evidence.
+
+v1 error: hand-rolled running_arc_flows accumulator measured Arc 658 saturation
+at ~0.22 (factor ~4.5× too low). Root causes:
+  1. ecmp_saturation updated with max-update (if sat > *entry), not a sum
+  2. ECMP fallback (max_saturation_seen > 1.0 → empty waypoints) was absent
+  3. Overload check used hand-rolled flow map, not the authoritative evaluator
+
+v2 correction (binary rewritten before d4223807f was committed):
+  - Hand-rolled construction loop retained (to inject parameterized penalty)
+  - ECMP fallback preserved: max_saturation_seen > 1.0 → return empty waypoints
+    (matches production create_greedy() behavior exactly)
+  - Overload measurement: RoadefFitnessEvaluator.evaluate() — same path as C1-D
+  - Arc 658 saturation: arc_max_sat_evaluator() across all time slots — same as C1-D
+
+AUTHORITATIVE CONTROL RESULT (v2, penalty=100, seed=42, genomes=50)
+--------------------------------------------------------------------
+Overloaded genomes  : 13 / 50 (26.0%)
+Feasible genomes    : 37 / 50 (74.0%)
+Arc 658 selections  : 2009 (40.18 per genome)
+Arc 658 mean sat    : 0.997264
+Arc 658 max sat     : 1.012820
+Genome mean max_sat : 0.997264
+Genome max max_sat  : 1.012820
+Total wall time     : 297485ms (297.5s)
+Constructor time    : ~80.4s (construction only, excl. evaluation)
+
+DIVERGENCE FROM C1-D (49/50 overloaded) — DOCUMENTED CAUSE
+------------------------------------------------------------
+C2 uses ConstructionMode::Greedy with ECMP fallback.
+C1-D used ConstructionMode::Random (no greedy constructor, no ECMP fallback).
+
+When the greedy constructor detects max_saturation_seen > 1.0 during construction,
+it returns empty waypoints (ECMP). The evaluator then routes via ECMP, which may
+be feasible. This accounts for the 36 genomes that appear feasible in C2 but
+would have been overloaded under Random construction.
+
+This difference is CONSTANT across all penalty conditions in the C2 sweep.
+The relative comparison across penalties (200/400/800/1600 vs 100) remains valid.
+C1-D remains valid for its original purpose and is not overwritten.
+
+SWEEP STATUS
+------------
+Control (penalty=100): VALIDATED — authoritative measurement path confirmed
+Intervention conditions: AUTHORIZED TO PROCEED
+  penalty=200: pending
+  penalty=400: pending
+  penalty=800: pending
+  penalty=1600: pending
+
+KEY DISTINCTION FOR SWEEP ANALYSIS
+------------------------------------
+Arc-658 selection count (genuine routing-policy change) vs
+overloaded genome count (may reflect earlier ECMP fallback, not better routing).
+Both must be tracked separately.
+
+If penalty=X reduces arc658_selections → heuristic bias reduced (genuine improvement)
+If penalty=X reduces overloaded_genomes but arc658_selections constant →
+  constructor detects overload earlier and falls back to ECMP more often
+  (not necessarily better routing — just earlier detection)
