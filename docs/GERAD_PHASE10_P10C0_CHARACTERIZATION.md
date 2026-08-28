@@ -389,15 +389,40 @@ Only after C1-F should a behavioral intervention be authorized.
 - P10-C hypothesis selection: CLOSED — H-SKIP+CONSTRUCT authorized 2026-08-26
 - H-SKIP: CLOSED (`1ddc6fa84`) — performance correction implemented and behaviorally safe; quantitative timing benefit not yet characterized (no A/B runtime measurement exists)
 - P10-C1: CLOSED — Bottleneck Arc Characterization (C1-A through C1-F) COMPLETE. Arc 658 classified CONSTRUCTED (heuristic-biased). Final commit `188d5b32e`.
-- P10-C2: AUTHORIZED (2026-08-27) — Saturation-penalty sweep in `adapters/roadef` only. Coralys core FROZEN.
-  - Scope: `greedy_load_aware_dijkstra` saturation penalty coefficient only
-  - Primary experiment: penalty sweep — control=100, candidates=200/400/800/1600
-  - Secondary (only after individual effects measured): capacity-aware route pre-filter
-  - Combined intervention: only after individual effects are measured
-  - Measurements: Arc-658 selection count, overloaded genomes, feasible genomes, construction time
+- P10-C2: CLOSED (2026-08-28) — NEGATIVE RESULT. Saturation-penalty sweep complete.
+  - Binary: `adapters/roadef/src/bin/phase10c2_penalty_sweep.rs` (commit `d4223807f`)
+  - Evidence: commits `02ed986aa` (control v2) + `197b285b7` (full sweep, 10 files)
+  - Sweep results (seed=42, genomes=50, authoritative evaluator path):
+    - penalty=100:  overloaded=13/50, arc658_sel=2009, max_sat=1.0128
+    - penalty=200:  overloaded=13/50, arc658_sel=2009, max_sat=1.0128
+    - penalty=400:  overloaded=13/50, arc658_sel=2009, max_sat=1.0128
+    - penalty=800:  overloaded=12/50, arc658_sel=2007, max_sat=1.0128
+    - penalty=1600: overloaded=12/50, arc658_sel=2001, max_sat=1.0128
+  - Finding: saturation penalty coefficient is NOT the binding control variable.
+    16× penalty increase (100→1600) produces only 0.4% reduction in Arc 658 selections.
+    Max saturation unchanged at 1.0128 across all conditions.
+  - Causal refinement: the penalty term is effectively non-binding for this routing
+    decision. Arc 658's base metric advantage exceeds even penalty=1600×0.12=192.
+    The heuristic bias is structural, not a coefficient-tuning problem.
+  - Production coefficient: UNCHANGED at 100.0. No production change justified.
+    The 24% vs 26% overload difference at penalty=800/1600 is within noise and
+    the primary causal metric (Arc-658 selection) is essentially unchanged.
+  - Causal chain established: Demand → candidate routes → metric comparison →
+    Arc 658 repeatedly wins → saturation penalty has negligible influence → overload.
+    NOT: penalty too small → increase penalty → problem solved.
+- P10-C3: AUTHORIZED (2026-08-28) — Capacity-aware pre-filter experiment.
+  - Hypothesis: a capacity feasibility check at route-selection time (before ranking)
+    will prevent Arc 658 from winning when it is structurally incapable of satisfying
+    capacity constraints, regardless of its base metric advantage.
+  - Scope: `adapters/roadef` only. Coralys core FROZEN.
+  - Intervention: add capacity-aware pre-filter to `greedy_load_aware_dijkstra` or
+    to the construction loop — reject routes that would push any arc above a
+    configurable saturation threshold (e.g. 0.9 or 1.0).
+  - Measurements: Arc-658 selection count, overloaded genomes, feasible genomes,
+    construction time, genome max_sat distribution.
   - Gate (hard): 5/5 trajectory invariants bit-exact vs Phase 9 baseline (commit `1919018aa`)
   - Gate (hard): T_net > 0 on setA-14 (medium) AND setA-16/setA-19 (large)
-  - No-go: no coefficient change in production code before experiment completes
-  - Authorization basis: P10-C1 C1-A–C1-F evidence; causal mechanism identified (sat_before×100≈12 insufficient to overcome Arc 658 base metric advantage)
-- P10-C3+: LOCKED — requires P10-C2 evidence
+  - No-go: no production change before experiment completes and gates pass.
+  - Authorization basis: P10-C2 negative result; penalty is non-binding; pre-filter
+    is the next logical intervention in the causal chain.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
