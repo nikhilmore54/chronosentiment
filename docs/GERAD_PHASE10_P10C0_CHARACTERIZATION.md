@@ -464,19 +464,42 @@ Only after C1-F should a behavioral intervention be authorized.
     The problem is not "this demand causes overload" — it is "this demand is
     the Nth in a sequence that collectively causes overload."
   - Production coefficient: UNCHANGED. No production change justified.
-- P10-C5+: LOCKED — requires P10-C4 causal refinement and explicit authorization.
-  - Definitive causal picture after C1→C2→C3→C4:
+- P10-C5: CLOSED (2026-08-29) — NEGATIVE RESULT. Look-ahead routing experiment.
+  - Binary: `adapters/roadef/src/bin/phase10c5_lookahead.rs` (commit `e088953a8`)
+  - Evidence: commit `ae71d3d09` (4 files: control/lookahead raw+stderr)
+  - Results (seed=42, genomes=50):
+    - control:   overloaded=13/50, arc658_sel=2009, arc658_div=0, max_sat=1.0128, wall=313.5s
+    - lookahead: overloaded=13/50, arc658_sel=2009, arc658_div=0, max_sat=1.0128, wall=513.5s
+  - Finding: look-ahead never fires (arc658_diversions=0). Identical to control.
+    Look-ahead score = projected_sat × remaining_pressure never exceeds 0.5.
+  - Root cause: Arc 658 is selected at sat~0.12. Projected_sat after adding one
+    demand's flow is still very low. Even with high remaining_pressure, the product
+    projected_sat × remaining_pressure stays below the threshold throughout.
+  - Runtime cost: +64% (513s vs 313s) with zero routing change. The look-ahead
+    computation (remaining_arc_pressure) is expensive but produces no diversion.
+  - Causal refinement: the look-ahead score formulation (projected_sat × pressure)
+    is insufficient because projected_sat is always low at selection time. The
+    cumulative overload is not detectable by any function of the CURRENT saturation
+    state — it requires reasoning about the AGGREGATE of all future selections.
+  - Production coefficient: UNCHANGED. No production change justified.
+- P10-C6+: LOCKED — requires P10-C5 causal refinement and explicit authorization.
+  - Definitive causal picture after C1→C2→C3→C4→C5:
     C1: Arc 658 overload is a construction artifact (heuristic bias, sat_before=0.12)
     C2: Saturation penalty coefficient is not the binding variable (16× → 0.4% change)
     C3: Per-demand capacity check at threshold=1.0 never fires
     C4: Per-demand capacity check at ANY threshold (0.5–1.0) never fires
-    Conclusion: the binding mechanism is cumulative routing concentration from
-    sequential heuristic decisions. No per-demand check can detect it.
-  - Required next intervention: must operate on the SEQUENCE of routing decisions,
-    not on individual demand placement. Candidates (not yet authorized):
-    1. Look-ahead (C5): simulate projected saturation state after remaining routing
-       decisions before committing each path. Directly addresses cumulative mechanism.
-    2. Route diversity (C6): enforce minimum path diversity to prevent concentration.
-       Especially relevant if same concentration pattern appears across multiple arcs.
+    C5: Look-ahead score (projected_sat × remaining_pressure) never exceeds threshold
+    Conclusion: the cumulative overload is not detectable by any function of the
+    CURRENT saturation state at the time of individual selection. The problem
+    requires reasoning about the AGGREGATE of all future selections — not just
+    the current one.
+  - Required next intervention: must reason about the TOTAL expected Arc 658
+    load across the full construction sequence, not per-demand or per-step state.
+    Candidates (not yet authorized):
+    1. Route diversity (C6): enforce minimum path diversity to prevent concentration.
+       Directly attacks the concentration mechanism without requiring saturation
+       state reasoning. Limit the number of times Arc 658 can be selected per genome.
+    2. Global saturation budget (C6-alt): pre-allocate a saturation budget for
+       Arc 658 across all demands and reject selections that would exhaust the budget.
   - Coralys core: FROZEN throughout. All interventions adapter-only.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
