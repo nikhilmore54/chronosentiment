@@ -489,17 +489,34 @@ Only after C1-F should a behavioral intervention be authorized.
     C3: Per-demand capacity check at threshold=1.0 never fires
     C4: Per-demand capacity check at ANY threshold (0.5–1.0) never fires
     C5: Look-ahead score (projected_sat × remaining_pressure) never exceeds threshold
-    Conclusion: the cumulative overload is not detectable by any function of the
-    CURRENT saturation state at the time of individual selection. The problem
-    requires reasoning about the AGGREGATE of all future selections — not just
-    the current one.
-  - Required next intervention: must reason about the TOTAL expected Arc 658
-    load across the full construction sequence, not per-demand or per-step state.
-    Candidates (not yet authorized):
-    1. Route diversity (C6): enforce minimum path diversity to prevent concentration.
-       Directly attacks the concentration mechanism without requiring saturation
-       state reasoning. Limit the number of times Arc 658 can be selected per genome.
+    Conclusion: the binding variable is aggregate sequence-level route concentration.
+    The decision cannot be understood from f(s_current, d_next). The entire family
+    of interventions of the form f(current_saturation, next_demand) is now ruled out.
+  - Locked-out intervention family: any check of the form
+    f(s_current, d_next) → reject/accept. This includes:
+    - direct capacity threshold (C3)
+    - multiple capacity thresholds (C4)
+    - saturation penalty (C2)
+    - one-step look-ahead projected_sat × pressure (C5)
+    All fail because the pathology is sequence-level concentration, not
+    instantaneous or one-step projected capacity consumption.
+  - Required next intervention: must reason about the AGGREGATE of all future
+    selections, not per-demand or per-step state. Candidates (not yet authorized):
+    1. Route diversity / concentration cap (C6-A then C6-B):
+       C6-A: characterize the concentration curve — for each genome, record
+       Arc 658 cumulative selections, selection order, saturation trajectory,
+       first point at which genome becomes unrecoverably overloaded, remaining
+       demands at each point, alternative routes available at each point.
+       The key variable is N_658(t) and N_658(t)/N_routed(t), not sat_current.
+       C6-B: only after C6-A establishes the concentration curve, select a
+       pre-registered diversity cap N_max derived from C6-A data (not chosen
+       to produce a feasible result). Validate against control (same seed/genomes).
     2. Global saturation budget (C6-alt): pre-allocate a saturation budget for
-       Arc 658 across all demands and reject selections that would exhaust the budget.
+       Arc 658 across all demands. Estimate future aggregate routing pressure
+       F_a_future(t) and reject selections where flow_a(t) + F_a_future(t) > Cap_a.
+       This is closer to the causal mechanism than C5 because it reasons about
+       remaining aggregate demand pressure, not instantaneous capacity.
+  - Governance: C6-A must precede C6-B. Do not select N_max without data.
+    Do not combine route diversity and global budget in the same experiment.
   - Coralys core: FROZEN throughout. All interventions adapter-only.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
