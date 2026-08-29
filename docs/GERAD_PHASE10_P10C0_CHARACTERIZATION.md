@@ -482,41 +482,30 @@ Only after C1-F should a behavioral intervention be authorized.
     cumulative overload is not detectable by any function of the CURRENT saturation
     state — it requires reasoning about the AGGREGATE of all future selections.
   - Production coefficient: UNCHANGED. No production change justified.
-- P10-C6+: LOCKED — requires P10-C5 causal refinement and explicit authorization.
-  - Definitive causal picture after C1→C2→C3→C4→C5:
-    C1: Arc 658 overload is a construction artifact (heuristic bias, sat_before=0.12)
-    C2: Saturation penalty coefficient is not the binding variable (16× → 0.4% change)
-    C3: Per-demand capacity check at threshold=1.0 never fires
-    C4: Per-demand capacity check at ANY threshold (0.5–1.0) never fires
-    C5: Look-ahead score (projected_sat × remaining_pressure) never exceeds threshold
-    Conclusion: the binding variable is aggregate sequence-level route concentration.
-    The decision cannot be understood from f(s_current, d_next). The entire family
-    of interventions of the form f(current_saturation, next_demand) is now ruled out.
-  - Locked-out intervention family: any check of the form
-    f(s_current, d_next) → reject/accept. This includes:
-    - direct capacity threshold (C3)
-    - multiple capacity thresholds (C4)
-    - saturation penalty (C2)
-    - one-step look-ahead projected_sat × pressure (C5)
-    All fail because the pathology is sequence-level concentration, not
-    instantaneous or one-step projected capacity consumption.
-  - Required next intervention: must reason about the AGGREGATE of all future
-    selections, not per-demand or per-step state. Candidates (not yet authorized):
-    1. Route diversity / concentration cap (C6-A then C6-B):
-       C6-A: characterize the concentration curve — for each genome, record
-       Arc 658 cumulative selections, selection order, saturation trajectory,
-       first point at which genome becomes unrecoverably overloaded, remaining
-       demands at each point, alternative routes available at each point.
-       The key variable is N_658(t) and N_658(t)/N_routed(t), not sat_current.
-       C6-B: only after C6-A establishes the concentration curve, select a
-       pre-registered diversity cap N_max derived from C6-A data (not chosen
-       to produce a feasible result). Validate against control (same seed/genomes).
-    2. Global saturation budget (C6-alt): pre-allocate a saturation budget for
-       Arc 658 across all demands. Estimate future aggregate routing pressure
-       F_a_future(t) and reject selections where flow_a(t) + F_a_future(t) > Cap_a.
-       This is closer to the causal mechanism than C5 because it reasons about
-       remaining aggregate demand pressure, not instantaneous capacity.
-  - Governance: C6-A must precede C6-B. Do not select N_max without data.
-    Do not combine route diversity and global budget in the same experiment.
+- P10-C6: BOUNDED FINAL INVESTIGATION — authorized 2026-08-29.
+  - Objective: increase construction-time feasibility above 74% (37/50 baseline).
+    Nothing else is in scope.
+  - Locked-out intervention family (C1–C5 evidence): any check of the form
+    f(current_saturation, next_demand). No further variants of this family authorized.
+  - Bounded decision tree (at most two remaining experiments after C6-A):
+      C6-A (characterization, NEXT) → review → C6-B (diversity cap) OR C6-alt (aggregate pressure)
+      No automatic C7. No combining C6-B + C6-alt. No return to C1–C5.
+      No modification of Coralys core.
+  - C6-A: AUTHORIZED — characterization only, no intervention, no routing change.
+    Record: N_658(t), N_658(t)/N_routed(t), first irrecoverable overload step,
+    alternative routes available at that step, final genome feasibility.
+    Binary: adapters/roadef/src/bin/phase10c6a_concentration.rs
+    Hard deliverable: answer exactly one question —
+      "Is there a reproducible cumulative Arc-658 concentration threshold
+       associated with irreversible overload?"
+  - Decision gate after C6-A:
+    YES (stable threshold found) → C6-B: diversity cap N_max derived from C6-A data only.
+      N_max must NOT be chosen to produce a feasible result.
+    NO (no stable threshold) → C6-alt: aggregate future pressure budget.
+      flow_a(t) + F_future_a(t) > Cap_a → reject. Separate experiment.
+  - After C6-B or C6-alt: STOP and evaluate against the 74% baseline.
+    A failed experiment closes this intervention family. No further search authorized.
+  - Success criterion: construction-time feasibility materially above 74%.
+    Not: a grand theory of route allocation. Not: max_sat improvement alone.
   - Coralys core: FROZEN throughout. All interventions adapter-only.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
