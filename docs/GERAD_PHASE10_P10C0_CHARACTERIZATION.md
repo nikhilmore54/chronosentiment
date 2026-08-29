@@ -441,18 +441,42 @@ Only after C1-F should a behavioral intervention be authorized.
     concentration. P10-C3 closes the per-demand capacity-filter hypothesis and
     narrows P10-C4+ toward interventions that alter routing decisions BEFORE
     capacity is consumed — not after it is already exceeded.
-- P10-C4+: LOCKED — requires P10-C3 causal refinement and explicit authorization.
-  - Candidate interventions (priority order, not yet authorized):
-    1. Threshold/headroom (C4-A): lower capacity threshold (e.g. 0.5–0.8×capacity)
-       to fire before cumulative overload develops. Smallest causal modification.
-       Interpretation: if feasibility rises → investigate minimum effective threshold;
-       if arc658_sel falls but another arc overloads → broader concentration problem;
-       if selection changes but feasibility doesn't → capacity not dominant constraint.
-    2. Look-ahead (C4-B): simulate projected saturation state after remaining routing
+- P10-C4: CLOSED (2026-08-28) — NEGATIVE RESULT. Threshold/headroom sweep complete.
+  - Binary: `adapters/roadef/src/bin/phase10c4_threshold_sweep.rs` (commit `ff53d93cd`)
+  - Evidence: commit `d00bb3278` (10 files: 5 conditions × raw+stderr)
+  - Sweep results (seed=42, genomes=50, all conditions identical):
+    - threshold=1.0: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128
+    - threshold=0.8: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128
+    - threshold=0.7: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128
+    - threshold=0.6: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128
+    - threshold=0.5: overloaded=13/50, arc658_sel=2009, arc658_rej=0, max_sat=1.0128
+  - Finding: filter never fires at ANY threshold from 0.5 to 1.0.
+    arc658_rejections=0 across all conditions. First rejection step: none.
+  - Root cause: Arc 658 is selected at sat~0.12 (running flow = 12% of capacity).
+    Adding one demand's flow does not push the arc above even 0.5×capacity at
+    the time of selection. The cumulative overload only emerges after ~40 demands
+    are routed through Arc 658 across the full construction sequence.
+  - Definitive causal conclusion:
+    The per-demand capacity check (at ANY threshold) cannot detect cumulative
+    overload because the overload is NOT caused by any single demand exceeding
+    capacity — it is caused by the aggregate of many individually acceptable
+    routing decisions. A fundamentally different intervention is required.
+    The problem is not "this demand causes overload" — it is "this demand is
+    the Nth in a sequence that collectively causes overload."
+  - Production coefficient: UNCHANGED. No production change justified.
+- P10-C5+: LOCKED — requires P10-C4 causal refinement and explicit authorization.
+  - Definitive causal picture after C1→C2→C3→C4:
+    C1: Arc 658 overload is a construction artifact (heuristic bias, sat_before=0.12)
+    C2: Saturation penalty coefficient is not the binding variable (16× → 0.4% change)
+    C3: Per-demand capacity check at threshold=1.0 never fires
+    C4: Per-demand capacity check at ANY threshold (0.5–1.0) never fires
+    Conclusion: the binding mechanism is cumulative routing concentration from
+    sequential heuristic decisions. No per-demand check can detect it.
+  - Required next intervention: must operate on the SEQUENCE of routing decisions,
+    not on individual demand placement. Candidates (not yet authorized):
+    1. Look-ahead (C5): simulate projected saturation state after remaining routing
        decisions before committing each path. Directly addresses cumulative mechanism.
-    3. Route diversity (C4-C): enforce minimum path diversity to prevent concentration.
+    2. Route diversity (C6): enforce minimum path diversity to prevent concentration.
        Especially relevant if same concentration pattern appears across multiple arcs.
-  - Scientific sequence: C1 → C2 (negative) → C3 (negative, diagnostic) →
-    C4-A (threshold/headroom) → measure → only then C4-B or C4-C.
   - Coralys core: FROZEN throughout. All interventions adapter-only.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
