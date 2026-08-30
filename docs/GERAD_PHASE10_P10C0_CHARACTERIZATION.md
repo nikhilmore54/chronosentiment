@@ -491,21 +491,27 @@ Only after C1-F should a behavioral intervention be authorized.
       C6-A (characterization, NEXT) → review → C6-B (diversity cap) OR C6-alt (aggregate pressure)
       No automatic C7. No combining C6-B + C6-alt. No return to C1–C5.
       No modification of Coralys core.
-  - C6-A: AUTHORIZED — characterization only, no intervention, no routing change.
-    Record: N_658(t), N_658(t)/N_routed(t), first irrecoverable overload step,
-    alternative routes available at that step, final genome feasibility.
-    Binary: adapters/roadef/src/bin/phase10c6a_concentration.rs
-    Hard deliverable: answer exactly one question —
-      "Is there a reproducible cumulative Arc-658 concentration threshold
-       associated with irreversible overload?"
-  - Decision gate after C6-A:
-    YES (stable threshold found) → C6-B: diversity cap N_max derived from C6-A data only.
-      N_max must NOT be chosen to produce a feasible result.
-    NO (no stable threshold) → C6-alt: aggregate future pressure budget.
-      flow_a(t) + F_future_a(t) > Cap_a → reject. Separate experiment.
-  - After C6-B or C6-alt: STOP and evaluate against the 74% baseline.
-    A failed experiment closes this intervention family. No further search authorized.
-  - Success criterion: construction-time feasibility materially above 74%.
-    Not: a grand theory of route allocation. Not: max_sat improvement alone.
+  - C6-A: CLOSED (2026-08-30) — NO stable threshold found.
+    Binary: adapters/roadef/src/bin/phase10c6a_concentration.rs (commit 020437ee9)
+    Evidence: commit fcca21c45 (2 files: raw CSV + stderr)
+    Results (seed=42, genomes=50):
+      Overloaded: 13/50 (26.0%) | Feasible: 37/50 (74.0%)
+      Arc 658 total sel: 2009 (40.18/genome)
+      Irrecoverable step proxy (n=13): mean=900.2, min=770, max=1012
+      alt_avoiding_658 at irr: mean=1.00 (alternatives ALWAYS exist)
+      concentration_share at irr: mean=0.0229 (~2.3%)
+    Key finding: NO stable N_max threshold separates feasible from overloaded.
+      feasible:   sel range 32-47, mean=40.1
+      overloaded: sel range 36-43, mean=40.4
+      Complete overlap — no cutpoint exists at any sel value.
+      At sel=36-43, both feasible and overloaded genomes appear.
+    Decision gate outcome: NO → C6-B ruled out. Proceed to C6-alt.
+      C6-B (diversity cap) is NOT supported. N_max cannot be derived from data.
+  - C6-alt: NEXT — aggregate future pressure budget.
+    Hypothesis: estimate total future Arc 658 load across remaining demands
+    and reject selections where flow_a(t) + F_future_a(t) > Cap_a.
+    This is the final authorized intervention. After C6-alt: STOP.
+    Success criterion: construction feasibility materially above 74%.
+    A failed C6-alt closes this intervention family entirely.
   - Coralys core: FROZEN throughout. All interventions adapter-only.
 - Airline Upgradation / UC-ULTRA-LEVEL4-MEMORY: M5-CLOSED, outside this research chain
