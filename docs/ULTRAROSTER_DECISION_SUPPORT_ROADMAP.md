@@ -161,6 +161,33 @@ three alternatives when there aren't.
 - New airline constraints.
 - Any Coralys changes.
 
+**P3 acceptance criteria (hard gate — all must pass before P3 closes):**
+
+| Criterion | Required |
+|-----------|----------|
+| Recommendation visible | Yes |
+| Alternatives visible when available | Yes |
+| Alternatives comparable (coverage / fairness / utilization / cost / changes) | Yes |
+| Trade-offs understandable to scheduler | Yes |
+| Scheduler can select an option | Yes |
+| Selection recorded in P2 Stage 2 DECIDED | Yes |
+| Recommendation ≠ selection distinction survives into memory | Yes |
+| Single-alternative case handled honestly (no fabricated alternatives) | Yes |
+| Optimizer unchanged | **Yes** |
+| P1.1 not smuggled in | **Yes** |
+| P4 not implemented | **Yes** |
+
+**Important product behavior:** UltraRoster does not decide for the scheduler. It explains
+the available decision, recommends one, and lets the scheduler choose. When the scheduler
+chooses something other than the recommendation, that distinction must survive into memory:
+
+```
+Recommended: Option A
+Selected:    Option B
+```
+
+This distinction becomes the foundation for P4 (Memory-aware Recommendation).
+
 ---
 
 ## Roadmap Status
