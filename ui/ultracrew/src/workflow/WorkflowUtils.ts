@@ -1,4 +1,4 @@
-import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative } from './WorkflowTypes';
+import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, StaffingRequirement, CoverageReport } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
@@ -283,6 +283,49 @@ export function buildSyntheticResult(): ScheduleResult {
   };
 }
 
+// ─── P3.1: Staffing demand & canonical coverage ───────────────────────────────
+//
+// Synthetic demand: 3 Early + 2 Late + 2 Night per day × 28 days = 196 required
+// positions. This is the canonical demand object used by every screen.
+// Coverage = filledPositions / requiredPositions (never from optimizer fitness).
+
+export function buildStaffingRequirements(): StaffingRequirement[] {
+  const reqs: StaffingRequirement[] = [];
+  for (let d = 0; d < 28; d++) {
+    reqs.push({ dayIdx: d, shiftType: 'Early', required: 3 });
+    reqs.push({ dayIdx: d, shiftType: 'Late',  required: 2 });
+    reqs.push({ dayIdx: d, shiftType: 'Night', required: 2 });
+  }
+  return reqs; // 84 requirement objects, 196 total required positions
+}
+
+export function computeCanonicalCoverage(
+  requirements: StaffingRequirement[],
+  schedule: Record<string, string[]>,
+): CoverageReport {
+  const totalRequired = requirements.reduce((sum, r) => sum + r.required, 0);
+  if (totalRequired === 0) {
+    return { requiredPositions: 0, filledPositions: 0, coveragePct: 0, gapPositions: 0 };
+  }
+
+  // For each requirement slot, count how many staff are assigned that shift on that day
+  let filled = 0;
+  requirements.forEach(req => {
+    const assignedCount = Object.values(schedule).filter(
+      shifts => (shifts[req.dayIdx] ?? '') === req.shiftType
+    ).length;
+    filled += Math.min(assignedCount, req.required); // cap at required (surplus doesn't help coverage)
+  });
+
+  const coveragePct = Math.round((filled / totalRequired) * 1000) / 10; // 1 decimal
+  return {
+    requiredPositions: totalRequired,
+    filledPositions: filled,
+    coveragePct,
+    gapPositions: totalRequired - filled,
+  };
+}
+
 // ─── P3: Synthetic alternatives for the Decision Selection step ───────────────
 //
 // The current engine (P1 finding) returns only one meaningfully distinct
@@ -295,43 +338,21 @@ export function buildSyntheticAlternatives(
   staff: StaffMember[],
   baseSchedule: Record<string, string[]>,
 ): { alternatives: RosterAlternative[]; recommendedId: string } {
-  // Coverage = fraction of the 20 working days (Mon–Fri × 4 weeks) that have
-  // a shift assigned, averaged across all staff.
-  const startDate = new Date('2026-07-14'); // Monday
-
-  const weekdayAssignments = (sched: Record<string, string[]>): number => {
-    let count = 0;
-    staff.forEach(s => {
-      const shifts = sched[s.id] || [];
-      for (let d = 0; d < 28; d++) {
-        const dt = new Date(startDate);
-        dt.setDate(dt.getDate() + d);
-        const dow = dt.getDay();
-        if (dow >= 1 && dow <= 5 && shifts[d] && shifts[d] !== '') count++;
-      }
-    });
-    return count;
-  };
-
-  const workingDaysPerPerson = 20; // 4 weeks × 5 weekdays
-  const totalWorkingSlots = staff.length * workingDaysPerPerson;
+  const requirements = buildStaffingRequirements();
   const totalSlots = staff.length * 28;
 
-  const aWeekdayCount = weekdayAssignments(baseSchedule);
-  const coverageA = totalWorkingSlots > 0
-    ? Math.round((aWeekdayCount / totalWorkingSlots) * 100) / 100
-    : 0;
+  const coverageReportA = computeCanonicalCoverage(requirements, baseSchedule);
   const totalAssignmentsA = Object.values(baseSchedule).flat().filter(s => s !== '').length;
-  const utilizationA = totalSlots > 0
-    ? Math.round((totalAssignmentsA / totalSlots) * 100) / 100
-    : 0;
+  const utilizationA = totalSlots > 0 ? Math.round((totalAssignmentsA / totalSlots) * 1000) / 1000 : 0;
 
   // Option A — the recommended option (what the engine produced)
   const optionA: RosterAlternative = {
     id: 'alt-A',
     label: 'Recommended',
     metrics: {
-      coverage: coverageA,
+      coverage: coverageReportA.coveragePct / 100,
+      filled_positions: coverageReportA.filledPositions,
+      required_positions: coverageReportA.requiredPositions,
       fairness_penalty: 1.2,
       utilization: utilizationA,
       cost: 100,
@@ -339,8 +360,8 @@ export function buildSyntheticAlternatives(
     },
     schedule: baseSchedule,
     reasons: [
-      'Best overall balance of coverage, fairness, and fatigue.',
-      'Zero hard constraint violations.',
+      `${coverageReportA.filledPositions} / ${coverageReportA.requiredPositions} required positions filled.`,
+      'Best overall balance of fairness and cost.',
       'Recommended based on the current objective weighting.',
     ],
   };
@@ -367,22 +388,18 @@ export function buildSyntheticAlternatives(
     }
   });
 
-  const bWeekdayCount = weekdayAssignments(scheduleB);
-  const coverageB = totalWorkingSlots > 0
-    ? Math.round((bWeekdayCount / totalWorkingSlots) * 100) / 100
-    : 0;
+  const coverageReportB = computeCanonicalCoverage(requirements, scheduleB);
   const totalAssignmentsB = Object.values(scheduleB).flat().filter(s => s !== '').length;
-  const utilizationB = totalSlots > 0
-    ? Math.round((totalAssignmentsB / totalSlots) * 100) / 100
-    : 0;
+  const utilizationB = totalSlots > 0 ? Math.round((totalAssignmentsB / totalSlots) * 1000) / 1000 : 0;
 
   // "You gain / You give up" trade-off language
   const gainLines: string[] = [];
   const giveUpLines: string[] = [];
   gainLines.push('Lower fairness penalty (0.9 vs 1.2) — more even weekend distribution.');
   gainLines.push('3% lower cost index.');
-  if (coverageB < coverageA) {
-    giveUpLines.push(`${Math.round((coverageA - coverageB) * 100)}% lower working-day coverage.`);
+  if (coverageReportB.gapPositions > coverageReportA.gapPositions) {
+    const extraGap = coverageReportB.gapPositions - coverageReportA.gapPositions;
+    giveUpLines.push(`${extraGap} more required position${extraGap !== 1 ? 's' : ''} left uncovered.`);
   }
   if (utilizationB < utilizationA) {
     giveUpLines.push(`${Math.round((utilizationA - utilizationB) * 100)}% lower overall utilization.`);
@@ -395,7 +412,9 @@ export function buildSyntheticAlternatives(
     id: 'alt-B',
     label: 'Alternative',
     metrics: {
-      coverage: coverageB,
+      coverage: coverageReportB.coveragePct / 100,
+      filled_positions: coverageReportB.filledPositions,
+      required_positions: coverageReportB.requiredPositions,
       fairness_penalty: 0.9,
       utilization: utilizationB,
       cost: 97,
@@ -403,6 +422,7 @@ export function buildSyntheticAlternatives(
     },
     schedule: scheduleB,
     reasons: [
+      `${coverageReportB.filledPositions} / ${coverageReportB.requiredPositions} required positions filled.`,
       ...(gainLines.length > 0 ? [`You gain: ${gainLines.join(' ')}`] : []),
       ...(giveUpLines.length > 0 ? [`You give up: ${giveUpLines.join(' ')}`] : []),
     ],

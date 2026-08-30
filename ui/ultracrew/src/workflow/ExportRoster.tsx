@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult, SchedulerDecision } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, accentGhostBtnStyle } from './WorkflowComponents';
-import { exportRosterToExcel } from './WorkflowUtils';
+import { exportRosterToExcel, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
 
 const StatBlock: React.FC<{ label: string; value: string; color: string }> = ({ label, value, color }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -30,8 +30,10 @@ export const ExportRoster: React.FC<{
 
   const cr = result.constraint_report;
   const totalShifts = Object.values(schedule).flat().filter(s => s !== '').length;
-  const totalSlots = staff.length * 28;
-  const coveragePct = totalSlots > 0 ? Math.round((totalShifts / totalSlots) * 100) : 0;
+  // P3.1: canonical demand-based coverage — same formula as Explore Decision
+  const requirements = buildStaffingRequirements();
+  const coverageReport = computeCanonicalCoverage(requirements, schedule);
+  const coveragePct = Math.round(coverageReport.coveragePct);
 
   // Planner Acceptance Score: fraction of optimizer-generated assignments accepted without change.
   // Denominator is originalAssignmentCount (set at generation time), not totalShifts (which
@@ -168,7 +170,12 @@ export const ExportRoster: React.FC<{
         <StatBlock label="Staff" value={String(staff.length)} color="var(--text-main)" />
         <StatBlock label="Planning Days" value="28" color="var(--text-main)" />
         <StatBlock label="Total Shifts" value={String(totalShifts)} color="var(--accent-color)" />
-        <StatBlock label="Coverage" value={`${coveragePct}%`} color={coveragePct >= 70 ? 'var(--success-color)' : '#f59e0b'} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          <StatBlock label="Coverage" value={`${coveragePct}%`} color={coveragePct >= 70 ? 'var(--success-color)' : '#f59e0b'} />
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {coverageReport.filledPositions} / {coverageReport.requiredPositions} req. positions
+          </div>
+        </div>
         <StatBlock label="Hard Violations" value={String(cr?.hard_violations ?? '—')} color={cr?.hard_violations === 0 ? 'var(--success-color)' : 'var(--danger-color)'} />
         <StatBlock label="Soft Violations" value={String(cr?.soft_violations ?? '—')} color="#f59e0b" />
       </div>

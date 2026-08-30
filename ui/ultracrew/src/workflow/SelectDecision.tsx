@@ -159,10 +159,22 @@ const AlternativeCard: React.FC<{
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', background: 'rgba(56,189,248,0.1)', borderRadius: 999, color: '#38bdf8' }}>
+      {/* Coverage headline — demand-based: N / M required positions filled */}
+      {alt.metrics.required_positions > 0 && (
+        <div style={{ marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8' }}>
           {pct(alt.metrics.coverage)} coverage
-        </span>
+          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.78rem' }}>
+            ({alt.metrics.filled_positions} / {alt.metrics.required_positions} required positions filled)
+          </span>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        {alt.metrics.required_positions === 0 && (
+          <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', background: 'rgba(56,189,248,0.1)', borderRadius: 999, color: '#38bdf8' }}>
+            {pct(alt.metrics.coverage)} coverage
+          </span>
+        )}
         <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', background: 'rgba(245,158,11,0.1)', borderRadius: 999, color: '#f59e0b' }}>
           {alt.metrics.fairness_penalty.toFixed(1)} fairness
         </span>

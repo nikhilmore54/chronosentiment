@@ -20,12 +20,33 @@ export interface RuleSet {
   payload: object;
 }
 
+// ─── P3.1: Staffing demand — explicit requirements layer ─────────────────────
+//
+// StaffingRequirement is the canonical demand object. Coverage is always
+// computed as filledPositions / requiredPositions, never from optimizer fitness.
+// The same object is used by Explore Decision, Review/Edit, and Export.
+
+export interface StaffingRequirement {
+  dayIdx: number;       // 0–27 (relative to planning horizon start)
+  shiftType: string;    // 'Early' | 'Late' | 'Night'
+  required: number;     // how many staff are needed for this slot
+}
+
+export interface CoverageReport {
+  requiredPositions: number;   // sum of all StaffingRequirement.required
+  filledPositions: number;     // how many required positions have an assignment
+  coveragePct: number;         // filledPositions / requiredPositions × 100, 1 decimal
+  gapPositions: number;        // requiredPositions - filledPositions
+}
+
 // ─── P3: Roster alternative (one option presented to the scheduler) ───────────
 
 export interface RosterAlternativeMetrics {
-  coverage: number;        // 0.0–1.0
+  coverage: number;        // 0.0–1.0 (filledPositions / requiredPositions)
+  filled_positions: number;
+  required_positions: number;
   fairness_penalty: number;
-  utilization: number;     // 0.0–1.0
+  utilization: number;     // 0.0–1.0 (total assignments / total slots)
   cost: number;
   diff_from_recommended: number; // number of assignments that differ
 }
