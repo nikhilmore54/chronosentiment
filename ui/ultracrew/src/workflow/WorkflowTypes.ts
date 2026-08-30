@@ -59,6 +59,38 @@ export interface RosterAlternative {
   reasons: string[];                  // why this option is notable
 }
 
+// ─── P3.3: Assignment provenance — four states, emitted not diffed ────────────
+//
+// Every assignment cell in the post-redistribution roster carries exactly one
+// of these four states. The state is emitted by the redistribution operation
+// at the moment it acts on the cell — never derived by post-hoc diff.
+
+export type AssignmentProvenanceState =
+  | 'original'           // from the selected alternative, untouched
+  | 'scheduler_edit'     // scheduler-authored, locked — redistribution must not touch
+  | 'system_reassignment' // UltraRoster changed this during redistribution
+  | 'unchanged';         // redistribution ran but left this cell the same as original
+
+export interface ChangeRecord {
+  assignmentId: string;          // `${staffId}:${dayIdx}`
+  previousValue: string;         // shift value before redistribution ('' = off)
+  newValue: string;              // shift value after redistribution
+  redistributionOperationId: string;
+  reason: string;                // human-readable, e.g. "coverage gap on day 14 Night shift"
+  timestamp: string;             // ISO-8601
+}
+
+export interface RedistributionLog {
+  operationId: string;           // unique per redistribution run (crypto.randomUUID or fallback)
+  timestamp: string;             // ISO-8601 when redistribution completed
+  schedulerEditsPreserved: number;
+  assignmentsReassigned: number;
+  lockedAssignmentsChanged: number; // invariant: always 0 — non-zero blocks export
+  changeRecords: ChangeRecord[];
+  // Provenance map: `${staffId}:${dayIdx}` → AssignmentProvenanceState
+  provenanceMap: Record<string, AssignmentProvenanceState>;
+}
+
 // ─── P3: Decision record — what the scheduler chose ──────────────────────────
 
 export interface SchedulerDecision {

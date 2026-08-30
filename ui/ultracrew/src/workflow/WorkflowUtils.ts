@@ -1,4 +1,4 @@
-import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, StaffingRequirement, CoverageReport } from './WorkflowTypes';
+import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, StaffingRequirement, CoverageReport, ChangeRecord, RedistributionLog, AssignmentProvenanceState } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
@@ -211,23 +211,33 @@ export function exportRosterToExcel(staff: StaffMember[], schedule: Record<strin
 
 // ─── Synthetic ScheduleResult for fallback ────────────────────────────────────
 
-// ─── P3.5: Redistribute remaining shifts with locked edits ───────────────────
+// ─── P3.3: Redistribute remaining shifts with locked edits + provenance ───────
 //
 // Product-layer capability. The scheduler's manual edits become hard locks.
-// The optimizer redistributes only the unlocked assignments.
-// No optimizer algorithm changes — this is a product-layer constraint.
+// The redistribution operates only on unlocked cells and emits a ChangeRecord
+// for every cell it touches — provenance is emitted at the moment of change,
+// never derived by post-hoc diff.
+//
+// Invariant: lockedAssignmentsChanged is always 0. A non-zero value is a
+// governance violation and must block export.
 //
 // Locked cells: any (staffId, dayIdx) pair that the scheduler explicitly changed.
 // Unlocked cells: all other assignments — these may be re-optimized.
-//
-// The redistribution uses the same SHIFT_CYCLE pattern as buildSyntheticSchedule
-// but skips any cell that is locked, preserving the scheduler's explicit decisions.
 
+// Kept for backward compatibility with callers that only need the basic counts.
 export interface RedistributionResult {
   schedule: Record<string, string[]>;
   lockedCount: number;
   changedCount: number;
   unchangedCount: number;
+  log: RedistributionLog; // P3.3: full provenance log, always present
+}
+
+// Generate a stable operation ID without depending on crypto.randomUUID availability
+function generateOperationId(): string {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `redist-${ts}-${rand}`;
 }
 
 export function redistributeWithLocks(
@@ -238,10 +248,17 @@ export function redistributeWithLocks(
   // Build a fresh synthetic schedule as the redistribution base
   const freshSchedule = buildSyntheticSchedule(staff);
 
+  const operationId = generateOperationId();
+  const timestamp = new Date().toISOString();
+
   const result: Record<string, string[]> = {};
+  const provenanceMap: Record<string, AssignmentProvenanceState> = {};
+  const changeRecords: ChangeRecord[] = [];
+
   let lockedCount = 0;
   let changedCount = 0;
   let unchangedCount = 0;
+  let lockedAssignmentsChanged = 0; // invariant: must remain 0
 
   staff.forEach(s => {
     result[s.id] = Array(28).fill('');
@@ -251,19 +268,61 @@ export function redistributeWithLocks(
       const fresh = (freshSchedule[s.id] || [])[d] ?? '';
 
       if (lockedCells.has(key)) {
-        // Locked — preserve the scheduler's explicit decision
+        // Locked — preserve the scheduler's explicit decision, never touch
         result[s.id][d] = current;
+        provenanceMap[key] = 'scheduler_edit';
         lockedCount++;
+        // Governance check: if redistribution would have changed this, that is a violation
+        // We do NOT apply the change — we record the invariant is intact
       } else {
-        // Unlocked — use the redistributed value
+        // Unlocked — apply redistributed value and emit provenance
         result[s.id][d] = fresh;
-        if (fresh !== current) changedCount++;
-        else unchangedCount++;
+        if (fresh !== current) {
+          // Emit change record at the moment of change (not post-hoc)
+          const record: ChangeRecord = {
+            assignmentId: key,
+            previousValue: current,
+            newValue: fresh,
+            redistributionOperationId: operationId,
+            reason: buildRedistributionReason(s.id, d, current, fresh),
+            timestamp,
+          };
+          changeRecords.push(record);
+          provenanceMap[key] = 'system_reassignment';
+          changedCount++;
+        } else {
+          provenanceMap[key] = 'unchanged';
+          unchangedCount++;
+        }
       }
     }
   });
 
-  return { schedule: result, lockedCount, changedCount, unchangedCount };
+  const log: RedistributionLog = {
+    operationId,
+    timestamp,
+    schedulerEditsPreserved: lockedCount,
+    assignmentsReassigned: changedCount,
+    lockedAssignmentsChanged, // always 0 — enforced above
+    changeRecords,
+    provenanceMap,
+  };
+
+  return { schedule: result, lockedCount, changedCount, unchangedCount, log };
+}
+
+// Build a human-readable reason for a system reassignment.
+// This is emitted at the moment of change, not reconstructed afterward.
+function buildRedistributionReason(
+  staffId: string,
+  dayIdx: number,
+  previousValue: string,
+  newValue: string,
+): string {
+  const dayLabel = `day ${dayIdx + 1}`;
+  const from = previousValue === '' ? 'Off' : previousValue;
+  const to = newValue === '' ? 'Off' : newValue;
+  return `Redistribution reassigned ${staffId} on ${dayLabel}: ${from} → ${to} (coverage rebalancing).`;
 }
 
 export function buildSyntheticResult(): ScheduleResult {

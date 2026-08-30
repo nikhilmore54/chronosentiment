@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks } from './WorkflowUtils';
+import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
 import type { RedistributionResult } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -54,6 +54,93 @@ const ShiftPicker: React.FC<{
     ))}
   </div>
 );
+
+// ─── Provenance Inspector Modal ──────────────────────────────────────────────
+// Shows why a system_reassignment happened, using the emitted ChangeRecord.
+
+const ProvenanceInspector: React.FC<{
+  staffId: string;
+  dayIdx: number;
+  shift: string;
+  provenanceState: AssignmentProvenanceState;
+  changeRecord: ChangeRecord | null;
+  onClose: () => void;
+}> = ({ staffId, dayIdx, shift, provenanceState, changeRecord, onClose }) => {
+  const startDate = new Date('2026-07-14');
+  const dt = new Date(startDate);
+  dt.setDate(dt.getDate() + dayIdx);
+  const dateStr = dt.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  const stateLabel: Record<AssignmentProvenanceState, string> = {
+    original: 'Original assignment',
+    scheduler_edit: '✎ Scheduler edit (locked)',
+    system_reassignment: '↻ UltraRoster reassignment',
+    unchanged: 'Unchanged by redistribution',
+  };
+  const stateColor: Record<AssignmentProvenanceState, string> = {
+    original: 'var(--text-muted)',
+    scheduler_edit: '#f59e0b',
+    system_reassignment: 'var(--accent-color)',
+    unchanged: 'var(--text-muted)',
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '2rem', maxWidth: '480px', width: '92%', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', maxHeight: '80vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: shift ? SHIFT_COLORS[shift] : 'var(--text-muted)' }}>
+              {shift ? `${shift} Shift` : 'Rest Day'}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{staffId} · {dateStr}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.4rem' }}>Provenance</div>
+          <div style={{ fontSize: '0.92rem', fontWeight: 600, color: stateColor[provenanceState] }}>{stateLabel[provenanceState]}</div>
+        </div>
+
+        {provenanceState === 'system_reassignment' && changeRecord && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.2rem' }}>Change record</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+              <strong>From:</strong> {changeRecord.previousValue || 'Off'} → <strong>To:</strong> {changeRecord.newValue || 'Off'}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <strong>Reason:</strong> {changeRecord.reason}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Operation: {changeRecord.redistributionOperationId}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              {new Date(changeRecord.timestamp).toLocaleString()}
+            </div>
+          </div>
+        )}
+
+        {provenanceState === 'scheduler_edit' && (
+          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem', color: '#f59e0b' }}>
+            This cell was set by you and is locked. UltraRoster will not change it during redistribution.
+          </div>
+        )}
+
+        {(provenanceState === 'original' || provenanceState === 'unchanged') && (
+          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            This cell was not changed by redistribution.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ─── Explain Modal ────────────────────────────────────────────────────────────
 
@@ -239,6 +326,8 @@ export const ReviewSchedule: React.FC<{
   // P3.5: locked cells — the scheduler's explicit edits become hard locks
   const [lockedCells, setLockedCells] = useState<Set<string>>(new Set());
   const [redistResult, setRedistResult] = useState<RedistributionResult | null>(null);
+  // P3.3: provenance inspector
+  const [provenanceTarget, setProvenanceTarget] = useState<{ staffId: string; dayIdx: number } | null>(null);
 
   const startDate = new Date('2026-07-14');
   const days = Array.from({ length: 28 }, (_, i) => {
@@ -377,6 +466,13 @@ export const ReviewSchedule: React.FC<{
                     const isActive = activeCell?.nurseId === s.id && activeCell?.dayIdx === dayIdx;
                     const isWeekend = days[dayIdx].getDay() === 0 || days[dayIdx].getDay() === 6;
                     const color = SHIFT_COLORS[shift] || 'var(--text-muted)';
+                    const cellKey = `${s.id}:${dayIdx}`;
+                    // P3.3: determine provenance state for this cell
+                    const provenance: AssignmentProvenanceState = redistResult
+                      ? (redistResult.log.provenanceMap[cellKey] ?? 'original')
+                      : lockedCells.has(cellKey) ? 'scheduler_edit' : 'original';
+                    const isSchedulerEdit = provenance === 'scheduler_edit';
+                    const isSystemReassignment = provenance === 'system_reassignment';
                     return (
                       <td
                         key={dayIdx}
@@ -384,7 +480,13 @@ export const ReviewSchedule: React.FC<{
                           padding: '0.3rem 0.25rem',
                           textAlign: 'center',
                           position: 'relative',
-                          backgroundColor: isActive ? 'rgba(56,189,248,0.12)' : isWeekend ? 'rgba(129,140,248,0.04)' : 'transparent',
+                          backgroundColor: isActive
+                            ? 'rgba(56,189,248,0.12)'
+                            : isSystemReassignment
+                            ? 'rgba(56,189,248,0.07)'
+                            : isSchedulerEdit
+                            ? 'rgba(245,158,11,0.07)'
+                            : isWeekend ? 'rgba(129,140,248,0.04)' : 'transparent',
                           cursor: 'pointer',
                           transition: 'background-color 0.1s',
                         }}
@@ -400,6 +502,26 @@ export const ReviewSchedule: React.FC<{
                         }}>
                           {shift ? shift.charAt(0) : '·'}
                         </div>
+                        {/* P3.3: provenance marker — ✎ for scheduler edit, ↻ for system reassignment */}
+                        {(isSchedulerEdit || isSystemReassignment) && (
+                          <span
+                            style={{
+                              position: 'absolute', top: '1px', left: '2px',
+                              fontSize: '0.55rem', lineHeight: 1,
+                              color: isSchedulerEdit ? '#f59e0b' : 'var(--accent-color)',
+                              opacity: 0.85,
+                              cursor: 'pointer',
+                            }}
+                            title={isSchedulerEdit ? 'Scheduler edit (locked)' : 'UltraRoster reassignment — click ? to inspect'}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setActiveCell(null);
+                              setProvenanceTarget({ staffId: s.id, dayIdx });
+                            }}
+                          >
+                            {isSchedulerEdit ? '✎' : '↻'}
+                          </span>
+                        )}
                         <button
                           onClick={e => { e.stopPropagation(); setActiveCell(null); setExplainTarget({ nurseId: s.id, dayIdx, shift }); }}
                           style={{ position: 'absolute', top: '1px', right: '1px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.6rem', lineHeight: 1, padding: '1px 2px', opacity: 0.5 }}
@@ -422,7 +544,7 @@ export const ReviewSchedule: React.FC<{
         </table>
       </div>
 
-      {/* ── P3.5: Redistribute remaining shifts ──────────────────────────── */}
+      {/* ── P3.3: Redistribute remaining shifts with provenance ───────────── */}
       {editCount > 0 && (
         <div style={{
           backgroundColor: 'var(--panel-bg)',
@@ -441,35 +563,59 @@ export const ReviewSchedule: React.FC<{
           {!redistResult ? (
             <button
               onClick={() => {
-                const result = redistributeWithLocks(staff, schedule, lockedCells);
-                onScheduleChange(result.schedule);
-                setRedistResult(result);
+                const r = redistributeWithLocks(staff, schedule, lockedCells);
+                onScheduleChange(r.schedule);
+                setRedistResult(r);
               }}
               style={{ ...primaryBtnStyle, fontSize: '0.87rem' }}
             >
               ⚡ Redistribute remaining shifts
             </button>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <div style={{
-                background: 'rgba(52,211,153,0.06)',
-                border: '1px solid rgba(52,211,153,0.3)',
-                borderRadius: '6px',
-                padding: '0.65rem 0.9rem',
-                fontSize: '0.85rem',
-              }}>
-                <strong style={{ color: '#34d399' }}>Redistribution complete.</strong>
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  <span>🔒 <strong style={{ color: '#f59e0b' }}>{redistResult.lockedCount}</strong> locked by you</span>
-                  <span>⚡ <strong style={{ color: 'var(--accent-color)' }}>{redistResult.changedCount}</strong> changed by UltraRoster</span>
-                  <span>· <strong style={{ color: 'var(--text-main)' }}>{redistResult.unchangedCount}</strong> unchanged</span>
+          ) : (() => {
+            const log = redistResult.log;
+            const reqs = buildStaffingRequirements();
+            const coverage = computeCanonicalCoverage(reqs, redistResult.schedule);
+            const lockedViolation = log.lockedAssignmentsChanged > 0;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div style={{
+                  background: lockedViolation ? 'rgba(239,68,68,0.06)' : 'rgba(52,211,153,0.06)',
+                  border: `1px solid ${lockedViolation ? 'var(--danger-color)' : 'rgba(52,211,153,0.3)'}`,
+                  borderRadius: '6px',
+                  padding: '0.75rem 0.9rem',
+                  fontSize: '0.85rem',
+                }}>
+                  <strong style={{ color: lockedViolation ? 'var(--danger-color)' : '#34d399' }}>
+                    {lockedViolation ? '⚠ Redistribution error — locked cell was changed.' : 'Redistribution completed'}
+                  </strong>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem', fontSize: '0.82rem' }}>
+                    <div style={{ color: '#f59e0b' }}>
+                      ✎ <strong>{log.schedulerEditsPreserved}</strong> scheduler edit{log.schedulerEditsPreserved !== 1 ? 's' : ''} preserved
+                    </div>
+                    <div style={{ color: 'var(--accent-color)' }}>
+                      ↻ <strong>{log.assignmentsReassigned}</strong> assignment{log.assignmentsReassigned !== 1 ? 's' : ''} reassigned
+                    </div>
+                    <div style={{ color: lockedViolation ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: 700 }}>
+                      🔒 <strong>{log.lockedAssignmentsChanged}</strong> locked assignment{log.lockedAssignmentsChanged !== 1 ? 's' : ''} changed
+                      {!lockedViolation && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — invariant satisfied</span>}
+                    </div>
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      Coverage: <strong style={{ color: coverage.gapPositions === 0 ? 'var(--success-color)' : 'var(--text-main)' }}>
+                        {coverage.filledPositions} / {coverage.requiredPositions}
+                      </strong> required positions
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  <span><span style={{ color: '#f59e0b' }}>✎</span> Scheduler edit</span>
+                  <span><span style={{ color: 'var(--accent-color)' }}>↻</span> System reassignment — click marker to inspect</span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  Your {editCount} edit{editCount !== 1 ? 's' : ''} are preserved. You can continue editing or proceed to export.
                 </div>
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                Your {editCount} edit{editCount !== 1 ? 's' : ''} are preserved. You can continue editing or proceed to export.
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -488,6 +634,27 @@ export const ReviewSchedule: React.FC<{
           onClose={() => setExplainTarget(null)}
         />
       )}
+
+      {/* P3.3: Provenance Inspector — shown when scheduler clicks ✎ or ↻ marker */}
+      {provenanceTarget && redistResult && (() => {
+        const { staffId, dayIdx } = provenanceTarget;
+        const cellKey = `${staffId}:${dayIdx}`;
+        const provenanceState: AssignmentProvenanceState =
+          redistResult.log.provenanceMap[cellKey] ?? 'original';
+        const changeRecord: ChangeRecord | null =
+          redistResult.log.changeRecords.find(r => r.assignmentId === cellKey) ?? null;
+        const shift = (redistResult.schedule[staffId] || [])[dayIdx] ?? '';
+        return (
+          <ProvenanceInspector
+            staffId={staffId}
+            dayIdx={dayIdx}
+            shift={shift}
+            provenanceState={provenanceState}
+            changeRecord={changeRecord}
+            onClose={() => setProvenanceTarget(null)}
+          />
+        );
+      })()}
     </div>
   );
 };
