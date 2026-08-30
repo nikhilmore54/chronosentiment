@@ -67,6 +67,28 @@ Each `system_reassignment` record must carry:
 
 The provenance log must be immutable after the redistribution operation completes. It must be stored alongside the decision in P2 memory.
 
+### Implementation principle: emit, do not diff
+
+**Provenance must be emitted by the redistribution operation itself — not derived after the fact by diffing the final roster against the original roster.**
+
+A final diff can tell us *what changed*, but not reliably *who or what caused the change*. The redistribution function must emit a change record for every assignment it touches at the moment it touches it.
+
+Example of what must be prohibited:
+
+```
+Original:       Sarah = OFF
+Scheduler edit: Sarah = EARLY       ← locked
+Redistribution: Sarah = LATE        ← PROHIBITED — locked cell must not be touched
+```
+
+Example of what must produce an explicit system_reassignment record:
+
+```
+Original:       Marcus = OFF
+Scheduler edit: none
+Redistribution: Marcus = EARLY      ← permitted — must emit system_reassignment record
+```
+
 ---
 
 ## 6. Scope Boundaries
@@ -105,7 +127,30 @@ Rest Pattern Quality remains separate from this progression. It is an objective-
 
 ---
 
-## 8. Hard Gates (Must Pass Before Ship)
+## 8. UI Summary Panel (Required)
+
+After redistribution completes, the UI must display a summary panel. Minimum required content:
+
+```
+Redistribution completed
+
+3 scheduler edits preserved
+11 assignments reassigned
+0 locked assignments changed
+Coverage: 196 / 196
+```
+
+The "0 locked assignments changed" line is a hard invariant display — it must always be present and must always read 0. A non-zero value here is a governance violation and must block export.
+
+On the roster grid:
+- ✎ marks a scheduler edit cell
+- ↻ marks a system reassignment cell
+- No marker for unchanged or original cells
+- Original state is available on demand when inspecting a reassignment cell
+
+---
+
+## 9. Hard Gates (Must Pass Before Ship)
 
 1. A scheduler-locked assignment is never overwritten by redistribution — verified by test.
 2. Every `system_reassignment` cell links to a provenance record with all required fields.
@@ -114,6 +159,8 @@ Rest Pattern Quality remains separate from this progression. It is an objective-
 5. P2 memory stores the modification history alongside the decision record.
 6. Build exits 0 (`tsc -b && vite build`).
 7. All existing P3.2 regression tests continue to pass (`vitest run`).
+8. **Locked-cell preservation test:** Scheduler edit on cell X → redistribution runs → cell X is exactly unchanged. Verified by test.
+9. **Adjacent provenance test:** Scheduler edit on cell X → redistribution changes surrounding assignments → every changed surrounding assignment has an individual `system_reassignment` provenance record. This catches the failure mode where locked cells are preserved but adjacent changes are made without provenance.
 
 ---
 
