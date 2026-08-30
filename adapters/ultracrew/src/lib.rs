@@ -2,6 +2,7 @@ pub mod compliance;
 pub mod config;
 pub mod constraint_engine;
 pub mod decision_intelligence;
+pub mod decision_memory;
 pub mod decision_support;
 pub mod ecology;
 pub mod errors;
