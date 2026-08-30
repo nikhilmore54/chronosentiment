@@ -8,7 +8,7 @@ import { GenerateSchedule } from './GenerateSchedule';
 import { SelectDecision } from './SelectDecision';
 import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
-import { buildSyntheticAlternatives } from './WorkflowUtils';
+import { buildSyntheticAlternatives, rankAlternatives } from './WorkflowUtils';
 
 export const PlannerWorkflow: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -93,19 +93,23 @@ export const PlannerWorkflow: React.FC = () => {
               const count = Object.values(sched).flat().filter(s => s !== '').length;
               setOriginalAssignmentCount(count);
 
-              // P3: build alternatives from the result (or use what the API returned)
-              const apiAlts = result.alternatives;
-              const apiRecId = result.recommended_alternative_id;
-              if (apiAlts && apiAlts.length > 0 && apiRecId) {
-                setAlternatives(apiAlts);
-                setRecommendedId(apiRecId);
+              // P3: build alternatives, then always run rankAlternatives() as the
+              // single authoritative ranking step. The API recommendation is never
+              // used directly — it may reflect optimizer-internal scoring that does
+              // not match the product-level coverage-priority hierarchy.
+              let altsToRank: typeof alternatives;
+              if (result.alternatives && result.alternatives.length > 0) {
+                // API returned alternatives — use them but re-rank
+                altsToRank = result.alternatives;
               } else {
                 // Fallback: derive alternatives from the editable schedule
-                const { alternatives: synAlts, recommendedId: synRecId } =
-                  buildSyntheticAlternatives(staff, sched);
-                setAlternatives(synAlts);
-                setRecommendedId(synRecId);
+                const { alternatives: synAlts } = buildSyntheticAlternatives(staff, sched);
+                altsToRank = synAlts;
               }
+              // rankAlternatives() is the authoritative adapter-layer decision
+              const ranked = rankAlternatives(altsToRank);
+              setAlternatives(altsToRank);
+              setRecommendedId(ranked.recommendedId);
 
               goTo(4);
             }}
