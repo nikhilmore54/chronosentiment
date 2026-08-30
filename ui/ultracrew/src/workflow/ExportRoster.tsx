@@ -122,12 +122,12 @@ export const ExportRoster: React.FC<{
           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
             Edit Distribution — why the planner changed assignments
           </div>
+          {/* Primary categories — these are mutually exclusive and sum to manualEditCount */}
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             {[
-              { key: 'shift_swap',     label: 'Shift swaps',     hint: 'Changed from one shift type to another' },
-              { key: 'coverage_fix',   label: 'Coverage fixes',  hint: 'Filled an empty slot' },
-              { key: 'removal',        label: 'Removals',        hint: 'Removed an assignment' },
-              { key: 'weekend_change', label: 'Weekend changes', hint: 'Any edit on a weekend day' },
+              { key: 'shift_swap',   label: 'Shift swaps',    hint: 'Changed from one shift type to another' },
+              { key: 'coverage_fix', label: 'Coverage fixes', hint: 'Filled an empty slot' },
+              { key: 'removal',      label: 'Removals',       hint: 'Removed an assignment' },
             ].map(({ key, label, hint }) => {
               const count = editDistribution[key] ?? 0;
               const pct = manualEditCount > 0 ? Math.round((count / manualEditCount) * 100) : 0;
@@ -140,8 +140,17 @@ export const ExportRoster: React.FC<{
               );
             })}
           </div>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-            Dominant edit type guides Sprint 3 optimizer priority.
+          {/* Weekend dimension — overlaps with primary categories, shown separately */}
+          {(editDistribution['weekend_change'] ?? 0) > 0 && (
+            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <span style={{ color: '#818cf8', fontWeight: 600 }}>
+                {editDistribution['weekend_change']} of these edit{editDistribution['weekend_change'] !== 1 ? 's' : ''} occurred on a weekend
+              </span>
+              {' '}(overlaps with the categories above — not an additional edit).
+            </div>
+          )}
+          <div style={{ marginTop: '0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Dominant edit type guides optimizer priority.
           </div>
         </div>
       )}

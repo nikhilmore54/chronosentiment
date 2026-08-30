@@ -59,6 +59,22 @@ export const ImportStaff: React.FC<{
           Load Sample (20 staff)
         </button>
 
+        <button onClick={() => {
+          // Download the exact CSV format expected by the importer
+          const template = `id,contract,skills\nAlice_Smith,FullTime,Nurse\nBob_Jones,PartTime,HeadNurse;Nurse\nCarla_Night,Night,Nurse`;
+          const blob = new Blob([template], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'ultracrew_staff_template.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }} style={ghostBtnStyle}>
+          ⬇ Download CSV Template
+        </button>
+
         {staff.length > 0 && (
           <span style={{ color: 'var(--success-color)', fontSize: '0.9rem', fontWeight: 600 }}>
             ✓ {staff.length} staff members loaded

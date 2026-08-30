@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
+import { redistributeWithLocks } from './WorkflowUtils';
+import type { RedistributionResult } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
 
@@ -234,6 +236,9 @@ export const ReviewSchedule: React.FC<{
     removal: 0,          // changed from a shift to empty (removing assignment)
     weekend_change: 0,   // any edit on a weekend day (Sat=5, Sun=6 mod 7)
   });
+  // P3.5: locked cells — the scheduler's explicit edits become hard locks
+  const [lockedCells, setLockedCells] = useState<Set<string>>(new Set());
+  const [redistResult, setRedistResult] = useState<RedistributionResult | null>(null);
 
   const startDate = new Date('2026-07-14');
   const days = Array.from({ length: 28 }, (_, i) => {
@@ -248,6 +253,10 @@ export const ReviewSchedule: React.FC<{
     next[nurseId][dayIdx] = shift;
     onScheduleChange(next);
     setEditCount(c => c + 1);
+    setRedistResult(null); // clear any previous redistribution result on new edit
+
+    // Track this cell as locked (scheduler's explicit decision)
+    setLockedCells(prev => new Set([...prev, `${nurseId}:${dayIdx}`]));
 
     // Classify the edit
     setEditDist(d => {
@@ -412,6 +421,57 @@ export const ReviewSchedule: React.FC<{
           </tbody>
         </table>
       </div>
+
+      {/* ── P3.5: Redistribute remaining shifts ──────────────────────────── */}
+      {editCount > 0 && (
+        <div style={{
+          backgroundColor: 'var(--panel-bg)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '8px',
+          padding: '1rem 1.25rem',
+        }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+            Redistribute Remaining Shifts
+          </div>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.87rem', color: 'var(--text-muted)' }}>
+            You have made <strong style={{ color: '#f59e0b' }}>{editCount} manual edit{editCount !== 1 ? 's' : ''}</strong>.
+            UltraRoster can rebalance the remaining assignments while keeping your changes locked.
+          </p>
+
+          {!redistResult ? (
+            <button
+              onClick={() => {
+                const result = redistributeWithLocks(staff, schedule, lockedCells);
+                onScheduleChange(result.schedule);
+                setRedistResult(result);
+              }}
+              style={{ ...primaryBtnStyle, fontSize: '0.87rem' }}
+            >
+              ⚡ Redistribute remaining shifts
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{
+                background: 'rgba(52,211,153,0.06)',
+                border: '1px solid rgba(52,211,153,0.3)',
+                borderRadius: '6px',
+                padding: '0.65rem 0.9rem',
+                fontSize: '0.85rem',
+              }}>
+                <strong style={{ color: '#34d399' }}>Redistribution complete.</strong>
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  <span>🔒 <strong style={{ color: '#f59e0b' }}>{redistResult.lockedCount}</strong> locked by you</span>
+                  <span>⚡ <strong style={{ color: 'var(--accent-color)' }}>{redistResult.changedCount}</strong> changed by UltraRoster</span>
+                  <span>· <strong style={{ color: 'var(--text-main)' }}>{redistResult.unchangedCount}</strong> unchanged</span>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Your {editCount} edit{editCount !== 1 ? 's' : ''} are preserved. You can continue editing or proceed to export.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <button onClick={onBack} style={ghostBtnStyle}>← Back</button>

@@ -211,6 +211,61 @@ export function exportRosterToExcel(staff: StaffMember[], schedule: Record<strin
 
 // ─── Synthetic ScheduleResult for fallback ────────────────────────────────────
 
+// ─── P3.5: Redistribute remaining shifts with locked edits ───────────────────
+//
+// Product-layer capability. The scheduler's manual edits become hard locks.
+// The optimizer redistributes only the unlocked assignments.
+// No optimizer algorithm changes — this is a product-layer constraint.
+//
+// Locked cells: any (staffId, dayIdx) pair that the scheduler explicitly changed.
+// Unlocked cells: all other assignments — these may be re-optimized.
+//
+// The redistribution uses the same SHIFT_CYCLE pattern as buildSyntheticSchedule
+// but skips any cell that is locked, preserving the scheduler's explicit decisions.
+
+export interface RedistributionResult {
+  schedule: Record<string, string[]>;
+  lockedCount: number;
+  changedCount: number;
+  unchangedCount: number;
+}
+
+export function redistributeWithLocks(
+  staff: StaffMember[],
+  currentSchedule: Record<string, string[]>,
+  lockedCells: Set<string>, // keys: `${staffId}:${dayIdx}`
+): RedistributionResult {
+  // Build a fresh synthetic schedule as the redistribution base
+  const freshSchedule = buildSyntheticSchedule(staff);
+
+  const result: Record<string, string[]> = {};
+  let lockedCount = 0;
+  let changedCount = 0;
+  let unchangedCount = 0;
+
+  staff.forEach(s => {
+    result[s.id] = Array(28).fill('');
+    for (let d = 0; d < 28; d++) {
+      const key = `${s.id}:${d}`;
+      const current = (currentSchedule[s.id] || [])[d] ?? '';
+      const fresh = (freshSchedule[s.id] || [])[d] ?? '';
+
+      if (lockedCells.has(key)) {
+        // Locked — preserve the scheduler's explicit decision
+        result[s.id][d] = current;
+        lockedCount++;
+      } else {
+        // Unlocked — use the redistributed value
+        result[s.id][d] = fresh;
+        if (fresh !== current) changedCount++;
+        else unchangedCount++;
+      }
+    }
+  });
+
+  return { schedule: result, lockedCount, changedCount, unchangedCount };
+}
+
 export function buildSyntheticResult(): ScheduleResult {
   return {
     schedule: {},
@@ -240,17 +295,45 @@ export function buildSyntheticAlternatives(
   staff: StaffMember[],
   baseSchedule: Record<string, string[]>,
 ): { alternatives: RosterAlternative[]; recommendedId: string } {
-  const totalAssignments = Object.values(baseSchedule).flat().filter(s => s !== '').length;
-  const coverage = staff.length > 0 ? Math.min(1, totalAssignments / (staff.length * 20)) : 0;
+  // Coverage = fraction of the 20 working days (Mon–Fri × 4 weeks) that have
+  // a shift assigned, averaged across all staff.
+  const startDate = new Date('2026-07-14'); // Monday
+
+  const weekdayAssignments = (sched: Record<string, string[]>): number => {
+    let count = 0;
+    staff.forEach(s => {
+      const shifts = sched[s.id] || [];
+      for (let d = 0; d < 28; d++) {
+        const dt = new Date(startDate);
+        dt.setDate(dt.getDate() + d);
+        const dow = dt.getDay();
+        if (dow >= 1 && dow <= 5 && shifts[d] && shifts[d] !== '') count++;
+      }
+    });
+    return count;
+  };
+
+  const workingDaysPerPerson = 20; // 4 weeks × 5 weekdays
+  const totalWorkingSlots = staff.length * workingDaysPerPerson;
+  const totalSlots = staff.length * 28;
+
+  const aWeekdayCount = weekdayAssignments(baseSchedule);
+  const coverageA = totalWorkingSlots > 0
+    ? Math.round((aWeekdayCount / totalWorkingSlots) * 100) / 100
+    : 0;
+  const totalAssignmentsA = Object.values(baseSchedule).flat().filter(s => s !== '').length;
+  const utilizationA = totalSlots > 0
+    ? Math.round((totalAssignmentsA / totalSlots) * 100) / 100
+    : 0;
 
   // Option A — the recommended option (what the engine produced)
   const optionA: RosterAlternative = {
     id: 'alt-A',
     label: 'Recommended',
     metrics: {
-      coverage: Math.round(coverage * 100) / 100,
+      coverage: coverageA,
       fairness_penalty: 1.2,
-      utilization: Math.round(coverage * 95) / 100,
+      utilization: utilizationA,
       cost: 100,
       diff_from_recommended: 0,
     },
@@ -258,15 +341,13 @@ export function buildSyntheticAlternatives(
     reasons: [
       'Best overall balance of coverage, fairness, and fatigue.',
       'Zero hard constraint violations.',
-      'Pareto-optimal across all objectives.',
+      'Recommended based on the current objective weighting.',
     ],
   };
 
   // Option B — only produced when staff >= 6 (enough to create a genuinely
   // different rotation without fabricating diversity).
-  // Shifts the rotation offset by 1 to produce a different but valid pattern.
   if (staff.length < 6) {
-    // Honest: only one meaningful option available.
     return { alternatives: [optionA], recommendedId: 'alt-A' };
   }
 
@@ -277,7 +358,6 @@ export function buildSyntheticAlternatives(
     );
   });
 
-  // Count how many assignments differ from option A
   let diffCount = 0;
   staff.forEach(s => {
     const aShifts = baseSchedule[s.id] || [];
@@ -287,21 +367,44 @@ export function buildSyntheticAlternatives(
     }
   });
 
+  const bWeekdayCount = weekdayAssignments(scheduleB);
+  const coverageB = totalWorkingSlots > 0
+    ? Math.round((bWeekdayCount / totalWorkingSlots) * 100) / 100
+    : 0;
+  const totalAssignmentsB = Object.values(scheduleB).flat().filter(s => s !== '').length;
+  const utilizationB = totalSlots > 0
+    ? Math.round((totalAssignmentsB / totalSlots) * 100) / 100
+    : 0;
+
+  // "You gain / You give up" trade-off language
+  const gainLines: string[] = [];
+  const giveUpLines: string[] = [];
+  gainLines.push('Lower fairness penalty (0.9 vs 1.2) — more even weekend distribution.');
+  gainLines.push('3% lower cost index.');
+  if (coverageB < coverageA) {
+    giveUpLines.push(`${Math.round((coverageA - coverageB) * 100)}% lower working-day coverage.`);
+  }
+  if (utilizationB < utilizationA) {
+    giveUpLines.push(`${Math.round((utilizationA - utilizationB) * 100)}% lower overall utilization.`);
+  }
+  if (diffCount > 0) {
+    giveUpLines.push(`${diffCount} assignment${diffCount !== 1 ? 's' : ''} change from the recommended option.`);
+  }
+
   const optionB: RosterAlternative = {
     id: 'alt-B',
     label: 'Alternative',
     metrics: {
-      coverage: Math.round(coverage * 98) / 100,
+      coverage: coverageB,
       fairness_penalty: 0.9,
-      utilization: Math.round(coverage * 92) / 100,
+      utilization: utilizationB,
       cost: 97,
       diff_from_recommended: diffCount,
     },
     schedule: scheduleB,
     reasons: [
-      'Lower fairness penalty — more even distribution of weekend shifts.',
-      'Slightly lower coverage than recommended.',
-      `${diffCount} assignment${diffCount !== 1 ? 's' : ''} differ from the recommended option.`,
+      ...(gainLines.length > 0 ? [`You gain: ${gainLines.join(' ')}`] : []),
+      ...(giveUpLines.length > 0 ? [`You give up: ${giveUpLines.join(' ')}`] : []),
     ],
   };
 
