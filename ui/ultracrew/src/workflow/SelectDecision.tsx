@@ -38,6 +38,8 @@ const ComparisonTable: React.FC<{
   recommendedId: string;
   selectedId: string;
 }> = ({ alternatives, recommendedId, selectedId }) => {
+  // Canonical metric order — each metric appears exactly once.
+  // Coverage → Positions filled → Utilization → Fairness penalty → Cost index → Δ from recommended
   const rows: Array<{
     key: keyof RosterAlternative['metrics'];
     label: string;
@@ -45,13 +47,12 @@ const ComparisonTable: React.FC<{
     higherIsBetter: boolean;
     color: string;
   }> = [
-    { key: 'coverage',           label: 'Coverage',         format: pct,     higherIsBetter: true,  color: '#38bdf8' },
-    { key: 'utilization',        label: 'Utilization',      format: pct,     higherIsBetter: true,  color: '#34d399' },
-    { key: 'coverage',           label: 'Coverage',          format: v => pct(v),         higherIsBetter: true,  color: '#38bdf8' },
-    { key: 'filled_positions',   label: 'Positions filled',  format: (v: number) => String(v), higherIsBetter: true,  color: '#38bdf8' },
-    { key: 'fairness_penalty',   label: 'Fairness penalty',  format: v => v.toFixed(1),   higherIsBetter: false, color: '#f59e0b' },
-    { key: 'cost',               label: 'Cost index',        format: fmtCost,             higherIsBetter: false, color: '#818cf8' },
-    { key: 'diff_from_recommended', label: 'Δ from recommended', format: v => v === 0 ? '—' : `${v} shifts`, higherIsBetter: false, color: '#94a3b8' },
+    { key: 'coverage',              label: 'Coverage',           format: pct,                                    higherIsBetter: true,  color: '#38bdf8' },
+    { key: 'filled_positions',      label: 'Positions filled',   format: (v: number) => String(v),              higherIsBetter: true,  color: '#38bdf8' },
+    { key: 'utilization',           label: 'Utilization',        format: pct,                                    higherIsBetter: true,  color: '#34d399' },
+    { key: 'fairness_penalty',      label: 'Fairness penalty',   format: v => v.toFixed(1),                     higherIsBetter: false, color: '#f59e0b' },
+    { key: 'cost',                  label: 'Cost index',         format: fmtCost,                               higherIsBetter: false, color: '#818cf8' },
+    { key: 'diff_from_recommended', label: 'Δ from recommended', format: v => v === 0 ? '—' : `${v} shifts`,   higherIsBetter: false, color: '#94a3b8' },
   ];
 
   return (

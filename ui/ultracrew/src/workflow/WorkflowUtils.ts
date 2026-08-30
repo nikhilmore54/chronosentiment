@@ -492,9 +492,7 @@ export function buildSyntheticAlternatives(
     },
     schedule: baseSchedule,
     reasons: [
-      `${coverageReportA.filledPositions} / ${coverageReportA.requiredPositions} required positions filled.`,
-      'Best overall balance of fairness and cost.',
-      'Recommended based on the current objective weighting.',
+      `${coverageReportA.filledPositions} / ${coverageReportA.requiredPositions} required positions filled${coverageReportA.gapPositions === 0 ? ' — full coverage' : ` (${coverageReportA.gapPositions} uncovered)`}.`,
     ],
   };
 
