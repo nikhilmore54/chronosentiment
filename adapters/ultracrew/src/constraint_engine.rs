@@ -174,6 +174,16 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
             fairness_penalty += fairness_cost;
         }
 
+        // SC2: Fatigue
+        if self.context.enable_fatigue {
+            for (&w_id, &hours) in &worker_hours {
+                let hist_fatigue = self.context.ecology.get_historical_fatigue(w_id);
+                let w_penalty = hist_fatigue * (hours as f64) * self.context.fatigue_weight;
+                fatigue_penalty += w_penalty;
+            }
+            fitness -= fatigue_penalty;
+        }
+
         // NO PASS 3 (INRC ADVANCED CHECKS)
 
         // Base reward for completing the schedule

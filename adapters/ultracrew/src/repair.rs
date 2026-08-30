@@ -239,6 +239,13 @@ mod contract_tests {
                 planning_horizon_hours: None,
                 leave_requests: None,
             }),
+            enable_fatigue: false,
+            fatigue_weight: 0.0,
+            hc3_aware_initialization: false,
+            temporal_scarcity_construction: false,
+            disable_global_constructor: false,
+            constructor_budget_ms: None,
+            precomputed_seeds: None,
         })
     }
 

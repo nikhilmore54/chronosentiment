@@ -43,6 +43,7 @@ use serde::Serialize;
 /// | V-014  | Warning  | Historical workload references an unknown worker ID |
 use std::collections::{HashMap, HashSet};
 
+use crate::config::FatigueConfig;
 use crate::models::Skill;
 use crate::public_contracts::ScheduleRequest;
 
@@ -512,9 +513,9 @@ mod tests {
                 leave_requests: None,
                 minimum_rest_hours: Some(10),
                 planning_horizon_hours: Some(168.0),
-                max_hours_per_worker: Some(48.0),
-            })
-            , fatigue: FatigueConfig::default(),
+                max_hours_per_worker: None,
+            }),
+            fatigue: crate::config::FatigueConfig::default(),
         }
     }
 
@@ -669,7 +670,7 @@ mod tests {
             rng_seed: None,
             generation_limit: None,
             scenario: None,
-            // ScheduleRequest has exactly these 6 fields
+            fatigue: FatigueConfig::default(),
         };
         let report = validate_request(&req);
         assert!(!report.is_valid());
@@ -744,6 +745,7 @@ mod tests {
                 planning_horizon_hours: Some(168.0),
                 max_hours_per_worker: Some(48.0),
             }),
+            fatigue: crate::config::FatigueConfig::default(),
         };
         let report = validate_request(&req);
         assert!(

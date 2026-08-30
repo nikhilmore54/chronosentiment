@@ -39,6 +39,7 @@ fn test_dataset_validation() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let context = request.to_context();
     assert!(validate_context(&context).is_ok());
@@ -61,6 +62,7 @@ fn test_dataset_validation() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let bad_context = bad_request.to_context();
     assert!(validate_context(&bad_context).is_err());
@@ -79,6 +81,7 @@ fn test_dataset_validation() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let bad_context2 = bad_request2.to_context();
     assert!(validate_context(&bad_context2).is_err());
@@ -117,6 +120,7 @@ fn test_optimization_and_explanation_pipeline() {
         rng_seed: Some(123),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let context = request.to_context();
 
@@ -211,6 +215,7 @@ fn test_constraint_engine_report_details() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let context = request.to_context();
     let engine = InrcConstraintEvaluator::new(context);
@@ -252,6 +257,7 @@ fn test_recommendation_generation() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let context = request.to_context();
     let constraint_engine = InrcConstraintEvaluator::new(context);
@@ -292,6 +298,7 @@ fn test_optimizer_telemetry_generation() {
         rng_seed: Some(42),
         generation_limit: None,
         scenario: None,
+        fatigue: ultracrew::config::FatigueConfig::default(),
     };
     let context = request.to_context();
     let config = EvolutionConfig {

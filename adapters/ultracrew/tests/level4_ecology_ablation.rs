@@ -45,6 +45,13 @@ fn generate_sequential_scenario(
             ultracrew::optimization::Observatory::new(),
         )),
         locked_assignments: None,
+        hc3_aware_initialization: false,
+        temporal_scarcity_construction: false,
+        disable_global_constructor: false,
+        constructor_budget_ms: None,
+        precomputed_seeds: None,
+        enable_fatigue: true,
+        fatigue_weight: 2.0,
         scenario: None,
     })
 }
