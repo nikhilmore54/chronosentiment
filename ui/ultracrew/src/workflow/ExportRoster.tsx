@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, SchedulerDecision } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, accentGhostBtnStyle } from './WorkflowComponents';
 import { exportRosterToExcel } from './WorkflowUtils';
 
@@ -17,9 +17,10 @@ export const ExportRoster: React.FC<{
   manualEditCount: number;
   editDistribution: Record<string, number>;
   originalAssignmentCount: number;
+  schedulerDecision?: SchedulerDecision | null;
   onBack: () => void;
   onStartOver: () => void;
-}> = ({ staff, schedule, result, manualEditCount, editDistribution, originalAssignmentCount, onBack, onStartOver }) => {
+}> = ({ staff, schedule, result, manualEditCount, editDistribution, originalAssignmentCount, schedulerDecision, onBack, onStartOver }) => {
   const [exported, setExported] = useState(false);
 
   const handleExcel = () => {
@@ -83,6 +84,37 @@ export const ExportRoster: React.FC<{
           {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95%)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}
         </div>
       </div>
+
+      {/* ── P3: Decision Provenance ──────────────────────────────────────── */}
+      {schedulerDecision && (
+        <div style={{
+          background: schedulerDecision.overrode_recommendation
+            ? 'rgba(245,158,11,0.06)'
+            : 'rgba(52,211,153,0.06)',
+          border: `1px solid ${schedulerDecision.overrode_recommendation ? 'rgba(245,158,11,0.3)' : 'rgba(52,211,153,0.3)'}`,
+          borderRadius: '8px',
+          padding: '0.75rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+            Decision Provenance
+          </div>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.83rem' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
+              Recommended: <strong style={{ color: '#34d399' }}>{schedulerDecision.recommended_id}</strong>
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              Selected: <strong style={{ color: 'var(--accent-color)' }}>{schedulerDecision.selected_id}</strong>
+            </span>
+            <span style={{ color: schedulerDecision.overrode_recommendation ? '#f59e0b' : '#34d399', fontWeight: 600 }}>
+              {schedulerDecision.overrode_recommendation ? '⚡ Override' : '✓ Accepted recommendation'}
+            </span>
+          </div>
+          <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Recorded: {new Date(schedulerDecision.created_at_iso).toLocaleString()} · ID: {schedulerDecision.decision_id}
+          </div>
+        </div>
+      )}
 
       {/* ── Edit Distribution ────────────────────────────────────────────── */}
       {manualEditCount > 0 && (

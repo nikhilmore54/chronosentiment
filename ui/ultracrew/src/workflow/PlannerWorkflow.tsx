@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, RosterAlternative, SchedulerDecision } from './WorkflowTypes';
 import { RULE_PRESETS } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
 import { ImportStaff } from './ImportStaff';
 import { SelectRules } from './SelectRules';
 import { GenerateSchedule } from './GenerateSchedule';
+import { SelectDecision } from './SelectDecision';
 import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
+import { buildSyntheticAlternatives } from './WorkflowUtils';
 
 export const PlannerWorkflow: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -20,6 +22,11 @@ export const PlannerWorkflow: React.FC = () => {
   const [manualEditCount, setManualEditCount] = useState(0);
   const [editDistribution, setEditDistribution] = useState<Record<string, number>>({});
   const [originalAssignmentCount, setOriginalAssignmentCount] = useState(0);
+
+  // P3: alternatives + decision
+  const [alternatives, setAlternatives] = useState<RosterAlternative[]>([]);
+  const [recommendedId, setRecommendedId] = useState('');
+  const [schedulerDecision, setSchedulerDecision] = useState<SchedulerDecision | null>(null);
 
   const goTo = (n: number) => {
     setStep(n);
@@ -41,6 +48,9 @@ export const PlannerWorkflow: React.FC = () => {
     setManualEditCount(0);
     setEditDistribution({});
     setOriginalAssignmentCount(0);
+    setAlternatives([]);
+    setRecommendedId('');
+    setSchedulerDecision(null);
   };
 
   return (
@@ -48,7 +58,7 @@ export const PlannerWorkflow: React.FC = () => {
       <div style={{ marginBottom: '0.25rem' }}>
         <h2 style={{ margin: '0 0 0.25rem 0' }}>Import &amp; Schedule</h2>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Bring your own data, generate a roster, edit it, and export.
+          Bring your own data, generate a roster, explore the decision, edit it, and export.
         </p>
       </div>
 
@@ -82,24 +92,57 @@ export const PlannerWorkflow: React.FC = () => {
               setEditableSchedule(sched);
               const count = Object.values(sched).flat().filter(s => s !== '').length;
               setOriginalAssignmentCount(count);
+
+              // P3: build alternatives from the result (or use what the API returned)
+              const apiAlts = result.alternatives;
+              const apiRecId = result.recommended_alternative_id;
+              if (apiAlts && apiAlts.length > 0 && apiRecId) {
+                setAlternatives(apiAlts);
+                setRecommendedId(apiRecId);
+              } else {
+                // Fallback: derive alternatives from the editable schedule
+                const { alternatives: synAlts, recommendedId: synRecId } =
+                  buildSyntheticAlternatives(staff, sched);
+                setAlternatives(synAlts);
+                setRecommendedId(synRecId);
+              }
+
               goTo(4);
             }}
             onBack={() => goTo(2)}
           />
         )}
 
-        {step === 4 && scheduleResult && (
+        {/* Step 4 — P3: Explore the Decision */}
+        {step === 4 && alternatives.length > 0 && (
+          <SelectDecision
+            alternatives={alternatives}
+            recommendedId={recommendedId}
+            onDecision={(selectedAlt, decision) => {
+              // Persist the scheduler's choice
+              setSchedulerDecision(decision);
+              // Use the selected alternative's schedule as the editable schedule
+              setEditableSchedule(selectedAlt.schedule);
+              goTo(5);
+            }}
+            onBack={() => goTo(3)}
+          />
+        )}
+
+        {/* Step 5 — Review & Edit */}
+        {step === 5 && scheduleResult && (
           <ReviewSchedule
             staff={staff}
             schedule={editableSchedule}
             result={scheduleResult}
             onScheduleChange={setEditableSchedule}
-            onNext={(editCount, dist) => { setManualEditCount(editCount); setEditDistribution(dist); goTo(5); }}
-            onBack={() => goTo(3)}
+            onNext={(editCount, dist) => { setManualEditCount(editCount); setEditDistribution(dist); goTo(6); }}
+            onBack={() => goTo(4)}
           />
         )}
 
-        {step === 5 && scheduleResult && (
+        {/* Step 6 — Export */}
+        {step === 6 && scheduleResult && (
           <ExportRoster
             staff={staff}
             schedule={editableSchedule}
@@ -107,7 +150,8 @@ export const PlannerWorkflow: React.FC = () => {
             manualEditCount={manualEditCount}
             editDistribution={editDistribution}
             originalAssignmentCount={originalAssignmentCount}
-            onBack={() => goTo(4)}
+            schedulerDecision={schedulerDecision}
+            onBack={() => goTo(5)}
             onStartOver={handleStartOver}
           />
         )}

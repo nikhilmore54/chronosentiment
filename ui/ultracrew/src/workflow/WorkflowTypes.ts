@@ -20,6 +20,34 @@ export interface RuleSet {
   payload: object;
 }
 
+// ─── P3: Roster alternative (one option presented to the scheduler) ───────────
+
+export interface RosterAlternativeMetrics {
+  coverage: number;        // 0.0–1.0
+  fairness_penalty: number;
+  utilization: number;     // 0.0–1.0
+  cost: number;
+  diff_from_recommended: number; // number of assignments that differ
+}
+
+export interface RosterAlternative {
+  id: string;
+  label: string;
+  metrics: RosterAlternativeMetrics;
+  schedule: Record<string, string[]>; // staffId → 28-day shift array
+  reasons: string[];                  // why this option is notable
+}
+
+// ─── P3: Decision record — what the scheduler chose ──────────────────────────
+
+export interface SchedulerDecision {
+  decision_id: string;
+  created_at_iso: string;
+  recommended_id: string;
+  selected_id: string;
+  overrode_recommendation: boolean;
+}
+
 export interface ScheduleResult {
   schedule: Record<string, number>;
   metrics: Record<string, number>;
@@ -38,6 +66,9 @@ export interface ScheduleResult {
     explanation: string;
     recommended_action: string;
   }>;
+  // P3: alternatives presented to the scheduler (may be empty if engine returns only one)
+  alternatives?: RosterAlternative[];
+  recommended_alternative_id?: string;
 }
 
 // ─── Workflow step descriptor ─────────────────────────────────────────────────
@@ -51,8 +82,9 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   { num: 1, label: 'Import Staff' },
   { num: 2, label: 'Select Rules' },
   { num: 3, label: 'Generate' },
-  { num: 4, label: 'Review & Edit' },
-  { num: 5, label: 'Export' },
+  { num: 4, label: 'Explore Decision' },
+  { num: 5, label: 'Review & Edit' },
+  { num: 6, label: 'Export' },
 ];
 
 // ─── Rule presets ─────────────────────────────────────────────────────────────
