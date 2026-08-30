@@ -1,7 +1,7 @@
 # UltraRoster — Decision Support Roadmap
 
 **Branch:** `governance-hardening`
-**Status:** P2 IMPLEMENTED
+**Status:** P2 FROZEN — P3 AUTHORIZED (Decision Selection UI)
 **Last updated:** 2026-08-30
 
 ---
@@ -115,11 +115,78 @@ cargo build --release -p ultracrew --bin ultraroster_p2_demo
 
 ---
 
+## P3 — Decision Selection & Comparison UI (AUTHORIZED, not started)
+
+**Objective:** Give the scheduler a UI to explore available alternatives, compare trade-offs,
+and explicitly select one. The selected option feeds directly into the P2 decision record.
+
+**Product loop this enables:**
+
+```
+Current situation → Generate decision → Explore choices → Planner decides →
+Planner modifies → Approve → Observe outcome → Remember →
+NEXT SIMILAR SITUATION → Use memory → Better recommendation
+```
+
+**The long-term UltraRoster differentiator:**
+> "UltraRoster remembers how planners handled similar situations and what happened afterward,
+> and uses that experience when recommending the next decision."
+
+**Three concepts explicitly separated in the UI:**
+
+- **Recommendation** — what UltraRoster thinks the planner should choose.
+- **Alternative** — another feasible option available to the planner.
+- **Decision** — what the planner actually chose (persisted into P2 memory).
+
+**UI must handle the single-alternative case gracefully.** If the current engine returns only
+one meaningfully distinct alternative, the UI must say so — it must not pretend there are
+three alternatives when there aren't.
+
+**IN SCOPE:**
+- Update existing UltraRoster UI.
+- Display recommendation + available alternatives.
+- Compare alternatives (coverage, fairness, utilization, cost, changes from recommended).
+- Allow scheduler to select an alternative.
+- Persist selected option into P2 decision record (Stage 2 DECIDED).
+- Preserve recommendation vs actual selection distinction.
+- Support single-alternative case gracefully.
+
+**OUT OF SCOPE:**
+- Changing MOGA or any optimizer code.
+- Diversity optimization.
+- New optimizer experiments.
+- P1.1 (meaningful alternatives) — remains separately deferred.
+- Memory-based recommendations (P4).
+- What-if optimization.
+- New airline constraints.
+- Any Coralys changes.
+
+---
+
 ## Roadmap Status
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | P1 | Decision Presentation Layer | COMPLETE (finding frozen) |
-| P1.1 | Meaningful Alternatives | DEFERRED (requires optimizer changes) |
-| P2 | Decision Memory | **IMPLEMENTED** — commit `4c19355e2` |
-| P3 | (not yet authorized) | — |
+| P1.1 | Meaningful Alternatives | DEFERRED — separately authorized when ready |
+| P2 | Decision Memory | **FROZEN** — commits `4c19355e2` + `4fe32a953` |
+| P3 | Decision Selection & Comparison UI | **AUTHORIZED** — next phase |
+| P4 | Memory-aware Recommendation | Not started |
+
+**Product sequence:**
+```
+P1  Explore the Decision
+        ↓
+P2  Decision Memory  ← FROZEN
+        ↓
+P3  Decision Selection UI  ← NEXT
+        ↓
+     scheduler chooses
+        ↓
+P2 memory records choice
+        ↓
+P4  Memory-aware Recommendation
+```
+
+**P1.1 does not get smuggled into P3.** If meaningful alternatives are eventually tackled,
+they get their own tightly scoped authorization.
