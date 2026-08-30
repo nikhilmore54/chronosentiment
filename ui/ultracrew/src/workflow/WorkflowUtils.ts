@@ -326,6 +326,79 @@ export function computeCanonicalCoverage(
   };
 }
 
+// ─── P3.2: Adapter-layer decision ranking ────────────────────────────────────
+//
+// rankAlternatives() is the single authoritative function that decides which
+// alternative to recommend. It lives in the adapter/domain layer, not the UI.
+//
+// Priority hierarchy (explicit, not a magic weight):
+//   1. Minimize uncovered required positions (primary operational objective)
+//   2. Among alternatives within GAP_TOLERANCE, minimize secondary objectives:
+//      fairness_penalty + cost/100 (lower is better)
+//
+// GAP_TOLERANCE = 5 positions (≤ 2.5% of 196 required).
+// Below this threshold, coverage is considered equivalent and secondary
+// objectives decide.
+//
+// Deterministic test cases:
+//   40/196 vs 194/196  → 194/196 wins  (gap = 154 > 5)
+//   194/196 vs 196/196 → 196/196 wins  (gap = 2 ≤ 5 → secondary decides)
+//   196/196 vs 196/196 → lower fairness+cost wins
+//   equal coverage, equal secondary → first alternative wins (stable)
+
+export interface RankingResult {
+  recommendedId: string;
+  reason: string;
+  coverageDominant: boolean; // true when coverage gap drove the decision
+}
+
+export function rankAlternatives(alternatives: RosterAlternative[]): RankingResult {
+  if (alternatives.length === 0) {
+    return { recommendedId: '', reason: 'No alternatives available.', coverageDominant: false };
+  }
+  if (alternatives.length === 1) {
+    return {
+      recommendedId: alternatives[0].id,
+      reason: `${alternatives[0].metrics.filled_positions} / ${alternatives[0].metrics.required_positions} required positions filled.`,
+      coverageDominant: false,
+    };
+  }
+
+  const GAP_TOLERANCE = 5;
+
+  // Find the alternative with the fewest uncovered positions
+  const minGap = Math.min(...alternatives.map(a =>
+    a.metrics.required_positions - a.metrics.filled_positions
+  ));
+
+  // Candidates: all alternatives within GAP_TOLERANCE of the best coverage
+  const candidates = alternatives.filter(a =>
+    (a.metrics.required_positions - a.metrics.filled_positions) <= minGap + GAP_TOLERANCE
+  );
+
+  const coverageDominant = candidates.length < alternatives.length;
+
+  // Among candidates, minimize secondary objectives
+  const best = candidates.reduce((prev, curr) => {
+    const scorePrev = prev.metrics.fairness_penalty + prev.metrics.cost / 100;
+    const scoreCurr = curr.metrics.fairness_penalty + curr.metrics.cost / 100;
+    return scoreCurr < scorePrev ? curr : prev;
+  });
+
+  const bestGap = best.metrics.required_positions - best.metrics.filled_positions;
+  const reason = coverageDominant
+    ? `${best.metrics.filled_positions} / ${best.metrics.required_positions} required positions filled — fewest uncovered positions among all alternatives.`
+    : `Coverage equivalent across alternatives (within ${GAP_TOLERANCE} positions). Recommended based on lower fairness penalty and cost.`;
+
+  // Update the recommended alternative's reasons to reflect the ranking decision
+  best.reasons = [
+    `${best.metrics.filled_positions} / ${best.metrics.required_positions} required positions filled${bestGap > 0 ? ` (${bestGap} uncovered)` : ' — full coverage'}.`,
+    reason,
+  ];
+
+  return { recommendedId: best.id, reason, coverageDominant };
+}
+
 // ─── P3: Synthetic alternatives for the Decision Selection step ───────────────
 //
 // The current engine (P1 finding) returns only one meaningfully distinct
@@ -428,5 +501,6 @@ export function buildSyntheticAlternatives(
     ],
   };
 
-  return { alternatives: [optionA, optionB], recommendedId: 'alt-A' };
+  const ranked = rankAlternatives([optionA, optionB]);
+  return { alternatives: [optionA, optionB], recommendedId: ranked.recommendedId };
 }

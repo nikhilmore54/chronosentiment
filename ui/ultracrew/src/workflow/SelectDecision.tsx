@@ -47,8 +47,10 @@ const ComparisonTable: React.FC<{
   }> = [
     { key: 'coverage',           label: 'Coverage',         format: pct,     higherIsBetter: true,  color: '#38bdf8' },
     { key: 'utilization',        label: 'Utilization',      format: pct,     higherIsBetter: true,  color: '#34d399' },
-    { key: 'fairness_penalty',   label: 'Fairness penalty', format: v => v.toFixed(1), higherIsBetter: false, color: '#f59e0b' },
-    { key: 'cost',               label: 'Cost index',       format: fmtCost, higherIsBetter: false, color: '#818cf8' },
+    { key: 'coverage',           label: 'Coverage',          format: v => pct(v),         higherIsBetter: true,  color: '#38bdf8' },
+    { key: 'filled_positions',   label: 'Positions filled',  format: (v: number) => String(v), higherIsBetter: true,  color: '#38bdf8' },
+    { key: 'fairness_penalty',   label: 'Fairness penalty',  format: v => v.toFixed(1),   higherIsBetter: false, color: '#f59e0b' },
+    { key: 'cost',               label: 'Cost index',        format: fmtCost,             higherIsBetter: false, color: '#818cf8' },
     { key: 'diff_from_recommended', label: 'Δ from recommended', format: v => v === 0 ? '—' : `${v} shifts`, higherIsBetter: false, color: '#94a3b8' },
   ];
 
@@ -101,7 +103,12 @@ const ComparisonTable: React.FC<{
                         <span style={{ fontWeight: isBest ? 700 : 400, color: isBest ? row.color : 'var(--text-main)' }}>
                           {row.format(v)}
                         </span>
-                        {row.key !== 'diff_from_recommended' && (
+                        {row.key === 'filled_positions' && alt.metrics.required_positions > 0 && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            / {alt.metrics.required_positions} req.
+                          </span>
+                        )}
+                        {row.key !== 'diff_from_recommended' && row.key !== 'filled_positions' && (
                           <MetricBar value={barVal} color={row.color} width={60} />
                         )}
                       </div>
@@ -220,6 +227,10 @@ const DecisionBanner: React.FC<{
   const sel = alternatives.find(a => a.id === decision.selected_id);
   if (!rec || !sel) return null;
 
+  // Coverage gap between selected and recommended (positive = selected has more)
+  const covGap = sel.metrics.filled_positions - rec.metrics.filled_positions;
+  const materialCovGap = Math.abs(covGap) > 5;
+
   return (
     <div style={{
       background: decision.overrode_recommendation ? 'rgba(245,158,11,0.06)' : 'rgba(52,211,153,0.06)',
@@ -229,15 +240,27 @@ const DecisionBanner: React.FC<{
       fontSize: '0.85rem',
     }}>
       {decision.overrode_recommendation ? (
-        <span>
-          <strong style={{ color: '#f59e0b' }}>Override recorded.</strong>{' '}
-          UltraRoster recommended <strong>{rec.label}</strong> — you selected <strong style={{ color: 'var(--accent-color)' }}>{sel.label}</strong>.
-          This distinction is saved to decision memory.
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <span>
+            <strong style={{ color: '#f59e0b' }}>Override recorded.</strong>{' '}
+            UltraRoster recommended <strong>{rec.label}</strong> ({rec.metrics.filled_positions}/{rec.metrics.required_positions} positions) — you selected <strong style={{ color: 'var(--accent-color)' }}>{sel.label}</strong> ({sel.metrics.filled_positions}/{sel.metrics.required_positions} positions).
+          </span>
+          {materialCovGap && covGap < 0 && (
+            <span style={{ color: '#ef4444', fontSize: '0.82rem' }}>
+              ⚠ Your selection covers <strong>{Math.abs(covGap)} fewer required positions</strong> than the recommendation. This override is recorded in decision memory.
+            </span>
+          )}
+          {materialCovGap && covGap > 0 && (
+            <span style={{ color: '#34d399', fontSize: '0.82rem' }}>
+              ✓ Your selection covers <strong>{covGap} more required positions</strong> than the recommendation.
+            </span>
+          )}
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Saved to decision memory.</span>
+        </div>
       ) : (
         <span>
           <strong style={{ color: '#34d399' }}>Recommendation accepted.</strong>{' '}
-          You selected <strong>{sel.label}</strong>, which matches UltraRoster's recommendation.
+          You selected <strong>{sel.label}</strong> ({sel.metrics.filled_positions}/{sel.metrics.required_positions} positions filled), which matches UltraRoster's recommendation.
           Saved to decision memory.
         </span>
       )}
