@@ -7,6 +7,8 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use crate::partitioning::{Partitioner, Reconciler};
+use rayon::prelude::*;
 
 /// **Compatibility Implementation / Legacy Operational Model**
 /// 
@@ -165,6 +167,7 @@ impl Observatory {
     }
 }
 
+#[derive(Clone)]
 pub struct ScheduleContext {
     pub workers: Arc<Vec<Worker>>,
     pub shifts: Arc<Vec<Shift>>,
@@ -184,6 +187,7 @@ pub struct ScheduleContext {
     pub hc3_aware_initialization: bool,
     pub temporal_scarcity_construction: bool,
     pub disable_global_constructor: bool,
+    pub constructor_budget_ms: Option<u128>,
     pub precomputed_seeds: Option<Arc<std::sync::Mutex<Vec<ScheduleGenome>>>>,
 }
 
@@ -604,4 +608,92 @@ pub fn generate_explanation(eval: &ScheduleEvaluation, context: &ScheduleContext
         lines.push(format!("Rest violations: {}", eval.rest_violations));
     }
     lines.join("\n")
+}
+
+pub struct PartitionedEvolutionResult {
+    pub local_feasible_count: usize,
+    pub total_partitions: usize,
+    pub local_failures: Vec<usize>,
+    pub local_total_hard_violations: usize,
+    pub reconciled_hard_violations: usize,
+    pub boundary_conflicts: usize,
+    pub reconciled_feasible: bool,
+    pub global_result: coralys_moga::engine::GaResult<ScheduleEvaluation>,
+    pub local_genomes: Vec<ScheduleGenome>,
+}
+
+pub fn run_partitioned_evolution(
+    context: Arc<ScheduleContext>,
+    partitioner: &dyn Partitioner,
+    reconciler: &dyn Reconciler,
+    local_config: coralys_moga::config::EvolutionConfig,
+    global_config: coralys_moga::config::EvolutionConfig,
+) -> PartitionedEvolutionResult {
+    // 1. Partition
+    let partitions = partitioner.partition(&context.shifts, &context.workers);
+    let total_partitions = partitions.len();
+    
+    // 2. Local Evolution
+    let local_res: Vec<(ScheduleGenome, ScheduleEvaluation)> = partitions.par_iter().map(|p| {
+        let mut local_context_struct = (*context).clone();
+        local_context_struct.shifts = Arc::new(p.all_shifts());
+        local_context_struct.workers = Arc::new(p.eligible_workers.clone());
+        local_context_struct.observatory = Arc::new(std::sync::Mutex::new(Observatory::new())); 
+        let local_context = Arc::new(local_context_struct);
+        
+        let local_run = crate::helpers::run_optimization(local_context, local_config.clone());
+        (local_run.global_best.schedule.clone(), local_run.global_best.clone())
+    }).collect();
+    
+    let local_genomes: Vec<ScheduleGenome> = local_res.iter().map(|(g, _)| g.clone()).collect();
+    
+    let mut local_feasible_count = 0;
+    let mut local_total_hard_violations = 0;
+    let mut local_failures = Vec::new();
+    
+    for (i, (_, eval)) in local_res.iter().enumerate() {
+        let hard_violations = eval.hc1_violations + eval.hc2_violations + eval.hc3_violations + eval.rest_violations;
+        local_total_hard_violations += hard_violations;
+        if hard_violations == 0 {
+            local_feasible_count += 1;
+        } else {
+            local_failures.push(i);
+        }
+    }
+    
+    // 3. Boundary Reconciliation
+    let reconciled_genome = reconciler.reconcile(&partitions, &local_genomes);
+    
+    // Evaluate reconciled genome explicitly using global constraints
+    let global_optimizer = ScheduleOptimizer::new(context.clone());
+    use coralys_moga::traits::FitnessEvaluator;
+    let dummy_metrics = coralys_moga::runtime::optimization::metric::MetricReport {
+        metrics: std::collections::HashMap::new(),
+    };
+    let reconciled_eval = global_optimizer.evaluate(&reconciled_genome, &dummy_metrics);
+    
+    let reconciled_hard_violations = reconciled_eval.hc1_violations + reconciled_eval.hc2_violations + reconciled_eval.hc3_violations + reconciled_eval.rest_violations;
+    let boundary_conflicts = reconciled_hard_violations.saturating_sub(local_total_hard_violations);
+    let reconciled_feasible = reconciled_hard_violations == 0;
+    
+    // 4. Global Refinement
+    let mut global_context_struct = (*context).clone();
+    global_context_struct.precomputed_seeds = Some(Arc::new(std::sync::Mutex::new(vec![reconciled_genome])));
+    // Ensure we don't double-run global constructor which could overwrite our seed if it succeeds (though it times out on C2/C3)
+    global_context_struct.disable_global_constructor = true; 
+    let global_context = Arc::new(global_context_struct);
+    
+    let global_result = crate::helpers::run_optimization(global_context, global_config);
+    
+    PartitionedEvolutionResult {
+        local_feasible_count,
+        total_partitions,
+        local_failures,
+        local_total_hard_violations,
+        reconciled_hard_violations,
+        boundary_conflicts,
+        reconciled_feasible,
+        global_result,
+        local_genomes,
+    }
 }

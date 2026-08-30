@@ -85,6 +85,7 @@ impl ScheduleRequest {
             hc3_aware_initialization: false,
             temporal_scarcity_construction: false,
             disable_global_constructor: false,
+            constructor_budget_ms: None,
             precomputed_seeds: None,
         })
     }
@@ -134,6 +135,7 @@ impl RescheduleRequest {
             hc3_aware_initialization: false,
             temporal_scarcity_construction: false,
             disable_global_constructor: false,
+            constructor_budget_ms: None,
             precomputed_seeds: None,
         })
     }

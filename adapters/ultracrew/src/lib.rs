@@ -4,6 +4,7 @@ pub mod models;
 pub mod optimization;
 pub mod public_contracts;
 pub mod global_constructor;
+pub mod partitioning;
 pub mod inrc;
 pub mod workforce;
 pub mod compliance;
@@ -69,6 +70,7 @@ pub mod helpers {
             hc3_aware_initialization: false,
             temporal_scarcity_construction: false,
             disable_global_constructor: false,
+            constructor_budget_ms: None,
             precomputed_seeds: None,
         })
     }
@@ -94,7 +96,7 @@ pub mod helpers {
                     seed_opt = Some(seeds[0].clone());
                 }
             } else {
-                seed_opt = crate::global_constructor::generate_feasible_seed(&context.shifts, &context.workers, 8, 40);
+                seed_opt = crate::global_constructor::generate_feasible_seed(&context.shifts, &context.workers, 8, 40, context.constructor_budget_ms.unwrap_or(1000));
             }
             if let Some(seed) = seed_opt {
                 let metrics = coralys_moga::runtime::optimization::metric::MetricReport::default();
@@ -133,6 +135,7 @@ pub mod constraint_engine;
 pub mod recommendation;
 pub mod generic_import;
 pub mod generic_export;
+pub mod decision_support;
 pub mod strict_validator;
 pub mod telemetry;
 pub mod errors;

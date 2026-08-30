@@ -4,9 +4,9 @@ use crate::optimization::ScheduleGenome;
 
 /// MRV (Minimum Remaining Values) DFS Global Constructor
 /// Discovers a feasible genome by scheduling strictly zero-violation assignments.
-pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hours: u64, hc3_limit: u64) -> Option<ScheduleGenome> {
+pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hours: u64, hc3_limit: u64, budget_ms: u128) -> Option<ScheduleGenome> {
     let num_shifts = shifts.len();
-    let num_workers = workers.len();
+    let max_worker_id = workers.iter().map(|w| w.id).max().unwrap_or(0) as usize;
     
     // Quick structural capacity check for mathematically impossible scenarios
     let total_required = shifts.iter().map(|s| s.duration_hours).sum::<u64>();
@@ -32,12 +32,16 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
         }
 
         let mut csp_assignments = vec![Vec::new(); max_block + 1];
-        let mut worker_hours = vec![0u64; num_workers + 1];
+        let mut worker_hours = vec![0u64; max_worker_id + 1];
         
-        fn solve_blocks(block: usize, max_block: usize, block_needs: &[usize], worker_hours: &mut [u64], csp_assignments: &mut [Vec<u64>], workers: &[Worker], shifts: &[Shift]) -> bool {
+        use std::time::Instant;
+        let start_time = Instant::now();
+        
+        fn solve_blocks(block: usize, max_block: usize, block_needs: &[usize], worker_hours: &mut [u64], csp_assignments: &mut [Vec<u64>], workers: &[Worker], shifts: &[Shift], start_time: Instant, budget: u128) -> bool {
+            if start_time.elapsed().as_millis() > budget { return false; }
             if block > max_block { return true; }
             if csp_assignments[block].len() == block_needs[block] {
-                return solve_blocks(block + 1, max_block, block_needs, worker_hours, csp_assignments, workers, shifts);
+                return solve_blocks(block + 1, max_block, block_needs, worker_hours, csp_assignments, workers, shifts, start_time, budget);
             }
 
             let mut candidates: Vec<u64> = workers.iter().map(|w| w.id).collect();
@@ -55,9 +59,10 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
                     csp_assignments[block].push(wid);
                     worker_hours[wid as usize] += 8;
                     
-                    if solve_blocks(block, max_block, block_needs, worker_hours, csp_assignments, workers, shifts) {
+                    if solve_blocks(block, max_block, block_needs, worker_hours, csp_assignments, workers, shifts, start_time, budget) {
                         return true;
                     }
+                    if start_time.elapsed().as_millis() > budget { return false; }
                     
                     worker_hours[wid as usize] -= 8;
                     csp_assignments[block].pop();
@@ -66,7 +71,7 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
             false
         }
         
-        if solve_blocks(0, max_block, &block_needs, &mut worker_hours, &mut csp_assignments, workers, &sorted_shifts) {
+        if solve_blocks(0, max_block, &block_needs, &mut worker_hours, &mut csp_assignments, workers, &sorted_shifts, start_time, budget_ms) {
             let mut block_workers = csp_assignments.clone();
             let mut assignments = HashMap::new();
             for s in &sorted_shifts {
@@ -92,8 +97,8 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
     }
 
     // Generic DFS for non-block-aligned workloads
-    let mut worker_hours = vec![0u64; num_workers + 1];
-    let mut worker_assignments: Vec<Vec<Shift>> = vec![Vec::new(); num_workers + 1];
+    let mut worker_hours = vec![0u64; max_worker_id + 1];
+    let mut worker_assignments: Vec<Vec<Shift>> = vec![Vec::new(); max_worker_id + 1];
     let mut shift_assignments = HashMap::new();
     
     let mut state = DfsState {
@@ -101,7 +106,7 @@ pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hou
         backtracks: 0,
         max_depth: 0,
         start_time: Instant::now(),
-        budget_ms: 1000, // Bounded search budget (1 second)
+        budget_ms, // Bounded search budget
         timed_out: false,
     };
     

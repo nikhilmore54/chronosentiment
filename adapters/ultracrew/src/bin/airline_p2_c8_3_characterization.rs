@@ -65,7 +65,7 @@ fn run_matrix(f: &mut File, utilizations: Vec<usize>, num_seeds: u64) {
                 
                 if global_on {
                     let c_start = Instant::now();
-                    if let Some(seed) = generate_feasible_seed(&shifts, &workers, 8, 40) {
+                    if let Some(seed) = generate_feasible_seed(&shifts, &workers, 8, 40, 1000) {
                         precomputed = Some(Arc::new(Mutex::new(vec![seed])));
                     }
                     construction_ms = c_start.elapsed().as_millis();

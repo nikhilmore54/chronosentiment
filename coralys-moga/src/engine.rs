@@ -583,6 +583,13 @@ impl<
             self.evaluator.evaluate(&dummy, &empty_metrics)
         });
 
+        let empty_metrics = crate::runtime::optimization::metric::MetricReport::default();
+        let mut top_10_evals: Vec<_> = population.iter()
+            .map(|g| self.evaluator.evaluate(g, &empty_metrics))
+            .collect();
+        top_10_evals.sort_by(|a, b| b.fitness().partial_cmp(&a.fitness()).unwrap_or(std::cmp::Ordering::Equal));
+        top_10_evals.truncate(10);
+
         Ok(GaResult {
             global_best: best,
             generation_history: history,
@@ -590,7 +597,7 @@ impl<
             final_fitnesses,
             run_id: "generic-run".to_string(),
             timestamp: 0,
-            top_10: Vec::new(),
+            top_10: top_10_evals,
         })
     }
 }

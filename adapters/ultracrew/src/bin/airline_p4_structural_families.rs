@@ -2,6 +2,7 @@ use std::time::Instant;
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::Write;
+use rayon::prelude::*;
 
 use coralys_moga::config::EvolutionConfig;
 use ultracrew::models::{Worker, Shift, Skill};
@@ -12,26 +13,30 @@ use ultracrew::helpers::run_optimization;
 use ultracrew::global_constructor::generate_feasible_seed;
 
 fn main() {
-    let mut f = File::create("p4_structural_results.csv").unwrap();
-    writeln!(f, "family,instance,utilization_pct,global_constructor_enabled,seed,feasible_at_gen_0,generations_to_first_feasible,final_feasible,initial_fitness,first_feasible_fitness,best_fitness,final_fitness,seed_population_size,seed_feasible_count,construction_ms,optimization_ms,total_wall_ms,construction_overhead_pct").unwrap();
+    let file = File::create("p4_structural_results.csv").unwrap();
+    let f = Arc::new(Mutex::new(file));
+    {
+        let mut file_guard = f.lock().unwrap();
+        writeln!(file_guard, "family,instance,utilization_pct,global_constructor_enabled,seed,feasible_at_gen_0,generations_to_first_feasible,final_feasible,initial_fitness,first_feasible_fitness,best_fitness,final_fitness,seed_population_size,seed_feasible_count,construction_ms,optimization_ms,total_wall_ms,construction_overhead_pct").unwrap();
+    }
 
     let num_seeds = 30;
 
     println!("Running Family A (Control)...");
-    run_family_a(&mut f, num_seeds);
+    run_family_a(f.clone(), num_seeds);
 
     println!("Running Family B (Heterogeneous Durations)...");
-    run_family_b(&mut f, num_seeds);
+    run_family_b(f.clone(), num_seeds);
 
     println!("Running Family C (Temporal Concentration)...");
-    run_family_c(&mut f, num_seeds);
+    run_family_c(f.clone(), num_seeds);
 
     println!("Running Family D (Concurrency Boundary)...");
-    run_family_d(&mut f, num_seeds);
+    run_family_d(f.clone(), num_seeds);
 }
 
-fn execute_matrix(f: &mut File, family: &str, instance: &str, util_pct: usize, shifts: Vec<Shift>, workers: Vec<Worker>, num_seeds: u64) {
-    for seed_val in 1..=num_seeds {
+fn execute_matrix(f: Arc<Mutex<File>>, family: &str, instance: &str, util_pct: usize, shifts: Vec<Shift>, workers: Vec<Worker>, num_seeds: u64) {
+    (1..=num_seeds).into_par_iter().for_each(|seed_val| {
         for &global_on in &[false, true] {
             let scenario = InrcScenario {
                 planning_horizon_hours: Some(168.0),
@@ -46,7 +51,7 @@ fn execute_matrix(f: &mut File, family: &str, instance: &str, util_pct: usize, s
 
             if global_on {
                 let c_start = Instant::now();
-                if let Some(seed) = generate_feasible_seed(&shifts, &workers, 8, 40) {
+                if let Some(seed) = generate_feasible_seed(&shifts, &workers, 8, 40, 1000) {
                     precomputed = Some(Arc::new(Mutex::new(vec![seed])));
                 }
                 construction_ms = c_start.elapsed().as_millis();
@@ -115,14 +120,15 @@ fn execute_matrix(f: &mut File, family: &str, instance: &str, util_pct: usize, s
             let seed_feasible_count = r_init.population_valid_count;
             let gen_first_feas_str = if generations_to_first_feasible == -1 { "null".to_string() } else { generations_to_first_feasible.to_string() };
 
-            writeln!(f, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{:.2}",
+            let mut file_guard = f.lock().unwrap();
+            writeln!(file_guard, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{:.2}",
                 family, instance, util_pct, global_on, seed_val, feasible_at_gen_0, gen_first_feas_str,
                 final_feasible, initial_fitness, first_feasible_fitness, best_fitness, final_fitness,
                 seed_population_size, seed_feasible_count, construction_ms, optimization_ms, total_wall_ms, overhead_pct
             ).unwrap();
-            f.flush().unwrap();
+            file_guard.flush().unwrap();
         }
-    }
+    });
 }
 
 fn create_workers() -> Vec<Worker> {
@@ -130,7 +136,7 @@ fn create_workers() -> Vec<Worker> {
     (0..200).map(|i| Worker { id: (i + 1) as u64, skills: vec![skill.clone()] }).collect()
 }
 
-fn run_family_a(f: &mut File, num_seeds: u64) {
+fn run_family_a(f: Arc<Mutex<File>>, num_seeds: u64) {
     let workers = create_workers();
     let skill = Skill::new("FlightAttendant");
     let mut shifts = vec![];
@@ -139,10 +145,10 @@ fn run_family_a(f: &mut File, num_seeds: u64) {
         shifts.push(Shift { id: (i + 1) as u64, start_hour: (i * 8) % 168, duration_hours: 8, required_skill: skill.clone() });
     }
     shifts.sort_by_key(|s| s.start_hour);
-    execute_matrix(f, "A", "Control_95", 95, shifts, workers, num_seeds);
+    execute_matrix(f.clone(), "A", "Control_95", 95, shifts, workers, num_seeds);
 }
 
-fn run_family_b(f: &mut File, num_seeds: u64) {
+fn run_family_b(f: Arc<Mutex<File>>, num_seeds: u64) {
     let workers = create_workers();
     let skill = Skill::new("FlightAttendant");
     let target_hours = 7600; // 95% util
@@ -169,11 +175,11 @@ fn run_family_b(f: &mut File, num_seeds: u64) {
             i += 1;
         }
         shifts.sort_by_key(|s| s.start_hour);
-        execute_matrix(f, "B", inst_name, 95, shifts, workers.clone(), num_seeds);
+        execute_matrix(f.clone(), "B", inst_name, 95, shifts, workers.clone(), num_seeds);
     }
 }
 
-fn run_family_c(f: &mut File, num_seeds: u64) {
+fn run_family_c(f: Arc<Mutex<File>>, num_seeds: u64) {
     let workers = create_workers();
     let skill = Skill::new("FlightAttendant");
     let target_hours = 7600;
@@ -200,11 +206,11 @@ fn run_family_c(f: &mut File, num_seeds: u64) {
             shifts.push(Shift { id: (weekend_shifts + i + 1) as u64, start_hour: (i * 8) % 120, duration_hours: 8, required_skill: skill.clone() });
         }
         shifts.sort_by_key(|s| s.start_hour);
-        execute_matrix(f, "C", inst_name, 95, shifts, workers.clone(), num_seeds);
+        execute_matrix(f.clone(), "C", inst_name, 95, shifts, workers.clone(), num_seeds);
     }
 }
 
-fn run_family_d(f: &mut File, num_seeds: u64) {
+fn run_family_d(f: Arc<Mutex<File>>, num_seeds: u64) {
     let workers = create_workers();
     let skill = Skill::new("FlightAttendant");
     let target_hours = 7200; // 90% aggregate util (strictly feasible mathematically)
@@ -229,6 +235,6 @@ fn run_family_d(f: &mut File, num_seeds: u64) {
         
         shifts.sort_by_key(|s| s.start_hour);
         let inst_name = format!("D_{}", peak);
-        execute_matrix(f, "D", &inst_name, 90, shifts, workers.clone(), num_seeds);
+        execute_matrix(f.clone(), "D", &inst_name, 90, shifts, workers.clone(), num_seeds);
     }
 }
