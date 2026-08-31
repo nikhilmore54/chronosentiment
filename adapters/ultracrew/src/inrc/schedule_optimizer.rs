@@ -1,4 +1,4 @@
-use crate::inrc::models::InrcScenario;
+use crate::inrc::models::{InrcScenario, InrcWeekData};
 use crate::inrc::validator::validate_schedule;
 use coralys_moga::engine_proof::{Evaluator, FitnessVector, Genome, MutationPolicy};
 use rand::Rng;
@@ -61,6 +61,9 @@ impl coralys_moga::Genome for ScheduleGenome {}
 
 pub struct UltraCrewEvaluator {
     pub scenario: InrcScenario,
+    /// Week data is required to evaluate HC1 minimum coverage.
+    /// Each InrcRequirementLevel.minimum represents a hard staffing requirement.
+    pub week_data: InrcWeekData,
 }
 
 impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
@@ -147,12 +150,63 @@ impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
             .sum::<f64>()
             / weekend_counts.len() as f64;
 
+        // HC1: Minimum Coverage — hard constraint.
+        // InrcConstraintId::Hc1MinimumCoverage is classified as a hard constraint
+        // in the domain model (models.rs). The scalar InrcOptimizer path applies
+        // hard_constraint_violation = 1000 per uncovered minimum position.
+        // We encode the same semantics here as a large-penalty objective so that
+        // any genome with coverage_deficit > 0 is dominated by any genome with
+        // coverage_deficit = 0 on this objective, regardless of other objectives.
+        // This is the standard MOGA penalty-based feasibility technique.
+        let days_map = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        ];
+        let num_days = genome.num_days;
+        let flat = genome.to_flat_schedule();
+        let mut coverage_deficit: f64 = 0.0;
+
+        for d in 0..num_days {
+            let day_name = days_map[d % 7];
+            for req in &self.week_data.requirements {
+                let req_level = match day_name {
+                    "Monday" => &req.monday,
+                    "Tuesday" => &req.tuesday,
+                    "Wednesday" => &req.wednesday,
+                    "Thursday" => &req.thursday,
+                    "Friday" => &req.friday,
+                    "Saturday" => &req.saturday,
+                    "Sunday" => &req.sunday,
+                    _ => unreachable!(),
+                };
+                if req_level.minimum == 0 {
+                    continue;
+                }
+                // Count nurses assigned to this shift on this day with the required skill
+                let mut filled = 0usize;
+                for nurse in &self.scenario.nurses {
+                    if nurse.skills.contains(&req.skill) {
+                        if let Some(shifts) = flat.get(&nurse.id) {
+                            if d < shifts.len() && shifts[d] == req.shift_type {
+                                filled += 1;
+                            }
+                        }
+                    }
+                }
+                let minimum = req_level.minimum;
+                if filled < minimum {
+                    // Weight matches hard_constraint_violation = 1000 from ObjectiveWeights
+                    coverage_deficit += ((minimum - filled) * 1000) as f64;
+                }
+            }
+        }
+
         vec![
             s6_assignment_penalty,
             s7_weekend_penalty,
             recovery_penalty,
             workload_balance,
             temporal_load_balance,
+            coverage_deficit, // objective[5]: HC1 minimum coverage penalty (minimize, hard)
         ]
     }
 }
@@ -254,6 +308,172 @@ impl UltraCrewMutator {
         };
 
         (child, operator_name.to_string())
+    }
+}
+#[cfg(test)]
+mod hc1_coverage_tests {
+    use super::*;
+    use crate::inrc::models::{
+        InrcContract, InrcForbiddenSuccession, InrcNurse, InrcRequirement, InrcRequirementLevel,
+        InrcScenario, InrcShiftOffRequest, InrcShiftType, InrcWeekData,
+    };
+    use coralys_moga::engine_proof::Evaluator;
+
+    /// Build a minimal 1-nurse, 1-day, 1-shift scenario with a single requirement:
+    /// minimum = 1 nurse of skill "Nurse" on shift "Early" on Monday.
+    fn minimal_scenario() -> InrcScenario {
+        InrcScenario {
+            id: "test".to_string(),
+            number_of_weeks: 1,
+            skills: vec!["Nurse".to_string()],
+            shift_types: vec![InrcShiftType {
+                id: "Early".to_string(),
+                min_consecutive: 1,
+                max_consecutive: 7,
+            }],
+            forbidden_shift_type_successions: vec![],
+            contracts: vec![InrcContract {
+                id: "FullTime".to_string(),
+                min_assignments: 1,
+                max_assignments: 7,
+                min_consecutive_working_days: 1,
+                max_consecutive_working_days: 7,
+                min_consecutive_days_off: 1,
+                max_consecutive_days_off: 7,
+                max_working_weekends: 4,
+                complete_weekends: 0,
+            }],
+            nurses: vec![InrcNurse {
+                id: "N1".to_string(),
+                contract: "FullTime".to_string(),
+                skills: vec!["Nurse".to_string()],
+            }],
+        }
+    }
+
+    fn minimal_week_data_with_minimum(minimum: usize) -> InrcWeekData {
+        let zero = InrcRequirementLevel { minimum: 0, optimal: 0 };
+        let req = InrcRequirementLevel { minimum, optimal: minimum };
+        InrcWeekData {
+            scenario: "test".to_string(),
+            requirements: vec![InrcRequirement {
+                shift_type: "Early".to_string(),
+                skill: "Nurse".to_string(),
+                monday: req,
+                tuesday: zero.clone(),
+                wednesday: zero.clone(),
+                thursday: zero.clone(),
+                friday: zero.clone(),
+                saturday: zero.clone(),
+                sunday: zero,
+            }],
+            shift_off_requests: vec![],
+        }
+    }
+
+    fn genome_with_nurse_on_monday(nurse_id: &str, num_days: usize) -> ScheduleGenome {
+        ScheduleGenome {
+            slots: vec![AssignmentSlot {
+                slot_id: 0,
+                day: 0, // Monday
+                shift_type: "Early".to_string(),
+                required_skill: "Nurse".to_string(),
+                assigned_nurse: nurse_id.to_string(),
+            }],
+            num_days,
+            nurses: vec!["N1".to_string()],
+        }
+    }
+
+    fn genome_empty(num_days: usize) -> ScheduleGenome {
+        ScheduleGenome {
+            slots: vec![],
+            num_days,
+            nurses: vec!["N1".to_string()],
+        }
+    }
+
+    /// HC1-G1: A genome that fills the required position has coverage_deficit = 0.
+    #[test]
+    fn hc1_g1_filled_position_has_zero_coverage_deficit() {
+        let scenario = minimal_scenario();
+        let week_data = minimal_week_data_with_minimum(1);
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+        let genome = genome_with_nurse_on_monday("N1", 7);
+        let fitness = evaluator.evaluate(&genome);
+        assert_eq!(fitness.len(), 6, "FitnessVector must have 6 objectives");
+        assert_eq!(
+            fitness[5], 0.0,
+            "coverage_deficit must be 0 when required position is filled"
+        );
+    }
+
+    /// HC1-G2: A genome that leaves the required position empty has coverage_deficit = 1000.
+    #[test]
+    fn hc1_g2_empty_genome_has_nonzero_coverage_deficit() {
+        let scenario = minimal_scenario();
+        let week_data = minimal_week_data_with_minimum(1);
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+        let genome = genome_empty(7);
+        let fitness = evaluator.evaluate(&genome);
+        assert_eq!(fitness.len(), 6, "FitnessVector must have 6 objectives");
+        assert_eq!(
+            fitness[5], 1000.0,
+            "coverage_deficit must be 1000 (1 uncovered × 1000) when required position is empty"
+        );
+    }
+
+    /// HC1-G3: A genome with coverage_deficit > 0 is dominated by one with coverage_deficit = 0
+    /// on objective[5], regardless of other objectives.
+    /// This is the core invariant: 40/196 must not dominate 194/196.
+    #[test]
+    fn hc1_g3_high_deficit_dominated_by_zero_deficit_on_objective5() {
+        let scenario = minimal_scenario();
+        let week_data = minimal_week_data_with_minimum(1);
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+
+        let filled = genome_with_nurse_on_monday("N1", 7);
+        let empty = genome_empty(7);
+
+        let fitness_filled = evaluator.evaluate(&filled);
+        let fitness_empty = evaluator.evaluate(&empty);
+
+        // The filled genome must have lower (better) coverage_deficit
+        assert!(
+            fitness_filled[5] < fitness_empty[5],
+            "Filled genome (coverage_deficit={}) must have lower objective[5] than empty genome (coverage_deficit={})",
+            fitness_filled[5],
+            fitness_empty[5]
+        );
+    }
+
+    /// HC1-G4: When minimum = 0, coverage_deficit is always 0 regardless of assignments.
+    #[test]
+    fn hc1_g4_zero_minimum_never_penalized() {
+        let scenario = minimal_scenario();
+        let week_data = minimal_week_data_with_minimum(0);
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+        let genome = genome_empty(7);
+        let fitness = evaluator.evaluate(&genome);
+        assert_eq!(
+            fitness[5], 0.0,
+            "coverage_deficit must be 0 when minimum requirement is 0"
+        );
+    }
+
+    /// HC1-G5: FitnessVector always has exactly 6 objectives.
+    #[test]
+    fn hc1_g5_fitness_vector_has_six_objectives() {
+        let scenario = minimal_scenario();
+        let week_data = minimal_week_data_with_minimum(1);
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+        let genome = genome_with_nurse_on_monday("N1", 7);
+        let fitness = evaluator.evaluate(&genome);
+        assert_eq!(
+            fitness.len(),
+            6,
+            "FitnessVector must have exactly 6 objectives (5 original + HC1 coverage)"
+        );
     }
 }
 

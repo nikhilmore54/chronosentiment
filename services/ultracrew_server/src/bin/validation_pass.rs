@@ -167,6 +167,7 @@ fn main() {
     println!("--- END SANITY CHECK ---");
     let evaluator = UltraCrewEvaluator {
         scenario: scenario.clone(),
+        week_data: week_data.clone(),
     };
     let mut mutator = UltraCrewMutator::new(scenario.clone());
     let mut engine = EvolutionEngine::new(evaluator, mutator);

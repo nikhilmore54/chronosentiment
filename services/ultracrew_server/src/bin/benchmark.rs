@@ -40,6 +40,7 @@ fn main() {
     let baseline_genome = generate_baseline_schedule(&scenario, &week_data.requirements).unwrap();
     let evaluator = UltraCrewEvaluator {
         scenario: scenario.clone(),
+        week_data: week_data.clone(),
     };
 
     let mutator = UltraCrewMutator::new(scenario.clone());

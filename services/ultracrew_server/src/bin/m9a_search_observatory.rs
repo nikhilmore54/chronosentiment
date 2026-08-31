@@ -92,6 +92,7 @@ fn run_instance(instance: &str, seeds: &[u64], mode: CoolingMode) -> Vec<SeedSta
 
         let evaluator = UltraCrewEvaluator {
             scenario: scenario.clone(),
+            week_data: week_data.clone(),
         };
         let mutator = UltraCrewMutator::new(scenario.clone());
         let mut engine = EvolutionEngine::new(evaluator, mutator);

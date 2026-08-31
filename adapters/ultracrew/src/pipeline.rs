@@ -118,6 +118,7 @@ pub fn run_inrc_startup_pipeline(
 
     let evaluator = UltraCrewEvaluator {
         scenario: scenario.clone(),
+        week_data: week_data.clone(),
     };
     let mutator = UltraCrewMutator::new(scenario.clone());
 
