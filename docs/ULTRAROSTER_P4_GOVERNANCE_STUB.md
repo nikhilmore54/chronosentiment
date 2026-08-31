@@ -94,6 +94,18 @@ All three YES → minimal correction permitted. Otherwise → record and defer.
 - Override hard constraints through learned preferences
 - Modify `coralys_moga` with domain-specific logic
 - Implement rest-pattern quality (separate domain objective, separately authorized)
+- Automatically change objectives or constraints without an explicitly defined and authorized mechanism
+- Rewrite or retroactively modify P3 provenance records (provenance is factual history)
+- Begin open-ended research into everything that could theoretically be learned from roster history
+
+## Hard Architectural Boundaries (P4 must preserve)
+
+- **Coralys remains generic** — no domain-specific logic added to the optimizer engine
+- **UltraCrew adapter remains the domain problem definer** — no second optimization authority
+- **Hard constraints remain authoritative** — HC1 minimum coverage, sequence feasibility, eligibility
+- **Scheduler authority remains intact** — P3.3 locked cells are never overwritten
+- **P3 provenance is factual history** — not something P4 may rewrite or reinterpret
+- **No automatic objective/constraint changes** without an explicitly defined and authorized mechanism
 
 ---
 
