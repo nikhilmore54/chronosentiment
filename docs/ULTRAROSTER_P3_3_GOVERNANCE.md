@@ -1,10 +1,10 @@
 # UltraRoster P3.3 — Controlled Reassignment & Change Provenance
 ## Governance Document — Authorization & Invariants
 
-**Status:** AUTHORIZED — implementation in progress
+**Status:** IMPLEMENTATION COMPLETE — freeze at `c98ac17f8`
 **Prerequisite:** P3.2 frozen at commit `0623ac904` (branch: `governance-hardening`)
 **Author:** UltraRoster product governance
-**Date:** 2026-08-30 / updated 2026-08-31
+**Date:** 2026-08-30 / frozen 2026-08-31
 
 ---
 
