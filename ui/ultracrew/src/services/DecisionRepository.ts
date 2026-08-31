@@ -1,5 +1,5 @@
 import type { Recommendation, Decision } from '../types';
-import type { SchedulerDecision, RedistributionLog } from '../workflow/WorkflowTypes';
+import type { SchedulerDecision, RedistributionLog, RosterAlternativeMetrics } from '../workflow/WorkflowTypes';
 
 /**
  * Simple repository abstraction over browser localStorage.
@@ -78,14 +78,28 @@ export class DecisionRepository {
     window.localStorage.setItem(this.P3_KEY, JSON.stringify(existing));
   }
 
-  /** Build and persist a new P3 decision record. Returns the created record. */
-  recordSchedulerDecision(recommendedId: string, selectedId: string): SchedulerDecision {
+  /**
+   * Build and persist a new P3 decision record. Returns the created record.
+   *
+   * P4.2 metrics capture: recommended_metrics and selected_metrics are captured
+   * at call time from RosterAlternative.metrics. They make the factual record
+   * sufficiently informative to investigate recurring preference signals later.
+   * They do NOT constitute learning — the optimizer is not changed.
+   */
+  recordSchedulerDecision(
+    recommendedId: string,
+    selectedId: string,
+    recommendedMetrics: RosterAlternativeMetrics,
+    selectedMetrics: RosterAlternativeMetrics,
+  ): SchedulerDecision {
     const record: SchedulerDecision = {
       decision_id: `p3_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       created_at_iso: new Date().toISOString(),
       recommended_id: recommendedId,
       selected_id: selectedId,
       overrode_recommendation: selectedId !== recommendedId,
+      recommended_metrics: recommendedMetrics,
+      selected_metrics: selectedMetrics,
     };
     this.appendSchedulerDecision(record);
     return record;

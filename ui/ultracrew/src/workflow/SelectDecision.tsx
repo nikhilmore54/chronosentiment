@@ -300,7 +300,13 @@ export const SelectDecision: React.FC<SelectDecisionProps> = ({
 
   const handleCommit = () => {
     if (!selectedAlt) return;
-    const decision = repo.recordSchedulerDecision(recommendedId, selectedId);
+    const recommendedAlt = alternatives.find(a => a.id === recommendedId) ?? selectedAlt;
+    const decision = repo.recordSchedulerDecision(
+      recommendedId,
+      selectedId,
+      recommendedAlt.metrics,
+      selectedAlt.metrics,
+    );
     setCommittedDecision(decision);
   };
 

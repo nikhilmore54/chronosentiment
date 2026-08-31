@@ -105,6 +105,11 @@ export interface RecurringPattern {
 }
 
 // ─── P3: Decision record — what the scheduler chose ──────────────────────────
+//
+// P4.2 metrics capture: recommended_metrics and selected_metrics are captured
+// at decision time from RosterAlternative.metrics. They make the factual record
+// sufficiently informative to investigate recurring preference signals later.
+// They do NOT constitute learning — the optimizer is not changed.
 
 export interface SchedulerDecision {
   decision_id: string;
@@ -112,6 +117,10 @@ export interface SchedulerDecision {
   recommended_id: string;
   selected_id: string;
   overrode_recommendation: boolean;
+  /** Metrics of the optimizer-recommended alternative at decision time. */
+  recommended_metrics: RosterAlternativeMetrics;
+  /** Metrics of the scheduler-selected alternative at decision time. */
+  selected_metrics: RosterAlternativeMetrics;
 }
 
 export interface ScheduleResult {
