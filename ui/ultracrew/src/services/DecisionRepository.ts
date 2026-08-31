@@ -6,6 +6,7 @@ import type { SchedulerDecision, RedistributionLog } from '../workflow/WorkflowT
  * Persists recommendations and decision log so that state survives a page refresh.
  * P3:   persists SchedulerDecision records (recommended vs selected option).
  * P3.3: persists RedistributionLog alongside each SchedulerDecision (hard gate 5).
+ * P4.1: persists dismissed recurring patterns (observe-and-surface only).
  */
 export class DecisionRepository {
   private readonly RECS_KEY = 'ultracrew_recommendations';
@@ -13,6 +14,8 @@ export class DecisionRepository {
   private readonly P3_KEY = 'ultracrew_scheduler_decisions';
   // P3.3: redistribution logs keyed by decision_id — satisfies hard gate 5
   private readonly P3_3_KEY = 'ultracrew_redistribution_logs';
+  // P4.1: dismissed recurring pattern reason strings
+  private readonly P4_1_DISMISSED_KEY = 'ultracrew_dismissed_patterns';
 
   /** Load persisted recommendations. Returns empty array if none. */
   loadRecommendations(): Recommendation[] {
@@ -52,6 +55,7 @@ export class DecisionRepository {
     window.localStorage.removeItem(this.LOG_KEY);
     window.localStorage.removeItem(this.P3_KEY);
     window.localStorage.removeItem(this.P3_3_KEY);
+    window.localStorage.removeItem(this.P4_1_DISMISSED_KEY);
   }
 
   // ── P3: Scheduler decisions (recommended vs selected option) ────────────────
@@ -108,13 +112,38 @@ export class DecisionRepository {
     return all[decisionId] ?? null;
   }
 
-  private loadAllRedistributionLogs(): Record<string, RedistributionLog> {
+  loadAllRedistributionLogs(): Record<string, RedistributionLog> {
     const data = window.localStorage.getItem(this.P3_3_KEY);
     if (!data) return {};
     try {
       return JSON.parse(data) as Record<string, RedistributionLog>;
     } catch {
       return {};
+    }
+  }
+
+  // ── P4.1: Dismissed recurring patterns (observe-and-surface only) ────────────
+
+  /**
+   * Persist a dismissed pattern reason string.
+   * Dismissed patterns are not shown to the scheduler until clear() is called.
+   */
+  dismissPattern(reason: string): void {
+    const dismissed = this.loadDismissedPatterns();
+    if (!dismissed.includes(reason)) {
+      dismissed.push(reason);
+      window.localStorage.setItem(this.P4_1_DISMISSED_KEY, JSON.stringify(dismissed));
+    }
+  }
+
+  /** Load all dismissed pattern reason strings. */
+  loadDismissedPatterns(): string[] {
+    const data = window.localStorage.getItem(this.P4_1_DISMISSED_KEY);
+    if (!data) return [];
+    try {
+      return JSON.parse(data) as string[];
+    } catch {
+      return [];
     }
   }
 }

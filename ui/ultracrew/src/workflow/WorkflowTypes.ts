@@ -91,6 +91,19 @@ export interface RedistributionLog {
   provenanceMap: Record<string, AssignmentProvenanceState>;
 }
 
+// ─── P4.1: Recurring operational pattern (observe and surface only) ──────────
+
+export interface RecurringPattern {
+  /** The normalized reason string from ChangeRecord.reason */
+  reason: string;
+  /** Number of distinct operationIds in which this reason appeared */
+  operationCount: number;
+  /** ISO timestamp of the earliest redistribution operation containing this reason */
+  firstSeen: string;
+  /** ISO timestamp of the most recent redistribution operation containing this reason */
+  lastSeen: string;
+}
+
 // ─── P3: Decision record — what the scheduler chose ──────────────────────────
 
 export interface SchedulerDecision {

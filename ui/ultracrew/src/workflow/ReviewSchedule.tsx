@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
 import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
@@ -316,7 +316,10 @@ export const ReviewSchedule: React.FC<{
   // P3.3: called when redistribution completes — parent persists the log (hard gate 5)
   decision_id?: string;
   onRedistributionComplete?: (log: RedistributionLog) => void;
-}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete }) => {
+  // P4.1: recurring operational patterns (observe and surface only — no optimizer changes)
+  recurringPatterns?: RecurringPattern[];
+  onDismissPattern?: (reason: string) => void;
+}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete, recurringPatterns, onDismissPattern }) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
   const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string } | null>(null);
   const [editCount, setEditCount] = useState(0);
@@ -396,6 +399,53 @@ export const ReviewSchedule: React.FC<{
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+      {/* P4.1 — Recurring Operational Pattern Surfacing (observe and surface only) */}
+      {recurringPatterns && recurringPatterns.length > 0 && (
+        <div style={{
+          border: '1px solid rgba(245,158,11,0.4)',
+          borderRadius: '8px',
+          padding: '0.9rem 1rem',
+          backgroundColor: 'rgba(245,158,11,0.04)',
+        }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#f59e0b', marginBottom: '0.5rem' }}>
+            Recurring operational patterns observed
+          </div>
+          <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            These patterns appeared in ≥3 independent redistribution operations.
+            They are observations only — no optimizer changes have been made.
+          </p>
+          {recurringPatterns.map(p => (
+            <div key={p.reason} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.4rem 0.6rem', marginBottom: '0.3rem',
+              backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: '4px',
+              fontSize: '0.82rem',
+            }}>
+              <span style={{ color: 'var(--text-main)' }}>
+                {p.reason}
+                <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                  ({p.operationCount} operations)
+                </span>
+              </span>
+              {onDismissPattern && (
+                <button
+                  onClick={() => onDismissPattern(p.reason)}
+                  style={{
+                    background: 'none', border: '1px solid rgba(245,158,11,0.4)',
+                    borderRadius: '4px', padding: '0.2rem 0.5rem',
+                    cursor: 'pointer', fontSize: '0.78rem', color: '#f59e0b',
+                    marginLeft: '0.75rem', flexShrink: 0,
+                  }}
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Review & Edit Schedule</h3>

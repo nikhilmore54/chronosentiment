@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { StaffMember, ScheduleResult, RosterAlternative, SchedulerDecision, RedistributionLog } from './WorkflowTypes';
 import { RULE_PRESETS } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
@@ -10,6 +10,7 @@ import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
 import { buildSyntheticAlternatives } from './WorkflowUtils';
 import { DecisionRepository } from '../services/DecisionRepository';
+import { accumulatePatterns } from '../services/PatternAccumulator';
 
 const decisionRepository = new DecisionRepository();
 
@@ -30,6 +31,23 @@ export const PlannerWorkflow: React.FC = () => {
   const [alternatives, setAlternatives] = useState<RosterAlternative[]>([]);
   const [recommendedId, setRecommendedId] = useState('');
   const [schedulerDecision, setSchedulerDecision] = useState<SchedulerDecision | null>(null);
+
+  // P4.1: dismissed pattern reasons (persisted in localStorage)
+  const [dismissedPatterns, setDismissedPatterns] = useState<string[]>(
+    () => decisionRepository.loadDismissedPatterns(),
+  );
+
+  // P4.1: compute visible recurring patterns (filtered by dismissed set)
+  const recurringPatterns = useMemo(() => {
+    const allLogs = decisionRepository.loadAllRedistributionLogs();
+    const all = accumulatePatterns(allLogs);
+    return all.filter(p => !dismissedPatterns.includes(p.reason));
+  }, [dismissedPatterns]);
+
+  const handleDismissPattern = (reason: string) => {
+    decisionRepository.dismissPattern(reason);
+    setDismissedPatterns(prev => [...prev, reason]);
+  };
 
   const goTo = (n: number) => {
     setStep(n);
@@ -154,6 +172,8 @@ export const PlannerWorkflow: React.FC = () => {
                 decisionRepository.saveRedistributionLog(schedulerDecision.decision_id, log);
               }
             }}
+            recurringPatterns={recurringPatterns}
+            onDismissPattern={handleDismissPattern}
           />
         )}
 
