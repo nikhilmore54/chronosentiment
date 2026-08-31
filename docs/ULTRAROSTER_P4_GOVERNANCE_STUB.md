@@ -67,6 +67,12 @@ The first P4 question is:
 
 Only after answering that should the mechanism be chosen — whether statistical learning, preference inference, adaptive weighting, pattern detection, or something simpler.
 
+### First objective (narrowly defined)
+
+> Identify which recurring information in P3 decision and modification history can legitimately improve future rostering decisions, while preserving all hard constraints and scheduler authority.
+
+P4 must not become an open-ended AI/ML project. The first objective is bounded: identify the signal, establish what it can legitimately influence, define the acceptance gates, then implement.
+
 ---
 
 ## P4 Scope Gate (applies when definition is complete)
