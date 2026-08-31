@@ -1,10 +1,10 @@
 # UltraRoster P3.3 — Controlled Reassignment & Change Provenance
 ## Governance Document — Authorization & Invariants
 
-**Status:** AUTHORIZED — not yet implemented  
-**Prerequisite:** P3.2 frozen at commit `938c6e60f` (branch: `governance-hardening`)  
-**Author:** UltraRoster product governance  
-**Date:** 2026-08-30
+**Status:** AUTHORIZED — implementation in progress
+**Prerequisite:** P3.2 frozen at commit `0623ac904` (branch: `governance-hardening`)
+**Author:** UltraRoster product governance
+**Date:** 2026-08-30 / updated 2026-08-31
 
 ---
 
@@ -168,10 +168,13 @@ On the roster grid:
 
 The following P3.2 invariants remain frozen and must not be touched during P3.3:
 
-- `rankAlternatives()` is the single authoritative ranking step.
-- API `recommended_alternative_id` is never used directly.
+- `compareAlternatives()` is presentation-only — no ranking, no `recommendedId`, no `GAP_TOLERANCE` policy.
+- `result.recommended_alternative_id` from the optimizer pipeline is propagated unchanged — the adapter does not override it.
 - `buildStaffingRequirements()` + `computeCanonicalCoverage()` are the canonical coverage formula.
-- GAP_TOLERANCE = 5.
+- Coralys MOGA is the sole optimization authority. The UltraCrew adapter is the sole domain problem definer.
+- No second optimization authority will be introduced.
+
+*(Note: `rankAlternatives()` and `GAP_TOLERANCE` were removed in P3.2 cleanup at commit `4da805647`. The above reflects the actual frozen state.)*
 
 ---
 
