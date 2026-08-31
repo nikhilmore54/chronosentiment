@@ -180,10 +180,39 @@ Coralys until a separately authorized objective-model phase is defined.
 
 ---
 
-## Next Authorized Capability
+## P3.3 Scope Gate (active implementation rule)
 
-**Manual scheduler edits → preserve edits → intelligently redistribute
-remaining work** (previously discussed as P3.2 Edit & Rebalance, now
-deferred until P3 is frozen and separately authorized).
+**P3.3 is the only active implementation scope.** P3.2 stays closed.
 
-This is a cleaner product progression than reopening the optimizer.
+For each issue encountered during P3.3 implementation, apply this gate:
+
+1. Is it required for the authorized P3.3 behavior to function correctly?
+2. Is it a defect in an already-defined P3.3 invariant?
+3. Can it be fixed without changing the product's intended behavior or architecture?
+
+**If yes to all three:** minimal implementation correction is permitted.
+
+**Otherwise:** record it, do not expand scope, continue or stop according to the governance gate.
+
+This rule is particularly important as UltraRoster approaches POC → pilot stage. The goal is a coherent demonstrable product, not continuous optimizer broadening.
+
+### P3.3 authorized scope
+
+- Scheduler edits
+- Locking (scheduler edits become hard locks)
+- Controlled redistribution of unlocked cells
+- Explicit system-reassignment provenance (emitted at moment of change, not post-hoc)
+- Recalculation of metrics after redistribution
+- Scheduler review of redistributed schedule
+
+### P3.3 not authorized (even if discovered during P3.3)
+
+- Optimizer changes
+- New objectives or weights
+- Coralys changes
+- P4 learning mechanisms
+- Anything that requires reopening P3.2 frozen boundaries
+
+### P4 (later, separately authorized)
+
+Learning from decisions and modification history. Nothing from P4 should be pulled into P3.3 merely because it could be useful.
