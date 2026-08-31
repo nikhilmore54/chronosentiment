@@ -1,5 +1,6 @@
-# UltraRoster P4 — Authorization Proposal
+# UltraRoster P4.1 — Authorization Proposal
 ## P4 Evidence Pass — Signal Assessment and Authorization Recommendation
+## Authorized capability: P4.1 Recurring Operational Pattern Surfacing
 
 **Baseline:** `governance-hardening @ 18cc7dd19`
 **Scope:** Inspection of P3 history structures and signal assessment. No code changes.
@@ -125,29 +126,55 @@ Close the Signal A gap: add `recommended_metrics` and `selected_metrics` to `Sch
 | Gate | Requirement |
 |---|---|
 | G-P4-B-1 | Reason string is observable in ≥1 existing `RedistributionLog` |
-| G-P4-B-2 | Same reason string appears in ≥3 independent redistribution logs (different `operationId`) |
-| G-P4-B-3 | Pattern is not attributable to a single session or a single scheduler |
+| G-P4-B-2 | Same reason string appears in ≥3 redistribution logs with distinct `operationId` values |
+| G-P4-B-3 | Pattern is not attributable to a single redistribution operation (distinct `operationId` is the independence criterion — scheduler identity is not in the current data model and must not be added merely to satisfy this gate) |
 | G-P4-B-4 | Surfacing the pattern does not modify any optimizer objective, weight, or constraint |
 | G-P4-B-5 | Scheduler can dismiss/acknowledge the pattern — it does not persist after dismissal |
-| G-P4-B-6 | Behavior without sufficient evidence (< 3 sessions) is identical to current P3 behavior |
+| G-P4-B-6 | Behavior without sufficient evidence (< 3 distinct `operationId` values) is identical to current P3 behavior |
 | G-P4-B-7 | Hard constraints (HC1, sequence feasibility, eligibility) are not affected |
 
 ---
 
 ## Conclusion
 
-**P4 implementation authorized for Signal B (redistribution reason pattern surfacing).**
+**P4.1 implementation authorized for Signal B only.**
 
-Signal B is complete, interpretable, and requires no optimizer changes. The mechanism is pattern surfacing, not adaptive weights. Scheduler authority is preserved.
+Signal B is complete, interpretable, and requires no optimizer changes. The mechanism is **observe and surface** — not adaptive weights, not learning, not automatic remediation. Scheduler authority is preserved.
 
 Signal A (override preference learning) requires a small additional data capture before it can be used. It is not authorized for implementation until the metrics gap is closed and sufficient history is accumulated.
 
 Signal C (edit distribution) is not authorized — the gap is larger and the signal is lower-value than Signal B.
 
-**P4 implementation sequence:**
-1. Implement Signal B pattern accumulator and UI surface
-2. Verify against acceptance gates G-P4-B-1 through G-P4-B-7
-3. Close Signal A gap (add metrics to `SchedulerDecision`)
-4. Accumulate Signal A history
-5. Assess Signal A evidence
-6. Authorize Signal A mechanism if evidence supports it
+---
+
+## Explicit Stopping Condition for P4.1
+
+Once P4.1 has:
+1. Pattern accumulator (count `ChangeRecord.reason` across distinct `operationId` values)
+2. Read-only presentation to scheduler
+3. Threshold behavior (≥3 distinct `operationId` values)
+4. Acknowledgement/dismissal mechanism
+5. Regression tests
+6. Verification of gates G-P4-B-1 through G-P4-B-7
+
+**Stop.** Do not proceed automatically to Signal A. Signal A is a separate P4 authorization step.
+
+---
+
+## Architectural Invariant
+
+```
+P3
+FACTUAL HISTORY
+    ↓
+P4.1
+PATTERN OBSERVATION (observe and surface only)
+    ↓
+Scheduler
+HUMAN INTERPRETATION AND DECISION
+    ↓
+Future P4 authorization
+POSSIBLE INFLUENCE ON OPTIMIZATION (not yet authorized)
+```
+
+The system observes and surfaces. The scheduler interprets and decides. The optimizer is not touched until a separate authorization step explicitly permits it.
