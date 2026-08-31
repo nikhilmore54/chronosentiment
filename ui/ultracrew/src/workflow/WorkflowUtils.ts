@@ -385,77 +385,65 @@ export function computeCanonicalCoverage(
   };
 }
 
-// ─── P3.2: Adapter-layer decision ranking ────────────────────────────────────
+// ─── P3.2: Presentation-only comparison utility ──────────────────────────────
 //
-// rankAlternatives() is the single authoritative function that decides which
-// alternative to recommend. It lives in the adapter/domain layer, not the UI.
+// compareAlternatives() computes descriptive metrics and differences between
+// alternatives for display purposes only. It does NOT rank, recommend, or
+// select a preferred alternative. Recommendation authority belongs exclusively
+// to the optimizer pipeline (result.recommended_alternative_id).
 //
-// Priority hierarchy (explicit, not a magic weight):
-//   1. Minimize uncovered required positions (primary operational objective)
-//   2. Among alternatives within GAP_TOLERANCE, minimize secondary objectives:
-//      fairness_penalty + cost/100 (lower is better)
-//
-// GAP_TOLERANCE = 5 positions (≤ 2.5% of 196 required).
-// Below this threshold, coverage is considered equivalent and secondary
-// objectives decide.
-//
-// Deterministic test cases:
-//   40/196 vs 194/196  → 194/196 wins  (gap = 154 > 5)
-//   194/196 vs 196/196 → 196/196 wins  (gap = 2 ≤ 5 → secondary decides)
-//   196/196 vs 196/196 → lower fairness+cost wins
-//   equal coverage, equal secondary → first alternative wins (stable)
+// Returns per-alternative comparison data: coverage, utilization, fairness,
+// cost, and assignment diff count relative to the first alternative.
+// The caller is responsible for determining which alternative is recommended.
 
-export interface RankingResult {
-  recommendedId: string;
-  reason: string;
-  coverageDominant: boolean; // true when coverage gap drove the decision
+export interface AlternativeComparison {
+  id: string;
+  coveragePct: number;
+  filledPositions: number;
+  requiredPositions: number;
+  gapPositions: number;
+  fairnessPenalty: number;
+  utilization: number;
+  cost: number;
+  diffFromFirst: number; // assignment cells that differ from alternatives[0]
 }
 
-export function rankAlternatives(alternatives: RosterAlternative[]): RankingResult {
-  if (alternatives.length === 0) {
-    return { recommendedId: '', reason: 'No alternatives available.', coverageDominant: false };
-  }
-  if (alternatives.length === 1) {
+export function compareAlternatives(alternatives: RosterAlternative[]): AlternativeComparison[] {
+  if (alternatives.length === 0) return [];
+
+  const first = alternatives[0];
+
+  return alternatives.map(alt => {
+    // Count assignment cells that differ from the first alternative
+    let diffFromFirst = 0;
+    if (alt.id !== first.id) {
+      const allStaffIds = new Set([
+        ...Object.keys(first.schedule),
+        ...Object.keys(alt.schedule),
+      ]);
+      for (const staffId of allStaffIds) {
+        const aShifts = first.schedule[staffId] ?? [];
+        const bShifts = alt.schedule[staffId] ?? [];
+        const len = Math.max(aShifts.length, bShifts.length);
+        for (let d = 0; d < len; d++) {
+          if ((aShifts[d] ?? '') !== (bShifts[d] ?? '')) diffFromFirst++;
+        }
+      }
+    }
+
+    const gap = alt.metrics.required_positions - alt.metrics.filled_positions;
     return {
-      recommendedId: alternatives[0].id,
-      reason: `${alternatives[0].metrics.filled_positions} / ${alternatives[0].metrics.required_positions} required positions filled.`,
-      coverageDominant: false,
+      id: alt.id,
+      coveragePct: alt.metrics.coverage * 100,
+      filledPositions: alt.metrics.filled_positions,
+      requiredPositions: alt.metrics.required_positions,
+      gapPositions: gap,
+      fairnessPenalty: alt.metrics.fairness_penalty,
+      utilization: alt.metrics.utilization,
+      cost: alt.metrics.cost,
+      diffFromFirst,
     };
-  }
-
-  const GAP_TOLERANCE = 5;
-
-  // Find the alternative with the fewest uncovered positions
-  const minGap = Math.min(...alternatives.map(a =>
-    a.metrics.required_positions - a.metrics.filled_positions
-  ));
-
-  // Candidates: all alternatives within GAP_TOLERANCE of the best coverage
-  const candidates = alternatives.filter(a =>
-    (a.metrics.required_positions - a.metrics.filled_positions) <= minGap + GAP_TOLERANCE
-  );
-
-  const coverageDominant = candidates.length < alternatives.length;
-
-  // Among candidates, minimize secondary objectives
-  const best = candidates.reduce((prev, curr) => {
-    const scorePrev = prev.metrics.fairness_penalty + prev.metrics.cost / 100;
-    const scoreCurr = curr.metrics.fairness_penalty + curr.metrics.cost / 100;
-    return scoreCurr < scorePrev ? curr : prev;
   });
-
-  const bestGap = best.metrics.required_positions - best.metrics.filled_positions;
-  const reason = coverageDominant
-    ? `${best.metrics.filled_positions} / ${best.metrics.required_positions} required positions filled — fewest uncovered positions among all alternatives.`
-    : `Coverage equivalent across alternatives (within ${GAP_TOLERANCE} positions). Recommended based on lower fairness penalty and cost.`;
-
-  // Update the recommended alternative's reasons to reflect the ranking decision
-  best.reasons = [
-    `${best.metrics.filled_positions} / ${best.metrics.required_positions} required positions filled${bestGap > 0 ? ` (${bestGap} uncovered)` : ' — full coverage'}.`,
-    reason,
-  ];
-
-  return { recommendedId: best.id, reason, coverageDominant };
 }
 
 // ─── P3: Synthetic alternatives for the Decision Selection step ───────────────
@@ -558,6 +546,7 @@ export function buildSyntheticAlternatives(
     ],
   };
 
-  const ranked = rankAlternatives([optionA, optionB]);
-  return { alternatives: [optionA, optionB], recommendedId: ranked.recommendedId };
+  // alt-A is always the optimizer-produced schedule; recommendation authority
+  // belongs to the optimizer pipeline, not the adapter.
+  return { alternatives: [optionA, optionB], recommendedId: 'alt-A' };
 }

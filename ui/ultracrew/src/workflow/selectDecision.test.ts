@@ -65,14 +65,18 @@ test('G-10: Δ from recommended is sixth (last)', () => {
   expect(CANONICAL_METRIC_ORDER[5]).toBe('diff_from_recommended');
 });
 
-// ─── G-10: Recommendation explanation must not use "best overall balance" ─────
+// ─── G-10: compareAlternatives() — adapter has no recommendation authority ────
 //
-// rankAlternatives() in WorkflowUtils.ts is the authoritative source of the
-// recommendation reason. We verify that the reason strings it produces never
-// contain the banned phrase "best overall balance" — which was the incorrect
-// text that described a low-coverage option as if it were the best choice.
+// After the HC1 correction (commit 9d106d201, verified at 00ab239d7),
+// recommendation authority belongs exclusively to the optimizer pipeline.
+// compareAlternatives() is a presentation/comparison utility only.
+//
+// These tests verify:
+//   1. compareAlternatives() reports accurate coverage metrics for all alternatives.
+//   2. compareAlternatives() does NOT produce a recommendedId or reason string.
+//   3. The adapter cannot silently substitute its own recommendation policy.
 
-import { rankAlternatives } from './WorkflowUtils';
+import { compareAlternatives } from './WorkflowUtils';
 import type { RosterAlternative } from './WorkflowTypes';
 
 function makeAlt(id: string, filled: number, required: number, fairness: number, cost: number): RosterAlternative {
@@ -93,48 +97,42 @@ function makeAlt(id: string, filled: number, required: number, fairness: number,
   };
 }
 
-test('G-10: recommendation reason never contains "best overall balance"', () => {
-  // Coverage-dominant case: 40/196 vs 194/196
-  const result1 = rankAlternatives([
+test('G-10: compareAlternatives reports accurate coverage for 40/196 and 194/196', () => {
+  // Both alternatives are reported accurately — no winner is selected by the adapter
+  const result = compareAlternatives([
     makeAlt('low',  40,  196, 0.5, 90),
     makeAlt('high', 194, 196, 1.2, 100),
   ]);
-  expect(result1.reason.toLowerCase()).not.toContain('best overall balance');
-  expect(result1.recommendedId).toBe('high');
-
-  // Secondary-decides case: 194/196 vs 196/196
-  const result2 = rankAlternatives([
-    makeAlt('a', 194, 196, 1.2, 100),
-    makeAlt('b', 196, 196, 0.9, 97),
-  ]);
-  expect(result2.reason.toLowerCase()).not.toContain('best overall balance');
-
-  // Equal coverage case
-  const result3 = rankAlternatives([
-    makeAlt('x', 196, 196, 1.5, 100),
-    makeAlt('y', 196, 196, 0.8, 95),
-  ]);
-  expect(result3.reason.toLowerCase()).not.toContain('best overall balance');
+  expect(result).toHaveLength(2);
+  expect(result[0].id).toBe('low');
+  expect(result[0].filledPositions).toBe(40);
+  expect(result[0].gapPositions).toBe(156);
+  expect(result[1].id).toBe('high');
+  expect(result[1].filledPositions).toBe(194);
+  expect(result[1].gapPositions).toBe(2);
 });
 
-test('G-10: coverage-dominant reason explicitly states uncovered position count', () => {
-  const result = rankAlternatives([
+test('G-10: compareAlternatives does not produce a recommendedId or reason', () => {
+  // The adapter comparison function must not contain recommendation fields
+  const result = compareAlternatives([
     makeAlt('low',  40,  196, 0.5, 90),
     makeAlt('high', 194, 196, 1.2, 100),
   ]);
-  // The reason must mention the filled/required counts explicitly
-  expect(result.reason).toContain('194');
-  expect(result.reason).toContain('196');
-  expect(result.recommendedId).toBe('high');
+  for (const entry of result) {
+    expect(Object.keys(entry)).not.toContain('recommendedId');
+    expect(Object.keys(entry)).not.toContain('reason');
+    expect(Object.keys(entry)).not.toContain('coverageDominant');
+  }
 });
 
-test('G-10: recommended badge belongs to rankAlternatives winner, not the first alternative', () => {
-  // When the first alternative has lower coverage, the second must be recommended
+test('G-10: adapter cannot change recommendedId — compareAlternatives has no recommendedId', () => {
+  // Architectural invariant: no matter what metrics are passed to compareAlternatives(),
+  // it cannot produce a recommendedId. Recommendation authority is the optimizer's alone.
   const alts = [
     makeAlt('first',  40,  196, 0.5, 90),
     makeAlt('second', 194, 196, 1.2, 100),
   ];
-  const result = rankAlternatives(alts);
-  expect(result.recommendedId).toBe('second');
-  expect(result.recommendedId).not.toBe('first');
+  const result = compareAlternatives(alts);
+  const hasRecommendedId = result.some(r => 'recommendedId' in (r as unknown as Record<string, unknown>));
+  expect(hasRecommendedId).toBe(false);
 });

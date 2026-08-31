@@ -8,7 +8,7 @@ import { GenerateSchedule } from './GenerateSchedule';
 import { SelectDecision } from './SelectDecision';
 import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
-import { buildSyntheticAlternatives, rankAlternatives } from './WorkflowUtils';
+import { buildSyntheticAlternatives } from './WorkflowUtils';
 
 export const PlannerWorkflow: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -93,23 +93,26 @@ export const PlannerWorkflow: React.FC = () => {
               const count = Object.values(sched).flat().filter(s => s !== '').length;
               setOriginalAssignmentCount(count);
 
-              // P3: build alternatives, then always run rankAlternatives() as the
-              // single authoritative ranking step. The API recommendation is never
-              // used directly — it may reflect optimizer-internal scoring that does
-              // not match the product-level coverage-priority hierarchy.
-              let altsToRank: typeof alternatives;
+              // P3: propagate the optimizer/API recommendation unchanged.
+              // The optimizer is the authoritative source of recommendation authority
+              // (verified at commit 00ab239d7 — all 38 Pareto members HC1-feasible).
+              // The adapter does not re-rank or override the optimizer's decision.
+              let alts: typeof alternatives;
+              let recId: string;
               if (result.alternatives && result.alternatives.length > 0) {
-                // API returned alternatives — use them but re-rank
-                altsToRank = result.alternatives;
+                // API returned alternatives — use them with the API recommendation
+                alts = result.alternatives;
+                recId = result.recommended_alternative_id ?? alts[0]?.id ?? '';
               } else {
-                // Fallback: derive alternatives from the editable schedule
-                const { alternatives: synAlts } = buildSyntheticAlternatives(staff, sched);
-                altsToRank = synAlts;
+                // Fallback: derive alternatives from the editable schedule.
+                // buildSyntheticAlternatives() returns alt-A as the recommendation
+                // (the optimizer-produced schedule is always alt-A).
+                const { alternatives: synAlts, recommendedId: synRecId } = buildSyntheticAlternatives(staff, sched);
+                alts = synAlts;
+                recId = synRecId;
               }
-              // rankAlternatives() is the authoritative adapter-layer decision
-              const ranked = rankAlternatives(altsToRank);
-              setAlternatives(altsToRank);
-              setRecommendedId(ranked.recommendedId);
+              setAlternatives(alts);
+              setRecommendedId(recId);
 
               goTo(4);
             }}
