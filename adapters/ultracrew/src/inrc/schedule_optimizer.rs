@@ -75,6 +75,7 @@ impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
         let mut s6_assignment_penalty = 0.0;
         let mut s7_weekend_penalty = 0.0;
         let mut recovery_penalty = 0.0;
+        let mut forbidden_successions_penalty = 0.0;
 
         // Sum penalties from validation report exactly using INRC weights
         for det in &validation_report.details {
@@ -105,6 +106,10 @@ impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
                         det.required - det.actual
                     };
                     recovery_penalty += (diff * 30) as f64;
+                }
+                "forbidden_shift_type_successions" => {
+                    // HC4 is a hard constraint. Match scalar hard_constraint_violation weight.
+                    forbidden_successions_penalty += 1000.0;
                 }
                 _ => {}
             }
@@ -200,13 +205,15 @@ impl Evaluator<ScheduleGenome> for UltraCrewEvaluator {
             }
         }
 
+        let total_hard_penalty = coverage_deficit + forbidden_successions_penalty;
+
         vec![
             s6_assignment_penalty,
             s7_weekend_penalty,
             recovery_penalty,
             workload_balance,
             temporal_load_balance,
-            coverage_deficit, // objective[5]: HC1 minimum coverage penalty (minimize, hard)
+            total_hard_penalty, // objective[5]: Aggregated hard constraints (coverage + sequence)
         ]
     }
 }
@@ -473,6 +480,130 @@ mod hc1_coverage_tests {
             fitness.len(),
             6,
             "FitnessVector must have exactly 6 objectives (5 original + HC1 coverage)"
+        );
+    }
+}
+
+#[cfg(test)]
+mod hc4_sequence_tests {
+    use super::*;
+    use crate::inrc::models::{
+        InrcContract, InrcForbiddenSuccession, InrcNurse, InrcScenario, InrcShiftType, InrcWeekData,
+    };
+    use coralys_moga::engine_proof::Evaluator;
+
+    fn sequence_scenario() -> InrcScenario {
+        InrcScenario {
+            id: "test".to_string(),
+            number_of_weeks: 1,
+            skills: vec!["Nurse".to_string()],
+            shift_types: vec![
+                InrcShiftType {
+                    id: "Night".to_string(),
+                    min_consecutive: 1,
+                    max_consecutive: 7,
+                },
+                InrcShiftType {
+                    id: "Early".to_string(),
+                    min_consecutive: 1,
+                    max_consecutive: 7,
+                },
+            ],
+            forbidden_shift_type_successions: vec![InrcForbiddenSuccession {
+                preceding: "Night".to_string(),
+                succeeding: vec!["Early".to_string()],
+            }],
+            contracts: vec![InrcContract {
+                id: "FullTime".to_string(),
+                min_assignments: 1,
+                max_assignments: 7,
+                min_consecutive_working_days: 1,
+                max_consecutive_working_days: 7,
+                min_consecutive_days_off: 1,
+                max_consecutive_days_off: 7,
+                max_working_weekends: 4,
+                complete_weekends: 0,
+            }],
+            nurses: vec![InrcNurse {
+                id: "N1".to_string(),
+                contract: "FullTime".to_string(),
+                skills: vec!["Nurse".to_string()],
+            }],
+        }
+    }
+
+    fn empty_week_data() -> InrcWeekData {
+        InrcWeekData {
+            scenario: "test".to_string(),
+            requirements: vec![],
+            shift_off_requests: vec![],
+        }
+    }
+
+    #[test]
+    fn hc4_invalid_sequence_is_penalized() {
+        let scenario = sequence_scenario();
+        let week_data = empty_week_data();
+        let evaluator = UltraCrewEvaluator { scenario, week_data };
+
+        // Invalid: Night on Monday (0), Early on Tuesday (1)
+        let invalid_genome = ScheduleGenome {
+            slots: vec![
+                AssignmentSlot {
+                    slot_id: 0,
+                    day: 0,
+                    shift_type: "Night".to_string(),
+                    required_skill: "Nurse".to_string(),
+                    assigned_nurse: "N1".to_string(),
+                },
+                AssignmentSlot {
+                    slot_id: 1,
+                    day: 1,
+                    shift_type: "Early".to_string(),
+                    required_skill: "Nurse".to_string(),
+                    assigned_nurse: "N1".to_string(),
+                },
+            ],
+            num_days: 7,
+            nurses: vec!["N1".to_string()],
+        };
+
+        // Valid: Night on Monday (0), Off on Tuesday, Early on Wednesday (2)
+        let valid_genome = ScheduleGenome {
+            slots: vec![
+                AssignmentSlot {
+                    slot_id: 0,
+                    day: 0,
+                    shift_type: "Night".to_string(),
+                    required_skill: "Nurse".to_string(),
+                    assigned_nurse: "N1".to_string(),
+                },
+                AssignmentSlot {
+                    slot_id: 1,
+                    day: 2,
+                    shift_type: "Early".to_string(),
+                    required_skill: "Nurse".to_string(),
+                    assigned_nurse: "N1".to_string(),
+                },
+            ],
+            num_days: 7,
+            nurses: vec!["N1".to_string()],
+        };
+
+        let invalid_fitness = evaluator.evaluate(&invalid_genome);
+        let valid_fitness = evaluator.evaluate(&valid_genome);
+
+        assert!(
+            invalid_fitness[5] > 0.0,
+            "Invalid sequence (Night -> Early) must trigger a hard constraint penalty in objective[5]"
+        );
+        assert_eq!(
+            valid_fitness[5], 0.0,
+            "Valid sequence (Night -> Off -> Early) must not trigger a hard constraint penalty"
+        );
+        assert!(
+            valid_fitness[5] < invalid_fitness[5],
+            "Valid sequence must strictly dominate invalid sequence on objective[5]"
         );
     }
 }
