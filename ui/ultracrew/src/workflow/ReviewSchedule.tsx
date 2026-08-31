@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
 import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
@@ -313,7 +313,10 @@ export const ReviewSchedule: React.FC<{
   onScheduleChange: (s: Record<string, string[]>) => void;
   onNext: (editCount: number, editDistribution: Record<string, number>) => void;
   onBack: () => void;
-}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack }) => {
+  // P3.3: called when redistribution completes — parent persists the log (hard gate 5)
+  decision_id?: string;
+  onRedistributionComplete?: (log: RedistributionLog) => void;
+}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete }) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
   const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string } | null>(null);
   const [editCount, setEditCount] = useState(0);
@@ -566,6 +569,8 @@ export const ReviewSchedule: React.FC<{
                 const r = redistributeWithLocks(staff, schedule, lockedCells);
                 onScheduleChange(r.schedule);
                 setRedistResult(r);
+                // P3.3 hard gate 5: notify parent to persist the log
+                onRedistributionComplete?.(r.log);
               }}
               style={{ ...primaryBtnStyle, fontSize: '0.87rem' }}
             >

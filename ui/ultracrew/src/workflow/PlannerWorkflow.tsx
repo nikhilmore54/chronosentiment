@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult, RosterAlternative, SchedulerDecision } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, RosterAlternative, SchedulerDecision, RedistributionLog } from './WorkflowTypes';
 import { RULE_PRESETS } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
 import { ImportStaff } from './ImportStaff';
@@ -9,6 +9,9 @@ import { SelectDecision } from './SelectDecision';
 import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
 import { buildSyntheticAlternatives } from './WorkflowUtils';
+import { DecisionRepository } from '../services/DecisionRepository';
+
+const decisionRepository = new DecisionRepository();
 
 export const PlannerWorkflow: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -145,6 +148,12 @@ export const PlannerWorkflow: React.FC = () => {
             onScheduleChange={setEditableSchedule}
             onNext={(editCount, dist) => { setManualEditCount(editCount); setEditDistribution(dist); goTo(6); }}
             onBack={() => goTo(4)}
+            decision_id={schedulerDecision?.decision_id}
+            onRedistributionComplete={(log: RedistributionLog) => {
+              if (schedulerDecision) {
+                decisionRepository.saveRedistributionLog(schedulerDecision.decision_id, log);
+              }
+            }}
           />
         )}
 

@@ -1,15 +1,18 @@
 import type { Recommendation, Decision } from '../types';
-import type { SchedulerDecision } from '../workflow/WorkflowTypes';
+import type { SchedulerDecision, RedistributionLog } from '../workflow/WorkflowTypes';
 
 /**
  * Simple repository abstraction over browser localStorage.
  * Persists recommendations and decision log so that state survives a page refresh.
- * P3: also persists SchedulerDecision records (recommended vs selected option).
+ * P3:   persists SchedulerDecision records (recommended vs selected option).
+ * P3.3: persists RedistributionLog alongside each SchedulerDecision (hard gate 5).
  */
 export class DecisionRepository {
   private readonly RECS_KEY = 'ultracrew_recommendations';
   private readonly LOG_KEY = 'ultracrew_decision_log';
   private readonly P3_KEY = 'ultracrew_scheduler_decisions';
+  // P3.3: redistribution logs keyed by decision_id — satisfies hard gate 5
+  private readonly P3_3_KEY = 'ultracrew_redistribution_logs';
 
   /** Load persisted recommendations. Returns empty array if none. */
   loadRecommendations(): Recommendation[] {
@@ -48,6 +51,7 @@ export class DecisionRepository {
     window.localStorage.removeItem(this.RECS_KEY);
     window.localStorage.removeItem(this.LOG_KEY);
     window.localStorage.removeItem(this.P3_KEY);
+    window.localStorage.removeItem(this.P3_3_KEY);
   }
 
   // ── P3: Scheduler decisions (recommended vs selected option) ────────────────
@@ -81,5 +85,36 @@ export class DecisionRepository {
     };
     this.appendSchedulerDecision(record);
     return record;
+  }
+
+  // ── P3.3: Redistribution logs (hard gate 5) ─────────────────────────────────
+
+  /**
+   * Persist a redistribution log for the given decision_id.
+   * Overwrites any existing log for that decision (idempotent on re-save).
+   */
+  saveRedistributionLog(decisionId: string, log: RedistributionLog): void {
+    const all = this.loadAllRedistributionLogs();
+    all[decisionId] = log;
+    window.localStorage.setItem(this.P3_3_KEY, JSON.stringify(all));
+  }
+
+  /**
+   * Load the redistribution log for a specific decision_id.
+   * Returns null if no log has been saved for that decision.
+   */
+  loadRedistributionLog(decisionId: string): RedistributionLog | null {
+    const all = this.loadAllRedistributionLogs();
+    return all[decisionId] ?? null;
+  }
+
+  private loadAllRedistributionLogs(): Record<string, RedistributionLog> {
+    const data = window.localStorage.getItem(this.P3_3_KEY);
+    if (!data) return {};
+    try {
+      return JSON.parse(data) as Record<string, RedistributionLog>;
+    } catch {
+      return {};
+    }
   }
 }
