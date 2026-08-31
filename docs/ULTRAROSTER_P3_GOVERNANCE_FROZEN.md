@@ -1,8 +1,8 @@
 # UltraRoster P3 — Governance Frozen State
 
-**Date:** 2026-08-30
+**Date:** 2026-08-31
 **Branch:** governance-hardening
-**Last commit:** 82c694377
+**Last commit:** 4da805647
 
 ---
 
@@ -12,12 +12,14 @@
 |---|---|---|
 | Candidate alternatives | WORKING | 8eb536a22 |
 | Canonical coverage (demand-based, 196 req. positions) | WORKING | 5c43d657d |
-| Coverage-dominant recommendation | WORKING | 82c694377 |
+| HC1 coverage_deficit as objective[5] (weight 1000) | WORKING | 9d106d201 |
+| HC1 verification — 38/38 archive members HC1-feasible | VERIFIED | 00ab239d7 |
+| Recommendation authority in optimizer pipeline | WORKING | 4da805647 |
 | Recommendation vs scheduler selection (override tracking) | WORKING | 8eb536a22 |
 | Decision Memory (P2) | WORKING | 4c19355e2 |
 | Single-alternative honesty | WORKING | 8eb536a22 |
 | P3 UI (SelectDecision, ReviewSchedule, ExportRoster) | WORKING | 98d5ad960 |
-| Regression test suite (7/7 pass) | WORKING | 82c694377 |
+| Regression test suite (26/26 pass) | WORKING | 4da805647 |
 | P1.1 diversity optimization | DEFERRED | — |
 | Rest Pattern Quality | FUTURE DOMAIN OBJECTIVE | — |
 | Coralys | FROZEN | — |
@@ -25,50 +27,88 @@
 
 ---
 
-## Architectural Invariant (P3.2)
+## Architectural Invariant (P3.2) — UPDATED 2026-08-31
 
-**Optimizer/API scoring ≠ UltraRoster recommendation.**
+**Recommendation authority is exclusively in the optimizer pipeline; domain policy authority remains in the adapter.**
 
-The API can supply candidate alternatives, but UltraRoster's product-level
-decision policy (`rankAlternatives()` in `WorkflowUtils.ts`) is authoritative
-when determining what to recommend.
+### Authority model
 
-Call path (Render / synthetic scenario):
+```
+UltraCrew / UltraRoster adapter
+        │
+        │ defines the optimization problem:
+        │ • employees / eligibility
+        │ • coverage requirements (HC1 minimum — absolute demand)
+        │ • sequence constraints
+        │ • soft objectives, penalties, weights
+        ▼
+   coralys_moga  (generic engine — no domain knowledge)
+        │
+        │ optimizes the supplied problem
+        │ produces Pareto candidate set
+        ▼
+   result.recommended_alternative_id
+        │
+        ▼
+   UltraCrew adapter
+        │
+        └── compareAlternatives()
+              metrics only: coverage, utilization, fairness, cost, diffFromFirst
+              NO ranking, NO recommendedId, NO GAP_TOLERANCE policy
+        ▼
+          UI presents alternatives
+        │
+        ▼
+      Scheduler makes the human decision
+```
+
+### Key distinctions
+
+- **UltraCrew adapter:** defines *what the optimization problem means* (domain policy authority).
+- **Coralys MOGA:** performs *the optimization* and produces the candidate set/recommendation (recommendation authority).
+- **`compareAlternatives()`:** describes candidates; does **not** rank them.
+- **UI:** presents alternatives.
+- **Scheduler:** makes the human decision.
+
+Coralys must remain domain-agnostic. It must not contain airline-specific rules,
+"minimum 3 consecutive workdays", "Night → Early is forbidden", or any domain semantics.
+Those belong in the adapter/domain problem definition.
+
+Coralys receives: `{decision variables, hard constraints, soft constraints, objectives, weights, evaluation function}` and optimizes without knowing whether the problem is airline crew rostering, hospital staffing, or anything else.
+
+### Call path (Render / synthetic scenario)
+
 ```
 GenerateSchedule
     → onResult
     → buildSyntheticAlternatives(staff, sched)   [or API alternatives]
-    → rankAlternatives(altsToRank)               [AUTHORITATIVE]
-    → setRecommendedId(ranked.recommendedId)
-    → SelectDecision renders the adapter's result
+    → result.recommended_alternative_id          [AUTHORITATIVE — from optimizer]
+    → setRecommendedId(recId)
+    → compareAlternatives(alts)                  [metrics only — no ranking]
+    → SelectDecision renders alternatives + optimizer recommendation
 ```
 
-The API's `recommended_alternative_id` is **never** used directly.
+The API's `recommended_alternative_id` is propagated **unchanged**.
+The adapter does not re-rank or override the optimizer's decision.
 
----
+### What was removed (P3.2 cleanup, commit 4da805647)
 
-## Decision Policy (rankAlternatives)
+`rankAlternatives()` was a compensating control for the HC1 optimizer defect
+(40/196 preferred over 194/196). After the HC1 correction (commit 9d106d201,
+verified at 00ab239d7), the compensating control was eliminated:
 
-Priority hierarchy — explicit, not a magic weight:
+- `rankAlternatives()` + `RankingResult` removed from `WorkflowUtils.ts`
+- `GAP_TOLERANCE`, `coverageDominant`, adapter-side `reason` string removed
+- `PlannerWorkflow.tsx` no longer overrides the optimizer recommendation
+- `compareAlternatives()` + `AlternativeComparison` added (presentation only)
 
-1. **Minimize uncovered required positions** (primary operational objective)
-2. Among alternatives within `GAP_TOLERANCE = 5` positions, minimize
-   `fairness_penalty + cost / 100` (secondary objectives)
-3. Deterministic tie-break: first alternative wins (stable)
+There is now only one optimization authority.
 
-### Regression gate cases
+### Regression test suite (26/26 pass)
 
-| Case | Expected | coverageDominant |
-|---|---|---|
-| 40/196 vs 194/196 | 194/196 wins | true |
-| 190/196 vs 196/196 (gap=6) | 196/196 wins | true |
-| 191/196 vs 196/196 (gap=5, boundary) | secondary decides | false |
-| 194/196 vs 194/196 | lower fairness+cost wins | false |
-| 196/196 vs 196/196 equal | first wins (stable) | false |
-| single alternative | that alternative | false |
-| empty | empty id | — |
-
-All 7 cases pass in `rankAlternatives.test.ts` (vitest, 187ms).
+- `rankAlternatives.test.ts` — 9 tests for `compareAlternatives()` shape, metrics, diffFromFirst, invariant
+- `selectDecision.test.ts` — 11 tests (8 G-10 canonical metric order + 3 G-10 adapter-authority invariant)
+- `redistribution.test.ts` — 6 tests
 
 ---
 
