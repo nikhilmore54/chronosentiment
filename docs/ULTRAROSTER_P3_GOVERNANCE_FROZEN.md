@@ -146,23 +146,37 @@ Coralys until a separately authorized objective-model phase is defined.
 
 ---
 
-## Frozen Boundaries
+## Frozen Boundaries — P3.2 Closure (2026-08-31)
 
-**IN (P3, frozen):**
-- Decision selection UI
-- Canonical coverage (demand-based)
-- Coverage-priority recommendation
-- Adapter-layer ranking (`rankAlternatives`)
+**CLOSED / FROZEN (do not reopen):**
+- P3.2 recommendation authority — `compareAlternatives()` is presentation-only; optimizer pipeline is the sole recommendation authority
+- HC1 correction — `coverage_deficit` as `objective[5]`, weight 1000, verified 38/38 archive members HC1-feasible
+- Sequence-feasibility correction
+- Adapter-vs-Coralys boundary — Coralys is a generic engine; domain policy belongs in the adapter
+- `compareAlternatives()` presentation-only role — no `GAP_TOLERANCE`, no `recommendedId`, no `coverageDominant`
 - Decision memory (P2)
-- Regression test suite
+- Regression test suite (26/26 pass)
 
-**OUT (explicitly deferred):**
-- MOGA / optimizer changes
+**NEXT AUTHORIZED (P3.3):**
+- Controlled re-optimization around scheduler decisions
+- Lock → redistribution → provenance → recalculate metrics → scheduler reviews
+- See `docs/ULTRAROSTER_P3_3_GOVERNANCE.md`
+
+**EXPLICITLY NOT OPEN:**
+- Pareto ranking redesign
+- Adapter recommendation heuristics
+- Generalized constraint learning
+- Objective-weight research
+- Rest Pattern Quality implementation (recorded, not authorized — belongs in adapter/domain model when authorized)
+- P4 learning mechanisms (learning from decisions, adaptive objectives, historical choice influence)
 - Alternative-generation diversity (P1.1)
-- Rest Pattern Quality implementation
 - Coralys changes
-- P4 memory recommendation
 - UI redesign beyond current P3 scope
+
+**Scope discipline:**
+> P3 makes the optimizer's decision transparent and safely controllable.
+> P4 learns from the decisions.
+> These must not be conflated.
 
 ---
 
