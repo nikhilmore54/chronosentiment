@@ -168,7 +168,7 @@ Coralys until a separately authorized objective-model phase is defined.
 - Generalized constraint learning
 - Objective-weight research
 - Rest Pattern Quality implementation (recorded, not authorized — belongs in adapter/domain model when authorized)
-- P4 learning mechanisms (learning from decisions, adaptive objectives, historical choice influence)
+- P4 behavior during P3.3 (P4 is the planned next phase — not active during P3.3)
 - Alternative-generation diversity (P1.1)
 - Coralys changes
 - UI redesign beyond current P3 scope
@@ -210,9 +210,13 @@ This rule is particularly important as UltraRoster approaches POC → pilot stag
 - Optimizer changes
 - New objectives or weights
 - Coralys changes
-- P4 learning mechanisms
+- P4 behavior (P4 is the planned next phase after P3.3 — not active during P3.3)
 - Anything that requires reopening P3.2 frozen boundaries
 
-### P4 (later, separately authorized)
+### P4 — planned next phase (not active during P3.3)
 
-Learning from decisions and modification history. Nothing from P4 should be pulled into P3.3 merely because it could be useful.
+P4 is the planned successor to P3.3, not a vague future idea. It is simply outside the current implementation scope.
+
+P4 scope: learning from decisions and modification history — adaptive objectives, historical choice influence, modification-history learning, using scheduler decisions to improve future optimization.
+
+P3 makes the decision transparent and controllable. P4 makes the system learn from those decisions. Nothing from P4 should be implemented prematurely during P3.3.
