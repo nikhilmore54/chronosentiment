@@ -240,13 +240,91 @@ function generateOperationId(): string {
   return `redist-${ts}-${rand}`;
 }
 
-export function redistributeWithLocks(
+// P3.3-CR: Translate UI lock model (staffId:dayIdx) to backend shift IDs.
+// The shift ID scheme is deterministic and matches buildSchedulePayload/buildEditableSchedule:
+//   shiftId starts at 1, iterates allSkills then WEEKLY_SHIFT_SLOTS.
+// A locked cell staffId:dayIdx corresponds to shift IDs where:
+//   worker_id == staffIndex+1 AND shiftMeta[shiftId].dayOfWeek == dayIdx % 7
+function buildLockedShiftIds(
+  staff: StaffMember[],
+  apiSchedule: Record<string, number>, // shift_id (string) → worker_id (number, 1-indexed)
+  lockedCells: Set<string>, // keys: `${staffId}:${dayIdx}`
+): number[] {
+  if (lockedCells.size === 0) return [];
+
+  // Rebuild shiftId → {dayOfWeek} map (same scheme as buildEditableSchedule)
+  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+  const shiftDayOfWeek: Record<number, number> = {};
+  let shiftId = 1;
+  for (const _skill of allSkills) {
+    for (const slot of WEEKLY_SHIFT_SLOTS) {
+      shiftDayOfWeek[shiftId++] = slot.dayOfWeek;
+    }
+  }
+
+  // Build staffId → workerId (1-indexed) map
+  const staffWorkerIds: Record<string, number> = {};
+  staff.forEach((s, i) => { staffWorkerIds[s.id] = i + 1; });
+
+  const lockedShiftIds: number[] = [];
+  for (const [shiftIdStr, workerId] of Object.entries(apiSchedule)) {
+    const sid = Number(shiftIdStr);
+    const dayOfWeek = shiftDayOfWeek[sid];
+    if (dayOfWeek === undefined) continue;
+    // Find which staffId this workerId corresponds to
+    const staffEntry = staff[workerId - 1]; // 1-indexed
+    if (!staffEntry) continue;
+    // Check if any locked cell for this staff member falls on this dayOfWeek
+    // A cell staffId:dayIdx is locked if dayIdx % 7 === dayOfWeek
+    for (let week = 0; week < 4; week++) {
+      const dayIdx = week * 7 + dayOfWeek;
+      const key = `${staffEntry.id}:${dayIdx}`;
+      if (lockedCells.has(key)) {
+        lockedShiftIds.push(sid);
+        break; // shift is locked — no need to check other weeks
+      }
+    }
+  }
+  return lockedShiftIds;
+}
+
+export async function redistributeWithLocks(
   staff: StaffMember[],
   currentSchedule: Record<string, string[]>,
   lockedCells: Set<string>, // keys: `${staffId}:${dayIdx}`
-): RedistributionResult {
-  // Build a fresh synthetic schedule as the redistribution base
-  const freshSchedule = buildSyntheticSchedule(staff);
+  apiSchedule: Record<string, number>, // raw shift_id → worker_id from ScheduleResult.schedule
+  rulePayload: object,
+  csrfToken: string,
+): Promise<RedistributionResult> {
+  // P3.3-CR: Use the existing Coralys-backed /api/reschedule path.
+  // Locked assignments are passed as fixed variables; Coralys optimizes only unlocked slots.
+  const lockedShiftIds = buildLockedShiftIds(staff, apiSchedule, lockedCells);
+  const basePayload = buildSchedulePayload(staff, rulePayload);
+
+  const reschedulePayload = {
+    request: basePayload,
+    existing_assignments: Object.fromEntries(
+      Object.entries(apiSchedule).map(([k, v]) => [Number(k), v])
+    ),
+    locked_shift_ids: lockedShiftIds.length > 0 ? lockedShiftIds : null,
+  };
+
+  const res = await fetch('/api/reschedule', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify(reschedulePayload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Reschedule failed: ${res.status}`);
+  }
+
+  const data: { schedule: Record<string, number> } = await res.json();
+  // Translate the new schedule back to the 28-day grid
+  const freshSchedule = buildEditableSchedule(staff, data.schedule);
 
   const operationId = generateOperationId();
   const timestamp = new Date().toISOString();
@@ -258,7 +336,7 @@ export function redistributeWithLocks(
   let lockedCount = 0;
   let changedCount = 0;
   let unchangedCount = 0;
-  let lockedAssignmentsChanged = 0; // invariant: must remain 0
+  const lockedAssignmentsChanged = 0; // invariant: must remain 0 — backend enforces this
 
   staff.forEach(s => {
     result[s.id] = Array(28).fill('');
@@ -272,10 +350,8 @@ export function redistributeWithLocks(
         result[s.id][d] = current;
         provenanceMap[key] = 'scheduler_edit';
         lockedCount++;
-        // Governance check: if redistribution would have changed this, that is a violation
-        // We do NOT apply the change — we record the invariant is intact
       } else {
-        // Unlocked — apply redistributed value and emit provenance
+        // Unlocked — apply Coralys-optimized value and emit provenance
         result[s.id][d] = fresh;
         if (fresh !== current) {
           // Emit change record at the moment of change (not post-hoc)
@@ -303,7 +379,7 @@ export function redistributeWithLocks(
     timestamp,
     schedulerEditsPreserved: lockedCount,
     assignmentsReassigned: changedCount,
-    lockedAssignmentsChanged, // always 0 — enforced above
+    lockedAssignmentsChanged, // always 0 — enforced by backend lock mechanism
     changeRecords,
     provenanceMap,
   };

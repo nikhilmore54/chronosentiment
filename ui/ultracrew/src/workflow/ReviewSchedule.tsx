@@ -615,8 +615,24 @@ export const ReviewSchedule: React.FC<{
 
           {!redistResult ? (
             <button
-              onClick={() => {
-                const r = redistributeWithLocks(staff, schedule, lockedCells);
+              onClick={async () => {
+                // P3.3-CR: fetch CSRF token then call Coralys-backed /api/reschedule
+                let csrfToken = '';
+                try {
+                  const csrfRes = await fetch('/api/csrf-token');
+                  const csrfData = await csrfRes.json();
+                  csrfToken = csrfData.csrf_token ?? '';
+                } catch {
+                  // csrf fetch failed — proceed with empty token (backend will reject if required)
+                }
+                const r = await redistributeWithLocks(
+                  staff,
+                  schedule,
+                  lockedCells,
+                  result.schedule,
+                  {},
+                  csrfToken,
+                );
                 onScheduleChange(r.schedule);
                 setRedistResult(r);
                 // P3.3 hard gate 5: notify parent to persist the log
