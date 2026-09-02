@@ -156,7 +156,13 @@ impl FitnessEvaluator<CvrpCandidate> for CvrpEvaluator {
                 .evaluate_routes_distance(&routes, crate::DistanceMetric::EuclideanFloat);
         }
 
-        let num_vehicles = routes.len();
+        let mut num_vehicles = routes.len();
+        if num_vehicles > k_limit {
+            routes.clear();
+            num_vehicles = 0;
+            total_distance = 1000000.0;
+        }
+
         let total_distance_integer = self
             .instance
             .evaluate_routes_distance(&routes, crate::DistanceMetric::TspLibEuc2D);
