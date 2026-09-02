@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult } from './WorkflowTypes';
+import type { StaffMember, ScheduleResult, ScheduleRawResponse } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, SummaryRow } from './WorkflowComponents';
-import { buildSchedulePayload, buildEditableSchedule } from './WorkflowUtils';
+import { buildSchedulePayload, buildEditableSchedule, mapParetoAlternatives } from './WorkflowUtils';
 
 const STAGES = [
   'Validating staff and rules...',
@@ -47,7 +47,19 @@ export const GenerateSchedule: React.FC<{
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Schedule generation failed (${res.status})`);
-      const data: ScheduleResult = await res.json();
+      // P0-E: Parse as ScheduleRawResponse (actual backend shape), then map
+      // alternatives from ProductionParetoSolution[] → RosterAlternative[].
+      // This closes the type contract gap between the Rust backend and the UI.
+      const raw: ScheduleRawResponse = await res.json();
+      const mappedAlternatives = mapParetoAlternatives(raw.alternatives ?? [], staff);
+      const data: ScheduleResult = {
+        schedule: raw.schedule,
+        metrics: raw.metrics,
+        constraint_report: raw.constraint_report,
+        recommendations: raw.recommendations,
+        alternatives: mappedAlternatives,
+        recommended_alternative_id: raw.recommended_alternative_id,
+      };
       clearInterval(interval);
       setLoading(false);
       onResult(data, buildEditableSchedule(staff, data.schedule));

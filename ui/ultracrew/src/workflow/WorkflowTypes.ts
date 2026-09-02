@@ -51,12 +51,35 @@ export interface RosterAlternativeMetrics {
   diff_from_recommended: number; // number of assignments that differ
 }
 
+// P0-D: Factual constraint profile from the backend CandidateFeasibility struct.
+// The adapter evaluates every Pareto candidate with InrcConstraintEvaluator and
+// attaches this profile. The UI displays it; the scheduler decides what to do.
+// No frontend ranking or recommendation is derived from this data.
+export interface CandidateFeasibility {
+  /** True when hard_violations === 0 (matches validate_schedule() semantics). */
+  is_feasible: boolean;
+  /** Total hard constraint violations (HC1+HC2+HC3+HC4+rest). */
+  hard_violations: number;
+  /** Rest period violations. */
+  rest_violations: number;
+  /** HC1 (minimum coverage) violations. */
+  hc1_violations: number;
+  /** HC3 (forbidden shift succession) violations. */
+  hc3_violations: number;
+}
+
 export interface RosterAlternative {
   id: string;
   label: string;
   metrics: RosterAlternativeMetrics;
   schedule: Record<string, string[]>; // staffId → 28-day shift array
   reasons: string[];                  // why this option is notable
+  // P0-D: Factual constraint profile. Present when the backend provides it.
+  // Optional for backward compatibility with existing test fixtures.
+  feasibility?: CandidateFeasibility;
+  // P0-D: Raw Pareto objective vector [hard_viol, rest_viol, fairness, fatigue, hc1_viol, hc3_viol].
+  // Present when the backend provides it. Used for trade-off display only — not for ranking.
+  objectives?: number[];
 }
 
 // ─── P3.3: Assignment provenance — four states, emitted not diffed ────────────
@@ -121,6 +144,69 @@ export interface SchedulerDecision {
   recommended_metrics: RosterAlternativeMetrics;
   /** Metrics of the scheduler-selected alternative at decision time. */
   selected_metrics: RosterAlternativeMetrics;
+}
+
+// ─── P0-E: Raw backend API shapes ────────────────────────────────────────────
+//
+// The backend ScheduleResponse.alternatives field is Vec<ProductionParetoSolution>,
+// which has a different shape from RosterAlternative. These types represent the
+// actual JSON the backend sends. GenerateSchedule.tsx parses into these types
+// first, then calls mapParetoAlternatives() to produce RosterAlternative[].
+//
+// This mapping layer is the P0-E fix: it closes the type contract gap between
+// the Rust backend (shift_id → worker_id map) and the UI (staffId → shift[]).
+
+/** Raw backend CandidateFeasibility — matches Rust struct field names exactly. */
+export interface ParetoFeasibilityRaw {
+  is_feasible: boolean;
+  hard_violations: number;
+  rest_violations: number;
+  hc1_violations: number;
+  hc3_violations: number;
+}
+
+/**
+ * Raw backend ProductionParetoSolution — the actual JSON shape from the API.
+ * schedule: shift_id (string) → worker_id (number) — NOT staffId → shift[].
+ * metrics: flat HashMap<String, f64> — NOT RosterAlternativeMetrics.
+ */
+export interface ParetoAlternativeRaw {
+  /** shift_id (string key) → worker_id (number value) */
+  schedule: Record<string, number>;
+  /** Raw Pareto objective vector: [hard_viol, rest_viol, fairness, fatigue, hc1_viol, hc3_viol] */
+  objectives: number[];
+  /** Flat metric map from analyze_solution() */
+  metrics: Record<string, number>;
+  /** Factual constraint profile from InrcConstraintEvaluator */
+  feasibility: ParetoFeasibilityRaw;
+}
+
+/**
+ * Raw API response shape from POST /api/schedule.
+ * Use this type when parsing the fetch() response, then call
+ * mapParetoAlternatives() to convert alternatives to RosterAlternative[].
+ */
+export interface ScheduleRawResponse {
+  schedule: Record<string, number>;
+  metrics: Record<string, number>;
+  constraint_report: {
+    fitness: number;
+    is_valid: boolean;
+    hard_violations: number;
+    soft_violations: number;
+    violated_constraints: string[];
+    satisfied_constraints: string[];
+    warnings: string[];
+  } | null;
+  recommendations: Array<{
+    constraint_id: string;
+    severity: string;
+    explanation: string;
+    recommended_action: string;
+  }>;
+  /** Raw Pareto alternatives from the backend — must be mapped before use in UI. */
+  alternatives: ParetoAlternativeRaw[];
+  recommended_alternative_id?: string;
 }
 
 export interface ScheduleResult {

@@ -1,4 +1,4 @@
-import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, StaffingRequirement, CoverageReport, ChangeRecord, RedistributionLog, AssignmentProvenanceState } from './WorkflowTypes';
+import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, RosterAlternativeMetrics, CandidateFeasibility, StaffingRequirement, CoverageReport, ChangeRecord, RedistributionLog, AssignmentProvenanceState, ParetoAlternativeRaw } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
@@ -529,6 +529,82 @@ export function compareAlternatives(alternatives: RosterAlternative[]): Alternat
 // alternative labelled as the recommendation, and a second only when the
 // staff count is large enough to produce a genuinely different rotation.
 // It never fabricates a third option.
+
+// ─── P0-E: Pareto alternative mapping layer ──────────────────────────────────
+//
+// mapParetoAlternatives() translates the raw backend ProductionParetoSolution[]
+// (shift_id → worker_id map) into RosterAlternative[] (staffId → 28-day shift[]).
+//
+// This is the P0-E fix: it closes the type contract gap between the Rust backend
+// and the UI. The mapping uses the same buildEditableSchedule() logic that
+// translates the primary schedule, ensuring consistency.
+//
+// Invariants:
+//   - No filtering: all candidates from the backend are preserved.
+//   - No ranking: candidates are returned in backend order.
+//   - No synthetic data: every field comes from the backend response.
+//   - feasibility and objectives are passed through unchanged.
+
+export function mapParetoAlternatives(
+  raw: ParetoAlternativeRaw[],
+  staff: StaffMember[],
+): RosterAlternative[] {
+  return raw.map((alt, idx) => {
+    // Translate shift_id → worker_id map to staffId → 28-day shift[] grid.
+    // Uses the same buildEditableSchedule() logic as the primary schedule.
+    const schedule = buildEditableSchedule(staff, alt.schedule);
+
+    // Derive RosterAlternativeMetrics from the backend flat metric map.
+    // Keys match analyze_solution() output in decision_intelligence.rs.
+    const metrics: RosterAlternativeMetrics = {
+      coverage:             alt.metrics['coverage']             ?? 0,
+      filled_positions:     alt.metrics['filled_positions']     ?? 0,
+      required_positions:   alt.metrics['required_positions']   ?? 0,
+      fairness_penalty:     alt.metrics['fairness_penalty']     ?? 0,
+      utilization:          alt.metrics['utilization']          ?? 0,
+      cost:                 alt.metrics['cost']                 ?? 0,
+      diff_from_recommended: 0, // computed by compareAlternatives() if needed
+    };
+
+    // Map ParetoFeasibilityRaw → CandidateFeasibility (same field names).
+    const feasibility: CandidateFeasibility = {
+      is_feasible:      alt.feasibility.is_feasible,
+      hard_violations:  alt.feasibility.hard_violations,
+      rest_violations:  alt.feasibility.rest_violations,
+      hc1_violations:   alt.feasibility.hc1_violations,
+      hc3_violations:   alt.feasibility.hc3_violations,
+    };
+
+    // Generate a stable id from the index (backend does not assign ids).
+    // The id is used for selection identity in SelectDecision — it is stable
+    // within a single schedule generation response.
+    const id = `pareto-${idx}`;
+
+    // Label: feasible candidates are "Option N", infeasible are "Exception N".
+    const label = feasibility.is_feasible
+      ? `Option ${idx + 1}`
+      : `Exception ${idx + 1}`;
+
+    // Reasons: derive from the objective vector for display.
+    // No ranking or recommendation is implied — these are factual descriptions.
+    const reasons: string[] = [];
+    if (alt.objectives[0] === 0) reasons.push('No hard violations');
+    if (alt.objectives[1] === 0) reasons.push('No rest violations');
+    if (alt.objectives[2] < (alt.objectives[2] + 1)) {
+      // Always true — placeholder for future objective-based reason generation
+    }
+
+    return {
+      id,
+      label,
+      metrics,
+      schedule,
+      reasons,
+      feasibility,
+      objectives: alt.objectives,
+    };
+  });
+}
 
 export function buildSyntheticAlternatives(
   staff: StaffMember[],
