@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, SummaryRow } from './WorkflowComponents';
-import { buildSchedulePayload, buildEditableSchedule, buildSyntheticSchedule, buildSyntheticResult } from './WorkflowUtils';
+import { buildSchedulePayload, buildEditableSchedule } from './WorkflowUtils';
 
 const STAGES = [
   'Validating staff and rules...',
@@ -20,9 +20,11 @@ export const GenerateSchedule: React.FC<{
 }> = ({ staff, rulePayload, ruleLabel, onResult, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [stageIdx, setStageIdx] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     setLoading(true);
+    setError(null);
     setStageIdx(0);
     const interval = setInterval(() => {
       setStageIdx(prev => (prev < STAGES.length - 1 ? prev + 1 : prev));
@@ -31,6 +33,7 @@ export const GenerateSchedule: React.FC<{
     try {
       // Fetch CSRF token (double-submit pattern required by the backend)
       const csrfRes = await fetch('/api/csrf-token');
+      if (!csrfRes.ok) throw new Error(`CSRF token request failed (${csrfRes.status})`);
       const csrfData = await csrfRes.json();
       const csrfToken: string = csrfData.csrf_token ?? '';
 
@@ -43,15 +46,17 @@ export const GenerateSchedule: React.FC<{
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      if (!res.ok) throw new Error(`Schedule generation failed (${res.status})`);
       const data: ScheduleResult = await res.json();
       clearInterval(interval);
       setLoading(false);
       onResult(data, buildEditableSchedule(staff, data.schedule));
-    } catch {
+    } catch (err) {
       clearInterval(interval);
       setLoading(false);
-      onResult(buildSyntheticResult(), buildSyntheticSchedule(staff));
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Unable to generate schedule: ${message}. Please check the backend is running and try again.`);
+      // Do NOT fall back to synthetic data — the scheduler must see a real optimizer result.
     }
   };
 
@@ -77,6 +82,20 @@ export const GenerateSchedule: React.FC<{
         <SummaryRow icon="📋" label={`Rule set: ${ruleLabel}`} color="var(--text-main)" />
         <SummaryRow icon="📅" label="28-day planning horizon (4 weeks)" color="var(--text-main)" />
       </div>
+
+      {error && (
+        <div style={{
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.4)',
+          borderRadius: '8px',
+          padding: '1rem 1.25rem',
+          color: '#fca5a5',
+          fontSize: '0.9rem',
+        }}>
+          <strong>Generation failed</strong><br />
+          {error}
+        </div>
+      )}
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '2rem' }}>

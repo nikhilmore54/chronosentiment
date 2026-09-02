@@ -8,7 +8,6 @@ import { GenerateSchedule } from './GenerateSchedule';
 import { SelectDecision } from './SelectDecision';
 import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
-import { buildSyntheticAlternatives } from './WorkflowUtils';
 import { DecisionRepository } from '../services/DecisionRepository';
 import { accumulatePatterns } from '../services/PatternAccumulator';
 
@@ -115,25 +114,20 @@ export const PlannerWorkflow: React.FC = () => {
               setOriginalAssignmentCount(count);
 
               // P3: propagate the optimizer/API recommendation unchanged.
-              // The optimizer is the authoritative source of recommendation authority
-              // (verified at commit 00ab239d7 — all 38 Pareto members HC1-feasible).
-              // The adapter does not re-rank or override the optimizer's decision.
-              let alts: typeof alternatives;
-              let recId: string;
+              // The optimizer is the authoritative source of recommendation authority.
+              // If the backend does not return alternatives, we do NOT invent them —
+              // the scheduler proceeds directly to Review with the single backend schedule.
               if (result.alternatives && result.alternatives.length > 0) {
                 // API returned alternatives — use them with the API recommendation
-                alts = result.alternatives;
-                recId = result.recommended_alternative_id ?? alts[0]?.id ?? '';
+                setAlternatives(result.alternatives);
+                setRecommendedId(result.recommended_alternative_id ?? result.alternatives[0]?.id ?? '');
               } else {
-                // Fallback: derive alternatives from the editable schedule.
-                // buildSyntheticAlternatives() returns alt-A as the recommendation
-                // (the optimizer-produced schedule is always alt-A).
-                const { alternatives: synAlts, recommendedId: synRecId } = buildSyntheticAlternatives(staff, sched);
-                alts = synAlts;
-                recId = synRecId;
+                // Backend returned no alternatives — clear the alternatives list.
+                // Step 4 (SelectDecision) will show an "alternatives unavailable" notice
+                // and allow the scheduler to proceed directly with the generated schedule.
+                setAlternatives([]);
+                setRecommendedId('');
               }
-              setAlternatives(alts);
-              setRecommendedId(recId);
 
               goTo(4);
             }}
@@ -141,8 +135,8 @@ export const PlannerWorkflow: React.FC = () => {
           />
         )}
 
-        {/* Step 4 — P3: Explore the Decision */}
-        {step === 4 && alternatives.length > 0 && (
+        {/* Step 4 — Explore the Decision (or proceed directly when backend provides no alternatives) */}
+        {step === 4 && scheduleResult && alternatives.length > 0 && (
           <SelectDecision
             alternatives={alternatives}
             recommendedId={recommendedId}
@@ -155,6 +149,32 @@ export const PlannerWorkflow: React.FC = () => {
             }}
             onBack={() => goTo(3)}
           />
+        )}
+
+        {/* Step 4 — Alternatives unavailable: backend returned no candidates — workflow stops here */}
+        {step === 4 && scheduleResult && alternatives.length === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Explore the Decision</h3>
+              <div style={{
+                backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: '8px',
+                padding: '1rem 1.25rem',
+                color: '#fcd34d',
+                fontSize: '0.9rem',
+              }}>
+                <strong>Decision alternatives unavailable.</strong> The optimizer did not return candidate alternatives
+                required for the decision step. The workflow cannot proceed until the backend provides this data.
+                Please regenerate the schedule or contact support.
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <button onClick={() => goTo(3)} style={{ padding: '0.5rem 1.25rem', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                ← Back to Generate
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Step 5 — Review & Edit */}
