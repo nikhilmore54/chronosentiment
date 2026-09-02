@@ -529,7 +529,7 @@ impl TelemetrySink for NullTelemetrySink {
 /// ```rust,no_run
 /// use std::fs::File;
 /// use std::io::BufWriter;
-/// use adapters_roadef::telemetry::JsonlTelemetrySink;
+/// use roadef::telemetry::JsonlTelemetrySink;
 ///
 /// let moves_file = BufWriter::new(File::create("rp410_moves_setA-06_seed42.jsonl").unwrap());
 /// let gens_file  = BufWriter::new(File::create("rp410_generations_setA-06_seed42.jsonl").unwrap());
@@ -828,6 +828,21 @@ mod tests {
                 telemetry_time_ms: 0.1,
                 other_time_ms: 0.3,
                 total_gen_time_ms: 17.7,
+                p10b_infeasible_entering_repair: 0,
+                p10b_feasible_entering_repair: 0,
+                p10b_repair_attempts: 0,
+                p10b_repair_successes: 0,
+                p10b_repair_failures: 0,
+                p10b_repair_ms: 0.0,
+                p10b_improve_ms: 0.0,
+                p10b_repair_ms_per_infeasible: 0.0,
+                p10c0_genome_changed_count: 0,
+                p10c0_genome_unchanged_count: 0,
+                p10c0_violation_count_improved: 0,
+                p10c0_violation_count_unchanged: 0,
+                p10c0_violation_count_worsened: 0,
+                p10c0_sum_max_sat_before: 0.0,
+                p10c0_sum_max_sat_after: 0.0,
             };
             sink.emit_generation(&gen_rec);
             assert_eq!(sink.moves_written, 1);
