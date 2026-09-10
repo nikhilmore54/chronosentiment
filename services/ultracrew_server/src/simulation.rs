@@ -197,11 +197,28 @@ pub struct SimulationState {
     pub verification_reports: VerificationReports,
 }
 
+fn pick_least_loaded_nurse(
+    candidates: &[String],
+    nurse_load: &std::collections::HashMap<String, i32>,
+) -> Option<String> {
+    let mut best: Option<String> = None;
+    let mut min_load = i32::MAX;
+    for c in candidates {
+        let load = *nurse_load.get(c).unwrap_or(&0);
+        if load < min_load {
+            min_load = load;
+            best = Some(c.clone());
+        }
+    }
+    best
+}
+
 pub fn generate_baseline_schedule(
     scenario: &ultracrew::inrc::models::InrcScenario,
     requirements: &Vec<ultracrew::inrc::models::InrcRequirement>,
 ) -> Result<crate::optimizer::ScheduleGenome, String> {
     use crate::optimizer::{AssignmentSlot, ScheduleGenome};
+    use rand::seq::SliceRandom;
 
     let mut slots = Vec::new();
     let mut slot_id_counter = 0;
@@ -226,9 +243,24 @@ pub fn generate_baseline_schedule(
     for d in 0..num_days {
         let weekday = d % 7;
 
-        let mut daily_slots = Vec::new();
+        // Build two slot lists: minimum (hard floor) and optimal (target)
+        // minimum slots MUST be filled — fall back to any available nurse if needed
+        // optimal slots are filled only with skill-matched nurses
+        let mut minimum_slots: Vec<(&str, String)> = Vec::new();
+        let mut optimal_slots: Vec<(&str, String)> = Vec::new();
+
         for req in requirements {
-            let required = match weekday {
+            let minimum = match weekday {
+                0 => req.monday.minimum,
+                1 => req.tuesday.minimum,
+                2 => req.wednesday.minimum,
+                3 => req.thursday.minimum,
+                4 => req.friday.minimum,
+                5 => req.saturday.minimum,
+                6 => req.sunday.minimum,
+                _ => 0,
+            };
+            let optimal = match weekday {
                 0 => req.monday.optimal,
                 1 => req.tuesday.optimal,
                 2 => req.wednesday.optimal,
@@ -243,53 +275,93 @@ pub fn generate_baseline_schedule(
                 .find(|(k, _)| *k == req.shift_type)
                 .map(|(_, v)| *v)
                 .unwrap_or("");
-            for _ in 0..required {
-                daily_slots.push((mapped_shift, req.skill.clone()));
+            // minimum slots (hard requirement)
+            for _ in 0..minimum {
+                minimum_slots.push((mapped_shift, req.skill.clone()));
+            }
+            // additional slots up to optimal (soft target, beyond minimum)
+            for _ in minimum..optimal {
+                optimal_slots.push((mapped_shift, req.skill.clone()));
             }
         }
 
-        // Randomly assign least-loaded available nurse with skill
         let mut available_nurses: Vec<String> =
             scenario.nurses.iter().map(|n| n.id.clone()).collect();
         let mut rng = rand::thread_rng();
 
-        for (shift, req_skill) in daily_slots {
-            // Find a candidate
-            let mut best_nurse = None;
-            let mut min_load = i32::MAX;
+        // ── Pass 1: fill MINIMUM slots (hard floor) ──────────────────────────
+        // Try skill-matched first; fall back to any available nurse to guarantee
+        // minimum daily coverage is always met.
+        minimum_slots.shuffle(&mut rng);
+        for (shift, req_skill) in &minimum_slots {
+            // Skill-matched candidates
+            let mut skill_candidates: Vec<String> = available_nurses
+                .iter()
+                .filter(|id| {
+                    scenario
+                        .nurses
+                        .iter()
+                        .find(|n| &n.id == *id)
+                        .map(|n| n.skills.contains(req_skill))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect();
+            skill_candidates.shuffle(&mut rng);
 
-            // Randomize tie-breaking
-            let mut candidates = available_nurses.clone();
-            use rand::seq::SliceRandom;
-            candidates.shuffle(&mut rng);
+            let chosen = if !skill_candidates.is_empty() {
+                pick_least_loaded_nurse(&skill_candidates, &nurse_load)
+            } else {
+                // Fallback: any available nurse — minimum coverage must be met
+                let mut fallback = available_nurses.clone();
+                fallback.shuffle(&mut rng);
+                pick_least_loaded_nurse(&fallback, &nurse_load)
+            };
 
-            for candidate in candidates {
-                let nurse_obj = scenario.nurses.iter().find(|n| n.id == candidate).unwrap();
-                if nurse_obj.skills.contains(&req_skill) {
-                    let load = *nurse_load.get(&candidate).unwrap();
-                    if load < min_load {
-                        min_load = load;
-                        best_nurse = Some(candidate);
-                    }
-                }
-            }
-
-            if let Some(nurse) = best_nurse {
+            if let Some(nurse) = chosen {
                 available_nurses.retain(|n| n != &nurse);
                 *nurse_load.get_mut(&nurse).unwrap() += 1;
-
                 slots.push(AssignmentSlot {
                     slot_id: slot_id_counter,
                     day: d,
                     shift_type: shift.to_string(),
-                    required_skill: req_skill,
+                    required_skill: req_skill.clone(),
                     assigned_nurse: nurse,
                 });
                 slot_id_counter += 1;
-            } else {
-                // If we can't find a nurse, we still push the slot to preserve the requirement?
-                // For Tier-0 constructor, we just skip it, meaning Volume deficit
             }
+        }
+
+        // ── Pass 2: fill OPTIMAL slots (soft target, skill-matched only) ─────
+        optimal_slots.shuffle(&mut rng);
+        for (shift, req_skill) in &optimal_slots {
+            let mut skill_candidates: Vec<String> = available_nurses
+                .iter()
+                .filter(|id| {
+                    scenario
+                        .nurses
+                        .iter()
+                        .find(|n| &n.id == *id)
+                        .map(|n| n.skills.contains(req_skill))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect();
+            skill_candidates.shuffle(&mut rng);
+
+            if let Some(nurse) = pick_least_loaded_nurse(&skill_candidates, &nurse_load) {
+                available_nurses.retain(|n| n != &nurse);
+                *nurse_load.get_mut(&nurse).unwrap() += 1;
+                slots.push(AssignmentSlot {
+                    slot_id: slot_id_counter,
+                    day: d,
+                    shift_type: shift.to_string(),
+                    required_skill: req_skill.clone(),
+                    assigned_nurse: nurse,
+                });
+                slot_id_counter += 1;
+            }
+            // If no skill-matched nurse is available, skip — optimal is a soft target
         }
     }
 
