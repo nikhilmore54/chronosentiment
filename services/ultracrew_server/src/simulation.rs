@@ -290,9 +290,24 @@ pub fn generate_baseline_schedule(
         let mut rng = rand::thread_rng();
 
         // ── Pass 1: fill MINIMUM slots (hard floor) ──────────────────────────
-        // Try skill-matched first; fall back to any available nurse to guarantee
-        // minimum daily coverage is always met.
+        // Sort by most-constrained-first: slots with fewer qualified nurses are
+        // processed first so that scarce skills (e.g. HeadNurse) are reserved
+        // before nurses with those skills get consumed by broader skill slots.
+        // Within the same constraint level, shuffle for randomness.
         minimum_slots.shuffle(&mut rng);
+        minimum_slots.sort_by_key(|(_, req_skill)| {
+            available_nurses
+                .iter()
+                .filter(|id| {
+                    scenario
+                        .nurses
+                        .iter()
+                        .find(|n| &n.id == *id)
+                        .map(|n| n.skills.contains(req_skill))
+                        .unwrap_or(false)
+                })
+                .count()
+        });
         for (shift, req_skill) in &minimum_slots {
             // Skill-matched candidates
             let mut skill_candidates: Vec<String> = available_nurses
