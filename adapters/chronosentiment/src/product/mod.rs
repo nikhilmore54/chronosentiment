@@ -32,6 +32,15 @@
 //! - [`recommendation`]     — product contracts (PortfolioAllocationRequest, PortfolioRecommendation)
 //! - [`allocation_engine`]  — deterministic sizing logic (no market intelligence)
 //! - [`recommendation_engine`] — orchestrates all contracts into Vec<PortfolioRecommendation>
+//! - [`intraday_decision`]  — IC v1 DecisionBrief assembly (adapter-owned; HTTP serializes it)
+//! - [`paper_lifecycle`]    — shared TARGET/STOP/HORIZON evaluator (v0.2 walk, one observation at a time)
+//! - [`paper_replay`]       — historical driver: frozen CSV blotter (does not re-walk)
+//! - [`deferred_live`]      — live driver: MarketObservation → paper_lifecycle → live ledger
+//! - [`deferred_live_loop`] — event-driven observation ingest / arming (no Yahoo fetch)
+//! - [`deferred_live_decision_loop`] — Increment 1 sidecar: controlled-clock ingest → DecisionSurface (no new recommendation)
+//! - [`deferred_live_asof_ic`] — Increment 2 sidecar: as-of IC assembler + shared live/cached ingest coordinator (no driver mutation)
+//! - [`live_observation`]   — CACHED_1M / YAHOO_1M controlled clock (not a broker feed)
+//! - [`live_reassess_experiment`] — opt-in sidecar: v0.2 path-shape + adverse-mark gate (does not mutate Stage C)
 //!
 //! ## Invariant
 //!
@@ -39,12 +48,75 @@
 //! The allocation engine is a portfolio constraint layer, not a market intelligence layer.
 
 pub mod allocation_engine;
+pub mod deferred_live;
+pub mod deferred_live_fill_displacement;
+pub mod deferred_live_asof_ic;
+pub mod deferred_live_decision_loop;
+pub mod deferred_live_loop;
+pub mod deferred_live_loss_audit;
+pub mod deferred_live_performance;
+pub mod deferred_live_session;
+pub mod deferred_live_snap_fill;
+pub mod live_observation;
+pub mod live_reassess_experiment;
+pub mod intraday_decision;
+pub mod paper_lifecycle;
+pub mod paper_replay;
 pub mod portfolio_context;
 pub mod recommendation;
 pub mod recommendation_engine;
 pub mod user_profile;
 
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
+pub use intraday_decision::{DecisionBrief, ExecutionFacts, load_intraday_briefs};
+pub use deferred_live::{
+    overlay_live_quote, DeferredLiveConfig, DeferredLiveDriver, LivePaperAction,
+    LivePaperLedger, LivePaperPosition, LivePaperStatus, MarketObservation, OpenError,
+    EXECUTION_MODE,
+};
+pub use deferred_live_loop::{
+    cached_1m_tape, cached_1m_through_unix, cached_session_tape, ingest_tape, lifecycle_scenario_tape,
+    observation_producer_from_env, observations_from_cached_bars, yahoo_1m_tape, CachedOhlcBar,
+    DeferredLiveRuntime, IngestOutcome, LifecycleScenario, load_cached_1m_observations,
+};
+pub use deferred_live_decision_loop::{DecisionLoopRuntime, DecisionSurface};
+pub use deferred_live_asof_ic::{
+    offer_asof_brief, offer_asof_from_prefix, run_cached_session, session_tape_tickers,
+    AsOfIcAssembler, AsOfOffer, AsOfPathFeatures, AsOfSessionDriver, AsOfSessionEvent,
+    CachedSessionRun, WatchFixture, classify_h60, compute_time_safe_oqs, H60_BAR_COUNT,
+};
+pub use deferred_live_session::{
+    eligible_for_auto_arm, select_session_briefs, SessionState,
+};
+pub use deferred_live_fill_displacement::{
+    fill_geometry, fill_geometry_from_row, summarize_fill_displacement, FillDisplacementRow,
+    FillDisplacementSummary, FillGeometry,
+};
+pub use deferred_live_snap_fill::{
+    snap_fill_lag, summarize_snap_fill, SnapFillLag, SnapFillOrder, SnapFillRow, SnapFillSummary,
+};
+pub use deferred_live_loss_audit::{
+    audit_row_from_position, audit_rows_from_ledger, summarize_universe_audit,
+    DeferredLiveAuditRow, LossBreakdown, UniverseAuditSummary,
+};
+pub use deferred_live_performance::{
+    score_deferred_live, DeferredLivePerformance, DeferredLivePerformanceRow,
+};
+pub use live_observation::{
+    ControlledObservationTape, ObservationFeedSnapshot, ObservationFeedStatus, ObservationProducer,
+    ObservationSourceKind, SourcedObservation, fetch_yahoo_1m_bars, inter_bar_wait_millis,
+    observations_from_yahoo_chart, parse_speed, today_ist_date,
+};
+pub use live_reassess_experiment::{
+    LiveReassessExperiment, ReassessExperimentReport, ReassessExperimentRow, ReassessVariantStats,
+};
+pub use paper_lifecycle::{
+    apply_observation, signed_return, walk_bars, HorizonPolicy, PaperObservation, PaperWalkState,
+    V02_HORIZON_BAR, V02_START_BAR,
+};
+pub use paper_replay::{
+    PaperBlotter, PaperPosition, assemble_paper_blotter, attach_decision_links, load_paper_positions,
+};
 pub use portfolio_context::{PortfolioContext, PortfolioContextError, PortfolioPosition};
 pub use recommendation::{
     PortfolioAllocationRequest, PortfolioRecommendation, RecommendationAction,

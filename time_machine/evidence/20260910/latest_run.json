@@ -1,0 +1,18 @@
+{
+  "run_id": "TIME006-20260910T100000Z-gen20260917T045437055759Z",
+  "run_at": "2026-09-17T04:54:37.055759Z",
+  "producer": "time006_evidence_dataset.v1",
+  "decision_replay_id": "TIME003-20260910T100000Z-gen20260917T040828848547Z",
+  "as_of": "2026-09-10T10:00:00Z",
+  "n_total_ledger_entries": 102,
+  "n_joined": 102,
+  "n_missing_observation": 0,
+  "n_rows_written": 102,
+  "output_dir": "time_machine/evidence/20260910",
+  "ac_t6_01_join_completeness": true,
+  "ac_t6_02_t0_immutability": true,
+  "ac_t6_03_th_immutability": true,
+  "ac_t6_04_identity_chain": true,
+  "ac_t6_05_accounting": true,
+  "ac_t6_06_idempotency": true
+}

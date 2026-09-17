@@ -1,0 +1,17 @@
+{
+  "admitted_at": "2026-08-27T10:15:53.101430Z",
+  "decision_id": "LIVE-005-20260827-1015-IGL_NS",
+  "direction": "LONG",
+  "eligible_for_primary_comparison": false,
+  "evidence_class": "Insufficient",
+  "gap_days": 4,
+  "horizon_label": "H300",
+  "invalidation_reason": "First 1m bar after T0 is 4d away — outside Yahoo 1m retention window",
+  "n_1m_bars_after_t0": 2031,
+  "observation_id": "INTRADAY001-OBS-LIVE-005-20260827-1015-IGL_NS-H300",
+  "observation_status": "INVALID_DATA_GAP",
+  "observed_at": "2026-09-08T11:56:40.119993Z",
+  "producer": "intraday001_observe.v1",
+  "source_snapshot_timestamp": "2026-08-27T10:15:04.409730Z",
+  "ticker": "IGL_NS"
+}

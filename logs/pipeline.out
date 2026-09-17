@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/fetch_stream_loop.py", line 22, in <module>
+    from scripts.fetch_candles import fetch_latest
+ModuleNotFoundError: No module named 'scripts'
+Traceback (most recent call last):
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/fetch_stream_loop.py", line 22, in <module>
+    from scripts.fetch_candles import fetch_latest
+ModuleNotFoundError: No module named 'scripts'
+Traceback (most recent call last):
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/fetch_stream_loop.py", line 22, in <module>
+    from scripts.fetch_candles import fetch_latest
+ModuleNotFoundError: No module named 'scripts'
+[MULTI] starting BTC-USD -> /Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/analysis/live_multi/live_BTC_USD.log
+[MULTI] starting ETH-USD -> /Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/analysis/live_multi/live_ETH_USD.log
+[MULTI] starting SOL-USD -> /Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/analysis/live_multi/live_SOL_USD.log
+[MULTI] child exited pid=63647 rc=0, stopping all

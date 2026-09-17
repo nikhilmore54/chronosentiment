@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TradeInspector } from './components/TradeInspector/TradeInspector';
 import { TimelineView } from './components/Timeline/TimelineView';
 import { AnalyticsView } from './components/Analytics/AnalyticsView';
+import { CockpitView } from './components/Cockpit/CockpitView';
 import type { CertifiedArtifact } from './types/artifact';
 import type { TradeInspectorViewModel, ExplanationRule } from './types/tradeInspector';
 
@@ -24,7 +25,7 @@ function App() {
   const artifact = availableArtifacts[activeArtifactName];
 
   const [selectedTradeId, setSelectedTradeId] = useState<string>(artifact.trade_deltas[0]?.trade_id || '');
-  const [activeTab, setActiveTab] = useState<'analytics' | 'timeline' | 'inspector'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'timeline' | 'inspector' | 'cockpit'>('cockpit');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -76,17 +77,24 @@ function App() {
             
             {/* Session Context Header */}
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              <span style={{ fontWeight: 600 }}>{stratName} Strategy</span>
-              <span style={{ color: 'var(--border-color)' }}>|</span>
-              <span>NIFTY Futures</span>
-              <span style={{ color: 'var(--border-color)' }}>|</span>
-              <span style={{ color: latency > 0 ? 'var(--status-warning)' : 'inherit' }}>{latency}ms Latency</span>
-              <span style={{ color: 'var(--border-color)' }}>|</span>
-              <span style={{ color: structDiv !== '0.0' ? 'var(--status-critical)' : 'var(--status-success)', fontWeight: 500 }}>{structDiv}% Structural Divergence</span>
+              {activeTab === 'cockpit' ? (
+                <span style={{ fontWeight: 600, color: '#0369a1' }}>Decision cockpit · paper recommendations · no broker</span>
+              ) : (
+                <>
+                  <span style={{ fontWeight: 600 }}>{stratName} Strategy</span>
+                  <span style={{ color: 'var(--border-color)' }}>|</span>
+                  <span>NIFTY Futures</span>
+                  <span style={{ color: 'var(--border-color)' }}>|</span>
+                  <span style={{ color: latency > 0 ? 'var(--status-warning)' : 'inherit' }}>{latency}ms Latency</span>
+                  <span style={{ color: 'var(--border-color)' }}>|</span>
+                  <span style={{ color: structDiv !== '0.0' ? 'var(--status-critical)' : 'var(--status-success)', fontWeight: 500 }}>{structDiv}% Structural Divergence</span>
+                </>
+              )}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {activeTab !== 'cockpit' && (
             <select 
               value={activeArtifactName}
               onChange={(e) => setActiveArtifactName(e.target.value)}
@@ -105,6 +113,7 @@ function App() {
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
+            )}
 
             <button 
               onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -128,11 +137,12 @@ function App() {
           {[
             { id: 'analytics', label: 'Analytics' },
             { id: 'timeline', label: 'Timeline' },
-            { id: 'inspector', label: 'Inspector' }
+            { id: 'inspector', label: 'Inspector' },
+            { id: 'cockpit', label: 'Cockpit ✦' },
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as 'analytics' | 'timeline' | 'inspector')}
+              onClick={() => setActiveTab(tab.id as 'analytics' | 'timeline' | 'inspector' | 'cockpit')}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -151,6 +161,22 @@ function App() {
             </button>
           ))}
         </div>
+        {activeTab === 'cockpit' && (
+          <div style={{
+            marginTop: '0.75rem',
+            padding: '0.55rem 0.75rem',
+            borderRadius: '6px',
+            backgroundColor: '#f59e0b18',
+            border: '1px solid #f59e0b88',
+            color: '#b45309',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+          }}>
+            Decision cockpit · today&apos;s recommendations · paper execution · no broker
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -163,6 +189,10 @@ function App() {
           <TimelineView timeline={artifact.timeline} onJumpToTrade={handleJumpToTrade} />
         )}
         
+        {activeTab === 'cockpit' && (
+          <CockpitView />
+        )}
+
         {activeTab === 'inspector' && (
           <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>

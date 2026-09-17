@@ -1,9 +1,0 @@
-{
-  "substrate": "BTC-USD",
-  "capture_start": 1778976000000,
-  "capture_end": 1779539220000,
-  "total_ticks": 9382,
-  "chronology_hash": "d208b5bfd37c053288e2d8ebf14003f18fa49a4dda988ebbe8d2b23a3b4e5a67",
-  "gaps": [],
-  "provenance": "Python Yahoo API (7-day rolling)"
-}

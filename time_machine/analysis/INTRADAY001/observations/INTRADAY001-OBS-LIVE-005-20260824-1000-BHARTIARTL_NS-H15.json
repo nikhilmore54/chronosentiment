@@ -1,0 +1,17 @@
+{
+  "admitted_at": "2026-08-24T10:00:00Z",
+  "decision_id": "LIVE-005-20260824-1000-BHARTIARTL_NS",
+  "direction": "SHORT",
+  "eligible_for_primary_comparison": false,
+  "evidence_class": "Insufficient",
+  "gap_days": 7,
+  "horizon_label": "H15",
+  "invalidation_reason": "First 1m bar after T0 is 7d away — outside Yahoo 1m retention window",
+  "n_1m_bars_after_t0": 1962,
+  "observation_id": "INTRADAY001-OBS-LIVE-005-20260824-1000-BHARTIARTL_NS-H15",
+  "observation_status": "INVALID_DATA_GAP",
+  "observed_at": "2026-09-08T11:56:36.460489Z",
+  "producer": "intraday001_observe.v1",
+  "source_snapshot_timestamp": "2026-08-24T10:00:00Z",
+  "ticker": "BHARTIARTL_NS"
+}

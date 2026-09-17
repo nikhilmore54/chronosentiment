@@ -1,0 +1,527 @@
+{
+  "summary": {
+    "n": 34,
+    "n_fill_before_snap": 34,
+    "n_same_unix": 0,
+    "n_fill_after_snap": 0,
+    "n_first_bar_matches_fill": 34,
+    "unique_lag_secs": [
+      -22500
+    ],
+    "lag_is_constant": true,
+    "dose_response_identifiable": false,
+    "note": "Descriptive snap-to-fill clock. Negative lag is fill-before-snap, not post-decision staleness. Constant lag cannot identify a lag→displacement dose response. Not a G-GATE claim. CS-P-001-D frozen."
+  },
+  "rows": [
+    {
+      "symbol": "BAJAJFINSV",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-BAJAJFINSV_NS",
+      "fill_vs_decision": -0.0002008751928579671,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "BANDHANBNK",
+      "date": "2026-09-03",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-BANDHANBNK_NS",
+      "fill_vs_decision": -0.006291642623843349,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "HCLTECH",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-HCLTECH_NS",
+      "fill_vs_decision": -0.0018113391804245283,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "ICICIPRULI",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-ICICIPRULI_NS",
+      "fill_vs_decision": -0.009166893798767946,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "ITC",
+      "date": "2026-09-03",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-ITC_NS",
+      "fill_vs_decision": 0.011577102492490788,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "JINDALSTEL",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-JINDALSTEL_NS",
+      "fill_vs_decision": -0.01060588598975004,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "PERSISTENT",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-PERSISTENT_NS",
+      "fill_vs_decision": 0.02988222886271753,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "PIDILITIND",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-PIDILITIND_NS",
+      "fill_vs_decision": 0.001893693088538485,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "RECLTD",
+      "date": "2026-09-03",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-RECLTD_NS",
+      "fill_vs_decision": 0.013063584590670169,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "RELIANCE",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-RELIANCE_NS",
+      "fill_vs_decision": 0.0040173187538595145,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "TCS",
+      "date": "2026-09-03",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-TCS_NS",
+      "fill_vs_decision": 0.004596352322660879,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "TRENT",
+      "date": "2026-09-03",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260903-1000-TRENT_NS",
+      "fill_vs_decision": 0.008391527127095245,
+      "lag": {
+        "snap_unix": 1788429600,
+        "fill_unix": 1788407100,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-BAJAJFINSV_NS",
+      "fill_vs_decision": -0.007615759639486003,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "GAIL",
+      "date": "2026-09-04",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-GAIL_NS",
+      "fill_vs_decision": 0.0011542051750270082,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "HCLTECH",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-HCLTECH_NS",
+      "fill_vs_decision": -0.03354657385082205,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "ICICIPRULI",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-ICICIPRULI_NS",
+      "fill_vs_decision": -0.013157882353605384,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "JINDALSTEL",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-JINDALSTEL_NS",
+      "fill_vs_decision": 0.0007837885359153317,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "PERSISTENT",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-PERSISTENT_NS",
+      "fill_vs_decision": -0.0150785153461813,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "PIDILITIND",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-PIDILITIND_NS",
+      "fill_vs_decision": -0.004860357016981322,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "POWERGRID",
+      "date": "2026-09-04",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-POWERGRID_NS",
+      "fill_vs_decision": 0.006607513534721306,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "RECLTD",
+      "date": "2026-09-04",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-RECLTD_NS",
+      "fill_vs_decision": -0.007740954840541075,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "RELIANCE",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-RELIANCE_NS",
+      "fill_vs_decision": 0.008476555534922567,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "SAIL",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-SAIL_NS",
+      "fill_vs_decision": -0.027471378060004367,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "SBIN",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260904-1000-SBIN_NS",
+      "fill_vs_decision": -0.008672501909040354,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "TCS",
+      "date": "2026-09-04",
+      "direction": "SHORT",
+      "exit_reason": "STOP",
+      "decision_id": "LIVE-005-20260904-1000-TCS_NS",
+      "fill_vs_decision": -0.02177700348432056,
+      "lag": {
+        "snap_unix": 1788516000,
+        "fill_unix": 1788493500,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-BAJAJFINSV_NS",
+      "fill_vs_decision": -0.012612612612612612,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "BANDHANBNK",
+      "date": "2026-09-07",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-BANDHANBNK_NS",
+      "fill_vs_decision": -0.00761280012479184,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "COALINDIA",
+      "date": "2026-09-07",
+      "direction": "LONG",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-COALINDIA_NS",
+      "fill_vs_decision": -0.0026178154963349028,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "IDEA",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-IDEA_NS",
+      "fill_vs_decision": 0.014935035580103385,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "JSWSTEEL",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-JSWSTEEL_NS",
+      "fill_vs_decision": -0.01622413257395077,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "JUBLFOOD",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-JUBLFOOD_NS",
+      "fill_vs_decision": -0.015856236786469344,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "PIDILITIND",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "STOP",
+      "decision_id": "LIVE-005-20260907-1000-PIDILITIND_NS",
+      "fill_vs_decision": -0.022520003728838497,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "RELIANCE",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-RELIANCE_NS",
+      "fill_vs_decision": -0.012966107179305776,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    },
+    {
+      "symbol": "SAIL",
+      "date": "2026-09-07",
+      "direction": "SHORT",
+      "exit_reason": "OPEN",
+      "decision_id": "LIVE-005-20260907-1000-SAIL_NS",
+      "fill_vs_decision": -0.02360055449757735,
+      "lag": {
+        "snap_unix": 1788775200,
+        "fill_unix": 1788752700,
+        "lag_secs": -22500,
+        "order": "FillBeforeSnap",
+        "first_bar_matches_fill": true
+      }
+    }
+  ]
+}

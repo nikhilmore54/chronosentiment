@@ -1,22 +1,7 @@
+// campaign_engine.rs – ROADEF 2026 Dataset A Submission Generator
+// Runs on all 20 setA instances and writes srpaths.json solution files.
+
 use std::cmp::Reverse;
-/// campaign_engine — ROADEF 2026 Dataset A Submission Generator
-///
-/// Runs on all 20 setA instances and writes srpaths.json solution files.
-///
-/// Key insight from path.rs:
-///   Budget cost at t=1 = sum over demands of dist(t1_path, t0_path)
-///   dist(uninitialized, explicit(len=N)) = N  (expensive!)
-///   dist(explicit_A, explicit_A) = 0          (free — same path)
-///   dist(uninitialized, uninitialized) = 0     (free — both default)
-///
-/// Strategy:
-///   1. Find one good srpath per demand that works for BOTH time slots.
-///   2. Emit it for both t=0 and t=1 → budget cost = 0 for all demands.
-///   3. For demands affected by t=1 interventions, find an alternative path
-///      and emit it only for t=1, within the budget limit.
-///
-/// The empty solution (srpaths=[]) is always valid. This solver attempts to
-/// improve on it by steering traffic away from saturated links.
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
@@ -85,9 +70,9 @@ fn dijkstra_path(
     let mut path = vec![dst];
     let mut cur = dst;
     while cur != src {
-        if let Some(&p) = prev.get(&cur) {
-            path.push(p);
-            cur = p;
+        if let Some(p) = prev.get(&cur) {
+            path.push(*p);
+            cur = *p;
         } else {
             return None;
         }
@@ -164,9 +149,9 @@ fn load_aware_path(
     let mut path = vec![dst];
     let mut cur = dst;
     while cur != src {
-        if let Some(&p) = prev.get(&cur) {
-            path.push(p);
-            cur = p;
+        if let Some(p) = prev.get(&cur) {
+            path.push(*p);
+            cur = *p;
         } else {
             return None;
         }
@@ -229,17 +214,15 @@ fn solve_greedy(
 
         if let Some(fp) = full_path {
             let waypoints = path_to_waypoints(&fp, max_segments);
-
             // Update link flows using the full path
             for j in 0..fp.len().saturating_sub(1) {
-                if let Some(&link_id) = link_by_endpoints.get(&(fp[j], fp[j + 1])) {
-                    let flow = link_flow.entry(link_id).or_insert(0.0);
+                if let Some(link_id) = link_by_endpoints.get(&(fp[j], fp[j + 1])) {
+                    let flow = link_flow.entry(*link_id).or_insert(0.0);
                     *flow += vol;
-                    let cap = link_capacity.get(&link_id).copied().unwrap_or(1.0);
-                    link_saturation.insert(link_id, *flow / cap);
+                    let cap = link_capacity.get(link_id).copied().unwrap_or(1.0);
+                    link_saturation.insert(*link_id, *flow / cap);
                 }
             }
-
             assignments.insert(*d_idx, waypoints);
         }
         // If no path found, don't insert — demand will use ECMP default
@@ -365,9 +348,7 @@ fn main() -> anyhow::Result<()> {
 
         // Validate and compare against empty solution
         let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
-        let solution = Solution {
-            srpaths: srpaths.clone(),
-        };
+        let solution = Solution { srpaths: srpaths.clone() };
         let result = evaluator.evaluate_solution(&solution);
 
         let empty_sol = Solution { srpaths: vec![] };

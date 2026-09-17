@@ -83,8 +83,7 @@ use chronosentiment_adapter::decision_support::enrichment_certify::{
 };
 use chronosentiment_adapter::decision_support::forward_tick::instrument_id_for;
 use chronosentiment_adapter::decision_support::observatory_prospective::latest_session_at_or_before;
-use chronosentiment_adapter::ingestion::provider::{MarketDataProvider, TimeRange};
-use chronosentiment_adapter::ingestion::yahoo::YahooProvider;
+use chronosentiment_adapter::ingestion::yahoo::{ExcludedDailyBar, YahooProvider};
 use chronosentiment_adapter::instrument::Instrument;
 use serde::{Deserialize, Serialize};
 
@@ -102,6 +101,11 @@ pub struct InstrumentSnapshot {
     /// Wall-clock time when this instrument's bars were acquired.
     pub acquisition_timestamp: DateTime<Utc>,
     pub n_bars: usize,
+    /// AUD-025: invalid/missing daily rows retained here, excluded from `n_bars`.
+    #[serde(default)]
+    pub n_excluded_daily_bars: usize,
+    #[serde(default)]
+    pub excluded_daily_bars: Vec<ExcludedDailyBar>,
     pub reference_price: Option<f64>,
     pub atr_14: Option<f64>,
     pub trend: Option<String>,
@@ -185,10 +189,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         // Fetch bars (incremental — uses CHRONO_YAHOO_CACHE_DIR if set).
-        let bars = match yahoo
-            .fetch_historical(&instrument, TimeRange::FiveYears)
-            .await
-        {
+        // AUD-025: usable sequence only; excluded rows stay on the snapshot.
+        let ingest = match yahoo.fetch_daily_ingest(&instrument).await {
             Ok(b) => b,
             Err(e) => {
                 eprintln!("[live001] error ticker={ticker} error={e}");
@@ -198,6 +200,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     source_bar_timestamp: None,
                     acquisition_timestamp,
                     n_bars: 0,
+                    n_excluded_daily_bars: 0,
+                    excluded_daily_bars: Vec::new(),
                     reference_price: None,
                     atr_14: None,
                     trend: None,
@@ -210,6 +214,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+        let bars = ingest.usable;
+        let excluded_daily_bars = ingest.excluded;
+        let n_excluded_daily_bars = excluded_daily_bars.len();
 
         // Find the latest session at or before snapshot_timestamp.
         let t = latest_session_at_or_before(&bars, args.now).unwrap_or(args.now);
@@ -282,7 +289,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         println!(
-            "[live001] ticker={ticker} ref={reference_price:?} atr_14={atr_14:?} tmv={tmv_complete} status={completeness_status}"
+            "[live001] ticker={ticker} ref={reference_price:?} atr_14={atr_14:?} tmv={tmv_complete} status={completeness_status} excluded={n_excluded_daily_bars}"
         );
 
         instrument_snapshots.push(InstrumentSnapshot {
@@ -291,6 +298,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             source_bar_timestamp,
             acquisition_timestamp,
             n_bars: bars.len(),
+            n_excluded_daily_bars,
+            excluded_daily_bars,
             reference_price,
             atr_14,
             trend,

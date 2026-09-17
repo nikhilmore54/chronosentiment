@@ -98,3 +98,7 @@ path = "src/bin/campaign_rc001.rs"
 [[bin]]
 name = "phase3_rayon_ab"
 path = "src/bin/phase3_rayon_ab.rs"
+[[bin]]
+name = "roadef_qualification"
+path = "src/bin/roadef_qualification.rs"
+

@@ -1,13 +1,16 @@
 mod decisions_api;
+mod deferred_live_api;
+mod intraday_api;
 mod portfolio_api;
 
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::StatusCode,
+    http::{Method, StatusCode},
     routing::{get, post},
 };
 use chrono::Utc;
+use tower_http::cors::{Any, CorsLayer};
 use chronosentiment_adapter::evidence::{EvidenceItem, EvidenceSourceType};
 use chronosentiment_adapter::hypothesis::InvestmentThesis;
 use chronosentiment_adapter::workspace::InvestmentWorkspace;
@@ -32,11 +35,78 @@ async fn main() {
         workspaces: Arc::new(RwLock::new(HashMap::new())),
     };
 
+    // Load IC v1 intraday decision store from golden dataset.
+    // Path is configurable via INTRADAY_DATASET_PATH env var.
+    let dataset_path = std::env::var("INTRADAY_DATASET_PATH")
+        .unwrap_or_else(|_| "datasets/p4_opportunity_dataset.json".to_string());
+    let intraday_store = intraday_api::load_intraday_store(&dataset_path)
+        .unwrap_or_else(|e| {
+            eprintln!("[intraday_api] WARNING: {e}");
+            std::sync::Arc::new(vec![])
+        });
+
+    // IC v1 Intraday Decision API — separate sub-router with IntradayStore state.
+    // Must be a distinct Router because it uses a different state type from AppState.
+    let intraday_router: Router = Router::new()
+        .route(
+            "/api/v1/intraday/decisions",
+            get(intraday_api::get_all_decisions),
+        )
+        .route(
+            "/api/v1/intraday/decisions/search",
+            get(intraday_api::search_decisions),
+        )
+        .route(
+            "/api/v1/intraday/decisions/{id}",
+            get(intraday_api::get_decision_by_id),
+        )
+        .route(
+            "/api/v1/intraday/portfolio-context",
+            get(intraday_api::get_portfolio_context),
+        )
+        .route(
+            "/api/v1/intraday/recommendations",
+            get(intraday_api::get_recommendations),
+        )
+        .route(
+            "/api/v1/intraday/position-lifecycle",
+            get(intraday_api::get_position_lifecycle),
+        )
+        .route(
+            "/api/v1/intraday/paper-trades",
+            get(intraday_api::get_paper_trades),
+        )
+        .with_state(intraday_store.clone());
+
+    let deferred_live_state = deferred_live_api::DeferredLiveState::new(intraday_store);
+    tokio::spawn(deferred_live_api::run_observation_loop(deferred_live_state.clone()));
+
+    let deferred_live_router: Router = Router::new()
+        .route(
+            "/api/v1/intraday/deferred-live",
+            get(deferred_live_api::get_deferred_live),
+        )
+        .route(
+            "/api/v1/intraday/deferred-live/arm",
+            post(deferred_live_api::post_arm),
+        )
+        .route(
+            "/api/v1/intraday/deferred-live/observations",
+            post(deferred_live_api::post_observation),
+        )
+        .with_state(deferred_live_state);
+
+    // CORS: allow the Vite dev server (port 5173) and any production origin.
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(Any);
+
     let app = Router::new()
         .route("/research-sessions", post(create_session))
-        .route("/research-sessions/:id", get(get_session))
-        .route("/research-sessions/:id/observations", post(add_observation))
-        .route("/research-sessions/:id/hypotheses", post(add_hypothesis))
+        .route("/research-sessions/{id}", get(get_session))
+        .route("/research-sessions/{id}/observations", post(add_observation))
+        .route("/research-sessions/{id}/hypotheses", post(add_hypothesis))
         // Product MVP v0.2 — Certified decisions (backend-owned intelligence)
         .route(
             "/api/v0/decisions/current",
@@ -47,7 +117,12 @@ async fn main() {
             "/api/v0/portfolio/recommendations",
             post(portfolio_api::post_recommendations),
         )
-        .with_state(state);
+        .with_state(state)
+        // Merge IC v1 intraday routes (different state type — must merge after with_state)
+        .merge(intraday_router)
+        .merge(deferred_live_router)
+        // CORS layer applied last so it covers all routes including the merged sub-router
+        .layer(cors);
 
     // Port is configurable via CHRONOSENTIMENT_PORT env var (default: 8080).
     // Next.js UI runs on port 3000, so the backend uses 8080 by default.

@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 1.97
+**Version:** 2.04
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -277,6 +277,12 @@ Documents in this section must not be modified except for typographical correcti
 | PRD-001 | `docs/PRD_v3_3.md` | Product Requirements Document v3.3 (superseded; historical) |
 | PRD-002 | `docs/CHRONOSENTIMENT_PRD_V1.md` | ChronoSentiment Product Definition v1.0 (authoritative commercial PRD) |
 | CS-P-001 | `docs/CS-P-001_DECISION_SUPPORT_PRODUCT_MODE.md` | Product mode after G-GATE v1.1 close; co-pilot / paper trading; v1.2 not opened |
+| CS-P-001-C | `docs/CS-P-001-C_DEFERRED_LIVE_REASSESS_SIDECAR_20260907.md` | 7-Sep Deferred Live sidecar record: path-shape reject; adverse-mark diagnostic only; not a production rule; not G-GATE |
+| CS-P-001-D | `docs/CS-P-001-D_DEFERRED_LIVE_UNIVERSE_LOSS_AUDIT.md` | Frozen universe Deferred Live loss audit + fill-displacement observation; do not retune TARGET/STOP/HORIZON; not G-GATE |
+| CS-P-001-E | `docs/CS-P-001-E_DEFERRED_LIVE_SNAP_TO_FILL.md` | Frozen snap-to-fill clock: 34/34 FILL_BEFORE_SNAP (−6.25h); stale-after-snap rejected; CS-P-001-D frozen |
+| CS-P-001-F | `docs/CS-P-001-F_SESSION_BRIEF_TEMPORAL_CONTRACT.md` | Session/brief temporal contract inventory; no semantic choice; successor CS-P-001-G frozen |
+| CS-P-001-G | `docs/CS-P-001-G_INTENDED_TEMPORAL_SEMANTICS.md` | Frozen contract reading: C≡D under as-of; cached session is A and is not declared an exception; no patch until the job is named |
+| CS-P-001-H | `docs/CS-P-001-H_CACHED_SESSION_HARNESS_DECISION.md` | Unsigned product-contract decision: live as-of simulator (C≡D) vs same-day clock exception (A); driver pinned until signed |
 | CS-P-002 | `docs/CS-P-002_DECISION_VALIDATION_PLATFORM.md` | Decision Validation Platform v1: one engine, replay/live adapters, backtest + forward paper |
 | CS-P-002-R1 | `product_validation/B4_unfrozen_dev/HISTORICAL_PERFORMANCE_REPORT.md` | B4 historical product validation baseline (`unfrozen-dev`; not G-GATE; v1.0 not frozen) |
 | CS-P-003 | `docs/CS-P-003_FORWARD_PAPER_VALIDATION.md` | Forward/Paper Validation v0.1: daily tick continues (confirmation, not discovery) |
@@ -395,6 +401,13 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.04 | 2026-09-15 | CS-P-001-H unsigned product-contract decision: cached harness as live as-of simulator vs same-day exception; no technical change |
+| 2.03 | 2026-09-15 | CS-P-001-G frozen: ambiguity closed; C≡D under as-of; A undocumented; no snap gate / date shift / delayed fill / stop rebase |
+| 2.02 | 2026-09-15 | CS-P-001-G intended temporal semantics reading: live as-of vs cached same-day tape; no driver change |
+| 2.01 | 2026-09-15 | CS-P-001-E frozen; CS-P-001-F session/brief temporal contract inventory; no auto-arm/snap-gate change |
+| 2.00 | 2026-09-15 | CS-P-001-E snap-to-fill clock: 34/34 fills at 09:15 IST vs snap 15:30 IST (−6.25h); not post-snap staleness; CS-P-001-D not amended |
+| 1.99 | 2026-09-15 | CS-P-001-D frozen Deferred Live universe loss audit + fill-displacement observation; 34 ACT fills; 2 SHORT STOP; do not retune geometry; not G-GATE |
+| 1.98 | 2026-09-14 | CS-P-001-C Deferred Live reassessment sidecar record (2026-09-07): path-shape reject; adverse-mark diagnostic only; frozen book / Stage C unchanged; not G-GATE |
 | 1.86 | 2026-08-20 | UltraCrew Airline | **MVP v0.2 COMPLETE** — Stage 2 frozen. v0.2 is a superset of v0.1. (v0.1 = Legal Duty Generation MVP, v0.2 = Duty Generation + Coverage Baseline MVP). Baseline test strictly uses the original v0.1 20-flight hub-and-spoke fixture (yielding 106 duties, 6 selected). DutyScore frozen as a vector, GreedyCoverSolver frozen as deterministic baseline with explicit tie-breaking. impossible/overlap coverage failure cases verified. |
 | 1.85 | 2026-08-20 | LIVE-004 COMPLETE — live004_certify binary implemented and verified; 6 gates: Freshness/Snapshot coherence/Completeness/Recommendation inputs/Reproducibility/Frozen artifacts; statuses CERTIFIED/DEGRADED/STALE/INCOMPLETE; input_integrity (AVAILABLE/SUBSTITUTED/MISSING) is SEPARATE from degradation_level; first run result: STALE (age=964min > 30min) + Gate 4 FAIL (relative_volume_20 SUBSTITUTED neutral=1.0 for all 82 recommendations); gates 2/3/5/6 PASS; determinism invariant: same artifacts → same certification always; artifact: LIVE-004-20260819-0853.json + latest.json in live_capture/certifications/; commit 343744849 (759 insertions) |
 | 1.84 | 2026-08-19 | LIVE-004 formal spec declared: pure certification boundary; 6 gates: Freshness + Snapshot coherence + Completeness + Recommendation inputs (no silent substitution) + Reproducibility + Frozen artifacts identity; statuses: CERTIFIED/DEGRADED/STALE/INCOMPLETE; input_integrity field (AVAILABLE/SUBSTITUTED/MISSING) is SEPARATE from degradation_level; relative_volume_20 substitution → DEGRADED (not buried in degradation_level); determinism invariant: same artifacts → same certification always; NO recalculation, NO new data fetch, NO algorithm changes |

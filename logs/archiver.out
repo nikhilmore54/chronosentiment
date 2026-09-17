@@ -1,0 +1,14 @@
+📖 Loading PCA Weights from /Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/observatory/ecology_clustering_pca_weights.json...
+Traceback (most recent call last):
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/telemetry_archive_daemon.py", line 408, in <module>
+    tail_files()
+    ~~~~~~~~~~^^
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/telemetry_archive_daemon.py", line 343, in tail_files
+    archiver = TelemetryArchiver()
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/telemetry_archive_daemon.py", line 46, in __init__
+    self.load_pca_weights()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/research/telemetry_archive_daemon.py", line 55, in load_pca_weights
+    with open(WEIGHTS_PATH) as f:
+         ~~~~^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/nikhil/ChronoSentiment_MEGA_FINAL/scripts/observatory/ecology_clustering_pca_weights.json'

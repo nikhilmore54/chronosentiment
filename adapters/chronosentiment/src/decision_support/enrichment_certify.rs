@@ -162,9 +162,8 @@ pub fn load_yahoo_cache_dir(
             .ok_or_else(|| format!("bad cache name {}", path.display()))?
             .to_string();
         let bytes = fs::read(&path).map_err(|e| e.to_string())?;
-        let bars: Vec<YahooHistoricalBar> =
-            serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-        out.insert(stem, bars);
+        let ingest = crate::ingestion::yahoo::parse_yahoo_daily_cache_bytes(&bytes)?;
+        out.insert(stem, ingest.usable);
     }
     Ok(out)
 }
