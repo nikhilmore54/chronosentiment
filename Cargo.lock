@@ -477,6 +477,7 @@ dependencies = [
  "chrono",
  "clap",
  "coralys-ecology",
+ "coralys-moga",
  "csv",
  "futures-util",
  "prettytable-rs",
