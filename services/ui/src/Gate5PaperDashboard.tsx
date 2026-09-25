@@ -6,6 +6,9 @@ export interface Gate5PositionRecord {
   direction: 'LONG' | 'SHORT';
   entry_price: number;
   current_price: number;
+  target_price: number;
+  stop_loss_price: number;
+  holding_duration: string;
   current_return_pct: number;
   coralys_raw_action: string;
   protection_action: 'EXECUTE' | 'PROTECT' | 'DEFER';
@@ -54,33 +57,39 @@ export const Gate5PaperDashboard: React.FC = () => {
       decision_id: 'DEC-20260925-001',
       symbol: 'RELIANCE',
       direction: 'LONG',
-      entry_price: 2980.50,
-      current_price: 2984.20,
-      current_return_pct: 0.12,
+      entry_price: 1388.70,
+      current_price: 1394.20,
+      target_price: 1415.50,
+      stop_loss_price: 1372.00,
+      holding_duration: '180 bars (~3 hrs)',
+      current_return_pct: 0.40,
       coralys_raw_action: 'EXIT',
       protection_action: 'DEFER',
-      state_age_bars: 4,
-      mfe_pct: 0.35,
-      giveback_pct: 0.23,
-      trajectory_summary: 'M5: -0.08, D5: +0.04, ΔM5: -0.01',
+      state_age_bars: 45,
+      mfe_pct: 0.65,
+      giveback_pct: 0.15,
+      trajectory_summary: 'M5: +0.12, DP5: 0.04, ΔM5: +0.03',
       last_transition: 'PROTECT → DEFER',
       transition_count: 2,
       paper_status: 'OPEN',
-      paired_delta_bps: 24.5,
+      paired_delta_bps: 38.2,
     },
     {
       decision_id: 'DEC-20260925-002',
       symbol: 'INFY',
       direction: 'LONG',
-      entry_price: 1845.00,
-      current_price: 1832.10,
+      entry_price: 1492.10,
+      current_price: 1481.65,
+      target_price: 1520.00,
+      stop_loss_price: 1475.00,
+      holding_duration: '120 bars (~2 hrs)',
       current_return_pct: -0.70,
       coralys_raw_action: 'EXIT',
       protection_action: 'EXECUTE',
-      state_age_bars: 6,
+      state_age_bars: 62,
       mfe_pct: 0.10,
       giveback_pct: 0.80,
-      trajectory_summary: 'M5: +0.45, D5: +0.32, ΔM5: +0.12',
+      trajectory_summary: 'M5: -0.45, DP5: 0.32, ΔM5: -0.12',
       last_transition: 'PROTECT → EXECUTE',
       transition_count: 3,
       paper_status: 'CLOSED',
@@ -90,15 +99,18 @@ export const Gate5PaperDashboard: React.FC = () => {
       decision_id: 'DEC-20260925-003',
       symbol: 'TCS',
       direction: 'LONG',
-      entry_price: 4210.00,
-      current_price: 4218.40,
+      entry_price: 3912.40,
+      current_price: 3920.20,
+      target_price: 3980.00,
+      stop_loss_price: 3870.00,
+      holding_duration: '240 bars (~4 hrs)',
       current_return_pct: 0.20,
       coralys_raw_action: 'EXIT',
       protection_action: 'PROTECT',
-      state_age_bars: 3,
-      mfe_pct: 0.28,
+      state_age_bars: 38,
+      mfe_pct: 0.38,
       giveback_pct: 0.08,
-      trajectory_summary: 'M5: -0.02, D5: -0.01, ΔM5: 0.00',
+      trajectory_summary: 'M5: +0.05, DP5: 0.01, ΔM5: +0.01',
       last_transition: 'INITIAL → PROTECT',
       transition_count: 1,
       paper_status: 'OPEN',
@@ -110,13 +122,16 @@ export const Gate5PaperDashboard: React.FC = () => {
       direction: 'SHORT',
       entry_price: 1650.00,
       current_price: 1642.50,
+      target_price: 1622.00,
+      stop_loss_price: 1668.00,
+      holding_duration: '150 bars (~2.5 hrs)',
       current_return_pct: 0.45,
       coralys_raw_action: 'EXIT',
       protection_action: 'DEFER',
-      state_age_bars: 5,
+      state_age_bars: 52,
       mfe_pct: 0.60,
       giveback_pct: 0.15,
-      trajectory_summary: 'M5: -0.15, D5: -0.10, ΔM5: -0.03',
+      trajectory_summary: 'M5: -0.15, DP5: 0.10, ΔM5: -0.03',
       last_transition: 'PROTECT → DEFER',
       transition_count: 2,
       paper_status: 'OPEN',
@@ -126,15 +141,18 @@ export const Gate5PaperDashboard: React.FC = () => {
       decision_id: 'DEC-20260925-005',
       symbol: 'ICICIBANK',
       direction: 'LONG',
-      entry_price: 1210.00,
-      current_price: 1214.80,
+      entry_price: 1210.30,
+      current_price: 1215.15,
+      target_price: 1232.00,
+      stop_loss_price: 1198.00,
+      holding_duration: '210 bars (~3.5 hrs)',
       current_return_pct: 0.40,
       coralys_raw_action: 'EXIT',
       protection_action: 'DEFER',
-      state_age_bars: 7,
+      state_age_bars: 74,
       mfe_pct: 0.55,
       giveback_pct: 0.15,
-      trajectory_summary: 'M5: -0.12, D5: -0.08, ΔM5: -0.02',
+      trajectory_summary: 'M5: +0.08, DP5: 0.02, ΔM5: +0.02',
       last_transition: 'DEFER → DEFER',
       transition_count: 3,
       paper_status: 'OPEN',
@@ -254,20 +272,22 @@ export const Gate5PaperDashboard: React.FC = () => {
 
       {/* Position Observability Table */}
       <h3 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 16px 0', color: '#e2e8f0' }}>
-        Active & Managed Paper Positions
+        Active Trade Recommendations & Managed Positions
       </h3>
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
           <thead>
             <tr style={{ backgroundColor: '#1e293b', color: '#94a3b8', borderBottom: '2px solid #334155' }}>
-              <th style={{ padding: '12px' }}>Symbol</th>
-              <th style={{ padding: '12px' }}>Direction</th>
-              <th style={{ padding: '12px' }}>Entry / Price</th>
+              <th style={{ padding: '12px' }}>Symbol / Dir</th>
+              <th style={{ padding: '12px' }}>Approx Entry</th>
+              <th style={{ padding: '12px' }}>Target (₹)</th>
+              <th style={{ padding: '12px' }}>Stop Loss (₹)</th>
+              <th style={{ padding: '12px' }}>Current Price</th>
               <th style={{ padding: '12px' }}>Return (%)</th>
+              <th style={{ padding: '12px' }}>Duration</th>
               <th style={{ padding: '12px' }}>Raw Coralys</th>
               <th style={{ padding: '12px' }}>Protection Action</th>
-              <th style={{ padding: '12px' }}>State Age</th>
               <th style={{ padding: '12px' }}>MFE / Giveback</th>
               <th style={{ padding: '12px' }}>Last Transition</th>
               <th style={{ padding: '12px' }}>Status</th>
@@ -277,15 +297,26 @@ export const Gate5PaperDashboard: React.FC = () => {
           <tbody>
             {positions.map((pos) => (
               <tr key={pos.decision_id} style={{ borderBottom: '1px solid #1e293b', backgroundColor: pos.paper_status === 'OPEN' ? '#0f172a' : '#1e1e2e' }}>
-                <td style={{ padding: '12px', fontWeight: 600, color: '#f8fafc' }}>{pos.symbol}</td>
-                <td style={{ padding: '12px' }}>
-                  <span style={{ color: pos.direction === 'LONG' ? '#38bdf8' : '#f43f5e', fontWeight: 600 }}>{pos.direction}</span>
+                <td style={{ padding: '12px', fontWeight: 600, color: '#f8fafc' }}>
+                  {pos.symbol} <span style={{ color: pos.direction === 'LONG' ? '#38bdf8' : '#f43f5e', fontSize: '11px', fontWeight: 700, marginLeft: '4px' }}>{pos.direction}</span>
+                </td>
+                <td style={{ padding: '12px', color: '#cbd5e1', fontWeight: 600 }}>
+                  ₹{pos.entry_price ? pos.entry_price.toFixed(2) : '100.00'}
+                </td>
+                <td style={{ padding: '12px', color: '#22c55e', fontWeight: 600 }}>
+                  ₹{pos.target_price ? pos.target_price.toFixed(2) : (pos.entry_price * 1.02).toFixed(2)}
+                </td>
+                <td style={{ padding: '12px', color: '#ef4444', fontWeight: 600 }}>
+                  ₹{pos.stop_loss_price ? pos.stop_loss_price.toFixed(2) : (pos.entry_price * 0.988).toFixed(2)}
                 </td>
                 <td style={{ padding: '12px', color: '#cbd5e1' }}>
-                  ₹{pos.entry_price.toFixed(2)} → ₹{pos.current_price.toFixed(2)}
+                  ₹{pos.current_price ? pos.current_price.toFixed(2) : '100.00'}
                 </td>
                 <td style={{ padding: '12px', fontWeight: 600, color: pos.current_return_pct >= 0 ? '#22c55e' : '#ef4444' }}>
                   {pos.current_return_pct >= 0 ? `+${pos.current_return_pct.toFixed(2)}%` : `${pos.current_return_pct.toFixed(2)}%`}
+                </td>
+                <td style={{ padding: '12px', color: '#cbd5e1', fontSize: '12px' }}>
+                  {pos.holding_duration || `${pos.state_age_bars} bars`}
                 </td>
                 <td style={{ padding: '12px' }}>
                   <span style={{ backgroundColor: '#334155', color: '#f8fafc', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
@@ -293,7 +324,6 @@ export const Gate5PaperDashboard: React.FC = () => {
                   </span>
                 </td>
                 <td style={{ padding: '12px' }}>{getActionBadge(pos.protection_action)}</td>
-                <td style={{ padding: '12px', color: '#cbd5e1' }}>{pos.state_age_bars} bars</td>
                 <td style={{ padding: '12px', color: '#cbd5e1' }}>
                   +{pos.mfe_pct.toFixed(2)}% / {pos.giveback_pct.toFixed(2)}%
                 </td>
