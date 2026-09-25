@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn short_hold_then_unix_horizon() {
-        let mut d = DeferredLiveDriver::new(DeferredLiveConfig { horizon_secs: 60, strict_t0_admission: false });
+        let mut d = DeferredLiveDriver::new(DeferredLiveConfig { horizon_secs: 60, strict_t0_admission: false, ..Default::default() });
         let b = brief("d1", "JUBLFOOD_NS", "SHORT", 469.0, 470.0, facts(467.30, 472.10, 1_000));
         d.open_from_brief(&b, &MarketObservation::last("JUBLFOOD_NS", 1_000, 470.04))
             .unwrap();
@@ -537,7 +537,7 @@ mod tests {
     #[test]
     fn same_observations_are_deterministic() {
         let run = || {
-            let mut d = DeferredLiveDriver::new(DeferredLiveConfig { horizon_secs: 1_000, strict_t0_admission: false });
+            let mut d = DeferredLiveDriver::new(DeferredLiveConfig { horizon_secs: 1_000, strict_t0_admission: false, ..Default::default() });
             let b = brief("d1", "AAA_NS", "LONG", 99.0, 100.0, facts(102.0, 98.0, 0));
             d.open_from_brief(&b, &MarketObservation::last("AAA_NS", 0, 100.0))
                 .unwrap();

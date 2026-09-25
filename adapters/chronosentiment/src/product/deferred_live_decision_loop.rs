@@ -45,6 +45,7 @@ pub struct DecisionSurface {
 pub struct DecisionLoopRuntime {
     runtime: DeferredLiveRuntime,
     surfaces: Vec<DecisionSurface>,
+    e4_shadow: super::e4_shadow_validator::E4ShadowValidator,
 }
 
 impl DecisionLoopRuntime {
@@ -52,6 +53,7 @@ impl DecisionLoopRuntime {
         Self {
             runtime: DeferredLiveRuntime::new(config),
             surfaces: Vec::new(),
+            e4_shadow: super::e4_shadow_validator::E4ShadowValidator::new(),
         }
     }
 
@@ -73,9 +75,6 @@ impl DecisionLoopRuntime {
         self.runtime.begin_session(briefs, date)
     }
 
-    pub fn enable_reassess_experiment(&mut self) {
-        self.runtime.enable_reassess_experiment();
-    }
 
     pub fn set_feed_snapshot(&mut self, snap: super::live_observation::ObservationFeedSnapshot) {
         self.runtime.set_feed_snapshot(snap);
@@ -92,13 +91,40 @@ impl DecisionLoopRuntime {
 
     pub fn step(&mut self, obs: MarketObservation) -> DecisionSurface {
         let as_of = obs.unix;
-        let outcome = self.runtime.ingest(obs);
+        let outcome = self.runtime.ingest(obs.clone());
+        // `IngestOutcome.events` only contains exit events from `on_observation`.
+        // PAPER_ENTER is stored in pos.events but never returned. Synthesize it
+        // here at the coordinator boundary so E4ShadowValidator can register opens.
+        let mut shadow_events = outcome.events.clone();
+        if outcome.opened {
+            shadow_events.insert(0, LivePaperEvent {
+                unix: obs.unix,
+                kind: "PAPER_ENTER".into(),
+                price: obs.price,
+                note: None,
+            });
+        }
+        self.e4_shadow.step(&obs, &shadow_events, self.runtime.ledger());
         self.push_surface(as_of, &outcome)
     }
 
     pub fn step_sourced(&mut self, sourced: SourcedObservation) -> DecisionSurface {
         let as_of = sourced.observation.unix;
+        let obs = sourced.observation.clone();
         let outcome = self.runtime.ingest_sourced(sourced);
+        // `IngestOutcome.events` only contains exit events from `on_observation`.
+        // PAPER_ENTER is stored in pos.events but never returned. Synthesize it
+        // here at the coordinator boundary so E4ShadowValidator can register opens.
+        let mut shadow_events = outcome.events.clone();
+        if outcome.opened {
+            shadow_events.insert(0, LivePaperEvent {
+                unix: obs.unix,
+                kind: "PAPER_ENTER".into(),
+                price: obs.price,
+                note: None,
+            });
+        }
+        self.e4_shadow.step(&obs, &shadow_events, self.runtime.ledger());
         self.push_surface(as_of, &outcome)
     }
 

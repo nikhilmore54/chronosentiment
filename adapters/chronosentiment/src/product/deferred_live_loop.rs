@@ -32,15 +32,16 @@ use super::live_observation::{
     ControlledObservationTape, ObservationFeedSnapshot, ObservationProducer, ObservationSourceKind,
     SourcedObservation,
 };
-use super::live_reassess_experiment::{LiveReassessExperiment, ReassessExperimentReport};
 
 /// One OHLC bar as stored in `intraday_capture/yahoo_cache_1m/*.json`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CachedOhlcBar {
     pub timestamp: i64,
     pub high: f64,
     pub low: f64,
     pub close: f64,
+    #[serde(default)]
+    pub volume: Option<f64>,
 }
 
 /// Adapter-owned live runtime. Separate ledger from frozen CSV replay.
@@ -50,8 +51,8 @@ pub struct DeferredLiveRuntime {
     armed: HashMap<String, DecisionBrief>,
     feed: ObservationFeedSnapshot,
     session: Option<super::deferred_live_session::SessionState>,
-    /// Opt-in sidecar. Never mutates the driver, ledger, or Stage C marks.
-    reassess: LiveReassessExperiment,
+    /// Live update capture sidecar.
+    update_capture: super::live_update_capture::LiveUpdateCapture,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,17 +75,8 @@ impl DeferredLiveRuntime {
             armed: HashMap::new(),
             feed: ObservationFeedSnapshot::none(),
             session: None,
-            reassess: LiveReassessExperiment::off(),
+            update_capture: super::live_update_capture::LiveUpdateCapture::new(),
         }
-    }
-
-    /// Enable the live-paper reassess experiment (path-shape + adverse-mark). Frozen book stays frozen.
-    pub fn enable_reassess_experiment(&mut self) {
-        self.reassess = LiveReassessExperiment::on();
-    }
-
-    pub fn reassess_experiment_report(&self) -> ReassessExperimentReport {
-        self.reassess.report(self.ledger())
     }
 
     pub fn arm(&mut self, brief: DecisionBrief) {
@@ -142,6 +134,10 @@ impl DeferredLiveRuntime {
         let ids = self.auto_arm(selected);
         let n = self.armed.len() + self.ledger().positions.len();
         self.session = Some(SessionState::summarize(briefs, date, n));
+        
+        let ledger_dir = std::env::var("LIVE_LEDGER_DIR").unwrap_or_else(|_| "live_capture/ledger".into());
+        self.update_capture.enable(date, std::path::PathBuf::from(ledger_dir));
+        
         ids
     }
 
@@ -233,9 +229,10 @@ impl DeferredLiveRuntime {
         }
 
         let events = self.driver.on_observation(&obs);
-        // Sidecar only: uses the frozen ledger as-of this observation.
-        // Does not open, exit, or reprice the Deferred Live book.
-        self.reassess.observe(self.driver.ledger(), &obs);
+        
+        // Update capture sidecar
+        self.update_capture.observe(self.driver.ledger(), &obs);
+        
         IngestOutcome {
             opened,
             open_error,
@@ -251,6 +248,36 @@ impl DeferredLiveRuntime {
 /// Map Yahoo/cache `.NS` file names onto DecisionBrief `_NS` tickers.
 pub fn brief_ticker_from_cache_symbol(symbol: &str) -> String {
     symbol.replace(".NS", "_NS")
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct CachedMarketBar {
+    pub observation: MarketObservation,
+    pub volume: Option<f64>,
+}
+
+pub fn cached_market_bars(
+    ticker: &str,
+    bars: &[CachedOhlcBar],
+) -> Vec<CachedMarketBar> {
+    let ticker = brief_ticker_from_cache_symbol(ticker);
+
+    let mut out: Vec<CachedMarketBar> = bars
+        .iter()
+        .filter(|b| b.close.is_finite() && b.close > 0.0)
+        .map(|b| CachedMarketBar {
+            observation: MarketObservation {
+                ticker: ticker.clone(),
+                unix: b.timestamp,
+                price: b.close,
+                high: Some(b.high),
+                low: Some(b.low),
+            },
+            volume: b.volume.filter(|v| v.is_finite() && *v > 0.0),
+        })
+        .collect();
+
+    out.sort_by_key(|b| b.observation.unix);
+    out
 }
 
 /// Convert cached OHLC bars into observations. `price` is the bar close.
@@ -270,6 +297,14 @@ pub fn observations_from_cached_bars(ticker: &str, bars: &[CachedOhlcBar]) -> Ve
         .collect();
     out.sort_by_key(|o| o.unix);
     out
+}
+
+pub fn load_cached_1m_market_bars(cache_dir: &Path, symbol: &str) -> Result<Vec<CachedMarketBar>, String> {
+    let path = cache_dir.join(format!("{symbol}.json"));
+    let bytes = fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let bars: Vec<CachedOhlcBar> =
+        serde_json::from_slice(&bytes).map_err(|e| format!("parse {}: {e}", path.display()))?;
+    Ok(cached_market_bars(symbol, &bars))
 }
 
 pub fn load_cached_1m_observations(cache_dir: &Path, symbol: &str) -> Result<Vec<MarketObservation>, String> {
@@ -366,20 +401,29 @@ pub fn cached_session_tape(
     date: &str,
     speed: f64,
 ) -> Result<ControlledObservationTape, String> {
-    use super::live_observation::filter_ist_date;
+    use super::live_observation::{unix_ist_date, ObservationSourceKind, SourcedObservation};
     let mut merged = Vec::new();
     let mut loaded = 0usize;
     for ticker in tickers {
         let symbol = cache_symbol_from_brief_ticker(ticker);
-        match load_cached_1m_observations(cache_dir, &symbol) {
+        match load_cached_1m_market_bars(cache_dir, &symbol) {
             Ok(all) => {
-                let day = filter_ist_date(all, date);
+                let day: Vec<CachedMarketBar> = all
+                    .into_iter()
+                    .filter(|b| unix_ist_date(b.observation.unix) == date)
+                    .collect();
                 if day.is_empty() {
                     eprintln!("[deferred-live] session: no {symbol} bars on {date}");
                     continue;
                 }
                 loaded += 1;
-                merged.extend(day);
+                for b in day {
+                    merged.push(SourcedObservation {
+                        observation: b.observation,
+                        source: ObservationSourceKind::Cached1m,
+                        volume: b.volume,
+                    });
+                }
             }
             Err(e) => eprintln!("[deferred-live] session skip {ticker}: {e}"),
         }
@@ -389,8 +433,13 @@ pub fn cached_session_tape(
             "no cached 1m bars for session {date} ({loaded} tickers loaded)"
         ));
     }
-    merged.sort_by(|a, b| a.unix.cmp(&b.unix).then(a.ticker.cmp(&b.ticker)));
-    Ok(ControlledObservationTape::new(
+    merged.sort_by(|a, b| {
+        a.observation
+            .unix
+            .cmp(&b.observation.unix)
+            .then(a.observation.ticker.cmp(&b.observation.ticker))
+    });
+    Ok(ControlledObservationTape::new_sourced(
         ObservationSourceKind::Cached1m,
         merged,
         speed,
@@ -752,7 +801,7 @@ mod tests {
 
     #[test]
     fn later_ticks_use_driver_lifecycle() {
-        let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 60, strict_t0_admission: false });
+        let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 60, strict_t0_admission: false, ..Default::default() });
         rt.arm(brief(
             "d1",
             "JUBLFOOD_NS",
@@ -778,6 +827,7 @@ mod tests {
             high: 102.0,
             low: 99.0,
             close: 100.5,
+            volume: None,
         }];
         let obs = observations_from_cached_bars("JUBLFOOD.NS", &bars);
         assert_eq!(obs[0].ticker, "JUBLFOOD_NS");
@@ -789,7 +839,7 @@ mod tests {
     #[test]
     fn ingest_all_is_deterministic() {
         let run = || {
-            let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 1_000, strict_t0_admission: false });
+            let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 1_000, strict_t0_admission: false, ..Default::default() });
             rt.arm(brief("d1", "AAA_NS", "LONG", 99.0, 100.0, facts(102.0, 98.0, 0)));
             rt.ingest_all([
                 MarketObservation::last("AAA_NS", 0, 100.0),
@@ -881,6 +931,7 @@ mod tests {
             high: 2.0,
             low: 1.0,
             close: 1.5,
+            volume: None,
         }];
         let mut tape = yahoo_1m_tape("AAA_NS", &bars, None, 0.0).unwrap();
         let obs = tape.next().unwrap();

@@ -62,6 +62,8 @@ impl ObservationSourceKind {
 pub struct SourcedObservation {
     pub observation: MarketObservation,
     pub source: ObservationSourceKind,
+    #[serde(default)]
+    pub volume: Option<f64>,
 }
 
 impl SourcedObservation {
@@ -69,6 +71,7 @@ impl SourcedObservation {
         Self {
             observation,
             source: ObservationSourceKind::ExternalLive,
+            volume: None,
         }
     }
 
@@ -76,6 +79,7 @@ impl SourcedObservation {
         Self {
             observation,
             source: ObservationSourceKind::Cached1m,
+            volume: None,
         }
     }
 
@@ -83,7 +87,13 @@ impl SourcedObservation {
         Self {
             observation,
             source: ObservationSourceKind::Yahoo1m,
+            volume: None,
         }
+    }
+
+    pub fn with_volume(mut self, volume: Option<f64>) -> Self {
+        self.volume = volume;
+        self
     }
 }
 
@@ -204,7 +214,7 @@ pub fn filter_ist_date(obs: Vec<MarketObservation>, date: &str) -> Vec<MarketObs
 /// Sorted bar tape. Emits one `MarketObservation` at a time. Does not trade.
 pub struct ControlledObservationTape {
     source: ObservationSourceKind,
-    observations: Vec<MarketObservation>,
+    observations: Vec<SourcedObservation>,
     cursor: usize,
     speed: f64,
     last_unix: Option<i64>,
@@ -217,6 +227,29 @@ impl ControlledObservationTape {
         speed: f64,
     ) -> Self {
         observations.sort_by_key(|o| o.unix);
+        let sourced = observations
+            .into_iter()
+            .map(|o| SourcedObservation {
+                observation: o,
+                source,
+                volume: None,
+            })
+            .collect();
+        Self {
+            source,
+            observations: sourced,
+            cursor: 0,
+            speed,
+            last_unix: None,
+        }
+    }
+
+    pub fn new_sourced(
+        source: ObservationSourceKind,
+        mut observations: Vec<SourcedObservation>,
+        speed: f64,
+    ) -> Self {
+        observations.sort_by_key(|s| s.observation.unix);
         Self {
             source,
             observations,
@@ -248,18 +281,15 @@ impl ControlledObservationTape {
         };
         match self.last_unix {
             None => 0,
-            Some(prev) => inter_bar_wait_millis(prev, next.unix, self.speed),
+            Some(prev) => inter_bar_wait_millis(prev, next.observation.unix, self.speed),
         }
     }
 
     pub fn next(&mut self) -> Option<SourcedObservation> {
-        let obs = self.observations.get(self.cursor)?.clone();
+        let sourced = self.observations.get(self.cursor)?.clone();
         self.cursor += 1;
-        self.last_unix = Some(obs.unix);
-        Some(SourcedObservation {
-            observation: obs,
-            source: self.source,
-        })
+        self.last_unix = Some(sourced.observation.unix);
+        Some(sourced)
     }
 
     pub fn snapshot(&self) -> ObservationFeedSnapshot {

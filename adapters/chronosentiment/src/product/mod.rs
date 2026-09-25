@@ -48,17 +48,16 @@
 //! The allocation engine is a portfolio constraint layer, not a market intelligence layer.
 
 pub mod allocation_engine;
+pub mod coralys_state_bridge;
 pub mod deferred_live;
-pub mod deferred_live_fill_displacement;
 pub mod deferred_live_asof_ic;
 pub mod deferred_live_decision_loop;
 pub mod deferred_live_loop;
-pub mod deferred_live_loss_audit;
 pub mod deferred_live_performance;
 pub mod deferred_live_session;
-pub mod deferred_live_snap_fill;
+pub mod e4_shadow_validator;
 pub mod live_observation;
-pub mod live_reassess_experiment;
+pub mod live_update_capture;
 pub mod intraday_decision;
 pub mod paper_lifecycle;
 pub mod paper_replay;
@@ -68,6 +67,7 @@ pub mod recommendation_engine;
 pub mod user_profile;
 
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
+pub use coralys_state_bridge::*;
 pub use intraday_decision::{DecisionBrief, ExecutionFacts, load_intraday_briefs};
 pub use deferred_live::{
     overlay_live_quote, DeferredLiveConfig, DeferredLiveDriver, LivePaperAction,
@@ -88,17 +88,6 @@ pub use deferred_live_asof_ic::{
 pub use deferred_live_session::{
     eligible_for_auto_arm, select_session_briefs, SessionState,
 };
-pub use deferred_live_fill_displacement::{
-    fill_geometry, fill_geometry_from_row, summarize_fill_displacement, FillDisplacementRow,
-    FillDisplacementSummary, FillGeometry,
-};
-pub use deferred_live_snap_fill::{
-    snap_fill_lag, summarize_snap_fill, SnapFillLag, SnapFillOrder, SnapFillRow, SnapFillSummary,
-};
-pub use deferred_live_loss_audit::{
-    audit_row_from_position, audit_rows_from_ledger, summarize_universe_audit,
-    DeferredLiveAuditRow, LossBreakdown, UniverseAuditSummary,
-};
 pub use deferred_live_performance::{
     score_deferred_live, DeferredLivePerformance, DeferredLivePerformanceRow,
 };
@@ -106,9 +95,6 @@ pub use live_observation::{
     ControlledObservationTape, ObservationFeedSnapshot, ObservationFeedStatus, ObservationProducer,
     ObservationSourceKind, SourcedObservation, fetch_yahoo_1m_bars, inter_bar_wait_millis,
     observations_from_yahoo_chart, parse_speed, today_ist_date,
-};
-pub use live_reassess_experiment::{
-    LiveReassessExperiment, ReassessExperimentReport, ReassessExperimentRow, ReassessVariantStats,
 };
 pub use paper_lifecycle::{
     apply_observation, signed_return, walk_bars, HorizonPolicy, PaperObservation, PaperWalkState,
@@ -125,3 +111,6 @@ pub use recommendation_engine::{
     PortfolioRecommendationEngine, RecommendationEngineError, RECOMMENDATION_ENGINE_VERSION,
 };
 pub use user_profile::{InvestmentHorizon, RiskTolerance, UserProfile, UserProfileError};
+pub use e4_shadow_validator::{E4ShadowValidator, E4ShadowPosition};
+
+

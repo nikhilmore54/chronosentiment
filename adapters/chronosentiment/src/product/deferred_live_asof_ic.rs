@@ -20,8 +20,9 @@
 //! Cockpit
 //! ```
 //!
-//! Earliest same-session point matches P4 replay: 12 session bars (~10:15 IST),
-//! not 09:32. Direction and T0 geometry are copied from a frozen Watch fixture.
+//! Earliest same-session point is the 12th one-minute session bar
+//! (09:26 IST for a 09:15 session open). This is the P4 replay
+//! H60 evidence boundary, not 60 elapsed one-minute bars.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -38,7 +39,8 @@ use crate::reasoning::intraday_classification::{
     classify_at_entry, resolve_action, Checkpoint, Direction, EntryInput, H60Classification,
 };
 
-/// P4 replay H60 bar index (session bar 12). Not 60 one-minute bars.
+/// P4 replay H60 bar index (12th session bar, 09:26 IST for a 09:15 open).
+/// Not 60 one-minute bars.
 pub const H60_BAR_COUNT: usize = 12;
 
 /// Frozen Watch inputs. Prices are copied, never invented.
@@ -52,6 +54,64 @@ pub struct WatchFixture {
     pub adaptive_target: f64,
     pub adaptive_risk: f64,
     pub t0_entry_action: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PositionTrajectoryReport {
+    pub decision_id: Option<String>,
+    pub ticker: String,
+    pub direction: String,
+
+    // Actual paper-entry anchor
+    pub entry_price: f64,
+    pub opened_at: i64,
+
+    // Signed return from actual paper entry
+    pub h15_ret: Option<f64>,
+    pub h30_ret: Option<f64>,
+    pub h60_ret: Option<f64>,
+    pub h120_ret: Option<f64>,
+    pub h180_ret: Option<f64>,
+    pub h300_ret: Option<f64>,
+
+    // Return between consecutive checkpoints
+    pub h60_to_h120_ret: Option<f64>,
+    pub h120_to_h180_ret: Option<f64>,
+    pub h180_to_h300_ret: Option<f64>,
+
+    // Final realized outcome
+    pub realized_return: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CachedPositionReport {
+    pub decision_id: Option<String>,
+    pub ticker: String,
+    pub direction: String,
+
+    pub entry_price: f64,
+    pub exit_price: Option<f64>,
+    pub exit_reason: Option<String>,
+    pub realized_return: Option<f64>,
+    pub bars_held: i32,
+    pub opened_at: i64,
+
+    // ASOF decision metadata
+    pub oqs: Option<u32>,
+    pub h60_class: Option<String>,
+    pub entry_action: Option<String>,
+    pub entry_state: Option<String>,
+    pub entry_confidence: Option<String>,
+    pub entry_horizon: Option<String>,
+    pub entry_risk: Option<String>,
+
+    // Time-safe features available at ASOF
+    pub h15_ret: Option<f64>,
+    pub h30_ret: Option<f64>,
+    pub h60_ret: Option<f64>,
+    pub mfe_h60: Option<f64>,
+    pub mae_h60: Option<f64>,
+    pub momentum_persistence: Option<f64>,
 }
 
 impl WatchFixture {
@@ -78,6 +138,60 @@ pub struct AsOfPathFeatures {
     pub mfe_h60: Option<f64>,
     pub mae_h60: Option<f64>,
     pub momentum_persistence: Option<f64>,
+}
+
+/// Shadow-only per-tick assessment of an open position.
+///
+/// `Exit` is defined here to allow the assessment stream to carry the future
+/// policy signal, but **it does not mutate the production position today**.
+/// The stream is written to `CachedSessionRun::tick_assessments` for
+/// off-line analysis and policy calibration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum PositionAssessment {
+    Hold,
+    /// Exit intent produced by an experimental shadow rule.
+    /// Never acted upon until the rule is promoted to production.
+    Exit { reason: String },
+}
+
+/// One assessment record emitted per open position per incoming bar.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TickPositionAssessment {
+    pub decision_id: Option<String>,
+    pub ticker: String,
+    pub bar_unix: i64,
+    pub bars_since_entry: usize,
+
+    // Position state
+    pub current_signed_return: f64,
+
+    // Path-state variables (MFE / Giveback)
+    pub mfe_to_date: f64,
+    pub giveback_from_mfe: f64,
+    pub bars_since_mfe: usize,
+
+    // Recent price-path state
+    pub recent_momentum: f64,
+    pub recent_n: usize,
+    pub recent_price_change: f64,
+
+    // Rolling return volatility
+    pub return_volatility_5: Option<f64>,
+    pub return_volatility_10: Option<f64>,
+    pub return_volatility_20: Option<f64>,
+
+    // Directional pressure
+    pub directional_pressure_5: Option<f64>,
+    pub directional_pressure_10: Option<f64>,
+
+    // Volume state
+    pub current_volume: Option<f64>,
+    pub relative_volume_5: Option<f64>,
+    pub relative_volume_20: Option<f64>,
+
+    // Shadow-only assessment. Still Hold for now.
+    pub assessment: PositionAssessment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -234,8 +348,12 @@ pub struct AsOfSessionDriver {
     loop_rt: DecisionLoopRuntime,
     watches: HashMap<String, WatchFixture>,
     bars_by_ticker: HashMap<String, Vec<MarketObservation>>,
+    volumes_by_ticker: HashMap<String, Vec<Option<f64>>>,
     offered: HashSet<String>,
     asof_events: Vec<AsOfSessionEvent>,
+    asof_decisions: HashMap<String, DecisionBrief>,
+    /// Shadow stream: one record per open position per bar. No production effect.
+    tick_assessments: Vec<TickPositionAssessment>,
     observation_count: usize,
     strict_t0_admission: bool,
 }
@@ -247,8 +365,11 @@ impl AsOfSessionDriver {
             loop_rt: DecisionLoopRuntime::new(config),
             watches: HashMap::new(),
             bars_by_ticker: HashMap::new(),
+            volumes_by_ticker: HashMap::new(),
             offered: HashSet::new(),
             asof_events: Vec::new(),
+            asof_decisions: HashMap::new(),
+            tick_assessments: Vec::new(),
             observation_count: 0,
         }
     }
@@ -274,9 +395,6 @@ impl AsOfSessionDriver {
         self.loop_rt.begin_session(briefs, date)
     }
 
-    pub fn enable_reassess_experiment(&mut self) {
-        self.loop_rt.enable_reassess_experiment();
-    }
 
     pub fn set_feed_snapshot(&mut self, snap: super::live_observation::ObservationFeedSnapshot) {
         self.loop_rt.set_feed_snapshot(snap);
@@ -321,11 +439,6 @@ impl AsOfSessionDriver {
         self.loop_rt.runtime().performance(briefs)
     }
 
-    pub fn reassess_experiment_report(
-        &self,
-    ) -> super::live_reassess_experiment::ReassessExperimentReport {
-        self.loop_rt.runtime().reassess_experiment_report()
-    }
 
     pub fn watched_tickers(&self) -> Vec<String> {
         let mut t = self.loop_rt.runtime().watched_tickers();
@@ -346,47 +459,367 @@ impl AsOfSessionDriver {
     pub fn ingest_sourced(&mut self, sourced: SourcedObservation) -> DecisionSurface {
         self.observation_count += 1;
         let ticker = sourced.observation.ticker.clone();
+        // All observations are accumulated for full-session trajectory lookups.
+        // The rolling ASOF IC evaluation uses only the last H60_BAR_COUNT bars.
         let bars = self.bars_by_ticker.entry(ticker.clone()).or_default();
-        if bars.len() < H60_BAR_COUNT {
-            bars.push(sourced.observation.clone());
-            if bars.len() == H60_BAR_COUNT && self.offered.insert(ticker.clone()) {
-                if let Some(watch) = self.watches.get(&ticker) {
-                    if let Some(mut brief) = AsOfIcAssembler::assemble(watch, bars) {
-                        brief.execution.freshness = sourced.source.freshness().to_string();
-                        let as_of_unix = brief
-                            .execution
-                            .snap_unix
-                            .unwrap_or(sourced.observation.unix);
-                        let decision_id = brief.id.clone();
-                        let entry_action = brief.entry_action.clone();
-                        
-                        let offer = if self.strict_t0_admission && watch.t0_entry_action != "ACT" && brief.entry_action == "ACT" {
-                            AsOfOffer::NotAct
-                        } else {
-                            offer_asof_brief(&mut self.loop_rt, brief)
-                        };
+        bars.push(sourced.observation.clone());
+        let volumes = self.volumes_by_ticker.entry(ticker.clone()).or_default();
+        volumes.push(sourced.volume);
+        if bars.len() >= H60_BAR_COUNT {
+            let rolling = &bars[bars.len() - H60_BAR_COUNT..];
 
-                        self.asof_events.push(AsOfSessionEvent {
-                            ticker,
-                            as_of_unix,
-                            offer,
-                            decision_id,
-                            entry_action,
-                        });
-                        const KEEP: usize = 1024;
-                        if self.asof_events.len() > KEEP {
-                            let drop = self.asof_events.len() - KEEP;
-                            self.asof_events.drain(0..drop);
-                        }
+            if let Some(watch) = self.watches.get(&ticker) {
+                if let Some(mut brief) = AsOfIcAssembler::assemble(watch, rolling) {
+                    brief.execution.freshness = sourced.source.freshness().to_string();
+
+                    let as_of_unix = brief
+                        .execution
+                        .snap_unix
+                        .unwrap_or(sourced.observation.unix);
+
+                    let decision_id = brief.id.clone();
+                    let entry_action = brief.entry_action.clone();
+                    let oqs = brief.oqs;
+                    let h60_class = brief.h60_class.clone();
+
+                    self.asof_decisions
+                        .insert(decision_id.clone(), brief.clone());
+
+                    let offer = if self.strict_t0_admission
+                        && watch.t0_entry_action != "ACT"
+                        && brief.entry_action == "ACT"
+                    {
+                        AsOfOffer::NotAct
+                    } else {
+                        offer_asof_brief(&mut self.loop_rt, brief)
+                    };
+
+                    if matches!(offer, AsOfOffer::Armed) {
+                        self.offered.insert(ticker.clone());
                     }
+
+                    self.asof_events.push(AsOfSessionEvent {
+                        ticker: ticker.clone(),
+                        as_of_unix,
+                        offer,
+                        decision_id,
+                        entry_action,
+                        oqs,
+                        h60_class,
+                    });
                 }
             }
         }
+
+        // --- Per-tick shadow assessment of any open position for this ticker ---
+        // Runs after the ASOF evaluation but before the lifecycle step.
+        // The assessment is shadow-only: Exit is never acted upon here.
+        // --- Per-tick shadow assessment ---
+        eprintln!(
+            "[ASSESS] ticker={} unix={} ledger_positions={} open_positions={}",
+            ticker,
+            sourced.observation.unix,
+            self.loop_rt.runtime().ledger().positions.len(),
+            self.loop_rt
+                .runtime()
+                .ledger()
+                .positions
+                .iter()
+                .filter(|p| {
+                    p.paper.ticker == ticker
+                        && p.status() == super::deferred_live::LivePaperStatus::Open
+                })
+                .count()
+        );
+
+        let assessments = self.assess_open_positions_for_ticker(
+            &ticker,
+            sourced.observation.unix,
+        );
+
+        eprintln!(
+            "[ASSESS] ticker={} produced={}",
+            ticker,
+            assessments.len()
+        );
+
+        self.tick_assessments.extend(assessments);
+
         self.loop_rt.step_sourced(sourced)
+    }
+
+    fn return_volatility(
+        bars: &[MarketObservation],
+        n: usize,
+    ) -> Option<f64> {
+        if bars.len() < n + 1 {
+            return None;
+        }
+
+        let start = bars.len() - n - 1;
+        let window = &bars[start..];
+
+        let returns: Vec<f64> = window
+            .windows(2)
+            .filter_map(|w| {
+                let prev = w[0].price;
+                let curr = w[1].price;
+
+                if prev > 0.0 && curr.is_finite() && prev.is_finite() {
+                    Some((curr - prev) / prev)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if returns.len() < 2 {
+            return None;
+        }
+
+        let mean = returns.iter().sum::<f64>() / returns.len() as f64;
+
+        let variance = returns
+            .iter()
+            .map(|r| {
+                let d = r - mean;
+                d * d
+            })
+            .sum::<f64>()
+            / returns.len() as f64;
+
+        Some(variance.sqrt())
+    }
+
+    fn directional_pressure(
+        bars: &[MarketObservation],
+        n: usize,
+        is_long: bool,
+    ) -> Option<f64> {
+        if bars.len() < n + 1 {
+            return None;
+        }
+
+        let start = bars.len() - n - 1;
+        let window = &bars[start..];
+
+        let mut numerator = 0.0;
+        let mut denominator = 0.0;
+        let mut count = 0usize;
+
+        for pair in window.windows(2) {
+            let prev = pair[0].price;
+            let curr = pair[1].price;
+
+            if prev <= 0.0 || !prev.is_finite() || !curr.is_finite() {
+                continue;
+            }
+
+            let signed_return = if is_long {
+                (curr - prev) / prev
+            } else {
+                (prev - curr) / prev
+            };
+
+            numerator += signed_return;
+            denominator += signed_return.abs();
+            count += 1;
+        }
+
+        if count == 0 || denominator <= 0.0 {
+            return None;
+        }
+
+        Some(numerator / denominator)
+    }
+
+    fn relative_volume(volumes: &[Option<f64>], n: usize) -> Option<f64> {
+        if volumes.len() < n + 1 {
+            return None;
+        }
+
+        let current_volume = volumes.last().copied().flatten()?;
+        if !current_volume.is_finite() || current_volume <= 0.0 {
+            return None;
+        }
+
+        let prior_slice = &volumes[volumes.len() - 1 - n..volumes.len() - 1];
+        let valid_priors: Vec<f64> = prior_slice
+            .iter()
+            .filter_map(|v| *v)
+            .filter(|v| v.is_finite() && *v > 0.0)
+            .collect();
+
+        if valid_priors.len() < n {
+            return None;
+        }
+
+        let mean_prior = valid_priors.iter().sum::<f64>() / valid_priors.len() as f64;
+        if !mean_prior.is_finite() || mean_prior <= 0.0 {
+            return None;
+        }
+
+        Some(current_volume / mean_prior)
+    }
+
+    /// Produce a `TickPositionAssessment` for every currently-open paper position
+    /// on `ticker`. Called once per incoming bar.
+    ///
+    /// The assessment is **shadow-only**: the `Exit` variant is defined but
+    /// never acted upon until a validated rule is promoted to production.
+    fn assess_open_positions_for_ticker(
+        &self,
+        ticker: &str,
+        bar_unix: i64,
+    ) -> Vec<TickPositionAssessment> {
+        let bars = match self.bars_by_ticker.get(ticker) {
+            Some(b) if !b.is_empty() => b,
+            _ => return vec![],
+        };
+        let current_price = bars.last().expect("non-empty").price;
+
+        let volumes = match self.volumes_by_ticker.get(ticker) {
+            Some(v) => v.as_slice(),
+            None => &[],
+        };
+
+        let current_volume = volumes
+            .last()
+            .copied()
+            .flatten()
+            .filter(|v| v.is_finite() && *v > 0.0);
+        let relative_volume_5 = Self::relative_volume(volumes, 5);
+        let relative_volume_20 = Self::relative_volume(volumes, 20);
+
+        // Short recent window for per-tick momentum. Fixed at 5 bars (~5 min).
+        // This constant will be calibrated once the assessment stream is analysed.
+        const RECENT_N: usize = 5;
+
+        self.loop_rt
+            .runtime()
+            .ledger()
+            .positions
+            .iter()
+            .filter(|p| p.paper.ticker == ticker && p.status() == super::deferred_live::LivePaperStatus::Open)
+            .map(|p| {
+                let entry_price = p.paper.paper_entry_price;
+                let direction = p.paper.direction.as_str();
+                let is_long = !direction.eq_ignore_ascii_case("SHORT");
+
+                // Find the bar index at or after position entry (opened_at).
+                let entry_bar_idx = bars
+                    .iter()
+                    .position(|b| b.unix >= p.opened_at)
+                    .unwrap_or(0);
+                let bars_since_entry = bars.len().saturating_sub(entry_bar_idx);
+
+                // Signed return from entry to current bar.
+                let current_signed_return = if is_long {
+                    (current_price - entry_price) / entry_price
+                } else {
+                    (entry_price - current_price) / entry_price
+                };
+
+                // MFE to date, Giveback from MFE, and Bars since MFE.
+                let open_bars = &bars[entry_bar_idx..];
+                let mut max_mfe: f64 = 0.0;
+                let mut mfe_idx: usize = open_bars.len().saturating_sub(1);
+
+                for (idx_rel, b) in open_bars.iter().enumerate() {
+                    let ret = if is_long {
+                        (b.price - entry_price) / entry_price
+                    } else {
+                        (entry_price - b.price) / entry_price
+                    };
+                    if ret >= max_mfe {
+                        max_mfe = ret;
+                        mfe_idx = idx_rel;
+                    }
+                }
+
+                let mfe_to_date = max_mfe;
+                let giveback_from_mfe = (max_mfe - current_signed_return).max(0.0);
+                let bars_since_mfe = open_bars.len().saturating_sub(1).saturating_sub(mfe_idx);
+
+                // Recent-window momentum: fraction of last RECENT_N bars in-direction.
+                let recent_window_start = bars.len().saturating_sub(RECENT_N);
+                let recent_bars = &bars[recent_window_start..];
+                let recent_n = recent_bars.len();
+
+                let recent_momentum = if recent_n >= 2 {
+                    let in_dir = recent_bars.windows(2).filter(|w| {
+                        let delta = w[1].price - w[0].price;
+                        if is_long { delta > 0.0 } else { delta < 0.0 }
+                    }).count() as f64;
+                    in_dir / (recent_n - 1) as f64
+                } else {
+                    0.5 // not enough bars — neutral
+                };
+
+                // Signed price change over the recent window (last bar vs first bar of window).
+                let recent_price_change = if recent_n >= 2 {
+                    let first = recent_bars.first().unwrap().price;
+                    let last  = recent_bars.last().unwrap().price;
+                    if is_long { (last - first) / first } else { (first - last) / first }
+                } else {
+                    0.0
+                };
+
+                let return_volatility_5 =
+                    Self::return_volatility(bars, 5);
+
+                let return_volatility_10 =
+                    Self::return_volatility(bars, 10);
+
+                let return_volatility_20 =
+                    Self::return_volatility(bars, 20);
+
+                let directional_pressure_5 =
+                    Self::directional_pressure(bars, 5, is_long);
+
+                let directional_pressure_10 =
+                    Self::directional_pressure(bars, 10, is_long);
+
+                // Policy: Hold unconditionally until a rule is validated.
+                // When a rule is ready, replace this with condition-based Exit.
+                let assessment = PositionAssessment::Hold;
+
+                TickPositionAssessment {
+                    decision_id: p.paper.decision_id.clone(),
+                    ticker: ticker.to_string(),
+                    bar_unix,
+                    bars_since_entry,
+
+                    current_signed_return,
+
+                    mfe_to_date,
+                    giveback_from_mfe,
+                    bars_since_mfe,
+
+                    recent_momentum,
+                    recent_n,
+                    recent_price_change,
+
+                    return_volatility_5,
+                    return_volatility_10,
+                    return_volatility_20,
+
+                    directional_pressure_5,
+                    directional_pressure_10,
+
+                    current_volume,
+                    relative_volume_5,
+                    relative_volume_20,
+
+                    assessment,
+                }
+            })
+            .collect()
     }
 
     pub fn snapshot_report(&self, date: &str, frozen_armed_ids: Vec<String>) -> CachedSessionRun {
         let last = self.last_surface();
+
         let mut ledger_decision_ids: Vec<String> = self
             .loop_rt
             .runtime()
@@ -395,27 +828,187 @@ impl AsOfSessionDriver {
             .iter()
             .filter_map(|p| p.paper.decision_id.clone())
             .collect();
+
         ledger_decision_ids.sort();
+
         let asof_armed_ids: Vec<String> = self
             .asof_events
             .iter()
             .filter(|e| e.offer == AsOfOffer::Armed)
             .map(|e| e.decision_id.clone())
             .collect();
+
+        // Position-level report: decision metadata + actual paper execution.
+        let positions: Vec<CachedPositionReport> = self
+            .loop_rt
+            .runtime()
+            .ledger()
+            .positions
+            .iter()
+            .map(|p| {
+                let decision_id = p.paper.decision_id.clone();
+
+                let decision = decision_id
+                    .as_ref()
+                    .and_then(|id| self.asof_decisions.get(id));
+
+                CachedPositionReport {
+                    decision_id,
+                    ticker: p.paper.ticker.clone(),
+                    direction: p.paper.direction.clone(),
+
+                    entry_price: p.paper.paper_entry_price,
+                    exit_price: p.paper_exit_price(),
+                    exit_reason: p.exit_reason().map(str::to_string),
+                    realized_return: p.realized_return(),
+                    bars_held: p.paper.bars_held as i32,
+                    opened_at: p.opened_at,
+
+                    oqs: decision.map(|d| d.oqs),
+                    h60_class: decision.map(|d| d.h60_class.clone()),
+                    entry_action: decision.map(|d| d.entry_action.clone()),
+                    entry_state: decision.map(|d| d.entry_state.clone()),
+                    entry_confidence: decision.map(|d| d.entry_confidence.clone()),
+                    entry_horizon: decision.map(|d| d.entry_horizon.clone()),
+                    entry_risk: decision.map(|d| d.entry_risk.clone()),
+
+                    h15_ret: decision.and_then(|d| d.h15_ret),
+                    h30_ret: decision.and_then(|d| d.h30_ret),
+                    h60_ret: decision.and_then(|d| d.h60_ret),
+                    mfe_h60: decision.and_then(|d| d.mfe_h60),
+
+                    // These are not currently exposed by DecisionBrief.
+                    mae_h60: None,
+                    momentum_persistence: None,
+                }
+            })
+            .collect();
+
+        // Retrospective trajectory from the ACTUAL paper fill.
+        //
+        // This deliberately uses p.opened_at + p.paper.paper_entry_price,
+        // rather than the ASOF WatchFixture entry_price.
+        let trajectories: Vec<PositionTrajectoryReport> = self
+            .loop_rt
+            .runtime()
+            .ledger()
+            .positions
+            .iter()
+            .map(|p| {
+                let entry_price = p.paper.paper_entry_price;
+                let opened_at = p.opened_at;
+                let direction = p.paper.direction.clone();
+
+                let bars = self
+                    .bars_by_ticker
+                    .get(&p.paper.ticker)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]);
+
+                let price_at = |minutes: i64| {
+                    trajectory_price_at_or_after(
+                        bars,
+                        opened_at.saturating_add(minutes * 60),
+                    )
+                };
+
+                let h15_price = price_at(15);
+                let h30_price = price_at(30);
+                let h60_price = price_at(60);
+                let h120_price = price_at(120);
+                let h180_price = price_at(180);
+                let h300_price = price_at(300);
+
+                let h15_ret = h15_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                let h30_ret = h30_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                let h60_ret = h60_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                let h120_ret = h120_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                let h180_ret = h180_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                let h300_ret = h300_price.map(|price| {
+                    signed_return(&direction, entry_price, price)
+                });
+
+                // Incremental movement between checkpoints.
+                let h60_to_h120_ret = match (h60_price, h120_price) {
+                    (Some(from), Some(to)) if from > 0.0 => {
+                        Some(signed_return(&direction, from, to))
+                    }
+                    _ => None,
+                };
+
+                let h120_to_h180_ret = match (h120_price, h180_price) {
+                    (Some(from), Some(to)) if from > 0.0 => {
+                        Some(signed_return(&direction, from, to))
+                    }
+                    _ => None,
+                };
+
+                let h180_to_h300_ret = match (h180_price, h300_price) {
+                    (Some(from), Some(to)) if from > 0.0 => {
+                        Some(signed_return(&direction, from, to))
+                    }
+                    _ => None,
+                };
+
+                PositionTrajectoryReport {
+                    decision_id: p.paper.decision_id.clone(),
+                    ticker: p.paper.ticker.clone(),
+                    direction,
+
+                    entry_price,
+                    opened_at,
+
+                    h15_ret,
+                    h30_ret,
+                    h60_ret,
+                    h120_ret,
+                    h180_ret,
+                    h300_ret,
+
+                    h60_to_h120_ret,
+                    h120_to_h180_ret,
+                    h180_to_h300_ret,
+
+                    realized_return: p.realized_return(),
+                }
+            })
+            .collect();
+
         CachedSessionRun {
             date: date.into(),
             observations: self.observation_count,
             frozen_armed_ids,
             asof_events: self.asof_events.clone(),
             asof_armed_ids,
+
             open: last.map(|s| s.open).unwrap_or(0),
             exited: last.map(|s| s.exited).unwrap_or(0),
             horizon: last.map(|s| s.horizon).unwrap_or(0),
+
             ledger_decision_ids,
             feed_status: format!("{:?}", self.loop_rt.runtime().feed().status),
+
+            positions,
+            trajectories,
+            tick_assessments: self.tick_assessments.clone(),
         }
     }
-}
+}    
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AsOfSessionEvent {
@@ -424,6 +1017,8 @@ pub struct AsOfSessionEvent {
     pub offer: AsOfOffer,
     pub decision_id: String,
     pub entry_action: String,
+    pub oqs: u32,
+    pub h60_class: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -438,6 +1033,11 @@ pub struct CachedSessionRun {
     pub horizon: usize,
     pub ledger_decision_ids: Vec<String>,
     pub feed_status: String,
+    pub positions: Vec<CachedPositionReport>,
+    pub trajectories: Vec<PositionTrajectoryReport>,
+    /// Shadow per-tick assessment stream. One record per open position per bar.
+    /// No production effect — for analysis and policy calibration only.
+    pub tick_assessments: Vec<TickPositionAssessment>,
 }
 
 /// Frozen session auto-arm + as-of IC offers on a real cached tape.
@@ -447,7 +1047,7 @@ pub fn run_cached_session(
     date: &str,
     cache_dir: &Path,
     speed: f64,
-) -> Result<CachedSessionRun, String> {
+) -> Result<CachedSessionRun, String> {    
     let frozen_armed_ids: Vec<String> = select_session_briefs(briefs, date)
         .into_iter()
         .map(|b| b.id)
@@ -615,6 +1215,23 @@ fn path_features(direction: &str, entry_price: f64, session_bars: &[MarketObserv
         mfe_h60,
         mae_h60,
         momentum_persistence,
+    }
+}
+fn trajectory_price_at_or_after(
+    bars: &[MarketObservation],
+    target_unix: i64,
+) -> Option<f64> {
+    bars.iter()
+        .filter(|bar| bar.unix >= target_unix)
+        .min_by_key(|bar| bar.unix)
+        .map(|bar| bar.price)
+}
+
+fn signed_return(direction: &str, entry_price: f64, price: f64) -> f64 {
+    if direction.eq_ignore_ascii_case("LONG") {
+        (price - entry_price) / entry_price
+    } else {
+        (entry_price - price) / entry_price
     }
 }
 
@@ -823,62 +1440,135 @@ mod tests {
     }
 
     #[test]
-    fn cached_session_20260907_keeps_frozen_book_and_offers_asof() {
+    fn cached_session_20260915_keeps_frozen_book_and_rolling_asof() {
         use std::collections::HashSet;
         use std::path::Path;
+
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let dataset = root.join("datasets/p4_opportunity_dataset.json");
+        let dataset = root.join("datasets/live005_20260915.json");
         let cache = root.join("intraday_capture/yahoo_cache_1m");
+
         if !dataset.exists() || !cache.join("JUBLFOOD.NS.json").exists() {
             return;
         }
-        let briefs = crate::product::load_intraday_briefs(dataset.to_str().unwrap()).unwrap();
-        let run = run_cached_session(&briefs, "2026-09-07", &cache, 0.0).expect("cached session");
-        assert!(run.observations > 12, "session tape should exceed H60");
+
+        let briefs =
+            crate::product::load_intraday_briefs(dataset.to_str().unwrap()).unwrap();
+
+        let run =
+            run_cached_session(&briefs, "2026-09-15", &cache, 0.0)
+                .expect("cached session");
+
+        // The cached tape must contain a complete session.
+        assert!(
+            run.observations > 12,
+            "session tape should exceed H60"
+        );
+
         assert!(
             run.feed_status.contains("TapeExhausted"),
             "feed_status={}",
             run.feed_status
         );
-        let jubl = "LIVE-005-20260907-1000-JUBLFOOD_NS";
-        if run.frozen_armed_ids.iter().any(|id| id == jubl) {
-            assert!(
-                run.ledger_decision_ids.iter().any(|id| id == jubl),
-                "frozen JUBLFOOD must remain on the live book"
-            );
-            assert!(
-                !run.asof_armed_ids.iter().any(|id| id.contains("JUBLFOOD")),
-                "as-of must not replace frozen JUBLFOOD"
-            );
-        }
-        for ev in run.asof_events.iter().filter(|e| e.ticker == "JUBLFOOD_NS") {
-            assert!(
-                matches!(ev.offer, AsOfOffer::WithheldOpen | AsOfOffer::WithheldArmed),
-                "JUBLFOOD as-of offer {:?}",
-                ev.offer
-            );
-        }
-        let mut frozen_tickers: HashSet<String> = HashSet::new();
-        for id in &run.frozen_armed_ids {
-            if let Some(t) = id.rsplit('-').next() {
-                frozen_tickers.insert(t.to_string());
-            }
-        }
+
+        // Frozen LIVE-005 book remains intact.
+        assert!(
+            !run.frozen_armed_ids.is_empty(),
+            "frozen session should arm at least one brief"
+        );
+
+        // Rolling ASOF must actually produce admissions.
+        assert!(
+            !run.asof_armed_ids.is_empty(),
+            "rolling ASOF should produce at least one admission"
+        );
+
+        // No ticker may be admitted twice through ASOF.
+        let mut asof_tickers = HashSet::new();
+
         for id in &run.asof_armed_ids {
             let ticker = id.rsplit('-').next().unwrap_or(id);
+
             assert!(
-                !frozen_tickers.contains(ticker),
-                "as-of {id} must not open a ticker already on the frozen session book"
+                asof_tickers.insert(ticker.to_string()),
+                "ticker {ticker} was admitted more than once by ASOF"
             );
         }
+
+        // ASOF must never replace a ticker already present
+        // in the frozen session book.
+        let frozen_tickers: HashSet<String> = run
+            .frozen_armed_ids
+            .iter()
+            .filter_map(|id| id.rsplit('-').next())
+            .map(str::to_string)
+            .collect();
+
+        for id in &run.asof_armed_ids {
+            let ticker = id.rsplit('-').next().unwrap_or(id);
+
+            assert!(
+                !frozen_tickers.contains(ticker),
+                "ASOF {id} must not open ticker already on frozen book"
+            );
+        }
+
+        // Verify that rolling evaluation actually happened more than
+        // once for at least one ticker.
+        let mut evaluation_counts = std::collections::HashMap::<String, usize>::new();
+
+        for ev in &run.asof_events {
+            *evaluation_counts
+                .entry(ev.ticker.clone())
+                .or_insert(0) += 1;
+        }
+
+        assert!(
+            evaluation_counts.values().any(|n| *n > 1),
+            "rolling ASOF must evaluate at least one ticker more than once"
+        );
+
+        // Verify that evaluation timestamps advance chronologically
+        // within each ticker.
+        for ticker in evaluation_counts.keys() {
+            let times: Vec<i64> = run
+                .asof_events
+                .iter()
+                .filter(|e| &e.ticker == ticker)
+                .map(|e| e.as_of_unix)
+                .collect();
+
+            assert!(
+                times.windows(2).all(|w| w[0] < w[1]),
+                "ASOF evaluations for {ticker} must advance chronologically"
+            );
+        }
+
+        // Every ASOF admission must correspond to an ACT evaluation.
+        for ev in &run.asof_events {
+            if matches!(ev.offer, AsOfOffer::Armed) {
+                assert_eq!(
+                    ev.entry_action,
+                    "ACT",
+                    "ASOF admission must only occur for ACT"
+                );
+            }
+        }
+
+        // Frozen and ASOF positions must not coexist for the same ticker.
         for id in &run.ledger_decision_ids {
             if id.starts_with("ASOF-") {
                 continue;
             }
+
             let ticker = id.rsplit('-').next().unwrap_or(id);
+
             assert!(
-                !run.asof_armed_ids.iter().any(|a| a.ends_with(ticker)),
-                "ledger still has frozen {id} plus as-of on {ticker}"
+                !run
+                    .asof_armed_ids
+                    .iter()
+                    .any(|a| a.ends_with(ticker)),
+                "ledger contains frozen {id} plus ASOF admission for {ticker}"
             );
         }
     }
@@ -966,8 +1656,9 @@ mod tests {
         driver.install_session(&[act_brief], "2026-09-07");
         
         // Already arms 1 from T0 ACT auto-arm
-        assert_eq!(driver.ledger().positions.len(), 1);
-        
+        assert_eq!(driver.armed().len(), 1);
+        assert_eq!(driver.ledger().positions.len(), 0);
+
         // Feed ascending prices
         for obs in rising_prefix(H60_BAR_COUNT) {
             driver.ingest(obs);

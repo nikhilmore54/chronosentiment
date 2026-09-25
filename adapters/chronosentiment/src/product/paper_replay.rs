@@ -16,7 +16,7 @@ use super::intraday_decision::DecisionBrief;
 
 /// One frozen paper-trader v0.2 position. Field names are prefixed so they
 /// cannot be confused with DecisionBrief prices.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct PaperPosition {
     pub ticker: String,
     pub direction: String,

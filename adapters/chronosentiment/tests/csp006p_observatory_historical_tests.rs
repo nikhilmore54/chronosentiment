@@ -290,18 +290,8 @@ fn document_is_not_c3g_and_keeps_the_live_cohort_untouched() {
     assert!(dashboard.contains("Replay integrity"));
     assert!(dashboard.contains("IDEA and MAHABANK"));
     assert!(!dashboard.contains("Search #3 is authorized"));
-    let v0 = include_str!(
-        "../../../product_validation/CS-P-006/observatory/historical_replay_v0/REPORT.md"
+    let pe2_report = include_str!(
+        "../../../product_validation/CS-P-006/observatory/historical_pe2_replay/REPORT.md"
     );
-    assert!(v0.contains("CALENDAR_DAYS"));
-    assert!(!v0.contains("MARKET_SESSIONS"));
-    assert!(v0.contains("4 Jun 2026"));
-    let v1_report = include_str!(
-        "../../../product_validation/CS-P-006/observatory/historical_replay_v1/REPORT.md"
-    );
-    assert!(v1_report.contains("MARKET_SESSIONS"));
-    assert!(v1_report.contains("12 Jun 2026"));
-    assert!(v1_report.contains("10 Jul 2026"));
-    assert!(!v1_report.contains("Observation closes 4 Jun"));
-    assert!(!v1_report.contains("Observation closes 2 Jul"));
+    assert!(pe2_report.contains("HISTORICAL_PE2"));
 }

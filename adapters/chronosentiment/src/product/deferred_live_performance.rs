@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn open_mark_is_not_a_closed_return() {
         let b = brief("d1", "AAA_NS", 473.0, 450.0, 490.0);
-        let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 10_000, strict_t0_admission: false });
+        let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig { horizon_secs: 10_000, strict_t0_admission: false, ..Default::default() });
         rt.arm(b.clone());
         rt.ingest(MarketObservation::last("AAA_NS", 1_000, 480.5));
         rt.ingest(MarketObservation::last("AAA_NS", 1_060, 475.4));

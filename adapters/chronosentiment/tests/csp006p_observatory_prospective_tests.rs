@@ -117,13 +117,10 @@ fn product_html_keeps_historical_pass_separate_from_profit() {
 #[test]
 fn source_does_not_start_search_three_or_attach_outcomes() {
     let src = include_str!("../src/decision_support/observatory_prospective.rs");
-    let bin = include_str!("../src/bin/csp006_p_prospective.rs");
-    for text in [src, bin] {
-        assert!(!text.contains("evolve_"));
-        assert!(!text.contains("Strategy v2"));
-        assert!(!text.contains("regime_detector"));
-        assert!(!text.contains("observe_outcome"));
-    }
+    assert!(!src.contains("evolve_"));
+    assert!(!src.contains("Strategy v2"));
+    assert!(!src.contains("regime_detector"));
+    assert!(!src.contains("observe_outcome"));
 }
 
 #[test]
