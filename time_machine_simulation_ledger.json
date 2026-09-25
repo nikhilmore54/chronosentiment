@@ -1,0 +1,1242 @@
+[
+  {
+    "symbol": "RELIANCE.NS",
+    "simulation_mode": "TIME_MACHINE_REPLAY",
+    "firewall_status": "STRICT_T0_CUTOFF_VERIFIED",
+    "steps_count": 8,
+    "timeline": [
+      {
+        "step": 0,
+        "cutoff_timestamp": 1782117900,
+        "cutoff_datetime": "1782117900",
+        "price": 1332.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.5949
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782117900 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.5949)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.0237)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 1,
+        "cutoff_timestamp": 1782118800,
+        "cutoff_datetime": "1782118800",
+        "price": 1330.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.3106
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782118800 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.3106)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.0237)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 2,
+        "cutoff_timestamp": 1782119700,
+        "cutoff_datetime": "1782119700",
+        "price": 1328.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5034
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782119700 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.5034)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.0237)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 3,
+        "cutoff_timestamp": 1782120600,
+        "cutoff_datetime": "1782120600",
+        "price": 1327.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5322
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782120600 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.5322)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.0237)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 4,
+        "cutoff_timestamp": 1782121500,
+        "cutoff_datetime": "1782121500",
+        "price": 1324.9000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5743
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782121500 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.5743)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.0237)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 5,
+        "cutoff_timestamp": 1782186300,
+        "cutoff_datetime": "1782186300",
+        "price": 1324.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.636
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782186300 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.6360)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.4561)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 6,
+        "cutoff_timestamp": 1782187200,
+        "cutoff_datetime": "1782187200",
+        "price": 1328.0,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0635
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782187200 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.0635)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.4561)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 7,
+        "cutoff_timestamp": 1782188100,
+        "cutoff_datetime": "1782188100",
+        "price": 1326.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0617
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782188100 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.0617)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.4561)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "CIPLA.NS",
+    "simulation_mode": "TIME_MACHINE_REPLAY",
+    "firewall_status": "STRICT_T0_CUTOFF_VERIFIED",
+    "steps_count": 8,
+    "timeline": [
+      {
+        "step": 0,
+        "cutoff_timestamp": 1783327500,
+        "cutoff_datetime": "2026-07-06 14:15:00",
+        "price": 1463.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.323
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7746
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.3230)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 0.7746)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.9528)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 1,
+        "cutoff_timestamp": 1783328400,
+        "cutoff_datetime": "2026-07-06 14:30:00",
+        "price": 1468.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.263
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0289
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:30:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.2630)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.0289)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.9528)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 2,
+        "cutoff_timestamp": 1783329300,
+        "cutoff_datetime": "2026-07-06 14:45:00",
+        "price": 1467.0999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.7958
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0289
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:45:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.7958)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.0289)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.9528)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 3,
+        "cutoff_timestamp": 1783330200,
+        "cutoff_datetime": "2026-07-06 15:00:00",
+        "price": 1473.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.6044
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.1903
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 15:00:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.6044)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.1903)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.9528)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 4,
+        "cutoff_timestamp": 1783331100,
+        "cutoff_datetime": "2026-07-06 15:15:00",
+        "price": 1472.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3296
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.1903
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 15:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.3296)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.1903)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.9528)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 5,
+        "cutoff_timestamp": 1783395900,
+        "cutoff_datetime": "2026-07-07 09:15:00",
+        "price": 1470.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.9265
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0433
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.9265)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.0433)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.1884)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 6,
+        "cutoff_timestamp": 1783396800,
+        "cutoff_datetime": "2026-07-07 09:30:00",
+        "price": 1474.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.8151
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3724
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:30:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.8151)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.3724)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.1884)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 7,
+        "cutoff_timestamp": 1783397700,
+        "cutoff_datetime": "2026-07-07 09:45:00",
+        "price": 1477.4000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.094
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3724
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:45:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.0940)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.3724)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -0.1884)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "ADANIENT.NS",
+    "simulation_mode": "TIME_MACHINE_REPLAY",
+    "firewall_status": "STRICT_T0_CUTOFF_VERIFIED",
+    "steps_count": 8,
+    "timeline": [
+      {
+        "step": 0,
+        "cutoff_timestamp": 1782117900,
+        "cutoff_datetime": "1782117900",
+        "price": 3055.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.2274
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782117900 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.2274)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.7094)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 1,
+        "cutoff_timestamp": 1782118800,
+        "cutoff_datetime": "1782118800",
+        "price": 3047.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.8758
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782118800 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.8758)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.7094)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 2,
+        "cutoff_timestamp": 1782119700,
+        "cutoff_datetime": "1782119700",
+        "price": 3047.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.991
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782119700 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 0.9910)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.7094)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 3,
+        "cutoff_timestamp": 1782120600,
+        "cutoff_datetime": "1782120600",
+        "price": 3058.89990234375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.238
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782120600 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.2380)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.7094)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 4,
+        "cutoff_timestamp": 1782121500,
+        "cutoff_datetime": "1782121500",
+        "price": 3063.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3005
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=1782121500 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.3005)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 1.7094)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 5,
+        "cutoff_timestamp": 1782186300,
+        "cutoff_datetime": "1782186300",
+        "price": 3075.89990234375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.0485
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782186300 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.0485)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: 0.1553)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 6,
+        "cutoff_timestamp": 1782187200,
+        "cutoff_datetime": "1782187200",
+        "price": 3074.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3215
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782187200 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.3215)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: 0.1553)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 7,
+        "cutoff_timestamp": 1782188100,
+        "cutoff_datetime": "1782188100",
+        "price": 3072.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.1841
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=1782188100 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.1841)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: 0.1553)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "INFY.NS",
+    "simulation_mode": "TIME_MACHINE_REPLAY",
+    "firewall_status": "STRICT_T0_CUTOFF_VERIFIED",
+    "steps_count": 8,
+    "timeline": [
+      {
+        "step": 0,
+        "cutoff_timestamp": 1783327500,
+        "cutoff_datetime": "2026-07-06 14:15:00",
+        "price": 1034.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0678
+          },
+          "30m": {
+            "label": "REVERSAL",
+            "score": -0.2637
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.0678)",
+          "\u2022 30m Trajectory: REVERSAL (Score: -0.2637)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.5881)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 1,
+        "cutoff_timestamp": 1783328400,
+        "cutoff_datetime": "2026-07-06 14:30:00",
+        "price": 1034.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.1274
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7539
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:30:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.1274)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 0.7539)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.5881)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 2,
+        "cutoff_timestamp": 1783329300,
+        "cutoff_datetime": "2026-07-06 14:45:00",
+        "price": 1038.4000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.4011
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7539
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 14:45:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.4011)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 0.7539)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.5881)",
+          "\u2022 Cross-Resolution Relationship: DISAGREE (TIME-SCALE CONFLICT)"
+        ]
+      },
+      {
+        "step": 3,
+        "cutoff_timestamp": 1783330200,
+        "cutoff_datetime": "2026-07-06 15:00:00",
+        "price": 1042.5,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.2837
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3118
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 15:00:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.2837)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.3118)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.5881)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 4,
+        "cutoff_timestamp": 1783331100,
+        "cutoff_datetime": "2026-07-06 15:15:00",
+        "price": 1043.9000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.5139
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3118
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-06 15:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.5139)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 1.3118)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 0.5881)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 5,
+        "cutoff_timestamp": 1783395900,
+        "cutoff_datetime": "2026-07-07 09:15:00",
+        "price": 1059.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 2.149
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.0174
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:15:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 2.1490)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 2.0174)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 3.2759)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 6,
+        "cutoff_timestamp": 1783396800,
+        "cutoff_datetime": "2026-07-07 09:30:00",
+        "price": 1069.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 2.3805
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.2215
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:30:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 2.3805)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 2.2215)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 3.2759)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      },
+      {
+        "step": 7,
+        "cutoff_timestamp": 1783397700,
+        "cutoff_datetime": "2026-07-07 09:45:00",
+        "price": 1069.5,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.8939
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.2215
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "why": [
+          "\u2022 Information Cutoff T=2026-07-07 09:45:00 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: CONTINUATION (Action: HOLD, Score: 1.8939)",
+          "\u2022 30m Trajectory: CONTINUATION (Score: 2.2215)",
+          "\u2022 1d Macro Trajectory: CONTINUATION (Score: 3.2759)",
+          "\u2022 Cross-Resolution Relationship: AGREE (MULTI-RESOLUTION ALIGNMENT)"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "TCS.NS",
+    "simulation_mode": "TIME_MACHINE_REPLAY",
+    "firewall_status": "STRICT_T0_CUTOFF_VERIFIED",
+    "steps_count": 8,
+    "timeline": [
+      {
+        "step": 0,
+        "cutoff_timestamp": 1782117900,
+        "cutoff_datetime": "1782117900",
+        "price": 2136.800048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2937
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782117900 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.2937)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: PULLBACK (Score: -0.0423)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 1,
+        "cutoff_timestamp": 1782118800,
+        "cutoff_datetime": "1782118800",
+        "price": 2133.10009765625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2557
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782118800 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.2557)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: PULLBACK (Score: -0.0423)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 2,
+        "cutoff_timestamp": 1782119700,
+        "cutoff_datetime": "1782119700",
+        "price": 2131.60009765625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.228
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782119700 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.2280)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: PULLBACK (Score: -0.0423)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 3,
+        "cutoff_timestamp": 1782120600,
+        "cutoff_datetime": "1782120600",
+        "price": 2124.39990234375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.314
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782120600 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -0.3140)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: PULLBACK (Score: -0.0423)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 4,
+        "cutoff_timestamp": 1782121500,
+        "cutoff_datetime": "1782121500",
+        "price": 2129.0,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2194
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782121500 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: 0.2194)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: PULLBACK (Score: -0.0423)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 5,
+        "cutoff_timestamp": 1782186300,
+        "cutoff_datetime": "1782186300",
+        "price": 2088.800048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.8392
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782186300 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -1.8392)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -2.2564)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 6,
+        "cutoff_timestamp": 1782187200,
+        "cutoff_datetime": "1782187200",
+        "price": 2085.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.4306
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782187200 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -1.4306)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -2.2564)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      },
+      {
+        "step": 7,
+        "cutoff_timestamp": 1782188100,
+        "cutoff_datetime": "1782188100",
+        "price": 2083.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.4516
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "why": [
+          "\u2022 Information Cutoff T=1782188100 enforced (Strict zero lookahead)",
+          "\u2022 15m Trajectory: REVERSAL (Action: EXIT, Score: -1.4516)",
+          "\u2022 30m Trajectory: INSUFFICIENT (Score: 0.5000)",
+          "\u2022 1d Macro Trajectory: REVERSAL (Score: -2.2564)",
+          "\u2022 Cross-Resolution Relationship: PARTIAL AGREEMENT"
+        ]
+      }
+    ]
+  }
+]

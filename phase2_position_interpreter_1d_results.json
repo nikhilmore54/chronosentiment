@@ -1,0 +1,51 @@
+{
+  "manifest": {
+    "title": "Phase 2 Position Trajectory Interpreter 1d Validation Ledger",
+    "interval": "1d",
+    "available_date_range": "1996-01-01 to 2026-09-25",
+    "number_of_instruments": 102,
+    "number_of_bars": 587735,
+    "number_of_positions": 39029,
+    "coralys_entries": 39029,
+    "cache_integrity": "100% Verified (Deduplicated, Chronological)"
+  },
+  "lifecycle_transitions": {
+    "CONTINUATION -> PULLBACK": 319,
+    "PULLBACK -> CONTINUATION": 38,
+    "PULLBACK -> REVERSAL": 281,
+    "CONTINUATION -> REVERSAL": 38740
+  },
+  "pullback_metrics": {
+    "total_pullbacks": 319,
+    "recovery_count": 38,
+    "reversal_count": 281,
+    "recovery_rate_pct": 11.91,
+    "reversal_rate_pct": 88.09,
+    "mean_pullback_duration_bars": 2.89,
+    "median_pullback_duration_bars": 3
+  },
+  "economic_performance": {
+    "coralys_baseline_mean_return_pct": 0.3093,
+    "interpreter_mean_return_pct": 0.5715,
+    "mean_paired_delta_bps": 26.22,
+    "median_paired_delta_bps": 0.0,
+    "total_net_delta_bps": 1023480.86
+  },
+  "session_outliers": {
+    "worst_session": {
+      "session_id": "2003-10-20",
+      "mean_delta_bps": -4051.24
+    },
+    "best_session": {
+      "session_id": "2004-03-26",
+      "mean_delta_bps": 6552.9
+    },
+    "worst_position": {
+      "session_id": "2004-04-12",
+      "symbol": "CIPLA.NS",
+      "coralys_baseline_ret": 2.0099,
+      "interpreter_ret": -91.3156,
+      "paired_delta_bps": -9332.55
+    }
+  }
+}

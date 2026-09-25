@@ -1,0 +1,51 @@
+{
+  "manifest": {
+    "title": "Phase 2 Position Trajectory Interpreter 15m Validation Ledger",
+    "interval": "15m",
+    "available_date_range": "2026-07-06 to 2026-09-25",
+    "number_of_instruments": 102,
+    "number_of_bars": 157852,
+    "number_of_positions": 6018,
+    "coralys_entries": 6018,
+    "cache_integrity": "100% Verified (Deduplicated, Chronological)"
+  },
+  "lifecycle_transitions": {
+    "CONTINUATION -> PULLBACK": 53,
+    "PULLBACK -> CONTINUATION": 32,
+    "PULLBACK -> REVERSAL": 21,
+    "CONTINUATION -> REVERSAL": 5984
+  },
+  "pullback_metrics": {
+    "total_pullbacks": 53,
+    "recovery_count": 32,
+    "reversal_count": 21,
+    "recovery_rate_pct": 60.38,
+    "reversal_rate_pct": 39.62,
+    "mean_pullback_duration_bars": 1.32,
+    "median_pullback_duration_bars": 1
+  },
+  "economic_performance": {
+    "coralys_baseline_mean_return_pct": 0.028,
+    "interpreter_mean_return_pct": 0.0164,
+    "mean_paired_delta_bps": -1.16,
+    "median_paired_delta_bps": 0.0,
+    "total_net_delta_bps": -6993.04
+  },
+  "session_outliers": {
+    "worst_session": {
+      "session_id": "2026-07-23",
+      "mean_delta_bps": -19.86
+    },
+    "best_session": {
+      "session_id": "2026-07-07",
+      "mean_delta_bps": 13.36
+    },
+    "worst_position": {
+      "session_id": "2026-07-23",
+      "symbol": "OFSS.NS",
+      "coralys_baseline_ret": 0.2274,
+      "interpreter_ret": -8.7577,
+      "paired_delta_bps": -898.51
+    }
+  }
+}

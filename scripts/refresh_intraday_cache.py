@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-refresh_intraday_cache.py — Bulk refresh of intraday Yahoo Finance caches.
+refresh_intraday_cache.py — Bulk refresh of intraday/daily Yahoo Finance caches.
 
-Reads the list of tickers from the existing intraday_capture/yahoo_cache_1m/
-directory, fetches fresh bars for each ticker at 1m, 5m, and 15m intervals,
-and writes the results back to the respective cache directories.
+Reads the list of tickers from existing intraday_capture/yahoo_cache_1m/ directory,
+fetches fresh bars for each ticker at requested intervals (1m, 5m, 15m, 30m, 1d),
+merges with existing cache using NEW FETCH WINS + deduplicate (ticker, timestamp) + chronological sort,
+and writes the results back to respective cache directories.
 
 Usage:
-    python3 scripts/refresh_intraday_cache.py [--intervals 1m,5m,15m] [--dry-run]
-
-After running, execute the intraday observer to resolve PENDING entries:
-    ./target/debug/intraday001_observe
+    python3 scripts/refresh_intraday_cache.py [--intervals 15m,30m,1d] [--dry-run]
 """
 
 import argparse
@@ -31,17 +29,20 @@ CACHE_DIRS = {
     "1m":  REPO_ROOT / "intraday_capture" / "yahoo_cache_1m",
     "5m":  REPO_ROOT / "intraday_capture" / "yahoo_cache_5m",
     "15m": REPO_ROOT / "intraday_capture" / "yahoo_cache_15m",
+    "30m": REPO_ROOT / "intraday_capture" / "yahoo_cache_30m",
+    "1d":  REPO_ROOT / "intraday_capture" / "yahoo_cache_1d",
 }
 
-# Yahoo Finance period for each interval (must cover enough history)
+# Yahoo Finance period for each interval
 INTERVAL_PERIOD = {
-    "1m":  "7d",   # Yahoo retains 1m bars for ~7 days
-    "5m":  "60d",  # Yahoo retains 5m bars for ~60 days
-    "15m": "60d",  # Yahoo retains 15m bars for ~60 days
+    "1m":  "7d",    # Yahoo retains 1m bars for ~7 days
+    "5m":  "60d",   # Yahoo retains 5m bars for ~60 days
+    "15m": "60d",   # Yahoo retains 15m bars for ~60 days
+    "30m": "60d",   # Yahoo retains 30m bars for ~60 days
+    "1d":  "max",   # Yahoo retains daily bars for max history
 }
 
-# Throttle between requests to avoid rate limiting
-REQUEST_DELAY_SEC = 0.5
+REQUEST_DELAY_SEC = 0.2
 
 
 def get_tickers_from_cache(cache_dir: Path) -> list[str]:
@@ -63,18 +64,31 @@ def fetch_bars(symbol: str, interval: str, period: str) -> list[dict]:
         return []
     bars = []
     for ts, row in df.iterrows():
-        # Convert timezone-aware timestamp to unix seconds
         unix_ts = int(ts.timestamp())
+        dt_str = ts.strftime('%Y-%m-%d %H:%M:%S') if interval != "1d" else ts.strftime('%Y-%m-%d')
         bars.append({
             "timestamp": unix_ts,
-            "open":      float(row["Open"]),
-            "high":      float(row["High"]),
-            "low":       float(row["Low"]),
-            "close":     float(row["Close"]),
+            "datetime": dt_str,
+            "open": float(row["Open"]),
+            "high": float(row["High"]),
+            "low": float(row["Low"]),
+            "close": float(row["Close"]),
             "adj_close": float(row.get("Adj Close", row["Close"])),
-            "volume":    float(row["Volume"]),
+            "volume": float(row["Volume"]),
         })
     return bars
+
+
+def merge_bars_new_fetch_wins(existing_bars: list[dict], fresh_bars: list[dict]) -> list[dict]:
+    """
+    Merge existing cache with fresh fetch using NEW FETCH WINS protocol.
+    Deduplicates by timestamp and sorts chronologically.
+    """
+    bar_map = {b["timestamp"]: b for b in existing_bars}
+    for b in fresh_bars:
+        bar_map[b["timestamp"]] = b  # NEW FETCH WINS
+    sorted_ts = sorted(bar_map.keys())
+    return [bar_map[t] for t in sorted_ts]
 
 
 def refresh_interval(interval: str, tickers: list[str], dry_run: bool) -> dict:
@@ -88,8 +102,15 @@ def refresh_interval(interval: str, tickers: list[str], dry_run: bool) -> dict:
     n_error = 0
 
     for i, ticker in enumerate(tickers):
-        symbol = ticker  # e.g. "ADANIENT.NS"
+        symbol = ticker
         out_path = cache_dir / f"{symbol}.json"
+
+        existing_bars = []
+        if out_path.exists():
+            try:
+                existing_bars = json.loads(out_path.read_text())
+            except Exception:
+                existing_bars = []
 
         if dry_run:
             print(f"  [DRY-RUN] would fetch {symbol} ({interval}) → {out_path.name}")
@@ -97,19 +118,19 @@ def refresh_interval(interval: str, tickers: list[str], dry_run: bool) -> dict:
             continue
 
         try:
-            bars = fetch_bars(symbol, interval, period)
-            if not bars:
+            fresh_bars = fetch_bars(symbol, interval, period)
+            if not fresh_bars and not existing_bars:
                 print(f"  WARN [{interval}] {symbol}: no bars returned")
                 n_empty += 1
             else:
-                out_path.write_text(json.dumps(bars, separators=(",", ":")))
-                print(f"  OK   [{interval}] {symbol}: {len(bars)} bars → {out_path.name}")
+                merged = merge_bars_new_fetch_wins(existing_bars, fresh_bars)
+                out_path.write_text(json.dumps(merged, separators=(",", ":")))
+                print(f"  OK   [{interval}] {symbol}: {len(fresh_bars)} fresh + {len(existing_bars)} existing → {len(merged)} total bars")
                 n_ok += 1
         except Exception as e:
             print(f"  ERR  [{interval}] {symbol}: {e}")
             n_error += 1
 
-        # Throttle to avoid Yahoo rate limiting
         if i < len(tickers) - 1:
             time.sleep(REQUEST_DELAY_SEC)
 
@@ -118,12 +139,12 @@ def refresh_interval(interval: str, tickers: list[str], dry_run: bool) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Bulk refresh intraday Yahoo Finance caches (1m, 5m, 15m)."
+        description="Bulk refresh intraday/daily Yahoo Finance caches (15m, 30m, 1d)."
     )
     parser.add_argument(
         "--intervals",
-        default="1m,5m,15m",
-        help="Comma-separated list of intervals to refresh (default: 1m,5m,15m)",
+        default="15m,30m,1d",
+        help="Comma-separated list of intervals to refresh (default: 15m,30m,1d)",
     )
     parser.add_argument(
         "--dry-run",
@@ -140,7 +161,7 @@ def main():
 
     now_ist = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     print("=" * 60)
-    print("  INTRADAY CACHE REFRESH")
+    print("  INTRADAY & DAILY CACHE REFRESH")
     print(f"  Run time: {now_ist}")
     print(f"  Intervals: {', '.join(intervals)}")
     print(f"  Dry run: {args.dry_run}")
@@ -149,13 +170,12 @@ def main():
     # Get tickers from the 1m cache (canonical source)
     tickers = get_tickers_from_cache(CACHE_DIRS["1m"])
     if not tickers:
-        # Fall back to 5m or 15m cache
-        for iv in ("5m", "15m"):
+        for iv in ("5m", "15m", "30m", "1d"):
             tickers = get_tickers_from_cache(CACHE_DIRS[iv])
             if tickers:
                 break
     if not tickers:
-        print("ERROR: no tickers found in any intraday cache directory.")
+        print("ERROR: no tickers found in any cache directory.")
         sys.exit(1)
 
     print(f"Tickers: {len(tickers)}")
@@ -178,10 +198,6 @@ def main():
         print(
             f"  [{status}] {s['interval']}: ok={s['n_ok']} empty={s['n_empty']} error={s['n_error']}"
         )
-    print()
-    if not args.dry_run:
-        print("Next step: run the intraday observer to resolve PENDING entries:")
-        print("  ./target/debug/intraday001_observe")
     print("=" * 60)
 
 
