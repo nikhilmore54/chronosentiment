@@ -1,10 +1,46 @@
 import json
 import glob
 import os
+import sys
+import argparse
 from datetime import datetime, timezone
 
 def main():
-    ledger_files = glob.glob("live_capture/ledger/entries/LIVE-005-20260917-0345-*.json")
+    parser = argparse.ArgumentParser(description="Bridge LIVE-005 artifacts into today_live_dataset.json")
+    parser.add_argument("--as-of-date", required=True, help="Session date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    
+    session_date = args.as_of_date
+    session_date_stripped = session_date.replace("-", "")
+    
+    # Select only LIVE-005 ledger artifacts belonging to that exact session date
+    all_ledger_files = glob.glob(f"live_capture/ledger/entries/LIVE-005-{session_date_stripped}-*.json")
+    
+    if not all_ledger_files:
+        print(f"ERROR: No LIVE-005 artifacts found for session date {session_date}")
+        sys.exit(1)
+        
+    # Group files by their Run ID timestamp (HHMM) to extract only the latest generation
+    # Format is: LIVE-005-YYYYMMDD-HHMM-TICKER.json
+    run_groups = {}
+    for f in all_ledger_files:
+        basename = os.path.basename(f)
+        parts = basename.split('-')
+        if len(parts) >= 4:
+            hhmm = parts[3]
+            run_groups.setdefault(hhmm, []).append(f)
+            
+    if not run_groups:
+        print(f"ERROR: Could not parse Run IDs from artifacts for {session_date}")
+        sys.exit(1)
+        
+    # The canonical generation is the latest chronological run for the session date
+    latest_hhmm = sorted(run_groups.keys())[-1]
+    ledger_files = run_groups[latest_hhmm]
+    
+    print(f"Detected {len(run_groups)} distinct generations for {session_date}.")
+    print(f"Selecting canonical run {latest_hhmm} with {len(ledger_files)} decisions.")
+        
     records = []
     
     for f in ledger_files:
@@ -12,7 +48,8 @@ def main():
             entry = json.load(file)
             
         # Parse snap_unix from source_snapshot_timestamp
-        dt = datetime.strptime(entry["source_snapshot_timestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        dt_str = entry["source_snapshot_timestamp"].replace("Z", "+00:00")
+        dt = datetime.fromisoformat(dt_str)
         snap_unix = int(dt.timestamp())
         
         raw_action = entry.get("action", "Watch")
@@ -26,7 +63,8 @@ def main():
         # We synthesize a RawOpportunityRecord
         rec = {
             "decision_id": entry["decision_id"],
-            "cohort_date": "2026-09-17",
+            "date": session_date,
+            "cohort_date": session_date,
             "ticker": entry["ticker"],
             "direction": entry["direction"].upper(),
             "action": raw_action,
@@ -45,11 +83,11 @@ def main():
         }
         records.append(rec)
         
-    out_path = "datasets/today_live_dataset.json"
+    out_path = f"datasets/live005_{session_date.replace("-", "")}.json"
     with open(out_path, 'w') as out:
         json.dump(records, out, indent=2)
         
-    print(f"Bridged {len(records)} LIVE-005 entries into {out_path}")
+    print(f"Bridged {len(records)} LIVE-005 entries for {session_date} into {out_path}")
 
 if __name__ == '__main__':
     main()

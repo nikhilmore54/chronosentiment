@@ -1,0 +1,1088 @@
+Position Management Replay Sidecar
+POSITION: ADANIENT_NS
+BASELINE Return: -0.1310%
+MANAGED Return: 0.0000%
+DELTA: 0.1310%
+-------------------
+POSITION: ADANIGREEN_NS
+BASELINE Return: 0.5610%
+MANAGED Return: 0.0000%
+DELTA: -0.5610%
+-------------------
+POSITION: AXISBANK_NS
+BASELINE Return: 0.3867%
+MANAGED Return: 0.0000%
+DELTA: -0.3867%
+-------------------
+POSITION: BAJAJFINSV_NS
+BASELINE Return: 0.7997%
+MANAGED Return: -0.0000%
+DELTA: -0.7997%
+-------------------
+POSITION: BAJFINANCE_NS
+BASELINE Return: -0.0953%
+MANAGED Return: 0.0000%
+DELTA: 0.0953%
+-------------------
+POSITION: BANDHANBNK_NS
+BASELINE Return: 1.4675%
+MANAGED Return: 0.0000%
+DELTA: -1.4675%
+-------------------
+POSITION: BANKBARODA_NS
+BASELINE Return: 0.8942%
+MANAGED Return: 0.0000%
+DELTA: -0.8942%
+-------------------
+POSITION: CIPLA_NS
+BASELINE Return: 0.9393%
+MANAGED Return: 0.0000%
+DELTA: -0.9393%
+-------------------
+POSITION: COALINDIA_NS
+BASELINE Return: 0.9523%
+MANAGED Return: 0.0000%
+DELTA: -0.9523%
+-------------------
+POSITION: HDFCLIFE_NS
+BASELINE Return: 0.9278%
+MANAGED Return: 0.0000%
+DELTA: -0.9278%
+-------------------
+POSITION: HINDUNILVR_NS
+BASELINE Return: 0.3517%
+MANAGED Return: 0.0000%
+DELTA: -0.3517%
+-------------------
+POSITION: INDUSTOWER_NS
+BASELINE Return: 1.5202%
+MANAGED Return: 0.0000%
+DELTA: -1.5202%
+-------------------
+POSITION: IRCTC_NS
+BASELINE Return: 0.3898%
+MANAGED Return: 0.0000%
+DELTA: -0.3898%
+-------------------
+POSITION: ITC_NS
+BASELINE Return: 0.9696%
+MANAGED Return: 0.0000%
+DELTA: -0.9696%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: 0.8584%
+MANAGED Return: 0.0000%
+DELTA: -0.8584%
+-------------------
+POSITION: ONGC_NS
+BASELINE Return: 0.2331%
+MANAGED Return: 0.0000%
+DELTA: -0.2331%
+-------------------
+POSITION: PETRONET_NS
+BASELINE Return: 0.3109%
+MANAGED Return: 0.0000%
+DELTA: -0.3109%
+-------------------
+POSITION: PIDILITIND_NS
+BASELINE Return: 0.7270%
+MANAGED Return: -0.0000%
+DELTA: -0.7270%
+-------------------
+POSITION: POLYCAB_NS
+BASELINE Return: 0.5109%
+MANAGED Return: 0.0000%
+DELTA: -0.5109%
+-------------------
+POSITION: POWERGRID_NS
+BASELINE Return: 1.2048%
+MANAGED Return: 0.0000%
+DELTA: -1.2048%
+-------------------
+POSITION: RECLTD_NS
+BASELINE Return: 1.4031%
+MANAGED Return: 0.0000%
+DELTA: -1.4031%
+-------------------
+POSITION: SBILIFE_NS
+BASELINE Return: 1.0904%
+MANAGED Return: 0.0000%
+DELTA: -1.0904%
+-------------------
+POSITION: TATASTEEL_NS
+BASELINE Return: 0.0543%
+MANAGED Return: 0.0000%
+DELTA: -0.0543%
+-------------------
+POSITION: TRENT_NS
+BASELINE Return: 2.0884%
+MANAGED Return: 0.0000%
+DELTA: -2.0884%
+-------------------
+POSITION: VBL_NS
+BASELINE Return: 1.4859%
+MANAGED Return: 0.0000%
+DELTA: -1.4859%
+-------------------
+POSITION: APOLLOHOSP_NS
+BASELINE Return: 0.6474%
+MANAGED Return: 0.0000%
+DELTA: -0.6474%
+-------------------
+POSITION: ASIANPAINT_NS
+BASELINE Return: 0.7360%
+MANAGED Return: 0.0000%
+DELTA: -0.7360%
+-------------------
+POSITION: BANDHANBNK_NS
+BASELINE Return: 0.5092%
+MANAGED Return: 0.0000%
+DELTA: -0.5092%
+-------------------
+POSITION: BANKBARODA_NS
+BASELINE Return: 0.5732%
+MANAGED Return: 0.0000%
+DELTA: -0.5732%
+-------------------
+POSITION: BERGEPAINT_NS
+BASELINE Return: -0.1648%
+MANAGED Return: 0.0000%
+DELTA: 0.1648%
+-------------------
+POSITION: BHARTIARTL_NS
+BASELINE Return: 1.1576%
+MANAGED Return: 0.0000%
+DELTA: -1.1576%
+-------------------
+POSITION: BPCL_NS
+BASELINE Return: 1.3937%
+MANAGED Return: 0.0000%
+DELTA: -1.3937%
+-------------------
+POSITION: BRITANNIA_NS
+BASELINE Return: 0.7939%
+MANAGED Return: 0.0000%
+DELTA: -0.7939%
+-------------------
+POSITION: CHOLAFIN_NS
+BASELINE Return: 0.7178%
+MANAGED Return: 0.0000%
+DELTA: -0.7178%
+-------------------
+POSITION: CIPLA_NS
+BASELINE Return: -0.2996%
+MANAGED Return: 0.0000%
+DELTA: 0.2996%
+-------------------
+POSITION: COLPAL_NS
+BASELINE Return: 0.2460%
+MANAGED Return: 0.0000%
+DELTA: -0.2460%
+-------------------
+POSITION: DRREDDY_NS
+BASELINE Return: 0.9991%
+MANAGED Return: 0.0000%
+DELTA: -0.9991%
+-------------------
+POSITION: GAIL_NS
+BASELINE Return: 0.1442%
+MANAGED Return: 0.0000%
+DELTA: -0.1442%
+-------------------
+POSITION: GODREJPROP_NS
+BASELINE Return: 1.7407%
+MANAGED Return: 0.0000%
+DELTA: -1.7407%
+-------------------
+POSITION: HAVELLS_NS
+BASELINE Return: 1.0312%
+MANAGED Return: 0.0000%
+DELTA: -1.0312%
+-------------------
+POSITION: HEROMOTOCO_NS
+BASELINE Return: 0.6794%
+MANAGED Return: -0.0000%
+DELTA: -0.6794%
+-------------------
+POSITION: INDHOTEL_NS
+BASELINE Return: 0.8611%
+MANAGED Return: 0.0000%
+DELTA: -0.8611%
+-------------------
+POSITION: LICI_NS
+BASELINE Return: 0.3973%
+MANAGED Return: 0.0000%
+DELTA: -0.3973%
+-------------------
+POSITION: LT_NS
+BASELINE Return: 0.3961%
+MANAGED Return: 0.0000%
+DELTA: -0.3961%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: 0.8152%
+MANAGED Return: 0.0000%
+DELTA: -0.8152%
+-------------------
+POSITION: MARICO_NS
+BASELINE Return: 0.6256%
+MANAGED Return: 0.0000%
+DELTA: -0.6256%
+-------------------
+POSITION: MARUTI_NS
+BASELINE Return: 0.5121%
+MANAGED Return: 0.0000%
+DELTA: -0.5121%
+-------------------
+POSITION: MPHASIS_NS
+BASELINE Return: 1.5731%
+MANAGED Return: 0.0000%
+DELTA: -1.5731%
+-------------------
+POSITION: PETRONET_NS
+BASELINE Return: 1.2149%
+MANAGED Return: 0.0000%
+DELTA: -1.2149%
+-------------------
+POSITION: PNB_NS
+BASELINE Return: 0.8547%
+MANAGED Return: -0.0000%
+DELTA: -0.8547%
+-------------------
+POSITION: POLYCAB_NS
+BASELINE Return: 0.9880%
+MANAGED Return: 0.0000%
+DELTA: -0.9880%
+-------------------
+POSITION: SUNPHARMA_NS
+BASELINE Return: 0.4160%
+MANAGED Return: 0.0000%
+DELTA: -0.4160%
+-------------------
+POSITION: TATACONSUM_NS
+BASELINE Return: 0.6337%
+MANAGED Return: 0.0000%
+DELTA: -0.6337%
+-------------------
+POSITION: TECHM_NS
+BASELINE Return: 0.2630%
+MANAGED Return: 0.0000%
+DELTA: -0.2630%
+-------------------
+POSITION: TORNTPHARM_NS
+BASELINE Return: 1.1118%
+MANAGED Return: 0.0000%
+DELTA: -1.1118%
+-------------------
+POSITION: UNITDSPR_NS
+BASELINE Return: 0.7271%
+MANAGED Return: 0.0000%
+DELTA: -0.7271%
+-------------------
+POSITION: VBL_NS
+BASELINE Return: 0.2453%
+MANAGED Return: 0.0000%
+DELTA: -0.2453%
+-------------------
+POSITION: ADANIGREEN_NS
+BASELINE Return: 1.3121%
+MANAGED Return: 0.0000%
+DELTA: -1.3121%
+-------------------
+POSITION: AMBUJACEM_NS
+BASELINE Return: 1.0913%
+MANAGED Return: 0.0000%
+DELTA: -1.0913%
+-------------------
+POSITION: ASIANPAINT_NS
+BASELINE Return: 0.4918%
+MANAGED Return: 0.0000%
+DELTA: -0.4918%
+-------------------
+POSITION: BAJAJ-AUTO_NS
+BASELINE Return: 0.5956%
+MANAGED Return: -0.0000%
+DELTA: -0.5956%
+-------------------
+POSITION: BAJFINANCE_NS
+BASELINE Return: 0.0000%
+MANAGED Return: 0.0000%
+DELTA: 0.0000%
+-------------------
+POSITION: BANKBARODA_NS
+BASELINE Return: 0.2869%
+MANAGED Return: 0.0000%
+DELTA: -0.2869%
+-------------------
+POSITION: BPCL_NS
+BASELINE Return: 0.1918%
+MANAGED Return: 0.0000%
+DELTA: -0.1918%
+-------------------
+POSITION: BRITANNIA_NS
+BASELINE Return: -0.2082%
+MANAGED Return: 0.0000%
+DELTA: 0.2082%
+-------------------
+POSITION: COLPAL_NS
+BASELINE Return: 0.3639%
+MANAGED Return: 0.0000%
+DELTA: -0.3639%
+-------------------
+POSITION: DABUR_NS
+BASELINE Return: 0.8522%
+MANAGED Return: 0.0000%
+DELTA: -0.8522%
+-------------------
+POSITION: DRREDDY_NS
+BASELINE Return: 0.8478%
+MANAGED Return: 0.0000%
+DELTA: -0.8478%
+-------------------
+POSITION: GODREJCP_NS
+BASELINE Return: 0.7193%
+MANAGED Return: 0.0000%
+DELTA: -0.7193%
+-------------------
+POSITION: GODREJPROP_NS
+BASELINE Return: 1.2382%
+MANAGED Return: 0.0000%
+DELTA: -1.2382%
+-------------------
+POSITION: HDFCBANK_NS
+BASELINE Return: -0.2266%
+MANAGED Return: 0.0000%
+DELTA: 0.2266%
+-------------------
+POSITION: HDFCLIFE_NS
+BASELINE Return: 1.1440%
+MANAGED Return: 0.0000%
+DELTA: -1.1440%
+-------------------
+POSITION: INDUSINDBK_NS
+BASELINE Return: 1.4930%
+MANAGED Return: 0.0000%
+DELTA: -1.4930%
+-------------------
+POSITION: INDUSTOWER_NS
+BASELINE Return: 0.6641%
+MANAGED Return: 0.0000%
+DELTA: -0.6641%
+-------------------
+POSITION: IOC_NS
+BASELINE Return: 0.7547%
+MANAGED Return: 0.0000%
+DELTA: -0.7547%
+-------------------
+POSITION: LICI_NS
+BASELINE Return: 0.7412%
+MANAGED Return: 0.0000%
+DELTA: -0.7412%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: 0.5178%
+MANAGED Return: 0.0000%
+DELTA: -0.5178%
+-------------------
+POSITION: M&M_NS
+BASELINE Return: 0.9532%
+MANAGED Return: -0.0000%
+DELTA: -0.9532%
+-------------------
+POSITION: MRF_NS
+BASELINE Return: -0.0698%
+MANAGED Return: 0.0000%
+DELTA: 0.0698%
+-------------------
+POSITION: NESTLEIND_NS
+BASELINE Return: -0.2790%
+MANAGED Return: 0.0000%
+DELTA: 0.2790%
+-------------------
+POSITION: ONGC_NS
+BASELINE Return: -0.0342%
+MANAGED Return: 0.0000%
+DELTA: 0.0342%
+-------------------
+POSITION: PAGEIND_NS
+BASELINE Return: 0.4885%
+MANAGED Return: 0.0000%
+DELTA: -0.4885%
+-------------------
+POSITION: RECLTD_NS
+BASELINE Return: 0.7269%
+MANAGED Return: 0.0000%
+DELTA: -0.7269%
+-------------------
+POSITION: SBILIFE_NS
+BASELINE Return: 1.2818%
+MANAGED Return: 0.0000%
+DELTA: -1.2818%
+-------------------
+POSITION: SBIN_NS
+BASELINE Return: 0.1094%
+MANAGED Return: 0.0000%
+DELTA: -0.1094%
+-------------------
+POSITION: SHREECEM_NS
+BASELINE Return: 1.0486%
+MANAGED Return: 0.0000%
+DELTA: -1.0486%
+-------------------
+POSITION: SUNPHARMA_NS
+BASELINE Return: 0.0950%
+MANAGED Return: 0.0000%
+DELTA: -0.0950%
+-------------------
+POSITION: TATASTEEL_NS
+BASELINE Return: -0.0054%
+MANAGED Return: 0.0000%
+DELTA: 0.0054%
+-------------------
+POSITION: TECHM_NS
+BASELINE Return: -0.1918%
+MANAGED Return: 0.0000%
+DELTA: 0.1918%
+-------------------
+POSITION: TRENT_NS
+BASELINE Return: 0.3269%
+MANAGED Return: 0.0000%
+DELTA: -0.3269%
+-------------------
+POSITION: ULTRACEMCO_NS
+BASELINE Return: 0.6443%
+MANAGED Return: 0.0000%
+DELTA: -0.6443%
+-------------------
+POSITION: UNITDSPR_NS
+BASELINE Return: 1.4653%
+MANAGED Return: 0.0000%
+DELTA: -1.4653%
+-------------------
+POSITION: UPL_NS
+BASELINE Return: 1.4223%
+MANAGED Return: 0.0000%
+DELTA: -1.4223%
+-------------------
+POSITION: WIPRO_NS
+BASELINE Return: 0.6655%
+MANAGED Return: 0.0000%
+DELTA: -0.6655%
+-------------------
+POSITION: ADANIGREEN_NS
+BASELINE Return: 0.3438%
+MANAGED Return: 0.0000%
+DELTA: -0.3438%
+-------------------
+POSITION: AMBUJACEM_NS
+BASELINE Return: -0.3149%
+MANAGED Return: 0.0000%
+DELTA: 0.3149%
+-------------------
+POSITION: ASIANPAINT_NS
+BASELINE Return: -0.0505%
+MANAGED Return: 0.0000%
+DELTA: 0.0505%
+-------------------
+POSITION: BHARTIARTL_NS
+BASELINE Return: -0.0546%
+MANAGED Return: 0.0000%
+DELTA: 0.0546%
+-------------------
+POSITION: BOSCHLTD_NS
+BASELINE Return: 0.1135%
+MANAGED Return: -0.0000%
+DELTA: -0.1135%
+-------------------
+POSITION: CANBK_NS
+BASELINE Return: 1.4129%
+MANAGED Return: -0.0000%
+DELTA: -1.4129%
+-------------------
+POSITION: DRREDDY_NS
+BASELINE Return: 0.1222%
+MANAGED Return: 0.0000%
+DELTA: -0.1222%
+-------------------
+POSITION: GODREJPROP_NS
+BASELINE Return: 0.2374%
+MANAGED Return: 0.0000%
+DELTA: -0.2374%
+-------------------
+POSITION: HDFCBANK_NS
+BASELINE Return: -0.1133%
+MANAGED Return: 0.0000%
+DELTA: 0.1133%
+-------------------
+POSITION: HDFCLIFE_NS
+BASELINE Return: 0.3150%
+MANAGED Return: 0.0000%
+DELTA: -0.3150%
+-------------------
+POSITION: INDUSTOWER_NS
+BASELINE Return: 0.0535%
+MANAGED Return: 0.0000%
+DELTA: -0.0535%
+-------------------
+POSITION: IOC_NS
+BASELINE Return: 0.1187%
+MANAGED Return: 0.0000%
+DELTA: -0.1187%
+-------------------
+POSITION: ITC_NS
+BASELINE Return: 0.3036%
+MANAGED Return: 0.0000%
+DELTA: -0.3036%
+-------------------
+POSITION: JSWSTEEL_NS
+BASELINE Return: 4.4685%
+MANAGED Return: -0.0000%
+DELTA: -4.4685%
+-------------------
+POSITION: JUBLFOOD_NS
+BASELINE Return: 0.5838%
+MANAGED Return: -0.0000%
+DELTA: -0.5838%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: 0.2338%
+MANAGED Return: 0.0000%
+DELTA: -0.2338%
+-------------------
+POSITION: MARUTI_NS
+BASELINE Return: -0.1308%
+MANAGED Return: 0.0000%
+DELTA: 0.1308%
+-------------------
+POSITION: ONGC_NS
+BASELINE Return: 0.0129%
+MANAGED Return: 0.0000%
+DELTA: -0.0129%
+-------------------
+POSITION: PNB_NS
+BASELINE Return: 0.8598%
+MANAGED Return: -0.0000%
+DELTA: -0.8598%
+-------------------
+POSITION: RECLTD_NS
+BASELINE Return: 0.0634%
+MANAGED Return: 0.0000%
+DELTA: -0.0634%
+-------------------
+POSITION: SBILIFE_NS
+BASELINE Return: 0.0464%
+MANAGED Return: 0.0000%
+DELTA: -0.0464%
+-------------------
+POSITION: SBIN_NS
+BASELINE Return: 0.9741%
+MANAGED Return: -0.0000%
+DELTA: -0.9741%
+-------------------
+POSITION: TATACONSUM_NS
+BASELINE Return: -0.0792%
+MANAGED Return: 0.0000%
+DELTA: 0.0792%
+-------------------
+POSITION: TITAN_NS
+BASELINE Return: 0.0751%
+MANAGED Return: -0.0000%
+DELTA: -0.0751%
+-------------------
+POSITION: TRENT_NS
+BASELINE Return: 0.2047%
+MANAGED Return: 0.0000%
+DELTA: -0.2047%
+-------------------
+POSITION: ULTRACEMCO_NS
+BASELINE Return: -0.2610%
+MANAGED Return: 0.0000%
+DELTA: 0.2610%
+-------------------
+POSITION: UNITDSPR_NS
+BASELINE Return: 0.0906%
+MANAGED Return: -0.0000%
+DELTA: -0.0906%
+-------------------
+POSITION: UPL_NS
+BASELINE Return: -0.2074%
+MANAGED Return: 0.0000%
+DELTA: 0.2074%
+-------------------
+POSITION: VBL_NS
+BASELINE Return: 0.3709%
+MANAGED Return: 0.0000%
+DELTA: -0.3709%
+-------------------
+POSITION: VEDL_NS
+BASELINE Return: 0.2020%
+MANAGED Return: -0.0000%
+DELTA: -0.2020%
+-------------------
+POSITION: WIPRO_NS
+BASELINE Return: 1.1614%
+MANAGED Return: -0.0000%
+DELTA: -1.1614%
+-------------------
+POSITION: BAJAJ-AUTO_NS
+BASELINE Return: 0.4580%
+MANAGED Return: 0.0000%
+DELTA: -0.4580%
+-------------------
+POSITION: BAJAJFINSV_NS
+BASELINE Return: 0.2335%
+MANAGED Return: 0.0000%
+DELTA: -0.2335%
+-------------------
+POSITION: BAJFINANCE_NS
+BASELINE Return: 0.3464%
+MANAGED Return: -0.0000%
+DELTA: -0.3464%
+-------------------
+POSITION: BANKBARODA_NS
+BASELINE Return: 0.7518%
+MANAGED Return: 0.0000%
+DELTA: -0.7518%
+-------------------
+POSITION: BHARTIARTL_NS
+BASELINE Return: 0.4739%
+MANAGED Return: 0.0000%
+DELTA: -0.4739%
+-------------------
+POSITION: CANBK_NS
+BASELINE Return: 0.6609%
+MANAGED Return: -0.0000%
+DELTA: -0.6609%
+-------------------
+POSITION: COALINDIA_NS
+BASELINE Return: 0.7193%
+MANAGED Return: -0.0000%
+DELTA: -0.7193%
+-------------------
+POSITION: COLPAL_NS
+BASELINE Return: -0.1083%
+MANAGED Return: 0.0000%
+DELTA: 0.1083%
+-------------------
+POSITION: DABUR_NS
+BASELINE Return: -0.2934%
+MANAGED Return: -0.0000%
+DELTA: 0.2934%
+-------------------
+POSITION: GODREJPROP_NS
+BASELINE Return: 1.4862%
+MANAGED Return: -0.0000%
+DELTA: -1.4862%
+-------------------
+POSITION: HCLTECH_NS
+BASELINE Return: 1.2604%
+MANAGED Return: -0.0000%
+DELTA: -1.2604%
+-------------------
+POSITION: HDFCBANK_NS
+BASELINE Return: 0.8441%
+MANAGED Return: -0.0000%
+DELTA: -0.8441%
+-------------------
+POSITION: HDFCLIFE_NS
+BASELINE Return: 0.4572%
+MANAGED Return: 3.0192%
+DELTA: 2.5620%
+-------------------
+POSITION: HEROMOTOCO_NS
+BASELINE Return: -0.2300%
+MANAGED Return: 0.0000%
+DELTA: 0.2300%
+-------------------
+POSITION: INFY_NS
+BASELINE Return: 0.8696%
+MANAGED Return: 0.0000%
+DELTA: -0.8696%
+-------------------
+POSITION: ITC_NS
+BASELINE Return: 0.4026%
+MANAGED Return: -0.0000%
+DELTA: -0.4026%
+-------------------
+POSITION: LICI_NS
+BASELINE Return: -0.2209%
+MANAGED Return: 0.0000%
+DELTA: 0.2209%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: -0.1190%
+MANAGED Return: 0.0000%
+DELTA: 0.1190%
+-------------------
+POSITION: MUTHOOTFIN_NS
+BASELINE Return: -0.2099%
+MANAGED Return: 0.0000%
+DELTA: 0.2099%
+-------------------
+POSITION: NAUKRI_NS
+BASELINE Return: 1.1184%
+MANAGED Return: -0.0000%
+DELTA: -1.1184%
+-------------------
+POSITION: NESTLEIND_NS
+BASELINE Return: -0.1149%
+MANAGED Return: 0.0000%
+DELTA: 0.1149%
+-------------------
+POSITION: ONGC_NS
+BASELINE Return: 1.1837%
+MANAGED Return: 0.0000%
+DELTA: -1.1837%
+-------------------
+POSITION: PAGEIND_NS
+BASELINE Return: 1.1442%
+MANAGED Return: 0.0000%
+DELTA: -1.1442%
+-------------------
+POSITION: PIDILITIND_NS
+BASELINE Return: -0.0573%
+MANAGED Return: 0.0000%
+DELTA: 0.0573%
+-------------------
+POSITION: RECLTD_NS
+BASELINE Return: 0.2862%
+MANAGED Return: 0.0000%
+DELTA: -0.2862%
+-------------------
+POSITION: RELIANCE_NS
+BASELINE Return: 0.4691%
+MANAGED Return: 0.0000%
+DELTA: -0.4691%
+-------------------
+POSITION: SBILIFE_NS
+BASELINE Return: -0.0772%
+MANAGED Return: 0.0000%
+DELTA: 0.0772%
+-------------------
+POSITION: SHREECEM_NS
+BASELINE Return: 0.8932%
+MANAGED Return: 0.0000%
+DELTA: -0.8932%
+-------------------
+POSITION: TATACONSUM_NS
+BASELINE Return: 0.3696%
+MANAGED Return: 0.0000%
+DELTA: -0.3696%
+-------------------
+POSITION: ULTRACEMCO_NS
+BASELINE Return: 0.4495%
+MANAGED Return: 0.0000%
+DELTA: -0.4495%
+-------------------
+POSITION: UNITDSPR_NS
+BASELINE Return: 0.7757%
+MANAGED Return: 0.0000%
+DELTA: -0.7757%
+-------------------
+POSITION: VEDL_NS
+BASELINE Return: 0.2018%
+MANAGED Return: -0.0000%
+DELTA: -0.2018%
+-------------------
+POSITION: WIPRO_NS
+BASELINE Return: 0.6886%
+MANAGED Return: 0.0000%
+DELTA: -0.6886%
+-------------------
+POSITION: ADANIENT_NS
+BASELINE Return: -0.1393%
+MANAGED Return: -2.8657%
+DELTA: -2.7264%
+-------------------
+POSITION: ADANIGREEN_NS
+BASELINE Return: 0.0469%
+MANAGED Return: -1.8611%
+DELTA: -1.9080%
+-------------------
+POSITION: AMBUJACEM_NS
+BASELINE Return: 0.1793%
+MANAGED Return: -2.2407%
+DELTA: -2.4200%
+-------------------
+POSITION: APOLLOHOSP_NS
+BASELINE Return: 0.1416%
+MANAGED Return: -1.2690%
+DELTA: -1.4106%
+-------------------
+POSITION: ASIANPAINT_NS
+BASELINE Return: -0.0503%
+MANAGED Return: -1.6817%
+DELTA: -1.6314%
+-------------------
+POSITION: BAJAJFINSV_NS
+BASELINE Return: -0.0212%
+MANAGED Return: -1.5702%
+DELTA: -1.5490%
+-------------------
+POSITION: BAJFINANCE_NS
+BASELINE Return: 0.1572%
+MANAGED Return: -0.8547%
+DELTA: -1.0119%
+-------------------
+POSITION: BANDHANBNK_NS
+BASELINE Return: -0.8507%
+MANAGED Return: -2.1949%
+DELTA: -1.3442%
+-------------------
+POSITION: BANKBARODA_NS
+BASELINE Return: 0.0892%
+MANAGED Return: -1.1680%
+DELTA: -1.2572%
+-------------------
+POSITION: BHARTIARTL_NS
+BASELINE Return: 0.0274%
+MANAGED Return: 0.2465%
+DELTA: 0.2191%
+-------------------
+POSITION: CANBK_NS
+BASELINE Return: 0.0081%
+MANAGED Return: -0.7543%
+DELTA: -0.7624%
+-------------------
+POSITION: EICHERMOT_NS
+BASELINE Return: -0.0534%
+MANAGED Return: -0.4542%
+DELTA: -0.4008%
+-------------------
+POSITION: GODREJCP_NS
+BASELINE Return: -0.1682%
+MANAGED Return: -1.2730%
+DELTA: -1.1048%
+-------------------
+POSITION: GODREJPROP_NS
+BASELINE Return: 0.0059%
+MANAGED Return: -1.9036%
+DELTA: -1.9095%
+-------------------
+POSITION: HAVELLS_NS
+BASELINE Return: 0.0452%
+MANAGED Return: -1.6735%
+DELTA: -1.7187%
+-------------------
+POSITION: HDFCLIFE_NS
+BASELINE Return: -0.1233%
+MANAGED Return: -2.0962%
+DELTA: -1.9729%
+-------------------
+POSITION: HEROMOTOCO_NS
+BASELINE Return: 0.2094%
+MANAGED Return: -1.6656%
+DELTA: -1.8750%
+-------------------
+POSITION: HINDUNILVR_NS
+BASELINE Return: -0.0820%
+MANAGED Return: -0.6612%
+DELTA: -0.5792%
+-------------------
+POSITION: ICICIBANK_NS
+BASELINE Return: -0.0148%
+MANAGED Return: -0.4350%
+DELTA: -0.4202%
+-------------------
+POSITION: INDHOTEL_NS
+BASELINE Return: 0.0207%
+MANAGED Return: -1.5084%
+DELTA: -1.5291%
+-------------------
+POSITION: INDUSINDBK_NS
+BASELINE Return: 0.0103%
+MANAGED Return: -1.1676%
+DELTA: -1.1779%
+-------------------
+POSITION: INDUSTOWER_NS
+BASELINE Return: -0.0130%
+MANAGED Return: -1.4176%
+DELTA: -1.4046%
+-------------------
+POSITION: INFY_NS
+BASELINE Return: 0.0647%
+MANAGED Return: -0.5265%
+DELTA: -0.5912%
+-------------------
+POSITION: JUBLFOOD_NS
+BASELINE Return: 0.1922%
+MANAGED Return: -0.4699%
+DELTA: -0.6621%
+-------------------
+POSITION: KOTAKBANK_NS
+BASELINE Return: 0.3922%
+MANAGED Return: 0.7988%
+DELTA: 0.4066%
+-------------------
+POSITION: LICI_NS
+BASELINE Return: -0.0126%
+MANAGED Return: -1.6579%
+DELTA: -1.6453%
+-------------------
+POSITION: LT_NS
+BASELINE Return: 0.0518%
+MANAGED Return: -0.1892%
+DELTA: -0.2410%
+-------------------
+POSITION: LUPIN_NS
+BASELINE Return: 0.0675%
+MANAGED Return: -0.5495%
+DELTA: -0.6170%
+-------------------
+POSITION: M&M_NS
+BASELINE Return: 0.0453%
+MANAGED Return: -2.0910%
+DELTA: -2.1363%
+-------------------
+POSITION: MARICO_NS
+BASELINE Return: -0.0688%
+MANAGED Return: -1.0195%
+DELTA: -0.9507%
+-------------------
+POSITION: MARUTI_NS
+BASELINE Return: 0.0162%
+MANAGED Return: -1.1796%
+DELTA: -1.1958%
+-------------------
+POSITION: MPHASIS_NS
+BASELINE Return: 0.6523%
+MANAGED Return: 0.0715%
+DELTA: -0.5808%
+-------------------
+POSITION: MUTHOOTFIN_NS
+BASELINE Return: 0.0613%
+MANAGED Return: -1.7858%
+DELTA: -1.8471%
+-------------------
+POSITION: NAUKRI_NS
+BASELINE Return: -0.1559%
+MANAGED Return: -1.6451%
+DELTA: -1.4892%
+-------------------
+POSITION: NESTLEIND_NS
+BASELINE Return: 0.1450%
+MANAGED Return: -1.2757%
+DELTA: -1.4207%
+-------------------
+POSITION: NMDC_NS
+BASELINE Return: -0.0367%
+MANAGED Return: -1.6373%
+DELTA: -1.6006%
+-------------------
+POSITION: NTPC_NS
+BASELINE Return: 0.0153%
+MANAGED Return: 0.5493%
+DELTA: 0.5340%
+-------------------
+POSITION: PAGEIND_NS
+BASELINE Return: -0.0568%
+MANAGED Return: -1.7614%
+DELTA: -1.7046%
+-------------------
+POSITION: PIDILITIND_NS
+BASELINE Return: -0.0572%
+MANAGED Return: -2.2869%
+DELTA: -2.2297%
+-------------------
+POSITION: POLYCAB_NS
+BASELINE Return: 0.0122%
+MANAGED Return: -0.3609%
+DELTA: -0.3731%
+-------------------
+POSITION: POWERGRID_NS
+BASELINE Return: -0.0377%
+MANAGED Return: -0.7928%
+DELTA: -0.7551%
+-------------------
+POSITION: SBILIFE_NS
+BASELINE Return: -0.2567%
+MANAGED Return: -1.2595%
+DELTA: -1.0028%
+-------------------
+POSITION: SBIN_NS
+BASELINE Return: 0.0713%
+MANAGED Return: -1.4156%
+DELTA: -1.4869%
+-------------------
+POSITION: SUNPHARMA_NS
+BASELINE Return: -0.0792%
+MANAGED Return: 0.2513%
+DELTA: 0.3305%
+-------------------
+POSITION: TATASTEEL_NS
+BASELINE Return: 0.0656%
+MANAGED Return: 0.3662%
+DELTA: 0.3006%
+-------------------
+POSITION: TCS_NS
+BASELINE Return: -0.3758%
+MANAGED Return: -1.8573%
+DELTA: -1.4815%
+-------------------
+POSITION: TECHM_NS
+BASELINE Return: -0.1919%
+MANAGED Return: -2.4513%
+DELTA: -2.2594%
+-------------------
+POSITION: TITAN_NS
+BASELINE Return: -0.0305%
+MANAGED Return: -1.3309%
+DELTA: -1.3004%
+-------------------
+POSITION: TMCV_NS
+BASELINE Return: 0.1160%
+MANAGED Return: -1.0902%
+DELTA: -1.2062%
+-------------------
+POSITION: TORNTPHARM_NS
+BASELINE Return: 0.0815%
+MANAGED Return: -1.2321%
+DELTA: -1.3136%
+-------------------
+POSITION: TRENT_NS
+BASELINE Return: 0.0752%
+MANAGED Return: -2.2521%
+DELTA: -2.3273%
+-------------------
+POSITION: TVSMOTOR_NS
+BASELINE Return: 0.1223%
+MANAGED Return: -0.9295%
+DELTA: -1.0518%
+-------------------
+POSITION: ULTRACEMCO_NS
+BASELINE Return: -0.0370%
+MANAGED Return: -1.1733%
+DELTA: -1.1363%
+-------------------
+POSITION: UNITDSPR_NS
+BASELINE Return: 0.0215%
+MANAGED Return: -1.9459%
+DELTA: -1.9674%
+-------------------
+POSITION: UPL_NS
+BASELINE Return: -0.0088%
+MANAGED Return: -1.3718%
+DELTA: -1.3630%
+-------------------
+POSITION: VBL_NS
+BASELINE Return: -0.2078%
+MANAGED Return: -1.0509%
+DELTA: -0.8431%
+-------------------
+POSITION: VEDL_NS
+BASELINE Return: -0.0577%
+MANAGED Return: -1.1919%
+DELTA: -1.1342%
+-------------------
+POSITION: WIPRO_NS
+BASELINE Return: -0.1284%
+MANAGED Return: -0.8110%
+DELTA: -0.6826%
+-------------------
+=== AGGREGATE SUMMARY ===
+Total Baseline Return sum: 90.1233%
+Total Managed Return sum: -66.0056%
+Event Counts: {
+    "PaperExit": 1,
+    "PaperEnter": 216,
+}
