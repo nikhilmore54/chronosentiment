@@ -1,40 +1,28 @@
 services:
   - type: web
-    name: ultracrew-api
+    name: coralys-decision-server
     plan: free
     runtime: rust
-    buildCommand: cargo build --release --bin ultracrew_server
-    startCommand: ./target/release/ultracrew_server
+    buildCommand: cargo build --release --bin coralys_decision_server
+    startCommand: ./target/release/coralys_decision_server
     envVars:
       - key: PORT
-        value: 10000
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
+        value: 3001
+      - key: RUST_LOG
+        value: info
 
   - type: web
-    name: ultracrew
+    name: chronosentiment-ui
     env: static
-    buildCommand: cd apps/ultracrew-pilot-portal && npm install && npm run build
-    staticPublishPath: apps/ultracrew-pilot-portal/build
+    buildCommand: cd services/ui && npm install && npm run build
+    staticPublishPath: services/ui/dist
     envVars:
-      - key: REACT_APP_API_URL
-        value: https://ultracrew-api.onrender.com
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-
-  - type: web
-    name: ultraroster
-    env: static
-    buildCommand: cd ui/ultracrew && npm install && npm run build
-    staticPublishPath: ui/ultracrew/dist
+      - key: VITE_API_URL
+        value: https://coralys-decision-server.onrender.com
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://ultracrew-api.onrender.com/api/*
+        destination: https://coralys-decision-server.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
