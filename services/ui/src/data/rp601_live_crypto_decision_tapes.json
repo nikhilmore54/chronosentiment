@@ -1,0 +1,259 @@
+{
+  "tape_id": "tape_crypto_live_20260925T161435Z",
+  "universe": "LIQUID_CRYPTO_8",
+  "information_cutoff_policy": "LIVE_CURRENT_SNAPSHOT_PROTOTYPE",
+  "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+  "engine_version": "v0.1.0 (FROZEN)",
+  "interpreter_config": "Config A (FROZEN)",
+  "total_cards": 8,
+  "cards": [
+    {
+      "card_id": "card_BTC-USD_1790352867",
+      "instrument": "BTC-USD",
+      "timestamp": 1790352867,
+      "datetime": "2026-09-25T16:14:27Z",
+      "current_price": 83944.97,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": 0.0054
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0474
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.3326
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d trajectory indicates REVERSAL",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_ETH-USD_1790352868",
+      "instrument": "ETH-USD",
+      "timestamp": 1790352868,
+      "datetime": "2026-09-25T16:14:28Z",
+      "current_price": 2691.22,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0114
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0276
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.2997
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d trajectory indicates REVERSAL",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_BNB-USD_1790352869",
+      "instrument": "BNB-USD",
+      "timestamp": 1790352869,
+      "datetime": "2026-09-25T16:14:29Z",
+      "current_price": 774.14,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0305
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0116
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.325
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d trajectory indicates REVERSAL",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_XRP-USD_1790352870",
+      "instrument": "XRP-USD",
+      "timestamp": 1790352870,
+      "datetime": "2026-09-25T16:14:30Z",
+      "current_price": 1.58,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0779
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0381
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.4367
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_SOL-USD_1790352871",
+      "instrument": "SOL-USD",
+      "timestamp": 1790352871,
+      "datetime": "2026-09-25T16:14:31Z",
+      "current_price": 120.68,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0142
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.1073
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.3194
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_ADA-USD_1790352872",
+      "instrument": "ADA-USD",
+      "timestamp": 1790352872,
+      "datetime": "2026-09-25T16:14:32Z",
+      "current_price": 0.26,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0165
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.1713
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.5832
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_LINK-USD_1790352873",
+      "instrument": "LINK-USD",
+      "timestamp": 1790352873,
+      "datetime": "2026-09-25T16:14:33Z",
+      "current_price": 13.84,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0951
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0566
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.7781
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    },
+    {
+      "card_id": "card_LTC-USD_1790352875",
+      "instrument": "LTC-USD",
+      "timestamp": 1790352875,
+      "datetime": "2026-09-25T16:14:35Z",
+      "current_price": 69.83,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0483
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0369
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 1.0
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "EVIDENCE CONFLICTED",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory is in a PULLBACK state",
+        "\u2022 30m trajectory is also in a PULLBACK state",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 Intraday and daily trajectories are not aligned"
+      ]
+    }
+  ]
+}
