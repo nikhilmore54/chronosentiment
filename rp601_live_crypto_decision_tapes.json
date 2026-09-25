@@ -1,0 +1,259 @@
+{
+  "tape_id": "tape_crypto_live_20260925T161051Z",
+  "universe": "LIQUID_CRYPTO_8",
+  "information_cutoff_policy": "LIVE_NOW_REALTIME",
+  "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+  "engine_version": "v0.1.0 (FROZEN)",
+  "interpreter_config": "Config A (FROZEN)",
+  "total_cards": 8,
+  "cards": [
+    {
+      "card_id": "card_BTC-USD_1790352644",
+      "instrument": "BTC-USD",
+      "timestamp": 1790352644,
+      "datetime": "2026-09-25T16:10:44Z",
+      "current_price": 84025.95,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": 0.0199
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0619
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.3199
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon indicates structural reversal risk",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_ETH-USD_1790352645",
+      "instrument": "ETH-USD",
+      "timestamp": 1790352645,
+      "datetime": "2026-09-25T16:10:45Z",
+      "current_price": 2694.21,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": 0.0052
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0443
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.2834
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon indicates structural reversal risk",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_BNB-USD_1790352646",
+      "instrument": "BNB-USD",
+      "timestamp": 1790352646,
+      "datetime": "2026-09-25T16:10:46Z",
+      "current_price": 776.01,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": 0.0057
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0478
+        },
+        "1d": {
+          "label": "REVERSAL",
+          "score": -0.2895
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon indicates structural reversal risk",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_XRP-USD_1790352647",
+      "instrument": "XRP-USD",
+      "timestamp": 1790352647,
+      "datetime": "2026-09-25T16:10:47Z",
+      "current_price": 1.58,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.059
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0572
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.4563
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_SOL-USD_1790352648",
+      "instrument": "SOL-USD",
+      "timestamp": 1790352648,
+      "datetime": "2026-09-25T16:10:48Z",
+      "current_price": 120.87,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": 0.0093
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.1311
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.3295
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_ADA-USD_1790352649",
+      "instrument": "ADA-USD",
+      "timestamp": 1790352649,
+      "datetime": "2026-09-25T16:10:49Z",
+      "current_price": 0.26,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0411
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.1463
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.5576
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_LINK-USD_1790352650",
+      "instrument": "LINK-USD",
+      "timestamp": 1790352650,
+      "datetime": "2026-09-25T16:10:50Z",
+      "current_price": 13.86,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0768
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0751
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 0.8009
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    },
+    {
+      "card_id": "card_LTC-USD_1790352651",
+      "instrument": "LTC-USD",
+      "timestamp": 1790352651,
+      "datetime": "2026-09-25T16:10:51Z",
+      "current_price": 69.81,
+      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "resolutions": {
+        "15m": {
+          "label": "PULLBACK",
+          "score": -0.0511
+        },
+        "30m": {
+          "label": "PULLBACK",
+          "score": 0.0341
+        },
+        "1d": {
+          "label": "CONTINUATION",
+          "score": 1.0
+        }
+      },
+      "cross_resolution_relationship": "PARTIAL AGREEMENT",
+      "risk_state": "MODERATE RISK",
+      "decision_state": "WATCH",
+      "evidence": [
+        "\u2022 15m trajectory in pullback window",
+        "\u2022 30m intermediate horizon observed PULLBACK",
+        "\u2022 1d macro horizon remains solidly in trend continuation",
+        "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+      ]
+    }
+  ]
+}
