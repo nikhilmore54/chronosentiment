@@ -29,7 +29,6 @@ use chronosentiment_adapter::product::{
     cached_session_tape, observation_producer_from_env, session_tape_tickers, AsOfSessionDriver,
     AsOfSessionEvent, DecisionSurface, DeferredLiveConfig, LivePaperLedger, MarketObservation,
     ObservationFeedSnapshot, ObservationProducer, SessionState, DeferredLivePerformance,
-    ReassessExperimentReport,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -128,12 +127,7 @@ impl DeferredLiveState {
                 (producer, None)
             }
         };
-        if env_truthy("DEFERRED_LIVE_REASSESS_EXPERIMENT") {
-            driver.enable_reassess_experiment();
-            eprintln!(
-                "[deferred-live] reassess experiment ON (path-shape + adverse-mark gate, INVERT=false). Frozen book and Stage C unchanged."
-            );
-        }
+
         if let Some(feed) = driver.session() {
             eprintln!("[deferred-live] {}", feed.note);
         } else {
@@ -205,7 +199,6 @@ pub struct DeferredLiveResponse {
     pub observation_feed: ObservationFeedSnapshot,
     pub session: Option<SessionState>,
     pub performance: DeferredLivePerformance,
-    pub reassess_experiment: ReassessExperimentReport,
     pub armed: Vec<ArmedDto>,
     pub ledger: LivePaperLedger,
     pub asof_events: Vec<AsOfSessionEvent>,
@@ -248,7 +241,6 @@ pub async fn get_deferred_live(State(state): State<DeferredLiveState>) -> Json<D
         observation_feed: driver.feed().clone(),
         session: driver.session().cloned(),
         performance: driver.performance(state.briefs.as_slice()),
-        reassess_experiment: driver.reassess_experiment_report(),
         armed: driver
             .armed()
             .into_iter()

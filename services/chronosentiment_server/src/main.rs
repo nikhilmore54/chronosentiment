@@ -39,7 +39,22 @@ async fn main() {
     // Path is configurable via INTRADAY_DATASET_PATH env var.
     let dataset_path = std::env::var("INTRADAY_DATASET_PATH")
         .unwrap_or_else(|_| "datasets/p4_opportunity_dataset.json".to_string());
+    
+    let expected_date = std::env::var("CHRONO_SESSION_DATE").ok();
+    
     let intraday_store = intraday_api::load_intraday_store(&dataset_path)
+        .map(|store| {
+            if let Some(expected) = &expected_date {
+                // Verify that the dataset corresponds to today's session
+                if let Some(first_decision) = store.first() {
+                    if first_decision.date != *expected {
+                        eprintln!("[intraday_api] ERROR: Dataset date ({}) does not match expected CHRONO_SESSION_DATE ({}). Entering SAFE / NO-DECISIONS mode.", first_decision.date, expected);
+                        return std::sync::Arc::new(vec![]);
+                    }
+                }
+            }
+            store
+        })
         .unwrap_or_else(|e| {
             eprintln!("[intraday_api] WARNING: {e}");
             std::sync::Arc::new(vec![])
