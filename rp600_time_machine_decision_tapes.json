@@ -1,9 +1,9 @@
 [
   {
-    "tape_id": "tape_RELIANCE.NS_20260925T155425Z",
+    "tape_id": "tape_RELIANCE.NS_20260925T160737Z",
     "symbol": "RELIANCE.NS",
-    "replay_start": "1782117900",
-    "replay_end": "1782188100",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
     "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
     "engine_version": "v0.1.0",
     "interpreter_config": "Config A",
@@ -13,7 +13,7 @@
         "card_id": "card_RELIANCE.NS_1782117900",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782117900,
-        "datetime": "1782117900",
+        "datetime": "2026-06-22T08:45:00Z",
         "current_price": 1332.0,
         "resolutions": {
           "15m": {
@@ -42,7 +42,7 @@
         "card_id": "card_RELIANCE.NS_1782118800",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782118800,
-        "datetime": "1782118800",
+        "datetime": "2026-06-22T09:00:00Z",
         "current_price": 1330.699951171875,
         "resolutions": {
           "15m": {
@@ -72,7 +72,7 @@
         "card_id": "card_RELIANCE.NS_1782119700",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782119700,
-        "datetime": "1782119700",
+        "datetime": "2026-06-22T09:15:00Z",
         "current_price": 1328.300048828125,
         "resolutions": {
           "15m": {
@@ -102,7 +102,7 @@
         "card_id": "card_RELIANCE.NS_1782120600",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782120600,
-        "datetime": "1782120600",
+        "datetime": "2026-06-22T09:30:00Z",
         "current_price": 1327.199951171875,
         "resolutions": {
           "15m": {
@@ -132,7 +132,7 @@
         "card_id": "card_RELIANCE.NS_1782121500",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782121500,
-        "datetime": "1782121500",
+        "datetime": "2026-06-22T09:45:00Z",
         "current_price": 1324.9000244140625,
         "resolutions": {
           "15m": {
@@ -162,7 +162,7 @@
         "card_id": "card_RELIANCE.NS_1782186300",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782186300,
-        "datetime": "1782186300",
+        "datetime": "2026-06-23T03:45:00Z",
         "current_price": 1324.5999755859375,
         "resolutions": {
           "15m": {
@@ -192,7 +192,7 @@
         "card_id": "card_RELIANCE.NS_1782187200",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782187200,
-        "datetime": "1782187200",
+        "datetime": "2026-06-23T04:00:00Z",
         "current_price": 1328.0,
         "resolutions": {
           "15m": {
@@ -222,7 +222,7 @@
         "card_id": "card_RELIANCE.NS_1782188100",
         "instrument": "RELIANCE.NS",
         "timestamp": 1782188100,
-        "datetime": "1782188100",
+        "datetime": "2026-06-23T04:15:00Z",
         "current_price": 1326.5999755859375,
         "resolutions": {
           "15m": {
@@ -251,10 +251,10 @@
     ]
   },
   {
-    "tape_id": "tape_CIPLA.NS_20260925T155425Z",
+    "tape_id": "tape_CIPLA.NS_20260925T160737Z",
     "symbol": "CIPLA.NS",
-    "replay_start": "2026-07-06 14:15:00",
-    "replay_end": "2026-07-07 09:45:00",
+    "replay_start": "2026-07-06T08:45:00Z",
+    "replay_end": "2026-07-07T04:15:00Z",
     "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
     "engine_version": "v0.1.0",
     "interpreter_config": "Config A",
@@ -264,7 +264,7 @@
         "card_id": "card_CIPLA.NS_1783327500",
         "instrument": "CIPLA.NS",
         "timestamp": 1783327500,
-        "datetime": "2026-07-06 14:15:00",
+        "datetime": "2026-07-06T08:45:00Z",
         "current_price": 1463.699951171875,
         "resolutions": {
           "15m": {
@@ -294,7 +294,7 @@
         "card_id": "card_CIPLA.NS_1783328400",
         "instrument": "CIPLA.NS",
         "timestamp": 1783328400,
-        "datetime": "2026-07-06 14:30:00",
+        "datetime": "2026-07-06T09:00:00Z",
         "current_price": 1468.0,
         "resolutions": {
           "15m": {
@@ -323,7 +323,7 @@
         "card_id": "card_CIPLA.NS_1783329300",
         "instrument": "CIPLA.NS",
         "timestamp": 1783329300,
-        "datetime": "2026-07-06 14:45:00",
+        "datetime": "2026-07-06T09:15:00Z",
         "current_price": 1467.0999755859375,
         "resolutions": {
           "15m": {
@@ -352,7 +352,7 @@
         "card_id": "card_CIPLA.NS_1783330200",
         "instrument": "CIPLA.NS",
         "timestamp": 1783330200,
-        "datetime": "2026-07-06 15:00:00",
+        "datetime": "2026-07-06T09:30:00Z",
         "current_price": 1473.0,
         "resolutions": {
           "15m": {
@@ -381,7 +381,7 @@
         "card_id": "card_CIPLA.NS_1783331100",
         "instrument": "CIPLA.NS",
         "timestamp": 1783331100,
-        "datetime": "2026-07-06 15:15:00",
+        "datetime": "2026-07-06T09:45:00Z",
         "current_price": 1472.300048828125,
         "resolutions": {
           "15m": {
@@ -410,7 +410,7 @@
         "card_id": "card_CIPLA.NS_1783395900",
         "instrument": "CIPLA.NS",
         "timestamp": 1783395900,
-        "datetime": "2026-07-07 09:15:00",
+        "datetime": "2026-07-07T03:45:00Z",
         "current_price": 1470.5999755859375,
         "resolutions": {
           "15m": {
@@ -440,7 +440,7 @@
         "card_id": "card_CIPLA.NS_1783396800",
         "instrument": "CIPLA.NS",
         "timestamp": 1783396800,
-        "datetime": "2026-07-07 09:30:00",
+        "datetime": "2026-07-07T04:00:00Z",
         "current_price": 1474.0,
         "resolutions": {
           "15m": {
@@ -470,7 +470,7 @@
         "card_id": "card_CIPLA.NS_1783397700",
         "instrument": "CIPLA.NS",
         "timestamp": 1783397700,
-        "datetime": "2026-07-07 09:45:00",
+        "datetime": "2026-07-07T04:15:00Z",
         "current_price": 1477.4000244140625,
         "resolutions": {
           "15m": {
@@ -499,10 +499,10 @@
     ]
   },
   {
-    "tape_id": "tape_ADANIENT.NS_20260925T155425Z",
+    "tape_id": "tape_ADANIENT.NS_20260925T160737Z",
     "symbol": "ADANIENT.NS",
-    "replay_start": "1782117900",
-    "replay_end": "1782188100",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
     "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
     "engine_version": "v0.1.0",
     "interpreter_config": "Config A",
@@ -512,7 +512,7 @@
         "card_id": "card_ADANIENT.NS_1782117900",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782117900,
-        "datetime": "1782117900",
+        "datetime": "2026-06-22T08:45:00Z",
         "current_price": 3055.300048828125,
         "resolutions": {
           "15m": {
@@ -541,7 +541,7 @@
         "card_id": "card_ADANIENT.NS_1782118800",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782118800,
-        "datetime": "1782118800",
+        "datetime": "2026-06-22T09:00:00Z",
         "current_price": 3047.0,
         "resolutions": {
           "15m": {
@@ -570,7 +570,7 @@
         "card_id": "card_ADANIENT.NS_1782119700",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782119700,
-        "datetime": "1782119700",
+        "datetime": "2026-06-22T09:15:00Z",
         "current_price": 3047.0,
         "resolutions": {
           "15m": {
@@ -599,7 +599,7 @@
         "card_id": "card_ADANIENT.NS_1782120600",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782120600,
-        "datetime": "1782120600",
+        "datetime": "2026-06-22T09:30:00Z",
         "current_price": 3058.89990234375,
         "resolutions": {
           "15m": {
@@ -628,7 +628,7 @@
         "card_id": "card_ADANIENT.NS_1782121500",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782121500,
-        "datetime": "1782121500",
+        "datetime": "2026-06-22T09:45:00Z",
         "current_price": 3063.0,
         "resolutions": {
           "15m": {
@@ -657,7 +657,7 @@
         "card_id": "card_ADANIENT.NS_1782186300",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782186300,
-        "datetime": "1782186300",
+        "datetime": "2026-06-23T03:45:00Z",
         "current_price": 3075.89990234375,
         "resolutions": {
           "15m": {
@@ -687,7 +687,7 @@
         "card_id": "card_ADANIENT.NS_1782187200",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782187200,
-        "datetime": "1782187200",
+        "datetime": "2026-06-23T04:00:00Z",
         "current_price": 3074.0,
         "resolutions": {
           "15m": {
@@ -717,7 +717,7 @@
         "card_id": "card_ADANIENT.NS_1782188100",
         "instrument": "ADANIENT.NS",
         "timestamp": 1782188100,
-        "datetime": "1782188100",
+        "datetime": "2026-06-23T04:15:00Z",
         "current_price": 3072.0,
         "resolutions": {
           "15m": {
@@ -746,10 +746,10 @@
     ]
   },
   {
-    "tape_id": "tape_INFY.NS_20260925T155425Z",
+    "tape_id": "tape_INFY.NS_20260925T160737Z",
     "symbol": "INFY.NS",
-    "replay_start": "2026-07-06 14:15:00",
-    "replay_end": "2026-07-07 09:45:00",
+    "replay_start": "2026-07-06T08:45:00Z",
+    "replay_end": "2026-07-07T04:15:00Z",
     "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
     "engine_version": "v0.1.0",
     "interpreter_config": "Config A",
@@ -759,7 +759,7 @@
         "card_id": "card_INFY.NS_1783327500",
         "instrument": "INFY.NS",
         "timestamp": 1783327500,
-        "datetime": "2026-07-06 14:15:00",
+        "datetime": "2026-07-06T08:45:00Z",
         "current_price": 1034.300048828125,
         "resolutions": {
           "15m": {
@@ -788,7 +788,7 @@
         "card_id": "card_INFY.NS_1783328400",
         "instrument": "INFY.NS",
         "timestamp": 1783328400,
-        "datetime": "2026-07-06 14:30:00",
+        "datetime": "2026-07-06T09:00:00Z",
         "current_price": 1034.199951171875,
         "resolutions": {
           "15m": {
@@ -818,7 +818,7 @@
         "card_id": "card_INFY.NS_1783329300",
         "instrument": "INFY.NS",
         "timestamp": 1783329300,
-        "datetime": "2026-07-06 14:45:00",
+        "datetime": "2026-07-06T09:15:00Z",
         "current_price": 1038.4000244140625,
         "resolutions": {
           "15m": {
@@ -848,7 +848,7 @@
         "card_id": "card_INFY.NS_1783330200",
         "instrument": "INFY.NS",
         "timestamp": 1783330200,
-        "datetime": "2026-07-06 15:00:00",
+        "datetime": "2026-07-06T09:30:00Z",
         "current_price": 1042.5,
         "resolutions": {
           "15m": {
@@ -877,7 +877,7 @@
         "card_id": "card_INFY.NS_1783331100",
         "instrument": "INFY.NS",
         "timestamp": 1783331100,
-        "datetime": "2026-07-06 15:15:00",
+        "datetime": "2026-07-06T09:45:00Z",
         "current_price": 1043.9000244140625,
         "resolutions": {
           "15m": {
@@ -906,7 +906,7 @@
         "card_id": "card_INFY.NS_1783395900",
         "instrument": "INFY.NS",
         "timestamp": 1783395900,
-        "datetime": "2026-07-07 09:15:00",
+        "datetime": "2026-07-07T03:45:00Z",
         "current_price": 1059.699951171875,
         "resolutions": {
           "15m": {
@@ -935,7 +935,7 @@
         "card_id": "card_INFY.NS_1783396800",
         "instrument": "INFY.NS",
         "timestamp": 1783396800,
-        "datetime": "2026-07-07 09:30:00",
+        "datetime": "2026-07-07T04:00:00Z",
         "current_price": 1069.199951171875,
         "resolutions": {
           "15m": {
@@ -964,7 +964,7 @@
         "card_id": "card_INFY.NS_1783397700",
         "instrument": "INFY.NS",
         "timestamp": 1783397700,
-        "datetime": "2026-07-07 09:45:00",
+        "datetime": "2026-07-07T04:15:00Z",
         "current_price": 1069.5,
         "resolutions": {
           "15m": {
@@ -992,10 +992,10 @@
     ]
   },
   {
-    "tape_id": "tape_TCS.NS_20260925T155425Z",
+    "tape_id": "tape_TCS.NS_20260925T160737Z",
     "symbol": "TCS.NS",
-    "replay_start": "1782117900",
-    "replay_end": "1782188100",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
     "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
     "engine_version": "v0.1.0",
     "interpreter_config": "Config A",
@@ -1005,7 +1005,7 @@
         "card_id": "card_TCS.NS_1782117900",
         "instrument": "TCS.NS",
         "timestamp": 1782117900,
-        "datetime": "1782117900",
+        "datetime": "2026-06-22T08:45:00Z",
         "current_price": 2136.800048828125,
         "resolutions": {
           "15m": {
@@ -1033,7 +1033,7 @@
         "card_id": "card_TCS.NS_1782118800",
         "instrument": "TCS.NS",
         "timestamp": 1782118800,
-        "datetime": "1782118800",
+        "datetime": "2026-06-22T09:00:00Z",
         "current_price": 2133.10009765625,
         "resolutions": {
           "15m": {
@@ -1061,7 +1061,7 @@
         "card_id": "card_TCS.NS_1782119700",
         "instrument": "TCS.NS",
         "timestamp": 1782119700,
-        "datetime": "1782119700",
+        "datetime": "2026-06-22T09:15:00Z",
         "current_price": 2131.60009765625,
         "resolutions": {
           "15m": {
@@ -1089,7 +1089,7 @@
         "card_id": "card_TCS.NS_1782120600",
         "instrument": "TCS.NS",
         "timestamp": 1782120600,
-        "datetime": "1782120600",
+        "datetime": "2026-06-22T09:30:00Z",
         "current_price": 2124.39990234375,
         "resolutions": {
           "15m": {
@@ -1117,7 +1117,7 @@
         "card_id": "card_TCS.NS_1782121500",
         "instrument": "TCS.NS",
         "timestamp": 1782121500,
-        "datetime": "1782121500",
+        "datetime": "2026-06-22T09:45:00Z",
         "current_price": 2129.0,
         "resolutions": {
           "15m": {
@@ -1145,7 +1145,7 @@
         "card_id": "card_TCS.NS_1782186300",
         "instrument": "TCS.NS",
         "timestamp": 1782186300,
-        "datetime": "1782186300",
+        "datetime": "2026-06-23T03:45:00Z",
         "current_price": 2088.800048828125,
         "resolutions": {
           "15m": {
@@ -1175,7 +1175,7 @@
         "card_id": "card_TCS.NS_1782187200",
         "instrument": "TCS.NS",
         "timestamp": 1782187200,
-        "datetime": "1782187200",
+        "datetime": "2026-06-23T04:00:00Z",
         "current_price": 2085.199951171875,
         "resolutions": {
           "15m": {
@@ -1205,7 +1205,7 @@
         "card_id": "card_TCS.NS_1782188100",
         "instrument": "TCS.NS",
         "timestamp": 1782188100,
-        "datetime": "1782188100",
+        "datetime": "2026-06-23T04:15:00Z",
         "current_price": 2083.300048828125,
         "resolutions": {
           "15m": {

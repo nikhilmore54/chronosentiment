@@ -75,8 +75,21 @@
 
 With the resolution validation complete, RP-600 completes the read-only decision surface layer above the frozen canonical substrate (`TIME-004`/`TIME-005`/`TIME-006`).
 
+### The Four Architectural Locks
+1. **Research Layer**: Coralys `v0.1.0` and Config A are 100% **FROZEN**. Zero score formula changes, zero threshold hunting.
+2. **Temporal Substrate**: Reuses existing `time_machine/` (`TIME-004`/`TIME-005`/`TIME-006`) with $T_0$ firewall. Zero second Time Machine implementation.
+3. **Decision Surface Contract**: `DecisionTape` and `DecisionCard` expose resolution-qualified trajectory evidence, `PARTIAL AGREEMENT`, and `TIME-SCALE CONFLICT`.
+4. **Product Boundary**: UI is read-only. Zero signal derivation, zero score reinterpretation, zero composite score creation, zero reconstructed decision semantics.
+
 ### Explicit Canonical Field Derivation Invariant
-> **Every DecisionCard field must either be copied directly from the canonical DecisionState/evidence or be a deterministic presentation projection whose derivation is explicitly specified. No field may introduce new semantic inference.**
+> **Every DecisionCard field must either come directly from canonical DecisionState/evidence or be an explicitly specified deterministic presentation projection. No field may introduce new semantic inference.**
+
+### Strict UI Agent Implementation Test
+> **If deleting a field from the canonical DecisionTape makes the UI unable to display it, that field must be traced upstream. The frontend must NEVER reconstruct it from other fields.**
+
+### Presentation Projection Rules
+- `timestamp`: Canonical temporal identity (Unix epoch integer timestamp, e.g., `1782186300`).
+- `datetime`: Deterministic presentation projection of `timestamp` formatted as an ISO-8601 UTC string (e.g., `"2026-06-23T03:45:00Z"`).
 
 ```text
 Canonical DecisionState
@@ -92,9 +105,9 @@ Canonical DecisionState
                 ▼
         Deterministic View Model (DecisionCard)
                 │
-                ├── display labels
-                ├── formatting
-                ├── grouping
+                ├── timestamp (canonical identity)
+                ├── datetime (ISO-8601 UTC projection)
+                ├── display labels & formatting
                 └── timeline positioning
                 │
                 ▼
@@ -107,7 +120,7 @@ Canonical DecisionState
   "card_id": "card_RELIANCE.NS_1782186300",
   "instrument": "RELIANCE.NS",
   "timestamp": 1782186300,
-  "datetime": "1782186300",
+  "datetime": "2026-06-23T03:45:00Z",
   "current_price": 1324.60,
   "resolutions": {
     "15m": {
@@ -132,6 +145,24 @@ Canonical DecisionState
     "• 1d macro horizon indicates structural reversal risk",
     "• 15m and 1d reversal confirmation, with 30m still insufficient"
   ]
+}
+```
+
+### Development Mode Provenance Contract
+```json
+{
+  "field": "decision_state",
+  "value": "EXIT",
+  "source": "canonical_decision_state"
+}
+```
+and for presentation projections:
+```json
+{
+  "field": "datetime",
+  "value": "2026-06-23T03:45:00Z",
+  "source": "presentation_projection",
+  "derivation": "ISO-8601-UTC(timestamp)"
 }
 ```
 
