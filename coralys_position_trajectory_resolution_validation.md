@@ -68,3 +68,124 @@
 ## 3. Formal Agent Hand-off Synthesis
 
 > **Coralys v0.1.0 remains frozen. Config A was evaluated without modification across independent 15m, 30m, and 1d Yahoo Finance streams covering 102 instruments. The same qualitative trajectory lifecycle — CONTINUATION $\to$ PULLBACK $\to$ RECOVERY or REVERSAL — was observed at all three resolutions. However, the conditional transition structure is strongly resolution-dependent: recovery dominates observed intraday pullbacks (~57%–60%), whereas reversal dominates daily pullbacks (~88%). The daily track provides substantially stronger statistical evidence because it contains 319 pullback events versus only 53 and 14 on 15m and 30m respectively. Config A's economic effect is also resolution-dependent: -1.16 bps mean paired delta on 15m, +0.22 bps on 30m, and +26.22 bps on daily data. Therefore the current evidence supports qualitative cross-resolution structural persistence, but does not establish resolution-independent predictive performance or parameter invariance. Coralys remains frozen; the next research question is whether the observed resolution dependence is a genuine temporal-scale effect or a consequence of differing sample periods and event frequencies.**
+
+---
+
+## 4. RP-600 — Time Machine Decision Surface & View Model Refinement
+
+With the resolution validation complete, RP-600 completes the read-only decision surface layer above the frozen canonical substrate (`TIME-004`/`TIME-005`/`TIME-006`).
+
+### Explicit Canonical Field Derivation Invariant
+> **Every DecisionCard field must either be copied directly from the canonical DecisionState/evidence or be a deterministic presentation projection whose derivation is explicitly specified. No field may introduce new semantic inference.**
+
+```text
+Canonical DecisionState
+        │
+        ├── direction
+        ├── trajectory (resolution-qualified)
+        ├── resolutions (15m, 30m, 1d)
+        ├── cross-resolution relationship
+        ├── risk state
+        ├── decision state
+        └── evidence
+                │
+                ▼
+        Deterministic View Model (DecisionCard)
+                │
+                ├── display labels
+                ├── formatting
+                ├── grouping
+                └── timeline positioning
+                │
+                ▼
+             UI (OBSERVE | REPLAY | COMPARE)
+```
+
+### Canonical DecisionCard Schema
+```json
+{
+  "card_id": "card_RELIANCE.NS_1782186300",
+  "instrument": "RELIANCE.NS",
+  "timestamp": 1782186300,
+  "datetime": "1782186300",
+  "current_price": 1324.60,
+  "resolutions": {
+    "15m": {
+      "label": "REVERSAL",
+      "score": -0.6360
+    },
+    "30m": {
+      "label": "INSUFFICIENT",
+      "score": 0.5000
+    },
+    "1d": {
+      "label": "REVERSAL",
+      "score": -0.4561
+    }
+  },
+  "cross_resolution_relationship": "PARTIAL AGREEMENT",
+  "risk_state": "REVERSAL DEVELOPING",
+  "decision_state": "EXIT",
+  "evidence": [
+    "• 15m trajectory crossed reversal boundary",
+    "• 30m intermediate horizon observation insufficient",
+    "• 1d macro horizon indicates structural reversal risk",
+    "• 15m and 1d reversal confirmation, with 30m still insufficient"
+  ]
+}
+```
+
+### Product Surface Architecture & Hand-off Directive
+```text
+                  ┌─────────────────────┐
+                  │ Historical / Live   │
+                  │ Market Observations │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Existing Time       │
+                  │ Machine Substrate   │
+                  │ TIME-004/005/006    │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                    T₀ FIREWALL
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Coralys v0.1.0      │
+                  │ FROZEN              │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Config A            │
+                  │ FROZEN              │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Canonical           │
+                  │ DecisionState       │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ DecisionTape        │
+                  │ Immutable sequence  │
+                  └──────────┬──────────┘
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ DecisionCard        │
+                  │ Read-only View Model│
+                  └──────────┬──────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+           OBSERVE         REPLAY         COMPARE
+```
+
+**Directive for UI Agent**:
+> **Implement the OBSERVE / REPLAY / COMPARE UI against the canonical DecisionTape/View Model. Do not modify `time_machine/`, Coralys v0.1.0, Config A, scoring, thresholds, or decision semantics. Any missing information required by the UI must be traced back to the canonical substrate rather than reconstructed in the frontend.**
