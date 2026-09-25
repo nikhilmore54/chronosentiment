@@ -24,97 +24,15 @@
 //!                                                 (all observations — no deduplication)
 //! ```
 //!
-//! The ledger is the authoritative source. No decisions are reconstructed
-//! from C3-002 at request time.
-
-mod api;
-
+//! The ledger is the authoritative source.
 use std::sync::Arc;
-
-use axum::{
-    Router,
-    routing::{get, post},
-};
+use axum::Router;
 use coralys_decision::DecisionLedger;
 use coralys_decision::recommendation::{EvidenceStore, Rec001hStore};
+use coralys_decision_server::{AppState, ProtectionShadowLedger, build_router};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing_subscriber::{EnvFilter, fmt};
-
-// ─── Shared state ─────────────────────────────────────────────────────────────
-
-/// Shared application state.
-///
-/// - `ledger` — the `DecisionLedger` is the single source of truth for all
-///   certified decisions. `RwLock` allows concurrent reads with exclusive writes.
-/// - `evidence_store` — the frozen HDV-001 analogue index (v0), loaded once at
-///   startup. `None` when the outcomes file is unavailable.
-/// - `rec001h_store` — the REC-001-H ticker-specific analogue store (v1), loaded
-///   once at startup from the JSONL evidence base. `None` when unavailable.
-#[derive(Clone)]
-pub struct AppState {
-    pub ledger: Arc<RwLock<DecisionLedger>>,
-    pub evidence_store: Option<Arc<EvidenceStore>>,
-    pub rec001h_store: Option<Arc<Rec001hStore>>,
-}
-
-impl AppState {
-    pub fn new() -> Self {
-        Self {
-            ledger: Arc::new(RwLock::new(DecisionLedger::new())),
-            evidence_store: None,
-            rec001h_store: None,
-        }
-    }
-
-    /// Build state with a pre-loaded `EvidenceStore` (v0).
-    pub fn with_evidence(evidence_store: EvidenceStore) -> Self {
-        Self {
-            ledger: Arc::new(RwLock::new(DecisionLedger::new())),
-            evidence_store: Some(Arc::new(evidence_store)),
-            rec001h_store: None,
-        }
-    }
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// ─── Router ───────────────────────────────────────────────────────────────────
-
-/// Build the Axum router with all routes.
-pub fn build_router(state: AppState) -> Router {
-    Router::new()
-        .route(
-            "/decisions",
-            get(api::feed::get_decisions).post(api::ingest::ingest_decision),
-        )
-        .route("/decisions/{id}", get(api::detail::get_decision_by_id))
-        .route(
-            "/decisions/{id}/execution",
-            post(api::execution::record_execution),
-        )
-        .route(
-            "/decisions/{id}/outcome",
-            post(api::outcome::record_outcome),
-        )
-        .route(
-            "/recommendations/latest",
-            get(api::recommendations::get_recommendations_latest),
-        )
-        .route(
-            "/recommendations/v1/latest",
-            get(api::recommendations_v1::get_recommendations_v1_latest),
-        )
-        .route(
-            "/recommendations/v1/history",
-            get(api::recommendations_v1::get_recommendations_v1_history),
-        )
-        .with_state(state)
-}
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -164,6 +82,7 @@ async fn main() {
         ledger: Arc::new(RwLock::new(DecisionLedger::new())),
         evidence_store,
         rec001h_store,
+        shadow_ledger: Arc::new(ProtectionShadowLedger::new()),
     };
 
     let app = build_router(state);
@@ -202,11 +121,6 @@ pub mod test_helpers {
     }
 
     /// Build a test app with the real REC-001-H evidence store loaded.
-    ///
-    /// Loads from `datasets/recommendation/historical` (relative to workspace
-    /// root). If the directory is not found, the store is `None` and
-    /// `/recommendations/v1/latest` will return 503 — tests using this helper
-    /// should assert 200 only when the store is present.
     pub async fn make_app_with_rec001h() -> Router {
         let rec001h_dir = std::env::var("REC001H_DIR")
             .unwrap_or_else(|_| "datasets/recommendation/historical".to_string());
@@ -219,6 +133,7 @@ pub mod test_helpers {
             )),
             evidence_store: None,
             rec001h_store,
+            shadow_ledger: std::sync::Arc::new(ProtectionShadowLedger::new()),
         };
         build_router(state)
     }

@@ -16,6 +16,8 @@ interface EventWrapper {
   payload: any;
 }
 
+import Gate5PaperDashboard from './Gate5PaperDashboard';
+
 function App() {
   const [simulationEvents, setSimulationEvents] = useState<EventWrapper[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<EventWrapper[]>([]);
@@ -25,7 +27,7 @@ function App() {
 
   useEffect(() => {
     fetchTimeline();
-    fetchSystemState(0); // Fetch initial state for sequence 0
+    fetchSystemState(0);
   }, []);
 
   const fetchTimeline = async () => {
@@ -37,7 +39,7 @@ function App() {
       const data = await response.json();
       const events: EventWrapper[] = data.events || [];
       setTimelineEvents(events);
-      setSimulationEvents(events); // For ReplayStepper
+      setSimulationEvents(events);
     } catch (e: any) {
       setError("Failed to fetch timeline: " + e.message);
       console.error("Failed to fetch timeline:", e);
@@ -75,16 +77,19 @@ function App() {
     fetchSystemState(0);
   };
 
-  const [activeTab, setActiveTab] = useState<'observatory' | 'replay' | 'inspector' | 'research'>('observatory');
+  const [activeTab, setActiveTab] = useState<'gate5' | 'observatory' | 'replay' | 'inspector' | 'research'>('gate5');
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', backgroundColor: '#0a0a0a', color: '#e5e5e5', minHeight: '100vh' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #333', paddingBottom: '20px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>ChronoSentiment</h1>
-          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '14px' }}>Provider Chronology Observatory</p>
+          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '14px' }}>Provider Chronology Observatory & Protection Strategy Surface</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            style={{ padding: '10px 20px', backgroundColor: activeTab === 'gate5' ? '#0284c7' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => setActiveTab('gate5')}>Gate 5 — Paper Protection</button>
           <button 
             style={{ padding: '10px 20px', backgroundColor: activeTab === 'observatory' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
             onClick={() => setActiveTab('observatory')}>Observatory</button>
@@ -103,6 +108,10 @@ function App() {
       {error && <div style={{ color: '#ef4444', backgroundColor: '#ef444420', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
 
       <main style={{ backgroundColor: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #222' }}>
+        {activeTab === 'gate5' && (
+          <Gate5PaperDashboard />
+        )}
+
         {activeTab === 'observatory' && (
           <div>
             <h2>Provider Synchronization & Chronology Integrity</h2>
