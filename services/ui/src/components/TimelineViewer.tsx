@@ -101,7 +101,6 @@ const TimelineViewer: React.FC<TimelineViewerProps> = ({ events: initialEvents, 
   if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
 
   return (
-  return (
     <div style={{ border: '1px solid #222', padding: '20px', marginBottom: '20px', borderRadius: '8px', backgroundColor: '#111' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 500, margin: 0 }}>Timeline Viewer</h2>

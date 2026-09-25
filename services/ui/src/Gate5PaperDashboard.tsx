@@ -34,6 +34,7 @@ export interface Gate5Summary {
 }
 
 export const Gate5PaperDashboard: React.FC = () => {
+  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [summary, setSummary] = useState<Gate5Summary>({
     coralys_exit_signals: 42,
     managed_by_generator: 42,
@@ -141,7 +142,29 @@ export const Gate5PaperDashboard: React.FC = () => {
     },
   ]);
 
-  const getActionBadge = (act: 'EXECUTE' | 'PROTECT' | 'DEFER') => {
+  useEffect(() => {
+    const fetchLedger = async () => {
+      try {
+        const res = await fetch('/api/v1/gate5/paper-ledger');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.summary && data.positions) {
+            setSummary(data.summary);
+            setPositions(data.positions);
+            setIsConnected(true);
+          }
+        }
+      } catch (_err) {
+        // Fallback to initial state if server is not reachable
+      }
+    };
+
+    fetchLedger();
+    const interval = setInterval(fetchLedger, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getActionBadge = (act: 'EXECUTE' | 'PROTECT' | 'DEFER' | string) => {
     switch (act) {
       case 'EXECUTE':
         return (
@@ -156,6 +179,7 @@ export const Gate5PaperDashboard: React.FC = () => {
           </span>
         );
       case 'DEFER':
+      default:
         return (
           <span style={{ backgroundColor: '#166534', color: '#86efac', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 700 }}>
             Coralys: EXIT → Protection: DEFER EXECUTION
@@ -177,6 +201,9 @@ export const Gate5PaperDashboard: React.FC = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <span style={{ backgroundColor: isConnected ? '#064e3b' : '#1e293b', color: isConnected ? '#34d399' : '#94a3b8', padding: '6px 14px', borderRadius: '6px', border: '1px solid #475569', fontSize: '13px', fontWeight: 600 }}>
+            ● {isConnected ? 'LIVE API CONNECTED' : 'INITIALIZING PAIRING'}
+          </span>
           <span style={{ backgroundColor: '#1e293b', padding: '6px 14px', borderRadius: '6px', border: '1px solid #475569', fontSize: '13px', color: '#e2e8f0' }}>
             Coralys Engine: <strong style={{ color: '#22c55e' }}>FROZEN</strong>
           </span>

@@ -74,6 +74,14 @@ pub fn build_router(state: AppState) -> Router {
             "/recommendations/v1/history",
             get(api::recommendations_v1::get_recommendations_v1_history),
         )
+        .route(
+            "/api/v1/gate5/paper-ledger",
+            get(api::gate5::get_gate5_paper_ledger),
+        )
+        .route(
+            "/gate5/paper-ledger",
+            get(api::gate5::get_gate5_paper_ledger),
+        )
         .with_state(state)
 }
 
