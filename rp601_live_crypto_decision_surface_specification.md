@@ -1,20 +1,21 @@
-# RP-601 — Live Crypto Decision Surface Specification
+# RP-601 — Live Crypto Decision Surface Specification (Corrected Prototype Baseline)
 
 > [!IMPORTANT]
-> **Governance & Operational Invariants**
+> **Governance & Canonical Derivation Invariants**
 > - **Coralys Engine (`v0.1.0`)**: 100% **FROZEN** (Zero score formula changes).
 > - **Position Trajectory Interpreter (`Config A`)**: 100% **FROZEN** ($K=3 \text{ bars}, G_{\text{max}}=0.70, \Delta M_{5,\text{min}}=-0.10$).
+> - **Strict Evidence Derivation**: Every evidence bullet must be a deterministic projection of the actual 15m, 30m, and 1d resolution states. No static narrative fallback strings.
+> - **Canonical Risk States Only**: Only canonical states (`REVERSAL DEVELOPING`, `RECOVERY DEVELOPING`, `TRAJECTORY STABLE`, `EVIDENCE CONFLICTED`) permitted. Invented UI states like `MODERATE RISK` are forbidden.
+> - **Acquisition Classification**: Classified as **Live Current Snapshot Prototype** (single-pass data acquisition at $T_0 = \text{NOW}$). Continuous daemon ingestion requires a persistent scheduled loop.
 > - **Domain Status Mandate**: Every output card MUST explicitly display `"domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO"`.
-> - **Live Data Firewall**: Information cutoff $T_0 = \text{NOW}$.
-> - **Zero Model Tuning**: The experiment evaluates the frozen ChronoSentiment pipeline on continuous live crypto feeds. Zero crypto-specific parameter tuning or model variants.
 
 ---
 
-## 1. Objective & Domain Rationale
+## 1. Objective & Operational Status
 
-Milestone **RP-601** extends the RP-600 Decision Surface to a 24/7 continuous trading market (liquid crypto assets). 
+Milestone **RP-601** extends the read-only Decision Surface to a 24/7 continuous market (liquid crypto assets) via a live current snapshot acquisition protocol.
 
-Because equity markets have fixed trading hours, testing the `OBSERVE` surface live during off-hours creates latency gaps. Crypto trades continuously, providing an ideal real-time environment to observe how the frozen decision engine processes multi-resolution streams ($15m, 30m, 1d$) in real time.
+Because equity markets have fixed trading hours, testing the `OBSERVE` surface live during off-hours creates latency gaps. Crypto trades continuously, providing a real-time snapshot environment to observe how the frozen decision engine processes multi-resolution streams ($15m, 30m, 1d$).
 
 ---
 
@@ -37,7 +38,7 @@ Because equity markets have fixed trading hours, testing the `OBSERVE` surface l
 
 ```text
                   ┌──────────────────────────────┐
-                  │ Real-Time Yahoo Crypto Feed  │
+                  │ Current Snapshot Crypto Feed │
                   │ (BTC, ETH, SOL, BNB, etc.)   │
                   └──────────────┬───────────────┘
                                  │
@@ -77,53 +78,51 @@ Because equity markets have fixed trading hours, testing the `OBSERVE` surface l
                   ┌──────────────┼──────────────┐
                   ▼              ▼              ▼
                OBSERVE         REPLAY         COMPARE
-             (24/7 Live)     (Historical)   (Multi-Res)
+             (24/7 Snapshot) (Historical)   (Multi-Res)
 ```
 
 ---
 
-## 4. Canonical Live Crypto DecisionCard Schema
+## 4. Corrected Canonical Live Crypto DecisionCard Schema
 
 ```json
 {
-  "card_id": "card_BTC-USD_1790352644",
+  "card_id": "card_BTC-USD_1790352867",
   "instrument": "BTC-USD",
-  "timestamp": 1790352644,
-  "datetime": "2026-09-25T16:10:44Z",
-  "current_price": 84025.95,
+  "timestamp": 1790352867,
+  "datetime": "2026-09-25T16:14:27Z",
+  "current_price": 83944.97,
   "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
   "resolutions": {
     "15m": {
       "label": "PULLBACK",
-      "score": 0.0199
+      "score": 0.0054
     },
     "30m": {
       "label": "PULLBACK",
-      "score": 0.0619
+      "score": 0.0474
     },
     "1d": {
       "label": "REVERSAL",
-      "score": -0.3199
+      "score": -0.3326
     }
   },
   "cross_resolution_relationship": "PARTIAL AGREEMENT",
-  "risk_state": "MODERATE RISK",
+  "risk_state": "EVIDENCE CONFLICTED",
   "decision_state": "WATCH",
   "evidence": [
-    "• 15m trajectory in pullback window",
-    "• 30m intermediate horizon observed PULLBACK",
-    "• 1d macro horizon indicates structural reversal risk",
-    "• 15m and 1d reversal confirmation, with 30m still insufficient"
+    "• 15m trajectory is in a PULLBACK state",
+    "• 30m trajectory is also in a PULLBACK state",
+    "• 1d trajectory indicates REVERSAL",
+    "• Intraday and daily trajectories are not aligned"
   ]
 }
 ```
 
 ---
 
-## 5. Formal Hand-off Directive
+## 5. UI Dashboard Hand-Off Location & Launch Status
 
-> **Goal**: Validate that the frozen decision engine produces coherent multidimensional recommendations in real time on a continuously traded market.
->
-> **Domain Status**: The live crypto surface is a prospective live-domain experiment. Recommendations must NOT be interpreted as validated trading signals for crypto until formal cross-domain backtests are executed.
->
-> **Contract Guarantee**: The UI consumes `rp601_live_crypto_decision_tapes.json` using the exact same `DecisionCard` View Model contract established in RP-600.
+- **Web Dashboard Location**: [`services/ui`](file:///Users/nikhil/ChronoSentiment_MEGA_FINAL/services/ui) (React + Vite single-page application).
+- **Current App Entrypoint**: [`services/ui/src/App.tsx`](file:///Users/nikhil/ChronoSentiment_MEGA_FINAL/services/ui/src/App.tsx).
+- **Target Integration**: The dashboard renders the read-only `DecisionCard` objects from `rp600_time_machine_decision_tapes.json` (REPLAY/COMPARE modes) and `rp601_live_crypto_decision_tapes.json` (24/7 OBSERVE mode).
