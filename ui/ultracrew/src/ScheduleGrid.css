@@ -1,0 +1,25 @@
+.schedule-grid {
+  display: grid;
+  width: max-content;
+  overflow-x: auto;
+  position: relative;
+}
+
+
+.grid-header.sticky-nurse,
+.nurse-row-header.sticky-nurse {
+  position: sticky;
+  left: 0;
+  background: var(--bg-color);
+  z-index: 2;
+}
+
+.grid-header.sticky-nurse {
+  z-index: 3; /* Header above row headers */
+}
+
+/* Optional wrapper to allow scrolling */
+.schedule-grid-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
