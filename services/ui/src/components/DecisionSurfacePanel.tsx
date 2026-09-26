@@ -84,13 +84,51 @@ export const DecisionSurfacePanel: React.FC = () => {
     ? (cryptoCards[selectedCryptoIndex] || cryptoCards[0])
     : (equityEvents[replayStepIndex] || equityEvents[0]);
 
-  // Helper color badges
-  const getDecisionStateColor = (state: string) => {
+  // Universe-level recommendation summary statistics
+  const currentCards = universe === 'CRYPTO' ? cryptoCards : equityEvents;
+  const exitCount = currentCards.filter(c => c.decision_state === 'EXIT').length;
+  const watchCount = currentCards.filter(c => c.decision_state === 'WATCH').length;
+  const holdCount = currentCards.filter(c => c.decision_state === 'HOLD').length;
+
+  // Helper color badges and action directives
+  const getRecommendationDetails = (state: string) => {
     switch (state) {
-      case 'EXIT': return { bg: '#991b1b', text: '#fca5a5', border: '#ef4444' };
-      case 'WATCH': return { bg: '#854d0e', text: '#fef08a', border: '#eab308' };
-      case 'HOLD': return { bg: '#065f46', text: '#6ee7b7', border: '#10b981' };
-      default: return { bg: '#1e293b', text: '#cbd5e1', border: '#64748b' };
+      case 'EXIT':
+        return {
+          title: 'RECOMMENDATION: EXIT / CLOSE POSITION',
+          directive: 'Close active position or tighten protective stop-loss immediately. Structural reversal boundaries confirmed across intraday and macro horizons.',
+          color: '#ef4444',
+          bgGradient: 'linear-gradient(135deg, rgba(153, 27, 27, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%)',
+          border: '1px solid rgba(239, 68, 68, 0.4)',
+          icon: '🛑'
+        };
+      case 'WATCH':
+        return {
+          title: 'RECOMMENDATION: WATCH / STANDBY',
+          directive: 'Maintain standby observation. Multi-horizon trajectories exhibit evidence conflict (intraday pullback vs macro trend). Await cross-resolution alignment.',
+          color: '#f59e0b',
+          bgGradient: 'linear-gradient(135deg, rgba(133, 77, 14, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%)',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          icon: '⚖️'
+        };
+      case 'HOLD':
+        return {
+          title: 'RECOMMENDATION: HOLD / MAINTAIN POSITION',
+          directive: 'Maintain active position. Multi-resolution alignment confirms positive momentum stability across intraday and macro horizons.',
+          color: '#10b981',
+          bgGradient: 'linear-gradient(135deg, rgba(6, 95, 70, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.4)',
+          icon: '🟢'
+        };
+      default:
+        return {
+          title: 'RECOMMENDATION: NO ACTION',
+          directive: 'Insufficient evidence to form a definitive recommendation.',
+          color: '#94a3b8',
+          bgGradient: 'linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%)',
+          border: '1px solid rgba(148, 163, 184, 0.3)',
+          icon: 'ℹ️'
+        };
     }
   };
 
@@ -195,6 +233,62 @@ export const DecisionSurfacePanel: React.FC = () => {
               {mode === 'COMPARE' && '📊 MULTI-HORIZON COMPARE'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Universe Recommendation Summary Bar */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '12px',
+        marginBottom: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase' }}>🔴 ACTION REQUIRED (EXIT)</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#ef4444', marginTop: '2px' }}>{exitCount} Assets</div>
+          </div>
+          <span style={{ fontSize: '20px' }}>🛑</span>
+        </div>
+
+        <div style={{
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#fef08a', textTransform: 'uppercase' }}>🟡 UNDER MONITORING (WATCH)</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>{watchCount} Assets</div>
+          </div>
+          <span style={{ fontSize: '20px' }}>⚖️</span>
+        </div>
+
+        <div style={{
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase' }}>🟢 STABLE TREND (HOLD)</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>{holdCount} Assets</div>
+          </div>
+          <span style={{ fontSize: '20px' }}>✅</span>
         </div>
       </div>
 
@@ -325,6 +419,34 @@ export const DecisionSurfacePanel: React.FC = () => {
             </div>
           )}
 
+          {/* HERO RECOMMENDATION BANNER */}
+          {(() => {
+            const rec = getRecommendationDetails(activeCard.decision_state);
+            return (
+              <div style={{
+                background: rec.bgGradient,
+                border: rec.border,
+                borderRadius: '12px',
+                padding: '20px 24px',
+                marginBottom: '20px',
+                boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.3)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px'
+              }}>
+                <div style={{ fontSize: '36px', lineHeight: 1 }}>{rec.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: rec.color, letterSpacing: '0.02em' }}>
+                    {rec.title}
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: '#f8fafc', marginTop: '6px', lineHeight: '1.5' }}>
+                    {rec.directive}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Primary Decision Card */}
           <div style={{
             backgroundColor: 'rgba(15, 23, 42, 0.8)',
@@ -334,7 +456,7 @@ export const DecisionSurfacePanel: React.FC = () => {
             position: 'relative',
             overflow: 'hidden'
           }}>
-            {/* Top Bar: Symbol, Price & Decision State */}
+            {/* Top Bar: Symbol & Price */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -353,29 +475,9 @@ export const DecisionSurfacePanel: React.FC = () => {
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: '#f8fafc' }}>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: '#f8fafc' }}>
                   ${activeCard.current_price?.toLocaleString()}
                 </div>
-                {/* Decision Badge */}
-                {(() => {
-                  const colors = getDecisionStateColor(activeCard.decision_state);
-                  return (
-                    <div style={{
-                      display: 'inline-block',
-                      marginTop: '6px',
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      backgroundColor: colors.bg,
-                      color: colors.text,
-                      border: `1px solid ${colors.border}`,
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      letterSpacing: '0.05em'
-                    }}>
-                      {activeCard.decision_state}
-                    </div>
-                  );
-                })()}
               </div>
             </div>
 
@@ -544,42 +646,71 @@ export const DecisionSurfacePanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Render Active Point-in-Time Card */}
+          {/* Render Active Point-in-Time Card with Hero Recommendation */}
           {activeCard && (
-            <div style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '12px',
-              padding: '24px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '18px', color: '#f8fafc' }}>{activeCard.instrument}</h4>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Point-in-Time UTC: {activeCard.datetime}</span>
-                </div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
-                  ₹{activeCard.current_price?.toFixed(2)}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                {(['15m', '30m', '1d'] as const).map(h => (
-                  <div key={h} style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>Horizon {h}</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: getLabelBadgeColor(activeCard.resolutions[h].label) }}>
-                      {activeCard.resolutions[h].label}
+            <div>
+              {/* HERO RECOMMENDATION BANNER IN REPLAY */}
+              {(() => {
+                const rec = getRecommendationDetails(activeCard.decision_state);
+                return (
+                  <div style={{
+                    background: rec.bgGradient,
+                    border: rec.border,
+                    borderRadius: '12px',
+                    padding: '20px 24px',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '16px'
+                  }}>
+                    <div style={{ fontSize: '36px', lineHeight: 1 }}>{rec.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: rec.color, letterSpacing: '0.02em' }}>
+                        {rec.title}
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 500, color: '#f8fafc', marginTop: '6px', lineHeight: '1.5' }}>
+                        {rec.directive}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
-              <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>CANONICAL EVIDENCE:</div>
-                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#cbd5e1' }}>
-                  {activeCard.evidence.map((b, idx) => (
-                    <li key={idx}>{b}</li>
+              <div style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '12px',
+                padding: '24px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '18px', color: '#f8fafc' }}>{activeCard.instrument}</h4>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Point-in-Time UTC: {activeCard.datetime}</span>
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
+                    ₹{activeCard.current_price?.toFixed(2)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  {(['15m', '30m', '1d'] as const).map(h => (
+                    <div key={h} style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>Horizon {h}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: getLabelBadgeColor(activeCard.resolutions[h].label) }}>
+                        {activeCard.resolutions[h].label}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
+
+                <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>CANONICAL EVIDENCE:</div>
+                  <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#cbd5e1' }}>
+                    {activeCard.evidence.map((b, idx) => (
+                      <li key={idx}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           )}
@@ -611,42 +742,46 @@ export const DecisionSurfacePanel: React.FC = () => {
                   <th style={{ padding: '12px 16px' }}>30m Horizon</th>
                   <th style={{ padding: '12px 16px' }}>1d Macro</th>
                   <th style={{ padding: '12px 16px' }}>Cross-Resolution State</th>
-                  <th style={{ padding: '12px 16px' }}>Decision State</th>
+                  <th style={{ padding: '12px 16px' }}>Engine Recommendation</th>
                 </tr>
               </thead>
               <tbody>
-                {(universe === 'CRYPTO' ? cryptoCards : equityEvents).map((card, idx) => (
-                  <tr key={card.card_id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#f8fafc' }}>{card.instrument}</td>
-                    <td style={{ padding: '12px 16px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '12px' }}>
-                      {card.datetime || (card.timestamp ? new Date(card.timestamp * 1000).toISOString() : 'N/A')}
-                    </td>
-                    <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['15m'].label), fontWeight: 600 }}>
-                      {card.resolutions['15m'].label} ({card.resolutions['15m'].score})
-                    </td>
-                    <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['30m'].label), fontWeight: 600 }}>
-                      {card.resolutions['30m'].label} ({card.resolutions['30m'].score})
-                    </td>
-                    <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['1d'].label), fontWeight: 600 }}>
-                      {card.resolutions['1d'].label} ({card.resolutions['1d'].score})
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#38bdf8', fontWeight: 600 }}>
-                      {card.cross_resolution_relationship}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: getDecisionStateColor(card.decision_state).bg,
-                        color: getDecisionStateColor(card.decision_state).text
-                      }}>
-                        {card.decision_state}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {(universe === 'CRYPTO' ? cryptoCards : equityEvents).map((card, idx) => {
+                  const rec = getRecommendationDetails(card.decision_state);
+                  return (
+                    <tr key={card.card_id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 700, color: '#f8fafc' }}>{card.instrument}</td>
+                      <td style={{ padding: '12px 16px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '12px' }}>
+                        {card.datetime || (card.timestamp ? new Date(card.timestamp * 1000).toISOString() : 'N/A')}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['15m'].label), fontWeight: 600 }}>
+                        {card.resolutions['15m'].label} ({card.resolutions['15m'].score})
+                      </td>
+                      <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['30m'].label), fontWeight: 600 }}>
+                        {card.resolutions['30m'].label} ({card.resolutions['30m'].score})
+                      </td>
+                      <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['1d'].label), fontWeight: 600 }}>
+                        {card.resolutions['1d'].label} ({card.resolutions['1d'].score})
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#38bdf8', fontWeight: 600 }}>
+                        {card.cross_resolution_relationship}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          backgroundColor: rec.color + '20',
+                          color: rec.color,
+                          border: `1px solid ${rec.color}50`
+                        }}>
+                          {rec.icon} {card.decision_state}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
