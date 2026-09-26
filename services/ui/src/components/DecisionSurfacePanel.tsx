@@ -606,6 +606,7 @@ export const DecisionSurfacePanel: React.FC = () => {
               <thead>
                 <tr style={{ backgroundColor: '#1e293b', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                   <th style={{ padding: '12px 16px' }}>Asset Ticker</th>
+                  <th style={{ padding: '12px 16px' }}>Decision Time (UTC)</th>
                   <th style={{ padding: '12px 16px' }}>15m Intraday</th>
                   <th style={{ padding: '12px 16px' }}>30m Horizon</th>
                   <th style={{ padding: '12px 16px' }}>1d Macro</th>
@@ -617,6 +618,9 @@ export const DecisionSurfacePanel: React.FC = () => {
                 {(universe === 'CRYPTO' ? cryptoCards : equityEvents).map((card, idx) => (
                   <tr key={card.card_id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: '#f8fafc' }}>{card.instrument}</td>
+                    <td style={{ padding: '12px 16px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '12px' }}>
+                      {card.datetime || (card.timestamp ? new Date(card.timestamp * 1000).toISOString() : 'N/A')}
+                    </td>
                     <td style={{ padding: '12px 16px', color: getLabelBadgeColor(card.resolutions['15m'].label), fontWeight: 600 }}>
                       {card.resolutions['15m'].label} ({card.resolutions['15m'].score})
                     </td>
