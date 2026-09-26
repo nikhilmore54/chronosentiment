@@ -1,0 +1,1236 @@
+[
+  {
+    "tape_id": "tape_RELIANCE.NS_20260925T160737Z",
+    "symbol": "RELIANCE.NS",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
+    "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
+    "engine_version": "v0.1.0",
+    "interpreter_config": "Config A",
+    "total_events": 8,
+    "events": [
+      {
+        "card_id": "card_RELIANCE.NS_1782117900",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782117900,
+        "datetime": "2026-06-22T08:45:00Z",
+        "current_price": 1332.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.5949
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782118800",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782118800,
+        "datetime": "2026-06-22T09:00:00Z",
+        "current_price": 1330.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.3106
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782119700",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782119700,
+        "datetime": "2026-06-22T09:15:00Z",
+        "current_price": 1328.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5034
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782120600",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782120600,
+        "datetime": "2026-06-22T09:30:00Z",
+        "current_price": 1327.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5322
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782121500",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782121500,
+        "datetime": "2026-06-22T09:45:00Z",
+        "current_price": 1324.9000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.5743
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.0237
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782186300",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782186300,
+        "datetime": "2026-06-23T03:45:00Z",
+        "current_price": 1324.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.636
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782187200",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782187200,
+        "datetime": "2026-06-23T04:00:00Z",
+        "current_price": 1328.0,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0635
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      },
+      {
+        "card_id": "card_RELIANCE.NS_1782188100",
+        "instrument": "RELIANCE.NS",
+        "timestamp": 1782188100,
+        "datetime": "2026-06-23T04:15:00Z",
+        "current_price": 1326.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0617
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.4561
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      }
+    ]
+  },
+  {
+    "tape_id": "tape_CIPLA.NS_20260925T160737Z",
+    "symbol": "CIPLA.NS",
+    "replay_start": "2026-07-06T08:45:00Z",
+    "replay_end": "2026-07-07T04:15:00Z",
+    "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
+    "engine_version": "v0.1.0",
+    "interpreter_config": "Config A",
+    "total_events": 8,
+    "events": [
+      {
+        "card_id": "card_CIPLA.NS_1783327500",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783327500,
+        "datetime": "2026-07-06T08:45:00Z",
+        "current_price": 1463.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.323
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7746
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783328400",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783328400,
+        "datetime": "2026-07-06T09:00:00Z",
+        "current_price": 1468.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.263
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0289
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783329300",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783329300,
+        "datetime": "2026-07-06T09:15:00Z",
+        "current_price": 1467.0999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.7958
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0289
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783330200",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783330200,
+        "datetime": "2026-07-06T09:30:00Z",
+        "current_price": 1473.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.6044
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.1903
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783331100",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783331100,
+        "datetime": "2026-07-06T09:45:00Z",
+        "current_price": 1472.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3296
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.1903
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.9528
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783395900",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783395900,
+        "datetime": "2026-07-07T03:45:00Z",
+        "current_price": 1470.5999755859375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.9265
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.0433
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783396800",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783396800,
+        "datetime": "2026-07-07T04:00:00Z",
+        "current_price": 1474.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.8151
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3724
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_CIPLA.NS_1783397700",
+        "instrument": "CIPLA.NS",
+        "timestamp": 1783397700,
+        "datetime": "2026-07-07T04:15:00Z",
+        "current_price": 1477.4000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.094
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3724
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -0.1884
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      }
+    ]
+  },
+  {
+    "tape_id": "tape_ADANIENT.NS_20260925T160737Z",
+    "symbol": "ADANIENT.NS",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
+    "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
+    "engine_version": "v0.1.0",
+    "interpreter_config": "Config A",
+    "total_events": 8,
+    "events": [
+      {
+        "card_id": "card_ADANIENT.NS_1782117900",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782117900,
+        "datetime": "2026-06-22T08:45:00Z",
+        "current_price": 3055.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.2274
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782118800",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782118800,
+        "datetime": "2026-06-22T09:00:00Z",
+        "current_price": 3047.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.8758
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782119700",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782119700,
+        "datetime": "2026-06-22T09:15:00Z",
+        "current_price": 3047.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 0.991
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782120600",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782120600,
+        "datetime": "2026-06-22T09:30:00Z",
+        "current_price": 3058.89990234375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.238
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782121500",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782121500,
+        "datetime": "2026-06-22T09:45:00Z",
+        "current_price": 3063.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3005
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 1.7094
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782186300",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782186300,
+        "datetime": "2026-06-23T03:45:00Z",
+        "current_price": 3075.89990234375,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.0485
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782187200",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782187200,
+        "datetime": "2026-06-23T04:00:00Z",
+        "current_price": 3074.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.3215
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_ADANIENT.NS_1782188100",
+        "instrument": "ADANIENT.NS",
+        "timestamp": 1782188100,
+        "datetime": "2026-06-23T04:15:00Z",
+        "current_price": 3072.0,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.1841
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": 0.1553
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      }
+    ]
+  },
+  {
+    "tape_id": "tape_INFY.NS_20260925T160737Z",
+    "symbol": "INFY.NS",
+    "replay_start": "2026-07-06T08:45:00Z",
+    "replay_end": "2026-07-07T04:15:00Z",
+    "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
+    "engine_version": "v0.1.0",
+    "interpreter_config": "Config A",
+    "total_events": 8,
+    "events": [
+      {
+        "card_id": "card_INFY.NS_1783327500",
+        "instrument": "INFY.NS",
+        "timestamp": 1783327500,
+        "datetime": "2026-07-06T08:45:00Z",
+        "current_price": 1034.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.0678
+          },
+          "30m": {
+            "label": "REVERSAL",
+            "score": -0.2637
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783328400",
+        "instrument": "INFY.NS",
+        "timestamp": 1783328400,
+        "datetime": "2026-07-06T09:00:00Z",
+        "current_price": 1034.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.1274
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7539
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783329300",
+        "instrument": "INFY.NS",
+        "timestamp": 1783329300,
+        "datetime": "2026-07-06T09:15:00Z",
+        "current_price": 1038.4000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.4011
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 0.7539
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "DISAGREE (TIME-SCALE CONFLICT)",
+        "risk_state": "EVIDENCE CONFLICTED",
+        "decision_state": "WATCH",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation",
+          "\u2022 TIME-SCALE CONFLICT: Intraday recovery conflicts with daily macro trajectory"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783330200",
+        "instrument": "INFY.NS",
+        "timestamp": 1783330200,
+        "datetime": "2026-07-06T09:30:00Z",
+        "current_price": 1042.5,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.2837
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3118
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783331100",
+        "instrument": "INFY.NS",
+        "timestamp": 1783331100,
+        "datetime": "2026-07-06T09:45:00Z",
+        "current_price": 1043.9000244140625,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.5139
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 1.3118
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 0.5881
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783395900",
+        "instrument": "INFY.NS",
+        "timestamp": 1783395900,
+        "datetime": "2026-07-07T03:45:00Z",
+        "current_price": 1059.699951171875,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 2.149
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.0174
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783396800",
+        "instrument": "INFY.NS",
+        "timestamp": 1783396800,
+        "datetime": "2026-07-07T04:00:00Z",
+        "current_price": 1069.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 2.3805
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.2215
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      },
+      {
+        "card_id": "card_INFY.NS_1783397700",
+        "instrument": "INFY.NS",
+        "timestamp": 1783397700,
+        "datetime": "2026-07-07T04:15:00Z",
+        "current_price": 1069.5,
+        "resolutions": {
+          "15m": {
+            "label": "CONTINUATION",
+            "score": 1.8939
+          },
+          "30m": {
+            "label": "CONTINUATION",
+            "score": 2.2215
+          },
+          "1d": {
+            "label": "CONTINUATION",
+            "score": 3.2759
+          }
+        },
+        "cross_resolution_relationship": "AGREE (MULTI-RESOLUTION ALIGNMENT)",
+        "risk_state": "TRAJECTORY STABLE",
+        "decision_state": "HOLD",
+        "evidence": [
+          "\u2022 15m trajectory maintains positive momentum and score",
+          "\u2022 30m intermediate horizon confirms continuation",
+          "\u2022 1d macro horizon remains solidly in trend continuation"
+        ]
+      }
+    ]
+  },
+  {
+    "tape_id": "tape_TCS.NS_20260925T160737Z",
+    "symbol": "TCS.NS",
+    "replay_start": "2026-06-22T08:45:00Z",
+    "replay_end": "2026-06-23T04:15:00Z",
+    "information_cutoff_policy": "STRICT_T0_FIREWALL_VERIFIED",
+    "engine_version": "v0.1.0",
+    "interpreter_config": "Config A",
+    "total_events": 8,
+    "events": [
+      {
+        "card_id": "card_TCS.NS_1782117900",
+        "instrument": "TCS.NS",
+        "timestamp": 1782117900,
+        "datetime": "2026-06-22T08:45:00Z",
+        "current_price": 2136.800048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2937
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782118800",
+        "instrument": "TCS.NS",
+        "timestamp": 1782118800,
+        "datetime": "2026-06-22T09:00:00Z",
+        "current_price": 2133.10009765625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2557
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782119700",
+        "instrument": "TCS.NS",
+        "timestamp": 1782119700,
+        "datetime": "2026-06-22T09:15:00Z",
+        "current_price": 2131.60009765625,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.228
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782120600",
+        "instrument": "TCS.NS",
+        "timestamp": 1782120600,
+        "datetime": "2026-06-22T09:30:00Z",
+        "current_price": 2124.39990234375,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -0.314
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782121500",
+        "instrument": "TCS.NS",
+        "timestamp": 1782121500,
+        "datetime": "2026-06-22T09:45:00Z",
+        "current_price": 2129.0,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": 0.2194
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "PULLBACK",
+            "score": -0.0423
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782186300",
+        "instrument": "TCS.NS",
+        "timestamp": 1782186300,
+        "datetime": "2026-06-23T03:45:00Z",
+        "current_price": 2088.800048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.8392
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782187200",
+        "instrument": "TCS.NS",
+        "timestamp": 1782187200,
+        "datetime": "2026-06-23T04:00:00Z",
+        "current_price": 2085.199951171875,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.4306
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      },
+      {
+        "card_id": "card_TCS.NS_1782188100",
+        "instrument": "TCS.NS",
+        "timestamp": 1782188100,
+        "datetime": "2026-06-23T04:15:00Z",
+        "current_price": 2083.300048828125,
+        "resolutions": {
+          "15m": {
+            "label": "REVERSAL",
+            "score": -1.4516
+          },
+          "30m": {
+            "label": "INSUFFICIENT",
+            "score": 0.5
+          },
+          "1d": {
+            "label": "REVERSAL",
+            "score": -2.2564
+          }
+        },
+        "cross_resolution_relationship": "PARTIAL AGREEMENT",
+        "risk_state": "REVERSAL DEVELOPING",
+        "decision_state": "EXIT",
+        "evidence": [
+          "\u2022 15m trajectory crossed reversal boundary",
+          "\u2022 30m intermediate horizon observation insufficient",
+          "\u2022 1d macro horizon indicates structural reversal risk",
+          "\u2022 15m and 1d reversal confirmation, with 30m still insufficient"
+        ]
+      }
+    ]
+  }
+]

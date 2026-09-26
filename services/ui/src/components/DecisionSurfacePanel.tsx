@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import rp600Data from '../data/rp600_time_machine_decision_tapes.json';
-import rp601Data from '../data/rp601_live_crypto_decision_tapes.json';
+import staticCryptoData from '../data/rp601_live_crypto_decision_tapes.json';
 
 interface Resolution {
   label: string;
@@ -30,6 +30,8 @@ interface Tape {
   symbol?: string;
   universe?: string;
   domain_status?: string;
+  information_cutoff_policy?: string;
+  last_updated_utc?: string;
   engine_version: string;
   interpreter_config: string;
   total_events?: number;
@@ -47,8 +49,32 @@ export const DecisionSurfacePanel: React.FC = () => {
   const [selectedEquityTapeIndex, setSelectedEquityTapeIndex] = useState<number>(0);
   const [replayStepIndex, setReplayStepIndex] = useState<number>(0);
 
+  // Dynamic live crypto tape state
+  const [cryptoTape, setCryptoTape] = useState<Tape>(staticCryptoData as unknown as Tape);
+  const [lastPollTime, setLastPollTime] = useState<string>('');
+
+  // Continuous background polling loop (fetches fresh cards every 10 seconds)
+  useEffect(() => {
+    const pollLiveTape = async () => {
+      try {
+        const res = await fetch('/rp601_live_crypto_decision_tapes.json?t=' + Date.now());
+        if (res.ok) {
+          const freshTape: Tape = await res.json();
+          setCryptoTape(freshTape);
+          setLastPollTime(new Date().toLocaleTimeString());
+        }
+      } catch (err) {
+        // Fallback to imported static data if network fails
+      }
+    };
+
+    pollLiveTape();
+    const interval = setInterval(pollLiveTape, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Data sources
-  const cryptoCards: DecisionCard[] = (rp601Data as unknown as Tape).cards || [];
+  const cryptoCards: DecisionCard[] = cryptoTape.cards || (staticCryptoData as unknown as Tape).cards || [];
   const equityTapes: Tape[] = rp600Data as unknown as Tape[];
 
   const currentEquityTape = equityTapes[selectedEquityTapeIndex] || equityTapes[0];
@@ -115,9 +141,23 @@ export const DecisionSurfacePanel: React.FC = () => {
             }}>
               FROZEN SUBSTRATE v0.1.0
             </span>
+            {cryptoTape.information_cutoff_policy === 'LIVE_CONTINUOUS_POLLING_DAEMON' && (
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 8px',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.4)'
+              }}>
+                🟢 LIVE CONTINUOUS DAEMON ACTIVE
+              </span>
+            )}
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>
             Read-Only Presentation Layer over Canonical DecisionState & DecisionTape Substrate
+            {cryptoTape.last_updated_utc && ` (Last Engine Pass: ${cryptoTape.last_updated_utc})`}
           </p>
         </div>
 
