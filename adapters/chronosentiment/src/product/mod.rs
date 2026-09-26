@@ -64,7 +64,12 @@ pub mod paper_replay;
 pub mod portfolio_context;
 pub mod recommendation;
 pub mod recommendation_engine;
+pub mod decision_card;
+pub mod decision_tape;
 pub mod user_profile;
+
+pub use decision_card::{DecisionCardViewModel, ResolutionState, ResolutionsMap};
+pub use decision_tape::DecisionTape;
 
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;

@@ -58,6 +58,9 @@ pub mod population_ecology;
 pub mod portfolio_replay_v0;
 pub mod portfolio_replay_v021;
 pub mod recommendation_outcome;
+pub mod trajectory_interpreter;
+
+pub use trajectory_interpreter::{BarObservation, ConfigAParameters, ConfigATrajectoryInterpreter, TrajectoryEvaluation};
 pub mod replay;
 pub mod search_observability;
 pub mod selection_decision_value;
