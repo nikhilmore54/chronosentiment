@@ -7,6 +7,7 @@ import ReplayStepper from './ReplayStepper';
 import StateViewerPanel from './StateViewerPanel';
 import Gate5PaperDashboard from './Gate5PaperDashboard';
 import DecisionSurfacePanel from './components/DecisionSurfacePanel';
+import ResearchForensicsWorkspace from './components/ResearchForensicsWorkspace';
 import { SystemState } from './types';
 import { API_BASE_URL } from './config';
 
@@ -75,7 +76,7 @@ function App() {
     fetchSystemState(0);
   };
 
-  const [activeTab, setActiveTab] = useState<'surface' | 'gate5' | 'observatory' | 'replay' | 'inspector' | 'research'>('surface');
+  const [activeTab, setActiveTab] = useState<'surface' | 'gate5' | 'forensics' | 'observatory' | 'replay' | 'inspector' | 'research'>('forensics');
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', backgroundColor: '#0a0a0a', color: '#e5e5e5', minHeight: '100vh' }}>
@@ -86,21 +87,31 @@ function App() {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button 
-            style={{ padding: '10px 16px', backgroundColor: activeTab === 'surface' ? '#0ea5e9' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, boxShadow: activeTab === 'surface' ? '0 4px 12px rgba(14,165,233,0.3)' : 'none' }}
+            id="tab-forensics"
+            style={{ padding: '10px 16px', backgroundColor: activeTab === 'forensics' ? '#0ea5e9' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, boxShadow: activeTab === 'forensics' ? '0 4px 12px rgba(14,165,233,0.3)' : 'none' }}
+            onClick={() => setActiveTab('forensics')}>🔬 Research & Forensics (RP-606-609)</button>
+          <button 
+            id="tab-surface"
+            style={{ padding: '10px 16px', backgroundColor: activeTab === 'surface' ? '#0ea5e9' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}
             onClick={() => setActiveTab('surface')}>📊 Decision Surface (RP-600/601)</button>
           <button 
-            style={{ padding: '10px 16px', backgroundColor: activeTab === 'gate5' ? '#0284c7' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => setActiveTab('gate5')}>Gate 5 — Paper Protection</button>
+            id="tab-gate5"
+            style={{ padding: '10px 16px', backgroundColor: activeTab === 'gate5' ? '#0284c7' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}
+            onClick={() => setActiveTab('gate5')}>📄 Paper Trading & Protection</button>
           <button 
+            id="tab-observatory"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'observatory' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
             onClick={() => setActiveTab('observatory')}>Observatory</button>
           <button 
+            id="tab-replay"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'replay' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
             onClick={() => setActiveTab('replay')}>Replay Timeline</button>
           <button 
+            id="tab-inspector"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'inspector' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
             onClick={() => setActiveTab('inspector')}>Trade Inspector</button>
           <button 
+            id="tab-research"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'research' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
             onClick={() => setActiveTab('research')}>Research Console</button>
         </div>
@@ -109,6 +120,10 @@ function App() {
       {error && <div style={{ color: '#ef4444', backgroundColor: '#ef444420', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
 
       <main style={{ backgroundColor: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #222' }}>
+        {activeTab === 'forensics' && (
+          <ResearchForensicsWorkspace />
+        )}
+
         {activeTab === 'surface' && (
           <DecisionSurfacePanel />
         )}
