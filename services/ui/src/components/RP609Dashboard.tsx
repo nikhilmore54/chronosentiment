@@ -125,9 +125,18 @@ export default function RP609Dashboard() {
     }
   };
 
-  const currentResult = data?.candidate_replay_results[selectedCandidate];
-  const currentDecision = data?.validation_decisions[selectedCandidate];
-  const activeTrade: TradeResult | undefined = currentResult?.trade_level_results[selectedTradeIndex] || currentResult?.trade_level_results[0];
+  if (!data) {
+    return (
+      <div style={{ padding: '40px', backgroundColor: '#090d16', color: '#38bdf8', borderRadius: '12px', border: '1px solid #1e293b', textAlign: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: '18px' }}>🛡️ Loading RP-609 Profit Retention Forensic Dataset...</h3>
+        <p style={{ margin: '8px 0 0 0', color: '#94a3b8', fontSize: '13px' }}>Synchronizing trade trajectories and dynamic stop boundaries</p>
+      </div>
+    );
+  }
+
+  const currentResult = data?.candidate_replay_results?.[selectedCandidate];
+  const currentDecision = data?.validation_decisions?.[selectedCandidate];
+  const activeTrade: TradeResult | undefined = currentResult?.trade_level_results?.[selectedTradeIndex] || currentResult?.trade_level_results?.[0];
 
   const filteredTrades = (currentResult?.trade_level_results || []).filter(t => {
     const sym = t.composite_id[0] || '';
@@ -136,9 +145,54 @@ export default function RP609Dashboard() {
     return true;
   });
 
+  // Safe numeric formatter
+  const fmt = (val: number | undefined | null, digits: number = 2): string => {
+    if (val === undefined || val === null || isNaN(val)) return '0.00';
+    return val.toFixed(digits);
+  };
+
+  // Trajectory parsing helpers for objects vs tuples
+  const getPointPnl = (pt: any): number => {
+    if (!pt) return 0;
+    if (typeof pt === 'number') return pt;
+    if (typeof pt.pnl === 'number') return pt.pnl;
+    if (Array.isArray(pt) && typeof pt[1] === 'number') return pt[1];
+    return 0;
+  };
+
+  const getPointLabel = (pt: any, idx: number): string => {
+    if (!pt) return `Step ${idx}`;
+    if (typeof pt.label === 'string') return pt.label;
+    if (Array.isArray(pt) && typeof pt[0] === 'string') return pt[0];
+    return `Step ${idx}`;
+  };
+
+  const getStopControlPnl = (pt: any): number => {
+    if (!pt) return 0;
+    if (typeof pt.control_sl_pnl === 'number') return pt.control_sl_pnl;
+    if (Array.isArray(pt) && typeof pt[1] === 'number') return pt[1];
+    return 0;
+  };
+
+  const getStopCandidatePnl = (pt: any): number => {
+    if (!pt) return 0;
+    if (typeof pt.candidate_sl_pnl === 'number') return pt.candidate_sl_pnl;
+    if (Array.isArray(pt) && typeof pt[1] === 'number') return pt[1];
+    return 0;
+  };
+
   // SVG Chart Math
-  const pricePts = activeTrade?.price_trajectory || [];
-  const stopPts = activeTrade?.stop_trajectory || [];
+  const pricePts = (activeTrade?.price_trajectory || []).map((pt: any, idx: number) => ({
+    step: typeof pt.step === 'number' ? pt.step : idx,
+    label: getPointLabel(pt, idx),
+    pnl: getPointPnl(pt)
+  }));
+
+  const stopPts = (activeTrade?.stop_trajectory || []).map((pt: any, idx: number) => ({
+    step: typeof pt.step === 'number' ? pt.step : idx,
+    control_sl_pnl: getStopControlPnl(pt),
+    candidate_sl_pnl: getStopCandidatePnl(pt)
+  }));
 
   const allPnls = [
     ...pricePts.map(p => p.pnl),
@@ -189,39 +243,46 @@ export default function RP609Dashboard() {
       </div>
 
       {/* Top Level Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px' }}>CONTROL BASELINE REALIZED PnL</div>
-          <div style={{ fontSize: '26px', fontWeight: 900, color: '#ef4444' }}>
-            ₹{data?.baseline_stage2_realized_pnl?.toFixed(2) || '-5188.85'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Stage 2 Holdout Unchanged Control Exit ($N=364$)</div>
-        </div>
+      {(() => {
+        const currSym = selectedDataset === 'US' ? '$' : '₹';
+        const topCandidatePnl = data?.candidate_replay_results?.['PPR-v1.0-FROZEN']?.total_candidate_realized_pnl;
 
-        <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #10b98140' }}>
-          <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 700, marginBottom: '6px' }}>TOP POINT ESTIMATE (`PPR-v1.0`)</div>
-          <div style={{ fontSize: '26px', fontWeight: 900, color: '#10b981' }}>
-            +₹{data?.candidate_replay_results['PPR-v1.0-FROZEN']?.total_candidate_realized_pnl?.toFixed(2) || '6351.77'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>Mean Paired Delta $\Delta_i = +₹31.71$ (CI: [+25.28, +38.52])</div>
-        </div>
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+              <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px' }}>CONTROL BASELINE REALIZED PnL</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#ef4444' }}>
+                {currSym}{fmt(data?.baseline_stage2_realized_pnl)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Stage 2 Holdout Unchanged Control Exit ({selectedDataset === 'US' ? 'N=120 US' : 'N=364 NSE'})</div>
+            </div>
 
-        <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 700, marginBottom: '6px' }}>HOLDOUT HYPOTHESIS GATE</div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8' }}>
-            4 / 4 INDIVIDUAL PASS
-          </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Per-candidate 95% CIs strictly above zero</div>
-        </div>
+            <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #10b98140' }}>
+              <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 700, marginBottom: '6px' }}>TOP POINT ESTIMATE (`PPR-v1.0`)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#10b981' }}>
+                +{currSym}{fmt(topCandidatePnl)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>Mean Paired Delta $\Delta_i = +{currSym}31.71$ (CI: [+25.28, +38.52])</div>
+            </div>
 
-        <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 700, marginBottom: '6px' }}>REVERSALS PREVENTED</div>
-          <div style={{ fontSize: '26px', fontWeight: 900, color: '#f59e0b' }}>
-            81 Trades
+            <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+              <div style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 700, marginBottom: '6px' }}>HOLDOUT HYPOTHESIS GATE</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8' }}>
+                4 / 4 INDIVIDUAL PASS
+              </div>
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Per-candidate 95% CIs strictly above zero</div>
+            </div>
+
+            <div style={{ backgroundColor: '#111827', padding: '18px', borderRadius: '10px', border: '1px solid #1e293b' }}>
+              <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 700, marginBottom: '6px' }}>REVERSALS PREVENTED</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#f59e0b' }}>
+                81 Trades
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Defined as MFE &gt; 0, Control Realized &lt; 0, Candidate Realized &ge; 0</div>
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Defined as MFE &gt; 0, Control Realized &lt; 0, Candidate Realized &ge; 0</div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Navigation Sub-Tabs */}
       <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
@@ -294,7 +355,7 @@ export default function RP609Dashboard() {
                 style={{ backgroundColor: '#1e293b', color: '#e2e8f0', border: '1px solid #334155', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', maxWidth: '280px' }}>
                 {(currentResult?.trade_level_results || []).map((t, idx) => (
                   <option key={idx} value={idx}>
-                    {t.composite_id[0]} ({t.composite_id[1]}) - PnL: {selectedDataset === 'US' ? '$' : '₹'}{t.candidate_realized_pnl}
+                    {t.composite_id[0]} ({t.composite_id[1]}) - PnL: {selectedDataset === 'US' ? '$' : '₹'}{fmt(t.candidate_realized_pnl)}
                   </option>
                 ))}
               </select>
@@ -304,6 +365,10 @@ export default function RP609Dashboard() {
           {/* SVG Chart Rendering */}
           {activeTrade && (() => {
             const currSym = selectedDataset === 'US' ? '$' : '₹';
+            const lo60Pt = (activeTrade.price_trajectory && activeTrade.price_trajectory.length >= 6) ? activeTrade.price_trajectory[5] : null;
+            const lo60Pnl = lo60Pt ? getPointPnl(lo60Pt) : null;
+            const lo60Delta = lo60Pnl !== null ? lo60Pnl - activeTrade.candidate_realized_pnl : null;
+
             return (
             <div style={{ backgroundColor: '#0f172a', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '20px' }}>
               
@@ -315,12 +380,12 @@ export default function RP609Dashboard() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   {activeTrade.reversal_prevented && (
                     <span style={{ backgroundColor: '#10b98120', color: '#10b981', border: '1px solid #10b98140', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
-                      🟢 REVERSAL PREVENTED (Saved {currSym}{Math.abs(activeTrade.baseline_realized_pnl).toFixed(2)})
+                      🟢 REVERSAL PREVENTED (Saved {currSym}{fmt(Math.abs(activeTrade.baseline_realized_pnl))})
                     </span>
                   )}
-                  {activeTrade.price_trajectory && activeTrade.price_trajectory.length >= 6 && activeTrade.price_trajectory[5][1] > activeTrade.candidate_realized_pnl && (
+                  {lo60Delta !== null && lo60Delta > 0 && (
                     <span style={{ backgroundColor: '#a855f720', color: '#c084fc', border: '1px solid #c084fc40', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
-                      ⚠️ PREMATURE EXIT / SACRIFICED CONTINUATION (LO_60 = +{currSym}{(activeTrade.price_trajectory[5][1] - activeTrade.candidate_realized_pnl).toFixed(2)})
+                      ⚠️ PREMATURE EXIT / SACRIFICED CONTINUATION (LO_60 = +{currSym}{fmt(lo60Delta)})
                     </span>
                   )}
                 </div>
@@ -372,29 +437,29 @@ export default function RP609Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
                   <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #334155' }}>
                     <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 800 }}>PEAK UNREALIZED PROFIT (MFE)</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#38bdf8', marginTop: '4px' }}>{currSym}{activeTrade.mfe_pnl.toFixed(2)}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#38bdf8', marginTop: '4px' }}>{currSym}{fmt(activeTrade.mfe_pnl)}</div>
                   </div>
 
                   <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #334155' }}>
                     <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 800 }}>CONTROL BASELINE REALIZED</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: activeTrade.baseline_realized_pnl >= 0 ? '#10b981' : '#ef4444', marginTop: '4px' }}>{currSym}{activeTrade.baseline_realized_pnl.toFixed(2)}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: activeTrade.baseline_realized_pnl >= 0 ? '#10b981' : '#ef4444', marginTop: '4px' }}>{currSym}{fmt(activeTrade.baseline_realized_pnl)}</div>
                   </div>
 
                   <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #10b98140' }}>
                     <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 800 }}>CANDIDATE SHADOW REALIZED</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#10b981', marginTop: '4px' }}>{currSym}{activeTrade.candidate_realized_pnl.toFixed(2)}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#10b981', marginTop: '4px' }}>{currSym}{fmt(activeTrade.candidate_realized_pnl)}</div>
                   </div>
 
                   <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #334155' }}>
                     <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 800 }}>PAIRED DELTA (Δi)</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#f59e0b', marginTop: '4px' }}>+{currSym}{activeTrade.paired_delta.toFixed(2)}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#f59e0b', marginTop: '4px' }}>+{currSym}{fmt(activeTrade.paired_delta)}</div>
                   </div>
 
                   <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #c084fc40' }}>
                     <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: 800 }}>+60m HINDSIGHT CONTINUATION (LO_60)</div>
                     <div style={{ fontSize: '22px', fontWeight: 900, color: '#c084fc', marginTop: '4px' }}>
-                      {activeTrade.price_trajectory && activeTrade.price_trajectory.length >= 6 
-                        ? `${currSym}${activeTrade.price_trajectory[5][1].toFixed(2)} (+${currSym}${(activeTrade.price_trajectory[5][1] - activeTrade.candidate_realized_pnl).toFixed(2)})`
+                      {lo60Pnl !== null && lo60Delta !== null
+                        ? `${currSym}${fmt(lo60Pnl)} (+${currSym}${fmt(lo60Delta)})`
                         : 'N/A'}
                     </div>
                   </div>
@@ -402,9 +467,9 @@ export default function RP609Dashboard() {
               )}
 
               {/* Research Forensics Note on Premature Exit vs Protection */}
-              {activeTrade && activeTrade.price_trajectory && activeTrade.price_trajectory.length >= 6 && activeTrade.price_trajectory[5][1] > activeTrade.candidate_realized_pnl && (
+              {activeTrade && lo60Delta !== null && lo60Delta > 0 && (
                 <div style={{ marginTop: '16px', backgroundColor: '#1e1b4b40', border: '1px solid #6366f140', padding: '12px 16px', borderRadius: '8px', fontSize: '12px', color: '#c7d2fe' }}>
-                  <strong style={{ color: '#818cf8' }}>🔬 Research Forensics Insight (RP-607 &amp; RP-609 Alignment):</strong> This trade exhibits <code style={{ color: '#c084fc' }}>LO_60 = +{currSym}{(activeTrade.price_trajectory[5][1] - activeTrade.candidate_realized_pnl).toFixed(2)} &gt; 0</code> (Premature Exit / Sacrificed Opportunity). The baseline fixed stop triggered during an initial noise shakeout prior to the +60m horizon surge. RP-609 candidate trailing stops tighten stops on accrued profit ($R(t) \ge R_0$) but do not widen initial protective stops to prevent adverse drawdowns. Discriminatory features for pre-entry trend continuation are under evaluation in the <strong>RP-607 Q3 Discrimination Audit</strong>.
+                  <strong style={{ color: '#818cf8' }}>🔬 Research Forensics Insight (RP-607 &amp; RP-609 Alignment):</strong> This trade exhibits <code style={{ color: '#c084fc' }}>LO_60 = +{currSym}{fmt(lo60Delta)} &gt; 0</code> (Premature Exit / Sacrificed Opportunity). The baseline fixed stop triggered during an initial noise shakeout prior to the +60m horizon surge. RP-609 candidate trailing stops tighten stops on accrued profit ($R(t) \ge R_0$) but do not widen initial protective stops to prevent adverse drawdowns. Discriminatory features for pre-entry trend continuation are under evaluation in the <strong>RP-607 Q3 Discrimination Audit</strong>.
                 </div>
               )}
             </div>
@@ -456,23 +521,23 @@ export default function RP609Dashboard() {
                     <td style={{ padding: '12px 10px', color: '#94a3b8', fontSize: '12px', maxWidth: '220px' }}>
                       {meta.desc}
                     </td>
-                    <td style={{ padding: '12px 10px', color: res.total_candidate_realized_pnl >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>
-                      ₹{res.total_candidate_realized_pnl.toFixed(2)}
+                    <td style={{ padding: '12px 10px', color: (res?.total_candidate_realized_pnl ?? 0) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>
+                      {selectedDataset === 'US' ? '$' : '₹'}{fmt(res?.total_candidate_realized_pnl)}
                     </td>
                     <td style={{ padding: '12px 10px', color: '#10b981', fontWeight: 800 }}>
-                      +₹{res.mean_paired_delta.toFixed(2)}
+                      +{selectedDataset === 'US' ? '$' : '₹'}{fmt(res?.mean_paired_delta)}
                     </td>
                     <td style={{ padding: '12px 10px', fontFamily: 'monospace', color: '#38bdf8' }}>
-                      [{dec?.ci_95[0] > 0 ? `+${dec.ci_95[0].toFixed(2)}` : dec?.ci_95[0].toFixed(2)}, +{dec?.ci_95[1].toFixed(2)}]
+                      [{dec?.ci_95?.[0] !== undefined ? (dec.ci_95[0] > 0 ? `+${fmt(dec.ci_95[0])}` : fmt(dec.ci_95[0])) : '0.00'}, +{fmt(dec?.ci_95?.[1])}]
                     </td>
                     <td style={{ padding: '12px 10px', color: '#f59e0b', fontWeight: 700 }}>
-                      {res.reversals_prevented_count}
+                      {res?.reversals_prevented_count ?? 0}
                     </td>
                     <td style={{ padding: '12px 10px', color: '#94a3b8' }}>
-                      {res.premature_exits_count}
+                      {res?.premature_exits_count ?? 0}
                     </td>
                     <td style={{ padding: '12px 10px', color: '#e2e8f0' }}>
-                      ₹{res.total_opportunity_cost_60m.toFixed(2)}
+                      {selectedDataset === 'US' ? '$' : '₹'}{fmt(res?.total_opportunity_cost_60m)}
                     </td>
                     <td style={{ padding: '12px 10px' }}>
                       <span style={{ backgroundColor: '#10b98120', color: '#10b981', border: '1px solid #10b98140', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
@@ -648,11 +713,11 @@ export default function RP609Dashboard() {
                   <td style={{ padding: '10px', fontWeight: 700 }}>{t.composite_id[0]}</td>
                   <td style={{ padding: '10px', color: t.composite_id[1] === 'LONG' ? '#10b981' : '#ef4444', fontWeight: 700 }}>{t.composite_id[1]}</td>
                   <td style={{ padding: '10px', color: '#94a3b8', fontSize: '12px' }}>{t.composite_id[2]}</td>
-                  <td style={{ padding: '10px', color: '#38bdf8' }}>₹{t.mfe_pnl.toFixed(2)}</td>
-                  <td style={{ padding: '10px', color: t.baseline_realized_pnl >= 0 ? '#10b981' : '#ef4444' }}>₹{t.baseline_realized_pnl.toFixed(2)}</td>
-                  <td style={{ padding: '10px', color: t.candidate_realized_pnl >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>₹{t.candidate_realized_pnl.toFixed(2)}</td>
-                  <td style={{ padding: '10px', color: t.paired_delta >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>
-                    {t.paired_delta >= 0 ? `+₹${t.paired_delta.toFixed(2)}` : `₹${t.paired_delta.toFixed(2)}`}
+                  <td style={{ padding: '10px', color: '#38bdf8' }}>{selectedDataset === 'US' ? '$' : '₹'}{fmt(t.mfe_pnl)}</td>
+                  <td style={{ padding: '10px', color: (t.baseline_realized_pnl ?? 0) >= 0 ? '#10b981' : '#ef4444' }}>{selectedDataset === 'US' ? '$' : '₹'}{fmt(t.baseline_realized_pnl)}</td>
+                  <td style={{ padding: '10px', color: (t.candidate_realized_pnl ?? 0) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>{selectedDataset === 'US' ? '$' : '₹'}{fmt(t.candidate_realized_pnl)}</td>
+                  <td style={{ padding: '10px', color: (t.paired_delta ?? 0) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}>
+                    {(t.paired_delta ?? 0) >= 0 ? `+${selectedDataset === 'US' ? '$' : '₹'}${fmt(t.paired_delta)}` : `${selectedDataset === 'US' ? '$' : '₹'}${fmt(t.paired_delta)}`}
                   </td>
                   <td style={{ padding: '10px' }}>
                     <button 
