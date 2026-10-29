@@ -1,0 +1,181 @@
+{
+  "timestamp_utc": "2026-10-04T14:47:37.364458+00:00",
+  "active_positions": {
+    "C0_Reference": {
+      "BTCUSDT": "CRYPTO-LIVE-C0_Reference-BTCUSDT-20261004142213",
+      "ETHUSDT": "CRYPTO-LIVE-C0_Reference-ETHUSDT-20261004143627",
+      "SOLUSDT": "CRYPTO-LIVE-C0_Reference-SOLUSDT-20261004143627",
+      "BNBUSDT": "CRYPTO-LIVE-C0_Reference-BNBUSDT-20261004143627"
+    },
+    "C1_Point_Expectancy": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C2_Dynamic_BreakEven": {
+      "BTCUSDT": "CRYPTO-LIVE-C2_Dynamic_BreakEven-BTCUSDT-20261004143627",
+      "ETHUSDT": "CRYPTO-LIVE-C2_Dynamic_BreakEven-ETHUSDT-20261004143627",
+      "SOLUSDT": "CRYPTO-LIVE-C2_Dynamic_BreakEven-SOLUSDT-20261004143223",
+      "BNBUSDT": "CRYPTO-LIVE-C2_Dynamic_BreakEven-BNBUSDT-20261004143123"
+    },
+    "C3_Uncertainty_LCB": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C4_Dispersion_Adjusted": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C5_Fixed_Capacity_Top2Pct": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    }
+  },
+  "last_exits": {
+    "C0_Reference": {
+      "BTCUSDT": "2026-10-04T14:17:09.470535+00:00",
+      "ETHUSDT": "2026-10-04T14:31:23.027005+00:00",
+      "SOLUSDT": "2026-10-04T14:31:23.027005+00:00",
+      "BNBUSDT": "2026-10-04T14:31:23.027005+00:00"
+    },
+    "C1_Point_Expectancy": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": "2026-10-04T13:11:10.013532+00:00",
+      "BNBUSDT": null
+    },
+    "C2_Dynamic_BreakEven": {
+      "BTCUSDT": "2026-10-04T14:17:09.470535+00:00",
+      "ETHUSDT": "2026-10-04T14:14:06.867388+00:00",
+      "SOLUSDT": "2026-10-04T14:14:06.867388+00:00",
+      "BNBUSDT": "2026-10-04T13:38:34.149292+00:00"
+    },
+    "C3_Uncertainty_LCB": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C4_Dispersion_Adjusted": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C5_Fixed_Capacity_Top2Pct": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    }
+  },
+  "open_trade_details": {
+    "C0_Reference": {
+      "BTCUSDT": {
+        "trade_id": "CRYPTO-LIVE-C0_Reference-BTCUSDT-20261004142213",
+        "symbol": "BTCUSDT",
+        "side": "SHORT",
+        "entry_time_utc": "2026-10-04T14:22:13.943840+00:00",
+        "entry_price": 85132.9
+      },
+      "ETHUSDT": {
+        "trade_id": "CRYPTO-LIVE-C0_Reference-ETHUSDT-20261004143627",
+        "symbol": "ETHUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:36:27.391387+00:00",
+        "entry_price": 2698.28
+      },
+      "SOLUSDT": {
+        "trade_id": "CRYPTO-LIVE-C0_Reference-SOLUSDT-20261004143627",
+        "symbol": "SOLUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:36:27.391387+00:00",
+        "entry_price": 121.68
+      },
+      "BNBUSDT": {
+        "trade_id": "CRYPTO-LIVE-C0_Reference-BNBUSDT-20261004143627",
+        "symbol": "BNBUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:36:27.391387+00:00",
+        "entry_price": 787.42
+      }
+    },
+    "C1_Point_Expectancy": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C2_Dynamic_BreakEven": {
+      "BTCUSDT": {
+        "trade_id": "CRYPTO-LIVE-C2_Dynamic_BreakEven-BTCUSDT-20261004143627",
+        "symbol": "BTCUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:36:27.391387+00:00",
+        "entry_price": 85195.46
+      },
+      "ETHUSDT": {
+        "trade_id": "CRYPTO-LIVE-C2_Dynamic_BreakEven-ETHUSDT-20261004143627",
+        "symbol": "ETHUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:36:27.391387+00:00",
+        "entry_price": 2698.28
+      },
+      "SOLUSDT": {
+        "trade_id": "CRYPTO-LIVE-C2_Dynamic_BreakEven-SOLUSDT-20261004143223",
+        "symbol": "SOLUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:32:23.966325+00:00",
+        "entry_price": 121.62
+      },
+      "BNBUSDT": {
+        "trade_id": "CRYPTO-LIVE-C2_Dynamic_BreakEven-BNBUSDT-20261004143123",
+        "symbol": "BNBUSDT",
+        "side": "LONG",
+        "entry_time_utc": "2026-10-04T14:31:23.027005+00:00",
+        "entry_price": 787.24
+      }
+    },
+    "C3_Uncertainty_LCB": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C4_Dispersion_Adjusted": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C5_Fixed_Capacity_Top2Pct": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    }
+  },
+  "cumulative_trades": {
+    "C0_Reference": 40,
+    "C1_Point_Expectancy": 1,
+    "C2_Dynamic_BreakEven": 21,
+    "C3_Uncertainty_LCB": 0,
+    "C4_Dispersion_Adjusted": 0,
+    "C5_Fixed_Capacity_Top2Pct": 0
+  },
+  "cumulative_net_pnl": {
+    "C0_Reference": 2974.549217716396,
+    "C1_Point_Expectancy": -43.474566521489216,
+    "C2_Dynamic_BreakEven": -183.65580012054448,
+    "C3_Uncertainty_LCB": 0.0,
+    "C4_Dispersion_Adjusted": 0.0,
+    "C5_Fixed_Capacity_Top2Pct": 0.0
+  }
+}

@@ -168,7 +168,7 @@ No mid-window “just a few more days” without a versioned extension artifact.
 4. After authorization: Session 1 only when session-start criteria are met; integrity review at Session 5 (**no tuning**); formal decision at Session 20 (or `INCONCLUSIVE` + optional predefined extension).  
 5. Until then: Arm A frozen; Sessions 41–68 sealed; live order authority **0.0%**.
 
-Implementation helpers: `scripts/rp608_prospective_v1.py` (clock, DQ gates, namespace write guard, extension rule); `tests/test_rp608_prospective_v1.py`.
+Implementation helpers: `scripts/rp608_prospective_v1.py` (clock, DQ gates, namespace write guard, extension rule); `scripts/rp608_prospective_v1_observer.py` (live Arm A/B/C journal; Arm C = DIRECTIONAL ∩ TRADE_QUALIFIED; 0.0% authority); hooked from `run_rp608_shadow_daemon.py` / `run_rp608_nse_shadow_daemon.py` when that market is STARTED; `tests/test_rp608_prospective_v1.py`, `tests/test_rp608_prospective_v1_observer.py`.
 
 ---
 

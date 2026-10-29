@@ -111,7 +111,7 @@ fn no_trade_is_never_uniquely_best_and_never_called_correct() {
 fn analysis_and_binary_do_not_search_or_invent_a_cutoff() {
     let files = [
         include_str!("../src/decision_support/decision_value_landscape.rs"),
-        include_str!("../src/bin/csp006_decision_value.rs"),
+        include_str!("../legacy/bin/csp006_decision_value.rs"),
     ];
     for src in files {
         assert!(!src.contains("evolve_on_development"));
@@ -124,7 +124,7 @@ fn analysis_and_binary_do_not_search_or_invent_a_cutoff() {
         assert!(!src.contains("TRANSACTION_COST"));
         assert!(!src.contains("evolve_on_development_observed"));
     }
-    let bin = include_str!("../src/bin/csp006_decision_value.rs");
+    let bin = include_str!("../legacy/bin/csp006_decision_value.rs");
     assert!(bin.contains("RESEARCH_DISCOVERY_ARTIFACT_HASH"));
     assert!(bin.contains("analyze_landscape"));
     assert!(bin.contains("used_as_coralys_fitness=false"));

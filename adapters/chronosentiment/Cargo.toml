@@ -26,12 +26,6 @@ async-trait = "0.1"
 rand = "0.8"
 sha2 = "0.10"
 
-# ---------------------------------------------------------------------------
-# RP-600 / RP-601 Decision Surface Rust Binaries
-# ---------------------------------------------------------------------------
-[[bin]]
-name = "rp601_crypto_daemon"
-path = "src/bin/rp601_crypto_daemon.rs"
 
 # ---------------------------------------------------------------------------
 # Legacy B3/B4 generators and demos — not built unless `--features legacy-lake`
@@ -71,8 +65,118 @@ name = "m3_reasoning_demo"
 path = "legacy/bin/m3_reasoning_demo.rs"
 required-features = ["legacy-lake"]
 
+[[bin]]
+name = "csp002_b4_historical_run"
+path = "legacy/bin/csp002_b4_historical_run.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp003_forward_session"
+path = "legacy/bin/csp003_forward_session.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp004_enrichment_certify"
+path = "legacy/bin/csp004_enrichment_certify.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp004_historical_lab"
+path = "legacy/bin/csp004_historical_lab.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp005_factor_ecology"
+path = "legacy/bin/csp005_factor_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_comparison"
+path = "legacy/bin/csp006_c3_comparison.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_implementation"
+path = "legacy/bin/csp006_c3_implementation.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_rule_ecology"
+path = "legacy/bin/csp006_c3_rule_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_rule_persistence"
+path = "legacy/bin/csp006_c3_rule_persistence.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_search"
+path = "legacy/bin/csp006_c3_search.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_state_landscape"
+path = "legacy/bin/csp006_c3_state_landscape.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_decision_value"
+path = "legacy/bin/csp006_decision_value.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_decision_value_harness"
+path = "legacy/bin/csp006_decision_value_harness.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_policy_discovery"
+path = "legacy/bin/csp006_policy_discovery.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_population_ecology"
+path = "legacy/bin/csp006_population_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_recommendation_outcome"
+path = "legacy/bin/csp006_recommendation_outcome.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_research_snapshot"
+path = "legacy/bin/csp006_research_snapshot.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_search_diagnosis"
+path = "legacy/bin/csp006_search_diagnosis.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_selection_review"
+path = "legacy/bin/csp006_selection_review.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp007_portfolio_replay"
+path = "legacy/bin/csp007_portfolio_replay.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp008_portfolio_replay_v02"
+path = "legacy/bin/csp008_portfolio_replay_v02.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp009_portfolio_continuous"
+path = "legacy/bin/csp009_portfolio_continuous.rs"
+required-features = ["legacy-lake"]
+
 # ---------------------------------------------------------------------------
-# G-GATE research binaries — not built unless `--features research`
+# Research binaries — not built unless `--features research`
 # ---------------------------------------------------------------------------
 [[bin]]
 name = "m5_assessment_predictive_value"
@@ -89,6 +193,56 @@ name = "m6_phase_g_experiment"
 path = "research/bin/m6_phase_g_experiment.rs"
 required-features = ["research"]
 
+[[bin]]
+name = "csp010_portfolio_v03"
+path = "research/bin/csp010_portfolio_v03.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "csp011_portfolio_v04"
+path = "research/bin/csp011_portfolio_v04.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "csp012_portfolio_v041"
+path = "research/bin/csp012_portfolio_v041.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_research_audit"
+path = "research/bin/rp608_research_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_offline_policy_freeze"
+path = "research/bin/rp608_offline_policy_freeze.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_champion_integrity_audit"
+path = "research/bin/rp608_champion_integrity_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_structural_validity_gate"
+path = "research/bin/rp608_structural_validity_gate.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_exit_ablation_study"
+path = "research/bin/rp608_exit_ablation_study.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_exit_reconciliation_audit"
+path = "research/bin/rp608_exit_reconciliation_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_telemetry_validation_gate"
+path = "research/bin/rp608_telemetry_validation_gate.rs"
+required-features = ["research"]
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"
@@ -103,3 +257,39 @@ required-features = ["research"]
 name = "phase_g_predictive_value_tests"
 path = "research/tests/phase_g_predictive_value_tests.rs"
 required-features = ["research"]
+
+[[test]]
+name = "rp608_audit_reconciliation_tests"
+path = "research/tests/rp608_audit_reconciliation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_crypto_replay_tests"
+path = "research/tests/rp608_crypto_replay_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_offline_policy_tests"
+path = "research/tests/rp608_offline_policy_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_causal_invariant_tests"
+path = "research/tests/rp608_causal_invariant_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_telemetry_invariants_tests"
+path = "research/tests/rp608_telemetry_invariants_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_tel001a_reconciliation_tests"
+path = "research/tests/rp608_tel001a_reconciliation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_shadow_readiness_tests"
+path = "research/tests/rp608_shadow_readiness_tests.rs"
+required-features = ["research"]
+

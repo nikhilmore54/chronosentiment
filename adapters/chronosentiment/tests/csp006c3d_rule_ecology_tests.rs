@@ -61,7 +61,7 @@ fn ecology_identity_gates_search_two_and_covers_all_rows() {
 #[test]
 fn analysis_does_not_evolve_or_rename_the_candidate() {
     let src = include_str!("../src/decision_support/c3_rule_ecology.rs");
-    let bin = include_str!("../src/bin/csp006_c3_rule_ecology.rs");
+    let bin = include_str!("../legacy/bin/csp006_c3_rule_ecology.rs");
     for text in [src, bin] {
         assert!(!text.contains("evolve_"));
         assert!(!text.contains("train_fitness"));

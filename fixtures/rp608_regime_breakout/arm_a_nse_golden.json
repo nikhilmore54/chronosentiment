@@ -1,0 +1,122 @@
+{
+  "protocol": "RP-608-REGIME-BREAKOUT-001",
+  "market": "NSE",
+  "arm": "A",
+  "arm_a_frozen": true,
+  "live_order_authority": 0.0,
+  "generated_utc": "2026-10-28T06:11:17.715532+00:00",
+  "cases": [
+    {
+      "case_id": "nse_cold_start",
+      "decision": {
+        "decision": "NO_TRADE",
+        "decision_code": "COLD_START_INSUFFICIENT_HISTORY",
+        "traj15": 0.432085,
+        "signal_entry": false
+      },
+      "trade": null
+    },
+    {
+      "case_id": "nse_sub_threshold",
+      "decision": {
+        "decision": "ENTER_LONG",
+        "decision_code": "QUALIFIED_MOMENTUM_BREAKOUT",
+        "traj15": 0.125721,
+        "signal_entry": true,
+        "side": "LONG"
+      },
+      "trade": null
+    },
+    {
+      "case_id": "nse_qualified_uptrend_trade",
+      "decision": {
+        "decision": "ENTER_LONG",
+        "decision_code": "QUALIFIED_MOMENTUM_BREAKOUT",
+        "traj15": 0.760502,
+        "signal_entry": true,
+        "side": "LONG"
+      },
+      "trade": {
+        "market": "NSE",
+        "side": "LONG",
+        "entry_bar_idx": 8,
+        "entry_price": 1020.1759,
+        "exit_bar_idx": 12,
+        "exit_price": 1030.416,
+        "exit_reason": "TARGET_HORIZON_60M",
+        "holding_bars": 4,
+        "quantity": 98,
+        "mfe_price": 1030.9312,
+        "mae_price": 1019.6658,
+        "gross_pnl_inr": 1003.53,
+        "net_pnl_inr": 830.62,
+        "gross_return_bps": 100.3756,
+        "net_return_bps": 83.0809,
+        "friction": {
+          "brokerage": 40.0,
+          "stt": 25.25,
+          "exchange_charges": 5.97,
+          "sebi_charges": 0.2,
+          "stamp_duty": 3.0,
+          "gst": 8.31,
+          "spread_crossing_inr": 49.99,
+          "slippage_inr": 40.19,
+          "total_friction_inr": 172.91
+        },
+        "arm_a_frozen": true,
+        "live_order_authority": 0.0
+      }
+    },
+    {
+      "case_id": "nse_stop_loss_path",
+      "decision": {
+        "decision": "ENTER_LONG",
+        "decision_code": "QUALIFIED_MOMENTUM_BREAKOUT",
+        "traj15": 0.12,
+        "signal_entry": true,
+        "side": "LONG"
+      },
+      "trade": {
+        "market": "NSE",
+        "side": "LONG",
+        "entry_bar_idx": 8,
+        "entry_price": 1000.0,
+        "exit_bar_idx": 9,
+        "exit_price": 988,
+        "exit_reason": "STOP_LOSS",
+        "holding_bars": 1,
+        "quantity": 100,
+        "mfe_price": 1001,
+        "mae_price": 985,
+        "gross_pnl_inr": -1200.0,
+        "net_pnl_inr": -1371.86,
+        "gross_return_bps": -120.0,
+        "net_return_bps": -137.186,
+        "friction": {
+          "brokerage": 40.0,
+          "stt": 24.7,
+          "exchange_charges": 5.9,
+          "sebi_charges": 0.2,
+          "stamp_duty": 3.0,
+          "gst": 8.3,
+          "spread_crossing_inr": 50.0,
+          "slippage_inr": 39.76,
+          "total_friction_inr": 171.86
+        },
+        "arm_a_frozen": true,
+        "live_order_authority": 0.0
+      }
+    },
+    {
+      "case_id": "nse_boundary_excluded",
+      "decision": {
+        "decision": "NO_TRADE",
+        "decision_code": "INTRADAY_BOUNDARY_EXCLUDED",
+        "traj15": 0.89951,
+        "signal_entry": false
+      },
+      "trade": null
+    }
+  ],
+  "fingerprint_sha256": "688e39f1b32bcaacd5ac5b8774f372102f0bdc62ab5d018d09666377cc6e18ed"
+}

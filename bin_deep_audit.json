@@ -1,0 +1,930 @@
+{
+  "csp002_b4_historical_run": {
+    "network": false,
+    "sql": true,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "performance.json",
+      "lineage.json",
+      "HISTORICAL_PERFORMANCE_REPORT.md",
+      "provenance.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp003_forward_session": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "performance.json",
+      "universe.json",
+      "PROGRESS.md"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+    ],
+    "docs": [
+      "docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md",
+      "docs/CS-P-003_FORWARD_PAPER_VALIDATION.md"
+    ]
+  },
+  "csp004_enrichment_certify": {
+    "network": false,
+    "sql": true,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "factor_availability.json",
+      "FACTOR_AVAILABILITY.md",
+      "certification.json",
+      "CERTIFICATION.md"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "csp004_historical_lab": {
+    "network": false,
+    "sql": true,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "laboratory.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+    ],
+    "docs": [
+      "docs/CS-P-004_HISTORICAL_RESEARCH_LABORATORY.md"
+    ]
+  },
+  "csp005_factor_ecology": {
+    "network": false,
+    "sql": true,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "FACTOR_ECOLOGY.md",
+      "DESIGN_CONSTRAINTS.md",
+      "rows.json",
+      "ecology.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md",
+      "docs/CS-P-005_FACTOR_ECOLOGY_ANALYSIS.md"
+    ]
+  },
+  "csp006_c3_comparison": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "REVIEW.md",
+      "conversion_rows.json",
+      "comparison.json",
+      "pairwise_rows.json",
+      "action_matrix.json",
+      "selected_policy.json",
+      "recommendations.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3c_comparison_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_c3_implementation": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "IMPLEMENTATION.md",
+      "verification.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3i_implementation_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_c3_rule_ecology": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "recommendations.json",
+      "ECOLOGY.md",
+      "ecology.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3d_rule_ecology_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_c3_rule_persistence": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "recommendations.json",
+      "persistence.json",
+      "PERSISTENCE.md"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3e_rule_persistence_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_c3_search": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "archive.json",
+      "table_b_decision_value.json",
+      "SELECTED.md",
+      "HARNESS.md",
+      "table_a_decision_distribution.json",
+      "SEARCH.md",
+      "search_evidence.json",
+      "harness.json",
+      "selected_policy.json",
+      "recommendations.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3r_search_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_c3_state_landscape": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "recommendations.json",
+      "LANDSCAPE.md",
+      "landscape.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c3f_state_landscape_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_decision_value": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "LANDSCAPE.md",
+      "selected_policy.json",
+      "recommendations.json",
+      "rows.json",
+      "landscape.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c2d_decision_value_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+      "docs/CS-P-006-C.2-D_DECISION_VALUE_LANDSCAPE.md"
+    ]
+  },
+  "csp006_decision_value_harness": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "table_b_decision_value.json",
+      "HARNESS.md",
+      "table_a_decision_distribution.json",
+      "harness.json",
+      "selected_policy.json",
+      "recommendations.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006n_decision_value_harness_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+      "docs/CS-P-006-N_DECISION_VALUE_RESEARCH_HARNESS.md"
+    ]
+  },
+  "csp006_p_enrich": {
+    "network": true,
+    "sql": false,
+    "writes": [],
+    "out_paths": [
+      "product_validation/CS-P-006/observatory/prospective/ledger.json"
+    ],
+    "scripts": [
+      "scripts/start_backend.sh",
+      "scripts/replay_ledger.py"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "csp006_p_execute": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "CONTRACT.txt",
+      "report.json",
+      "REPORT.md",
+      "intents.json",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_p_historical_pe2": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "CONTRACT.txt",
+      "selected_policy.json",
+      "ledger.json",
+      "REPORT.md"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md"
+    ]
+  },
+  "csp006_p_live_execute": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "CONTRACT.txt",
+      "selected_policy.json",
+      "ledger.json",
+      "REPORT.md"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_p_observatory": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "recommendations.json",
+      "ledger.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006p_observatory_slice_tests.rs"
+    ],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_p_observe": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "ledger.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006p_observatory_maturity_tests.rs"
+    ],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_p_replay": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "ledger.json",
+      "REPORT.md",
+      "report.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_p_replay_pe3": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "pe3_REPORT.md",
+      "selected_policy.json",
+      "pe3_execution_report.json",
+      "pe3_historical_ledger.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md"
+    ]
+  },
+  "csp006_policy_discovery": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "SELECTED.md",
+      "PROVENANCE.md",
+      "evaluation_handoff.json",
+      "SEARCH.md",
+      "search_evidence.json",
+      "EVALUATION.md",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/policy_discovery_tests.rs",
+      "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+      "docs/CS-P-006-C_POLICY_DISCOVERY.md"
+    ]
+  },
+  "csp006_population_ecology": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "ECOLOGY.md",
+      "archive.json",
+      "ecology.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c2p_population_ecology_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+      "docs/CS-P-006-C.2-P_POPULATION_ECOLOGY.md"
+    ]
+  },
+  "csp006_recommendation_outcome": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "recommendations.json",
+      "SCORECARD.md",
+      "scorecard.json"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c2r_recommendation_outcome_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-C.2-R_RECOMMENDATION_OUTCOME.md",
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_research_snapshot": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "snapshot.json",
+      "identity.txt",
+      "PROVENANCE.md",
+      "certification.json",
+      "CERTIFICATION.md"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+    ]
+  },
+  "csp006_search_diagnosis": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "diagnosis.json",
+      "search_evidence.json",
+      "DIAGNOSIS.md"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/policy_search_diagnosis_tests.rs",
+      "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-C.1_SEARCH_DIAGNOSIS.md"
+    ]
+  },
+  "csp006_selection_review": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "selection_review.json",
+      "archive.json",
+      "SELECTION_REVIEW.md"
+    ],
+    "scripts": [],
+    "tests": [
+      "adapters/chronosentiment/tests/csp006c2s_selection_review_tests.rs"
+    ],
+    "docs": [
+      "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+      "docs/CS-P-006-C.2-S_SELECTION_DECISION_VALUE.md"
+    ]
+  },
+  "csp007_portfolio_replay": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "portfolio_replay_ledger.json",
+      "metadata.json",
+      "portfolio_comparison.json",
+      "portfolio_REPORT.md",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "csp008_portfolio_replay_v02": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "matrix_summary.json",
+      "portfolio_replay_ledger.json",
+      "metadata.json",
+      "portfolio_comparison.json",
+      "portfolio_REPORT.md",
+      "matrix_REPORT.md",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "csp009_portfolio_continuous": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "continuous_REPORT.md",
+      "continuous_ledger.json",
+      "metadata.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "csp010_portfolio_v03": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "ROBUSTNESS_REPORT.md",
+      "stop_loss_analysis.json",
+      "continuous_ledger.json",
+      "metadata.json",
+      "REPORT.md",
+      "robustness_matrix.json",
+      "selected_policy.json"
+    ],
+    "scripts": [
+      "scripts/fetch_v03_bar_cache.py"
+    ],
+    "tests": [],
+    "docs": []
+  },
+  "csp011_portfolio_v04": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "COMPARISON_REPORT.md",
+      "stop_loss_analysis.json",
+      "continuous_ledger.json",
+      "metadata.json",
+      "REPORT.md",
+      "comparison_matrix.json",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "csp012_portfolio_v041": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "COMPARISON_REPORT.md",
+      "stop_loss_analysis.json",
+      "continuous_ledger.json",
+      "metadata.json",
+      "REPORT.md",
+      "decision_realization_ledger.json",
+      "comparison_matrix.json",
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "historical_runs/portfolio_v04_1_capital_allocation_experiment/COMPARISON_REPORT.md"
+    ]
+  },
+  "deferred_live_decision_loop": {
+    "network": false,
+    "sql": false,
+    "writes": [],
+    "out_paths": [
+      "datasets/p4_opportunity_dataset.json"
+    ],
+    "scripts": [
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/live_fetch_to_inbox.py"
+    ],
+    "tests": [],
+    "docs": []
+  },
+  "deferred_live_yahoo": {
+    "network": false,
+    "sql": false,
+    "writes": [],
+    "out_paths": [],
+    "scripts": [],
+    "tests": [],
+    "docs": []
+  },
+  "intraday001_observe": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/INTRADAY001_PROTOCOL.md"
+    ]
+  },
+  "live001_snapshot": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "datasets/universes/coralys_102_v1.json",
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/pre_open_job.sh",
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "live002_evaluate": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/pre_open_job.sh",
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "live003_recommend": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "live_capture/evaluations/latest.json",
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/p4_recalculate_predictions.py",
+      "scripts/pre_open_job.sh",
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "live004_certify": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "live_capture/recommendations/latest.json",
+      "live_capture/evaluations/latest.json",
+      "live_capture/snapshots/latest.json",
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/p4_recalculate_predictions.py",
+      "scripts/pre_open_job.sh",
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "live005_ledger": {
+    "network": true,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "live_capture/recommendations/latest.json",
+      "live_capture/certifications/latest.json",
+      "latest_run.json"
+    ],
+    "scripts": [
+      "scripts/p4_recalculate_predictions.py",
+      "scripts/pre_open_job.sh",
+      "scripts/run_chronological_oos_cohort.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/P4_PENDING_PREDICTION_RECALCULATION.md",
+      "docs/INDEX.md"
+    ]
+  },
+  "rec001h_historical_reconstruction": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json"
+    ],
+    "scripts": [],
+    "tests": [],
+    "docs": [
+      "docs/P4_WALKFORWARD_RESULTS.md",
+      "docs/INDEX.md"
+    ]
+  },
+  "time002_reconstruct": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/time007_cohort_runner.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "time003_replay": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "selected_policy.json",
+      "latest.json"
+    ],
+    "scripts": [
+      "scripts/time007_cohort_runner.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "time004_ledger": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "latest_run.json",
+      "time_machine/decisions/latest.json"
+    ],
+    "scripts": [
+      "scripts/time007_cohort_runner.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "time005_observe": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "latest_run.json"
+    ],
+    "scripts": [
+      "scripts/time007_cohort_runner.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "time006_evidence_dataset": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "evidence_dataset.csv",
+      "latest_run.json"
+    ],
+    "scripts": [
+      "scripts/time007_cohort_runner.sh"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/INDEX.md"
+    ]
+  },
+  "time009_observe": {
+    "network": false,
+    "sql": false,
+    "writes": [
+      "fs::write"
+    ],
+    "out_paths": [
+      "latest_run.json"
+    ],
+    "scripts": [
+      "scripts/p4_recalculate_predictions.py",
+      "scripts/admit_stale_backfill_cohorts.py",
+      "scripts/backfill_missing_cohorts.py",
+      "scripts/start_backend.sh",
+      "scripts/restore_orphaned_ledger_entries.py"
+    ],
+    "tests": [],
+    "docs": [
+      "docs/TIME009_PROTOCOL.md"
+    ]
+  }
+}

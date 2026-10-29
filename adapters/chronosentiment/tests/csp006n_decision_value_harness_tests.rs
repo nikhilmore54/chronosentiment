@@ -215,7 +215,7 @@ fn regret_and_unique_best_cannot_construct_protocol_value() {
 fn analysis_and_binary_do_not_evolve_or_authorize_c3() {
     let files = [
         include_str!("../src/decision_support/decision_value_harness.rs"),
-        include_str!("../src/bin/csp006_decision_value_harness.rs"),
+        include_str!("../legacy/bin/csp006_decision_value_harness.rs"),
     ];
     for src in files {
         assert!(!src.contains("evolve_on_development"));
@@ -223,7 +223,7 @@ fn analysis_and_binary_do_not_evolve_or_authorize_c3() {
         assert!(!src.contains("CoralysPhase"));
         assert!(!src.contains("b5_strategy"));
     }
-    let bin = include_str!("../src/bin/csp006_decision_value_harness.rs");
+    let bin = include_str!("../legacy/bin/csp006_decision_value_harness.rs");
     assert!(bin.contains("RESEARCH_DISCOVERY_ARTIFACT_HASH"));
     assert!(bin.contains("c3_authorized=false"));
     assert!(bin.contains("refusing to overwrite Search #1"));

@@ -1439,24 +1439,77 @@ mod tests {
         );
     }
 
+    struct TestTempDir {
+        path: std::path::PathBuf,
+    }
+
+    impl TestTempDir {
+        fn new(prefix: &str) -> Self {
+            let path = std::env::temp_dir().join(format!("{prefix}-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&path).expect("create test temp dir");
+            Self { path }
+        }
+
+        fn path(&self) -> &std::path::Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TestTempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
     #[test]
     fn cached_session_20260915_keeps_frozen_book_and_rolling_asof() {
         use std::collections::HashSet;
         use std::path::Path;
+        use crate::product::CachedOhlcBar;
 
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let dataset = root.join("datasets/live005_20260915.json");
-        let cache = root.join("intraday_capture/yahoo_cache_1m");
+        let temp_cache = TestTempDir::new("cached-session-20260915");
 
-        if !dataset.exists() || !cache.join("JUBLFOOD.NS.json").exists() {
-            return;
-        }
+        let start_unix = 1_789_443_900; // 2026-09-15 09:15 IST
+        let bankbaroda_bars: Vec<CachedOhlcBar> = (0..30)
+            .map(|i| CachedOhlcBar {
+                timestamp: start_unix + i * 60,
+                high: 235.5,
+                low: 235.4,
+                close: 235.45,
+                volume: Some(1000.0),
+            })
+            .collect();
+        std::fs::write(
+            temp_cache.path().join("BANKBARODA.NS.json"),
+            serde_json::to_vec(&bankbaroda_bars).unwrap(),
+        )
+        .unwrap();
+
+        let wipro_bars: Vec<CachedOhlcBar> = (0..30)
+            .map(|i| {
+                let p = 171.4 + (i as f64) * 0.4;
+                CachedOhlcBar {
+                    timestamp: start_unix + i * 60,
+                    high: p + 0.1,
+                    low: p - 0.1,
+                    close: p,
+                    volume: Some(1000.0),
+                }
+            })
+            .collect();
+        std::fs::write(
+            temp_cache.path().join("WIPRO.NS.json"),
+            serde_json::to_vec(&wipro_bars).unwrap(),
+        )
+        .unwrap();
 
         let briefs =
             crate::product::load_intraday_briefs(dataset.to_str().unwrap()).unwrap();
 
         let run =
-            run_cached_session(&briefs, "2026-09-15", &cache, 0.0)
+            run_cached_session(&briefs, "2026-09-15", temp_cache.path(), 0.0)
                 .expect("cached session");
 
         // The cached tape must contain a complete session.

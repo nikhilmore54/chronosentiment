@@ -196,7 +196,7 @@ fn analysis_module_does_not_search_or_score_evaluation() {
 
 #[test]
 fn ecology_binary_is_identity_gated_and_is_not_search_two() {
-    let src = include_str!("../src/bin/csp006_population_ecology.rs");
+    let src = include_str!("../legacy/bin/csp006_population_ecology.rs");
     assert!(src.contains("evolve_on_development_observed"));
     assert!(src.contains("RESEARCH_DISCOVERY_ARTIFACT_HASH"));
     assert!(src.contains("refusing to analyze an artifact that is not Search #1"));

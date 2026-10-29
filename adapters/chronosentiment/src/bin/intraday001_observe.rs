@@ -27,6 +27,8 @@
 //!   --cache1m intraday_capture/yahoo_cache_1m
 //! ```
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::PathBuf;

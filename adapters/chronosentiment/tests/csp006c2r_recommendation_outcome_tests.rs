@@ -158,7 +158,7 @@ fn no_trade_is_never_marked_correct() {
 fn analysis_and_binary_do_not_search() {
     let files = [
         include_str!("../src/decision_support/recommendation_outcome.rs"),
-        include_str!("../src/bin/csp006_recommendation_outcome.rs"),
+        include_str!("../legacy/bin/csp006_recommendation_outcome.rs"),
     ];
     for src in files {
         assert!(!src.contains("evolve_on_development"));
@@ -167,7 +167,7 @@ fn analysis_and_binary_do_not_search() {
         assert!(!src.contains("CoralysPhase"));
         assert!(!src.contains("b5_strategy"));
     }
-    let bin = include_str!("../src/bin/csp006_recommendation_outcome.rs");
+    let bin = include_str!("../legacy/bin/csp006_recommendation_outcome.rs");
     assert!(bin.contains("RESEARCH_DISCOVERY_ARTIFACT_HASH"));
     assert!(bin.contains("score_recommendations"));
 }

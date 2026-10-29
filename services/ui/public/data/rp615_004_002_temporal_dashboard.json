@@ -1,0 +1,5904 @@
+{
+  "programme": "RP-615",
+  "milestone": "RP-615-004",
+  "deliverable": "RP-615-004-002A",
+  "frozen_benchmark_hash": "212532d3ac12f9c6",
+  "generated_at_utc": "2026-10-03T05:28:10.420444+00:00",
+  "population_bridge": {
+    "total_opportunities": 7264,
+    "eligible_opportunities": 6719,
+    "ineligible_opportunities": 545,
+    "selected_actionable_trades": 288,
+    "k10_population": {
+      "full_history_n": 6628,
+      "insufficient_history_n": 0,
+      "no_history_n": 91
+    },
+    "k25_population": {
+      "full_history_n": 6628,
+      "insufficient_history_n": 0,
+      "no_history_n": 91
+    },
+    "k50_population": {
+      "full_history_n": 6607,
+      "insufficient_history_n": 21,
+      "no_history_n": 91
+    }
+  },
+  "cross_matrices": {
+    "k10_full": {
+      "name": "Full Reference Dataset (K=10)",
+      "matrix": {
+        "0-20%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              65.76188570228346
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.12585,
+            "brier_score": 0.015895224999999995,
+            "net_expectancy": -184.625,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 55,
+            "binary_hits": 32,
+            "binary_accuracy_pct": 58.18181818181818,
+            "binary_accuracy_ci_95": [
+              45.03312977899265,
+              70.26221226277983
+            ],
+            "realized_wins": 23,
+            "realized_win_rate_pct": 41.81818181818181,
+            "realized_win_rate_ci_95": [
+              29.737787737220174,
+              54.96687022100735
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.1527490909090909,
+            "brier_score": 0.3085536414545454,
+            "net_expectancy": 35.302727272727275,
+            "profit_factor": 1.3601330246982277,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 80,
+            "binary_hits": 65,
+            "binary_accuracy_pct": 81.25,
+            "binary_accuracy_ci_95": [
+              71.34169983798166,
+              88.29467817589992
+            ],
+            "realized_wins": 15,
+            "realized_win_rate_pct": 18.75,
+            "realized_win_rate_ci_95": [
+              11.705321824100071,
+              28.658300162018342
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.14708375,
+            "brier_score": 0.15192172512499996,
+            "net_expectancy": -123.14087500000001,
+            "profit_factor": 0.2716089820846303,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2991,
+            "binary_hits": 2755,
+            "binary_accuracy_pct": 92.10966232029422,
+            "binary_accuracy_ci_95": [
+              91.08862049247529,
+              93.02267714293784
+            ],
+            "realized_wins": 236,
+            "realized_win_rate_pct": 7.890337679705784,
+            "realized_win_rate_ci_95": [
+              6.977322857062161,
+              8.911379507524703
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.12959976596456035,
+            "brier_score": 0.07342667694082247,
+            "net_expectancy": -124.56931795386159,
+            "profit_factor": 0.15292108642188176,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 65,
+            "binary_hits": 62,
+            "binary_accuracy_pct": 95.38461538461539,
+            "binary_accuracy_ci_95": [
+              87.28617535498825,
+              98.41801278531611
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 4.615384615384616,
+            "realized_win_rate_ci_95": [
+              1.5819872146839098,
+              12.713824645011773
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.11831230769230769,
+            "brier_score": 0.046515576461538456,
+            "net_expectancy": -130.88969230769231,
+            "profit_factor": 0.02632232487928925,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          }
+        },
+        "20-35%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 6,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 83.33333333333334,
+            "binary_accuracy_ci_95": [
+              43.649790959495945,
+              96.99465435264779
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 16.666666666666664,
+            "realized_win_rate_ci_95": [
+              3.0053456473522058,
+              56.350209040504055
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2546,
+            "brier_score": 0.14193490333333333,
+            "net_expectancy": -221.83833333333334,
+            "profit_factor": 0.03889117547242019,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 43,
+            "binary_hits": 29,
+            "binary_accuracy_pct": 67.44186046511628,
+            "binary_accuracy_ci_95": [
+              52.51624177484453,
+              79.50668274403031
+            ],
+            "realized_wins": 14,
+            "realized_win_rate_pct": 32.55813953488372,
+            "realized_win_rate_ci_95": [
+              20.493317255969693,
+              47.48375822515546
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26118837209302326,
+            "brier_score": 0.2355101806976744,
+            "net_expectancy": 9.24767441860465,
+            "profit_factor": 1.0758830601301452,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 145,
+            "binary_hits": 99,
+            "binary_accuracy_pct": 68.27586206896552,
+            "binary_accuracy_ci_95": [
+              60.31255161839289,
+              75.29581044795282
+            ],
+            "realized_wins": 46,
+            "realized_win_rate_pct": 31.724137931034484,
+            "realized_win_rate_ci_95": [
+              24.704189552047197,
+              39.687448381607126
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.25176827586206896,
+            "brier_score": 0.21904663806896552,
+            "net_expectancy": 22.472,
+            "profit_factor": 1.1683760365767955,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2369,
+            "binary_hits": 1702,
+            "binary_accuracy_pct": 71.84466019417476,
+            "binary_accuracy_ci_95": [
+              69.99931698880737,
+              73.61927383466997
+            ],
+            "realized_wins": 667,
+            "realized_win_rate_pct": 28.155339805825243,
+            "realized_win_rate_ci_95": [
+              26.38072616533003,
+              30.000683011192642
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2639943436048966,
+            "brier_score": 0.19745266754748841,
+            "net_expectancy": -54.656720135078096,
+            "profit_factor": 0.5884320144785528,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 17,
+            "binary_hits": 14,
+            "binary_accuracy_pct": 82.35294117647058,
+            "binary_accuracy_ci_95": [
+              58.97059347889159,
+              93.80886086885496
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 17.647058823529413,
+            "realized_win_rate_ci_95": [
+              6.191139131145036,
+              41.02940652110841
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2548470588235294,
+            "brier_score": 0.15114710352941177,
+            "net_expectancy": -58.00058823529412,
+            "profit_factor": 0.37370741126553014,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          }
+        },
+        "35-50%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 10,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 10.0,
+            "binary_accuracy_ci_95": [
+              1.7876264383779137,
+              40.414932330383714
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 10.0,
+            "realized_win_rate_ci_95": [
+              1.7876264383779137,
+              40.414932330383714
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.40454,
+            "brier_score": 0.186120284,
+            "net_expectancy": -211.137,
+            "profit_factor": 0.07209250201062666,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "60-80% (Strong)": {
+            "n": 33,
+            "binary_hits": 15,
+            "binary_accuracy_pct": 45.45454545454545,
+            "binary_accuracy_ci_95": [
+              29.84296610480874,
+              62.01403042058874
+            ],
+            "realized_wins": 15,
+            "realized_win_rate_pct": 45.45454545454545,
+            "realized_win_rate_ci_95": [
+              29.84296610480874,
+              62.01403042058874
+            ],
+            "n_selected": 5,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 20.0,
+            "mean_pred_prob": 0.40074848484848485,
+            "brier_score": 0.2405801027272727,
+            "net_expectancy": 101.80969696969696,
+            "profit_factor": 2.053448135304114,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 667,
+            "binary_hits": 387,
+            "binary_accuracy_pct": 58.02098950524738,
+            "binary_accuracy_ci_95": [
+              54.24016063723543,
+              61.709957096895764
+            ],
+            "realized_wins": 389,
+            "realized_win_rate_pct": 58.32083958020989,
+            "realized_win_rate_ci_95": [
+              54.542030427313605,
+              62.00435339033651
+            ],
+            "n_selected": 136,
+            "selected_wins": 78,
+            "selected_hit_rate_pct": 57.35294117647059,
+            "mean_pred_prob": 0.406591604197901,
+            "brier_score": 0.2687905732533733,
+            "net_expectancy": 86.90490254872563,
+            "profit_factor": 1.9859783738363221,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 8,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 62.5,
+            "binary_accuracy_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "realized_wins": 5,
+            "realized_win_rate_pct": 62.5,
+            "realized_win_rate_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3847875,
+            "brier_score": 0.27950120624999997,
+            "net_expectancy": 210.6175,
+            "profit_factor": 6.170906858984194,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "50-60%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "n_selected": 2,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 50.0,
+            "mean_pred_prob": 0.5584,
+            "brier_score": 0.23892664999999996,
+            "net_expectancy": 451.42999999999995,
+            "profit_factor": 52.38645418326693,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 8,
+            "binary_hits": 4,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              21.521645335259226,
+              78.47835466474078
+            ],
+            "realized_wins": 4,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              21.521645335259226,
+              78.47835466474078
+            ],
+            "n_selected": 5,
+            "selected_wins": 3,
+            "selected_hit_rate_pct": 60.0,
+            "mean_pred_prob": 0.5580125,
+            "brier_score": 0.24322738874999994,
+            "net_expectancy": 75.67375,
+            "profit_factor": 2.1840674385855112,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 140,
+            "binary_hits": 113,
+            "binary_accuracy_pct": 80.71428571428572,
+            "binary_accuracy_ci_95": [
+              73.39445762701547,
+              86.39359655669243
+            ],
+            "realized_wins": 113,
+            "realized_win_rate_pct": 80.71428571428572,
+            "realized_win_rate_ci_95": [
+              73.39445762701547,
+              86.39359655669243
+            ],
+            "n_selected": 73,
+            "selected_wins": 57,
+            "selected_hit_rate_pct": 78.08219178082192,
+            "mean_pred_prob": 0.5414357142857144,
+            "brier_score": 0.22620413557142857,
+            "net_expectancy": 198.03885714285713,
+            "profit_factor": 5.384501645446911,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.5688,
+            "brier_score": 0.18593344000000003,
+            "net_expectancy": 1382.1,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "60-70%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 2,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.6437999999999999,
+            "brier_score": 0.1268996,
+            "net_expectancy": 819.025,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 10,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "n_selected": 8,
+            "selected_wins": 8,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.63844,
+            "brier_score": 0.13123391199999998,
+            "net_expectancy": 322.332,
+            "profit_factor": 999.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 53,
+            "binary_hits": 47,
+            "binary_accuracy_pct": 88.67924528301887,
+            "binary_accuracy_ci_95": [
+              77.42350867805122,
+              94.70696108251589
+            ],
+            "realized_wins": 47,
+            "realized_win_rate_pct": 88.67924528301887,
+            "realized_win_rate_ci_95": [
+              77.42350867805122,
+              94.70696108251589
+            ],
+            "n_selected": 43,
+            "selected_wins": 38,
+            "selected_hit_rate_pct": 88.37209302325581,
+            "mean_pred_prob": 0.6333716981132076,
+            "brier_score": 0.1633307952830189,
+            "net_expectancy": 440.07264150943394,
+            "profit_factor": 23.717076876625338,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "70-85%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.7101,
+            "brier_score": 0.08404205000000001,
+            "net_expectancy": 32.325,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 10,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "n_selected": 10,
+            "selected_wins": 10,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.73731,
+            "brier_score": 0.069943193,
+            "net_expectancy": 709.485,
+            "profit_factor": 999.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "85-100%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        }
+      }
+    },
+    "k25_full": {
+      "name": "Full Reference Dataset (K=25)",
+      "matrix": {
+        "0-20%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 46,
+            "binary_hits": 31,
+            "binary_accuracy_pct": 67.3913043478261,
+            "binary_accuracy_ci_95": [
+              52.96776225460399,
+              79.13403691538146
+            ],
+            "realized_wins": 15,
+            "realized_win_rate_pct": 32.608695652173914,
+            "realized_win_rate_ci_95": [
+              20.86596308461854,
+              47.032237745395996
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13824130434782608,
+            "brier_score": 0.2569169236956521,
+            "net_expectancy": -47.80347826086957,
+            "profit_factor": 0.5516928540702096,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 158,
+            "binary_hits": 118,
+            "binary_accuracy_pct": 74.68354430379746,
+            "binary_accuracy_ci_95": [
+              67.3729916784865,
+              80.8223274295112
+            ],
+            "realized_wins": 40,
+            "realized_win_rate_pct": 25.31645569620253,
+            "realized_win_rate_ci_95": [
+              19.17767257048879,
+              32.62700832151349
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.15062151898734177,
+            "brier_score": 0.19597358367088608,
+            "net_expectancy": -43.92379746835443,
+            "profit_factor": 0.6838952348070703,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2924,
+            "binary_hits": 2705,
+            "binary_accuracy_pct": 92.51025991792065,
+            "binary_accuracy_ci_95": [
+              91.49939640559795,
+              93.40957316215139
+            ],
+            "realized_wins": 219,
+            "realized_win_rate_pct": 7.489740082079344,
+            "realized_win_rate_ci_95": [
+              6.590426837848609,
+              8.500603594402039
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.1292391244870041,
+            "brier_score": 0.07044909875512996,
+            "net_expectancy": -127.12954172366622,
+            "profit_factor": 0.14006835466698497,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 65,
+            "binary_hits": 62,
+            "binary_accuracy_pct": 95.38461538461539,
+            "binary_accuracy_ci_95": [
+              87.28617535498825,
+              98.41801278531611
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 4.615384615384616,
+            "realized_win_rate_ci_95": [
+              1.5819872146839098,
+              12.713824645011773
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.11831230769230769,
+            "brier_score": 0.046515576461538456,
+            "net_expectancy": -130.88969230769231,
+            "profit_factor": 0.02632232487928925,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          }
+        },
+        "20-35%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 29,
+            "binary_hits": 23,
+            "binary_accuracy_pct": 79.3103448275862,
+            "binary_accuracy_ci_95": [
+              61.609949004495526,
+              90.15391501221059
+            ],
+            "realized_wins": 6,
+            "realized_win_rate_pct": 20.689655172413794,
+            "realized_win_rate_ci_95": [
+              9.846084987789403,
+              38.390050995504474
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.24613793103448275,
+            "brier_score": 0.16638550344827585,
+            "net_expectancy": -85.0096551724138,
+            "profit_factor": 0.48145764316138195,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "60-80% (Strong)": {
+            "n": 269,
+            "binary_hits": 183,
+            "binary_accuracy_pct": 68.02973977695167,
+            "binary_accuracy_ci_95": [
+              62.23638633077487,
+              73.3153974678204
+            ],
+            "realized_wins": 86,
+            "realized_win_rate_pct": 31.970260223048324,
+            "realized_win_rate_ci_95": [
+              26.684602532179586,
+              37.76361366922512
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2613197026022305,
+            "brier_score": 0.2216535808921933,
+            "net_expectancy": 13.572899628252788,
+            "profit_factor": 1.1069175409765017,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2265,
+            "binary_hits": 1629,
+            "binary_accuracy_pct": 71.9205298013245,
+            "binary_accuracy_ci_95": [
+              70.03391909862407,
+              73.73291189679188
+            ],
+            "realized_wins": 636,
+            "realized_win_rate_pct": 28.079470198675498,
+            "realized_win_rate_ci_95": [
+              26.267088103208124,
+              29.966080901375946
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26367977924944813,
+            "brier_score": 0.19693407782339956,
+            "net_expectancy": -56.66337306843267,
+            "profit_factor": 0.5745743283394484,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 17,
+            "binary_hits": 14,
+            "binary_accuracy_pct": 82.35294117647058,
+            "binary_accuracy_ci_95": [
+              58.97059347889159,
+              93.80886086885496
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 17.647058823529413,
+            "realized_win_rate_ci_95": [
+              6.191139131145036,
+              41.02940652110841
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2548470588235294,
+            "brier_score": 0.15114710352941177,
+            "net_expectancy": -58.00058823529412,
+            "profit_factor": 0.37370741126553014,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          }
+        },
+        "35-50%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 5,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 20.0,
+            "binary_accuracy_ci_95": [
+              3.6224213478337512,
+              62.446466597325454
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 20.0,
+            "realized_win_rate_ci_95": [
+              3.6224213478337512,
+              62.446466597325454
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.39522,
+            "brier_score": 0.20350513399999998,
+            "net_expectancy": -91.59,
+            "profit_factor": 0.39105632679112806,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 77,
+            "binary_hits": 36,
+            "binary_accuracy_pct": 46.75324675324675,
+            "binary_accuracy_ci_95": [
+              36.030096161940506,
+              57.78495735271392
+            ],
+            "realized_wins": 36,
+            "realized_win_rate_pct": 46.75324675324675,
+            "realized_win_rate_ci_95": [
+              36.030096161940506,
+              57.78495735271392
+            ],
+            "n_selected": 26,
+            "selected_wins": 12,
+            "selected_hit_rate_pct": 46.15384615384615,
+            "mean_pred_prob": 0.4069467532467533,
+            "brier_score": 0.24646571441558443,
+            "net_expectancy": 58.13155844155844,
+            "profit_factor": 1.528785235081684,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 628,
+            "binary_hits": 366,
+            "binary_accuracy_pct": 58.28025477707006,
+            "binary_accuracy_ci_95": [
+              54.384774901591285,
+              62.075050758628514
+            ],
+            "realized_wins": 368,
+            "realized_win_rate_pct": 58.59872611464968,
+            "realized_win_rate_ci_95": [
+              54.705536221979614,
+              62.387359655940934
+            ],
+            "n_selected": 115,
+            "selected_wins": 67,
+            "selected_hit_rate_pct": 58.26086956521739,
+            "mean_pred_prob": 0.40629888535031844,
+            "brier_score": 0.2692488422133758,
+            "net_expectancy": 87.89130573248407,
+            "profit_factor": 2.002873308429147,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 8,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 62.5,
+            "binary_accuracy_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "realized_wins": 5,
+            "realized_win_rate_pct": 62.5,
+            "realized_win_rate_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3847875,
+            "brier_score": 0.27950120624999997,
+            "net_expectancy": 210.6175,
+            "profit_factor": 6.170906858984194,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "50-60%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 2,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.55745,
+            "brier_score": 0.197367605,
+            "net_expectancy": 190.845,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 21,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 47.61904761904761,
+            "binary_accuracy_ci_95": [
+              28.344038606541883,
+              67.63043038109087
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 47.61904761904761,
+            "realized_win_rate_ci_95": [
+              28.344038606541883,
+              67.63043038109087
+            ],
+            "n_selected": 16,
+            "selected_wins": 9,
+            "selected_hit_rate_pct": 56.25,
+            "mean_pred_prob": 0.5479095238095238,
+            "brier_score": 0.24929722047619046,
+            "net_expectancy": 125.26380952380953,
+            "profit_factor": 2.0417031319919374,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 127,
+            "binary_hits": 106,
+            "binary_accuracy_pct": 83.46456692913385,
+            "binary_accuracy_ci_95": [
+              76.04117262036009,
+              88.92295336305048
+            ],
+            "realized_wins": 106,
+            "realized_win_rate_pct": 83.46456692913385,
+            "realized_win_rate_ci_95": [
+              76.04117262036009,
+              88.92295336305048
+            ],
+            "n_selected": 62,
+            "selected_wins": 50,
+            "selected_hit_rate_pct": 80.64516129032258,
+            "mean_pred_prob": 0.5414244094488189,
+            "brier_score": 0.2241123980314961,
+            "net_expectancy": 206.46818897637795,
+            "profit_factor": 7.059780963363708,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.5688,
+            "brier_score": 0.18593344000000003,
+            "net_expectancy": 1382.1,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "60-70%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 2,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.6238,
+            "brier_score": 0.14160387999999996,
+            "net_expectancy": 145.79500000000002,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 20,
+            "binary_hits": 19,
+            "binary_accuracy_pct": 95.0,
+            "binary_accuracy_ci_95": [
+              76.38693265397754,
+              99.1118525822787
+            ],
+            "realized_wins": 19,
+            "realized_win_rate_pct": 95.0,
+            "realized_win_rate_ci_95": [
+              76.38693265397754,
+              99.1118525822787
+            ],
+            "n_selected": 19,
+            "selected_wins": 18,
+            "selected_hit_rate_pct": 94.73684210526315,
+            "mean_pred_prob": 0.64307,
+            "brier_score": 0.14289626400000005,
+            "net_expectancy": 368.4785,
+            "profit_factor": 72.45210393639714,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 43,
+            "binary_hits": 38,
+            "binary_accuracy_pct": 88.37209302325581,
+            "binary_accuracy_ci_95": [
+              75.52086995075163,
+              94.92956399077302
+            ],
+            "realized_wins": 38,
+            "realized_win_rate_pct": 88.37209302325581,
+            "realized_win_rate_ci_95": [
+              75.52086995075163,
+              94.92956399077302
+            ],
+            "n_selected": 32,
+            "selected_wins": 28,
+            "selected_hit_rate_pct": 87.5,
+            "mean_pred_prob": 0.6309697674418604,
+            "brier_score": 0.16468691697674417,
+            "net_expectancy": 477.3037209302326,
+            "profit_factor": 23.22252779973364,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "70-85%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 3,
+            "binary_hits": 3,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              43.850396935231345,
+              100.0
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              43.850396935231345,
+              100.0
+            ],
+            "n_selected": 3,
+            "selected_wins": 3,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.7234333333333334,
+            "brier_score": 0.07660352999999998,
+            "net_expectancy": 180.13666666666666,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 9,
+            "binary_hits": 9,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              70.08558040328856,
+              100.0
+            ],
+            "realized_wins": 9,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              70.08558040328856,
+              100.0
+            ],
+            "n_selected": 8,
+            "selected_wins": 8,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.7358888888888889,
+            "brier_score": 0.07085616,
+            "net_expectancy": 735.4544444444444,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "85-100%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        }
+      }
+    },
+    "k50_full": {
+      "name": "Full Reference Dataset (K=50)",
+      "matrix": {
+        "0-20%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 10,
+            "binary_hits": 7,
+            "binary_accuracy_pct": 70.0,
+            "binary_accuracy_ci_95": [
+              39.677869261194886,
+              89.2208513544243
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 30.0,
+            "realized_win_rate_ci_95": [
+              10.779148645575708,
+              60.3221307388051
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13555999999999999,
+            "brier_score": 0.24325097600000004,
+            "net_expectancy": -112.81200000000001,
+            "profit_factor": 0.29423688095893497,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "40-60% (Mixed)": {
+            "n": 13,
+            "binary_hits": 11,
+            "binary_accuracy_pct": 84.61538461538461,
+            "binary_accuracy_ci_95": [
+              57.76542866655136,
+              95.67417203907563
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 15.384615384615385,
+            "realized_win_rate_ci_95": [
+              4.325827960924372,
+              42.23457133344866
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.16635384615384613,
+            "brier_score": 0.13083257076923077,
+            "net_expectancy": -164.3623076923077,
+            "profit_factor": 0.23764347413451692,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "60-80% (Strong)": {
+            "n": 277,
+            "binary_hits": 218,
+            "binary_accuracy_pct": 78.70036101083032,
+            "binary_accuracy_ci_95": [
+              73.5033150472367,
+              83.11226069806489
+            ],
+            "realized_wins": 59,
+            "realized_win_rate_pct": 21.299638989169676,
+            "realized_win_rate_ci_95": [
+              16.887739301935113,
+              26.49668495276329
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.1306635379061372,
+            "brier_score": 0.1708723202166065,
+            "net_expectancy": -64.46148014440433,
+            "profit_factor": 0.4911933959374301,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2823,
+            "binary_hits": 2613,
+            "binary_accuracy_pct": 92.56110520722636,
+            "binary_accuracy_ci_95": [
+              91.53423225313995,
+              93.47230413322458
+            ],
+            "realized_wins": 210,
+            "realized_win_rate_pct": 7.438894792773645,
+            "realized_win_rate_ci_95": [
+              6.527695866775425,
+              8.46576774686006
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13021448813319164,
+            "brier_score": 0.06985302553666313,
+            "net_expectancy": -127.21388947927737,
+            "profit_factor": 0.14294002001720874,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 5,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              56.55185342473467,
+              99.99999999999999
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              43.44814657526533
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.149,
+            "brier_score": 0.023022499999999998,
+            "net_expectancy": -124.046,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "NO_HISTORY": {
+            "n": 65,
+            "binary_hits": 62,
+            "binary_accuracy_pct": 95.38461538461539,
+            "binary_accuracy_ci_95": [
+              87.28617535498825,
+              98.41801278531611
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 4.615384615384616,
+            "realized_win_rate_ci_95": [
+              1.5819872146839098,
+              12.713824645011773
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.11831230769230769,
+            "brier_score": 0.046515576461538456,
+            "net_expectancy": -130.88969230769231,
+            "profit_factor": 0.02632232487928925,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          }
+        },
+        "20-35%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 7,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 71.42857142857143,
+            "binary_accuracy_ci_95": [
+              35.89350450226533,
+              91.77808814655522
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 28.57142857142857,
+            "realized_win_rate_ci_95": [
+              8.221911853444782,
+              64.10649549773467
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2547142857142857,
+            "brier_score": 0.2027349342857143,
+            "net_expectancy": -135.93428571428572,
+            "profit_factor": 0.2069310396559484,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 40,
+            "binary_hits": 24,
+            "binary_accuracy_pct": 60.0,
+            "binary_accuracy_ci_95": [
+              44.595923955672355,
+              73.6516505213194
+            ],
+            "realized_wins": 16,
+            "realized_win_rate_pct": 40.0,
+            "realized_win_rate_ci_95": [
+              26.348349478680603,
+              55.404076044327645
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.246465,
+            "brier_score": 0.25444036849999996,
+            "net_expectancy": 127.13575,
+            "profit_factor": 2.2005774560769815,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 376,
+            "binary_hits": 288,
+            "binary_accuracy_pct": 76.59574468085107,
+            "binary_accuracy_ci_95": [
+              72.06038446695845,
+              80.59316442287411
+            ],
+            "realized_wins": 88,
+            "realized_win_rate_pct": 23.404255319148938,
+            "realized_win_rate_ci_95": [
+              19.4068355771259,
+              27.939615533041557
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26956994680851065,
+            "brier_score": 0.1818990267819149,
+            "net_expectancy": -55.53401595744681,
+            "profit_factor": 0.6372765852480687,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2128,
+            "binary_hits": 1509,
+            "binary_accuracy_pct": 70.91165413533834,
+            "binary_accuracy_ci_95": [
+              68.94568857804288,
+              72.80225674116424
+            ],
+            "realized_wins": 619,
+            "realized_win_rate_pct": 29.08834586466165,
+            "realized_win_rate_ci_95": [
+              27.19774325883575,
+              31.054311421957117
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26255164473684206,
+            "brier_score": 0.2013492096475564,
+            "net_expectancy": -51.27521146616541,
+            "profit_factor": 0.6049177781414704,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 12,
+            "binary_hits": 9,
+            "binary_accuracy_pct": 75.0,
+            "binary_accuracy_ci_95": [
+              46.76952187025448,
+              91.10581514066884
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 25.0,
+            "realized_win_rate_ci_95": [
+              8.894184859331169,
+              53.23047812974552
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.24649166666666666,
+            "brier_score": 0.17031397083333333,
+            "net_expectancy": -108.01333333333334,
+            "profit_factor": 0.07512273090535448,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "NO_HISTORY": {
+            "n": 17,
+            "binary_hits": 14,
+            "binary_accuracy_pct": 82.35294117647058,
+            "binary_accuracy_ci_95": [
+              58.97059347889159,
+              93.80886086885496
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 17.647058823529413,
+            "realized_win_rate_ci_95": [
+              6.191139131145036,
+              41.02940652110841
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2548470588235294,
+            "brier_score": 0.15114710352941177,
+            "net_expectancy": -58.00058823529412,
+            "profit_factor": 0.37370741126553014,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          }
+        },
+        "35-50%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 3,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              56.14960306476864
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              56.14960306476864
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3762666666666667,
+            "brier_score": 0.14286396666666668,
+            "net_expectancy": -163.98,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.37595,
+            "brier_score": 0.26165246500000006,
+            "net_expectancy": 103.73500000000001,
+            "profit_factor": 1.4457981477900257,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 116,
+            "binary_hits": 43,
+            "binary_accuracy_pct": 37.06896551724138,
+            "binary_accuracy_ci_95": [
+              28.826216749049156,
+              46.140706880589285
+            ],
+            "realized_wins": 43,
+            "realized_win_rate_pct": 37.06896551724138,
+            "realized_win_rate_ci_95": [
+              28.826216749049156,
+              46.140706880589285
+            ],
+            "n_selected": 23,
+            "selected_wins": 11,
+            "selected_hit_rate_pct": 47.82608695652174,
+            "mean_pred_prob": 0.40880689655172414,
+            "brier_score": 0.23102905586206895,
+            "net_expectancy": 7.589310344827588,
+            "profit_factor": 1.0597014925373134,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 587,
+            "binary_hits": 358,
+            "binary_accuracy_pct": 60.98807495741057,
+            "binary_accuracy_ci_95": [
+              56.98290462836893,
+              64.85036409106722
+            ],
+            "realized_wins": 360,
+            "realized_win_rate_pct": 61.32879045996593,
+            "realized_win_rate_ci_95": [
+              57.32765270559413,
+              65.18261659428966
+            ],
+            "n_selected": 119,
+            "selected_wins": 68,
+            "selected_hit_rate_pct": 57.14285714285714,
+            "mean_pred_prob": 0.40609028960817717,
+            "brier_score": 0.27389340763202724,
+            "net_expectancy": 99.86391822827939,
+            "profit_factor": 2.209306067683868,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 2,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3947,
+            "brier_score": 0.2784805,
+            "net_expectancy": -1.0450000000000017,
+            "profit_factor": 0.97286771387771,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "NO_HISTORY": {
+            "n": 8,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 62.5,
+            "binary_accuracy_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "realized_wins": 5,
+            "realized_win_rate_pct": 62.5,
+            "realized_win_rate_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3847875,
+            "brier_score": 0.27950120624999997,
+            "net_expectancy": 210.6175,
+            "profit_factor": 6.170906858984194,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "50-60%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 26,
+            "binary_hits": 13,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              32.060625301204276,
+              67.93937469879572
+            ],
+            "realized_wins": 13,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              32.060625301204276,
+              67.93937469879572
+            ],
+            "n_selected": 18,
+            "selected_wins": 10,
+            "selected_hit_rate_pct": 55.55555555555556,
+            "mean_pred_prob": 0.5371923076923077,
+            "brier_score": 0.2461513030769231,
+            "net_expectancy": 50.59769230769231,
+            "profit_factor": 1.3901734446922605,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 123,
+            "binary_hits": 104,
+            "binary_accuracy_pct": 84.5528455284553,
+            "binary_accuracy_ci_95": [
+              77.13059853672577,
+              89.88219937420797
+            ],
+            "realized_wins": 104,
+            "realized_win_rate_pct": 84.5528455284553,
+            "realized_win_rate_ci_95": [
+              77.13059853672577,
+              89.88219937420797
+            ],
+            "n_selected": 62,
+            "selected_wins": 51,
+            "selected_hit_rate_pct": 82.25806451612904,
+            "mean_pred_prob": 0.5439520325203252,
+            "brier_score": 0.22317918756097566,
+            "net_expectancy": 224.03788617886178,
+            "profit_factor": 8.917033453233277,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.5088,
+            "brier_score": 0.24127743999999998,
+            "net_expectancy": 361.49,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "NO_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.5688,
+            "brier_score": 0.18593344000000003,
+            "net_expectancy": 1382.1,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "60-70%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 19,
+            "binary_hits": 18,
+            "binary_accuracy_pct": 94.73684210526315,
+            "binary_accuracy_ci_95": [
+              75.36132239868367,
+              99.06479792110933
+            ],
+            "realized_wins": 18,
+            "realized_win_rate_pct": 94.73684210526315,
+            "realized_win_rate_ci_95": [
+              75.36132239868367,
+              99.06479792110933
+            ],
+            "n_selected": 16,
+            "selected_wins": 15,
+            "selected_hit_rate_pct": 93.75,
+            "mean_pred_prob": 0.6425052631578947,
+            "brier_score": 0.14407406105263157,
+            "net_expectancy": 244.88736842105263,
+            "profit_factor": 46.11208066705449,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 45,
+            "binary_hits": 40,
+            "binary_accuracy_pct": 88.88888888888889,
+            "binary_accuracy_ci_95": [
+              76.50093381521992,
+              95.1595203108642
+            ],
+            "realized_wins": 40,
+            "realized_win_rate_pct": 88.88888888888889,
+            "realized_win_rate_ci_95": [
+              76.50093381521992,
+              95.1595203108642
+            ],
+            "n_selected": 36,
+            "selected_wins": 32,
+            "selected_hit_rate_pct": 88.88888888888889,
+            "mean_pred_prob": 0.6313444444444444,
+            "brier_score": 0.16317405666666665,
+            "net_expectancy": 520.7324444444445,
+            "profit_factor": 26.372153707894363,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.6226,
+            "brier_score": 0.14243075999999996,
+            "net_expectancy": 99.4,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "70-85%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 2,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.7169000000000001,
+            "brier_score": 0.08018916999999998,
+            "net_expectancy": 81.51,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 10,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "n_selected": 9,
+            "selected_wins": 9,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.73595,
+            "brier_score": 0.07071376900000001,
+            "net_expectancy": 699.648,
+            "profit_factor": 999.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "85-100%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        }
+      }
+    },
+    "k10_train": {
+      "name": "Discovery Train (K=10)",
+      "matrix": {
+        "0-20%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 7,
+            "binary_hits": 7,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              64.5670495139146,
+              99.99999999999999
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              35.4329504860854
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13674285714285714,
+            "brier_score": 0.01934149428571429,
+            "net_expectancy": -373.1271428571428,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 22,
+            "binary_hits": 22,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              85.1345639961697,
+              99.99999999999997
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              14.865436003830284
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13455454545454545,
+            "brier_score": 0.020052201818181823,
+            "net_expectancy": -185.07181818181817,
+            "profit_factor": 0.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 2430,
+            "binary_hits": 2321,
+            "binary_accuracy_pct": 95.51440329218107,
+            "binary_accuracy_ci_95": [
+              94.61710497246773,
+              96.26802668550181
+            ],
+            "realized_wins": 109,
+            "realized_win_rate_pct": 4.48559670781893,
+            "realized_win_rate_ci_95": [
+              3.7319733144981875,
+              5.382895027532276
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.13022592592592594,
+            "brier_score": 0.04900877424691358,
+            "net_expectancy": -140.2202757201646,
+            "profit_factor": 0.05755426765205252,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 65,
+            "binary_hits": 62,
+            "binary_accuracy_pct": 95.38461538461539,
+            "binary_accuracy_ci_95": [
+              87.28617535498825,
+              98.41801278531611
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 4.615384615384616,
+            "realized_win_rate_ci_95": [
+              1.5819872146839098,
+              12.713824645011773
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.11831230769230769,
+            "brier_score": 0.046515576461538456,
+            "net_expectancy": -130.88969230769231,
+            "profit_factor": 0.02632232487928925,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          }
+        },
+        "20-35%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 28,
+            "binary_hits": 20,
+            "binary_accuracy_pct": 71.42857142857143,
+            "binary_accuracy_ci_95": [
+              52.94074999039773,
+              84.74598400599668
+            ],
+            "realized_wins": 8,
+            "realized_win_rate_pct": 28.57142857142857,
+            "realized_win_rate_ci_95": [
+              15.254015994003323,
+              47.05925000960227
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26158928571428575,
+            "brier_score": 0.19789793607142855,
+            "net_expectancy": -47.55357142857143,
+            "profit_factor": 0.7241963581076742,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 1722,
+            "binary_hits": 1260,
+            "binary_accuracy_pct": 73.17073170731707,
+            "binary_accuracy_ci_95": [
+              71.02816711179001,
+              75.21014771970658
+            ],
+            "realized_wins": 462,
+            "realized_win_rate_pct": 26.82926829268293,
+            "realized_win_rate_ci_95": [
+              24.789852280293427,
+              28.97183288821
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2634163182346109,
+            "brier_score": 0.1895371007839721,
+            "net_expectancy": -67.41522648083624,
+            "profit_factor": 0.48115994469115636,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 17,
+            "binary_hits": 14,
+            "binary_accuracy_pct": 82.35294117647058,
+            "binary_accuracy_ci_95": [
+              58.97059347889159,
+              93.80886086885496
+            ],
+            "realized_wins": 3,
+            "realized_win_rate_pct": 17.647058823529413,
+            "realized_win_rate_ci_95": [
+              6.191139131145036,
+              41.02940652110841
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2548470588235294,
+            "brier_score": 0.15114710352941177,
+            "net_expectancy": -58.00058823529412,
+            "profit_factor": 0.37370741126553014,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          }
+        },
+        "35-50%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 1,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              79.34500192691468
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              79.34500192691468
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3587,
+            "brier_score": 0.12866569000000003,
+            "net_expectancy": -219.64,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 15,
+            "binary_hits": 9,
+            "binary_accuracy_pct": 60.0,
+            "binary_accuracy_ci_95": [
+              35.74687297653368,
+              80.17547420197356
+            ],
+            "realized_wins": 9,
+            "realized_win_rate_pct": 60.0,
+            "realized_win_rate_ci_95": [
+              35.74687297653368,
+              80.17547420197356
+            ],
+            "n_selected": 3,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 33.33333333333333,
+            "mean_pred_prob": 0.40986666666666666,
+            "brier_score": 0.26638622133333334,
+            "net_expectancy": 162.75799999999998,
+            "profit_factor": 3.8076569220507395,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 487,
+            "binary_hits": 333,
+            "binary_accuracy_pct": 68.37782340862422,
+            "binary_accuracy_ci_95": [
+              64.11780423558437,
+              72.35018404846126
+            ],
+            "realized_wins": 335,
+            "realized_win_rate_pct": 68.78850102669405,
+            "realized_win_rate_ci_95": [
+              64.53968986428808,
+              72.74322553225021
+            ],
+            "n_selected": 101,
+            "selected_wins": 66,
+            "selected_hit_rate_pct": 65.34653465346535,
+            "mean_pred_prob": 0.4080560574948665,
+            "brier_score": 0.2859376948870636,
+            "net_expectancy": 136.74558521560576,
+            "profit_factor": 3.1774625202026825,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 8,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 62.5,
+            "binary_accuracy_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "realized_wins": 5,
+            "realized_win_rate_pct": 62.5,
+            "realized_win_rate_ci_95": [
+              30.574289688783722,
+              86.31554346710865
+            ],
+            "n_selected": 1,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.3847875,
+            "brier_score": 0.27950120624999997,
+            "net_expectancy": 210.6175,
+            "profit_factor": 6.170906858984194,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "50-60%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 50.0,
+            "binary_accuracy_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 50.0,
+            "realized_win_rate_ci_95": [
+              9.453148796027493,
+              90.54685120397251
+            ],
+            "n_selected": 2,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 50.0,
+            "mean_pred_prob": 0.5584,
+            "brier_score": 0.23892664999999996,
+            "net_expectancy": 451.42999999999995,
+            "profit_factor": 52.38645418326693,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 6,
+            "binary_hits": 4,
+            "binary_accuracy_pct": 66.66666666666666,
+            "binary_accuracy_ci_95": [
+              29.99938676281777,
+              90.32283589325407
+            ],
+            "realized_wins": 4,
+            "realized_win_rate_pct": 66.66666666666666,
+            "realized_win_rate_ci_95": [
+              29.99938676281777,
+              90.32283589325407
+            ],
+            "n_selected": 5,
+            "selected_wins": 3,
+            "selected_hit_rate_pct": 60.0,
+            "mean_pred_prob": 0.5549333333333334,
+            "brier_score": 0.2169835566666667,
+            "net_expectancy": 155.085,
+            "profit_factor": 5.998442200257843,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 119,
+            "binary_hits": 109,
+            "binary_accuracy_pct": 91.59663865546219,
+            "binary_accuracy_ci_95": [
+              85.22018044014287,
+              95.37151355153968
+            ],
+            "realized_wins": 109,
+            "realized_win_rate_pct": 91.59663865546219,
+            "realized_win_rate_ci_95": [
+              85.22018044014287,
+              95.37151355153968
+            ],
+            "n_selected": 62,
+            "selected_wins": 54,
+            "selected_hit_rate_pct": 87.09677419354838,
+            "mean_pred_prob": 0.540573949579832,
+            "brier_score": 0.21812722092436973,
+            "net_expectancy": 257.39361344537815,
+            "profit_factor": 15.931552392327005,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 1,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              20.654998073085316,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.5688,
+            "brier_score": 0.18593344000000003,
+            "net_expectancy": 1382.1,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          }
+        },
+        "60-70%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 2,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.6437999999999999,
+            "brier_score": 0.1268996,
+            "net_expectancy": 819.025,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 10,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "n_selected": 8,
+            "selected_wins": 8,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.63844,
+            "brier_score": 0.13123391199999998,
+            "net_expectancy": 322.332,
+            "profit_factor": 999.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 47,
+            "binary_hits": 43,
+            "binary_accuracy_pct": 91.48936170212765,
+            "binary_accuracy_ci_95": [
+              80.06849179739773,
+              96.64058163577471
+            ],
+            "realized_wins": 43,
+            "realized_win_rate_pct": 91.48936170212765,
+            "realized_win_rate_ci_95": [
+              80.06849179739773,
+              96.64058163577471
+            ],
+            "n_selected": 40,
+            "selected_wins": 36,
+            "selected_hit_rate_pct": 90.0,
+            "mean_pred_prob": 0.6348106382978724,
+            "brier_score": 0.15567595553191488,
+            "net_expectancy": 465.79936170212767,
+            "profit_factor": 37.82332262459422,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "70-85%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 2,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "n_selected": 1,
+            "selected_wins": 1,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.7101,
+            "brier_score": 0.08404205000000001,
+            "net_expectancy": 32.325,
+            "profit_factor": 999.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 10,
+            "binary_hits": 10,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "realized_wins": 10,
+            "realized_win_rate_pct": 100.0,
+            "realized_win_rate_ci_95": [
+              72.24680153904798,
+              100.0
+            ],
+            "n_selected": 10,
+            "selected_wins": 10,
+            "selected_hit_rate_pct": 100.0,
+            "mean_pred_prob": 0.73731,
+            "brier_score": 0.069943193,
+            "net_expectancy": 709.485,
+            "profit_factor": 999.0,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "85-100%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        }
+      }
+    },
+    "k10_holdout": {
+      "name": "Temporal Holdout (K=10)",
+      "matrix": {
+        "0-20%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 2,
+            "binary_hits": 2,
+            "binary_accuracy_pct": 100.0,
+            "binary_accuracy_ci_95": [
+              34.238114297716535,
+              100.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              65.76188570228346
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.12585,
+            "brier_score": 0.015895224999999995,
+            "net_expectancy": -184.625,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 48,
+            "binary_hits": 25,
+            "binary_accuracy_pct": 52.083333333333336,
+            "binary_accuracy_ci_95": [
+              38.329258486890325,
+              65.52865880183646
+            ],
+            "realized_wins": 23,
+            "realized_win_rate_pct": 47.91666666666667,
+            "realized_win_rate_ci_95": [
+              34.47134119816354,
+              61.670741513109675
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.15508333333333332,
+            "brier_score": 0.3507304129166666,
+            "net_expectancy": 94.86541666666666,
+            "profit_factor": 2.638205634643958,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 58,
+            "binary_hits": 43,
+            "binary_accuracy_pct": 74.13793103448276,
+            "binary_accuracy_ci_95": [
+              61.622641345992655,
+              83.65443912045346
+            ],
+            "realized_wins": 15,
+            "realized_win_rate_pct": 25.862068965517242,
+            "realized_win_rate_ci_95": [
+              16.345560879546543,
+              38.377358654007345
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.15183620689655172,
+            "brier_score": 0.2019411994827586,
+            "net_expectancy": -99.64982758620691,
+            "profit_factor": 0.3885944534714464,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 561,
+            "binary_hits": 434,
+            "binary_accuracy_pct": 77.36185383244207,
+            "binary_accuracy_ci_95": [
+              73.7195733222714,
+              80.63196261671372
+            ],
+            "realized_wins": 127,
+            "realized_win_rate_pct": 22.63814616755793,
+            "realized_win_rate_ci_95": [
+              19.368037383286268,
+              26.28042667772858
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.1268875222816399,
+            "brier_score": 0.17919406294117646,
+            "net_expectancy": -56.77639928698753,
+            "profit_factor": 0.5932391354513745,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "20-35%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 6,
+            "binary_hits": 5,
+            "binary_accuracy_pct": 83.33333333333334,
+            "binary_accuracy_ci_95": [
+              43.649790959495945,
+              96.99465435264779
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 16.666666666666664,
+            "realized_win_rate_ci_95": [
+              3.0053456473522058,
+              56.350209040504055
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2546,
+            "brier_score": 0.14193490333333333,
+            "net_expectancy": -221.83833333333334,
+            "profit_factor": 0.03889117547242019,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "40-60% (Mixed)": {
+            "n": 43,
+            "binary_hits": 29,
+            "binary_accuracy_pct": 67.44186046511628,
+            "binary_accuracy_ci_95": [
+              52.51624177484453,
+              79.50668274403031
+            ],
+            "realized_wins": 14,
+            "realized_win_rate_pct": 32.55813953488372,
+            "realized_win_rate_ci_95": [
+              20.493317255969693,
+              47.48375822515546
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26118837209302326,
+            "brier_score": 0.2355101806976744,
+            "net_expectancy": 9.24767441860465,
+            "profit_factor": 1.0758830601301452,
+            "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+          },
+          "60-80% (Strong)": {
+            "n": 117,
+            "binary_hits": 79,
+            "binary_accuracy_pct": 67.52136752136752,
+            "binary_accuracy_ci_95": [
+              58.596354320639676,
+              75.3324029945139
+            ],
+            "realized_wins": 38,
+            "realized_win_rate_pct": 32.47863247863248,
+            "realized_win_rate_ci_95": [
+              24.667597005486112,
+              41.40364567936033
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.2494179487179487,
+            "brier_score": 0.2241078658974359,
+            "net_expectancy": 39.23025641025641,
+            "profit_factor": 1.3160147200066095,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 647,
+            "binary_hits": 442,
+            "binary_accuracy_pct": 68.31530139103555,
+            "binary_accuracy_ci_95": [
+              64.63124547063028,
+              71.78315353170684
+            ],
+            "realized_wins": 205,
+            "realized_win_rate_pct": 31.68469860896445,
+            "realized_win_rate_ci_95": [
+              28.21684646829315,
+              35.36875452936973
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.26553276661514685,
+            "brier_score": 0.21852006471406496,
+            "net_expectancy": -20.699768160741886,
+            "profit_factor": 0.8525982235514641,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "35-50%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 9,
+            "binary_hits": 1,
+            "binary_accuracy_pct": 11.11111111111111,
+            "binary_accuracy_ci_95": [
+              1.9890944761332494,
+              43.49989854353121
+            ],
+            "realized_wins": 1,
+            "realized_win_rate_pct": 11.11111111111111,
+            "realized_win_rate_ci_95": [
+              1.9890944761332494,
+              43.49989854353121
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.40963333333333335,
+            "brier_score": 0.19250412777777778,
+            "net_expectancy": -210.19222222222223,
+            "profit_factor": 0.07979491869226615,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "60-80% (Strong)": {
+            "n": 18,
+            "binary_hits": 6,
+            "binary_accuracy_pct": 33.33333333333333,
+            "binary_accuracy_ci_95": [
+              16.278799133378413,
+              56.25048867686817
+            ],
+            "realized_wins": 6,
+            "realized_win_rate_pct": 33.33333333333333,
+            "realized_win_rate_ci_95": [
+              16.278799133378413,
+              56.25048867686817
+            ],
+            "n_selected": 2,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.39315,
+            "brier_score": 0.2190750038888889,
+            "net_expectancy": 51.019444444444446,
+            "profit_factor": 1.3958882968634145,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 180,
+            "binary_hits": 54,
+            "binary_accuracy_pct": 30.0,
+            "binary_accuracy_ci_95": [
+              23.780512849909577,
+              37.05530373958216
+            ],
+            "realized_wins": 54,
+            "realized_win_rate_pct": 30.0,
+            "realized_win_rate_ci_95": [
+              23.780512849909577,
+              37.05530373958216
+            ],
+            "n_selected": 35,
+            "selected_wins": 12,
+            "selected_hit_rate_pct": 34.285714285714285,
+            "mean_pred_prob": 0.40262944444444443,
+            "brier_score": 0.22239808305555558,
+            "net_expectancy": -47.941833333333335,
+            "profit_factor": 0.6940543691096498,
+            "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "50-60%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 2,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              65.76188570228346
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              65.76188570228346
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.56725,
+            "brier_score": 0.321958885,
+            "net_expectancy": -162.56,
+            "profit_factor": 0.0,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "80-100% (Very Strong)": {
+            "n": 21,
+            "binary_hits": 4,
+            "binary_accuracy_pct": 19.047619047619047,
+            "binary_accuracy_ci_95": [
+              7.6675788199549695,
+              40.000518019270984
+            ],
+            "realized_wins": 4,
+            "realized_win_rate_pct": 19.047619047619047,
+            "realized_win_rate_ci_95": [
+              7.6675788199549695,
+              40.000518019270984
+            ],
+            "n_selected": 11,
+            "selected_wins": 3,
+            "selected_hit_rate_pct": 27.27272727272727,
+            "mean_pred_prob": 0.5463190476190476,
+            "brier_score": 0.27197331857142854,
+            "net_expectancy": -138.3047619047619,
+            "profit_factor": 0.32015654844387853,
+            "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "60-70%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 6,
+            "binary_hits": 4,
+            "binary_accuracy_pct": 66.66666666666666,
+            "binary_accuracy_ci_95": [
+              29.99938676281777,
+              90.32283589325407
+            ],
+            "realized_wins": 4,
+            "realized_win_rate_pct": 66.66666666666666,
+            "realized_win_rate_ci_95": [
+              29.99938676281777,
+              90.32283589325407
+            ],
+            "n_selected": 3,
+            "selected_wins": 2,
+            "selected_hit_rate_pct": 66.66666666666666,
+            "mean_pred_prob": 0.6221,
+            "brier_score": 0.22329370666666667,
+            "net_expectancy": 238.54666666666665,
+            "profit_factor": 4.311768244712852,
+            "evidence_tier": "SPARSE_DATA (N < 10)"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "70-85%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        },
+        "85-100%": {
+          "0-20% (Poor)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "20-40% (Weak)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "40-60% (Mixed)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "60-80% (Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "80-100% (Very Strong)": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "INSUFFICIENT_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          },
+          "NO_HISTORY": {
+            "n": 0,
+            "binary_hits": 0,
+            "binary_accuracy_pct": 0.0,
+            "binary_accuracy_ci_95": [
+              0.0,
+              0.0
+            ],
+            "realized_wins": 0,
+            "realized_win_rate_pct": 0.0,
+            "realized_win_rate_ci_95": [
+              0.0,
+              0.0
+            ],
+            "n_selected": 0,
+            "selected_wins": 0,
+            "selected_hit_rate_pct": 0.0,
+            "mean_pred_prob": 0.0,
+            "brier_score": 0.0,
+            "net_expectancy": 0.0,
+            "profit_factor": 0.0,
+            "evidence_tier": "EMPTY_CELL"
+          }
+        }
+      }
+    }
+  },
+  "sequence_dynamics": {
+    "seq_prior_3_wins": {
+      "0/3 resolved wins": {
+        "count": 6484,
+        "realized_wins": 1545,
+        "realized_win_rate_pct": 23.82788402220851,
+        "win_rate_ci_95": [
+          22.806601098949855,
+          24.880159902947568
+        ],
+        "binary_accuracy_pct": 79.96607032695867,
+        "mean_net": -59.29185996298581,
+        "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+      },
+      "1/3 resolved wins": {
+        "count": 201,
+        "realized_wins": 53,
+        "realized_win_rate_pct": 26.368159203980102,
+        "win_rate_ci_95": [
+          20.76100094539923,
+          32.86166519325744
+        ],
+        "binary_accuracy_pct": 74.12935323383084,
+        "mean_net": -19.51318407960199,
+        "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+      },
+      "2/3 resolved wins": {
+        "count": 26,
+        "realized_wins": 9,
+        "realized_win_rate_pct": 34.61538461538461,
+        "win_rate_ci_95": [
+          19.41225414816156,
+          53.77939095440819
+        ],
+        "binary_accuracy_pct": 84.61538461538461,
+        "mean_net": -22.53961538461538,
+        "evidence_tier": "LOW_EVIDENCE (10 <= N < 30)"
+      },
+      "3/3 resolved wins": {
+        "count": 8,
+        "realized_wins": 1,
+        "realized_win_rate_pct": 12.5,
+        "win_rate_ci_95": [
+          2.2417555905304862,
+          47.08874494179239
+        ],
+        "binary_accuracy_pct": 87.5,
+        "mean_net": -212.535,
+        "evidence_tier": "SPARSE_DATA (N < 10)"
+      }
+    },
+    "win_streaks": {
+      "0 consecutive wins": {
+        "count": 6652,
+        "realized_wins": 1593,
+        "realized_win_rate_pct": 23.94768490679495,
+        "win_rate_ci_95": [
+          22.937351557307363,
+          24.988090633923974
+        ],
+        "mean_net": -58.1391355983163,
+        "evidence_tier": "HIGH_EVIDENCE (N >= 100)"
+      },
+      "1 consecutive wins": {
+        "count": 58,
+        "realized_wins": 14,
+        "realized_win_rate_pct": 24.137931034482758,
+        "win_rate_ci_95": [
+          14.958889251387186,
+          36.529953105991986
+        ],
+        "mean_net": -33.1148275862069,
+        "evidence_tier": "MODERATE_EVIDENCE (30 <= N < 100)"
+      },
+      "2 consecutive wins": {
+        "count": 1,
+        "realized_wins": 0,
+        "realized_win_rate_pct": 0.0,
+        "win_rate_ci_95": [
+          0.0,
+          79.34500192691468
+        ],
+        "mean_net": -294.41,
+        "evidence_tier": "SPARSE_DATA (N < 10)"
+      },
+      "3 consecutive wins": {
+        "count": 8,
+        "realized_wins": 1,
+        "realized_win_rate_pct": 12.5,
+        "win_rate_ci_95": [
+          2.2417555905304862,
+          47.08874494179239
+        ],
+        "mean_net": -212.535,
+        "evidence_tier": "SPARSE_DATA (N < 10)"
+      }
+    }
+  },
+  "gap_register": [
+    {
+      "rank": 1,
+      "category": "MODEL_CONFIDENCE_MISCALIBRATION",
+      "condition": "Holdout 50-70% Confidence Stratum",
+      "evidence_count": 14,
+      "observed_realized_win_rate": "35.71% (5/14 wins)",
+      "nominal_predicted_probability": "50-70%",
+      "severity": "CRITICAL",
+      "evidence_tier": "LOW_EVIDENCE (N = 14)",
+      "diagnostic_finding": "Model probabilities systematically overestimate win likelihood on out-of-sample data; requires point-in-time chronological out-of-fold probability calibration."
+    },
+    {
+      "rank": 2,
+      "category": "PAYOFF_RANKING_COLLAPSE",
+      "condition": "Expected Rupee Payoff Head on Holdout",
+      "evidence_count": 1718,
+      "observed_realized_win_rate": "Spearman rho = +0.0112 (near zero)",
+      "nominal_predicted_probability": "Decile monotonicity",
+      "severity": "CRITICAL",
+      "evidence_tier": "HIGH_EVIDENCE (N = 1,718)",
+      "diagnostic_finding": "Payoff regressor loses rank-ordering ability under holdout session macro shifts, failing to filter negative-expectancy trades."
+    },
+    {
+      "rank": 3,
+      "category": "SPARSE_HIGH_CONFIDENCE_DATA",
+      "condition": "Confidence Stratum > 70% in Baseline Population",
+      "evidence_count": 12,
+      "observed_realized_win_rate": "100.00% (12/12 on Discovery, 0 on Holdout)",
+      "nominal_predicted_probability": "70-100%",
+      "severity": "LOW_EVIDENCE",
+      "evidence_tier": "LOW_EVIDENCE (N = 12)",
+      "diagnostic_finding": "High accuracy in the >70% confidence band is an artifact of extreme sparsity (12 trades across 4 days) and cannot support standalone qualification without prospective scaling."
+    },
+    {
+      "rank": 4,
+      "category": "FRICTION_DRAG_ASYMMETRY",
+      "condition": "Marginal Excursion Opportunities (0 < MFE < 0.25%)",
+      "evidence_count": 4324,
+      "observed_realized_win_rate": "Net Loss (-\u20b9427,596.71 total)",
+      "nominal_predicted_probability": "N/A",
+      "severity": "STRUCTURAL",
+      "evidence_tier": "HIGH_EVIDENCE (N = 4,324)",
+      "diagnostic_finding": "Formula A turnover friction ($7.0\\text{ bps}$) destroys positive gross excursions below threshold, mandating high predictive precision or selective excursion gating."
+    }
+  ]
+}

@@ -41,7 +41,7 @@ use super::coralys_execution_model::{
     seal_coralys_execution_intent, CoralysExecutionResult, CORALYS_EXEC_ARTIFACT_HASH,
     MAXIMUM_HOLD_SESSIONS,
 };
-use super::csp006_protocol::{RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH, RESEARCH_UNIVERSE};
+use super::csp006_protocol::RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH;
 use super::observatory_execution::{
     entry_close, first_exit, first_exit_with_optional_stop, seal_execution_intent, ExitReason,
     SealedExecutionIntent, EXECUTION_TARGET_PCT,
@@ -624,7 +624,7 @@ pub fn run_portfolio_replay(
         .map_err(|e| format!("clock parse error: {e}"))?;
 
     // Optional end cutoff for evaluation horizon
-    let end_cutoff: Option<DateTime<Utc>> = config
+    let _end_cutoff: Option<DateTime<Utc>> = config
         .end_clock
         .as_deref()
         .map(|s| {

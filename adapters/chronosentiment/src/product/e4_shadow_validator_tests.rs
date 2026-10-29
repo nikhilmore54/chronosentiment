@@ -1,7 +1,7 @@
 use super::*;
 use super::super::deferred_live::{LivePaperLedger, MarketObservation, LivePaperEvent, LivePaperPosition};
 use super::super::paper_replay::PaperPosition;
-use super::super::paper_lifecycle::{PaperWalkState, HorizonPolicy, ExitReason, PaperObservation};
+use super::super::paper_lifecycle::{PaperWalkState, HorizonPolicy, ExitReason};
 use std::fs;
 
 fn mock_pos(id: &str, ticker: &str, entry: f64, target: f64, stop: f64, unix: i64) -> LivePaperPosition {
@@ -30,11 +30,11 @@ fn mock_pos(id: &str, ticker: &str, entry: f64, target: f64, stop: f64, unix: i6
     }
 }
 
-fn enter_event(ticker: &str, unix: i64) -> LivePaperEvent {
+fn enter_event(_ticker: &str, unix: i64) -> LivePaperEvent {
     LivePaperEvent { unix, kind: "PAPER_ENTER".to_string(), price: 100.0, note: Some("LONG".to_string()) }
 }
 
-fn exit_event(ticker: &str, unix: i64, kind: &str, price: f64) -> LivePaperEvent {
+fn exit_event(_ticker: &str, unix: i64, kind: &str, price: f64) -> LivePaperEvent {
     LivePaperEvent { unix, kind: kind.to_string(), price, note: Some(kind.to_string()) }
 }
 

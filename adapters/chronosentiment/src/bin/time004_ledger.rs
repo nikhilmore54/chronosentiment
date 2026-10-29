@@ -65,6 +65,8 @@
 //!   --audit      time_machine/ledger/audit/
 //! ```
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

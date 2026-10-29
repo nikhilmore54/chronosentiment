@@ -172,7 +172,7 @@ fn domain_modules_do_not_encode_phase_or_baseline_seed_names() {
         include_str!("../src/decision_support/policy_discovery.rs"),
         include_str!("../src/decision_support/observation_value.rs"),
         include_str!("../src/decision_support/policy_handoff.rs"),
-        include_str!("../src/bin/csp006_policy_discovery.rs"),
+        include_str!("../legacy/bin/csp006_policy_discovery.rs"),
     ];
     for src in files {
         for forbidden in [

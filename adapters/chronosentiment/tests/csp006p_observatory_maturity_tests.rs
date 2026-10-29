@@ -93,7 +93,7 @@ fn window_closed_becomes_outcome_due_and_may_append() {
 #[test]
 fn source_does_not_peek_or_retune() {
     let src = include_str!("../src/decision_support/observatory_maturity.rs");
-    let bin = include_str!("../src/bin/csp006_p_observe.rs");
+    let bin = include_str!("../legacy/quarantine/csp006_p_observe.rs");
     for text in [src, bin] {
         assert!(!text.contains("evolve_"));
         assert!(!text.contains("regime_detector"));

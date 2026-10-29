@@ -1,259 +1,2493 @@
 {
-  "tape_id": "tape_crypto_live_20260926T015848Z",
+  "tape_id": "tape_crypto_live_20261010T070526Z",
   "universe": "LIQUID_CRYPTO_8",
   "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
-  "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+  "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
   "engine_version": "v0.1.0 (FROZEN)",
   "interpreter_config": "Config A (FROZEN)",
-  "last_updated_utc": "2026-09-26T01:58:40Z",
+  "last_updated_utc": "2026-10-10T07:05:26Z",
   "total_cards": 8,
   "cards": [
     {
-      "card_id": "card_BTC-USD_1790387922",
+      "card_id": "card_BTC-USD_1791615907",
       "instrument": "BTC-USD",
-      "timestamp": 1790387922,
-      "datetime": "2026-09-26T01:58:42Z",
-      "current_price": 84064.86,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615907,
+      "datetime": "2026-10-10T07:05:07Z",
+      "current_price": 82656.3203125,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.0208
+          "score": -0.0075
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.0218
+          "score": -0.0133
         },
         "1d": {
           "label": "REVERSAL",
-          "score": -0.3117
+          "score": -0.3324
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d trajectory indicates REVERSAL",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83648.20 | Target Price: $85549.29 (+3.5%) | Stop Loss Price: $81416.48 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83648.20 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81416.48 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_ETH-USD_1790387922",
+      "card_id": "card_ETH-USD_1791615910",
       "instrument": "ETH-USD",
-      "timestamp": 1790387922,
-      "datetime": "2026-09-26T01:58:42Z",
-      "current_price": 2691.96,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615910,
+      "datetime": "2026-10-10T07:05:10Z",
+      "current_price": 2491.340087890625,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.0163
+          "score": -0.0081
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.0287
+          "score": -0.0183
         },
         "1d": {
           "label": "REVERSAL",
-          "score": -0.2957
+          "score": -0.7526
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d trajectory indicates REVERSAL",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2521.24 | Target Price: $2578.54 (+3.5%) | Stop Loss Price: $2453.97 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2521.24 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2453.97 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_BNB-USD_1790387923",
+      "card_id": "card_BNB-USD_1791615913",
       "instrument": "BNB-USD",
-      "timestamp": 1790387923,
-      "datetime": "2026-09-26T01:58:43Z",
-      "current_price": 775.86,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615913,
+      "datetime": "2026-10-10T07:05:13Z",
+      "current_price": 747.2000122070312,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": -0.0005
+          "score": -0.0049
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.0256
+          "score": -0.0424
         },
         "1d": {
           "label": "REVERSAL",
-          "score": -0.2924
+          "score": -0.3814
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d trajectory indicates REVERSAL",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $756.17 | Target Price: $773.35 (+3.5%) | Stop Loss Price: $735.99 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $756.17 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $735.99 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_XRP-USD_1790387925",
+      "card_id": "card_XRP-USD_1791615915",
       "instrument": "XRP-USD",
-      "timestamp": 1790387925,
-      "datetime": "2026-09-26T01:58:45Z",
-      "current_price": 1.58,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615915,
+      "datetime": "2026-10-10T07:05:15Z",
+      "current_price": 1.4043999910354614,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.0793
+          "score": -0.0199
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.1194
+          "score": -0.0383
         },
         "1d": {
-          "label": "CONTINUATION",
-          "score": 0.424
+          "label": "REVERSAL",
+          "score": -0.5882
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d macro horizon remains solidly in trend continuation",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.45 (+3.5%) | Stop Loss Price: $1.38 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.38 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_SOL-USD_1790387926",
+      "card_id": "card_SOL-USD_1791615918",
       "instrument": "SOL-USD",
-      "timestamp": 1790387926,
-      "datetime": "2026-09-26T01:58:46Z",
-      "current_price": 122.04,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615918,
+      "datetime": "2026-10-10T07:05:18Z",
+      "current_price": 109.73999786376952,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.0407
+          "score": 0.0027
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.0333
+          "score": -0.0282
         },
         "1d": {
-          "label": "CONTINUATION",
-          "score": 0.492
+          "label": "REVERSAL",
+          "score": -0.8871
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d macro horizon remains solidly in trend continuation",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.06 | Target Price: $113.58 (+3.5%) | Stop Loss Price: $108.09 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.06 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.09 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_ADA-USD_1790387927",
+      "card_id": "card_ADA-USD_1791615921",
       "instrument": "ADA-USD",
-      "timestamp": 1790387927,
-      "datetime": "2026-09-26T01:58:47Z",
-      "current_price": 0.26,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615921,
+      "datetime": "2026-10-10T07:05:21Z",
+      "current_price": 0.2527799904346466,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.1942
+          "score": -0.0095
         },
         "30m": {
-          "label": "CONTINUATION",
-          "score": 0.3075
+          "label": "PULLBACK",
+          "score": -0.0276
         },
         "1d": {
-          "label": "CONTINUATION",
-          "score": 0.9676
+          "label": "REVERSAL",
+          "score": -0.3468
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m intermediate horizon confirms continuation",
-        "\u2022 1d macro horizon remains solidly in trend continuation",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_LINK-USD_1790387927",
+      "card_id": "card_LINK-USD_1791615924",
       "instrument": "LINK-USD",
-      "timestamp": 1790387927,
-      "datetime": "2026-09-26T01:58:47Z",
-      "current_price": 13.93,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615924,
+      "datetime": "2026-10-10T07:05:24Z",
+      "current_price": 12.866000175476074,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": -0.1061
+          "score": -0.0194
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.1021
+          "score": -0.0402
         },
         "1d": {
-          "label": "CONTINUATION",
-          "score": 0.8841
+          "label": "REVERSAL",
+          "score": -0.76
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d macro horizon remains solidly in trend continuation",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.02 | Target Price: $13.32 (+3.5%) | Stop Loss Price: $12.67 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.02 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.67 and horizon boundary 60m Target / 180m Max."
       ]
     },
     {
-      "card_id": "card_LTC-USD_1790387928",
+      "card_id": "card_LTC-USD_1791615926",
       "instrument": "LTC-USD",
-      "timestamp": 1790387928,
-      "datetime": "2026-09-26T01:58:48Z",
-      "current_price": 72.67,
-      "domain_status": "LIVE \u2014 EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "timestamp": 1791615926,
+      "datetime": "2026-10-10T07:05:26Z",
+      "current_price": 63.63100051879883,
+      "position_side": "LONG",
+      "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
       "resolutions": {
         "15m": {
           "label": "PULLBACK",
-          "score": 0.0222
+          "score": -0.0181
         },
         "30m": {
           "label": "PULLBACK",
-          "score": 0.0931
+          "score": -0.0418
         },
         "1d": {
-          "label": "CONTINUATION",
-          "score": 1.0
+          "label": "REVERSAL",
+          "score": -0.7575
         }
       },
       "cross_resolution_relationship": "PARTIAL AGREEMENT",
       "risk_state": "EVIDENCE CONFLICTED",
       "decision_state": "WATCH",
       "evidence": [
-        "\u2022 15m trajectory is in a PULLBACK state",
-        "\u2022 30m trajectory is also in a PULLBACK state",
-        "\u2022 1d macro horizon remains solidly in trend continuation",
-        "\u2022 Intraday and daily trajectories are not aligned"
+        "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+        "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.39 | Target Price: $65.86 (+3.5%) | Stop Loss Price: $62.68 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+        "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.39 crossing +0.20 threshold.",
+        "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.68 and horizon boundary 60m Target / 180m Max."
+      ]
+    }
+  ],
+  "tapes": [
+    {
+      "tape_id": "tape_crypto_BTC-USD_20261010T070507Z",
+      "symbol": "BTC-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:04:56Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_BTC-USD_1791603900",
+          "instrument": "BTC-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 82519.921875,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0015
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0065
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83510.16 | Target Price: $85408.12 (+3.5%) | Stop Loss Price: $81282.12 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83510.16 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81282.12 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791605700",
+          "instrument": "BTC-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 82582.3984375,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0058
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0095
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83573.39 | Target Price: $85472.78 (+3.5%) | Stop Loss Price: $81343.66 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83573.39 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81343.66 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791607500",
+          "instrument": "BTC-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 82614.2734375,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0121
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0089
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83605.64 | Target Price: $85505.77 (+3.5%) | Stop Loss Price: $81375.06 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83605.64 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81375.06 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791609300",
+          "instrument": "BTC-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 82595.7890625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0004
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0409
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83586.94 | Target Price: $85486.64 (+3.5%) | Stop Loss Price: $81356.85 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83586.94 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81356.85 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791611100",
+          "instrument": "BTC-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 82770.0078125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0216
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.014
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83763.25 | Target Price: $85666.96 (+3.5%) | Stop Loss Price: $81528.46 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83763.25 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81528.46 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791612900",
+          "instrument": "BTC-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 82722.109375,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0172
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0032
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83714.77 | Target Price: $85617.38 (+3.5%) | Stop Loss Price: $81481.28 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83714.77 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81481.28 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791614700",
+          "instrument": "BTC-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 82667.640625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0197
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0053
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83659.65 | Target Price: $85561.01 (+3.5%) | Stop Loss Price: $81427.63 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83659.65 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81427.63 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BTC-USD_1791615896",
+          "instrument": "BTC-USD",
+          "timestamp": 1791615896,
+          "datetime": "2026-10-10T07:04:56Z",
+          "current_price": 82656.3203125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0075
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0133
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3324
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $83648.20 | Target Price: $85549.29 (+3.5%) | Stop Loss Price: $81416.48 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $83648.20 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $81416.48 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_ETH-USD_20261010T070510Z",
+      "symbol": "ETH-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:05:01Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_ETH-USD_1791603900",
+          "instrument": "ETH-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 2489.139892578125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0058
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0051
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2519.01 | Target Price: $2576.26 (+3.5%) | Stop Loss Price: $2451.80 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2519.01 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2451.80 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791605700",
+          "instrument": "ETH-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 2491.360107421875,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0088
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0097
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2521.26 | Target Price: $2578.56 (+3.5%) | Stop Loss Price: $2453.99 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2521.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2453.99 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791607500",
+          "instrument": "ETH-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 2492.639892578125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0144
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0154
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2522.55 | Target Price: $2579.88 (+3.5%) | Stop Loss Price: $2455.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2522.55 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2455.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791609300",
+          "instrument": "ETH-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 2492.60009765625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0014
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0338
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2522.51 | Target Price: $2579.84 (+3.5%) | Stop Loss Price: $2455.21 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2522.51 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2455.21 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791611100",
+          "instrument": "ETH-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 2495.909912109375,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0129
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0029
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2525.86 | Target Price: $2583.27 (+3.5%) | Stop Loss Price: $2458.47 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2525.86 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2458.47 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791612900",
+          "instrument": "ETH-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 2493.360107421875,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0026
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0093
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2523.28 | Target Price: $2580.63 (+3.5%) | Stop Loss Price: $2455.96 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2523.28 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2455.96 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791614700",
+          "instrument": "ETH-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 2491.340087890625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0265
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0051
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2521.24 | Target Price: $2578.54 (+3.5%) | Stop Loss Price: $2453.97 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2521.24 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2453.97 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ETH-USD_1791615901",
+          "instrument": "ETH-USD",
+          "timestamp": 1791615901,
+          "datetime": "2026-10-10T07:05:01Z",
+          "current_price": 2491.340087890625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0081
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0183
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7526
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $2521.24 | Target Price: $2578.54 (+3.5%) | Stop Loss Price: $2453.97 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $2521.24 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $2453.97 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_BNB-USD_20261010T070513Z",
+      "symbol": "BNB-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:04:55Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_BNB-USD_1791603900",
+          "instrument": "BNB-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 744.6400146484375,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0052
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0083
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $753.58 | Target Price: $770.70 (+3.5%) | Stop Loss Price: $733.47 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $753.58 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $733.47 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791605700",
+          "instrument": "BNB-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 745.030029296875,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0033
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0286
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $753.97 | Target Price: $771.11 (+3.5%) | Stop Loss Price: $733.85 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $753.97 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $733.85 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791607500",
+          "instrument": "BNB-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 746.6300048828125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0342
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0466
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $755.59 | Target Price: $772.76 (+3.5%) | Stop Loss Price: $735.43 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $755.59 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $735.43 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791609300",
+          "instrument": "BNB-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 747.6300048828125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.034
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0955
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $756.60 | Target Price: $773.80 (+3.5%) | Stop Loss Price: $736.42 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $756.60 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $736.42 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791611100",
+          "instrument": "BNB-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 750.3800048828125,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0526
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0154
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $759.38 | Target Price: $776.64 (+3.5%) | Stop Loss Price: $739.12 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $759.38 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $739.12 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791612900",
+          "instrument": "BNB-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 747.5700073242188,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0105
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0046
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $756.54 | Target Price: $773.73 (+3.5%) | Stop Loss Price: $736.36 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $756.54 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $736.36 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791614700",
+          "instrument": "BNB-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 747.1699829101562,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.051
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0056
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $756.14 | Target Price: $773.32 (+3.5%) | Stop Loss Price: $735.96 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $756.14 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $735.96 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_BNB-USD_1791615895",
+          "instrument": "BNB-USD",
+          "timestamp": 1791615895,
+          "datetime": "2026-10-10T07:04:55Z",
+          "current_price": 747.2000122070312,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0049
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0424
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3814
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $756.17 | Target Price: $773.35 (+3.5%) | Stop Loss Price: $735.99 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $756.17 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $735.99 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_XRP-USD_20261010T070515Z",
+      "symbol": "XRP-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:05:05Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_XRP-USD_1791603900",
+          "instrument": "XRP-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 1.4026000499725342,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0203
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0171
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.45 (+3.5%) | Stop Loss Price: $1.38 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.38 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791605700",
+          "instrument": "XRP-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 1.4032000303268433,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0189
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.015
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.45 (+3.5%) | Stop Loss Price: $1.38 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.38 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791607500",
+          "instrument": "XRP-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 1.4063999652862549,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0321
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0543
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.46 (+3.5%) | Stop Loss Price: $1.39 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.39 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791609300",
+          "instrument": "XRP-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 1.4074000120162964,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0282
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0599
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.46 (+3.5%) | Stop Loss Price: $1.39 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.39 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791611100",
+          "instrument": "XRP-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 1.4098000526428225,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0217
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0193
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.43 | Target Price: $1.46 (+3.5%) | Stop Loss Price: $1.39 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.43 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.39 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791612900",
+          "instrument": "XRP-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 1.4071999788284302,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0018
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0028
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.46 (+3.5%) | Stop Loss Price: $1.39 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.39 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791614700",
+          "instrument": "XRP-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 1.4063999652862549,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0358
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0284
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.46 (+3.5%) | Stop Loss Price: $1.39 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.39 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_XRP-USD_1791615905",
+          "instrument": "XRP-USD",
+          "timestamp": 1791615905,
+          "datetime": "2026-10-10T07:05:05Z",
+          "current_price": 1.4043999910354614,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0199
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0383
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.5882
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $1.42 | Target Price: $1.45 (+3.5%) | Stop Loss Price: $1.38 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $1.42 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $1.38 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_SOL-USD_20261010T070518Z",
+      "symbol": "SOL-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:05:09Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_SOL-USD_1791603900",
+          "instrument": "SOL-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 109.5999984741211,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0209
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0078
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $110.92 | Target Price: $113.44 (+3.5%) | Stop Loss Price: $107.96 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $110.92 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $107.96 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791605700",
+          "instrument": "SOL-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 109.56999969482422,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0036
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0037
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $110.88 | Target Price: $113.40 (+3.5%) | Stop Loss Price: $107.93 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $110.88 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $107.93 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791607500",
+          "instrument": "SOL-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 109.7699966430664,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0192
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0374
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.09 | Target Price: $113.61 (+3.5%) | Stop Loss Price: $108.12 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.09 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.12 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791609300",
+          "instrument": "SOL-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 109.87000274658205,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0237
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0506
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.19 | Target Price: $113.72 (+3.5%) | Stop Loss Price: $108.22 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.19 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.22 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791611100",
+          "instrument": "SOL-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 110.05999755859376,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0228
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0018
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.38 | Target Price: $113.91 (+3.5%) | Stop Loss Price: $108.41 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.38 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.41 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791612900",
+          "instrument": "SOL-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 109.72000122070312,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0159
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0032
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.04 | Target Price: $113.56 (+3.5%) | Stop Loss Price: $108.07 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.04 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.07 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791614700",
+          "instrument": "SOL-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 109.7300033569336,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0386
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0141
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.05 | Target Price: $113.57 (+3.5%) | Stop Loss Price: $108.08 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.05 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.08 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_SOL-USD_1791615909",
+          "instrument": "SOL-USD",
+          "timestamp": 1791615909,
+          "datetime": "2026-10-10T07:05:09Z",
+          "current_price": 109.73999786376952,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0027
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0282
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.8871
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $111.06 | Target Price: $113.58 (+3.5%) | Stop Loss Price: $108.09 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $111.06 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $108.09 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_ADA-USD_20261010T070521Z",
+      "symbol": "ADA-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:05:16Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_ADA-USD_1791603900",
+          "instrument": "ADA-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 0.25044000148773193,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0674
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.1687
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.25 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.25 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791605700",
+          "instrument": "ADA-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 0.2500700056552887,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0195
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0455
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.25 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.25 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791607500",
+          "instrument": "ADA-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 0.2510400116443634,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0323
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.1578
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.25 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.25 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791609300",
+          "instrument": "ADA-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 0.25308001041412354,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.1221
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.1359
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791611100",
+          "instrument": "ADA-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 0.2535899877548218,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0931
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.1133
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791612900",
+          "instrument": "ADA-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 0.2531299889087677,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0061
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0827
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791614700",
+          "instrument": "ADA-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 0.2531200051307678,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0317
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0316
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_ADA-USD_1791615916",
+          "instrument": "ADA-USD",
+          "timestamp": 1791615916,
+          "datetime": "2026-10-10T07:05:16Z",
+          "current_price": 0.2527799904346466,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0095
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0276
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.3468
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $0.26 | Target Price: $0.26 (+3.5%) | Stop Loss Price: $0.25 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $0.26 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $0.25 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_LINK-USD_20261010T070524Z",
+      "symbol": "LINK-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:04:52Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_LINK-USD_1791603900",
+          "instrument": "LINK-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 12.800999641418455,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0226
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.037
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $12.95 | Target Price: $13.25 (+3.5%) | Stop Loss Price: $12.61 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $12.95 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.61 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791605700",
+          "instrument": "LINK-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 12.788000106811523,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.016
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0097
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $12.94 | Target Price: $13.24 (+3.5%) | Stop Loss Price: $12.60 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $12.94 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.60 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791607500",
+          "instrument": "LINK-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 12.809000015258787,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0078
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0703
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $12.96 | Target Price: $13.26 (+3.5%) | Stop Loss Price: $12.62 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $12.96 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.62 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791609300",
+          "instrument": "LINK-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 12.859000205993652,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.061
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.1167
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.01 | Target Price: $13.31 (+3.5%) | Stop Loss Price: $12.67 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.01 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.67 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791611100",
+          "instrument": "LINK-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 12.920000076293944,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0793
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0717
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.08 | Target Price: $13.37 (+3.5%) | Stop Loss Price: $12.73 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.08 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.73 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791612900",
+          "instrument": "LINK-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 12.892999649047852,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0268
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0551
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.05 | Target Price: $13.34 (+3.5%) | Stop Loss Price: $12.70 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.05 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.70 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791614700",
+          "instrument": "LINK-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 12.883999824523926,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0441
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0062
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.04 | Target Price: $13.33 (+3.5%) | Stop Loss Price: $12.69 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.04 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.69 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LINK-USD_1791615892",
+          "instrument": "LINK-USD",
+          "timestamp": 1791615892,
+          "datetime": "2026-10-10T07:04:52Z",
+          "current_price": 12.866000175476074,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0194
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0402
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.76
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $13.02 | Target Price: $13.32 (+3.5%) | Stop Loss Price: $12.67 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $13.02 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $12.67 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
+      ]
+    },
+    {
+      "tape_id": "tape_crypto_LTC-USD_20261010T070526Z",
+      "symbol": "LTC-USD",
+      "information_cutoff_policy": "LIVE_CONTINUOUS_POLLING_DAEMON",
+      "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+      "engine_version": "v0.1.0 (FROZEN)",
+      "interpreter_config": "Config A (FROZEN)",
+      "replay_start": "2026-10-10T03:45:00Z",
+      "replay_end": "2026-10-10T07:05:20Z",
+      "total_events": 8,
+      "events": [
+        {
+          "card_id": "card_LTC-USD_1791603900",
+          "instrument": "LTC-USD",
+          "timestamp": 1791603900,
+          "datetime": "2026-10-10T03:45:00Z",
+          "current_price": 63.472999572753906,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0368
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0125
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.23 | Target Price: $65.69 (+3.5%) | Stop Loss Price: $62.52 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.23 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.52 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791605700",
+          "instrument": "LTC-USD",
+          "timestamp": 1791605700,
+          "datetime": "2026-10-10T04:15:00Z",
+          "current_price": 63.5260009765625,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0113
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0218
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.29 | Target Price: $65.75 (+3.5%) | Stop Loss Price: $62.57 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.29 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.57 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791607500",
+          "instrument": "LTC-USD",
+          "timestamp": 1791607500,
+          "datetime": "2026-10-10T04:45:00Z",
+          "current_price": 63.54600143432617,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0134
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0552
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.31 | Target Price: $65.77 (+3.5%) | Stop Loss Price: $62.59 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.31 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.59 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791609300",
+          "instrument": "LTC-USD",
+          "timestamp": 1791609300,
+          "datetime": "2026-10-10T05:15:00Z",
+          "current_price": 63.71900177001953,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0322
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0874
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.48 | Target Price: $65.95 (+3.5%) | Stop Loss Price: $62.76 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.48 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.76 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791611100",
+          "instrument": "LTC-USD",
+          "timestamp": 1791611100,
+          "datetime": "2026-10-10T05:45:00Z",
+          "current_price": 63.92499923706055,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0598
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.027
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.69 | Target Price: $66.16 (+3.5%) | Stop Loss Price: $62.97 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.69 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.97 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791612900",
+          "instrument": "LTC-USD",
+          "timestamp": 1791612900,
+          "datetime": "2026-10-10T06:15:00Z",
+          "current_price": 63.77299880981445,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": 0.0058
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": 0.0098
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.54 | Target Price: $66.01 (+3.5%) | Stop Loss Price: $62.82 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.54 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.82 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791614700",
+          "instrument": "LTC-USD",
+          "timestamp": 1791614700,
+          "datetime": "2026-10-10T06:45:00Z",
+          "current_price": 63.66299819946289,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0543
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0288
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.43 | Target Price: $65.89 (+3.5%) | Stop Loss Price: $62.71 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.43 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.71 and horizon boundary 60m Target / 180m Max."
+          ]
+        },
+        {
+          "card_id": "card_LTC-USD_1791615920",
+          "instrument": "LTC-USD",
+          "timestamp": 1791615920,
+          "datetime": "2026-10-10T07:05:20Z",
+          "current_price": 63.63100051879883,
+          "position_side": "LONG",
+          "entry_signal": "STANDBY / AWAIT ALIGNMENT",
+          "domain_status": "LIVE — EXPERIMENTAL / UNVALIDATED FOR CRYPTO",
+          "resolutions": {
+            "15m": {
+              "label": "PULLBACK",
+              "score": -0.0181
+            },
+            "30m": {
+              "label": "PULLBACK",
+              "score": -0.0418
+            },
+            "1d": {
+              "label": "REVERSAL",
+              "score": -0.7575
+            }
+          },
+          "cross_resolution_relationship": "PARTIAL AGREEMENT",
+          "risk_state": "EVIDENCE CONFLICTED",
+          "decision_state": "WATCH",
+          "evidence": [
+            "• DYNAMICS: Low-velocity consolidation / pullback drift across observation horizons.",
+            "• RECOMMENDATION RATIONALE: WATCH — Entry/Trigger: $64.39 | Target Price: $65.86 (+3.5%) | Stop Loss Price: $62.68 (-1.5%) | Horizon Duration: 60m Target / 180m Max.",
+            "• ACTIONABLE TRIGGER: Standby active; await breakout trigger $64.39 crossing +0.20 threshold.",
+            "• CAPITAL PROTECTION: Preserves liquidity with stop loss capped at $62.68 and horizon boundary 60m Target / 180m Max."
+          ]
+        }
       ]
     }
   ]

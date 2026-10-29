@@ -65,7 +65,7 @@ fn comparison_identity_gates_both_artifacts() {
 #[test]
 fn analysis_does_not_evolve_or_authorize_search_three() {
     let src = include_str!("../src/decision_support/c3_comparison.rs");
-    let bin = include_str!("../src/bin/csp006_c3_comparison.rs");
+    let bin = include_str!("../legacy/bin/csp006_c3_comparison.rs");
     for text in [src, bin] {
         assert!(!text.contains("evolve_decision_value"));
         assert!(!text.contains("evolve_on_development"));

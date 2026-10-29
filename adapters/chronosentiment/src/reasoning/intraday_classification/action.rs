@@ -142,7 +142,7 @@ pub fn resolve_action(
 }
 
 fn action_for_state(
-    checkpoint: Checkpoint,
+    _checkpoint: Checkpoint,
     state: OpportunityState,
     prior_state: Option<OpportunityState>,
 ) -> (Action, Confidence, &'static str, &'static str, &'static str) {

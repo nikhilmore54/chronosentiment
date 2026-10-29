@@ -1,0 +1,776 @@
+{
+  "simulation_window_hours": 12,
+  "symbols": [
+    "BTC-USD",
+    "ETH-USD",
+    "XRP-USD",
+    "ADA-USD",
+    "SOL-USD",
+    "DOGE-USD"
+  ],
+  "total_trades": 25,
+  "win_rate_pct": 48.0,
+  "net_pnl": 286.47,
+  "net_pnl_pct": 0.29,
+  "profit_factor": 4.76,
+  "max_drawdown_pct": 0.16,
+  "sharpe_ratio": 36.93,
+  "per_asset_breakdown": {
+    "BTC-USD": {
+      "total_trades": 7,
+      "win_rate": 42.857142857142854,
+      "net_pnl": -4.7
+    },
+    "ETH-USD": {
+      "total_trades": 6,
+      "win_rate": 33.33333333333333,
+      "net_pnl": 11.16
+    },
+    "XRP-USD": {
+      "total_trades": 2,
+      "win_rate": 50.0,
+      "net_pnl": 12.35
+    },
+    "ADA-USD": {
+      "total_trades": 4,
+      "win_rate": 75.0,
+      "net_pnl": 164.24
+    },
+    "SOL-USD": {
+      "total_trades": 3,
+      "win_rate": 33.33333333333333,
+      "net_pnl": 32.2
+    },
+    "DOGE-USD": {
+      "total_trades": 3,
+      "win_rate": 66.66666666666666,
+      "net_pnl": 71.22
+    }
+  },
+  "trade_journal": [
+    {
+      "trade_id": "PT-SIM-0001",
+      "symbol": "XRP-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T14:32:00Z",
+      "exit_time_utc": "2026-09-26T15:04:00Z",
+      "entry_price": 1.5458,
+      "exit_price": 1.545300006866455,
+      "quantity": 6500.0,
+      "target_tp": 1.5794,
+      "target_sl": 1.5298,
+      "realized_pnl": -3.25,
+      "realized_pnl_pct": -0.03,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 32
+    },
+    {
+      "trade_id": "PT-SIM-0002",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T14:50:00Z",
+      "exit_time_utc": "2026-09-26T15:07:00Z",
+      "entry_price": 84038.41,
+      "exit_price": 84012.046875,
+      "quantity": 0.1,
+      "target_tp": 85137.64,
+      "target_sl": 83353.49,
+      "realized_pnl": -2.64,
+      "realized_pnl_pct": -0.03,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 17
+    },
+    {
+      "trade_id": "PT-SIM-0003",
+      "symbol": "ETH-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:15:00Z",
+      "exit_time_utc": "2026-09-26T15:46:00Z",
+      "entry_price": 2689.6,
+      "exit_price": 2690.550048828125,
+      "quantity": 4.0,
+      "target_tp": 2734.28,
+      "target_sl": 2664.79,
+      "realized_pnl": 3.8,
+      "realized_pnl_pct": 0.04,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 31
+    },
+    {
+      "trade_id": "PT-SIM-0004",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:31:00Z",
+      "exit_time_utc": "2026-09-26T15:46:00Z",
+      "entry_price": 84096.06,
+      "exit_price": 84089.75,
+      "quantity": 0.1,
+      "target_tp": 85295.6,
+      "target_sl": 83384.12,
+      "realized_pnl": -0.63,
+      "realized_pnl_pct": -0.01,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 15
+    },
+    {
+      "trade_id": "PT-SIM-0005",
+      "symbol": "DOGE-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T14:33:00Z",
+      "exit_time_utc": "2026-09-26T15:48:00Z",
+      "entry_price": 0.0975,
+      "exit_price": 0.0983399972319603,
+      "quantity": 103000.0,
+      "target_tp": 0.1001,
+      "target_sl": 0.0962,
+      "realized_pnl": 86.52,
+      "realized_pnl_pct": 0.86,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 75
+    },
+    {
+      "trade_id": "PT-SIM-0006",
+      "symbol": "XRP-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:09:00Z",
+      "exit_time_utc": "2026-09-26T15:49:00Z",
+      "entry_price": 1.5468,
+      "exit_price": 1.5492000579833984,
+      "quantity": 6500.0,
+      "target_tp": 1.5796,
+      "target_sl": 1.5309,
+      "realized_pnl": 15.6,
+      "realized_pnl_pct": 0.16,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 40
+    },
+    {
+      "trade_id": "PT-SIM-0007",
+      "symbol": "SOL-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:15:00Z",
+      "exit_time_utc": "2026-09-26T15:49:00Z",
+      "entry_price": 121.09,
+      "exit_price": 121.61000061035156,
+      "quantity": 85.0,
+      "target_tp": 123.68,
+      "target_sl": 119.73,
+      "realized_pnl": 44.2,
+      "realized_pnl_pct": 0.43,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 34
+    },
+    {
+      "trade_id": "PT-SIM-0008",
+      "symbol": "SOL-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:54:00Z",
+      "exit_time_utc": "2026-09-26T16:08:00Z",
+      "entry_price": 121.73,
+      "exit_price": 121.70999908447266,
+      "quantity": 80.0,
+      "target_tp": 124.48,
+      "target_sl": 120.32,
+      "realized_pnl": -1.6,
+      "realized_pnl_pct": -0.02,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 14
+    },
+    {
+      "trade_id": "PT-SIM-0009",
+      "symbol": "DOGE-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T15:57:00Z",
+      "exit_time_utc": "2026-09-26T16:08:00Z",
+      "entry_price": 0.0984,
+      "exit_price": 0.09841000288724899,
+      "quantity": 102000.0,
+      "target_tp": 0.1013,
+      "target_sl": 0.097,
+      "realized_pnl": 1.02,
+      "realized_pnl_pct": 0.01,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 11
+    },
+    {
+      "trade_id": "PT-SIM-0010",
+      "symbol": "SOL-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T16:20:00Z",
+      "exit_time_utc": "2026-09-26T16:34:00Z",
+      "entry_price": 121.59,
+      "exit_price": 121.72000122070312,
+      "quantity": 80.0,
+      "target_tp": 118.83,
+      "target_sl": 123.0,
+      "realized_pnl": -10.4,
+      "realized_pnl_pct": -0.11,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 14
+    },
+    {
+      "trade_id": "PT-SIM-0011",
+      "symbol": "DOGE-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T16:20:00Z",
+      "exit_time_utc": "2026-09-26T16:34:00Z",
+      "entry_price": 0.0983,
+      "exit_price": 0.09845999628305435,
+      "quantity": 102000.0,
+      "target_tp": 0.0955,
+      "target_sl": 0.0997,
+      "realized_pnl": -16.32,
+      "realized_pnl_pct": -0.16,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 14
+    },
+    {
+      "trade_id": "PT-SIM-0012",
+      "symbol": "ETH-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T16:32:00Z",
+      "exit_time_utc": "2026-09-26T16:45:00Z",
+      "entry_price": 2693.24,
+      "exit_price": 2691.330078125,
+      "quantity": 4.0,
+      "target_tp": 2739.93,
+      "target_sl": 2667.91,
+      "realized_pnl": -7.64,
+      "realized_pnl_pct": -0.07,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 13
+    },
+    {
+      "trade_id": "PT-SIM-0013",
+      "symbol": "ADA-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T18:37:00Z",
+      "exit_time_utc": "2026-09-26T19:00:00Z",
+      "entry_price": 0.2553,
+      "exit_price": 0.2549799978733063,
+      "quantity": 39100.0,
+      "target_tp": 0.2499,
+      "target_sl": 0.2582,
+      "realized_pnl": 12.51,
+      "realized_pnl_pct": 0.13,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 23
+    },
+    {
+      "trade_id": "PT-SIM-0014",
+      "symbol": "ADA-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T19:21:00Z",
+      "exit_time_utc": "2026-09-26T19:45:00Z",
+      "entry_price": 0.2547,
+      "exit_price": 0.2548600137233734,
+      "quantity": 39200.0,
+      "target_tp": 0.2476,
+      "target_sl": 0.258,
+      "realized_pnl": -6.27,
+      "realized_pnl_pct": -0.06,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 24
+    },
+    {
+      "trade_id": "PT-SIM-0015",
+      "symbol": "ADA-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T19:54:00Z",
+      "exit_time_utc": "2026-09-26T20:35:00Z",
+      "entry_price": 0.2546,
+      "exit_price": 0.25262999534606934,
+      "quantity": 39200.0,
+      "target_tp": 0.2479,
+      "target_sl": 0.2578,
+      "realized_pnl": 77.22,
+      "realized_pnl_pct": 0.77,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 41
+    },
+    {
+      "trade_id": "PT-SIM-0016",
+      "symbol": "ADA-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-26T20:39:00Z",
+      "exit_time_utc": "2026-09-26T20:56:00Z",
+      "entry_price": 0.2524,
+      "exit_price": 0.25036001205444336,
+      "quantity": 39600.0,
+      "target_tp": 0.2456,
+      "target_sl": 0.2556,
+      "realized_pnl": 80.78,
+      "realized_pnl_pct": 0.81,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 17
+    },
+    {
+      "trade_id": "PT-SIM-0017",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T21:29:00Z",
+      "exit_time_utc": "2026-09-26T21:43:00Z",
+      "entry_price": 84173.84,
+      "exit_price": 84142.2109375,
+      "quantity": 0.1,
+      "target_tp": 85433.46,
+      "target_sl": 83445.52,
+      "realized_pnl": -3.16,
+      "realized_pnl_pct": -0.04,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 14
+    },
+    {
+      "trade_id": "PT-SIM-0018",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T22:04:00Z",
+      "exit_time_utc": "2026-09-26T22:20:00Z",
+      "entry_price": 84226.35,
+      "exit_price": 84236.671875,
+      "quantity": 0.1,
+      "target_tp": 85359.92,
+      "target_sl": 83531.41,
+      "realized_pnl": 1.03,
+      "realized_pnl_pct": 0.01,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 16
+    },
+    {
+      "trade_id": "PT-SIM-0019",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T22:52:00Z",
+      "exit_time_utc": "2026-09-27T00:03:00Z",
+      "entry_price": 84320.91,
+      "exit_price": 84327.9765625,
+      "quantity": 0.1,
+      "target_tp": 85512.73,
+      "target_sl": 83609.98,
+      "realized_pnl": 0.71,
+      "realized_pnl_pct": 0.01,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 70
+    },
+    {
+      "trade_id": "PT-SIM-0020",
+      "symbol": "ETH-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-26T23:15:00Z",
+      "exit_time_utc": "2026-09-27T00:03:00Z",
+      "entry_price": 2694.02,
+      "exit_price": 2693.080078125,
+      "quantity": 4.0,
+      "target_tp": 2739.96,
+      "target_sl": 2668.88,
+      "realized_pnl": -3.76,
+      "realized_pnl_pct": -0.03,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 47
+    },
+    {
+      "trade_id": "PT-SIM-0021",
+      "symbol": "ETH-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-27T00:19:00Z",
+      "exit_time_utc": "2026-09-27T00:30:00Z",
+      "entry_price": 2690.39,
+      "exit_price": 2691.840087890625,
+      "quantity": 4.0,
+      "target_tp": 2638.37,
+      "target_sl": 2717.06,
+      "realized_pnl": -5.8,
+      "realized_pnl_pct": -0.05,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 11
+    },
+    {
+      "trade_id": "PT-SIM-0022",
+      "symbol": "BTC-USD",
+      "side": "SHORT",
+      "entry_time_utc": "2026-09-27T00:19:00Z",
+      "exit_time_utc": "2026-09-27T00:33:00Z",
+      "entry_price": 84243.65,
+      "exit_price": 84337.359375,
+      "quantity": 0.1,
+      "target_tp": 82993.68,
+      "target_sl": 84970.51,
+      "realized_pnl": -9.37,
+      "realized_pnl_pct": -0.11,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 14
+    },
+    {
+      "trade_id": "PT-SIM-0023",
+      "symbol": "ETH-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-27T00:34:00Z",
+      "exit_time_utc": "2026-09-27T00:52:00Z",
+      "entry_price": 2694.53,
+      "exit_price": 2693.169921875,
+      "quantity": 4.0,
+      "target_tp": 2738.87,
+      "target_sl": 2669.79,
+      "realized_pnl": -5.44,
+      "realized_pnl_pct": -0.05,
+      "exit_reason": "TRAJECTORY_REVERSAL",
+      "bars_held": 18
+    },
+    {
+      "trade_id": "PT-SIM-0024",
+      "symbol": "BTC-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-27T01:46:00Z",
+      "exit_time_utc": "2026-09-27T01:53:00Z",
+      "entry_price": 84421.7,
+      "exit_price": 84515.28125,
+      "quantity": 0.1,
+      "target_tp": 85558.14,
+      "target_sl": 83725.07,
+      "realized_pnl": 9.36,
+      "realized_pnl_pct": 0.11,
+      "exit_reason": "SIMULATION_END",
+      "bars_held": 8
+    },
+    {
+      "trade_id": "PT-SIM-0025",
+      "symbol": "ETH-USD",
+      "side": "LONG",
+      "entry_time_utc": "2026-09-27T01:50:00Z",
+      "exit_time_utc": "2026-09-27T01:53:00Z",
+      "entry_price": 2695.86,
+      "exit_price": 2703.360107421875,
+      "quantity": 4.0,
+      "target_tp": 2743.89,
+      "target_sl": 2670.19,
+      "realized_pnl": 30.0,
+      "realized_pnl_pct": 0.28,
+      "exit_reason": "SIMULATION_END",
+      "bars_held": 4
+    }
+  ],
+  "equity_curve": [
+    {
+      "timestamp": "2026-09-26T14:23:00Z",
+      "equity": 100000.0,
+      "cash": 100000.0,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T14:38:00Z",
+      "equity": 99991.71,
+      "cash": 79909.8,
+      "unrealized_pnl": -8.29,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-26T14:53:00Z",
+      "equity": 100020.57,
+      "cash": 71505.96,
+      "unrealized_pnl": 20.57,
+      "active_positions_count": 3
+    },
+    {
+      "timestamp": "2026-09-26T15:08:00Z",
+      "equity": 100034.28,
+      "cash": 89951.61,
+      "unrealized_pnl": 40.17,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T15:23:00Z",
+      "equity": 100084.48,
+      "cash": 58846.36,
+      "unrealized_pnl": 90.37,
+      "active_positions_count": 4
+    },
+    {
+      "timestamp": "2026-09-26T15:38:00Z",
+      "equity": 100208.53,
+      "cash": 50436.76,
+      "unrealized_pnl": 214.41,
+      "active_positions_count": 5
+    },
+    {
+      "timestamp": "2026-09-26T15:53:00Z",
+      "equity": 100143.6,
+      "cash": 100143.6,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T16:08:00Z",
+      "equity": 100143.02,
+      "cash": 100143.02,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T16:23:00Z",
+      "equity": 100156.56,
+      "cash": 80389.22,
+      "unrealized_pnl": 13.54,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-26T16:38:00Z",
+      "equity": 100114.38,
+      "cash": 89343.34,
+      "unrealized_pnl": -1.92,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T16:53:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T17:08:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T17:23:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T17:38:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T17:53:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T18:08:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T18:23:00Z",
+      "equity": 100108.66,
+      "cash": 100108.66,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T18:38:00Z",
+      "equity": 100114.53,
+      "cash": 90126.43,
+      "unrealized_pnl": 5.87,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T18:53:00Z",
+      "equity": 100128.21,
+      "cash": 90126.43,
+      "unrealized_pnl": 19.55,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T19:08:00Z",
+      "equity": 100121.18,
+      "cash": 100121.18,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T19:23:00Z",
+      "equity": 100120.0,
+      "cash": 90136.94,
+      "unrealized_pnl": -1.18,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T19:38:00Z",
+      "equity": 100137.25,
+      "cash": 90136.94,
+      "unrealized_pnl": 16.07,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T19:53:00Z",
+      "equity": 100114.9,
+      "cash": 100114.9,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T20:08:00Z",
+      "equity": 100146.26,
+      "cash": 90134.58,
+      "unrealized_pnl": 31.36,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T20:23:00Z",
+      "equity": 100223.49,
+      "cash": 90134.58,
+      "unrealized_pnl": 108.58,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T20:38:00Z",
+      "equity": 100192.13,
+      "cash": 100192.13,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T20:53:00Z",
+      "equity": 100293.9,
+      "cash": 90197.09,
+      "unrealized_pnl": 101.77,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T21:08:00Z",
+      "equity": 100272.91,
+      "cash": 100272.91,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T21:23:00Z",
+      "equity": 100272.91,
+      "cash": 100272.91,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T21:38:00Z",
+      "equity": 100273.94,
+      "cash": 91855.53,
+      "unrealized_pnl": 1.03,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T21:53:00Z",
+      "equity": 100269.75,
+      "cash": 100269.75,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T22:08:00Z",
+      "equity": 100279.19,
+      "cash": 91847.11,
+      "unrealized_pnl": 9.44,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T22:23:00Z",
+      "equity": 100270.78,
+      "cash": 100270.78,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T22:38:00Z",
+      "equity": 100270.78,
+      "cash": 100270.78,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-26T22:53:00Z",
+      "equity": 100271.23,
+      "cash": 91838.69,
+      "unrealized_pnl": 0.44,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T23:08:00Z",
+      "equity": 100269.43,
+      "cash": 91838.69,
+      "unrealized_pnl": -1.35,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-26T23:23:00Z",
+      "equity": 100273.67,
+      "cash": 81062.61,
+      "unrealized_pnl": 2.89,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-26T23:38:00Z",
+      "equity": 100280.93,
+      "cash": 81062.61,
+      "unrealized_pnl": 10.15,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-26T23:53:00Z",
+      "equity": 100284.17,
+      "cash": 81062.61,
+      "unrealized_pnl": 13.39,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-27T00:09:00Z",
+      "equity": 100267.73,
+      "cash": 100267.73,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-27T00:24:00Z",
+      "equity": 100268.44,
+      "cash": 81081.8,
+      "unrealized_pnl": 0.71,
+      "active_positions_count": 2
+    },
+    {
+      "timestamp": "2026-09-27T00:39:00Z",
+      "equity": 100255.44,
+      "cash": 89474.44,
+      "unrealized_pnl": 2.88,
+      "active_positions_count": 1
+    },
+    {
+      "timestamp": "2026-09-27T00:54:00Z",
+      "equity": 100247.12,
+      "cash": 100247.12,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-27T01:09:00Z",
+      "equity": 100247.12,
+      "cash": 100247.12,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-27T01:24:00Z",
+      "equity": 100247.12,
+      "cash": 100247.12,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    },
+    {
+      "timestamp": "2026-09-27T01:39:00Z",
+      "equity": 100247.12,
+      "cash": 100247.12,
+      "unrealized_pnl": 0.0,
+      "active_positions_count": 0
+    }
+  ]
+}

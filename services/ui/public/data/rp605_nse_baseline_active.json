@@ -1,0 +1,592 @@
+{
+  "TECHM.NS": {
+    "trade_id": "RP605-NSE-0476",
+    "symbol": "TECHM.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:02:25Z",
+    "entry_price": 1534.5,
+    "quantity": 65,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "KOTAKBANK.NS": {
+    "trade_id": "RP605-NSE-0514",
+    "symbol": "KOTAKBANK.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:08:45Z",
+    "entry_price": 397.79998779296875,
+    "quantity": 251,
+    "f15_at_entry": -0.013800000000000007,
+    "is_fresh": false
+  },
+  "TCS.NS": {
+    "trade_id": "RP605-NSE-0518",
+    "symbol": "TCS.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:08:45Z",
+    "entry_price": 2061.199951171875,
+    "quantity": 48,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ICICIPRULI.NS": {
+    "trade_id": "RP605-NSE-0522",
+    "symbol": "ICICIPRULI.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:09:49Z",
+    "entry_price": 453.70001220703125,
+    "quantity": 220,
+    "f15_at_entry": -0.007900000000000018,
+    "is_fresh": true
+  },
+  "JSWSTEEL.NS": {
+    "trade_id": "RP605-NSE-0535",
+    "symbol": "JSWSTEEL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:14:02Z",
+    "entry_price": 1267.699951171875,
+    "quantity": 78,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "APOLLOHOSP.NS": {
+    "trade_id": "RP605-NSE-0537",
+    "symbol": "APOLLOHOSP.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:15:08Z",
+    "entry_price": 8857.0,
+    "quantity": 11,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HEROMOTOCO.NS": {
+    "trade_id": "RP605-NSE-0543",
+    "symbol": "HEROMOTOCO.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:16:11Z",
+    "entry_price": 5334.0,
+    "quantity": 18,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "GODREJCP.NS": {
+    "trade_id": "RP605-NSE-0548",
+    "symbol": "GODREJCP.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:17:14Z",
+    "entry_price": 863.5999755859375,
+    "quantity": 115,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "MARICO.NS": {
+    "trade_id": "RP605-NSE-0554",
+    "symbol": "MARICO.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:18:19Z",
+    "entry_price": 808.2000122070312,
+    "quantity": 123,
+    "f15_at_entry": -0.1725,
+    "is_fresh": false
+  },
+  "AUROPHARMA.NS": {
+    "trade_id": "RP605-NSE-0565",
+    "symbol": "AUROPHARMA.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:20:25Z",
+    "entry_price": 1697.4000244140625,
+    "quantity": 58,
+    "f15_at_entry": -0.381,
+    "is_fresh": false
+  },
+  "MUTHOOTFIN.NS": {
+    "trade_id": "RP605-NSE-0582",
+    "symbol": "MUTHOOTFIN.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:23:34Z",
+    "entry_price": 2771.699951171875,
+    "quantity": 36,
+    "f15_at_entry": -0.043300000000000005,
+    "is_fresh": false
+  },
+  "M&M.NS": {
+    "trade_id": "RP605-NSE-0597",
+    "symbol": "M&M.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:26:44Z",
+    "entry_price": 2985.10009765625,
+    "quantity": 33,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "DIVISLAB.NS": {
+    "trade_id": "RP605-NSE-0601",
+    "symbol": "DIVISLAB.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:27:47Z",
+    "entry_price": 9561.5,
+    "quantity": 10,
+    "f15_at_entry": -0.201,
+    "is_fresh": false
+  },
+  "SAIL.NS": {
+    "trade_id": "RP605-NSE-0603",
+    "symbol": "SAIL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:27:47Z",
+    "entry_price": 184.1199951171875,
+    "quantity": 543,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "INFY.NS": {
+    "trade_id": "RP605-NSE-0609",
+    "symbol": "INFY.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:28:51Z",
+    "entry_price": 994.7999877929688,
+    "quantity": 100,
+    "f15_at_entry": -0.15869999999999998,
+    "is_fresh": false
+  },
+  "RELIANCE.NS": {
+    "trade_id": "RP605-NSE-0610",
+    "symbol": "RELIANCE.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:28:51Z",
+    "entry_price": 1206.5,
+    "quantity": 82,
+    "f15_at_entry": -0.09809999999999997,
+    "is_fresh": false
+  },
+  "HCLTECH.NS": {
+    "trade_id": "RP605-NSE-0619",
+    "symbol": "HCLTECH.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:32:01Z",
+    "entry_price": 1247.4000244140625,
+    "quantity": 80,
+    "f15_at_entry": -0.22539999999999993,
+    "is_fresh": false
+  },
+  "MPHASIS.NS": {
+    "trade_id": "RP605-NSE-0621",
+    "symbol": "MPHASIS.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:32:01Z",
+    "entry_price": 2224.5,
+    "quantity": 44,
+    "f15_at_entry": -0.15019999999999997,
+    "is_fresh": false
+  },
+  "PERSISTENT.NS": {
+    "trade_id": "RP605-NSE-0626",
+    "symbol": "PERSISTENT.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:33:05Z",
+    "entry_price": 5320.0,
+    "quantity": 18,
+    "f15_at_entry": -0.0451,
+    "is_fresh": false
+  },
+  "HAL.NS": {
+    "trade_id": "RP605-NSE-0627",
+    "symbol": "HAL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:34:08Z",
+    "entry_price": 4735.7998046875,
+    "quantity": 21,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "BHARATFORG.NS": {
+    "trade_id": "RP605-NSE-0630",
+    "symbol": "BHARATFORG.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:35:11Z",
+    "entry_price": 1969.0,
+    "quantity": 50,
+    "f15_at_entry": -0.4257,
+    "is_fresh": false
+  },
+  "INDUSINDBK.NS": {
+    "trade_id": "RP605-NSE-0632",
+    "symbol": "INDUSINDBK.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:35:11Z",
+    "entry_price": 893.7000122070312,
+    "quantity": 111,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ADANIPORTS.NS": {
+    "trade_id": "RP605-NSE-0636",
+    "symbol": "ADANIPORTS.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:36:16Z",
+    "entry_price": 1744.0,
+    "quantity": 57,
+    "f15_at_entry": -0.5509999999999999,
+    "is_fresh": false
+  },
+  "CUMMINSIND.NS": {
+    "trade_id": "RP605-NSE-0637",
+    "symbol": "CUMMINSIND.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:36:16Z",
+    "entry_price": 4870.5,
+    "quantity": 20,
+    "f15_at_entry": -0.08439999999999998,
+    "is_fresh": false
+  },
+  "ICICIBANK.NS": {
+    "trade_id": "RP605-NSE-0645",
+    "symbol": "ICICIBANK.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:38:23Z",
+    "entry_price": 1305.9000244140625,
+    "quantity": 76,
+    "f15_at_entry": -0.0691,
+    "is_fresh": false
+  },
+  "COFORGE.NS": {
+    "trade_id": "RP605-NSE-0648",
+    "symbol": "COFORGE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:39:27Z",
+    "entry_price": 1778.5,
+    "quantity": 56,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "DRREDDY.NS": {
+    "trade_id": "RP605-NSE-0649",
+    "symbol": "DRREDDY.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:39:27Z",
+    "entry_price": 1222.0999755859375,
+    "quantity": 81,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "BIOCON.NS": {
+    "trade_id": "RP605-NSE-0652",
+    "symbol": "BIOCON.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:40:30Z",
+    "entry_price": 378.04998779296875,
+    "quantity": 264,
+    "f15_at_entry": -0.09660000000000002,
+    "is_fresh": false
+  },
+  "BOSCHLTD.NS": {
+    "trade_id": "RP605-NSE-0653",
+    "symbol": "BOSCHLTD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:40:30Z",
+    "entry_price": 46980.0,
+    "quantity": 2,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "GRASIM.NS": {
+    "trade_id": "RP605-NSE-0657",
+    "symbol": "GRASIM.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:40:30Z",
+    "entry_price": 3139.60009765625,
+    "quantity": 31,
+    "f15_at_entry": -0.23489999999999997,
+    "is_fresh": false
+  },
+  "FEDERALBNK.NS": {
+    "trade_id": "RP605-NSE-0660",
+    "symbol": "FEDERALBNK.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:41:36Z",
+    "entry_price": 324.3999938964844,
+    "quantity": 308,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ONGC.NS": {
+    "trade_id": "RP605-NSE-0661",
+    "symbol": "ONGC.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:41:36Z",
+    "entry_price": 231.85000610351562,
+    "quantity": 431,
+    "f15_at_entry": -0.10270000000000001,
+    "is_fresh": false
+  },
+  "SBILIFE.NS": {
+    "trade_id": "RP605-NSE-0662",
+    "symbol": "SBILIFE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:41:36Z",
+    "entry_price": 1742.9000244140625,
+    "quantity": 57,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "AXISBANK.NS": {
+    "trade_id": "RP605-NSE-0663",
+    "symbol": "AXISBANK.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 1207.699951171875,
+    "quantity": 82,
+    "f15_at_entry": -0.3801,
+    "is_fresh": false
+  },
+  "BHARTIARTL.NS": {
+    "trade_id": "RP605-NSE-0664",
+    "symbol": "BHARTIARTL.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 1778.5999755859375,
+    "quantity": 56,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "DABUR.NS": {
+    "trade_id": "RP605-NSE-0665",
+    "symbol": "DABUR.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 384.3999938964844,
+    "quantity": 260,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ESCORTS.NS": {
+    "trade_id": "RP605-NSE-0666",
+    "symbol": "ESCORTS.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 2762.89990234375,
+    "quantity": 36,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HAVELLS.NS": {
+    "trade_id": "RP605-NSE-0667",
+    "symbol": "HAVELLS.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 1081.0,
+    "quantity": 92,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "NTPC.NS": {
+    "trade_id": "RP605-NSE-0668",
+    "symbol": "NTPC.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 322.70001220703125,
+    "quantity": 309,
+    "f15_at_entry": -0.1635,
+    "is_fresh": false
+  },
+  "PNB.NS": {
+    "trade_id": "RP605-NSE-0669",
+    "symbol": "PNB.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 113.29000091552734,
+    "quantity": 882,
+    "f15_at_entry": -0.3876,
+    "is_fresh": false
+  },
+  "CONCOR.NS": {
+    "trade_id": "RP605-NSE-0671",
+    "symbol": "CONCOR.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:43:42Z",
+    "entry_price": 452.70001220703125,
+    "quantity": 220,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "IPCALAB.NS": {
+    "trade_id": "RP605-NSE-0673",
+    "symbol": "IPCALAB.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:43:42Z",
+    "entry_price": 1925.5,
+    "quantity": 51,
+    "f15_at_entry": -0.05770000000000003,
+    "is_fresh": false
+  },
+  "SUNPHARMA.NS": {
+    "trade_id": "RP605-NSE-0676",
+    "symbol": "SUNPHARMA.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:43:42Z",
+    "entry_price": 1842.199951171875,
+    "quantity": 54,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "BANDHANBNK.NS": {
+    "trade_id": "RP605-NSE-0677",
+    "symbol": "BANDHANBNK.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:44:45Z",
+    "entry_price": 182.77000427246094,
+    "quantity": 547,
+    "f15_at_entry": -0.36,
+    "is_fresh": false
+  },
+  "BANKBARODA.NS": {
+    "trade_id": "RP605-NSE-0678",
+    "symbol": "BANKBARODA.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:44:45Z",
+    "entry_price": 229.47999572753906,
+    "quantity": 435,
+    "f15_at_entry": -0.2375,
+    "is_fresh": false
+  },
+  "GAIL.NS": {
+    "trade_id": "RP605-NSE-0679",
+    "symbol": "GAIL.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:44:45Z",
+    "entry_price": 172.3800048828125,
+    "quantity": 580,
+    "f15_at_entry": -0.04920000000000002,
+    "is_fresh": false
+  },
+  "IRCTC.NS": {
+    "trade_id": "RP605-NSE-0680",
+    "symbol": "IRCTC.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:44:45Z",
+    "entry_price": 454.5,
+    "quantity": 220,
+    "f15_at_entry": -0.0006000000000000172,
+    "is_fresh": true
+  },
+  "HDFCLIFE.NS": {
+    "trade_id": "RP605-NSE-0682",
+    "symbol": "HDFCLIFE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:45:48Z",
+    "entry_price": 532.8499755859375,
+    "quantity": 187,
+    "f15_at_entry": -0.17909999999999998,
+    "is_fresh": false
+  },
+  "ICICIGI.NS": {
+    "trade_id": "RP605-NSE-0683",
+    "symbol": "ICICIGI.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:45:48Z",
+    "entry_price": 1542.9000244140625,
+    "quantity": 64,
+    "f15_at_entry": -0.10630000000000003,
+    "is_fresh": false
+  },
+  "BAJFINANCE.NS": {
+    "trade_id": "RP605-NSE-0684",
+    "symbol": "BAJFINANCE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 980.5999755859375,
+    "quantity": 101,
+    "f15_at_entry": -0.24050000000000002,
+    "is_fresh": false
+  },
+  "DLF.NS": {
+    "trade_id": "RP605-NSE-0685",
+    "symbol": "DLF.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 668.0,
+    "quantity": 149,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HINDALCO.NS": {
+    "trade_id": "RP605-NSE-0686",
+    "symbol": "HINDALCO.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 961.0999755859375,
+    "quantity": 104,
+    "f15_at_entry": -0.13989999999999997,
+    "is_fresh": false
+  },
+  "HINDUNILVR.NS": {
+    "trade_id": "RP605-NSE-0687",
+    "symbol": "HINDUNILVR.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1905.0,
+    "quantity": 52,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "JINDALSTEL.NS": {
+    "trade_id": "RP605-NSE-0688",
+    "symbol": "JINDALSTEL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1145.5,
+    "quantity": 87,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "LT.NS": {
+    "trade_id": "RP605-NSE-0689",
+    "symbol": "LT.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 3791.0,
+    "quantity": 26,
+    "f15_at_entry": -0.37459999999999993,
+    "is_fresh": false
+  },
+  "NAUKRI.NS": {
+    "trade_id": "RP605-NSE-0690",
+    "symbol": "NAUKRI.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1242.199951171875,
+    "quantity": 80,
+    "f15_at_entry": -0.14530000000000004,
+    "is_fresh": false
+  },
+  "OBEROIRLTY.NS": {
+    "trade_id": "RP605-NSE-0691",
+    "symbol": "OBEROIRLTY.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1843.5999755859375,
+    "quantity": 54,
+    "f15_at_entry": -0.38309999999999994,
+    "is_fresh": false
+  },
+  "RECLTD.NS": {
+    "trade_id": "RP605-NSE-0692",
+    "symbol": "RECLTD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 307.70001220703125,
+    "quantity": 324,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SBICARD.NS": {
+    "trade_id": "RP605-NSE-0693",
+    "symbol": "SBICARD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 593.4500122070312,
+    "quantity": 168,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  }
+}

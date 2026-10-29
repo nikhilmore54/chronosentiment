@@ -13,6 +13,8 @@ interface DecisionCard {
   timestamp: number;
   datetime: string;
   current_price: number;
+  position_side?: string;
+  entry_signal?: string;
   domain_status?: string;
   resolutions: {
     '15m': Resolution;
@@ -38,6 +40,7 @@ interface Tape {
   total_cards?: number;
   events?: DecisionCard[];
   cards?: DecisionCard[];
+  tapes?: Tape[];
 }
 
 export const DecisionSurfacePanel: React.FC = () => {
@@ -46,6 +49,7 @@ export const DecisionSurfacePanel: React.FC = () => {
   
   // Selected instrument for detailed view
   const [selectedCryptoIndex, setSelectedCryptoIndex] = useState<number>(0);
+  const [selectedCryptoTapeIndex, setSelectedCryptoTapeIndex] = useState<number>(0);
   const [selectedEquityTapeIndex, setSelectedEquityTapeIndex] = useState<number>(0);
   const [replayStepIndex, setReplayStepIndex] = useState<number>(0);
 
@@ -75,14 +79,21 @@ export const DecisionSurfacePanel: React.FC = () => {
 
   // Data sources
   const cryptoCards: DecisionCard[] = cryptoTape.cards || (staticCryptoData as unknown as Tape).cards || [];
+  const cryptoTapes: Tape[] = cryptoTape.tapes || (staticCryptoData as unknown as Tape).tapes || [];
   const equityTapes: Tape[] = rp600Data as unknown as Tape[];
 
-  const currentEquityTape = equityTapes[selectedEquityTapeIndex] || equityTapes[0];
-  const equityEvents = currentEquityTape?.events || [];
+  // Current replay tape resolution
+  const currentReplayTape: Tape = universe === 'CRYPTO'
+    ? (cryptoTapes[selectedCryptoTapeIndex] || cryptoTapes[0])
+    : (equityTapes[selectedEquityTapeIndex] || equityTapes[0]);
 
-  const activeCard: DecisionCard = universe === 'CRYPTO' 
-    ? (cryptoCards[selectedCryptoIndex] || cryptoCards[0])
-    : (equityEvents[replayStepIndex] || equityEvents[0]);
+  const replayEvents: DecisionCard[] = currentReplayTape?.events || [];
+
+  const activeCard: DecisionCard = activeMode === 'REPLAY'
+    ? (replayEvents[replayStepIndex] || replayEvents[0])
+    : universe === 'CRYPTO'
+      ? (cryptoCards[selectedCryptoIndex] || cryptoCards[0])
+      : (equityTapes[selectedEquityTapeIndex]?.events?.[0] || (rp600Data[0] as unknown as Tape).events?.[0] || cryptoCards[0]);
 
   // Universe-level recommendation summary statistics
   const currentCards = universe === 'CRYPTO' ? cryptoCards : equityEvents;
@@ -212,8 +223,7 @@ export const DecisionSurfacePanel: React.FC = () => {
               key={mode}
               onClick={() => {
                 setActiveMode(mode);
-                if (mode === 'OBSERVE') setUniverse('CRYPTO');
-                if (mode === 'REPLAY') setUniverse('EQUITY');
+                setReplayStepIndex(0);
               }}
               style={{
                 padding: '8px 16px',
@@ -447,6 +457,54 @@ export const DecisionSurfacePanel: React.FC = () => {
             );
           })()}
 
+          {/* EXPLICIT POSITION SIDE & ENTRY SIGNAL BAR */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 2fr',
+            gap: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(2, 132, 199, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              borderRadius: '10px',
+              padding: '14px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '24px' }}>🔵</span>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  POSITION SIDE
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+                  {activeCard.position_side || 'LONG'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: 'rgba(30, 41, 59, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '10px',
+              padding: '14px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '24px' }}>⚡</span>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  ENTRY SIGNAL DIRECTIVE
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
+                  {activeCard.entry_signal || (activeCard.decision_state === 'HOLD' ? 'LONG POSITION MONITORING (ACTIVE)' : activeCard.decision_state === 'EXIT' ? 'CLOSE LONG POSITION (EXIT)' : 'STANDBY / AWAIT ALIGNMENT')}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Primary Decision Card */}
           <div style={{
             backgroundColor: 'rgba(15, 23, 42, 0.8)',
@@ -577,55 +635,227 @@ export const DecisionSurfacePanel: React.FC = () => {
       {/* REPLAY Mode */}
       {activeMode === 'REPLAY' && (
         <div>
+          {/* Controls Panel */}
           <div style={{
             backgroundColor: '#0f172a',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '12px',
-            padding: '20px',
-            marginBottom: '20px'
+            padding: '24px',
+            marginBottom: '24px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            {/* Header Title & Info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', color: '#38bdf8' }}>
-                  Time Machine Prospective Simulation: {currentEquityTape?.symbol}
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⏱️</span> Time Machine Replay: {currentReplayTape?.symbol || currentReplayTape?.tape_id}
                 </h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  Cutoff Firewall Policy: {currentEquityTape?.information_cutoff_policy}
-                </span>
+                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                  Cutoff Firewall Policy: <strong style={{ color: '#38bdf8' }}>{currentReplayTape?.information_cutoff_policy || 'STRICT_T0_FIREWALL_VERIFIED'}</strong> | Engine: <strong style={{ color: '#10b981' }}>{currentReplayTape?.engine_version || 'v0.1.0'}</strong> ({currentReplayTape?.interpreter_config || 'Config A'})
+                </div>
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', backgroundColor: '#1e293b', padding: '6px 14px', borderRadius: '6px' }}>
-                Step {replayStepIndex + 1} of {equityEvents.length}
+              <div style={{
+                fontSize: '13px',
+                fontWeight: 800,
+                color: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid rgba(56, 189, 248, 0.3)'
+              }}>
+                Step {replayEvents.length > 0 ? replayStepIndex + 1 : 0} of {replayEvents.length} Point-in-Time Events
               </div>
             </div>
 
-            {/* Stepper Controls */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* Universe & Asset Selection Sub-Bar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px', backgroundColor: '#1e293b', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {/* Universe Selector Toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  REPLAY UNIVERSE:
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      setUniverse('CRYPTO');
+                      setSelectedCryptoTapeIndex(0);
+                      setReplayStepIndex(0);
+                    }}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid ' + (universe === 'CRYPTO' ? '#38bdf8' : 'rgba(255,255,255,0.1)'),
+                      backgroundColor: universe === 'CRYPTO' ? '#0ea5e9' : 'transparent',
+                      color: universe === 'CRYPTO' ? '#ffffff' : '#94a3b8',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🪙 LIQUID CRYPTO TAPES (24/7)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUniverse('EQUITY');
+                      setSelectedEquityTapeIndex(0);
+                      setReplayStepIndex(0);
+                    }}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid ' + (universe === 'EQUITY' ? '#38bdf8' : 'rgba(255,255,255,0.1)'),
+                      backgroundColor: universe === 'EQUITY' ? '#0ea5e9' : 'transparent',
+                      color: universe === 'EQUITY' ? '#ffffff' : '#94a3b8',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📈 SPOT EQUITY TAPES (RP-600)
+                  </button>
+                </div>
+              </div>
+
+              {/* Ticker Selector Ribbon */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  SELECT ASSET TAPE:
+                </span>
+                {universe === 'CRYPTO' ? (
+                  cryptoTapes.map((t, idx) => (
+                    <button
+                      key={t.tape_id || idx}
+                      onClick={() => {
+                        setSelectedCryptoTapeIndex(idx);
+                        setReplayStepIndex(0);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid ' + (selectedCryptoTapeIndex === idx ? '#38bdf8' : 'rgba(255,255,255,0.08)'),
+                        backgroundColor: selectedCryptoTapeIndex === idx ? 'rgba(56, 189, 248, 0.2)' : '#0f172a',
+                        color: selectedCryptoTapeIndex === idx ? '#38bdf8' : '#cbd5e1',
+                        fontWeight: selectedCryptoTapeIndex === idx ? 800 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {t.symbol}
+                    </button>
+                  ))
+                ) : (
+                  equityTapes.map((t, idx) => (
+                    <button
+                      key={t.tape_id || idx}
+                      onClick={() => {
+                        setSelectedEquityTapeIndex(idx);
+                        setReplayStepIndex(0);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid ' + (selectedEquityTapeIndex === idx ? '#38bdf8' : 'rgba(255,255,255,0.08)'),
+                        backgroundColor: selectedEquityTapeIndex === idx ? 'rgba(56, 189, 248, 0.2)' : '#0f172a',
+                        color: selectedEquityTapeIndex === idx ? '#38bdf8' : '#cbd5e1',
+                        fontWeight: selectedEquityTapeIndex === idx ? 800 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {t.symbol}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Interactive Timeline Range Slider */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
+                <span>T₀ (Start): <strong style={{ color: '#f8fafc' }}>{replayEvents[0]?.datetime || 'N/A'}</strong></span>
+                <span style={{ color: '#38bdf8', fontWeight: 800 }}>Active Step UTC: {activeCard?.datetime}</span>
+                <span>T_final (End): <strong style={{ color: '#f8fafc' }}>{replayEvents[replayEvents.length - 1]?.datetime || 'N/A'}</strong></span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, replayEvents.length - 1)}
+                value={replayStepIndex}
+                onChange={(e) => setReplayStepIndex(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  borderRadius: '4px',
+                  accentColor: '#38bdf8',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+
+            {/* Step Ribbon Buttons */}
+            {replayEvents.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '20px' }}>
+                {replayEvents.map((evt, idx) => {
+                  const rec = getRecommendationDetails(evt.decision_state);
+                  const isSelected = idx === replayStepIndex;
+                  return (
+                    <button
+                      key={evt.card_id || idx}
+                      onClick={() => setReplayStepIndex(idx)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: isSelected ? `2px solid ${rec.color}` : '1px solid rgba(255,255,255,0.1)',
+                        backgroundColor: isSelected ? rec.color + '30' : '#1e293b',
+                        color: isSelected ? rec.color : '#94a3b8',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span>{rec.icon}</span>
+                      <span>Step {idx + 1}</span>
+                      <span style={{ opacity: 0.7 }}>({evt.datetime?.slice(11, 16)})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Stepper Control Buttons */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 disabled={replayStepIndex === 0}
                 onClick={() => setReplayStepIndex(prev => Math.max(0, prev - 1))}
                 style={{
-                  padding: '8px 16px',
+                  padding: '8px 18px',
                   borderRadius: '6px',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
                   backgroundColor: replayStepIndex === 0 ? '#1e293b' : '#0284c7',
-                  color: '#ffffff',
-                  fontWeight: 600,
+                  color: replayStepIndex === 0 ? '#64748b' : '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '13px',
                   cursor: replayStepIndex === 0 ? 'not-allowed' : 'pointer'
                 }}
               >
                 ◀ Previous Step
               </button>
               <button
-                disabled={replayStepIndex >= equityEvents.length - 1}
-                onClick={() => setReplayStepIndex(prev => Math.min(equityEvents.length - 1, prev + 1))}
+                disabled={replayStepIndex >= replayEvents.length - 1}
+                onClick={() => setReplayStepIndex(prev => Math.min(replayEvents.length - 1, prev + 1))}
                 style={{
-                  padding: '8px 16px',
+                  padding: '8px 18px',
                   borderRadius: '6px',
                   border: '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: replayStepIndex >= equityEvents.length - 1 ? '#1e293b' : '#0284c7',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  cursor: replayStepIndex >= equityEvents.length - 1 ? 'not-allowed' : 'pointer'
+                  backgroundColor: replayStepIndex >= replayEvents.length - 1 ? '#1e293b' : '#0284c7',
+                  color: replayStepIndex >= replayEvents.length - 1 ? '#64748b' : '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: replayStepIndex >= replayEvents.length - 1 ? 'not-allowed' : 'pointer'
                 }}
               >
                 Next Step ▶
@@ -638,15 +868,32 @@ export const DecisionSurfacePanel: React.FC = () => {
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   backgroundColor: '#334155',
                   color: '#cbd5e1',
+                  fontWeight: 600,
+                  fontSize: '13px',
                   cursor: 'pointer'
                 }}
               >
                 🔄 Reset to T₀
               </button>
+              <button
+                onClick={() => setReplayStepIndex(Math.max(0, replayEvents.length - 1))}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: '#334155',
+                  color: '#cbd5e1',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                ⏭️ Jump to Latest (T_final)
+              </button>
             </div>
           </div>
 
-          {/* Render Active Point-in-Time Card with Hero Recommendation */}
+          {/* Render Active Point-in-Time Card with Hero Recommendation & Side */}
           {activeCard && (
             <div>
               {/* HERO RECOMMENDATION BANNER IN REPLAY */}
@@ -676,38 +923,106 @@ export const DecisionSurfacePanel: React.FC = () => {
                 );
               })()}
 
+              {/* Position Side & Entry Signal Bar */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  backgroundColor: 'rgba(2, 132, 199, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  borderRadius: '10px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{ fontSize: '24px' }}>🔵</span>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      POSITION SIDE
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+                      {activeCard.position_side || 'LONG'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  backgroundColor: 'rgba(30, 41, 59, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{ fontSize: '24px' }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      ENTRY SIGNAL DIRECTIVE
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc', marginTop: '2px' }}>
+                      {activeCard.entry_signal || (activeCard.decision_state === 'HOLD' ? 'LONG POSITION MONITORING (ACTIVE)' : activeCard.decision_state === 'EXIT' ? 'CLOSE LONG POSITION (EXIT)' : 'STANDBY / AWAIT ALIGNMENT')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Point-in-Time Decision Card Body */}
               <div style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '12px',
                 padding: '24px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '18px', color: '#f8fafc' }}>{activeCard.instrument}</h4>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Point-in-Time UTC: {activeCard.datetime}</span>
+                    <h4 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#f8fafc' }}>{activeCard.instrument}</h4>
+                    <span style={{ fontSize: '13px', color: '#94a3b8', fontFamily: 'monospace' }}>Point-in-Time UTC: {activeCard.datetime}</span>
                   </div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc' }}>
-                    ₹{activeCard.current_price?.toFixed(2)}
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#38bdf8' }}>
+                    {activeCard.instrument.includes('-USD') ? `$${activeCard.current_price?.toFixed(2)}` : `₹${activeCard.current_price?.toFixed(2)}`}
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                {/* Resolution Scores Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
                   {(['15m', '30m', '1d'] as const).map(h => (
-                    <div key={h} style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>Horizon {h}</div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: getLabelBadgeColor(activeCard.resolutions[h].label) }}>
+                    <div key={h} style={{ backgroundColor: '#1e293b', padding: '14px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Horizon {h}</div>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: getLabelBadgeColor(activeCard.resolutions[h].label), marginTop: '4px' }}>
                         {activeCard.resolutions[h].label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', fontFamily: 'monospace' }}>
+                        Score: {activeCard.resolutions[h].score}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ backgroundColor: '#0f172a', padding: '14px', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>CANONICAL EVIDENCE:</div>
-                  <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#cbd5e1' }}>
-                    {activeCard.evidence.map((b, idx) => (
-                      <li key={idx}>{b}</li>
+                {/* Cross Resolution & Risk State */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ backgroundColor: '#0f172a', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>CROSS-RESOLUTION ALIGNMENT</span>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8', marginTop: '2px' }}>{activeCard.cross_resolution_relationship}</div>
+                  </div>
+                  <div style={{ backgroundColor: '#0f172a', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>CANONICAL RISK STATE</span>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b', marginTop: '2px' }}>{activeCard.risk_state}</div>
+                  </div>
+                </div>
+
+                {/* Canonical Evidence Bullets */}
+                <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>CANONICAL EVIDENCE JUSTIFICATION:</div>
+                  <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#cbd5e1', lineHeight: '1.6' }}>
+                    {activeCard.evidence.map((bullet, idx) => (
+                      <li key={idx} style={{ marginBottom: '4px' }}>
+                        {bullet.startsWith('• ') ? bullet.substring(2) : bullet}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -737,12 +1052,13 @@ export const DecisionSurfacePanel: React.FC = () => {
               <thead>
                 <tr style={{ backgroundColor: '#1e293b', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                   <th style={{ padding: '12px 16px' }}>Asset Ticker</th>
+                  <th style={{ padding: '12px 16px' }}>Side</th>
                   <th style={{ padding: '12px 16px' }}>Decision Time (UTC)</th>
                   <th style={{ padding: '12px 16px' }}>15m Intraday</th>
                   <th style={{ padding: '12px 16px' }}>30m Horizon</th>
                   <th style={{ padding: '12px 16px' }}>1d Macro</th>
                   <th style={{ padding: '12px 16px' }}>Cross-Resolution State</th>
-                  <th style={{ padding: '12px 16px' }}>Engine Recommendation</th>
+                  <th style={{ padding: '12px 16px' }}>Signal & Directive</th>
                 </tr>
               </thead>
               <tbody>
@@ -751,6 +1067,11 @@ export const DecisionSurfacePanel: React.FC = () => {
                   return (
                     <tr key={card.card_id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 700, color: '#f8fafc' }}>{card.instrument}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                          {card.position_side || 'LONG'}
+                        </span>
+                      </td>
                       <td style={{ padding: '12px 16px', color: '#38bdf8', fontFamily: 'monospace', fontSize: '12px' }}>
                         {card.datetime || (card.timestamp ? new Date(card.timestamp * 1000).toISOString() : 'N/A')}
                       </td>
@@ -776,7 +1097,7 @@ export const DecisionSurfacePanel: React.FC = () => {
                           color: rec.color,
                           border: `1px solid ${rec.color}50`
                         }}>
-                          {rec.icon} {card.decision_state}
+                          {rec.icon} {card.entry_signal || card.decision_state}
                         </span>
                       </td>
                     </tr>

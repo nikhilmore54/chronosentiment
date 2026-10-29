@@ -1,0 +1,34 @@
+{
+  "timestamp_utc": "2026-10-22T04:03:10.936123+00:00",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "check": "RP-605 Canonical NSE Ledger Checksum",
+      "expected": "46119e8dafc90338f132ca84ef606783c86d8d0ce0dfcc5e19e9b637c0b7a23c",
+      "actual": "46119e8dafc90338f132ca84ef606783c86d8d0ce0dfcc5e19e9b637c0b7a23c",
+      "status": "PASS"
+    },
+    {
+      "check": "Credential & Execution Route Isolation",
+      "leaked_keys_detected": [],
+      "status": "PASS"
+    },
+    {
+      "check": "WAL Event Identity Key Disambiguation",
+      "sample_schema": "EVENT-{symbol}-{event_type}-{candidate_arm}-{timestamp_utc}",
+      "status": "PASS"
+    },
+    {
+      "check": "Frozen Model Weights & Calibrator Signature",
+      "file": "rp615_crypto_stage2_model_weights.json",
+      "sha256": "4147ff575f35041726c60b3ce3eea7b1332eef5cf34169daccf1aac317b3059f",
+      "status": "PASS"
+    },
+    {
+      "check": "Anchored Manifest Verification",
+      "file": "MANIFEST_ANCHOR.json",
+      "sha256": "9f036be9d17567a8056f860548172fabfd003dbedc171334872ea7df2d7a68ef",
+      "status": "PASS"
+    }
+  ]
+}

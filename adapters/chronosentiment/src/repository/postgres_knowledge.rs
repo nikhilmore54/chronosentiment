@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Row};
 use std::error::Error;
 use uuid::Uuid;
@@ -8,7 +7,7 @@ use crate::reasoning::assessment::AssessmentProfile;
 use crate::reasoning::decision::Decision;
 use crate::reasoning::strategy::OpportunityStrategy;
 use crate::repository::knowledge::{
-    ArtifactMetadata, ArtifactRepository, ArtifactType, AssessmentQueries, KnowledgeArtifact,
+    ArtifactRepository, AssessmentQueries, KnowledgeArtifact,
 };
 use crate::validation::outcome::OutcomeRecord;
 

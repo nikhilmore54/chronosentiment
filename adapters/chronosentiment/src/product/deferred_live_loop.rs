@@ -907,14 +907,49 @@ mod tests {
         assert_eq!(rt.feed().last_ingest_unix, Some(5));
     }
 
+    struct TestTempDir {
+        path: std::path::PathBuf,
+    }
+
+    impl TestTempDir {
+        fn new(prefix: &str) -> Self {
+            let path = std::env::temp_dir().join(format!("{prefix}-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&path).expect("create test temp dir");
+            Self { path }
+        }
+
+        fn path(&self) -> &std::path::Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TestTempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
     #[test]
     fn cached_1m_jublfood_20260911_tape_is_deterministic() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../intraday_capture/yahoo_cache_1m");
-        if !dir.join("JUBLFOOD.NS.json").exists() {
-            return;
-        }
-        let mut a = cached_1m_tape(&dir, "JUBLFOOD_NS", "2026-09-11", 0.0).unwrap();
-        let mut b = cached_1m_tape(&dir, "JUBLFOOD_NS", "2026-09-11", 0.0).unwrap();
+        let temp = TestTempDir::new("jublfood-det");
+        let start_unix = 1_789_098_300; // 2026-09-11 09:15 IST
+        let bars: Vec<CachedOhlcBar> = (0..60)
+            .map(|i| CachedOhlcBar {
+                timestamp: start_unix + i * 60,
+                high: 480.0 + (i as f64) * 0.1,
+                low: 479.0 + (i as f64) * 0.1,
+                close: 479.5 + (i as f64) * 0.1,
+                volume: Some(1000.0),
+            })
+            .collect();
+        std::fs::write(
+            temp.path().join("JUBLFOOD.NS.json"),
+            serde_json::to_vec(&bars).unwrap(),
+        )
+        .unwrap();
+
+        let mut a = cached_1m_tape(temp.path(), "JUBLFOOD_NS", "2026-09-11", 0.0).unwrap();
+        let mut b = cached_1m_tape(temp.path(), "JUBLFOOD_NS", "2026-09-11", 0.0).unwrap();
         assert_eq!(a.len(), b.len());
         assert!(a.len() > 50);
         let first = a.next().unwrap();
@@ -985,11 +1020,8 @@ mod tests {
 
     #[test]
     fn jublfood_next_session_bar_reaches_horizon() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../intraday_capture/yahoo_cache_1m");
+        let temp = TestTempDir::new("jublfood-horizon");
         let dataset = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/p4_opportunity_dataset.json");
-        if !dir.join("JUBLFOOD.NS.json").exists() || !dataset.exists() {
-            return;
-        }
         let briefs = crate::product::load_intraday_briefs(dataset.to_str().unwrap()).unwrap();
         let brief = briefs
             .into_iter()
@@ -997,7 +1029,34 @@ mod tests {
             .expect("JUBLFOOD 2026-09-07 brief");
         let snap = brief.execution.snap_unix.expect("snap_unix");
         let until = snap + 300 * 60;
-        let tape = cached_1m_through_unix(&dir, "JUBLFOOD_NS", "2026-09-07", until, 0.0).unwrap();
+
+        let start_unix = 1_788_752_700; // 2026-09-07 09:15 IST
+        let mut bars: Vec<CachedOhlcBar> = (0..375)
+            .map(|i| {
+                let p = if i == 0 { 480.5 } else { 480.0 };
+                CachedOhlcBar {
+                    timestamp: start_unix + i * 60,
+                    high: p + 0.5,
+                    low: p - 0.5,
+                    close: p,
+                    volume: Some(1000.0),
+                }
+            })
+            .collect();
+        bars.push(CachedOhlcBar {
+            timestamp: until,
+            high: 475.5,
+            low: 474.0,
+            close: 474.8999938964844,
+            volume: Some(1000.0),
+        });
+        std::fs::write(
+            temp.path().join("JUBLFOOD.NS.json"),
+            serde_json::to_vec(&bars).unwrap(),
+        )
+        .unwrap();
+
+        let tape = cached_1m_through_unix(temp.path(), "JUBLFOOD_NS", "2026-09-07", until, 0.0).unwrap();
         assert!(tape.len() > 359, "session plus first post-horizon bar");
         let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig::default());
         rt.arm(brief);
@@ -1012,17 +1071,38 @@ mod tests {
 
     #[test]
     fn tcs_cached_1m_hits_stop() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../intraday_capture/yahoo_cache_1m");
+        let temp = TestTempDir::new("tcs-stop");
         let dataset = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/p4_opportunity_dataset.json");
-        if !dir.join("TCS.NS.json").exists() || !dataset.exists() {
-            return;
-        }
         let briefs = crate::product::load_intraday_briefs(dataset.to_str().unwrap()).unwrap();
         let brief = briefs
             .into_iter()
             .find(|b| b.id == "LIVE-005-20260904-1000-TCS_NS")
             .expect("TCS 2026-09-04 brief");
-        let tape = cached_1m_tape(&dir, "TCS_NS", "2026-09-04", 0.0).unwrap();
+
+        let start_unix = 1_788_493_500; // 2026-09-04 09:15 IST
+        let bars = vec![
+            CachedOhlcBar {
+                timestamp: start_unix,
+                high: 2347.0,
+                low: 2345.0,
+                close: 2346.0,
+                volume: Some(500.0),
+            },
+            CachedOhlcBar {
+                timestamp: start_unix + 60,
+                high: 2364.0,
+                low: 2346.0,
+                close: 2363.5,
+                volume: Some(500.0),
+            },
+        ];
+        std::fs::write(
+            temp.path().join("TCS.NS.json"),
+            serde_json::to_vec(&bars).unwrap(),
+        )
+        .unwrap();
+
+        let tape = cached_1m_tape(temp.path(), "TCS_NS", "2026-09-04", 0.0).unwrap();
         let mut rt = DeferredLiveRuntime::new(DeferredLiveConfig::default());
         rt.arm(brief);
         ingest_tape(&mut rt, tape);
@@ -1107,12 +1187,40 @@ mod tests {
 
     #[test]
     fn cached_session_tape_is_ordered_by_unix_then_ticker() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../intraday_capture/yahoo_cache_1m");
-        if !dir.join("JUBLFOOD.NS.json").exists() || !dir.join("TCS.NS.json").exists() {
-            return;
-        }
+        let temp = TestTempDir::new("session-tape-ordered");
+        let start_unix = 1_788_752_700; // 2026-09-07 09:15 IST
+        let jubl_bars: Vec<CachedOhlcBar> = (0..250)
+            .map(|i| CachedOhlcBar {
+                timestamp: start_unix + i * 60,
+                high: 480.0,
+                low: 478.0,
+                close: 479.0,
+                volume: Some(100.0),
+            })
+            .collect();
+        let tcs_bars: Vec<CachedOhlcBar> = (0..250)
+            .map(|i| CachedOhlcBar {
+                timestamp: start_unix + i * 60,
+                high: 2350.0,
+                low: 2340.0,
+                close: 2345.0,
+                volume: Some(100.0),
+            })
+            .collect();
+
+        std::fs::write(
+            temp.path().join("JUBLFOOD.NS.json"),
+            serde_json::to_vec(&jubl_bars).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("TCS.NS.json"),
+            serde_json::to_vec(&tcs_bars).unwrap(),
+        )
+        .unwrap();
+
         let tickers = ["JUBLFOOD_NS".into(), "TCS_NS".into()];
-        let mut tape = cached_session_tape(&dir, &tickers, "2026-09-07", 0.0).unwrap();
+        let mut tape = cached_session_tape(temp.path(), &tickers, "2026-09-07", 0.0).unwrap();
         let mut prev = (i64::MIN, String::new());
         let mut n = 0;
         while let Some(s) = tape.next() {

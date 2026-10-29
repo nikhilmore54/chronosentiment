@@ -1,6 +1,6 @@
 [
   {
-    "tape_id": "tape_RELIANCE.NS_20260925T160737Z",
+    "tape_id": "tape_RELIANCE.NS_20260926T024031Z",
     "symbol": "RELIANCE.NS",
     "replay_start": "2026-06-22T08:45:00Z",
     "replay_end": "2026-06-23T04:15:00Z",
@@ -15,6 +15,8 @@
         "timestamp": 1782117900,
         "datetime": "2026-06-22T08:45:00Z",
         "current_price": 1332.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -44,6 +46,8 @@
         "timestamp": 1782118800,
         "datetime": "2026-06-22T09:00:00Z",
         "current_price": 1330.699951171875,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -74,6 +78,8 @@
         "timestamp": 1782119700,
         "datetime": "2026-06-22T09:15:00Z",
         "current_price": 1328.300048828125,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -104,6 +110,8 @@
         "timestamp": 1782120600,
         "datetime": "2026-06-22T09:30:00Z",
         "current_price": 1327.199951171875,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -134,6 +142,8 @@
         "timestamp": 1782121500,
         "datetime": "2026-06-22T09:45:00Z",
         "current_price": 1324.9000244140625,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -164,6 +174,8 @@
         "timestamp": 1782186300,
         "datetime": "2026-06-23T03:45:00Z",
         "current_price": 1324.5999755859375,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -194,6 +206,8 @@
         "timestamp": 1782187200,
         "datetime": "2026-06-23T04:00:00Z",
         "current_price": 1328.0,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -224,6 +238,8 @@
         "timestamp": 1782188100,
         "datetime": "2026-06-23T04:15:00Z",
         "current_price": 1326.5999755859375,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -251,7 +267,7 @@
     ]
   },
   {
-    "tape_id": "tape_CIPLA.NS_20260925T160737Z",
+    "tape_id": "tape_CIPLA.NS_20260926T024031Z",
     "symbol": "CIPLA.NS",
     "replay_start": "2026-07-06T08:45:00Z",
     "replay_end": "2026-07-07T04:15:00Z",
@@ -266,6 +282,8 @@
         "timestamp": 1783327500,
         "datetime": "2026-07-06T08:45:00Z",
         "current_price": 1463.699951171875,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -296,6 +314,8 @@
         "timestamp": 1783328400,
         "datetime": "2026-07-06T09:00:00Z",
         "current_price": 1468.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -325,6 +345,8 @@
         "timestamp": 1783329300,
         "datetime": "2026-07-06T09:15:00Z",
         "current_price": 1467.0999755859375,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -354,6 +376,8 @@
         "timestamp": 1783330200,
         "datetime": "2026-07-06T09:30:00Z",
         "current_price": 1473.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -383,6 +407,8 @@
         "timestamp": 1783331100,
         "datetime": "2026-07-06T09:45:00Z",
         "current_price": 1472.300048828125,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -412,6 +438,8 @@
         "timestamp": 1783395900,
         "datetime": "2026-07-07T03:45:00Z",
         "current_price": 1470.5999755859375,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -442,6 +470,8 @@
         "timestamp": 1783396800,
         "datetime": "2026-07-07T04:00:00Z",
         "current_price": 1474.0,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -472,6 +502,8 @@
         "timestamp": 1783397700,
         "datetime": "2026-07-07T04:15:00Z",
         "current_price": 1477.4000244140625,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -499,7 +531,7 @@
     ]
   },
   {
-    "tape_id": "tape_ADANIENT.NS_20260925T160737Z",
+    "tape_id": "tape_ADANIENT.NS_20260926T024031Z",
     "symbol": "ADANIENT.NS",
     "replay_start": "2026-06-22T08:45:00Z",
     "replay_end": "2026-06-23T04:15:00Z",
@@ -514,6 +546,8 @@
         "timestamp": 1782117900,
         "datetime": "2026-06-22T08:45:00Z",
         "current_price": 3055.300048828125,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -543,6 +577,8 @@
         "timestamp": 1782118800,
         "datetime": "2026-06-22T09:00:00Z",
         "current_price": 3047.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -572,6 +608,8 @@
         "timestamp": 1782119700,
         "datetime": "2026-06-22T09:15:00Z",
         "current_price": 3047.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -601,6 +639,8 @@
         "timestamp": 1782120600,
         "datetime": "2026-06-22T09:30:00Z",
         "current_price": 3058.89990234375,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -630,6 +670,8 @@
         "timestamp": 1782121500,
         "datetime": "2026-06-22T09:45:00Z",
         "current_price": 3063.0,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -659,6 +701,8 @@
         "timestamp": 1782186300,
         "datetime": "2026-06-23T03:45:00Z",
         "current_price": 3075.89990234375,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -689,6 +733,8 @@
         "timestamp": 1782187200,
         "datetime": "2026-06-23T04:00:00Z",
         "current_price": 3074.0,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -719,6 +765,8 @@
         "timestamp": 1782188100,
         "datetime": "2026-06-23T04:15:00Z",
         "current_price": 3072.0,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -746,7 +794,7 @@
     ]
   },
   {
-    "tape_id": "tape_INFY.NS_20260925T160737Z",
+    "tape_id": "tape_INFY.NS_20260926T024031Z",
     "symbol": "INFY.NS",
     "replay_start": "2026-07-06T08:45:00Z",
     "replay_end": "2026-07-07T04:15:00Z",
@@ -761,6 +809,8 @@
         "timestamp": 1783327500,
         "datetime": "2026-07-06T08:45:00Z",
         "current_price": 1034.300048828125,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -790,6 +840,8 @@
         "timestamp": 1783328400,
         "datetime": "2026-07-06T09:00:00Z",
         "current_price": 1034.199951171875,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -820,6 +872,8 @@
         "timestamp": 1783329300,
         "datetime": "2026-07-06T09:15:00Z",
         "current_price": 1038.4000244140625,
+        "position_side": "LONG",
+        "entry_signal": "STANDBY / AWAIT ALIGNMENT",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -850,6 +904,8 @@
         "timestamp": 1783330200,
         "datetime": "2026-07-06T09:30:00Z",
         "current_price": 1042.5,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -879,6 +935,8 @@
         "timestamp": 1783331100,
         "datetime": "2026-07-06T09:45:00Z",
         "current_price": 1043.9000244140625,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -908,6 +966,8 @@
         "timestamp": 1783395900,
         "datetime": "2026-07-07T03:45:00Z",
         "current_price": 1059.699951171875,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -937,6 +997,8 @@
         "timestamp": 1783396800,
         "datetime": "2026-07-07T04:00:00Z",
         "current_price": 1069.199951171875,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -966,6 +1028,8 @@
         "timestamp": 1783397700,
         "datetime": "2026-07-07T04:15:00Z",
         "current_price": 1069.5,
+        "position_side": "LONG",
+        "entry_signal": "LONG POSITION MONITORING (ACTIVE)",
         "resolutions": {
           "15m": {
             "label": "CONTINUATION",
@@ -992,7 +1056,7 @@
     ]
   },
   {
-    "tape_id": "tape_TCS.NS_20260925T160737Z",
+    "tape_id": "tape_TCS.NS_20260926T024031Z",
     "symbol": "TCS.NS",
     "replay_start": "2026-06-22T08:45:00Z",
     "replay_end": "2026-06-23T04:15:00Z",
@@ -1007,6 +1071,8 @@
         "timestamp": 1782117900,
         "datetime": "2026-06-22T08:45:00Z",
         "current_price": 2136.800048828125,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1035,6 +1101,8 @@
         "timestamp": 1782118800,
         "datetime": "2026-06-22T09:00:00Z",
         "current_price": 2133.10009765625,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1063,6 +1131,8 @@
         "timestamp": 1782119700,
         "datetime": "2026-06-22T09:15:00Z",
         "current_price": 2131.60009765625,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1091,6 +1161,8 @@
         "timestamp": 1782120600,
         "datetime": "2026-06-22T09:30:00Z",
         "current_price": 2124.39990234375,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1119,6 +1191,8 @@
         "timestamp": 1782121500,
         "datetime": "2026-06-22T09:45:00Z",
         "current_price": 2129.0,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1147,6 +1221,8 @@
         "timestamp": 1782186300,
         "datetime": "2026-06-23T03:45:00Z",
         "current_price": 2088.800048828125,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1177,6 +1253,8 @@
         "timestamp": 1782187200,
         "datetime": "2026-06-23T04:00:00Z",
         "current_price": 2085.199951171875,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",
@@ -1207,6 +1285,8 @@
         "timestamp": 1782188100,
         "datetime": "2026-06-23T04:15:00Z",
         "current_price": 2083.300048828125,
+        "position_side": "LONG",
+        "entry_signal": "CLOSE LONG POSITION (EXIT)",
         "resolutions": {
           "15m": {
             "label": "REVERSAL",

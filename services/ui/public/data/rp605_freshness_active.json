@@ -1,0 +1,22 @@
+{
+  "BTC-USD": {
+    "trade_id": "RP605-0069",
+    "symbol": "BTC-USD",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:25:12Z",
+    "entry_price": 83060.6875,
+    "quantity": 0.0012039389873819669,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "LTC-USD": {
+    "trade_id": "RP605-0082",
+    "symbol": "LTC-USD",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:44:31Z",
+    "entry_price": 70.98600006103516,
+    "quantity": 1.4087284804611901,
+    "f15_at_entry": -0.005400000000000016,
+    "is_fresh": true
+  }
+}

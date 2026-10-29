@@ -500,7 +500,7 @@ fn domain_names_stay_semantic() {
     let files = [
         include_str!("../src/decision_support/decision_value_fitness.rs"),
         include_str!("../src/decision_support/c3_implementation.rs"),
-        include_str!("../src/bin/csp006_c3_implementation.rs"),
+        include_str!("../legacy/bin/csp006_c3_implementation.rs"),
     ];
     for src in files {
         assert!(!src.contains("train_fitness"));

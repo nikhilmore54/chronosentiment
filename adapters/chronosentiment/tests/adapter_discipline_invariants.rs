@@ -154,26 +154,52 @@ fn b3_b4_generators_are_preserved_behind_legacy_lake() {
 }
 
 #[test]
-fn product_src_bin_contains_only_csp_binaries() {
+fn default_executable_surface_contains_only_governed_binaries() {
     let mut bins = Vec::new();
     walk_rs(&crate_root().join("src/bin"), &mut bins);
-    let names: Vec<String> = bins
+    let mut names: Vec<String> = bins
         .iter()
         .filter_map(|p| {
             p.file_name()
                 .and_then(|n| n.to_str())
-                .map(|s| s.to_string())
+                .map(|s| s.trim_end_matches(".rs").to_string())
         })
         .collect();
+    names.sort();
+
+    // The default executable surface consists of exactly 16 targets across 3 authority tiers:
+    // 1. Production authority (7)
+    // 2. Replay / validation (7)
+    // 3. Required utilities (2)
+    const GOVERNED_DEFAULT_SURFACE: &[&str] = &[
+        "csp006_p_enrich",
+        "deferred_live_decision_loop",
+        "deferred_live_yahoo",
+        "intraday001_observe",
+        "live001_snapshot",
+        "live002_evaluate",
+        "live003_recommend",
+        "live004_certify",
+        "live005_ledger",
+        "rec001h_historical_reconstruction",
+        "time002_reconstruct",
+        "time003_replay",
+        "time004_ledger",
+        "time005_observe",
+        "time006_evidence_dataset",
+        "time009_observe",
+    ];
+
     for name in &names {
         assert!(
-            name.starts_with("csp"),
-            "src/bin/{name} is not a product CS-P binary; move it to legacy/ or research/"
+            GOVERNED_DEFAULT_SURFACE.contains(&name.as_str()),
+            "src/bin/{name} is not on the governed default executable surface; move it to legacy/ or research/"
         );
     }
-    assert!(
-        !names.is_empty(),
-        "product CS-P binaries must remain in src/bin"
+    assert_eq!(
+        names.len(),
+        GOVERNED_DEFAULT_SURFACE.len(),
+        "default executable surface must contain exactly 16 binaries"
     );
 }
 
@@ -226,9 +252,9 @@ fn policy_artifact_is_an_evaluator_not_an_optimizer() {
 #[test]
 fn product_binaries_still_select_the_baseline_fixture_explicitly() {
     for rel in [
-        "src/bin/csp002_b4_historical_run.rs",
-        "src/bin/csp003_forward_session.rs",
-        "src/bin/csp004_historical_lab.rs",
+        "legacy/bin/csp002_b4_historical_run.rs",
+        "legacy/bin/csp003_forward_session.rs",
+        "legacy/bin/csp004_historical_lab.rs",
     ] {
         let src = read(rel);
         assert!(
@@ -244,7 +270,7 @@ fn product_binaries_still_select_the_baseline_fixture_explicitly() {
 
 #[test]
 fn search_diagnosis_binary_does_not_evolve() {
-    let src = read("src/bin/csp006_search_diagnosis.rs");
+    let src = read("legacy/bin/csp006_search_diagnosis.rs");
     assert!(
         src.contains("diagnose_sealed_artifact"),
         "diagnosis binary must inspect the sealed artifact"
@@ -257,7 +283,7 @@ fn search_diagnosis_binary_does_not_evolve() {
 
 #[test]
 fn policy_discovery_binary_does_not_hand_write_or_promote_the_baseline() {
-    let src = read("src/bin/csp006_policy_discovery.rs");
+    let src = read("legacy/bin/csp006_policy_discovery.rs");
     assert!(
         src.contains("evolve_on_development") && src.contains("evaluate_sealed_candidate"),
         "discovery binary must run Coralys search then ChronoSentiment handoff"

@@ -1,0 +1,24 @@
+{
+  "SHIB-USD": {
+    "trade_id": "RP605-0080",
+    "symbol": "SHIB-USD",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:39:28Z",
+    "entry_price": 5.670000064128544e-06,
+    "quantity": 17636684.103877448,
+    "f15_at_entry": -0.28190000000000004,
+    "is_fresh": false,
+    "rejection_reason": "STALE_ENTRY (F_15=-0.282 < -0.01)"
+  },
+  "NEAR-USD": {
+    "trade_id": "RP605-0084",
+    "symbol": "NEAR-USD",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:46:33Z",
+    "entry_price": 5.167099952697754,
+    "quantity": 19.353215713930556,
+    "f15_at_entry": -0.0411,
+    "is_fresh": false,
+    "rejection_reason": "STALE_ENTRY (F_15=-0.041 < -0.01)"
+  }
+}

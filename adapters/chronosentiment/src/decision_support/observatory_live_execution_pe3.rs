@@ -36,9 +36,9 @@ use super::coralys_execution_model::{
     CORALYS_EXEC_MODEL_ID, CORALYS_EXEC_MODEL_VERSION, MAXIMUM_HOLD_SESSIONS,
 };
 use super::csp006_protocol::{RESEARCH_DISCOVERY_TWO_ARTIFACT_HASH, RESEARCH_UNIVERSE};
-use super::enrichment_certify::{bars_at_or_before, metrics_from_bars_at_t};
+use super::enrichment_certify::metrics_from_bars_at_t;
 use super::observatory_execution::{
-    first_exit, ExecutionExit, ExitReason, SealedExecutionIntent, TriggerType,
+    first_exit, ExecutionExit, ExitReason, SealedExecutionIntent,
     C3G_EXPERIMENT_AUTHORIZED, STOP_EXIT_AUTHORIZED, TARGET_PATH_OPTIMIZATION_AUTHORIZED,
 };
 use super::observatory_live_execution::{

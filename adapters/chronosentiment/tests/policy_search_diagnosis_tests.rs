@@ -28,7 +28,7 @@ fn workspace_root() -> PathBuf {
 fn diagnosis_sources_do_not_evolve_or_promote() {
     let files = [
         include_str!("../src/decision_support/policy_search_diagnosis.rs"),
-        include_str!("../src/bin/csp006_search_diagnosis.rs"),
+        include_str!("../legacy/bin/csp006_search_diagnosis.rs"),
     ];
     for src in files {
         assert!(!src.contains("evolve_on_development"));

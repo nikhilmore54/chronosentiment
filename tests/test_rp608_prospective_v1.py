@@ -45,11 +45,15 @@ def _dq_ok() -> DataQualityGate:
 class TestAuthGate(unittest.TestCase):
     def test_authorization_does_not_imply_counting(self):
         auth = load_authorization()
-        # May be authorized on disk after Prospective V1 auth; clock must stay distinct.
+        # May be authorized on disk after Prospective V1 auth; clock must stay distinct
+        # from authorization. After a market commence_market(), observation_counting may
+        # be STARTED while session_1_started / unit clock remain independent.
         if auth.get("authorized") is True:
             self.assertTrue(is_authorized())
-            self.assertEqual(auth.get("observation_counting"), "NOT_STARTED")
-            self.assertFalse(auth.get("session_1_started") is True)
+            self.assertIn(auth.get("observation_counting"), ("NOT_STARTED", "STARTED"))
+            # Unit clock / Session-1 marker is not implied by authorize alone.
+            if auth.get("observation_counting") == "NOT_STARTED":
+                self.assertFalse(auth.get("session_1_started") is True)
         else:
             self.assertFalse(is_authorized())
 

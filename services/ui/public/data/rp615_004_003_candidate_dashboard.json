@@ -1,0 +1,659 @@
+{
+  "metadata": {
+    "title": "RP-615-004-003 Incremental Predictive Improvement Dashboard",
+    "generated_at": "2026-10-03T05:40:58.462939+00:00",
+    "model_hash": "212532d3ac12f9c6",
+    "total_opportunities": 7264,
+    "eligible_opportunities": 6719
+  },
+  "calibration_stats": {
+    "Discovery (Sep 28-30, N=5001)": {
+      "Raw": {
+        "Brier": 0.12806878917220754,
+        "ECE": 0.09769177855688324
+      },
+      "Platt": {
+        "Brier": 0.17035259309056527,
+        "ECE": 0.0005706660282819814
+      },
+      "Isotonic": {
+        "Brier": 0.167299481620963,
+        "ECE": 0.031530804711756684
+      }
+    },
+    "Holdout (Oct 1, N=1718)": {
+      "Raw": {
+        "Brier": 0.2101812602644968,
+        "ECE": 0.08863100535922123
+      },
+      "Platt": {
+        "Brier": 0.20759123033100912,
+        "ECE": 0.06197492003855043
+      },
+      "Isotonic": {
+        "Brier": 0.20565608427157378,
+        "ECE": 0.07379945685246012
+      }
+    },
+    "All Eligible (N=6719)": {
+      "Raw": {
+        "Brier": 0.14906435775928195,
+        "ECE": 0.05471268132452535
+      },
+      "Platt": {
+        "Brier": 0.17987424494040638,
+        "ECE": 0.015777339245846657
+      },
+      "Isotonic": {
+        "Brier": 0.17710698918961149,
+        "ECE": 0.04230298198455309
+      }
+    }
+  },
+  "policy_comparisons": {
+    "Discovery (Sep 28-30)": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 237,
+        "coverage_pct": 4.739052189562088,
+        "hit_n": 183,
+        "hit_rate_pct": 77.21518987341773,
+        "ci_low_pct": 71.46603594356559,
+        "ci_high_pct": 82.09617423303537,
+        "net_pnl_tot": 81238.17,
+        "net_expectancy": 342.7770886075949,
+        "profit_factor": 9.524073390105809,
+        "gross_gains": 90768.61,
+        "gross_losses": -9530.44
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 247,
+        "coverage_pct": 4.939012197560488,
+        "hit_n": 190,
+        "hit_rate_pct": 76.92307692307693,
+        "ci_low_pct": 71.28056833141761,
+        "ci_high_pct": 81.7409732059226,
+        "net_pnl_tot": 84580.75,
+        "net_expectancy": 342.43218623481783,
+        "profit_factor": 8.946734426586843,
+        "gross_gains": 95224.21,
+        "gross_losses": -10643.460000000001
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 142,
+        "coverage_pct": 2.8394321135772844,
+        "hit_n": 123,
+        "hit_rate_pct": 86.61971830985915,
+        "ci_low_pct": 80.04640162433276,
+        "ci_high_pct": 91.2639184855954,
+        "net_pnl_tot": 55767.96,
+        "net_expectancy": 392.7321126760563,
+        "profit_factor": 18.222060608306542,
+        "gross_gains": 59006.13,
+        "gross_losses": -3238.17
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 2,
+        "coverage_pct": 0.03999200159968006,
+        "hit_n": 1,
+        "hit_rate_pct": 50.0,
+        "ci_low_pct": 9.453148796027493,
+        "ci_high_pct": 90.54685120397251,
+        "net_pnl_tot": 1287.35,
+        "net_expectancy": 643.675,
+        "profit_factor": 14.586807387862796,
+        "gross_gains": 1382.1,
+        "gross_losses": -94.75
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 132,
+        "coverage_pct": 2.6394721055788843,
+        "hit_n": 105,
+        "hit_rate_pct": 79.54545454545455,
+        "ci_low_pct": 71.87549428227543,
+        "ci_high_pct": 85.54439037269066,
+        "net_pnl_tot": 43316.07,
+        "net_expectancy": 328.15204545454543,
+        "profit_factor": 13.860913172052589,
+        "gross_gains": 46684.11,
+        "gross_losses": -3368.04
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 138,
+        "coverage_pct": 2.7594481103779245,
+        "hit_n": 108,
+        "hit_rate_pct": 78.26086956521739,
+        "ci_low_pct": 70.66451944668177,
+        "ci_high_pct": 84.3264607911167,
+        "net_pnl_tot": 44457.94,
+        "net_expectancy": 322.15898550724637,
+        "profit_factor": 10.92129987101266,
+        "gross_gains": 48939.0,
+        "gross_losses": -4481.06
+      }
+    ],
+    "Holdout (Oct 1)": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 51,
+        "coverage_pct": 2.9685681024447033,
+        "hit_n": 17,
+        "hit_rate_pct": 33.33333333333333,
+        "ci_low_pct": 21.969951335330844,
+        "ci_high_pct": 47.031593832787514,
+        "net_pnl_tot": -2641.29,
+        "net_expectancy": -51.79,
+        "profit_factor": 0.7323809803649391,
+        "gross_gains": 7228.3,
+        "gross_losses": -9869.59
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 56,
+        "coverage_pct": 3.259604190919674,
+        "hit_n": 20,
+        "hit_rate_pct": 35.714285714285715,
+        "ci_low_pct": 24.45659151177947,
+        "ci_high_pct": 48.80608541581808,
+        "net_pnl_tot": 245.1700000000001,
+        "net_expectancy": 4.3780357142857165,
+        "profit_factor": 1.0240073950257875,
+        "gross_gains": 10457.44,
+        "gross_losses": -10212.27
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 16,
+        "coverage_pct": 0.9313154831199069,
+        "hit_n": 6,
+        "hit_rate_pct": 37.5,
+        "ci_low_pct": 18.481260218075928,
+        "ci_high_pct": 61.35891592557555,
+        "net_pnl_tot": 350.42999999999995,
+        "net_expectancy": 21.901874999999997,
+        "profit_factor": 1.1258886713487686,
+        "gross_gains": 3134.08,
+        "gross_losses": -2783.65
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 0,
+        "coverage_pct": 0.0,
+        "hit_n": 0,
+        "hit_rate_pct": 0.0,
+        "ci_low_pct": 0.0,
+        "ci_high_pct": 0.0,
+        "net_pnl_tot": 0.0,
+        "net_expectancy": 0.0,
+        "profit_factor": 0.0,
+        "gross_gains": 0.0,
+        "gross_losses": 0.0
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 35,
+        "coverage_pct": 2.037252619324796,
+        "hit_n": 10,
+        "hit_rate_pct": 28.57142857142857,
+        "ci_low_pct": 16.326555358350138,
+        "ci_high_pct": 45.054900211812345,
+        "net_pnl_tot": -4158.05,
+        "net_expectancy": -118.80142857142857,
+        "profit_factor": 0.4376522330672199,
+        "gross_gains": 3236.04,
+        "gross_losses": -7394.09
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 38,
+        "coverage_pct": 2.211874272409779,
+        "hit_n": 11,
+        "hit_rate_pct": 28.947368421052634,
+        "ci_low_pct": 17.003296809518844,
+        "ci_high_pct": 44.757104420168744,
+        "net_pnl_tot": -3685.02,
+        "net_expectancy": -96.97421052631579,
+        "profit_factor": 0.5237004589770667,
+        "gross_gains": 4051.75,
+        "gross_losses": -7736.7699999999995
+      }
+    ],
+    "Full Eligible Population": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 288,
+        "coverage_pct": 4.286352135734484,
+        "hit_n": 200,
+        "hit_rate_pct": 69.44444444444444,
+        "ci_low_pct": 63.89739799218206,
+        "ci_high_pct": 74.47960520905004,
+        "net_pnl_tot": 78596.88,
+        "net_expectancy": 272.90583333333336,
+        "profit_factor": 5.051379301990771,
+        "gross_gains": 97996.91,
+        "gross_losses": -19400.03
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 303,
+        "coverage_pct": 4.509599642803988,
+        "hit_n": 210,
+        "hit_rate_pct": 69.3069306930693,
+        "ci_low_pct": 63.89898167633582,
+        "ci_high_pct": 74.23146080210375,
+        "net_pnl_tot": 84825.92,
+        "net_expectancy": 279.9535313531353,
+        "profit_factor": 5.067271680252861,
+        "gross_gains": 105681.65,
+        "gross_losses": -20855.73
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 158,
+        "coverage_pct": 2.3515404077987796,
+        "hit_n": 129,
+        "hit_rate_pct": 81.64556962025317,
+        "ci_low_pct": 74.88330070822626,
+        "ci_high_pct": 86.90556994305287,
+        "net_pnl_tot": 56118.39,
+        "net_expectancy": 355.17968354430377,
+        "profit_factor": 10.319174269572986,
+        "gross_gains": 62140.21,
+        "gross_losses": -6021.82
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 2,
+        "coverage_pct": 0.029766334275933917,
+        "hit_n": 1,
+        "hit_rate_pct": 50.0,
+        "ci_low_pct": 9.453148796027493,
+        "ci_high_pct": 90.54685120397251,
+        "net_pnl_tot": 1287.35,
+        "net_expectancy": 643.675,
+        "profit_factor": 14.586807387862796,
+        "gross_gains": 1382.1,
+        "gross_losses": -94.75
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 167,
+        "coverage_pct": 2.4854889120404824,
+        "hit_n": 115,
+        "hit_rate_pct": 68.8622754491018,
+        "ci_low_pct": 61.48160768444148,
+        "ci_high_pct": 75.39469048968328,
+        "net_pnl_tot": 39158.02,
+        "net_expectancy": 234.4791616766467,
+        "profit_factor": 4.638500928719501,
+        "gross_gains": 49920.15,
+        "gross_losses": -10762.13
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 176,
+        "coverage_pct": 2.6194374162821847,
+        "hit_n": 119,
+        "hit_rate_pct": 67.61363636363636,
+        "ci_low_pct": 60.387940207173685,
+        "ci_high_pct": 74.08687210318949,
+        "net_pnl_tot": 40772.92,
+        "net_expectancy": 231.66431818181817,
+        "profit_factor": 4.33716543772503,
+        "gross_gains": 52990.75,
+        "gross_losses": -12217.83
+      }
+    ]
+  },
+  "session_breakdown": {
+    "2026-09-28": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 12,
+        "coverage_pct": 0.749531542785759,
+        "hit_n": 10,
+        "hit_rate_pct": 83.33333333333334,
+        "ci_low_pct": 55.19697456977786,
+        "ci_high_pct": 95.3034747781199,
+        "net_pnl_tot": 3610.4,
+        "net_expectancy": 300.8666666666667,
+        "profit_factor": 8.656127404202982,
+        "gross_gains": 4081.97,
+        "gross_losses": -471.57
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 12,
+        "coverage_pct": 0.749531542785759,
+        "hit_n": 10,
+        "hit_rate_pct": 83.33333333333334,
+        "ci_low_pct": 55.19697456977786,
+        "ci_high_pct": 95.3034747781199,
+        "net_pnl_tot": 3610.4,
+        "net_expectancy": 300.8666666666667,
+        "profit_factor": 8.656127404202982,
+        "gross_gains": 4081.97,
+        "gross_losses": -471.57
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 6,
+        "coverage_pct": 0.3747657713928795,
+        "hit_n": 6,
+        "hit_rate_pct": 100.0,
+        "ci_low_pct": 60.9666679682156,
+        "ci_high_pct": 100.0,
+        "net_pnl_tot": 3100.77,
+        "net_expectancy": 516.795,
+        "profit_factor": 999.99,
+        "gross_gains": 3100.77,
+        "gross_losses": 0
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 2,
+        "coverage_pct": 0.12492192379762648,
+        "hit_n": 1,
+        "hit_rate_pct": 50.0,
+        "ci_low_pct": 9.453148796027493,
+        "ci_high_pct": 90.54685120397251,
+        "net_pnl_tot": 1287.35,
+        "net_expectancy": 643.675,
+        "profit_factor": 14.586807387862796,
+        "gross_gains": 1382.1,
+        "gross_losses": -94.75
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 9,
+        "coverage_pct": 0.5621486570893192,
+        "hit_n": 8,
+        "hit_rate_pct": 88.88888888888889,
+        "ci_low_pct": 56.50010145646879,
+        "ci_high_pct": 98.01090552386675,
+        "net_pnl_tot": 2300.14,
+        "net_expectancy": 255.5711111111111,
+        "profit_factor": 7.104081524335227,
+        "gross_gains": 2676.96,
+        "gross_losses": -376.82
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 9,
+        "coverage_pct": 0.5621486570893192,
+        "hit_n": 8,
+        "hit_rate_pct": 88.88888888888889,
+        "ci_low_pct": 56.50010145646879,
+        "ci_high_pct": 98.01090552386675,
+        "net_pnl_tot": 2300.14,
+        "net_expectancy": 255.5711111111111,
+        "profit_factor": 7.104081524335227,
+        "gross_gains": 2676.96,
+        "gross_losses": -376.82
+      }
+    ],
+    "2026-09-29": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 121,
+        "coverage_pct": 7.510862818125388,
+        "hit_n": 88,
+        "hit_rate_pct": 72.72727272727273,
+        "ci_low_pct": 64.18436999164756,
+        "ci_high_pct": 79.8715128862709,
+        "net_pnl_tot": 42555.159999999996,
+        "net_expectancy": 351.69553719008263,
+        "profit_factor": 7.265316879116866,
+        "gross_gains": 49347.34,
+        "gross_losses": -6792.18
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 127,
+        "coverage_pct": 7.883302296710118,
+        "hit_n": 94,
+        "hit_rate_pct": 74.01574803149606,
+        "ci_low_pct": 65.7632940068464,
+        "ci_high_pct": 80.85801993418941,
+        "net_pnl_tot": 46211.6,
+        "net_expectancy": 363.8708661417323,
+        "profit_factor": 7.803647724294703,
+        "gross_gains": 53003.78,
+        "gross_losses": -6792.18
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 65,
+        "coverage_pct": 4.034761018001241,
+        "hit_n": 56,
+        "hit_rate_pct": 86.15384615384616,
+        "ci_low_pct": 75.73192756090681,
+        "ci_high_pct": 92.54090027967462,
+        "net_pnl_tot": 29675.59,
+        "net_expectancy": 456.54753846153847,
+        "profit_factor": 18.12214612530796,
+        "gross_gains": 31408.76,
+        "gross_losses": -1733.17
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 0,
+        "coverage_pct": 0.0,
+        "hit_n": 0,
+        "hit_rate_pct": 0.0,
+        "ci_low_pct": 0.0,
+        "ci_high_pct": 0.0,
+        "net_pnl_tot": 0.0,
+        "net_expectancy": 0.0,
+        "profit_factor": 0.0,
+        "gross_gains": 0.0,
+        "gross_losses": 0.0
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 45,
+        "coverage_pct": 2.793296089385475,
+        "hit_n": 36,
+        "hit_rate_pct": 80.0,
+        "ci_low_pct": 66.17706210453912,
+        "ci_high_pct": 89.10385964986864,
+        "net_pnl_tot": 17861.92,
+        "net_expectancy": 396.9315555555555,
+        "profit_factor": 19.50861086357325,
+        "gross_gains": 18826.98,
+        "gross_losses": -965.06
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 47,
+        "coverage_pct": 2.9174425822470518,
+        "hit_n": 38,
+        "hit_rate_pct": 80.85106382978722,
+        "ci_low_pct": 67.45602589831968,
+        "ci_high_pct": 89.58405434685982,
+        "net_pnl_tot": 19317.65,
+        "net_expectancy": 411.0138297872341,
+        "profit_factor": 21.017045572296023,
+        "gross_gains": 20282.71,
+        "gross_losses": -965.06
+      }
+    ],
+    "2026-09-30": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 104,
+        "coverage_pct": 5.813303521520403,
+        "hit_n": 85,
+        "hit_rate_pct": 81.73076923076923,
+        "ci_low_pct": 73.22039505084174,
+        "ci_high_pct": 87.98056632410838,
+        "net_pnl_tot": 35072.61,
+        "net_expectancy": 337.2366346153846,
+        "profit_factor": 16.473051012710165,
+        "gross_gains": 37339.3,
+        "gross_losses": -2266.69
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 108,
+        "coverage_pct": 6.036892118501956,
+        "hit_n": 86,
+        "hit_rate_pct": 79.62962962962963,
+        "ci_low_pct": 71.07868616088867,
+        "ci_high_pct": 86.14518199381376,
+        "net_pnl_tot": 34758.75,
+        "net_expectancy": 321.84027777777777,
+        "profit_factor": 11.284536247192806,
+        "gross_gains": 38138.46,
+        "gross_losses": -3379.71
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 71,
+        "coverage_pct": 3.968697596422582,
+        "hit_n": 61,
+        "hit_rate_pct": 85.91549295774648,
+        "ci_low_pct": 75.97827424678898,
+        "ci_high_pct": 92.1657884787541,
+        "net_pnl_tot": 22991.6,
+        "net_expectancy": 323.82535211267606,
+        "profit_factor": 16.276810631229235,
+        "gross_gains": 24496.6,
+        "gross_losses": -1505.0
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 0,
+        "coverage_pct": 0.0,
+        "hit_n": 0,
+        "hit_rate_pct": 0.0,
+        "ci_low_pct": 0.0,
+        "ci_high_pct": 0.0,
+        "net_pnl_tot": 0.0,
+        "net_expectancy": 0.0,
+        "profit_factor": 0.0,
+        "gross_gains": 0.0,
+        "gross_losses": 0.0
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 78,
+        "coverage_pct": 4.3599776411403015,
+        "hit_n": 61,
+        "hit_rate_pct": 78.2051282051282,
+        "ci_low_pct": 67.83931759509346,
+        "ci_high_pct": 85.9231751943052,
+        "net_pnl_tot": 23154.01,
+        "net_expectancy": 296.846282051282,
+        "profit_factor": 12.427532870059618,
+        "gross_gains": 25180.17,
+        "gross_losses": -2026.16
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 82,
+        "coverage_pct": 4.583566238121856,
+        "hit_n": 62,
+        "hit_rate_pct": 75.60975609756098,
+        "ci_low_pct": 65.30731467942316,
+        "ci_high_pct": 83.6201013023449,
+        "net_pnl_tot": 22840.15,
+        "net_expectancy": 278.53841463414636,
+        "profit_factor": 8.275833179365312,
+        "gross_gains": 25979.329999999998,
+        "gross_losses": -3139.18
+      }
+    ],
+    "2026-10-01": [
+      {
+        "policy": "Frozen Benchmark (Policy 0)",
+        "selected_n": 51,
+        "coverage_pct": 2.9685681024447033,
+        "hit_n": 17,
+        "hit_rate_pct": 33.33333333333333,
+        "ci_low_pct": 21.969951335330844,
+        "ci_high_pct": 47.031593832787514,
+        "net_pnl_tot": -2641.29,
+        "net_expectancy": -51.79,
+        "profit_factor": 0.7323809803649391,
+        "gross_gains": 7228.3,
+        "gross_losses": -9869.59
+      },
+      {
+        "policy": "Candidate 1A: Platt Calibrated (Standard, tau=0.230)",
+        "selected_n": 56,
+        "coverage_pct": 3.259604190919674,
+        "hit_n": 20,
+        "hit_rate_pct": 35.714285714285715,
+        "ci_low_pct": 24.45659151177947,
+        "ci_high_pct": 48.80608541581808,
+        "net_pnl_tot": 245.1700000000001,
+        "net_expectancy": 4.3780357142857165,
+        "profit_factor": 1.0240073950257875,
+        "gross_gains": 10457.44,
+        "gross_losses": -10212.27
+      },
+      {
+        "policy": "Candidate 1B: Platt Calibrated (Conservative, tau=0.235)",
+        "selected_n": 16,
+        "coverage_pct": 0.9313154831199069,
+        "hit_n": 6,
+        "hit_rate_pct": 37.5,
+        "ci_low_pct": 18.481260218075928,
+        "ci_high_pct": 61.35891592557555,
+        "net_pnl_tot": 350.42999999999995,
+        "net_expectancy": 21.901874999999997,
+        "profit_factor": 1.1258886713487686,
+        "gross_gains": 3134.08,
+        "gross_losses": -2783.65
+      },
+      {
+        "policy": "Candidate 2A: Temporal History Gate (P10>=25%)",
+        "selected_n": 0,
+        "coverage_pct": 0.0,
+        "hit_n": 0,
+        "hit_rate_pct": 0.0,
+        "ci_low_pct": 0.0,
+        "ci_high_pct": 0.0,
+        "net_pnl_tot": 0.0,
+        "net_expectancy": 0.0,
+        "profit_factor": 0.0,
+        "gross_gains": 0.0,
+        "gross_losses": 0.0
+      },
+      {
+        "policy": "Candidate 2B: CS Regime Gate (CS Aligned)",
+        "selected_n": 35,
+        "coverage_pct": 2.037252619324796,
+        "hit_n": 10,
+        "hit_rate_pct": 28.57142857142857,
+        "ci_low_pct": 16.326555358350138,
+        "ci_high_pct": 45.054900211812345,
+        "net_pnl_tot": -4158.05,
+        "net_expectancy": -118.80142857142857,
+        "profit_factor": 0.4376522330672199,
+        "gross_gains": 3236.04,
+        "gross_losses": -7394.09
+      },
+      {
+        "policy": "Candidate 2C: Composite (Platt Calib + CS Regime)",
+        "selected_n": 38,
+        "coverage_pct": 2.211874272409779,
+        "hit_n": 11,
+        "hit_rate_pct": 28.947368421052634,
+        "ci_low_pct": 17.003296809518844,
+        "ci_high_pct": 44.757104420168744,
+        "net_pnl_tot": -3685.02,
+        "net_expectancy": -96.97421052631579,
+        "profit_factor": 0.5237004589770667,
+        "gross_gains": 4051.75,
+        "gross_losses": -7736.7699999999995
+      }
+    ]
+  }
+}

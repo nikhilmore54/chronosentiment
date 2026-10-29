@@ -5,7 +5,6 @@ use crate::reasoning::historical_reasoning::HistoricalReasoningReport;
 use crate::reasoning::hypothesis::CompetingHypotheses;
 use crate::reasoning::strategy::OpportunityStrategy;
 use chrono::{DateTime, Utc};
-use std::collections::HashSet;
 use uuid::Uuid;
 
 /// The central artifact of Phase 4.1 to 4.3: Decision Replay

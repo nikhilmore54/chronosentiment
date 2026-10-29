@@ -1,0 +1,282 @@
+{
+  "TECHM.NS": {
+    "trade_id": "RP605-NSE-0476",
+    "symbol": "TECHM.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:02:25Z",
+    "entry_price": 1534.5,
+    "quantity": 65,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "TCS.NS": {
+    "trade_id": "RP605-NSE-0518",
+    "symbol": "TCS.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:08:45Z",
+    "entry_price": 2061.199951171875,
+    "quantity": 48,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ICICIPRULI.NS": {
+    "trade_id": "RP605-NSE-0522",
+    "symbol": "ICICIPRULI.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:09:49Z",
+    "entry_price": 453.70001220703125,
+    "quantity": 220,
+    "f15_at_entry": -0.007900000000000018,
+    "is_fresh": true
+  },
+  "JSWSTEEL.NS": {
+    "trade_id": "RP605-NSE-0535",
+    "symbol": "JSWSTEEL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:14:02Z",
+    "entry_price": 1267.699951171875,
+    "quantity": 78,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "APOLLOHOSP.NS": {
+    "trade_id": "RP605-NSE-0537",
+    "symbol": "APOLLOHOSP.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:15:08Z",
+    "entry_price": 8857.0,
+    "quantity": 11,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HEROMOTOCO.NS": {
+    "trade_id": "RP605-NSE-0543",
+    "symbol": "HEROMOTOCO.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:16:11Z",
+    "entry_price": 5334.0,
+    "quantity": 18,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "GODREJCP.NS": {
+    "trade_id": "RP605-NSE-0548",
+    "symbol": "GODREJCP.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:17:14Z",
+    "entry_price": 863.5999755859375,
+    "quantity": 115,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "M&M.NS": {
+    "trade_id": "RP605-NSE-0597",
+    "symbol": "M&M.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:26:44Z",
+    "entry_price": 2985.10009765625,
+    "quantity": 33,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SAIL.NS": {
+    "trade_id": "RP605-NSE-0603",
+    "symbol": "SAIL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:27:47Z",
+    "entry_price": 184.1199951171875,
+    "quantity": 543,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HAL.NS": {
+    "trade_id": "RP605-NSE-0627",
+    "symbol": "HAL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:34:08Z",
+    "entry_price": 4735.7998046875,
+    "quantity": 21,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "INDUSINDBK.NS": {
+    "trade_id": "RP605-NSE-0632",
+    "symbol": "INDUSINDBK.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:35:11Z",
+    "entry_price": 893.7000122070312,
+    "quantity": 111,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "COFORGE.NS": {
+    "trade_id": "RP605-NSE-0648",
+    "symbol": "COFORGE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:39:27Z",
+    "entry_price": 1778.5,
+    "quantity": 56,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "DRREDDY.NS": {
+    "trade_id": "RP605-NSE-0649",
+    "symbol": "DRREDDY.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:39:27Z",
+    "entry_price": 1222.0999755859375,
+    "quantity": 81,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "BOSCHLTD.NS": {
+    "trade_id": "RP605-NSE-0653",
+    "symbol": "BOSCHLTD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:40:30Z",
+    "entry_price": 46980.0,
+    "quantity": 2,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "FEDERALBNK.NS": {
+    "trade_id": "RP605-NSE-0660",
+    "symbol": "FEDERALBNK.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:41:36Z",
+    "entry_price": 324.3999938964844,
+    "quantity": 308,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SBILIFE.NS": {
+    "trade_id": "RP605-NSE-0662",
+    "symbol": "SBILIFE.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:41:36Z",
+    "entry_price": 1742.9000244140625,
+    "quantity": 57,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "BHARTIARTL.NS": {
+    "trade_id": "RP605-NSE-0664",
+    "symbol": "BHARTIARTL.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 1778.5999755859375,
+    "quantity": 56,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "DABUR.NS": {
+    "trade_id": "RP605-NSE-0665",
+    "symbol": "DABUR.NS",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 384.3999938964844,
+    "quantity": 260,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "ESCORTS.NS": {
+    "trade_id": "RP605-NSE-0666",
+    "symbol": "ESCORTS.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 2762.89990234375,
+    "quantity": 36,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HAVELLS.NS": {
+    "trade_id": "RP605-NSE-0667",
+    "symbol": "HAVELLS.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:42:39Z",
+    "entry_price": 1081.0,
+    "quantity": 92,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "CONCOR.NS": {
+    "trade_id": "RP605-NSE-0671",
+    "symbol": "CONCOR.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:43:42Z",
+    "entry_price": 452.70001220703125,
+    "quantity": 220,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SUNPHARMA.NS": {
+    "trade_id": "RP605-NSE-0676",
+    "symbol": "SUNPHARMA.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:43:42Z",
+    "entry_price": 1842.199951171875,
+    "quantity": 54,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "IRCTC.NS": {
+    "trade_id": "RP605-NSE-0680",
+    "symbol": "IRCTC.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:44:45Z",
+    "entry_price": 454.5,
+    "quantity": 220,
+    "f15_at_entry": -0.0006000000000000172,
+    "is_fresh": true
+  },
+  "DLF.NS": {
+    "trade_id": "RP605-NSE-0685",
+    "symbol": "DLF.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 668.0,
+    "quantity": 149,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "HINDUNILVR.NS": {
+    "trade_id": "RP605-NSE-0687",
+    "symbol": "HINDUNILVR.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1905.0,
+    "quantity": 52,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "JINDALSTEL.NS": {
+    "trade_id": "RP605-NSE-0688",
+    "symbol": "JINDALSTEL.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 1145.5,
+    "quantity": 87,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "RECLTD.NS": {
+    "trade_id": "RP605-NSE-0692",
+    "symbol": "RECLTD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 307.70001220703125,
+    "quantity": 324,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SBICARD.NS": {
+    "trade_id": "RP605-NSE-0693",
+    "symbol": "SBICARD.NS",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:46:52Z",
+    "entry_price": 593.4500122070312,
+    "quantity": 168,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  }
+}

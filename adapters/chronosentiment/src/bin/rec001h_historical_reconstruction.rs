@@ -33,6 +33,8 @@
 //!   --output datasets/recommendation/historical
 //! ```
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use std::collections::HashMap;
 use std::env;
 use std::fs;

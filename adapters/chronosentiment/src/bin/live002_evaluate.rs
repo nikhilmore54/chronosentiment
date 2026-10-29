@@ -23,6 +23,8 @@
 //! The `--snapshot` argument defaults to `<output>/latest.json` if omitted.
 //! The `--policy` argument defaults to the canonical RESEARCH_DISCOVERY_TWO_DIR.
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use std::fs;
 use std::path::PathBuf;
 

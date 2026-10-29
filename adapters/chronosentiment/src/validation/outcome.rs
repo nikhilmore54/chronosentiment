@@ -62,7 +62,6 @@ impl OutcomeEngine {
         let mut entered = false;
         let mut target_hit = false;
         let mut stop_hit = false;
-        let mut ambiguous = false;
 
         let mut mfe: f64 = 0.0;
         let mut mae: f64 = 0.0;
@@ -127,7 +126,6 @@ impl OutcomeEngine {
                 let hit_stop = adj_low <= strategy.stop_loss_zone.max;
 
                 if hit_target && hit_stop {
-                    ambiguous = true;
                     exit_reason = "Ambiguous".to_string();
                     target_hit = true;
                     stop_hit = true;

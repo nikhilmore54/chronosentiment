@@ -159,7 +159,7 @@ fn observation_is_append_only_and_does_not_rewrite_the_decision() {
 #[test]
 fn source_does_not_start_search_three_or_a_regime_detector() {
     let src = include_str!("../src/decision_support/observatory_slice.rs");
-    let bin = include_str!("../src/bin/csp006_p_observatory.rs");
+    let bin = include_str!("../legacy/quarantine/csp006_p_observatory.rs");
     for text in [src, bin] {
         assert!(!text.contains("evolve_"));
         assert!(!text.contains("Strategy v2"));

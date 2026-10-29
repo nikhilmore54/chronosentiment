@@ -60,6 +60,8 @@
 //!   --cache   live_capture/yahoo_cache
 //! ```
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};

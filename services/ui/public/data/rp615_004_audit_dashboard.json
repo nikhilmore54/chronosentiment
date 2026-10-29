@@ -1,0 +1,525 @@
+{
+  "programme": "RP-615",
+  "milestone": "RP-615-004",
+  "deliverable": "RP-615-004-001",
+  "frozen_benchmark_hash": "212532d3ac12f9c6",
+  "generated_at_utc": "2026-10-03T05:11:56.677268+00:00",
+  "calibration": {
+    "full_dataset": {
+      "name": "Full Baseline (Sep 28 - Oct 1)",
+      "n_samples": 6719,
+      "brier_score": 0.14906413177556183,
+      "log_loss": 0.4606559337932675,
+      "roc_auc": 0.7907568886150347,
+      "pr_auc": 0.5770292431277934,
+      "ece": 0.054652924542342614,
+      "mce": 0.2745727272727273,
+      "rmse_net": 276.09806867226945,
+      "mae_net": 170.51854889120403,
+      "spearman_rank_corr": 0.2505702372022878,
+      "kendall_rank_corr": 0.17359649955807896,
+      "bin_details": [
+        {
+          "bin_idx": 1,
+          "range": "[0.00, 0.10]",
+          "count": 821,
+          "mean_conf": 0.06880840438489647,
+          "observed_acc": 0.024360535931790498,
+          "error": 0.04444786845310597
+        },
+        {
+          "bin_idx": 2,
+          "range": "[0.10, 0.20]",
+          "count": 2372,
+          "mean_conf": 0.15145493254637438,
+          "observed_acc": 0.10834738617200675,
+          "error": 0.04310754637436763
+        },
+        {
+          "bin_idx": 3,
+          "range": "[0.20, 0.30]",
+          "count": 2001,
+          "mean_conf": 0.24577881059470266,
+          "observed_acc": 0.25337331334332835,
+          "error": 0.007594502748625692
+        },
+        {
+          "bin_idx": 4,
+          "range": "[0.30, 0.40]",
+          "count": 947,
+          "mean_conf": 0.3430250263991552,
+          "observed_acc": 0.43400211193241817,
+          "error": 0.09097708553326295
+        },
+        {
+          "bin_idx": 5,
+          "range": "[0.40, 0.50]",
+          "count": 350,
+          "mean_conf": 0.43970571428571426,
+          "observed_acc": 0.6371428571428571,
+          "error": 0.19743714285714287
+        },
+        {
+          "bin_idx": 6,
+          "range": "[0.50, 0.60]",
+          "count": 151,
+          "mean_conf": 0.5427198675496688,
+          "observed_acc": 0.7880794701986755,
+          "error": 0.2453596026490067
+        },
+        {
+          "bin_idx": 7,
+          "range": "[0.60, 0.70]",
+          "count": 65,
+          "mean_conf": 0.6344723076923077,
+          "observed_acc": 0.9076923076923077,
+          "error": 0.27322
+        },
+        {
+          "bin_idx": 8,
+          "range": "[0.70, 0.80]",
+          "count": 11,
+          "mean_conf": 0.7254272727272727,
+          "observed_acc": 1.0,
+          "error": 0.2745727272727273
+        },
+        {
+          "bin_idx": 9,
+          "range": "[0.80, 0.90]",
+          "count": 1,
+          "mean_conf": 0.8136,
+          "observed_acc": 1.0,
+          "error": 0.1864
+        },
+        {
+          "bin_idx": 10,
+          "range": "[0.90, 1.00]",
+          "count": 0,
+          "mean_conf": 0.0,
+          "observed_acc": 0.0,
+          "error": 0.0
+        }
+      ]
+    },
+    "train_discovery": {
+      "name": "Discovery Train (Sep 28 - 30)",
+      "n_samples": 5001,
+      "brier_score": 0.1280684425134973,
+      "log_loss": 0.40753395041798574,
+      "roc_auc": 0.8705623826591569,
+      "pr_auc": 0.6993089253295922,
+      "ece": 0.09769144171165768,
+      "mce": 0.35669140624999995,
+      "rmse_net": 239.15341578736326,
+      "mae_net": 148.96044591081784,
+      "spearman_rank_corr": 0.3503753603902004,
+      "kendall_rank_corr": 0.2442168748192897,
+      "bin_details": [
+        {
+          "bin_idx": 1,
+          "range": "[0.00, 0.10]",
+          "count": 640,
+          "mean_conf": 0.07063078125,
+          "observed_acc": 0.003125,
+          "error": 0.06750578125
+        },
+        {
+          "bin_idx": 2,
+          "range": "[0.10, 0.20]",
+          "count": 1884,
+          "mean_conf": 0.15013428874734608,
+          "observed_acc": 0.058386411889596604,
+          "error": 0.09174787685774947
+        },
+        {
+          "bin_idx": 3,
+          "range": "[0.20, 0.30]",
+          "count": 1367,
+          "mean_conf": 0.2456880760790051,
+          "observed_acc": 0.22457937088514995,
+          "error": 0.02110870519385516
+        },
+        {
+          "bin_idx": 4,
+          "range": "[0.30, 0.40]",
+          "count": 649,
+          "mean_conf": 0.3426382126348228,
+          "observed_acc": 0.48536209553158705,
+          "error": 0.14272388289676424
+        },
+        {
+          "bin_idx": 5,
+          "range": "[0.40, 0.50]",
+          "count": 262,
+          "mean_conf": 0.44023015267175575,
+          "observed_acc": 0.7633587786259542,
+          "error": 0.3231286259541985
+        },
+        {
+          "bin_idx": 6,
+          "range": "[0.50, 0.60]",
+          "count": 128,
+          "mean_conf": 0.54174609375,
+          "observed_acc": 0.8984375,
+          "error": 0.35669140624999995
+        },
+        {
+          "bin_idx": 7,
+          "range": "[0.60, 0.70]",
+          "count": 59,
+          "mean_conf": 0.6357305084745762,
+          "observed_acc": 0.9322033898305084,
+          "error": 0.2964728813559322
+        },
+        {
+          "bin_idx": 8,
+          "range": "[0.70, 0.80]",
+          "count": 11,
+          "mean_conf": 0.7254272727272727,
+          "observed_acc": 1.0,
+          "error": 0.2745727272727273
+        },
+        {
+          "bin_idx": 9,
+          "range": "[0.80, 0.90]",
+          "count": 1,
+          "mean_conf": 0.8136,
+          "observed_acc": 1.0,
+          "error": 0.1864
+        },
+        {
+          "bin_idx": 10,
+          "range": "[0.90, 1.00]",
+          "count": 0,
+          "mean_conf": 0.0,
+          "observed_acc": 0.0,
+          "error": 0.0
+        }
+      ]
+    },
+    "temporal_holdout": {
+      "name": "Temporal Holdout (Oct 1)",
+      "n_samples": 1718,
+      "brier_score": 0.2101813855587893,
+      "log_loss": 0.6152909971575194,
+      "roc_auc": 0.558348751309699,
+      "pr_auc": 0.3150293444133556,
+      "ece": 0.08863207217694993,
+      "mce": 0.3742260869565218,
+      "rmse_net": 362.82534961825803,
+      "mae_net": 233.27295692665894,
+      "spearman_rank_corr": 0.011214791976529888,
+      "kendall_rank_corr": 0.008714558543970437,
+      "bin_details": [
+        {
+          "bin_idx": 1,
+          "range": "[0.00, 0.10]",
+          "count": 181,
+          "mean_conf": 0.062364640883977904,
+          "observed_acc": 0.09944751381215469,
+          "error": 0.03708287292817679
+        },
+        {
+          "bin_idx": 2,
+          "range": "[0.10, 0.20]",
+          "count": 488,
+          "mean_conf": 0.15655348360655738,
+          "observed_acc": 0.3012295081967213,
+          "error": 0.1446760245901639
+        },
+        {
+          "bin_idx": 3,
+          "range": "[0.20, 0.30]",
+          "count": 634,
+          "mean_conf": 0.2459744479495268,
+          "observed_acc": 0.31545741324921134,
+          "error": 0.06948296529968453
+        },
+        {
+          "bin_idx": 4,
+          "range": "[0.30, 0.40]",
+          "count": 298,
+          "mean_conf": 0.3438674496644295,
+          "observed_acc": 0.3221476510067114,
+          "error": 0.021719798657718115
+        },
+        {
+          "bin_idx": 5,
+          "range": "[0.40, 0.50]",
+          "count": 88,
+          "mean_conf": 0.43814431818181815,
+          "observed_acc": 0.26136363636363635,
+          "error": 0.1767806818181818
+        },
+        {
+          "bin_idx": 6,
+          "range": "[0.50, 0.60]",
+          "count": 23,
+          "mean_conf": 0.5481391304347827,
+          "observed_acc": 0.17391304347826086,
+          "error": 0.3742260869565218
+        },
+        {
+          "bin_idx": 7,
+          "range": "[0.60, 0.70]",
+          "count": 6,
+          "mean_conf": 0.6221,
+          "observed_acc": 0.6666666666666666,
+          "error": 0.04456666666666664
+        },
+        {
+          "bin_idx": 8,
+          "range": "[0.70, 0.80]",
+          "count": 0,
+          "mean_conf": 0.0,
+          "observed_acc": 0.0,
+          "error": 0.0
+        },
+        {
+          "bin_idx": 9,
+          "range": "[0.80, 0.90]",
+          "count": 0,
+          "mean_conf": 0.0,
+          "observed_acc": 0.0,
+          "error": 0.0
+        },
+        {
+          "bin_idx": 10,
+          "range": "[0.90, 1.00]",
+          "count": 0,
+          "mean_conf": 0.0,
+          "observed_acc": 0.0,
+          "error": 0.0
+        }
+      ]
+    }
+  },
+  "deciles": [
+    {
+      "decile": 1,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 11.802086438152012,
+      "mean_pred_net_inr": -162.1328166915052,
+      "realized_win_rate_pct": 8.64381520119225,
+      "realized_net_expectancy_inr": -189.45019374068553,
+      "total_realized_net_inr": -127121.08
+    },
+    {
+      "decile": 2,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 15.128479880774965,
+      "mean_pred_net_inr": -110.5880476900149,
+      "realized_win_rate_pct": 13.114754098360656,
+      "realized_net_expectancy_inr": -133.7719076005961,
+      "total_realized_net_inr": -89760.95
+    },
+    {
+      "decile": 3,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 17.18800298062593,
+      "mean_pred_net_inr": -94.26154992548435,
+      "realized_win_rate_pct": 17.73472429210134,
+      "realized_net_expectancy_inr": -84.9545305514158,
+      "total_realized_net_inr": -57004.49
+    },
+    {
+      "decile": 4,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 17.50997019374069,
+      "mean_pred_net_inr": -83.76266766020865,
+      "realized_win_rate_pct": 17.58569299552906,
+      "realized_net_expectancy_inr": -85.7633830104322,
+      "total_realized_net_inr": -57547.23
+    },
+    {
+      "decile": 5,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 19.444232488822653,
+      "mean_pred_net_inr": -75.15771982116244,
+      "realized_win_rate_pct": 17.138599105812222,
+      "realized_net_expectancy_inr": -87.04493293591655,
+      "total_realized_net_inr": -58407.15
+    },
+    {
+      "decile": 6,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 21.814560357675113,
+      "mean_pred_net_inr": -66.98061102831595,
+      "realized_win_rate_pct": 23.09985096870343,
+      "realized_net_expectancy_inr": -69.57864381520119,
+      "total_realized_net_inr": -46687.27
+    },
+    {
+      "decile": 7,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 23.882399403874814,
+      "mean_pred_net_inr": -58.64228017883756,
+      "realized_win_rate_pct": 26.08047690014903,
+      "realized_net_expectancy_inr": -37.6130998509687,
+      "total_realized_net_inr": -25238.39
+    },
+    {
+      "decile": 8,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 27.595618479880773,
+      "mean_pred_net_inr": -49.30964232488822,
+      "realized_win_rate_pct": 28.763040238450078,
+      "realized_net_expectancy_inr": -37.833517138599106,
+      "total_realized_net_inr": -25386.29
+    },
+    {
+      "decile": 9,
+      "n_trades": 671,
+      "mean_pred_prob_pct": 31.56102831594635,
+      "mean_pred_net_inr": -34.85506706408346,
+      "realized_win_rate_pct": 35.767511177347245,
+      "realized_net_expectancy_inr": 7.661549925484352,
+      "total_realized_net_inr": 5140.900000000001
+    },
+    {
+      "decile": 10,
+      "n_trades": 680,
+      "mean_pred_prob_pct": 39.80979411764706,
+      "mean_pred_net_inr": 50.22436764705882,
+      "realized_win_rate_pct": 51.02941176470588,
+      "realized_net_expectancy_inr": 134.34569117647058,
+      "total_realized_net_inr": 91355.06999999999
+    }
+  ],
+  "subgroups": {
+    "direction": {
+      "LONG": {
+        "name": "LONG",
+        "total_count": 3176,
+        "selected_count": 73,
+        "coverage_pct": 2.298488664987406,
+        "selected_hit_rate_pct": 79.45205479452055,
+        "selected_net_pnl": 27417.329999999998,
+        "selected_net_expectancy": 375.5798630136986,
+        "profit_factor": 7.3555195482551925,
+        "tp": 58,
+        "fp": 15,
+        "fn": 584,
+        "tn": 2519
+      },
+      "SHORT": {
+        "name": "SHORT",
+        "total_count": 3543,
+        "selected_count": 215,
+        "coverage_pct": 6.068303697431555,
+        "selected_hit_rate_pct": 66.04651162790698,
+        "selected_net_pnl": 51179.55,
+        "selected_net_expectancy": 238.04441860465118,
+        "profit_factor": 4.392499315594697,
+        "tp": 142,
+        "fp": 73,
+        "fn": 824,
+        "tn": 2504
+      }
+    },
+    "time_of_day": {
+      "MORNING": {
+        "name": "Morning (09:15-11:30)",
+        "total_count": 2415,
+        "selected_count": 209,
+        "coverage_pct": 8.654244306418219,
+        "selected_hit_rate_pct": 67.94258373205741,
+        "selected_net_pnl": 61147.72,
+        "selected_net_expectancy": 292.5728229665072,
+        "profit_factor": 4.7562285690416255,
+        "tp": 142,
+        "fp": 67,
+        "fn": 487,
+        "tn": 1719
+      },
+      "MIDDAY": {
+        "name": "Midday (11:30-13:30)",
+        "total_count": 2181,
+        "selected_count": 21,
+        "coverage_pct": 0.9628610729023385,
+        "selected_hit_rate_pct": 71.42857142857143,
+        "selected_net_pnl": 5444.17,
+        "selected_net_expectancy": 259.24619047619046,
+        "profit_factor": 6.024336446528112,
+        "tp": 15,
+        "fp": 6,
+        "fn": 527,
+        "tn": 1633
+      },
+      "AFTERNOON": {
+        "name": "Afternoon (13:30-15:30)",
+        "total_count": 2123,
+        "selected_count": 58,
+        "coverage_pct": 2.7319830428638716,
+        "selected_hit_rate_pct": 74.13793103448276,
+        "selected_net_pnl": 12004.99,
+        "selected_net_expectancy": 206.98258620689654,
+        "profit_factor": 6.892164224888955,
+        "tp": 43,
+        "fp": 15,
+        "fn": 394,
+        "tn": 1671
+      }
+    },
+    "volatility": {
+      "LOW_ATR": {
+        "name": "Low ATR (<= 0.0010)",
+        "total_count": 3315,
+        "selected_count": 82,
+        "coverage_pct": 2.473604826546003,
+        "selected_hit_rate_pct": 75.60975609756098,
+        "selected_net_pnl": 18753.05,
+        "selected_net_expectancy": 228.69573170731707,
+        "profit_factor": 5.432758310956468,
+        "tp": 62,
+        "fp": 20,
+        "fn": 742,
+        "tn": 2491
+      },
+      "HIGH_ATR": {
+        "name": "High ATR (> 0.0010)",
+        "total_count": 3404,
+        "selected_count": 206,
+        "coverage_pct": 6.0517038777908345,
+        "selected_hit_rate_pct": 66.99029126213593,
+        "selected_net_pnl": 59843.83,
+        "selected_net_expectancy": 290.5040291262136,
+        "profit_factor": 4.945017854941538,
+        "tp": 138,
+        "fp": 68,
+        "fn": 666,
+        "tn": 2532
+      }
+    },
+    "momentum": {
+      "ALIGNED_MOMENTUM": {
+        "name": "Aligned Momentum (15m return concordant)",
+        "total_count": 3953,
+        "selected_count": 165,
+        "coverage_pct": 4.174045029091829,
+        "selected_hit_rate_pct": 64.84848484848484,
+        "selected_net_pnl": 41877.12,
+        "selected_net_expectancy": 253.8007272727273,
+        "profit_factor": 4.102902984637796,
+        "tp": 107,
+        "fp": 58,
+        "fn": 878,
+        "tn": 2910
+      },
+      "CONTRARIAN_MOMENTUM": {
+        "name": "Contrarian Momentum (15m return opposing)",
+        "total_count": 2766,
+        "selected_count": 123,
+        "coverage_pct": 4.4468546637744035,
+        "selected_hit_rate_pct": 75.60975609756098,
+        "selected_net_pnl": 36719.76,
+        "selected_net_expectancy": 298.5346341463415,
+        "profit_factor": 7.219555820539574,
+        "tp": 93,
+        "fp": 30,
+        "fn": 530,
+        "tn": 2113
+      }
+    }
+  }
+}

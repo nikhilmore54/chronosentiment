@@ -55,11 +55,11 @@ use super::observatory_historical::{
     decision_time_bars, generate_historical_replay_decision, poison_future_bars,
 };
 use super::observatory_live_execution_pe3::{
-    atr_14_at_t, coralys_intent_to_sealed, placeholder_no_trade_intent, PE3_EXECUTION_CONTRACT_ID,
+    atr_14_at_t, coralys_intent_to_sealed, placeholder_no_trade_intent,
 };
 use super::observatory_maturity::nth_market_session_after;
 use super::observatory_prospective::latest_session_at_or_before;
-use super::observatory_slice::{action_label, SealedDecisionRecord, OBSERVATORY_HORIZON_DAYS};
+use super::observatory_slice::SealedDecisionRecord;
 use super::policy_artifact::PolicyArtifact;
 use super::DecisionAction;
 

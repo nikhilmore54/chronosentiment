@@ -61,6 +61,8 @@
 //!     --ledger         live_capture/ledger/ \
 //!     --audit          live_capture/ledger/audit/
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use chrono::{DateTime, Datelike, Duration, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -385,7 +387,11 @@ fn next_trading_session(t: &DateTime<Utc>) -> String {
 /// Uses the canonical `decision_id` from the ledger entry — does not create a
 /// new ID. 409 = already exists = idempotent success (returns Ok(false)).
 /// Returns Ok(true) on 201 Created, Err on any other failure.
-fn emit_entry_to_server(base_url: &str, entry: &LedgerEntry) -> Result<bool, String> {
+fn emit_entry_to_server(
+    client: &reqwest::blocking::Client,
+    base_url: &str,
+    entry: &LedgerEntry,
+) -> Result<bool, String> {
     // Parse recommended_at as the decision_timestamp for the server ledger.
     let decision_ts: DateTime<Utc> = entry
         .recommended_at
@@ -418,7 +424,6 @@ fn emit_entry_to_server(base_url: &str, entry: &LedgerEntry) -> Result<bool, Str
     });
 
     let url = format!("{base_url}/decisions");
-    let client = reqwest::blocking::Client::new();
     let resp = client
         .post(&url)
         .json(&body)
@@ -505,11 +510,59 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         recommend.recommendations.len()
     );
 
-    // ── Verify provenance coherence before admission ───────────────────────────
+    // ── Verify provenance coherence and governance counts before admission ─────
     if cert.source_recommendation_id != recommend.recommendation_id {
         return Err(format!(
             "provenance mismatch: cert.source_recommendation_id={} != recommend.recommendation_id={}",
             cert.source_recommendation_id, recommend.recommendation_id
+        ).into());
+    }
+    if cert.source_snapshot_id != recommend.source_snapshot_id {
+        return Err(format!(
+            "provenance mismatch: cert.source_snapshot_id={} != recommend.source_snapshot_id={}",
+            cert.source_snapshot_id, recommend.source_snapshot_id
+        ).into());
+    }
+    if cert.source_state_id != recommend.source_state_id {
+        return Err(format!(
+            "provenance mismatch: cert.source_state_id={} != recommend.source_state_id={}",
+            cert.source_state_id, recommend.source_state_id
+        ).into());
+    }
+    if cert.c3_002_artifact_hash != recommend.c3_002_artifact_hash {
+        return Err(format!(
+            "provenance mismatch: cert.c3_002_artifact_hash={} != recommend.c3_002_artifact_hash={}",
+            cert.c3_002_artifact_hash, recommend.c3_002_artifact_hash
+        ).into());
+    }
+
+    // Governance counts validation gates
+    let n_rec = recommend.recommendations.len();
+    if cert.n_recommended != n_rec {
+        return Err(format!(
+            "governance count mismatch: cert.n_recommended={} != recommend count={}",
+            cert.n_recommended, n_rec
+        ).into());
+    }
+    let actual_buy = recommend.recommendations.iter().filter(|r| r.action == "Buy").count();
+    let actual_sell = recommend.recommendations.iter().filter(|r| r.action == "Sell").count();
+    let actual_watch = recommend.recommendations.iter().filter(|r| r.action == "Watch").count();
+    if cert.n_buy != actual_buy {
+        return Err(format!(
+            "governance count mismatch: cert.n_buy={} != actual Buy count={}",
+            cert.n_buy, actual_buy
+        ).into());
+    }
+    if cert.n_sell != actual_sell {
+        return Err(format!(
+            "governance count mismatch: cert.n_sell={} != actual Sell count={}",
+            cert.n_sell, actual_sell
+        ).into());
+    }
+    if cert.n_watch != actual_watch {
+        return Err(format!(
+            "governance count mismatch: cert.n_watch={} != actual Watch count={}",
+            cert.n_watch, actual_watch
         ).into());
     }
 
@@ -551,6 +604,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut n_admitted = 0usize;
     let mut n_duplicate_skipped = 0usize;
+    let mut admitted_entries = Vec::new();
 
     // ── Write audit record regardless of admission status ─────────────────────
     // The audit record preserves the full certification artifact for all statuses.
@@ -570,11 +624,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Admit records to primary ledger (AC-L5-01) ────────────────────────────
-    let mut n_emitted_new = 0usize;
-    let mut n_emitted_already = 0usize;
-    let mut n_emit_errors = 0usize;
-
+    // ── Canonical append-only ledger admission (AC-L5-01, AC-L5-03) ───────────
     if is_admitted && !is_duplicate {
         for rec in &recommend.recommendations {
             // Build decision_id: LIVE-005-{cert_suffix}-{ticker}
@@ -644,44 +694,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let entry_path = entries_dir.join(&entry_filename);
             fs::write(&entry_path, &entry_json)?;
             n_admitted += 1;
-
-            // ── Emit to Decision Server if --emit-url was supplied ────────────
-            if let Some(ref base_url) = args.emit_url {
-                match emit_entry_to_server(base_url, &entry) {
-                    Ok(true) => {
-                        n_emitted_new += 1;
-                        println!(
-                            "[live005] emit ticker={} id={decision_id} status=NEW",
-                            rec.instrument
-                        );
-                    }
-                    Ok(false) => {
-                        n_emitted_already += 1;
-                        println!(
-                            "[live005] emit ticker={} id={decision_id} status=ALREADY_EXISTS",
-                            rec.instrument
-                        );
-                    }
-                    Err(e) => {
-                        n_emit_errors += 1;
-                        eprintln!(
-                            "[live005] emit ticker={} id={decision_id} error={e}",
-                            rec.instrument
-                        );
-                    }
-                }
-            }
+            admitted_entries.push(entry);
         }
 
         println!(
-            "[live005] admitted {} T0 decision records to ledger",
+            "[live005] ADMISSION COMPLETE: {} T0 decision records committed to canonical ledger",
             n_admitted
         );
-        if args.emit_url.is_some() {
-            println!(
-                "[live005] emit n_new={n_emitted_new} n_already={n_emitted_already} n_errors={n_emit_errors}"
-            );
-        }
     } else if is_duplicate {
         n_duplicate_skipped = recommend.recommendations.len();
         println!(
@@ -723,6 +742,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let summary_path = args.ledger.join("latest_run.json");
     fs::write(&summary_path, &summary_json)?;
 
+    // ── Optional downstream emission (secondary notification) ─────────────────
+    let mut n_emitted_new = 0usize;
+    let mut n_emitted_already = 0usize;
+    let mut n_emit_errors = 0usize;
+
+    if let Some(ref base_url) = args.emit_url {
+        if !admitted_entries.is_empty() {
+            println!(
+                "[live005] initiating downstream emission of {} records to {}",
+                admitted_entries.len(),
+                base_url
+            );
+            match reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(5))
+                .build()
+            {
+                Ok(client) => {
+                    for entry in &admitted_entries {
+                        match emit_entry_to_server(&client, base_url, entry) {
+                            Ok(true) => {
+                                n_emitted_new += 1;
+                                println!(
+                                    "[live005] emit ticker={} id={} status=NEW",
+                                    entry.ticker, entry.decision_id
+                                );
+                            }
+                            Ok(false) => {
+                                n_emitted_already += 1;
+                                println!(
+                                    "[live005] emit ticker={} id={} status=ALREADY_EXISTS",
+                                    entry.ticker, entry.decision_id
+                                );
+                            }
+                            Err(e) => {
+                                n_emit_errors += 1;
+                                eprintln!(
+                                    "[live005] emit ticker={} id={} error={e}",
+                                    entry.ticker, entry.decision_id
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[live005] failed to build HTTP client for emission: {e}");
+                    n_emit_errors += admitted_entries.len();
+                }
+            }
+            println!(
+                "[live005] downstream emission complete: n_new={n_emitted_new} n_already={n_emitted_already} n_errors={n_emit_errors}"
+            );
+        }
+    }
+
     println!("[live005]");
     println!("[live005] result=OK");
     println!("[live005] run_id={run_id}");
@@ -746,7 +819,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[live005] n_emit_errors={n_emit_errors}");
         if n_emit_errors > 0 {
             eprintln!(
-                "[live005] WARNING: {n_emit_errors} decision(s) failed to emit to Decision Server"
+                "[live005] WARNING: {n_emit_errors} decision(s) failed to emit to Decision Server (canonical ledger unaffected)"
             );
         }
     }

@@ -47,6 +47,8 @@
 //!     --output      live_capture/certifications/ \
 //!     --freshness   30
 
+#![allow(dead_code, unused_variables, unused_imports)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

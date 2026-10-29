@@ -1,0 +1,16 @@
+{
+  "dataset_name": "binance_btcusdt_2024_15m",
+  "symbol": "BTCUSDT",
+  "resolution": "15m",
+  "exchange": "Binance Spot",
+  "start_time_iso": "2024-01-01T00:00:00Z",
+  "end_time_iso": "2024-12-31T23:45:00Z",
+  "start_time_ms": 1704067200000,
+  "end_time_ms": 1735688700000,
+  "total_candles": 35136,
+  "expected_candles": 35136,
+  "gaps_detected": 0,
+  "duplicates_detected": 0,
+  "sha256": "0fcc08c45f5871c77b6ee83227823224670f7f945e650fe2175cd3c8fb86be7d",
+  "generated_at_utc": "2026-10-24T09:28:25Z"
+}

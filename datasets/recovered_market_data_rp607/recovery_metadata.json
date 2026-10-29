@@ -1,0 +1,648 @@
+{
+  "ATGL.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:46.223189+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:46.796094+00:00",
+      "bar_count": 4497,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:47.140101+00:00",
+      "bar_count": 1500,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:47.354703+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "BALKRISIND.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:47.648225+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:48.184637+00:00",
+      "bar_count": 4496,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:48.605432+00:00",
+      "bar_count": 1500,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:48.896722+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "BHARATFORG.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:49.289396+00:00",
+      "bar_count": 495,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 495,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:49.872198+00:00",
+      "bar_count": 4374,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:50.263706+00:00",
+      "bar_count": 1485,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:50.480315+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "BIOCON.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:50.817568+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:51.515770+00:00",
+      "bar_count": 4378,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:51.909958+00:00",
+      "bar_count": 1484,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:52.187150+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "COFORGE.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:52.480736+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:53.063718+00:00",
+      "bar_count": 4385,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:53.474028+00:00",
+      "bar_count": 1491,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:53.688472+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "CONCOR.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:54.035930+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:54.715949+00:00",
+      "bar_count": 4362,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:55.207732+00:00",
+      "bar_count": 1474,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:55.421933+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "CUMMINSIND.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:55.718504+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:56.229153+00:00",
+      "bar_count": 4366,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:56.563786+00:00",
+      "bar_count": 1476,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:56.790270+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "ESCORTS.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:57.205188+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:57.913777+00:00",
+      "bar_count": 4494,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:58.309508+00:00",
+      "bar_count": 1500,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:58.526398+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "FEDERALBNK.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:58.878301+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:01:59.689345+00:00",
+      "bar_count": 4375,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:00.090175+00:00",
+      "bar_count": 1483,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:00.335178+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "GLENMARK.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:00.821568+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:01.436561+00:00",
+      "bar_count": 4375,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:01.939384+00:00",
+      "bar_count": 1481,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:02.176501+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "HAL.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:02.463178+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:03.031259+00:00",
+      "bar_count": 4375,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:03.423348+00:00",
+      "bar_count": 1485,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:03.728702+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "ICICIGI.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:04.005135+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:04.593108+00:00",
+      "bar_count": 4371,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:04.990190+00:00",
+      "bar_count": 1479,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:05.202819+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "IPCALAB.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:05.524896+00:00",
+      "bar_count": 495,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 495,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:06.252126+00:00",
+      "bar_count": 4497,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:06.634114+00:00",
+      "bar_count": 1500,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:06.871812+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "NATIONALUM.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:07.170836+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:07.760530+00:00",
+      "bar_count": 4386,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:08.264938+00:00",
+      "bar_count": 1492,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:08.488329+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "OBEROIRLTY.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:08.835833+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:09.352303+00:00",
+      "bar_count": 4378,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:09.744268+00:00",
+      "bar_count": 1486,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:10.027098+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "PFC.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:10.380195+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:10.973601+00:00",
+      "bar_count": 4383,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:11.358605+00:00",
+      "bar_count": 1492,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:11.613343+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  },
+  "SBICARD.NS": {
+    "1d": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:11.904361+00:00",
+      "bar_count": 496,
+      "earliest_bar": "2024-10-22",
+      "latest_bar": "2026-10-22",
+      "distinct_dates": 496,
+      "status": "VALIDATED_NATIVE"
+    },
+    "5m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:12.481564+00:00",
+      "bar_count": 4376,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:25:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "15m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:12.897296+00:00",
+      "bar_count": 1485,
+      "earliest_bar": "2026-07-28 09:15:00",
+      "latest_bar": "2026-10-22 15:15:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    },
+    "30m": {
+      "source": "Yahoo Finance via yfinance (auto_adjust=False)",
+      "retrieval_timestamp_utc": "2026-10-22T11:02:13.255051+00:00",
+      "bar_count": 780,
+      "earliest_bar": "2026-07-28 09:00:00",
+      "latest_bar": "2026-10-22 15:00:00",
+      "distinct_dates": 60,
+      "status": "VALIDATED_NATIVE"
+    }
+  }
+}

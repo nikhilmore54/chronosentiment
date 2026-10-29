@@ -1,0 +1,42 @@
+{
+  "BTC-USD": {
+    "trade_id": "RP605-0069",
+    "symbol": "BTC-USD",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:25:12Z",
+    "entry_price": 83060.6875,
+    "quantity": 0.0012039389873819669,
+    "f15_at_entry": 0.0,
+    "is_fresh": true
+  },
+  "SHIB-USD": {
+    "trade_id": "RP605-0080",
+    "symbol": "SHIB-USD",
+    "side": "SHORT",
+    "entry_timestamp": "2026-09-28T06:39:28Z",
+    "entry_price": 5.670000064128544e-06,
+    "quantity": 17636684.103877448,
+    "f15_at_entry": -0.28190000000000004,
+    "is_fresh": false
+  },
+  "LTC-USD": {
+    "trade_id": "RP605-0082",
+    "symbol": "LTC-USD",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:44:31Z",
+    "entry_price": 70.98600006103516,
+    "quantity": 1.4087284804611901,
+    "f15_at_entry": -0.005400000000000016,
+    "is_fresh": true
+  },
+  "NEAR-USD": {
+    "trade_id": "RP605-0084",
+    "symbol": "NEAR-USD",
+    "side": "LONG",
+    "entry_timestamp": "2026-09-28T06:46:33Z",
+    "entry_price": 5.167099952697754,
+    "quantity": 19.353215713930556,
+    "f15_at_entry": -0.0411,
+    "is_fresh": false
+  }
+}

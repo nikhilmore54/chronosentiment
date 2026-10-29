@@ -29,7 +29,7 @@ fn workspace_root() -> PathBuf {
 fn analysis_and_binary_do_not_search_or_invent_a_cutoff() {
     let files = [
         include_str!("../src/decision_support/selection_decision_value.rs"),
-        include_str!("../src/bin/csp006_selection_review.rs"),
+        include_str!("../legacy/bin/csp006_selection_review.rs"),
     ];
     for src in files {
         assert!(!src.contains("evolve_on_development"));
@@ -39,7 +39,7 @@ fn analysis_and_binary_do_not_search_or_invent_a_cutoff() {
         assert!(!src.contains("borderline_x"));
         assert!(!src.contains("TRANSACTION_COST"));
     }
-    let bin = include_str!("../src/bin/csp006_selection_review.rs");
+    let bin = include_str!("../legacy/bin/csp006_selection_review.rs");
     assert!(bin.contains("RESEARCH_DISCOVERY_ARTIFACT_HASH"));
     assert!(bin.contains("review_selection"));
 }

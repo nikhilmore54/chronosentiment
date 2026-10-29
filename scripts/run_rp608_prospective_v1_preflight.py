@@ -81,7 +81,8 @@ def main() -> int:
 
     gate4_intact = GATE4_NS.exists() and any(GATE4_NS.iterdir())
     ns_isolated = PROSPECTIVE_NS.exists() and (PROSPECTIVE_NS / "README.md").exists()
-    auth_still_false = auth.get("authorized") is not True
+    already_authorized = auth.get("authorized") is True
+    auth_still_false = not already_authorized
 
     checks = {
         "lifecycle_fixtures": lifecycle,
@@ -91,12 +92,16 @@ def main() -> int:
         "prospective_namespace_ready": ns_isolated,
         "gate4_namespace_intact": gate4_intact,
         "authorization_remains_false": auth_still_false,
+        "already_authorized": already_authorized,
         "nse_crypto_pooling": "FORBIDDEN",
         "integrity_tuning_forbidden": list(integrity_review_actions_forbidden()),
         "session_clock_initialized": True,
         "extension_rule": "+10 per EXT; max 2; never relax criteria",
     }
 
+    # Technical readiness: fixtures + namespace. Require authorized==false only for
+    # the *initial* authorize gate; re-validation after human authorize must not fail
+    # solely because authorized is already true (NSE/CRYPTO scheduled starts).
     ready = all(
         [
             lifecycle["passed"],
@@ -104,9 +109,10 @@ def main() -> int:
             prospective_mod["passed"],
             ns_isolated,
             gate4_intact,
-            auth_still_false,
         ]
     )
+    if not already_authorized:
+        ready = ready and auth_still_false
 
     report = {
         "protocol_id": PROTOCOL_ID,
@@ -137,24 +143,27 @@ def main() -> int:
     out = ARTIFACT_ROOT / "prospective_v1_preflight.json"
     out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
-    # Refresh auth sidecar metadata without flipping authorized
+    # Refresh auth sidecar metadata ONLY — never flip authorized / counting.
+    # (Human authorize + commence_market own those fields; preflight must not clobber.)
     auth = load_authorization()
+    was_authorized = auth.get("authorized") is True
+    prior_counting = auth.get("observation_counting")
     auth["preflight_artifact"] = str(out.relative_to(WORKSPACE))
     auth["preflight_pass"] = ready
     auth["preflight_utc"] = report["preflight_utc"]
     auth["git_rev_at_preflight"] = report["git_rev"]
-    auth["authorized"] = False
-    auth["observation_counting"] = "NOT_STARTED"
     AUTH_PATH.write_text(json.dumps(auth, indent=2) + "\n", encoding="utf-8")
 
     print(json.dumps({
         "wrote": str(out),
         "preflight_pass": ready,
-        "authorized": False,
+        "authorized": was_authorized,
+        "observation_counting": prior_counting,
         "lifecycle_passed": lifecycle["passed"],
         "arm_a_passed": arm_a["passed"],
         "prospective_tests_passed": prospective_mod["passed"],
         "is_authorized_helper": is_authorized(),
+        "auth_preserved": True,
     }, indent=2))
     return 0 if ready else 1
 

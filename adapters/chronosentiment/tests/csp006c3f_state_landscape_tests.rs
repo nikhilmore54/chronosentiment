@@ -71,7 +71,7 @@ fn landscape_covers_certified_states_and_keeps_actions_as_counterfactuals() {
 #[test]
 fn analysis_does_not_evolve_or_authorize_a_product_card() {
     let src = include_str!("../src/decision_support/c3_state_landscape.rs");
-    let bin = include_str!("../src/bin/csp006_c3_state_landscape.rs");
+    let bin = include_str!("../legacy/bin/csp006_c3_state_landscape.rs");
     for text in [src, bin] {
         assert!(!text.contains("evolve_"));
         assert!(!text.contains("train_fitness"));
