@@ -114,6 +114,7 @@ fn build_homogeneous_context(params: &ScenarioParams) -> Arc<ScheduleContext> {
 
     let scenario = InrcScenario {
         planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
         leave_requests: None,
@@ -260,6 +261,7 @@ fn build_heterogeneous_context(params: &ScenarioParams) -> Arc<ScheduleContext> 
 
     let scenario = InrcScenario {
         planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None,
         max_hours_per_worker: Some(40.0),
         // Tighter rest requirement creates HC3 tension with variable shift durations.
         minimum_rest_hours: Some(10),

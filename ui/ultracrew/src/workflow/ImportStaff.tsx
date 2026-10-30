@@ -1,20 +1,55 @@
 import React, { useRef, useState } from 'react';
 import type { StaffMember } from './WorkflowTypes';
 import { SAMPLE_CSV } from './WorkflowTypes';
-import { parseStaffCSV, buildImportSummary } from './WorkflowUtils';
+import {
+  parseStaffCSV,
+  parseShiftsCSV,
+  buildImportSummary,
+  type CustomShiftInput,
+  type ShiftSlotMeta,
+} from './WorkflowUtils';
 import {
   primaryBtnStyle, ghostBtnStyle, accentGhostBtnStyle,
   codeBoxStyle, textareaStyle, errorBoxStyle,
   SummaryRow, SkillBadge,
 } from './WorkflowComponents';
 
+function generateVariableWeekendFixture(): ShiftSlotMeta[] {
+  const shifts: ShiftSlotMeta[] = [];
+  let slotId = 1;
+  for (let day = 0; day < 28; day++) {
+    const isWeekend = (day % 7 === 5) || (day % 7 === 6); // Sat (5), Sun (6)
+    if (isWeekend) {
+      // Reduced weekend demand: 4 positions (2 Early, 1 Late, 1 Night)
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Early', skill: 'Nurse', startHour: day * 24 + 7, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Early', skill: 'HeadNurse', startHour: day * 24 + 7, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Late', skill: 'Nurse', startHour: day * 24 + 14, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Night', skill: 'Nurse', startHour: day * 24 + 22, durationHours: 8 });
+    } else {
+      // Standard weekday demand: 7 positions (3 Early, 2 Late, 2 Night)
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Early', skill: 'Nurse', startHour: day * 24 + 7, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Early', skill: 'Nurse', startHour: day * 24 + 7, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Early', skill: 'HeadNurse', startHour: day * 24 + 7, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Late', skill: 'Nurse', startHour: day * 24 + 14, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Late', skill: 'Nurse', startHour: day * 24 + 14, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Night', skill: 'Nurse', startHour: day * 24 + 22, durationHours: 8 });
+      shifts.push({ shiftId: slotId++, dayIdx: day, label: 'Night', skill: 'Nurse', startHour: day * 24 + 22, durationHours: 8 });
+    }
+  }
+  return shifts;
+}
+
 export const ImportStaff: React.FC<{
   staff: StaffMember[];
   onStaffChange: (s: StaffMember[]) => void;
+  customShifts?: CustomShiftInput[];
+  onCustomShiftsChange?: (shifts: CustomShiftInput[]) => void;
   onNext: () => void;
-}> = ({ staff, onStaffChange, onNext }) => {
+}> = ({ staff, onStaffChange, customShifts, onCustomShiftsChange, onNext }) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const shiftFileRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [shiftErrors, setShiftErrors] = useState<string[]>([]);
   const [showFormat, setShowFormat] = useState(false);
 
   const processText = (text: string) => {
@@ -23,20 +58,28 @@ export const ImportStaff: React.FC<{
     if (parsed.length > 0) onStaffChange(parsed);
   };
 
+  const processShiftsText = (text: string) => {
+    const { shifts: parsed, errors: errs } = parseShiftsCSV(text);
+    setShiftErrors(errs);
+    if (parsed.length > 0 && onCustomShiftsChange) {
+      onCustomShiftsChange(parsed);
+    }
+  };
+
   const summary = staff.length > 0 ? buildImportSummary(staff) : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Import Staff</h3>
+        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Import Staff &amp; Demand</h3>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Upload a CSV file with your staff roster. Required columns: <code>id</code>, <code>contract</code>, <code>skills</code>.
+          Upload your hospital staff roster and optional department shift demand.
         </p>
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <label style={primaryBtnStyle}>
-          Upload CSV
+          Upload Staff CSV
           <input ref={fileRef} type="file" accept=".csv,.txt" onChange={e => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -56,11 +99,10 @@ export const ImportStaff: React.FC<{
           setErrors([]);
           onStaffChange(parsed);
         }} style={accentGhostBtnStyle}>
-          Load Sample (20 staff)
+          Load Sample Staff (20 staff)
         </button>
 
         <button onClick={() => {
-          // Download the exact CSV format expected by the importer
           const template = `id,contract,skills\nAlice_Smith,FullTime,Nurse\nBob_Jones,PartTime,HeadNurse;Nurse\nCarla_Night,Night,Nurse`;
           const blob = new Blob([template], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
@@ -72,7 +114,7 @@ export const ImportStaff: React.FC<{
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         }} style={ghostBtnStyle}>
-          ⬇ Download CSV Template
+          ⬇ Staff Template
         </button>
 
         {staff.length > 0 && (
@@ -85,7 +127,7 @@ export const ImportStaff: React.FC<{
       {showFormat && (
         <div style={codeBoxStyle}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-            CSV format — paste below or upload file:
+            Staff CSV format — paste below or upload file:
           </div>
           <pre style={{ margin: 0, fontSize: '0.8rem', color: 'var(--accent-color)', fontFamily: 'monospace' }}>
             {SAMPLE_CSV}
@@ -94,7 +136,7 @@ export const ImportStaff: React.FC<{
             Skills: semicolon-separated (e.g. <code>HeadNurse;Nurse</code>). Contracts: FullTime / PartTime / Night.
           </div>
           <textarea
-            placeholder="Paste CSV here..."
+            placeholder="Paste staff CSV here..."
             onPaste={e => processText(e.clipboardData.getData('text'))}
             style={{ ...textareaStyle, marginTop: '0.75rem' }}
           />
@@ -106,6 +148,89 @@ export const ImportStaff: React.FC<{
           {errors.map((e, i) => <div key={i} style={{ fontSize: '0.85rem' }}>⚠ {e}</div>)}
         </div>
       )}
+
+      {/* ── Optional Shift Demand Section ── */}
+      <div style={{
+        backgroundColor: 'var(--panel-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '1.25rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.85rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+              Shift Demand &amp; Requirements
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Configure hospital shift requirements or use standard hospital baseline (196 shifts across 28 days).
+            </div>
+          </div>
+          {customShifts && customShifts.length > 0 ? (
+            <span style={{ color: 'var(--accent-color)', fontSize: '0.85rem', fontWeight: 600 }}>
+              ⚡ Custom demand active: {customShifts.length} shifts
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Standard fixture active (196 shifts: 7 daily)
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label style={{ ...accentGhostBtnStyle, cursor: 'pointer' }}>
+            Upload shifts.csv
+            <input ref={shiftFileRef} type="file" accept=".csv,.txt" onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => processShiftsText(ev.target?.result as string);
+              reader.readAsText(file);
+              e.target.value = '';
+            }} style={{ display: 'none' }} />
+          </label>
+
+          <button onClick={() => {
+            const varWeekend = generateVariableWeekendFixture();
+            setShiftErrors([]);
+            if (onCustomShiftsChange) onCustomShiftsChange(varWeekend);
+          }} style={ghostBtnStyle}>
+            Load Variable Weekend Demand (172 shifts)
+          </button>
+
+          {customShifts && customShifts.length > 0 && (
+            <button onClick={() => {
+              setShiftErrors([]);
+              if (onCustomShiftsChange) onCustomShiftsChange([]);
+            }} style={{ ...ghostBtnStyle, color: '#f59e0b' }}>
+              Reset to Standard (196 shifts)
+            </button>
+          )}
+
+          <button onClick={() => {
+            const template = `id,start_hour,duration_hours,required_skill\n0,7,8,Nurse\n1,7,8,HeadNurse\n2,14,8,Nurse\n3,22,8,Nurse`;
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ultracrew_shifts_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }} style={ghostBtnStyle}>
+            ⬇ Shifts Template
+          </button>
+        </div>
+
+        {shiftErrors.length > 0 && (
+          <div style={errorBoxStyle}>
+            {shiftErrors.map((e, i) => <div key={i} style={{ fontSize: '0.85rem' }}>⚠ {e}</div>)}
+          </div>
+        )}
+      </div>
 
       {summary && (
         <div style={{

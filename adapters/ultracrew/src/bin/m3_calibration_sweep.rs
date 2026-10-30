@@ -42,7 +42,8 @@ fn build_context(enable_fatigue: bool, fatigue_weight: f64) -> Arc<ScheduleConte
     // Worker 3 and 4 have done 0 hours (fresh)
 
     let scenario = InrcScenario {
-        planning_horizon_hours: Some(168.0), // 1 week
+        planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None, // 1 week
         max_hours_per_worker: Some(40.0), // Max 40 hours per worker
         minimum_rest_hours: Some(8),
         leave_requests: None,

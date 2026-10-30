@@ -10,6 +10,7 @@ import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
 import { DecisionRepository } from '../services/DecisionRepository';
 import { accumulatePatterns } from '../services/PatternAccumulator';
+import { getScheduleSlotMeta, type CustomShiftInput } from './WorkflowUtils';
 
 const decisionRepository = new DecisionRepository();
 
@@ -18,6 +19,7 @@ export const PlannerWorkflow: React.FC = () => {
   const [maxReached, setMaxReached] = useState(1);
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [customShifts, setCustomShifts] = useState<CustomShiftInput[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [rulePayload, setRulePayload] = useState<object>({});
   const [scheduleResult, setScheduleResult] = useState<ScheduleResult | null>(null);
@@ -25,6 +27,8 @@ export const PlannerWorkflow: React.FC = () => {
   const [manualEditCount, setManualEditCount] = useState(0);
   const [editDistribution, setEditDistribution] = useState<Record<string, number>>({});
   const [originalAssignmentCount, setOriginalAssignmentCount] = useState(0);
+
+  const customSlotMeta = useMemo(() => getScheduleSlotMeta(staff, customShifts), [staff, customShifts]);
 
   // P3: alternatives + decision
   const [alternatives, setAlternatives] = useState<RosterAlternative[]>([]);
@@ -61,6 +65,7 @@ export const PlannerWorkflow: React.FC = () => {
     setStep(1);
     setMaxReached(1);
     setStaff([]);
+    setCustomShifts([]);
     setSelectedRuleId('');
     setRulePayload({});
     setScheduleResult(null);
@@ -89,6 +94,8 @@ export const PlannerWorkflow: React.FC = () => {
           <ImportStaff
             staff={staff}
             onStaffChange={setStaff}
+            customShifts={customShifts}
+            onCustomShiftsChange={setCustomShifts}
             onNext={() => goTo(2)}
           />
         )}
@@ -107,6 +114,8 @@ export const PlannerWorkflow: React.FC = () => {
             staff={staff}
             rulePayload={rulePayload}
             ruleLabel={ruleLabel}
+            customShifts={customShifts}
+            customSlotMeta={customSlotMeta}
             onResult={(result, sched) => {
               setScheduleResult(result);
               setEditableSchedule(sched);
@@ -215,6 +224,7 @@ export const PlannerWorkflow: React.FC = () => {
             staff={staff}
             schedule={editableSchedule}
             result={scheduleResult}
+            customSlotMeta={customSlotMeta}
             onScheduleChange={setEditableSchedule}
             onNext={(editCount, dist) => { setManualEditCount(editCount); setEditDistribution(dist); goTo(6); }}
             onBack={() => goTo(4)}
@@ -239,6 +249,7 @@ export const PlannerWorkflow: React.FC = () => {
             editDistribution={editDistribution}
             originalAssignmentCount={originalAssignmentCount}
             schedulerDecision={schedulerDecision}
+            customSlotMeta={customSlotMeta}
             onBack={() => goTo(5)}
             onStartOver={handleStartOver}
           />

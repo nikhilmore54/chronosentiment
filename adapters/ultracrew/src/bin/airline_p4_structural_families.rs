@@ -40,6 +40,7 @@ fn execute_matrix(f: Arc<Mutex<File>>, family: &str, instance: &str, util_pct: u
         for &global_on in &[false, true] {
             let scenario = InrcScenario {
                 planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None,
                 max_hours_per_worker: Some(40.0),
                 minimum_rest_hours: Some(8),
                 leave_requests: None,

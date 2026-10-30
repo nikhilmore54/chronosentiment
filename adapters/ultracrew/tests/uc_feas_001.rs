@@ -103,6 +103,7 @@ fn case_002_rest_7h59() {
     let context = build_context(
         Some(InrcScenario {
             planning_horizon_hours: None,
+            validation_envelope_hours: None,
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
@@ -135,6 +136,7 @@ fn case_003_rest_8h00() {
     let context = build_context(
         Some(InrcScenario {
             planning_horizon_hours: None,
+            validation_envelope_hours: None,
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
@@ -169,6 +171,7 @@ fn case_004_weekly_40h00() {
     let context = build_context(
         Some(InrcScenario {
             planning_horizon_hours: None,
+            validation_envelope_hours: None,
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
@@ -207,6 +210,7 @@ fn case_005_weekly_40h01() {
     let context = build_context(
         Some(InrcScenario {
             planning_horizon_hours: None,
+            validation_envelope_hours: None,
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,

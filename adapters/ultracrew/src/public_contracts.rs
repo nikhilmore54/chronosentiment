@@ -18,9 +18,14 @@ pub struct LeaveRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InrcScenario {
-    /// Total planning horizon in hours (e.g. 744.0 for a 31-day month).
-    /// Used for reporting and future horizon-aware constraints.
+    /// Total planning horizon in hours (e.g. 744.0 for a 31-day month, 672.0 for 28 days).
+    /// Used for shift start window validation: 0 <= start_hour < planning_horizon_hours.
     pub planning_horizon_hours: Option<f64>,
+    /// Explicit validation envelope in hours (e.g. 678.0 for a 28-day fixture where Day 27 Night shift ends at 678).
+    /// Defines the latest permitted shift completion: start_hour + duration_hours <= validation_envelope_hours.
+    /// If omitted, defaults to planning_horizon_hours.
+    #[serde(default)]
+    pub validation_envelope_hours: Option<f64>,
     /// Maximum credited hours per worker over the planning horizon.
     /// None means no per-worker upper bound is specified by the dataset;
     /// the engine falls back to DEFAULT_WEEKLY_MAX_HOURS.

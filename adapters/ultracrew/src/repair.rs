@@ -237,6 +237,7 @@ mod contract_tests {
                 minimum_rest_hours: Some(10),
                 max_hours_per_worker: Some(40.0),
                 planning_horizon_hours: None,
+                validation_envelope_hours: None,
                 leave_requests: None,
             }),
             enable_fatigue: false,

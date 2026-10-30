@@ -102,7 +102,8 @@ fn run_workload(utilization_pct: usize, seed_val: u64) -> String {
     let construction_telemetry = simulate_greedy_construction(&shifts, &workers, seed_val);
 
     let scenario = InrcScenario {
-        planning_horizon_hours: Some(168.0), max_hours_per_worker: Some(40.0), minimum_rest_hours: Some(8), leave_requests: None,
+        planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None, max_hours_per_worker: Some(40.0), minimum_rest_hours: Some(8), leave_requests: None,
     };
     let ctx = Arc::new(ScheduleContext {
         workers: Arc::new(workers), shifts: Arc::new(shifts), ecology: WorkforceEcology::new(),

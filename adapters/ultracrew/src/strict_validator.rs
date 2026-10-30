@@ -307,22 +307,41 @@ pub fn validate_request(req: &ScheduleRequest) -> ValidationReport {
         }
     }
 
-    // ── V-007: Shift end must not exceed planning horizon ─────────────────────
+    // ── V-007: Shift start window and completion envelope semantics ───────────
     let horizon = req
         .scenario
         .as_ref()
         .and_then(|sc| sc.planning_horizon_hours)
         .unwrap_or(168.0) as u64;
 
+    let envelope = req
+        .scenario
+        .as_ref()
+        .and_then(|sc| sc.validation_envelope_hours)
+        .map(|e| e as u64)
+        .unwrap_or(horizon);
+
     for s in &req.shifts {
-        let end = s.start_hour + s.duration_hours;
-        if end > horizon {
+        if s.start_hour >= horizon {
             issues.push(ValidationIssue::error(
                 "V-007",
                 format!(
-                    "Shift {} ends at hour {} which exceeds the planning horizon of {} hours. \
-                     Reduce start_hour or duration_hours, or increase planning_horizon_hours.",
-                    s.id, end, horizon
+                    "Shift {} starts at hour {} which meets or exceeds the planning horizon of {} hours. \
+                     All shifts must start within the planning horizon [0, {}).",
+                    s.id, s.start_hour, horizon, horizon
+                ),
+                Some(format!("shift {}", s.id)),
+            ));
+        }
+
+        let end = s.start_hour + s.duration_hours;
+        if end > envelope {
+            issues.push(ValidationIssue::error(
+                "V-007",
+                format!(
+                    "Shift {} ends at hour {} which exceeds the validation envelope of {} hours. \
+                     Reduce duration_hours, or increase validation_envelope_hours.",
+                    s.id, end, envelope
                 ),
                 Some(format!("shift {}", s.id)),
             ));
@@ -513,6 +532,7 @@ mod tests {
                 leave_requests: None,
                 minimum_rest_hours: Some(10),
                 planning_horizon_hours: Some(168.0),
+                validation_envelope_hours: None,
                 max_hours_per_worker: None,
             }),
             fatigue: crate::config::FatigueConfig::default(),
@@ -596,6 +616,42 @@ mod tests {
         let report = validate_request(&req);
         assert!(!report.is_valid());
         assert!(report.issues.iter().any(|i| i.code == "V-007"));
+    }
+
+    #[test]
+    fn test_at13_final_day_night_shift_passes_validation_envelope() {
+        let mut req = minimal_valid();
+        // 28-day hospital planning horizon = 672h.
+        // Final night shift on day 27 starts at hour 670, ends at 678.
+        req.scenario = Some(InrcScenario {
+            leave_requests: None,
+            minimum_rest_hours: Some(10),
+            planning_horizon_hours: Some(672.0),
+            validation_envelope_hours: Some(678.0),
+            max_hours_per_worker: Some(40.0),
+        });
+
+        // 1. Valid shift: starts within planning horizon (670 < 672) and ends within envelope (678 <= 678)
+        req.shifts[0].start_hour = 670;
+        req.shifts[0].duration_hours = 8;
+        let report = validate_request(&req);
+        assert!(report.is_valid(), "Shift ending at 678 within envelope 678 must pass V-007:\n{}", report.display());
+
+        // 2. Invalid shift start: starts at hour 672 (outside planning horizon [0, 672))
+        let mut req_invalid_start = req.clone();
+        req_invalid_start.shifts[0].start_hour = 672;
+        req_invalid_start.shifts[0].duration_hours = 4;
+        let rep_start = validate_request(&req_invalid_start);
+        assert!(!rep_start.is_valid());
+        assert!(rep_start.issues.iter().any(|i| i.code == "V-007" && i.message.contains("meets or exceeds the planning horizon")));
+
+        // 3. Invalid shift end: starts at 671, ends at 679 > 678 envelope
+        let mut req_invalid_end = req.clone();
+        req_invalid_end.shifts[0].start_hour = 671;
+        req_invalid_end.shifts[0].duration_hours = 8;
+        let rep_end = validate_request(&req_invalid_end);
+        assert!(!rep_end.is_valid());
+        assert!(rep_end.issues.iter().any(|i| i.code == "V-007" && i.message.contains("exceeds the validation envelope")));
     }
 
     #[test]
@@ -743,6 +799,7 @@ mod tests {
                 leave_requests: None,
                 minimum_rest_hours: Some(10),
                 planning_horizon_hours: Some(168.0),
+                validation_envelope_hours: None,
                 max_hours_per_worker: Some(48.0),
             }),
             fatigue: crate::config::FatigueConfig::default(),

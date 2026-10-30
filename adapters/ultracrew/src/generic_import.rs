@@ -393,6 +393,7 @@ pub fn export_request_template() -> String {
         generation_limit: Some(200),
         scenario: Some(InrcScenario {
             planning_horizon_hours: Some(168.0),
+            validation_envelope_hours: None,
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(11),
             leave_requests: None,

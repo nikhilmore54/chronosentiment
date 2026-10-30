@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { StaffMember, ScheduleResult, SchedulerDecision } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, accentGhostBtnStyle } from './WorkflowComponents';
-import { exportRosterToExcel, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
+import {
+  exportRosterToExcel,
+  exportRosterToCSV,
+  buildStaffingRequirements,
+  computeCanonicalCoverage,
+  type ShiftSlotMeta,
+} from './WorkflowUtils';
 
 const StatBlock: React.FC<{ label: string; value: string; color: string }> = ({ label, value, color }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -18,20 +24,44 @@ export const ExportRoster: React.FC<{
   editDistribution: Record<string, number>;
   originalAssignmentCount: number;
   schedulerDecision?: SchedulerDecision | null;
+  customSlotMeta?: Record<number, ShiftSlotMeta>;
   onBack: () => void;
   onStartOver: () => void;
-}> = ({ staff, schedule, result, manualEditCount, editDistribution, originalAssignmentCount, schedulerDecision, onBack, onStartOver }) => {
+}> = ({ staff, schedule, result, manualEditCount, editDistribution, originalAssignmentCount, schedulerDecision, customSlotMeta, onBack, onStartOver }) => {
   const [exported, setExported] = useState(false);
+
+  const horizonDays = useMemo(() => {
+    if (customSlotMeta) {
+      const daysArr = Object.values(customSlotMeta).map(m => m.dayIdx);
+      if (daysArr.length > 0) return Math.max(...daysArr) + 1;
+    }
+    const firstSched = Object.values(schedule)[0];
+    return firstSched?.length || 28;
+  }, [customSlotMeta, schedule]);
 
   const handleExcel = () => {
     exportRosterToExcel(staff, schedule);
     setExported(true);
   };
 
+  const handleCSV = () => {
+    const csvContent = exportRosterToCSV(staff, schedule, horizonDays);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ultracrew_roster_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setExported(true);
+  };
+
   const cr = result.constraint_report;
   const totalShifts = Object.values(schedule).flat().filter(s => s !== '').length;
   // P3.1: canonical demand-based coverage — same formula as Explore Decision
-  const requirements = buildStaffingRequirements();
+  const requirements = buildStaffingRequirements(customSlotMeta);
   const coverageReport = computeCanonicalCoverage(requirements, schedule);
   const coveragePct = Math.round(coverageReport.coveragePct);
 
@@ -168,7 +198,7 @@ export const ExportRoster: React.FC<{
         gap: '1rem',
       }}>
         <StatBlock label="Staff" value={String(staff.length)} color="var(--text-main)" />
-        <StatBlock label="Planning Days" value="28" color="var(--text-main)" />
+        <StatBlock label="Planning Days" value={String(horizonDays)} color="var(--text-main)" />
         <StatBlock label="Total Shifts" value={String(totalShifts)} color="var(--accent-color)" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
           <StatBlock label="Coverage" value={`${coveragePct}%`} color={coveragePct >= 70 ? 'var(--success-color)' : '#f59e0b'} />
@@ -204,6 +234,10 @@ export const ExportRoster: React.FC<{
             <span>📊</span>
             <span>Download Excel (.xls)</span>
           </button>
+          <button onClick={handleCSV} style={{ ...ghostBtnStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>📄</span>
+            <span>Download CSV (.csv)</span>
+          </button>
           <button onClick={() => window.print()} style={{ ...accentGhostBtnStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>🖨</span>
             <span>Print / Save PDF</span>
@@ -211,7 +245,7 @@ export const ExportRoster: React.FC<{
         </div>
         {exported && (
           <div style={{ backgroundColor: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', padding: '0.6rem 1rem', fontSize: '0.85rem', color: 'var(--success-color)', fontWeight: 600 }}>
-            ✓ Roster exported — open the downloaded .xls file in Excel or Google Sheets.
+            ✓ Roster exported — file downloaded successfully.
           </div>
         )}
       </div>

@@ -3,7 +3,7 @@ import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeReco
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
 import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule } from './WorkflowUtils';
-import type { RedistributionResult } from './WorkflowUtils';
+import type { RedistributionResult, ShiftSlotMeta } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
 
@@ -319,7 +319,8 @@ export const ReviewSchedule: React.FC<{
   // P4.1: recurring operational patterns (observe and surface only — no optimizer changes)
   recurringPatterns?: RecurringPattern[];
   onDismissPattern?: (reason: string) => void;
-}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete, recurringPatterns, onDismissPattern }) => {
+  customSlotMeta?: Record<number, ShiftSlotMeta>;
+}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete, recurringPatterns, onDismissPattern, customSlotMeta }) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
   const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string } | null>(null);
   const [editCount, setEditCount] = useState(0);
@@ -336,8 +337,12 @@ export const ReviewSchedule: React.FC<{
   const [provenanceTarget, setProvenanceTarget] = useState<{ staffId: string; dayIdx: number } | null>(null);
   const [liveReport, setLiveReport] = useState<ScheduleResult['constraint_report'] | null>(result.constraint_report);
 
+  const horizonDays = customSlotMeta && Object.keys(customSlotMeta).length > 0
+    ? Math.max(...Object.values(customSlotMeta).map(m => m.dayIdx)) + 1
+    : (Object.values(schedule)[0]?.length || 28);
+
   const startDate = new Date('2026-07-14');
-  const days = Array.from({ length: 28 }, (_, i) => {
+  const days = Array.from({ length: horizonDays }, (_, i) => {
     const dt = new Date(startDate);
     dt.setDate(dt.getDate() + i);
     return dt;
@@ -355,7 +360,7 @@ export const ReviewSchedule: React.FC<{
     setLockedCells(prev => new Set([...prev, `${nurseId}:${dayIdx}`]));
 
     // Validate the updated schedule asynchronously to keep constraint feedback live
-    validateCurrentSchedule(staff, next).then(val => {
+    validateCurrentSchedule(staff, next, undefined, customSlotMeta).then(val => {
       if (val && val.constraint_report) {
         setLiveReport(val.constraint_report);
         if (result) {
@@ -522,7 +527,7 @@ export const ReviewSchedule: React.FC<{
           </thead>
           <tbody>
             {staff.map(s => {
-              const shifts = schedule[s.id] || Array(28).fill('');
+              const shifts = schedule[s.id] || Array(horizonDays).fill('');
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={stickyName}>{s.id}</td>
@@ -646,7 +651,7 @@ export const ReviewSchedule: React.FC<{
                 );
                 onScheduleChange(r.schedule);
                 setRedistResult(r);
-                validateCurrentSchedule(staff, r.schedule).then(val => {
+                validateCurrentSchedule(staff, r.schedule, undefined, customSlotMeta).then(val => {
                   if (val && val.constraint_report) {
                     setLiveReport(val.constraint_report);
                     if (result) {
@@ -663,7 +668,7 @@ export const ReviewSchedule: React.FC<{
             </button>
           ) : (() => {
             const log = redistResult.log;
-            const reqs = buildStaffingRequirements();
+            const reqs = buildStaffingRequirements(customSlotMeta);
             const coverage = computeCanonicalCoverage(reqs, redistResult.schedule);
             const lockedViolation = log.lockedAssignmentsChanged > 0;
             return (

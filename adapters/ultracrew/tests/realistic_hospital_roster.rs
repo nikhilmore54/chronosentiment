@@ -86,6 +86,7 @@ fn test_realistic_20_nurse_196_shift_roster() {
 
     let scenario = InrcScenario {
         planning_horizon_hours: Some(28.0 * 24.0),
+        validation_envelope_hours: Some(678.0),
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(10),
         leave_requests: None,
@@ -130,3 +131,4 @@ fn test_realistic_20_nurse_196_shift_roster() {
     println!("Report HC2: {}", report.hc2_violations);
     println!("Report HC3: {}", report.hc3_violations);
 }
+

@@ -237,6 +237,7 @@ fn run_experiment(num_workers: usize, num_shifts: usize, seed: u64, hc3_aware: b
 
     let scenario = InrcScenario {
         planning_horizon_hours: Some(168.0),
+        validation_envelope_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
         leave_requests: None,

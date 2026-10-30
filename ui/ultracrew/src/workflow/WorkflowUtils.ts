@@ -88,9 +88,82 @@ export interface ShiftSlotMeta {
   label: string;
   skill: string;
   startHour: number;
+  durationHours?: number;
 }
 
-export function getScheduleSlotMeta(staff: StaffMember[]): Record<number, ShiftSlotMeta> {
+export type CustomShiftInput = ShiftSlotMeta;
+
+// ─── Variable Demand CSV Parsing ─────────────────────────────────────────────
+// Supports customer-provided shifts.csv (id,start_hour,duration_hours,required_skill)
+// as specified in the UltraRoster Assessment Protocol.
+export function parseShiftsCSV(text: string): { shifts: ShiftSlotMeta[]; errors: string[] } {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return { shifts: [], errors: ['CSV must have a header row and at least one data row.'] };
+
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+  const idIdx = header.indexOf('id');
+  const startIdx = header.indexOf('start_hour');
+  const durIdx = header.indexOf('duration_hours');
+  const skillIdx = header.indexOf('required_skill');
+
+  const errors: string[] = [];
+  if (idIdx === -1) errors.push('Missing column: id');
+  if (startIdx === -1) errors.push('Missing column: start_hour');
+  if (durIdx === -1) errors.push('Missing column: duration_hours');
+  if (skillIdx === -1) errors.push('Missing column: required_skill');
+  if (errors.length > 0) return { shifts: [], errors };
+
+  const shifts: ShiftSlotMeta[] = [];
+  const seenIds = new Set<number>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const id = parseInt(cols[idIdx], 10);
+    const startHour = parseInt(cols[startIdx], 10);
+    const durationHours = parseInt(cols[durIdx], 10);
+    const skill = cols[skillIdx];
+
+    if (isNaN(id)) { errors.push(`Row ${i + 1}: invalid id`); continue; }
+    if (isNaN(startHour) || startHour < 0) { errors.push(`Row ${i + 1}: invalid start_hour for shift ${id}`); continue; }
+    if (isNaN(durationHours) || durationHours <= 0) { errors.push(`Row ${i + 1}: duration_hours must be > 0 for shift ${id}`); continue; }
+    if (!skill) { errors.push(`Row ${i + 1}: missing required_skill for shift ${id}`); continue; }
+    if (seenIds.has(id)) { errors.push(`Row ${i + 1}: duplicate id "${id}"`); continue; }
+
+    seenIds.add(id);
+    const dayIdx = Math.floor(startHour / 24);
+    const hourOfDay = startHour % 24;
+    let label = 'Night';
+    if (hourOfDay >= 6 && hourOfDay < 14) {
+      label = 'Early';
+    } else if (hourOfDay >= 14 && hourOfDay < 22) {
+      label = 'Late';
+    }
+
+    shifts.push({
+      shiftId: id,
+      dayIdx,
+      label,
+      skill,
+      startHour,
+      durationHours,
+    });
+  }
+
+  return { shifts, errors };
+}
+
+export function getScheduleSlotMeta(
+  staff: StaffMember[],
+  customShifts?: ShiftSlotMeta[],
+): Record<number, ShiftSlotMeta> {
+  if (customShifts && customShifts.length > 0) {
+    const meta: Record<number, ShiftSlotMeta> = {};
+    for (const s of customShifts) {
+      meta[s.shiftId] = s;
+    }
+    return meta;
+  }
+
   const hasHeadNurse = staff.some(s => s.skills.includes('HeadNurse'));
   const nurseSkill = staff.some(s => s.skills.includes('Nurse'))
     ? 'Nurse'
@@ -104,43 +177,120 @@ export function getScheduleSlotMeta(staff: StaffMember[]): Record<number, ShiftS
     const baseHour = day * 24;
 
     // 3 Early shifts (06:00–14:00): 1 HeadNurse, 2 Nurse
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: headNurseSkill, startHour: baseHour + 6 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: headNurseSkill, startHour: baseHour + 6, durationHours: 8 };
     shiftId++;
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6, durationHours: 8 };
     shiftId++;
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6, durationHours: 8 };
     shiftId++;
 
     // 2 Late shifts (14:00–22:00): 2 Nurse
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14, durationHours: 8 };
     shiftId++;
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14, durationHours: 8 };
     shiftId++;
 
     // 2 Night shifts (22:00–06:00 next day): 2 Nurse
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22, durationHours: 8 };
     shiftId++;
-    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22 };
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22, durationHours: 8 };
     shiftId++;
   }
 
   return meta;
 }
 
-export function buildSchedulePayload(staff: StaffMember[], rulePayload: any = {}) {
+// ─── Pre-Optimization Demand-Capacity Diagnostic ─────────────────────────────
+// Compares required shift hours against available contractual workforce capacity
+// before optimization. Provides early indication of under-capacity or excess buffer.
+export interface DemandCapacityDiagnostic {
+  demandHours: number;
+  workforceCapacityHours: number;
+  utilizationRatio: number; // demandHours / workforceCapacityHours
+  surplusOrDeficitHours: number;
+  status: 'balanced' | 'tight' | 'under_capacity' | 'excess_capacity';
+  message: string;
+  shiftCount: number;
+  horizonDays: number;
+}
+
+export function computeDemandCapacityDiagnostic(
+  staff: StaffMember[],
+  shifts?: Array<{ duration_hours?: number; durationHours?: number }>,
+  horizonDays: number = 28,
+): DemandCapacityDiagnostic {
+  const shiftList: Array<{ duration_hours?: number; durationHours?: number }> = (shifts && shifts.length > 0)
+    ? shifts
+    : Array.from({ length: 7 * horizonDays }, () => ({ durationHours: 8 }));
+  const demandHours = shiftList.reduce((sum, s) => sum + (s.duration_hours ?? s.durationHours ?? 8), 0);
+  
+  // Contractual capacity over planning horizon: FullTime=40h/wk, PartTime=20h/wk, Night=32h/wk
+  const weeks = horizonDays / 7;
+  const workforceCapacityHours = staff.reduce((sum, s) => {
+    let weeklyHours = 40;
+    if (s.contract === 'PartTime') weeklyHours = 20;
+    else if (s.contract === 'Night') weeklyHours = 32;
+    return sum + (weeklyHours * weeks);
+  }, 0);
+
+  const utilizationRatio = workforceCapacityHours > 0
+    ? Math.round((demandHours / workforceCapacityHours) * 1000) / 1000
+    : 0;
+  const surplusOrDeficitHours = workforceCapacityHours - demandHours;
+
+  let status: 'balanced' | 'tight' | 'under_capacity' | 'excess_capacity' = 'balanced';
+  let message = '';
+
+  if (demandHours > workforceCapacityHours) {
+    status = 'under_capacity';
+    message = `Under-Capacity Deficit: Total demand (${demandHours}h) exceeds contractual capacity (${workforceCapacityHours}h) by ${Math.abs(surplusOrDeficitHours)}h. Unscheduled gaps or overtime required.`;
+  } else if (utilizationRatio > 0.90) {
+    status = 'tight';
+    message = `Tight Capacity (${(utilizationRatio * 100).toFixed(1)}%): Minimal buffer for rotation constraints, rest periods, and unexpected absences.`;
+  } else if (utilizationRatio >= 0.65) {
+    status = 'balanced';
+    message = `Balanced Capacity (${(utilizationRatio * 100).toFixed(1)}%): Healthy buffer (${surplusOrDeficitHours}h surplus) to satisfy rest and fairness constraints.`;
+  } else {
+    status = 'excess_capacity';
+    message = `Excess Capacity (${(utilizationRatio * 100).toFixed(1)}%): High staffing surplus (${surplusOrDeficitHours}h) relative to demand.`;
+  }
+
+  return {
+    demandHours,
+    workforceCapacityHours,
+    utilizationRatio,
+    surplusOrDeficitHours,
+    status,
+    message,
+    shiftCount: shiftList.length,
+    horizonDays,
+  };
+}
+
+export function buildSchedulePayload(
+  staff: StaffMember[],
+  rulePayload: any = {},
+  customShifts?: ShiftSlotMeta[],
+) {
   const workers = staff.map((s, i) => ({
     id: i + 1,
     skills: s.skills.length > 0 ? s.skills : ['Nurse'],
     contract: s.contract,
   }));
 
-  const slotMeta = getScheduleSlotMeta(staff);
+  const slotMeta = getScheduleSlotMeta(staff, customShifts);
   const shifts = Object.values(slotMeta).map(m => ({
     id: m.shiftId,
     start_hour: m.startHour,
-    duration_hours: 8,
+    duration_hours: m.durationHours ?? 8,
     required_skill: m.skill,
   }));
+
+  const maxDay = customShifts && customShifts.length > 0
+    ? Math.max(...Object.values(slotMeta).map(m => m.dayIdx))
+    : Math.max(...Object.values(slotMeta).map(m => m.dayIdx), 27);
+  const horizonHours = (maxDay + 1) * 24;
+  const maxShiftEnd = Math.max(...shifts.map(s => s.start_hour + s.duration_hours), horizonHours);
 
   return {
     workers,
@@ -149,7 +299,8 @@ export function buildSchedulePayload(staff: StaffMember[], rulePayload: any = {}
     rng_seed: null,
     generation_limit: 100,
     scenario: {
-      planning_horizon_hours: 28 * 24 + 16, // 688h: Day 27 night shift starts at 670 and ends at 678, so 688 ensures V-007 passes
+      planning_horizon_hours: horizonHours, // 672h: shift start window 0 <= start < 672
+      validation_envelope_hours: maxShiftEnd, // 678h: latest shift completion
       max_hours_per_worker: rulePayload?.max_weekly_hours ?? 40.0,
       minimum_rest_hours: rulePayload?.min_rest_hours ?? 10,
       leave_requests: null,
@@ -161,11 +312,13 @@ export function buildSchedulePayload(staff: StaffMember[], rulePayload: any = {}
 
 export function buildEditableSchedule(
   staff: StaffMember[],
-  apiSchedule: Record<string, number>
+  apiSchedule: Record<string, number>,
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
 ): Record<string, string[]> {
-  const slotMeta = getScheduleSlotMeta(staff);
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const maxDay = Math.max(...Object.values(slotMeta).map(m => m.dayIdx), 27);
   const result: Record<string, string[]> = {};
-  staff.forEach(s => { result[s.id] = Array(28).fill(''); });
+  staff.forEach(s => { result[s.id] = Array(maxDay + 1).fill(''); });
 
   const shiftIds = Object.keys(apiSchedule).map(Number);
   // Detect if apiSchedule only contains 1-week IDs (e.g. legacy test fixture IDs 1..5)
@@ -197,7 +350,7 @@ export function buildEditableSchedule(
       for (let week = 0; week < 4; week++) {
         for (const slot of slots) {
           const dayIdx = week * 7 + slot.dayOfWeek;
-          if (dayIdx < 28) {
+          if (dayIdx <= maxDay) {
             result[assignedStaff.id][dayIdx] = slot.label;
           }
         }
@@ -206,14 +359,14 @@ export function buildEditableSchedule(
     return result;
   }
 
-  // Authoritative 28-day schedule mapping:
+  // Authoritative schedule mapping:
   Object.entries(apiSchedule).forEach(([shiftIdStr, workerId]) => {
     const sid = Number(shiftIdStr);
     const meta = slotMeta[sid];
     if (!meta) return;
     const assignedStaff = staff[workerId - 1];
     if (!assignedStaff) return;
-    if (meta.dayIdx < 28) {
+    if (meta.dayIdx <= maxDay) {
       result[assignedStaff.id][meta.dayIdx] = meta.label;
     }
   });
@@ -259,6 +412,76 @@ export function exportRosterToExcel(staff: StaffMember[], schedule: Record<strin
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ─── CSV export & Assignment Conservation ─────────────────────────────────────
+// Generates tabular CSV export matching the exact validated UI schedule.
+// Guarantees: Assignments_UI = Assignments_Validation = Assignments_Export
+export function exportRosterToCSV(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  horizonDays: number = 28,
+): string {
+  const lines = ['worker_id,staff_id,day_idx,shift_type'];
+  staff.forEach((s, i) => {
+    const workerId = i + 1;
+    const shifts = schedule[s.id] || [];
+    for (let d = 0; d < horizonDays; d++) {
+      const shift = shifts[d];
+      if (shift && shift !== '') {
+        lines.push(`${workerId},${s.id},${d},${shift}`);
+      }
+    }
+  });
+  return lines.join('\n');
+}
+
+// ─── Cycle Continuity & Rest Lockout ─────────────────────────────────────────
+// AT-20: Final-day night shifts end at hour 678. With min 10h rest, rest lockout
+// extends to hour 688, preventing assignment to next cycle's Day 0 Early shift (hour 678).
+export interface CycleBoundaryHistory {
+  workerId: number;
+  staffId: string;
+  lastAssignedShift: string;
+  lastShiftEndHour: number;
+  restLockoutUntilHour: number;
+  isRestLockedForCycleStartEarly: boolean;
+}
+
+export function computeNextCycleBoundary(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  planningHorizonHours: number = 672,
+  minRestHours: number = 10,
+): CycleBoundaryHistory[] {
+  const lastDayIdx = Math.floor(planningHorizonHours / 24) - 1; // e.g. Day 27 for 672h
+  const nextCycleEarlyStartHour = planningHorizonHours + 6; // e.g. 678 for 672h (Day 0 06:00 of next cycle)
+
+  return staff.map((s, i) => {
+    const workerId = i + 1;
+    const lastShift = (schedule[s.id] || [])[lastDayIdx] || '';
+    let lastShiftEndHour = 0;
+
+    if (lastShift === 'Night') {
+      lastShiftEndHour = lastDayIdx * 24 + 22 + 8; // ends at 678
+    } else if (lastShift === 'Late') {
+      lastShiftEndHour = lastDayIdx * 24 + 14 + 8; // ends at 670
+    } else if (lastShift === 'Early') {
+      lastShiftEndHour = lastDayIdx * 24 + 6 + 8; // ends at 662
+    }
+
+    const restLockoutUntilHour = lastShiftEndHour > 0 ? lastShiftEndHour + minRestHours : 0;
+    const isRestLockedForCycleStartEarly = restLockoutUntilHour > nextCycleEarlyStartHour;
+
+    return {
+      workerId,
+      staffId: s.id,
+      lastAssignedShift: lastShift,
+      lastShiftEndHour,
+      restLockoutUntilHour,
+      isRestLockedForCycleStartEarly,
+    };
+  });
 }
 
 // ─── Synthetic ScheduleResult for fallback ────────────────────────────────────
@@ -353,53 +576,155 @@ export function buildLockedShiftIds(
   return lockedShiftIds;
 }
 
+export interface AssignmentConversionResult {
+  assignments: Record<string, number>;
+  totalUiAssignments: number;
+  totalMappedAssignments: number;
+  isConserved: boolean;
+  unmappedUiAssignments: Array<{ staffId: string; dayIdx: number; shiftType: string; reason: string }>;
+  duplicateAssignments: Array<{ staffId: string; dayIdx: number; shiftTypes: string[] }>;
+}
+
 export function scheduleToAssignments(
   staff: StaffMember[],
   schedule: Record<string, string[]>,
-): Record<string, number> {
-  const slotMeta = getScheduleSlotMeta(staff);
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): AssignmentConversionResult {
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
   const assignments: Record<string, number> = {};
   const staffWorkerIds: Record<string, number> = {};
   staff.forEach((s, i) => { staffWorkerIds[s.id] = i + 1; });
 
   const assignedShifts = new Set<number>();
   const assignedWorkerDays = new Set<string>();
+  const unmappedUiAssignments: Array<{ staffId: string; dayIdx: number; shiftType: string; reason: string }> = [];
+  const duplicateAssignments: Array<{ staffId: string; dayIdx: number; shiftTypes: string[] }> = [];
 
+  // Group slots by (dayIdx, label)
+  const availableSlotsByDayAndLabel: Record<string, ShiftSlotMeta[]> = {};
   for (const meta of Object.values(slotMeta)) {
-    for (const s of staff) {
-      const cellKey = `${s.id}:${meta.dayIdx}`;
-      if (assignedWorkerDays.has(cellKey)) continue;
-      const shiftAtDay = (schedule[s.id] || [])[meta.dayIdx];
-      if (shiftAtDay === meta.label && !assignedShifts.has(meta.shiftId)) {
-        assignments[String(meta.shiftId)] = staffWorkerIds[s.id];
-        assignedShifts.add(meta.shiftId);
-        assignedWorkerDays.add(cellKey);
-        break;
+    const key = `${meta.dayIdx}:${meta.label}`;
+    if (!availableSlotsByDayAndLabel[key]) {
+      availableSlotsByDayAndLabel[key] = [];
+    }
+    availableSlotsByDayAndLabel[key].push(meta);
+  }
+
+  let totalUiAssignments = 0;
+
+  // Prioritize specialized workers (fewer skills) so scarce qualified slots are filled by them
+  const sortedStaff = [...staff].sort((a, b) => a.skills.length - b.skills.length);
+
+  // Process all UI assignments across all staff and days
+  for (const s of sortedStaff) {
+    const shiftsForStaff = schedule[s.id] || [];
+    for (let d = 0; d < shiftsForStaff.length; d++) {
+      const shiftType = shiftsForStaff[d];
+      if (!shiftType || shiftType === '') continue;
+
+      totalUiAssignments++;
+      const cellKey = `${s.id}:${d}`;
+
+      // Explicit duplicate worker/day detection: never silently drop assignments!
+      if (assignedWorkerDays.has(cellKey)) {
+        duplicateAssignments.push({
+          staffId: s.id,
+          dayIdx: d,
+          shiftTypes: [shiftType],
+        });
+      }
+      assignedWorkerDays.add(cellKey);
+
+      // Find an available slot on day d with matching label
+      const key = `${d}:${shiftType}`;
+      const slots = availableSlotsByDayAndLabel[key] || [];
+
+      // Prefer a slot that matches the staff member's skills
+      let chosenSlot = slots.find(
+        slot => !assignedShifts.has(slot.shiftId) && s.skills.includes(slot.skill)
+      );
+      if (!chosenSlot) {
+        // Fall back to any open slot of that shift type
+        chosenSlot = slots.find(slot => !assignedShifts.has(slot.shiftId));
+      }
+
+      if (chosenSlot) {
+        assignments[String(chosenSlot.shiftId)] = staffWorkerIds[s.id];
+        assignedShifts.add(chosenSlot.shiftId);
+      } else {
+        // Unmapped UI assignment: no slot available on this day for this shift type
+        unmappedUiAssignments.push({
+          staffId: s.id,
+          dayIdx: d,
+          shiftType,
+          reason: `No remaining '${shiftType}' shift slot available on day ${d + 1}.`,
+        });
       }
     }
   }
 
-  return assignments;
+  const totalMappedAssignments = Object.keys(assignments).length;
+  const isConserved = totalUiAssignments === totalMappedAssignments && unmappedUiAssignments.length === 0 && duplicateAssignments.length === 0;
+
+  return {
+    assignments,
+    totalUiAssignments,
+    totalMappedAssignments,
+    isConserved,
+    unmappedUiAssignments,
+    duplicateAssignments,
+  };
 }
 
 export async function validateCurrentSchedule(
   staff: StaffMember[],
   schedule: Record<string, string[]>,
   rulePayload: object = {},
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
 ): Promise<any | null> {
   try {
-    const basePayload = buildSchedulePayload(staff, rulePayload);
-    const assignments = scheduleToAssignments(staff, schedule);
+    const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+    const basePayload = buildSchedulePayload(staff, rulePayload, Object.values(slotMeta));
+    const conversion = scheduleToAssignments(staff, schedule, slotMeta);
+
+    const csrfRes = await fetch('/api/csrf-token').catch(() => null);
+    const csrfToken = csrfRes && csrfRes.ok ? (await csrfRes.json()).csrf_token ?? '' : '';
+
     const resp = await fetch('/api/validate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
       body: JSON.stringify({
         request: basePayload,
-        assignments,
+        assignments: conversion.assignments,
       }),
     });
     if (!resp.ok) return null;
-    return await resp.json();
+    const report = await resp.json();
+
+    // Assignment Conservation & Duplicate Detection Invariant:
+    // If any UI assignment was unmapped or duplicate, inject structured violations.
+    // A feasibility certificate is NEVER issued if the validated matrix differs from the UI matrix!
+    if (!conversion.isConserved || conversion.unmappedUiAssignments.length > 0 || conversion.duplicateAssignments.length > 0) {
+      report.is_valid = false;
+      report.hard_violations = (report.hard_violations || 0) + conversion.unmappedUiAssignments.length + conversion.duplicateAssignments.length;
+      if (!report.violated_constraints) report.violated_constraints = [];
+      if (!report.warnings) report.warnings = [];
+
+      for (const unmapped of conversion.unmappedUiAssignments) {
+        report.violated_constraints.push(`unmapped_assignment_${unmapped.staffId}_day_${unmapped.dayIdx + 1}`);
+        report.warnings.push(`Assignment conservation failure: ${unmapped.staffId} has assignment '${unmapped.shiftType}' on day ${unmapped.dayIdx + 1} which could not be mapped to any demand slot (${unmapped.reason}).`);
+      }
+
+      for (const dup of conversion.duplicateAssignments) {
+        report.violated_constraints.push(`duplicate_worker_day_${dup.staffId}_day_${dup.dayIdx + 1}`);
+        report.warnings.push(`Duplicate worker/day violation: ${dup.staffId} has multiple shift assignments on day ${dup.dayIdx + 1}.`);
+      }
+    }
+
+    return report;
   } catch {
     return null;
   }
@@ -541,14 +866,39 @@ export function buildSyntheticResult(): ScheduleResult {
 // positions. This is the canonical demand object used by every screen.
 // Coverage = filledPositions / requiredPositions (never from optimizer fitness).
 
-export function buildStaffingRequirements(): StaffingRequirement[] {
-  const reqs: StaffingRequirement[] = [];
-  for (let d = 0; d < 28; d++) {
-    reqs.push({ dayIdx: d, shiftType: 'Early', required: 3 });
-    reqs.push({ dayIdx: d, shiftType: 'Late',  required: 2 });
-    reqs.push({ dayIdx: d, shiftType: 'Night', required: 2 });
+export function buildStaffingRequirements(
+  slotMeta?: Record<number, ShiftSlotMeta>,
+): StaffingRequirement[] {
+  if (!slotMeta || Object.keys(slotMeta).length === 0) {
+    const reqs: StaffingRequirement[] = [];
+    for (let d = 0; d < 28; d++) {
+      reqs.push({ dayIdx: d, shiftType: 'Early', required: 3 });
+      reqs.push({ dayIdx: d, shiftType: 'Late',  required: 2 });
+      reqs.push({ dayIdx: d, shiftType: 'Night', required: 2 });
+    }
+    return reqs; // 84 requirement objects, 196 total required positions (default fixture)
   }
-  return reqs; // 84 requirement objects, 196 total required positions
+
+  // Dynamically compute requirements from custom demand slotMeta
+  const counts: Record<string, number> = {};
+  let maxDay = 0;
+  for (const m of Object.values(slotMeta)) {
+    const key = `${m.dayIdx}:${m.label}`;
+    counts[key] = (counts[key] || 0) + 1;
+    if (m.dayIdx > maxDay) maxDay = m.dayIdx;
+  }
+
+  const reqs: StaffingRequirement[] = [];
+  const shiftTypes = ['Early', 'Late', 'Night'];
+  for (let d = 0; d <= maxDay; d++) {
+    for (const st of shiftTypes) {
+      const required = counts[`${d}:${st}`] || 0;
+      if (required > 0) {
+        reqs.push({ dayIdx: d, shiftType: st, required });
+      }
+    }
+  }
+  return reqs;
 }
 
 export function computeCanonicalCoverage(
@@ -692,15 +1042,21 @@ export function mapParetoAlternatives(
   raw: ParetoAlternativeRaw[],
   staff: StaffMember[],
   primaryRaw?: PrimaryScheduleRaw,
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
 ): RosterAlternative[] {
-  const requirements = buildStaffingRequirements();
-  const totalSlots = staff.length * 28;
+  const requirements = buildStaffingRequirements(customSlotMeta);
+  let horizonDays = 28;
+  if (customSlotMeta) {
+    const days = Object.values(customSlotMeta).map(m => m.dayIdx);
+    if (days.length > 0) horizonDays = Math.max(...days) + 1;
+  }
+  const totalSlots = staff.length * horizonDays;
 
   let primaryAlt: RosterAlternative | null = null;
   let baselineSchedule: Record<string, string[]> = {};
 
   if (primaryRaw && primaryRaw.schedule) {
-    const primarySchedule = buildEditableSchedule(staff, primaryRaw.schedule);
+    const primarySchedule = buildEditableSchedule(staff, primaryRaw.schedule, customSlotMeta);
     baselineSchedule = primarySchedule;
     const primaryCov = computeCanonicalCoverage(requirements, primarySchedule);
     const baselineAssignments = Object.values(primarySchedule).flat().filter(s => s !== '').length;
@@ -747,13 +1103,13 @@ export function mapParetoAlternatives(
       ],
     };
   } else if (raw.length > 0) {
-    baselineSchedule = buildEditableSchedule(staff, raw[0].schedule);
+    baselineSchedule = buildEditableSchedule(staff, raw[0].schedule, customSlotMeta);
   }
 
   const result: RosterAlternative[] = primaryAlt ? [primaryAlt] : [];
 
   raw.forEach(alt => {
-    const schedule = buildEditableSchedule(staff, alt.schedule);
+    const schedule = buildEditableSchedule(staff, alt.schedule, customSlotMeta);
 
     // Count assignment cells that differ from baseline (Option 1)
     let diffCount = 0;

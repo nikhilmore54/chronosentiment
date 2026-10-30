@@ -114,6 +114,7 @@ fn build_context(id: &str, num_workers: usize, num_shifts: usize, seed: u64) -> 
 
     let scenario = InrcScenario {
         planning_horizon_hours: Some(if id == "stress" { 168.0 * 4.0 } else { 168.0 }),
+        validation_envelope_hours: None,
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
         leave_requests: None,
