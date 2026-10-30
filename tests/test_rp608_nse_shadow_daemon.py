@@ -29,10 +29,12 @@ from scripts.run_rp608_nse_shadow_daemon import (
     ESTIMAND_B_TRAIN_PREVALENCE,
     FORECAST_LONG_PROB,
     FORECAST_STANDASIDE_PROB,
+    BOOTSTRAP_FAIL_COOLDOWN_SEC,
     BarOHLCV,
     TopOfBookQuote,
     NSECheckpointState,
     KiteDataFeedAdapter,
+    KiteRateLimitError,
     RP608NSEShadowDaemon,
     calc_indian_equity_friction,
     compute_payload_checksum,
@@ -177,7 +179,9 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertEqual(card22["status"], "INTRADAY_BOUNDARY_EXCLUDED")
 
     def test_05_estimand_a_statistical_invariant_and_mandatory_close(self):
-        """Verifies Estimand A balanced accuracy invariant (None) and 15:15 mandatory close."""
+        """Verifies Estimand A invariant and 15:00 close-window mandatory square-off (bar 23)."""
+        from scripts.run_rp608_nse_shadow_daemon import MANDATORY_SQUARE_OFF_BAR
+
         daemon = RP608NSEShadowDaemon(output_dir=self.test_dir)
         sym = "TCS.NS"
 
@@ -193,9 +197,9 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertIsNone(trade["balanced_accuracy"])  # Protocol invariant: strictly None/NA
         self.assertEqual(trade["reference_training_prevalence"], ESTIMAND_A_TRAIN_PREVALENCE)
 
-        # Advance to Bar 24 (15:15 IST) -> Mandatory square-off
-        b24 = BarOHLCV(timestamp_utc_ms=24000, open=3150.0, high=3160.0, low=3140.0, close=3155.0, volume=1000.0)
-        daemon.evaluate_symbol_bar(sym, bar_idx=24, latest_bar=b24, quote=None)
+        # Advance to Bar 23 (15:00 IST) -> Mandatory square-off (close-window start)
+        b23 = BarOHLCV(timestamp_utc_ms=23000, open=3150.0, high=3160.0, low=3140.0, close=3155.0, volume=1000.0)
+        daemon.evaluate_symbol_bar(sym, bar_idx=MANDATORY_SQUARE_OFF_BAR, latest_bar=b23, quote=None)
 
         # Trade must be closed and written to trade journal
         self.assertNotIn(sym, daemon.active_trades)
@@ -204,7 +208,7 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertEqual(len(trades), 1)
         t = trades[0]
         self.assertEqual(t["exit_reason"], "MANDATORY_INTRADAY_SQUARE_OFF")
-        self.assertEqual(t["exit_bar_idx"], 24)
+        self.assertEqual(t["exit_bar_idx"], MANDATORY_SQUARE_OFF_BAR)
         self.assertIn("friction", t)
         self.assertGreater(t["friction"]["total_friction"], 0.0)
 
@@ -386,13 +390,13 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertGreater(e6["risk_reward"]["net_reward_bps"], 120.0)
         self.assertGreater(e6["risk_reward"]["net_rr_ratio"], 1.0)
 
-        # 4. Bar 24 (after 15:00 IST): Intraday boundary excluded takes precedence
-        b24 = BarOHLCV(timestamp_utc_ms=24000, open=3090.0, high=3150.0, low=3090.0, close=3140.0, volume=5000.0)
-        daemon.evaluate_symbol_bar(sym, bar_idx=24, latest_bar=b24, quote=q1)
-        e24 = daemon.last_evaluations[sym]
-        self.assertEqual(e24["decision"], "NO_TRADE")
-        self.assertEqual(e24["decision_code"], "INTRADAY_BOUNDARY_EXCLUDED")
-        self.assertIn("bar 24 >= 24", e24["explanation"])
+        # 4. Bar 23 (15:00 IST close-window): Intraday boundary excluded takes precedence
+        b23 = BarOHLCV(timestamp_utc_ms=23000, open=3090.0, high=3150.0, low=3090.0, close=3140.0, volume=5000.0)
+        daemon.evaluate_symbol_bar(sym, bar_idx=23, latest_bar=b23, quote=q1)
+        e23 = daemon.last_evaluations[sym]
+        self.assertEqual(e23["decision"], "NO_TRADE")
+        self.assertEqual(e23["decision_code"], "INTRADAY_BOUNDARY_EXCLUDED")
+        self.assertIn("bar 23 >= 23", e23["explanation"])
 
     def test_13_bar_history_persistence_and_restore_across_restarts(self):
         """Verifies bar-history persists to rp608_nse_bar_history.json and restores without reset."""
@@ -642,6 +646,7 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         now_utc = (now_ist - ist_offset).replace(tzinfo=timezone.utc)
 
         daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, feed_adapter=adapter, single_bar_test=True)
+        daemon.symbols = (sym,)
 
         # Daemon has 2 persisted bars on disk
         b1 = BarOHLCV(timestamp_utc_ms=1000, open=450.0, high=452.0, low=449.0, close=451.0, volume=100.0, source="persisted_live")
@@ -1013,6 +1018,93 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertEqual(len(resolved), 1)
         self.assertEqual(resolved[0]["outcome_price"], 1020.0)
         self.assertEqual(resolved[0]["directional_label"], 1)
+
+
+class TestRP608KiteCredentialHotReloadAndBootstrapRetry(unittest.TestCase):
+    """Next-session / mid-session auth rotate + transient bootstrap retry invariants."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp(prefix="rp608_kite_reload_")
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_credential_hot_reload_picks_up_dashboard_reauth(self):
+        cred_path = Path(self.test_dir) / "kite_credentials.json"
+        cred_path.write_text(json.dumps({"api_key": "k1", "access_token": "old_token"}), encoding="utf-8")
+        adapter = KiteDataFeedAdapter(
+            symbols=("INFY.NS",),
+            credentials_file=cred_path,
+            instrument_cache_path=Path(self.test_dir) / "inst.json",
+            readiness_report_path=Path(self.test_dir) / "ready.json",
+        )
+        self.assertEqual(adapter.access_token, "old_token")
+
+        # Simulate dashboard Re-auth Kite writing a fresh daily token.
+        time.sleep(0.05)
+        cred_path.write_text(json.dumps({"api_key": "k1", "access_token": "new_token"}), encoding="utf-8")
+        changed = adapter.reload_credentials_if_stale()
+        self.assertTrue(changed)
+        self.assertEqual(adapter.access_token, "new_token")
+
+        # Idempotent when mtime unchanged.
+        self.assertFalse(adapter.reload_credentials_if_stale())
+
+    def test_transient_bootstrap_failure_retries_after_cooldown(self):
+        """
+        429/5xx must NOT consume the per-bar bootstrap slot; after cooldown the
+        symbol is queried again so next session / same session recovery can finish.
+        """
+        ist_offset = timedelta(hours=5, minutes=30)
+        now_ist = datetime(2026, 10, 27, 10, 45, 0)
+        now_utc = (now_ist - ist_offset).replace(tzinfo=timezone.utc)
+
+        adapter = MockKiteHistoricalAdapter(symbols=("AXISBANK.NS",))
+        calls = {"n": 0}
+
+        def flaky_fetch(sym, f_utc, t_utc):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise KiteRateLimitError("KITE_HTTP_429")
+            bars = []
+            for h, m in [(9, 15), (9, 30), (9, 45), (10, 0), (10, 15)]:
+                dt_ist = datetime(2026, 10, 27, h, m, 0)
+                ts = int(((dt_ist - ist_offset).replace(tzinfo=timezone.utc)).timestamp() * 1000)
+                bars.append(
+                    BarOHLCV(
+                        timestamp_utc_ms=ts,
+                        open=100.0,
+                        high=101.0,
+                        low=99.0,
+                        close=100.5,
+                        volume=10.0,
+                        source="kite_historical_same_day",
+                    )
+                )
+            return bars
+
+        adapter.fetch_historical_15m_bars = flaky_fetch
+        daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, feed_adapter=adapter, single_bar_test=True)
+        daemon.symbols = ("AXISBANK.NS",)
+
+        res1 = daemon.bootstrap_same_day_history(now_utc)
+        self.assertEqual(res1.get("transient_failures"), 1)
+        self.assertEqual(calls["n"], 1)
+        self.assertEqual(len(daemon.price_history.get("AXISBANK.NS", [])), 0)
+        # Bar slot must remain open (not marked complete).
+        self.assertLess(daemon._symbol_last_bootstrap_bar.get("AXISBANK.NS", 0), 5)
+
+        # Within cooldown → no re-query.
+        res_cool = daemon.bootstrap_same_day_history(now_utc)
+        self.assertEqual(res_cool["status"], "ALREADY_UP_TO_DATE")
+        self.assertEqual(calls["n"], 1)
+
+        # After cooldown → retry and recover.
+        daemon._symbol_bootstrap_fail_mono["AXISBANK.NS"] = time.monotonic() - (BOOTSTRAP_FAIL_COOLDOWN_SEC + 1.0)
+        res2 = daemon.bootstrap_same_day_history(now_utc)
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(res2.get("recovered_symbols"), 1)
+        self.assertEqual(len(daemon.price_history["AXISBANK.NS"]), 5)
 
 
 class MockKiteHistoricalAdapter:

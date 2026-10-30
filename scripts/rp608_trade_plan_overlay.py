@@ -41,12 +41,15 @@ CONFIG_FILE = OVERLAY_DIR / "overlay_config.json"
 # Fixed Governance Parameters (Protocol RP-608-TRADE-PLAN-OVERLAY-001)
 CONFIG: Dict[str, Any] = {
     "protocol_id": "RP-608-TRADE-PLAN-OVERLAY-001",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "instrument": "BTC/USDT",
     "signal_policy": "B",
-    # Signals open on completed 15m bars; TP/SL lifecycle is continuous L1 (not 15m).
+    # Signals open on tick bookTicker decisions (RP-608-SHADOW-TICK-001);
+    # ATR(14) SL/TP geometry still frozen from the 15m bar buffer at open;
+    # TP/SL lifecycle remains continuous L1 (not 15m-gated).
     "lifecycle_monitor": "continuous_l1_bookTicker",
-    "signal_cadence": "completed_15m_candle",
+    "signal_cadence": "tick_book_ticker",
+    "atr_geometry_source": "completed_15m_atr14",
     "stop_multiplier": 1.0,
     "target_multiplier": 1.5,
     "max_holding_seconds": 3600,  # 60 minutes
@@ -187,13 +190,17 @@ def calculate_trade_plan(
     entry_time_ms = int(exec_quote.get("exchange_event_time_ms", signal_close_ms))
     expiry_time_ms = entry_time_ms + (CONFIG["max_holding_seconds"] * 1000)
 
-    plan_id = f"PLAN-{decision_card.get('bar_idx', 0):05d}-{direction}-{entry_time_ms}"
+    event_idx = decision_card.get("decision_event_idx", decision_card.get("bar_idx", 0))
+    plan_id = f"PLAN-{int(event_idx):06d}-{direction}-{entry_time_ms}"
 
     return {
         "plan_id": plan_id,
         "protocol_id": CONFIG["protocol_id"],
         "config_hash": CONFIG_HASH,
+        "signal_cadence": CONFIG.get("signal_cadence", "tick_book_ticker"),
         "source_bar_idx": decision_card.get("bar_idx"),
+        "source_decision_event_idx": decision_card.get("decision_event_idx"),
+        "source_decision_clock": decision_card.get("decision_clock", CONFIG.get("signal_cadence")),
         "source_timestamp_utc": decision_card.get("timestamp_utc"),
         "direction": direction,
         "reference_price": ref_price,

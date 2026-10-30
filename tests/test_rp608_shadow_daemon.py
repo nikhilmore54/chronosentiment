@@ -429,15 +429,16 @@ class TestRP608ShadowDaemon(unittest.TestCase):
             prod_data = mgr.load_checkpoint()
             self.assertIsNotNone(prod_data)
 
-    def test_12_single_candle_test_exits_and_persists_test_result(self):
-        """Verifies that a single-candle evaluation persists its card, advances state, and stops."""
+    def test_12_tick_decision_emits_card_with_atr_from_15m(self):
+        """Tick path emits a decision card; ATR comes from warmed 15m buffer; bar close alone does not."""
+        from scripts.rp608_crypto_tick_policy import TickQuote
+
         iso_dir = self.temp_path / "single_candle_run"
         daemon = RP608ShadowDaemon(output_dir=iso_dir, single_candle_test=True)
         daemon.preflight_integrity_check()
         daemon.initialize_or_resume_state()
         daemon.running = True
 
-        # Mock a warm history of 120 candles so causal feature extraction succeeds
         base_ms = 1792900000000
         for i in range(120):
             c = Candle15m(
@@ -451,7 +452,7 @@ class TestRP608ShadowDaemon(unittest.TestCase):
             )
             daemon.recent_candles.append(c)
 
-        # Mock a fresh top of book quote
+        # Bar close only updates ATR context — no decision card.
         eval_candle = Candle15m(
             open_time_ms=base_ms + (120 * 900_000),
             close_time_ms=base_ms + ((121) * 900_000) - 1,
@@ -461,50 +462,57 @@ class TestRP608ShadowDaemon(unittest.TestCase):
             close=65245.0,
             volume=150.0,
         )
+        asyncio.run(daemon.evaluate_completed_candle(eval_candle))
+        self.assertFalse(daemon.decision_cards_path.exists())
+        self.assertEqual(daemon.state["last_durable_bar_idx"], 1)
 
-        async def mock_post_close_ticker():
-            await asyncio.sleep(0.04)
-            now_wall = int(time.time() * 1000)
+        # Warm tick buffer (>5s) then emit on action change.
+        t0 = base_ms + 121 * 900_000
+        for i in range(30):
+            mid = 65245.0 + i * 0.05
+            q = TickQuote(
+                update_id=i + 1,
+                event_time_ms=t0 + i * 250,
+                receive_time_ms=t0 + i * 250 + 10,
+                bid_price=mid - 0.05,
+                bid_qty=3.0,
+                ask_price=mid + 0.05,
+                ask_qty=1.0,
+            )
             daemon.latest_book_ticker = {
-                "exchange_event_time_ms": now_wall,
-                "local_wallclock_utc_ms": now_wall,
+                "exchange_event_time_ms": q.event_time_ms,
+                "local_wallclock_utc_ms": q.receive_time_ms,
                 "local_receipt_mono_ns": time.monotonic_ns(),
-                "sequence_update_id": 1001,
-                "best_bid_price": 65245.0,
-                "best_bid_qty": 1.5,
-                "best_ask_price": 65246.0,
-                "best_ask_qty": 2.0,
-                "spread_bps": 0.15,
+                "sequence_update_id": q.update_id,
+                "best_bid_price": q.bid_price,
+                "best_bid_qty": q.bid_qty,
+                "best_ask_price": q.ask_price,
+                "best_ask_qty": q.ask_qty,
+                "spread_bps": q.spread_bps,
+                "quote_source": "binance_ws_bookTicker",
             }
+            daemon.evaluate_on_tick(q, prev_update_id=i if i else None)
 
-        async def run_concurrent():
-            t = asyncio.create_task(mock_post_close_ticker())
-            await daemon.evaluate_completed_candle(eval_candle)
-            await t
-
-        asyncio.run(run_concurrent())
-
-
-        # Check durable writes in isolated directory
         self.assertTrue(daemon.decision_cards_path.exists())
         with open(daemon.decision_cards_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
-        self.assertEqual(len(lines), 1)
-        card = json.loads(lines[0])
-        self.assertEqual(card["bar_idx"], 1)
+        self.assertGreaterEqual(len(lines), 1)
+        card = json.loads(lines[-1])
+        self.assertEqual(card["decision_clock"], "tick_book_ticker")
+        self.assertEqual(card["protocol_id"], "RP-608-SHADOW-TICK-001")
+        self.assertIn("features_tick", card)
+        self.assertGreater(float(card["atr_14"]), 0.0)
         self.assertTrue(card["valid_execution_quote"])
-        self.assertEqual(card["reference_price"], 65245.0)
 
-        # Check checkpoint advanced
         reloaded = daemon.checkpoint_manager.load_checkpoint()
         self.assertEqual(reloaded["last_durable_bar_idx"], 1)
-        self.assertEqual(reloaded["last_accounted_bar_idx"], 1)
-
-        # Check telemetry logged
+        self.assertGreaterEqual(reloaded.get("last_decision_event_idx", 0), 1)
         self.assertTrue(daemon.telemetry_log_path.exists())
 
     def test_13_quote_freshness_boundary_and_staleness_rejection(self):
-        """Verifies that quotes exceeding 500ms freshness boundary or with inverted book are rejected."""
+        """Tick validate rejects stale quotes and inverted books (no decision card emit)."""
+        from scripts.rp608_crypto_tick_policy import TickQuote
+
         iso_dir = self.temp_path / "freshness_test_run"
         daemon = RP608ShadowDaemon(output_dir=iso_dir)
         daemon.preflight_integrity_check()
@@ -518,69 +526,63 @@ class TestRP608ShadowDaemon(unittest.TestCase):
                 open=65000.0, high=65010.0, low=64990.0, close=65000.0, volume=100.0,
             ))
 
-        # 1. Stale quote test: Exchange event timestamp is 800 ms behind arrival wallclock
-        now_wall = int(time.time() * 1000)
-        daemon.latest_book_ticker = {
-            "exchange_event_time_ms": now_wall - 800,  # 800 ms old (> 500 ms threshold)
-            "local_wallclock_utc_ms": now_wall,
-            "local_receipt_mono_ns": time.monotonic_ns() + 100_000_000,
-            "sequence_update_id": 2001,
-            "best_bid_price": 65000.0,
-            "best_bid_qty": 1.0,
-            "best_ask_price": 65001.0,
-            "best_ask_qty": 1.0,
-            "spread_bps": 0.15,
-        }
+        # Warm history so evaluate_on_tick would otherwise emit
+        t0 = base_ms + 120 * 900_000
+        for i in range(25):
+            mid = 65000.0 + i * 0.02
+            q = TickQuote(
+                update_id=i + 1,
+                event_time_ms=t0 + i * 250,
+                receive_time_ms=t0 + i * 250 + 10,
+                bid_price=mid - 0.05,
+                bid_qty=2.0,
+                ask_price=mid + 0.05,
+                ask_qty=1.0,
+            )
+            daemon.evaluate_on_tick(q, prev_update_id=i if i else None)
 
-        candle_stale = Candle15m(
-            open_time_ms=base_ms + (120 * 900_000),
-            close_time_ms=base_ms + (121 * 900_000) - 1,
-            open=65000.0, high=65010.0, low=64990.0, close=65000.0, volume=100.0,
+        stale_count_before = int(daemon.state["telemetry_gates"].get("stale_quote_count", 0))
+        cards_before = 0
+        if daemon.decision_cards_path.exists():
+            with open(daemon.decision_cards_path, "r", encoding="utf-8") as f:
+                cards_before = len(f.readlines())
+
+        # 1. Stale quote (>500 ms)
+        stale = TickQuote(
+            update_id=100,
+            event_time_ms=t0 + 10_000,
+            receive_time_ms=t0 + 10_000 + 800,
+            bid_price=65000.0,
+            bid_qty=1.0,
+            ask_price=65001.0,
+            ask_qty=1.0,
+        )
+        out = daemon.evaluate_on_tick(stale, prev_update_id=99)
+        self.assertIsNone(out)
+        self.assertEqual(
+            daemon.state["telemetry_gates"]["stale_quote_count"],
+            stale_count_before + 1,
         )
 
-        async def eval_stale():
-            await daemon.evaluate_completed_candle(candle_stale)
-
-        asyncio.run(eval_stale())
-
-        with open(daemon.decision_cards_path, "r", encoding="utf-8") as f:
-            cards = [json.loads(line) for line in f]
-        self.assertEqual(len(cards), 1)
-        self.assertFalse(cards[0]["valid_execution_quote"])
-        self.assertEqual(cards[0]["drop_reason"], "StaleQuoteExceeded")
-        self.assertGreater(cards[0]["quote_age_ms"], 500)
-        self.assertEqual(daemon.state["telemetry_gates"]["stale_quote_count"], 1)
-
-        # 2. Inverted book test: best_bid >= best_ask
-        now_wall = int(time.time() * 1000)
-        daemon.latest_book_ticker = {
-            "exchange_event_time_ms": now_wall,
-            "local_wallclock_utc_ms": now_wall,
-            "local_receipt_mono_ns": time.monotonic_ns() + 100_000_000,
-            "sequence_update_id": 2002,
-            "best_bid_price": 65005.0,  # Bid higher than ask!
-            "best_ask_price": 65001.0,
-            "best_bid_qty": 1.0,
-            "best_ask_qty": 1.0,
-            "spread_bps": -0.6,
-        }
-
-        candle_inv = Candle15m(
-            open_time_ms=base_ms + (121 * 900_000),
-            close_time_ms=base_ms + (122 * 900_000) - 1,
-            open=65000.0, high=65010.0, low=64990.0, close=65000.0, volume=100.0,
+        # 2. Inverted book
+        inv = TickQuote(
+            update_id=101,
+            event_time_ms=t0 + 11_000,
+            receive_time_ms=t0 + 11_000 + 10,
+            bid_price=65005.0,
+            bid_qty=1.0,
+            ask_price=65001.0,
+            ask_qty=1.0,
         )
+        out2 = daemon.evaluate_on_tick(inv, prev_update_id=100)
+        self.assertIsNone(out2)
 
-        async def eval_inv():
-            await daemon.evaluate_completed_candle(candle_inv)
-
-        asyncio.run(eval_inv())
-
-        with open(daemon.decision_cards_path, "r", encoding="utf-8") as f:
-            cards = [json.loads(line) for line in f]
-        self.assertEqual(len(cards), 2)
-        self.assertFalse(cards[1]["valid_execution_quote"])
-        self.assertEqual(cards[1]["drop_reason"], "InvertedBookError")
+        if daemon.decision_cards_path.exists():
+            with open(daemon.decision_cards_path, "r", encoding="utf-8") as f:
+                cards_after = len(f.readlines())
+        else:
+            cards_after = 0
+        self.assertEqual(cards_after, cards_before)
 
     def test_14_graceful_shutdown_lifecycle(self):
         """Verifies that shutdown prompt-wakes the loop, awaits tasks, and flushes final checkpoint."""

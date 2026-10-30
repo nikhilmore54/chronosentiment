@@ -2,26 +2,27 @@
 """
 scripts/run_rp608_shadow_daemon.py
 
-RP-608-SHADOW-001B: Dedicated Prospective Crypto Shadow Observation Daemon.
+RP-608-SHADOW-TICK-001: Prospective Crypto Shadow Observation Daemon (tick decision clock).
 Strictly Read-Only (0.0% Order Authority) with Atomic Durable Checkpointing.
 
 Features:
   1. Concurrent WebSocket Ingestion:
-     - wss://stream.binance.com:9443/ws/btcusdt@kline_15m (Completed 15m Candles, k.x == true)
-     - wss://stream.binance.com:9443/ws/btcusdt@bookTicker (Continuous Top-of-Book L1 Quotes)
+     - wss://stream.binance.com:9443/ws/btcusdt@bookTicker → canonical Policy B/C decisions
+     - wss://stream.binance.com:9443/ws/btcusdt@kline_15m → completed-bar buffer for ATR(14) geometry
   2. Protocol Invariant & Quality Gate Enforcement:
      - Clock offset calibration (|Delta_clock| <= 250 ms, 5-sample NTP minimum RTT)
-     - Quote freshness boundary (<= 500 ms) and monotonic 5,000 ms execution timeout
+     - Quote freshness boundary (<= 500 ms); min refractory 1.0s between decision emits
      - Strictly zero sequence update ID inversions (TG-5)
-     - Comprehensive 4-component friction ledger (TG-6)
-  3. Policy Champion Multi-Evaluation:
-     - Parallel causal evaluation of Policy B Champion and Policy C Champion
-     - Strict feature parity with Rust research substrate (compute_causal_features)
+  3. Policy Champion Multi-Evaluation (tick-native):
+     - Frozen tick champions (TickBase / TickWithExhaustion); SHA-locked
+     - ATR(14) SL/TP geometry still from completed 15m OHLCV buffer
   4. Durable, Crash-Safe Checkpointing & Resumption:
      - Atomic rename (os.replace) via temporary file with os.fsync
      - Explicit downtime recording on reboot / process restart
      - OpportunityAccountingRegistry tracking all unexecutable drops (never diluting trade denominator)
      - Fail-closed behavior on checksum mismatch, hash tamper, or consecutive outage breach (>= 2 bars)
+
+Gate C (event_driven/) remains an isolated parallel comparator — not canonical.
 """
 
 from __future__ import annotations
@@ -51,6 +52,18 @@ sys.path.insert(0, str(WORKSPACE_DIR))
 
 from scripts.market_regime_classifier import classify_market_regime
 from scripts.rp608_arm_a_baseline import attach_regime_telemetry
+from scripts.rp608_crypto_tick_policy import (
+    DECISION_CLOCK as TICK_DECISION_CLOCK,
+    MIN_HISTORY_WARMUP_SEC,
+    PROTOCOL_ID as TICK_PROTOCOL_ID,
+    TickEmissionGate,
+    TickFeatureBuffer,
+    TickQuote,
+    build_tick_snapshot,
+    evaluate_tick_policies,
+    snapshot_to_dict,
+    validate_tick_quote,
+)
 from scripts.rp608_prospective_v1 import Market as ProspectiveMarket
 from scripts.rp608_prospective_v1_observer import (
     observe_bar as prospective_v1_observe_bar,
@@ -69,13 +82,21 @@ ARM_A_FREEZE_PROTOCOL = "RP-608-REGIME-BREAKOUT-001"
 LIVE_ORDER_AUTHORITY_PCT = 0.0  # Strictly 0.0% — no order placement surface
 REGIME_TELEMETRY_ENABLED = True  # Observational only; must not alter Arm A actions
 HOLDOUT_SESSIONS_SEALED = "41-68"
+SHADOW_PROTOCOL_ID = TICK_PROTOCOL_ID  # RP-608-SHADOW-TICK-001
+CHECKPOINT_WINDOW_ID = "RP-608-SHADOW-001B"  # durable window id (checkpoint schema lock)
 
-# Locked SHA-256 Hashes
+# Locked SHA-256 Hashes — tick champions (RP-608-SHADOW-TICK-001)
+LOCKED_POLICY_B_TICK_SHA256 = "acf17394caf402e204bd297510c26b67dcc8480ac7ad13130eb25343ccca314a"
+LOCKED_POLICY_C_TICK_SHA256 = "be909f57201c3dd67591ec01ace6bbcec607f08b70ba35ca1804a4f7e34c08ff"
+# Legacy 15m champions retained for research reference / migration audits only
 LOCKED_POLICY_B_SHA256 = "f7be46ea66ff6a248ad0477dfe5b082ce26fe01f9dded928b164bdaa349c6aa3"
 LOCKED_POLICY_C_SHA256 = "cd615f37b812a34fe302a0b05bc1546a0243f3d71d8947092d28d2847159553b"
 LOCKED_DFP_PROTOCOL_SHA256 = "e8bca8ad9194ff058cc4eb4315f20c290d6465fce28fcfe0b675b6b133d494c3"
 LOCKED_AMENDMENT_SHA256 = "c9467df6f9fa1b715c50b576f1af4e79716c86d7c8765db75f5fbe552a9f5202"
 LOCKED_MANIFEST_SHA256 = "13030362d965114d6ddb9b41f8372cbb01d61c6214ec40048b3f2b3fd8d0d63d"
+
+POLICY_B_TICK_PATH = WORKSPACE_DIR / "datasets" / "crypto_tick" / "frozen_policy_b_tick_champion.json"
+POLICY_C_TICK_PATH = WORKSPACE_DIR / "datasets" / "crypto_tick" / "frozen_policy_c_tick_champion.json"
 
 FIFTEEN_MINUTES_MS = 15 * 60 * 1000  # 900,000 ms
 REGISTERED_WINDOW_START_UTC_MS = 1792972800000  # 2026-10-26T00:00:00.000Z
@@ -441,7 +462,7 @@ class DurableCheckpointManager:
             )
 
         # Schema Validation
-        if data.get("schema_version") != "1.0.0" or data.get("window_id") != "RP-608-SHADOW-001B":
+        if data.get("schema_version") != "1.0.0" or data.get("window_id") != CHECKPOINT_WINDOW_ID:
             raise ValueError(
                 f"FATAL: Incompatible checkpoint schema or window_id: {data.get('window_id')}. "
                 f"Fail-closed boundary activated."
@@ -580,9 +601,12 @@ class RP608ShadowDaemon:
         self.latest_book_ticker: Optional[Dict[str, Any]] = None
         self.last_ticker_sequence_u: int = 0
         self.sequence_inversions: int = 0
-        # Trade-plan overlay: continuous live-book TP/SL (0.0% authority).
-        # Signal cadence stays 15m; lifecycle must NOT wait for the next bar close
-        # (hit-then-reverse inside a 15m window would otherwise miss the TP).
+        # Tick decision clock (RP-608-SHADOW-TICK-001)
+        self.tick_feature_buffer = TickFeatureBuffer()
+        self.tick_emission_gate = TickEmissionGate()
+        self._last_tick_features: Optional[Dict[str, Any]] = None
+        # Trade-plan overlay: open on tick Policy B; TP/SL via continuous L1 (0.0% authority).
+        # ATR geometry still frozen from completed 15m buffer at plan open.
         self.trade_plan_overlay = TradePlanOverlayManager()
         self._last_overlay_reload_ms: int = 0
         self._overlay_reload_interval_ms: int = 5000
@@ -598,10 +622,10 @@ class RP608ShadowDaemon:
             self.shutdown_event.set()
 
     def preflight_integrity_check(self):
-        """Verifies policy artifacts, protocols, and order authority before any socket connects."""
+        """Verifies tick policy artifacts, protocols, and order authority before any socket connects."""
         artifacts = [
-            ("Policy B Champion", WORKSPACE_DIR / "datasets" / "crypto_15m" / "frozen_policy_b_champion.json", LOCKED_POLICY_B_SHA256),
-            ("Policy C Champion", WORKSPACE_DIR / "datasets" / "crypto_15m" / "frozen_policy_c_champion.json", LOCKED_POLICY_C_SHA256),
+            ("Policy B Tick Champion", POLICY_B_TICK_PATH, LOCKED_POLICY_B_TICK_SHA256),
+            ("Policy C Tick Champion", POLICY_C_TICK_PATH, LOCKED_POLICY_C_TICK_SHA256),
             ("DFP Protocol", WORKSPACE_DIR / "docs" / "research" / "rp608_dfp_001_directional_feasibility_pilot_protocol.md", LOCKED_DFP_PROTOCOL_SHA256),
             ("DFP Amendment 01", WORKSPACE_DIR / "docs" / "research" / "rp608_dfp_001_amendment_01.md", LOCKED_AMENDMENT_SHA256),
             ("Activation Manifest", WORKSPACE_DIR / "docs" / "research" / "rp608_formal_activation_manifest.md", LOCKED_MANIFEST_SHA256),
@@ -623,10 +647,20 @@ class RP608ShadowDaemon:
             if os.environ.get(key):
                 raise PermissionError(f"FATAL: Forbidden API secret {key} found in environment! Zero order authority violated.")
 
-        with open(WORKSPACE_DIR / "datasets" / "crypto_15m" / "frozen_policy_b_champion.json") as f:
+        with open(POLICY_B_TICK_PATH, encoding="utf-8") as f:
             self.policy_b_art = json.load(f)
-        with open(WORKSPACE_DIR / "datasets" / "crypto_15m" / "frozen_policy_c_champion.json") as f:
+        with open(POLICY_C_TICK_PATH, encoding="utf-8") as f:
             self.policy_c_art = json.load(f)
+        if self.policy_b_art.get("protocol_id") != SHADOW_PROTOCOL_ID:
+            raise ValueError(
+                f"FATAL: Policy B tick champion protocol_id mismatch: "
+                f"{self.policy_b_art.get('protocol_id')} != {SHADOW_PROTOCOL_ID}"
+            )
+        if self.policy_c_art.get("protocol_id") != SHADOW_PROTOCOL_ID:
+            raise ValueError(
+                f"FATAL: Policy C tick champion protocol_id mismatch: "
+                f"{self.policy_c_art.get('protocol_id')} != {SHADOW_PROTOCOL_ID}"
+            )
 
     def initialize_or_resume_state(self):
         """Restores state from checkpoint or initializes a clean technical pilot state."""
@@ -725,13 +759,16 @@ class RP608ShadowDaemon:
             # Clean Technical Pilot Initialization
             self.state = {
                 "schema_version": "1.0.0",
-                "window_id": "RP-608-SHADOW-001B",
+                "window_id": CHECKPOINT_WINDOW_ID,
+                "protocol_id": SHADOW_PROTOCOL_ID,
+                "decision_clock": TICK_DECISION_CLOCK,
                 "status": "ACTIVE_PILOT",
                 "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 "last_heartbeat_utc": datetime.now(timezone.utc).isoformat(),
                 "last_heartbeat_utc_ms": now_ms,
                 "last_durable_bar_idx": 0,
                 "last_accounted_bar_idx": 0,
+                "last_decision_event_idx": 0,
                 "last_completed_candle_close_ms": 0,
                 "policy_b_state": {
                     "open_trade": None,
@@ -784,8 +821,50 @@ class RP608ShadowDaemon:
         with open(self.telemetry_log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(telemetry_entry) + "\n")
 
+    def bootstrap_15m_buffer(self, limit: int = 120) -> int:
+        """Warm completed 15m buffer from Binance REST so ATR(14) is available immediately."""
+        url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit={int(limit)}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "rp608-shadow-tick/1.0"})
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                rows = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            print(f"[RP-608 Bootstrap] 15m REST warm failed: {exc}")
+            return 0
+        candles: List[Candle15m] = []
+        now_ms = int(time.time() * 1000)
+        for row in rows:
+            open_ms = int(row[0])
+            close_ms = int(row[6])
+            # Skip still-forming bar (close in the future / incomplete).
+            if close_ms >= now_ms:
+                continue
+            candles.append(
+                Candle15m(
+                    open_time_ms=open_ms,
+                    close_time_ms=close_ms,
+                    open=float(row[1]),
+                    high=float(row[2]),
+                    low=float(row[3]),
+                    close=float(row[4]),
+                    volume=float(row[5]),
+                )
+            )
+        self.recent_candles = candles[-120:]
+        print(f"[RP-608 Bootstrap] Warmed {len(self.recent_candles)} completed 15m bars for ATR geometry.")
+        return len(self.recent_candles)
+
+    def _atr14_from_bar_buffer(self) -> Optional[float]:
+        if not self.recent_candles:
+            return None
+        feat = compute_causal_features(self.recent_candles, len(self.recent_candles) - 1)
+        return None if feat is None else float(feat.atr_14)
+
+    def _completed_closes(self) -> List[float]:
+        return [c.close for c in self.recent_candles]
+
     async def ingest_book_ticker(self):
-        """Maintains live top-of-book L1 quotes and validates TG-5 sequence update ID monotonicity."""
+        """bookTicker path: L1 maintenance, overlay exits, and tick Policy B/C decisions."""
         ws_url = "wss://stream.binance.com:9443/ws/btcusdt@bookTicker"
         while self.running:
             try:
@@ -800,15 +879,17 @@ class RP608ShadowDaemon:
                         update_id = int(data["u"])
                         if update_id < self.last_ticker_sequence_u:
                             self.sequence_inversions += 1
+                        prev_u = self.last_ticker_sequence_u
                         self.last_ticker_sequence_u = update_id
 
                         b_price = float(data["b"])
                         a_price = float(data["a"])
                         mid = (b_price + a_price) / 2.0
                         spread_bps = ((a_price - b_price) / mid) * 10_000.0 if mid > 0 else 0.0
+                        event_ms = int(data.get("E", recv_wall_ms))
 
                         self.latest_book_ticker = {
-                            "exchange_event_time_ms": int(data.get("E", recv_wall_ms)),
+                            "exchange_event_time_ms": event_ms,
                             "local_wallclock_utc_ms": recv_wall_ms,
                             "local_receipt_mono_ns": recv_mono_ns,
                             "sequence_update_id": update_id,
@@ -819,8 +900,22 @@ class RP608ShadowDaemon:
                             "spread_bps": spread_bps,
                             "quote_source": "binance_ws_bookTicker",
                         }
+
+                        quote = TickQuote(
+                            update_id=update_id,
+                            event_time_ms=event_ms,
+                            receive_time_ms=recv_wall_ms,
+                            bid_price=b_price,
+                            bid_qty=float(data["B"]),
+                            ask_price=a_price,
+                            ask_qty=float(data["A"]),
+                        )
+                        try:
+                            self.evaluate_on_tick(quote, prev_update_id=prev_u if prev_u else None)
+                        except Exception as tick_exc:
+                            print(f"[tick_policy] evaluate_on_tick skipped: {tick_exc}")
+
                         # Continuous overlay TP/SL on every bookTicker while OPEN.
-                        # Periodic disk reload keeps dashboard/daemon writers coherent.
                         try:
                             if recv_wall_ms - self._last_overlay_reload_ms >= self._overlay_reload_interval_ms:
                                 self._last_overlay_reload_ms = recv_wall_ms
@@ -855,98 +950,77 @@ class RP608ShadowDaemon:
                     self.state["telemetry_gates"]["reconnection_count_24h"] += 1
                     await asyncio.sleep(2.0)
 
-
-    async def evaluate_completed_candle(self, candle: Candle15m):
-        """Processes a completed 15-minute candle at T_close and evaluates Policy B and Policy C."""
-        t_decision_eval = int(time.time() * 1000)
-        t_decision_mono = time.monotonic_ns()
-        self.recent_candles.append(candle)
-
-        # Keep a rolling buffer of 120 completed bars for rolling VWAP 96 and Donchian 20
-        if len(self.recent_candles) > 120:
-            self.recent_candles = self.recent_candles[-120:]
-
-        bar_idx = self.state.get("last_durable_bar_idx", 0) + 1
-        self.state["last_durable_bar_idx"] = bar_idx
-        self.state["last_accounted_bar_idx"] = max(self.state.get("last_accounted_bar_idx", 0) + 1, bar_idx)
-        self.state["last_completed_candle_close_ms"] = candle.close_time_ms
-        self.state["telemetry_gates"]["total_completed_bars"] += 1
-
-        # Search for First Post-Close L1 Execution Quote within 5,000 ms (Monotonic Timeout)
-        candidate_quote = None
-        quote_wait_start = time.monotonic()
-        while time.monotonic() - quote_wait_start < 5.0:
-            if self.latest_book_ticker:
-                q = self.latest_book_ticker
-                # Ingestion condition: quote arrival after decision time (monotonic order)
-                if q["local_receipt_mono_ns"] >= t_decision_mono:
-                    candidate_quote = q
-                    break
-            await asyncio.sleep(0.02)
-
-        # Quote Freshness & Monotonic Timeout Gate (Manifest Section 3.3)
-        valid_execution_quote = False
-        drop_reason = None
-        quote_age_ms = None
-        if candidate_quote is None:
-            drop_reason = "ExecutionQuoteTimeout"
-        else:
-            clock_offset = self.clock_filter.last_offset_ms or 0
-            rtt_u = (self.clock_filter.last_rtt_ms or 0) // 2
-            delta_t = (
-                candidate_quote["local_wallclock_utc_ms"]
-                - candidate_quote["exchange_event_time_ms"]
-                - clock_offset
-            )
-            quote_age_ms = max(delta_t + rtt_u, 0)
-            if quote_age_ms > 500:
-                drop_reason = "StaleQuoteExceeded"
-                self.state["telemetry_gates"]["stale_quote_count"] += 1
-            elif candidate_quote["best_bid_price"] >= candidate_quote["best_ask_price"]:
-                drop_reason = "InvertedBookError"
-            else:
-                valid_execution_quote = True
-
-        # Compute Causal Features & Evaluate Policies
-        feat = compute_causal_features(self.recent_candles, len(self.recent_candles) - 1)
-        if feat is None:
-            return
-
-        factors_b = features_to_evidence(feat, "BaseOnly")
-        factors_c = features_to_evidence(feat, "WithExhaustion")
-
-        action_b = evaluate_policy_rules(self.policy_b_art["champion_genome"], factors_b)
-        action_c = evaluate_policy_rules(self.policy_c_art["champion_genome"], factors_c)
-
-        # Account for Opportunities in Registry
-        if action_b in ("LONG", "SHORT") or action_c in ("LONG", "SHORT"):
-            if not valid_execution_quote:
-                drop = UnexecutableDrop(
-                    opportunity_id=self.opportunity_registry.total_signal_opportunities + 1,
-                    bar_idx=bar_idx,
-                    decision_time_ms=candle.close_time_ms,
-                    intended_action=f"B:{action_b}|C:{action_c}",
-                    drop_reason=drop_reason or "UnknownDrop",
-                    disposition="UNEXECUTABLE_MICROSTRUCTURE_DROP",
-                    details={"quote_age_ms": quote_age_ms if candidate_quote else None},
+    def evaluate_on_tick(
+        self,
+        quote: TickQuote,
+        *,
+        prev_update_id: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Canonical tick decision path: features → B/C → refractory emit → overlay open."""
+        ok, reason = validate_tick_quote(quote, prev_update_id=prev_update_id)
+        if not ok:
+            if reason == "STALE_QUOTE":
+                self.state.setdefault("telemetry_gates", {})
+                self.state["telemetry_gates"]["stale_quote_count"] = (
+                    int(self.state["telemetry_gates"].get("stale_quote_count", 0)) + 1
                 )
-                self.opportunity_registry.record_drop(drop)
-                with open(self.opportunity_log_path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(asdict(drop)) + "\n")
-            else:
-                self.opportunity_registry.record_executed()
+            return None
 
-        # Update State & Save Atomic Checkpoint
-        self.update_heartbeat()
+        self.tick_feature_buffer.append(quote)
+        if self.tick_feature_buffer.history_sec() < MIN_HISTORY_WARMUP_SEC:
+            return None
 
-        # Append Immutable Decision Card to isolated directory
-        decision_card = {
+        snap = build_tick_snapshot(quote, self.tick_feature_buffer, self._completed_closes())
+        self._last_tick_features = snapshot_to_dict(snap)
+        action_b, action_c, _fb, _fc = evaluate_tick_policies(
+            snap,
+            self.policy_b_art["champion_genome"],
+            self.policy_c_art["champion_genome"],
+        )
+
+        emit_ok, emit_reason = self.tick_emission_gate.should_emit(
+            quote.receive_time_ms, action_b, action_c
+        )
+        if not emit_ok:
+            return None
+
+        atr_14 = self._atr14_from_bar_buffer()
+        if atr_14 is None or atr_14 <= 0:
+            # Overlay needs ATR geometry; suppress opens until 15m buffer is warm.
+            if action_b in ("LONG", "SHORT") or action_c in ("LONG", "SHORT"):
+                return None
+
+        bar_idx = int(self.state.get("last_durable_bar_idx", 0))
+        decision_event_idx = int(self.state.get("last_decision_event_idx", 0)) + 1
+        self.state["last_decision_event_idx"] = decision_event_idx
+        self.state["protocol_id"] = SHADOW_PROTOCOL_ID
+        self.state["decision_clock"] = TICK_DECISION_CLOCK
+
+        valid_execution_quote = True
+        drop_reason = None
+        quote_age_ms = float(snap.quote_age_ms)
+        candidate_quote = self.latest_book_ticker
+
+        if action_b in ("LONG", "SHORT") or action_c in ("LONG", "SHORT"):
+            self.opportunity_registry.record_executed()
+
+        self.tick_emission_gate.mark_emitted(quote.receive_time_ms, action_b, action_c)
+
+        decision_card: Dict[str, Any] = {
+            "protocol_id": SHADOW_PROTOCOL_ID,
+            "decision_clock": TICK_DECISION_CLOCK,
+            "decision_event_idx": decision_event_idx,
             "bar_idx": bar_idx,
-            "timestamp_utc": datetime.fromtimestamp(candle.close_time_ms / 1000.0, tz=timezone.utc).isoformat(),
-            "close_time_ms": candle.close_time_ms,
-            "reference_price": candle.close,
-            "ret_15m_bps": feat.ret_15m_bps,
-            "atr_14": feat.atr_14,
+            "timestamp_utc": datetime.fromtimestamp(
+                quote.event_time_ms / 1000.0, tz=timezone.utc
+            ).isoformat(),
+            "close_time_ms": quote.event_time_ms,
+            "quote_event_id": quote.update_id,
+            "quote_receipt_utc_ms": quote.receive_time_ms,
+            "reference_price": snap.mid_price,
+            "ret_15m_bps": snap.macro_trend_16_bps if snap.macro_trend_16_bps is not None else 0.0,
+            "atr_14": atr_14 if atr_14 is not None else 0.0,
+            "features_tick": self._last_tick_features,
             "policy_b_action": action_b,
             "policy_c_action": action_c,
             "valid_execution_quote": valid_execution_quote,
@@ -955,18 +1029,19 @@ class RP608ShadowDaemon:
             "execution_quote": candidate_quote,
             "arm_a_frozen": ARM_A_FROZEN,
             "live_order_authority": LIVE_ORDER_AUTHORITY_PCT,
+            "emit_reason": emit_reason,
         }
-        # Observational regime telemetry on completed candles only (Phase 1).
-        # Must not alter policy_b_action / policy_c_action / execution disposition.
-        if REGIME_TELEMETRY_ENABLED:
+        if REGIME_TELEMETRY_ENABLED and self.recent_candles:
             regime = classify_market_regime(self.recent_candles)
             decision_card = attach_regime_telemetry(decision_card, regime, enabled=True)
         else:
             decision_card = attach_regime_telemetry(decision_card, None, enabled=False)
+
         with open(self.decision_cards_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(decision_card) + "\n")
 
-        # Trade-plan overlay: open/suppress from Policy B on completed bar (0.0% authority).
+        self.update_heartbeat()
+
         plan_result = None
         try:
             plan_result = self.trade_plan_overlay.process_decision_card(
@@ -976,91 +1051,113 @@ class RP608ShadowDaemon:
         except Exception as plan_exc:
             print(f"[trade_plan_overlay] process_decision_card skipped: {plan_exc}")
 
-        # Prospective V1 research journals (0.0% authority; only if CRYPTO STARTED):
-        # 1) full recommendation tape (every bar, incl. NO_TRADE)
-        # 2) recommendation ↔ simulated-trade join ledger
-        # 3) Arm A/B/C observer (Policy B as Arm A proxy)
         try:
             ask_v = bid_v = age_v = None
-            if valid_execution_quote and candidate_quote:
+            if candidate_quote:
                 ask_v = float(candidate_quote["best_ask_price"])
                 bid_v = float(candidate_quote["best_bid_price"])
-                age_v = float(quote_age_ms) if quote_age_ms is not None else None
+                age_v = float(quote_age_ms)
             session_date_utc = datetime.fromtimestamp(
-                candle.close_time_ms / 1000.0, tz=timezone.utc
+                quote.event_time_ms / 1000.0, tz=timezone.utc
             ).strftime("%Y-%m-%d")
-            regime_label = (decision_card.get("regime_state") if isinstance(decision_card, dict) else None)
+            regime_label = (
+                decision_card.get("regime_state") if isinstance(decision_card, dict) else None
+            )
             prospective_v1_record_recommendation(
                 market=ProspectiveMarket.CRYPTO,
                 symbol="BTCUSDT",
                 decision=str(action_b),
                 secondary_decision=str(action_c),
                 session_date=session_date_utc,
-                bar_idx=bar_idx,
-                close_time_ms=int(candle.close_time_ms),
-                reference_price=float(candle.close),
+                bar_idx=decision_event_idx,
+                close_time_ms=int(quote.event_time_ms),
+                reference_price=float(snap.mid_price),
                 is_actionable=action_b in ("LONG", "SHORT"),
                 regime=regime_label,
                 extra={
                     "policy_b_action": action_b,
                     "policy_c_action": action_c,
-                    "valid_execution_quote": valid_execution_quote,
-                    "drop_reason": drop_reason,
-                    "quote_age_ms": quote_age_ms,
-                    "ret_15m_bps": feat.ret_15m_bps,
-                    "atr_14": feat.atr_14,
+                    "decision_clock": TICK_DECISION_CLOCK,
+                    "quote_event_id": quote.update_id,
+                    "atr_14": atr_14,
+                    "features_tick": self._last_tick_features,
                 },
             )
             prospective_v1_append_rec_trade(
                 market=ProspectiveMarket.CRYPTO,
                 symbol="BTCUSDT",
                 session_date=session_date_utc,
-                bar_idx=bar_idx,
+                bar_idx=decision_event_idx,
                 decision=str(action_b),
                 secondary_decision=str(action_c),
-                close_time_ms=int(candle.close_time_ms),
-                reference_price=float(candle.close),
+                close_time_ms=int(quote.event_time_ms),
+                reference_price=float(snap.mid_price),
                 is_actionable=action_b in ("LONG", "SHORT"),
                 regime=regime_label,
                 plan=plan_result if isinstance(plan_result, dict) else None,
                 extra={
                     "policy_b_action": action_b,
                     "policy_c_action": action_c,
-                    "valid_execution_quote": valid_execution_quote,
-                    "drop_reason": drop_reason,
-                    "quote_age_ms": quote_age_ms,
-                    "ret_15m_bps": feat.ret_15m_bps,
-                    "atr_14": feat.atr_14,
+                    "decision_clock": TICK_DECISION_CLOCK,
+                    "atr_14": atr_14,
                 },
             )
-            arm_a = action_b in ("LONG", "SHORT")
-            prospective_v1_observe_bar(
-                market=ProspectiveMarket.CRYPTO,
-                completed_bars_including_signal=self.recent_candles,
-                ask=ask_v,
-                bid=bid_v,
-                quote_age_ms=age_v,
-                session_date=session_date_utc,
-                symbol="BTCUSDT",
-                bar_idx=bar_idx,
-                close_time_ms=int(candle.close_time_ms),
-                arm_a_signal=arm_a,
-                arm_a_side=action_b if arm_a else None,
-                reference_price=float(candle.close),
-                extra={
-                    "policy_b_action": action_b,
-                    "policy_c_action": action_c,
-                    "drop_reason": drop_reason,
-                },
-            )
+            if self.recent_candles:
+                arm_a = action_b in ("LONG", "SHORT")
+                prospective_v1_observe_bar(
+                    market=ProspectiveMarket.CRYPTO,
+                    completed_bars_including_signal=self.recent_candles,
+                    ask=ask_v,
+                    bid=bid_v,
+                    quote_age_ms=age_v,
+                    session_date=session_date_utc,
+                    symbol="BTCUSDT",
+                    bar_idx=decision_event_idx,
+                    close_time_ms=int(quote.event_time_ms),
+                    arm_a_signal=arm_a,
+                    arm_a_side=action_b if arm_a else None,
+                    reference_price=float(snap.mid_price),
+                    extra={
+                        "policy_b_action": action_b,
+                        "policy_c_action": action_c,
+                        "decision_clock": TICK_DECISION_CLOCK,
+                    },
+                )
         except Exception as obs_exc:
             print(f"[prospective_v1] CRYPTO observe skipped: {obs_exc}")
 
         print(
-            f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Bar {bar_idx:04d} Closed: "
-            f"P_ref={candle.close:.2f} | B:{action_b} C:{action_c} | "
-            f"Quote Valid: {valid_execution_quote} ({drop_reason or 'PASS'})"
+            f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Tick evt {decision_event_idx:06d}: "
+            f"mid={snap.mid_price:.2f} | B:{action_b} C:{action_c} | "
+            f"imb={snap.imbalance:.3f} v5={snap.velocity_5s_bps} atr14={atr_14}"
         )
+        if self.single_candle_test and action_b in ("LONG", "SHORT"):
+            self.request_shutdown()
+        return decision_card
+
+    async def evaluate_completed_candle(self, candle: Candle15m):
+        """Ingest completed 15m bar for ATR / macro context only (no Policy B/C decision)."""
+        self.recent_candles.append(candle)
+        if len(self.recent_candles) > 120:
+            self.recent_candles = self.recent_candles[-120:]
+
+        bar_idx = self.state.get("last_durable_bar_idx", 0) + 1
+        self.state["last_durable_bar_idx"] = bar_idx
+        self.state["last_accounted_bar_idx"] = max(self.state.get("last_accounted_bar_idx", 0) + 1, bar_idx)
+        self.state["last_completed_candle_close_ms"] = candle.close_time_ms
+        self.state["telemetry_gates"]["total_completed_bars"] += 1
+        self.state["protocol_id"] = SHADOW_PROTOCOL_ID
+        self.state["decision_clock"] = TICK_DECISION_CLOCK
+        self.update_heartbeat()
+
+        atr = self._atr14_from_bar_buffer()
+        print(
+            f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Bar {bar_idx:04d} Closed (ATR context): "
+            f"P_ref={candle.close:.2f} | atr_14={atr} | decision_clock={TICK_DECISION_CLOCK}"
+        )
+        if self.single_candle_test:
+            # Tick path owns shutdown on actionable; bar close alone no longer exits.
+            pass
 
     async def ingest_klines(self):
         """Subscribes to live Binance btcusdt@kline_15m stream."""
@@ -1109,9 +1206,6 @@ class RP608ShadowDaemon:
                         if is_candle_closed:
                             candle = Candle15m.from_binance_ws(k)
                             await self.evaluate_completed_candle(candle)
-                            if self.single_candle_test:
-                                self.request_shutdown()
-                                break
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -1142,6 +1236,11 @@ class RP608ShadowDaemon:
 
         self.preflight_integrity_check()
         self.initialize_or_resume_state()
+        self.bootstrap_15m_buffer(limit=120)
+        print(
+            f"[RP-608] Decision clock={TICK_DECISION_CLOCK} protocol={SHADOW_PROTOCOL_ID} "
+            f"authority={LIVE_ORDER_AUTHORITY_PCT}% (Gate C isolated)."
+        )
 
         # Calibrate Exchange Clock Offset
         offset_ms, rtt_ms = self.clock_filter.sample_offset(samples=5)
@@ -1200,11 +1299,11 @@ class RP608ShadowDaemon:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RP-608-SHADOW-001B Prospective Observation Daemon")
+    parser = argparse.ArgumentParser(description="RP-608-SHADOW-TICK-001 Prospective Observation Daemon")
     parser.add_argument("--output-dir", type=str, default=None, help="Explicit output directory for isolated checkpoint and ledgers.")
     parser.add_argument("--dry-run", action="store_true", help="Run preflight and exit without opening sockets.")
     parser.add_argument("--test-resumption", action="store_true", help="Test recovery and downtime accounting from existing checkpoint.")
-    parser.add_argument("--single-candle-test", action="store_true", help="Run until first 15m candle closes and exit.")
+    parser.add_argument("--single-candle-test", action="store_true", help="Run until first actionable tick Policy B emit and exit.")
     args = parser.parse_args()
 
     daemon = RP608ShadowDaemon(
@@ -1216,8 +1315,10 @@ def main():
         print("[Dry Run] Verifying artifact hashes and preflight checks...")
         daemon.preflight_integrity_check()
         daemon.initialize_or_resume_state()
+        daemon.bootstrap_15m_buffer(limit=30)
         offset, rtt = daemon.clock_filter.sample_offset(samples=3)
         print(f"[Dry Run] Clock Offset: {offset} ms (RTT: {rtt} ms). PASS.")
+        print(f"[Dry Run] protocol={SHADOW_PROTOCOL_ID} decision_clock={TICK_DECISION_CLOCK}.")
         print("[Dry Run] Preflight verification succeeded cleanly.")
         return
 

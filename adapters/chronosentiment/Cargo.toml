@@ -243,6 +243,21 @@ name = "rp608_telemetry_validation_gate"
 path = "research/bin/rp608_telemetry_validation_gate.rs"
 required-features = ["research"]
 
+[[bin]]
+name = "rp609_observe"
+path = "research/bin/rp609_observe.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp610_crypto_observe"
+path = "research/bin/rp610_crypto_observe.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_multi_horizon_status"
+path = "research/bin/rp608_multi_horizon_status.rs"
+required-features = ["research"]
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"
@@ -291,5 +306,20 @@ required-features = ["research"]
 [[test]]
 name = "rp608_shadow_readiness_tests"
 path = "research/tests/rp608_shadow_readiness_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp609_multi_horizon_tests"
+path = "research/tests/rp609_multi_horizon_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp610_crypto_multi_horizon_tests"
+path = "research/tests/rp610_crypto_multi_horizon_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_regime_breakout_tests"
+path = "research/tests/rp608_regime_breakout_tests.rs"
 required-features = ["research"]
 

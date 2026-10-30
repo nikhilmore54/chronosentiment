@@ -24,6 +24,7 @@ core/chronology/soak/
 core/elite/
 state_archive/
 *.log
+*.zip
 services/ui/dist/
 test_config.json
 core/core/

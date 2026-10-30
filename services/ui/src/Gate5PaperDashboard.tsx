@@ -1291,8 +1291,6 @@ export const Gate5PaperDashboard: React.FC = () => {
     crypto?: { available?: boolean; catalog?: any[] };
   };
   const [multiHorizon, setMultiHorizon] = useState<MhState | null>(null);
-  const [mhClassFilter, setMhClassFilter] = useState<'ALL' | HorizonClass>('ALL');
-  const [mhMarketFilter, setMhMarketFilter] = useState<'ALL' | 'NSE' | 'CRYPTO'>('ALL');
   const [ticketHorizonClass, setTicketHorizonClass] = useState<HorizonClass>('INTRADAY');
 
   // Shortcut handler for direct Paper Trade execution from asset compare surface
@@ -3046,127 +3044,22 @@ export const Gate5PaperDashboard: React.FC = () => {
       </div>
 
 
-      {/* 1C. RP-609/610 MULTI-HORIZON OBSERVATION RECS (Pi) */}
-      <div style={{ marginBottom: '28px', borderLeft: '4px solid #c4b5fd', background: 'linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%)', borderRadius: '10px', padding: '16px 18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Multi-Horizon Recommendations · INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM
-            </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8', maxWidth: '720px' }}>
-              {multiHorizon?.note ?? 'H0/INTRADAY owned by RP-608 daemons. H1–H3 are RP-609/610 observation-only paper books (gates CLOSED).'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', backgroundColor: 'rgba(167,139,250,0.15)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.35)' }}>
-              RP-609 NSE · RP-610 CRYPTO
-            </span>
-            <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', backgroundColor: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' }}>
-              {(multiHorizon?.live_order_authority ?? 0).toFixed(1)}% ORDER AUTHORITY
-            </span>
+      {/* Pointer to dedicated Multi-Horizon tab */}
+      <div style={{ marginBottom: '28px', borderLeft: '4px solid #c4b5fd', background: 'rgba(124,58,237,0.08)', borderRadius: '10px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#c4b5fd' }}>Multi-Horizon Books moved to their own tab</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+            Open books: MULTI_DAY {multiHorizon?.counts_by_class?.MULTI_DAY ?? 0} · MULTI_WEEK {multiHorizon?.counts_by_class?.MULTI_WEEK ?? 0} · LONG_TERM {multiHorizon?.counts_by_class?.LONG_TERM ?? 0}
+            {' · '}0.0% order authority · use top nav <b style={{ color: '#e2e8f0' }}>Multi-Horizon Books</b>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {(['INTRADAY', 'MULTI_DAY', 'MULTI_WEEK', 'LONG_TERM'] as const).map((cls) => {
-            const colors: Record<string, string> = { INTRADAY: '#22d3ee', MULTI_DAY: '#c4b5fd', MULTI_WEEK: '#fdba74', LONG_TERM: '#fb7185' };
-            const c = colors[cls];
-            const n = multiHorizon?.counts_by_class?.[cls] ?? 0;
-            const active = mhClassFilter === cls;
-            return (
-              <button
-                key={cls}
-                type="button"
-                onClick={() => setMhClassFilter(active ? 'ALL' : cls)}
-                style={{
-                  fontSize: '10px', fontWeight: 800, padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
-                  border: `1px solid ${c}55`, color: c, backgroundColor: active ? `${c}28` : `${c}12`,
-                }}
-              >
-                {cls}: {n}
-              </button>
-            );
-          })}
-          <select
-            value={mhMarketFilter}
-            onChange={(e) => setMhMarketFilter(e.target.value as 'ALL' | 'NSE' | 'CRYPTO')}
-            style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#0f172a', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            <option value="ALL">NSE + CRYPTO</option>
-            <option value="NSE">NSE only</option>
-            <option value="CRYPTO">CRYPTO only</option>
-          </select>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', maxHeight: '360px', overflow: 'auto' }}>
-          {(() => {
-            const recs = (multiHorizon?.recommendations ?? []).filter((r) => {
-              if (mhClassFilter !== 'ALL' && r.horizon_class !== mhClassFilter) return false;
-              if (mhMarketFilter !== 'ALL' && (r.market || '') !== mhMarketFilter) return false;
-              return true;
-            });
-            if (recs.length === 0) {
-              return (
-                <div style={{ fontSize: '12px', color: '#64748b', padding: '8px 0' }}>
-                  No open observation recommendations for this filter. Catalog classes remain implemented on Pi.
-                </div>
-              );
-            }
-            const badge = (cls?: string) => {
-              const map: Record<string, { bg: string; fg: string }> = {
-                INTRADAY: { bg: 'rgba(6,182,212,0.15)', fg: '#22d3ee' },
-                MULTI_DAY: { bg: 'rgba(167,139,250,0.15)', fg: '#c4b5fd' },
-                MULTI_WEEK: { bg: 'rgba(251,146,60,0.15)', fg: '#fdba74' },
-                LONG_TERM: { bg: 'rgba(244,63,94,0.15)', fg: '#fb7185' },
-              };
-              return map[cls || 'INTRADAY'] || map.INTRADAY;
-            };
-            return recs.map((r, i) => {
-              const b = badge(r.horizon_class);
-              const symList = (r.symbols && r.symbols.length) ? r.symbols : [r.symbol || '—'];
-              const sym = symList[0] || '—';
-              return (
-                <div key={`${r.market}-${r.horizon_class}-${sym}-${i}`} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {symList.map((s) => (
-                        <strong key={s} style={{ color: '#38bdf8', fontSize: '15px', fontFamily: 'monospace' }}>{s}</strong>
-                      ))}
-                    </div>
-                    <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', backgroundColor: b.bg, color: b.fg, border: `1px solid ${b.fg}44` }}>
-                      {r.horizon_label || r.horizon_class}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
-                    {r.market} · {r.decision} · {r.side || 'LONG'} · {r.status || 'OPEN'}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px' }}>{r.horizon_term}</div>
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '11px', fontFamily: 'monospace', flexWrap: 'wrap' }}>
-                    <span style={{ color: '#e2e8f0' }}>Entry {r.entry_price != null ? r.entry_price : '—'}</span>
-                    <span style={{ color: '#f87171' }}>Stop {r.stop_loss_price != null ? r.stop_loss_price : '—'}</span>
-                    <span style={{ color: '#34d399' }}>Tgt {r.target_price != null ? r.target_price : '—'}</span>
-                  </div>
-                  {r.thesis ? <div style={{ marginTop: '6px', fontSize: '10px', color: '#94a3b8' }}>{r.thesis}</div> : null}
-                  <div style={{ marginTop: '10px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const ticketSym = sym.includes('USDT') ? sym.replace('USDT', '-USD') : sym;
-                        setSelectedSymbol(ticketSym);
-                        setTicketHorizonClass((r.horizon_class as HorizonClass) || 'INTRADAY');
-                        setTicketAction((r.side || 'LONG') === 'SHORT' ? 'SELL SHORT' : 'BUY');
-                        setTimeout(() => {
-                          document.getElementById('paper-order-ticket')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 50);
-                      }}
-                      style={{ fontSize: '10px', fontWeight: 800, padding: '5px 10px', borderRadius: '5px', border: 'none', backgroundColor: '#0284c7', color: '#fff', cursor: 'pointer' }}
-                    >
-                      OPEN TICKET · {r.horizon_class}
-                    </button>
-                  </div>
-                </div>
-              );
-            });
-          })()}
-        </div>
+        <button
+          type="button"
+          onClick={() => document.getElementById('tab-horizons')?.click()}
+          style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
+        >
+          Open Multi-Horizon Books
+        </button>
       </div>
 
       {/* 2. MULTI-HORIZON COMPARE & PAPER TRADE SHORTCUT SURFACE */}

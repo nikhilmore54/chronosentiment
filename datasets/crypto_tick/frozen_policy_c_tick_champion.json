@@ -1,0 +1,172 @@
+{
+  "policy_id": "Policy_C_Tick_Champion",
+  "alphabet": "TickWithExhaustion",
+  "protocol_id": "RP-608-SHADOW-TICK-001",
+  "seed": 608002,
+  "notes": "OOS comparator: looser momentum entry; exhaustion stretch blocks continuation.",
+  "champion_genome": {
+    "unmatched_action": "NO_TRADE",
+    "rules": [
+      {
+        "when": [
+          {
+            "concept": "PriceRangeStretch",
+            "present": true,
+            "direction": "ExhaustedHigh"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "PriceRangeStretch",
+            "present": true,
+            "direction": "ExhaustedLow"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bearish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "SHORT"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          },
+          {
+            "concept": "MicroConfirm",
+            "present": true,
+            "direction": "BidHeavy"
+          },
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Neutral"
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          },
+          {
+            "concept": "MicroConfirm",
+            "present": true,
+            "direction": "AskHeavy"
+          },
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Neutral"
+          }
+        ],
+        "action": "SHORT"
+      },
+      {
+        "when": [
+          {
+            "concept": "VolumeBurst",
+            "present": true,
+            "direction": "Burst"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "VWAPStretch",
+            "present": false,
+            "direction": null
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "VolumeBurst",
+            "present": true,
+            "direction": "Burst"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          },
+          {
+            "concept": "VWAPStretch",
+            "present": false,
+            "direction": null
+          }
+        ],
+        "action": "SHORT"
+      }
+    ]
+  }
+}

@@ -74,7 +74,7 @@ def recommendation_horizon_meta(
             "horizon_class": "INTRADAY",
             "horizon_id": "H0_NSE_INTRADAY",
             "horizon_label": "Intraday",
-            "horizon_term": "15m bars · 60m target / 180m max · session square-off",
+            "horizon_term": "15m bars · 60m / 180m max · square-off 15:00 (close-window 15:00–15:15)",
         }
     if m == "CRYPTO" and p in {"TRADE_PLAN", "INTRADAY", "H0"}:
         return {
@@ -185,6 +185,7 @@ NSE_LIVE_PREFERRED_ARTIFACTS = {
     "rp608_nse_trade_journal.jsonl",
     "rp608_nse_bar_history.json",
     "rp608_nse_checkpoint.json",
+    "rp608_nse_next_session_recommendations.json",
 }
 
 
@@ -374,44 +375,63 @@ def derive_card_reasoning(card: Dict[str, Any]) -> Dict[str, Any]:
     vol_bps = round((atr / ref * 10000.0), 1) if ref > 0 else 0.0
     action_b = card.get("policy_b_action", "NO_TRADE")
     action_c = card.get("policy_c_action", "NO_TRADE")
+    tick = card.get("features_tick") if isinstance(card.get("features_tick"), dict) else {}
+    decision_clock = card.get("decision_clock") or ("tick_book_ticker" if tick else "completed_15m_candle")
 
-    # Trend categorization
-    if ret_bps > 10.0:
-        trend = f"Bullish Trend (+{ret_bps:.2f} bps > +10.0 bps threshold)"
-    elif ret_bps < -10.0:
-        trend = f"Bearish Trend ({ret_bps:.2f} bps < -10.0 bps threshold)"
+    if tick:
+        v5 = tick.get("velocity_5s_bps")
+        imb = tick.get("imbalance")
+        macro = tick.get("macro_trend_64_bps")
+        if macro is None:
+            macro = tick.get("macro_trend_16_bps")
+        macro_f = float(macro) if macro is not None else ret_bps
+        if macro_f > 15.0:
+            trend = f"Bullish macro (+{macro_f:.2f} bps > +15.0 bps)"
+        elif macro_f < -15.0:
+            trend = f"Bearish macro ({macro_f:.2f} bps < -15.0 bps)"
+        else:
+            trend = f"Neutral macro ({macro_f:.2f} bps within ±15.0 bps)"
+        if v5 is not None and float(v5) >= 1.0:
+            mom = f"Positive micro velocity (+{float(v5):.2f} bps / 5s)"
+        elif v5 is not None and float(v5) <= -1.0:
+            mom = f"Negative micro velocity ({float(v5):.2f} bps / 5s)"
+        else:
+            mom = f"Neutral micro velocity ({v5} bps / 5s)"
+        imb_s = f"imb={float(imb):.3f}" if imb is not None else "imb=n/a"
+        vol_str = f"ATR(14 15m)=${atr:.2f} ({vol_bps} bps); {imb_s}; clock={decision_clock}"
     else:
-        trend = f"Neutral Trend ({ret_bps:.2f} bps within [-10.0, +10.0] bps band)"
-
-    # Momentum categorization
-    if ret_bps > 2.0:
-        mom = f"Positive Momentum (+{ret_bps:.2f} bps > +2.0 bps)"
-    elif ret_bps < -2.0:
-        mom = f"Negative Momentum ({ret_bps:.2f} bps < -2.0 bps)"
-    else:
-        mom = f"Neutral Momentum ({ret_bps:.2f} bps within [-2.0, +2.0] bps band)"
-
-    # Volatility categorization
-    vol_str = f"ATR(14) = ${atr:.2f} ({vol_bps} bps)"
+        if ret_bps > 10.0:
+            trend = f"Bullish Trend (+{ret_bps:.2f} bps > +10.0 bps threshold)"
+        elif ret_bps < -10.0:
+            trend = f"Bearish Trend ({ret_bps:.2f} bps < -10.0 bps threshold)"
+        else:
+            trend = f"Neutral Trend ({ret_bps:.2f} bps within [-10.0, +10.0] bps band)"
+        if ret_bps > 2.0:
+            mom = f"Positive Momentum (+{ret_bps:.2f} bps > +2.0 bps)"
+        elif ret_bps < -2.0:
+            mom = f"Negative Momentum ({ret_bps:.2f} bps < -2.0 bps)"
+        else:
+            mom = f"Neutral Momentum ({ret_bps:.2f} bps within [-2.0, +2.0] bps band)"
+        vol_str = f"ATR(14) = ${atr:.2f} ({vol_bps} bps)"
 
     if action_b == "LONG":
-        reason_b = f"Policy B LONG: {trend} confirmed with {mom}. {vol_str}. Upward momentum continuation rules triggered."
+        reason_b = f"Policy B LONG: {trend} confirmed with {mom}. {vol_str}. Tick continuation rules triggered."
     elif action_b == "SHORT":
-        reason_b = f"Policy B SHORT: {trend} confirmed with {mom}. {vol_str}. Downward momentum continuation rules triggered."
+        reason_b = f"Policy B SHORT: {trend} confirmed with {mom}. {vol_str}. Tick continuation rules triggered."
     else:
-        reason_b = f"Policy B NO_TRADE: Sub-threshold market movement ({ret_bps:.2f} bps). Deadband criteria satisfied; capital preserved."
+        reason_b = f"Policy B NO_TRADE: No actionable tick microstructure ({mom}). Capital preserved."
 
     if action_c == "LONG":
-        reason_c = f"Policy C LONG: {trend} confirmed. Exhaustion filters clear; positive trend continuation active."
+        reason_c = f"Policy C LONG: {trend} confirmed. Exhaustion filters clear; tick OOS comparator long."
     elif action_c == "SHORT":
-        reason_c = f"Policy C SHORT: {trend} confirmed with {mom}. Exhaustion filters clear; downward continuation active."
+        reason_c = f"Policy C SHORT: {trend} confirmed with {mom}. Exhaustion filters clear; tick OOS comparator short."
     else:
-        reason_c = f"Policy C NO_TRADE: Sub-threshold return ({ret_bps:.2f} bps) or exhaustion boundaries reached. Filtered out."
+        reason_c = f"Policy C NO_TRADE: Sub-threshold tick signal or exhaustion boundaries reached. Filtered out."
 
     trade_plan_why = (
-        f"Derived from Policy B {action_b}: Fixed 1.0x ATR Stop (${atr:.2f}) and 1.5x ATR Target (${1.5 * atr:.2f}) with 60-minute holding horizon post-12.0 bps friction."
+        f"Derived from Policy B {action_b} ({decision_clock}): Fixed 1.0x ATR(15m) Stop (${atr:.2f}) and 1.5x ATR Target (${1.5 * atr:.2f}) with 60-minute holding horizon post-12.0 bps friction."
         if action_b in ("LONG", "SHORT")
-        else "No active trade plan. Awaiting directional breakout."
+        else "No active trade plan. Awaiting directional tick breakout."
     )
 
     return {
@@ -549,6 +569,15 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             pass
     active_trades_map = pending_data.get("active_trades", {})
 
+    next_session_file = find_latest_nse_file("rp608_nse_next_session_recommendations.json")
+    next_session_data: Dict[str, Any] = {}
+    if next_session_file.exists():
+        try:
+            with open(next_session_file, "r", encoding="utf-8") as f:
+                next_session_data = json.load(f)
+        except Exception:
+            pass
+
     eval_map = eval_data.get("evaluations", {})
     qualifying_candidates = []
     _nse_hz = recommendation_horizon_meta(market="NSE", profile="INTRADAY")
@@ -626,11 +655,29 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         score_val = ev.get("score")
         d_code = ev.get("decision_code", "PENDING_RUN" if total_evaluated == 0 else "NO_EVALUATION")
         h_len = ev.get("history_length", 0)
+        dq = ev.get("data_quality") or {}
+        dq_status = dq.get("status")
+        dq_error = str(dq.get("error") or "")
+        # Prefer durable evaluator explanation when present (avoids re-deriving over live codes).
+        ev_explanation = ev.get("explanation") or ""
+        # Kite/auth/feed failures must not be mislabeled as Gate 3 warmup (same-session history).
+        is_data_fail = (
+            d_code == "DATA_QUALITY_FAILURE"
+            or dq_status in {"DATA_FAILURE", "INVALID", "FAILED", "ERROR"}
+            or "KITE_HTTP" in dq_error
+            or "KITE_HTTP" in ev_explanation
+            or "Data quality failure" in ev_explanation
+        )
 
-        # Gate 1: Entry Window Eligibility (1 <= bar_idx <= 20, entries restricted to 09:15-14:00 IST)
-        g1_pass = (1 <= b_idx <= 20)
+        # Gate 1: Entry Window Eligibility (1 <= bar_idx <= 19; 60m completes by 15:00 close-window)
+        _max_entry_bar = 19
+        g1_pass = (1 <= b_idx <= _max_entry_bar)
         g1_status = "PASS" if g1_pass else "CLOSED"
-        g1_reason = f"Entry window open (Bar {b_idx} in 1..20)" if g1_pass else f"Entry window closed (Bar {b_idx} > 20; cutoff 14:00 IST)"
+        g1_reason = (
+            f"Entry window open (Bar {b_idx} in 1..{_max_entry_bar})"
+            if g1_pass
+            else f"Entry window closed (Bar {b_idx} > {_max_entry_bar}; 60m must finish by 15:00)"
+        )
 
         # Gate 2: Position State / Capacity (ACTIVE = simulated trade already open; NONE = slot available)
         trade_info = active_trades_map.get(sym)
@@ -643,8 +690,25 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g2_status = "NONE"
             g2_reason = "No active trade conflict (Position available)"
 
-        # Gate 3: Causal Warmup Hurdle (history >= 5 bars)
-        if d_code == "COLD_START_INSUFFICIENT_HISTORY" or h_len < 5:
+        # Gate 5 first when evaluator already recorded a feed/auth failure
+        if is_data_fail:
+            g5_status = "FAIL"
+            g5_reason = dq_error or ev_explanation or "Data quality / feed failure"
+        elif dq_status == "VALID_L1" or is_valid:
+            g5_status = "PASS"
+            g5_reason = "Executable quote valid & spread within bounds"
+        elif not is_valid:
+            g5_status = "FAIL"
+            g5_reason = "Quote stale or missing L1 depth"
+        else:
+            g5_status = "NOT_EVALUATED"
+            g5_reason = "Pending quote verification"
+
+        # Gate 3: Causal Warmup Hurdle (history >= 5 bars) — same session only
+        if is_data_fail and h_len < 5:
+            g3_status = "BLOCKED"
+            g3_reason = f"History {h_len}/5 not evaluated — blocked by data failure (not a warmup fail)"
+        elif d_code == "COLD_START_INSUFFICIENT_HISTORY" or h_len < 5:
             g3_status = "FAIL"
             g3_reason = f"Warmup history: {h_len}/5 bars required"
         else:
@@ -652,7 +716,10 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g3_reason = f"Warmup satisfied: {h_len} bars >= 5"
 
         # Gate 4: Momentum Threshold (traj15 >= +0.0500)
-        if g3_status != "PASS":
+        if is_data_fail:
+            g4_status = "NOT_EVALUATED"
+            g4_reason = "Blocked by data failure"
+        elif g3_status != "PASS":
             g4_status = "NOT_EVALUATED"
             g4_reason = "Blocked by Gate 3 (Causal Warmup)"
         elif score_val is not None and score_val >= 0.05:
@@ -665,27 +732,16 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g4_status = "NOT_EVALUATED"
             g4_reason = "Score unavailable"
 
-        # Gate 5: Executable Quote Quality (Evaluated independently of G4 to preserve continuous market observability)
-        dq_status = (ev.get("data_quality") or {}).get("status")
-        if dq_status == "VALID_L1" or is_valid:
-            g5_status = "PASS"
-            g5_reason = "Executable quote valid & spread within bounds"
-        elif d_code == "DATA_QUALITY_FAILURE" or not is_valid:
-            g5_status = "FAIL"
-            g5_reason = "Quote stale or missing L1 depth"
-        else:
-            g5_status = "NOT_EVALUATED"
-            g5_reason = "Pending quote verification"
-
-        # Prefer durable evaluator explanation when present (avoids re-deriving over live codes).
-        ev_explanation = ev.get("explanation") or ""
-
         # Determine terminal decision based on cleanly separated dimensions
         if has_active_position:
             terminal_decision = "HOLD_POSITION"
             d_code = "EXISTING_POSITION_ACTIVE"
             entry_b = trade_info.get("entry_bar_idx") if trade_info else 18
             ev_explanation = f"Active simulated position managed (open since bar {entry_b})"
+        elif is_data_fail:
+            terminal_decision = "NO_TRADE"
+            d_code = "DATA_QUALITY_FAILURE"
+            ev_explanation = ev_explanation or g5_reason
         elif g1_status == "CLOSED":
             terminal_decision = "NO_TRADE"
             d_code = "INTRADAY_BOUNDARY_EXCLUDED"
@@ -1073,6 +1129,17 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 "neutral": neutral_count,
                 "bearish_le_005": bearish_count
             }
+        },
+        "next_session_recommendations": {
+            "available": bool(next_session_data.get("recommendations")),
+            "protocol_id": next_session_data.get("protocol_id"),
+            "from_session_date": next_session_data.get("from_session_date"),
+            "next_session_date": next_session_data.get("next_session_date"),
+            "n_recommendations": next_session_data.get("n_recommendations", 0),
+            "note": next_session_data.get("note"),
+            "emitted_utc": next_session_data.get("emitted_utc"),
+            "live_order_authority": next_session_data.get("live_order_authority", 0.0),
+            "recommendations": next_session_data.get("recommendations") or [],
         },
         "quote_health": {
             "valid": valid_quotes or len(all_quotes),
@@ -1921,6 +1988,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       color: var(--text-dim);
       flex-wrap: wrap;
       gap: 10px;
+    }
     /* RP-607 & RP-608 Custom Styling */
     .comp-pill {
       font-size: 10px;
@@ -1957,6 +2025,59 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .gate-step-pass { background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.4); }
     .gate-step-fail { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.4); }
     .gate-step-blocked { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+    .ws-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 20px 0;
+      padding: 4px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+    }
+    .ws-tab {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+    .ws-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .ws-tab.active {
+      color: #fff;
+      background: #7c3aed;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+    }
+    .ws-tab.active[data-ws="command"] {
+      background: #0284c7;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    }
+    #ws-panel-horizons table.mh-open-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    #ws-panel-horizons table.mh-open-table th {
+      text-align: left;
+      padding: 12px 14px;
+      background: rgba(30, 41, 59, 0.95);
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--card-border);
+    }
+    #ws-panel-horizons table.mh-open-table td {
+      padding: 12px 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+    }
   </style>
 </head>
 <body>
@@ -1967,7 +2088,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="logo-badge">CS</div>
         <div class="title-group">
           <h1>RP-608 Live Command Center</h1>
-          <p>Binance BTC/USDT 15m · Dedicated Prospective Shadow Observer</p>
+          <p>Binance BTC/USDT · Tick Policy B/C (bookTicker) · ATR(14) from 15m · Shadow 0%</p>
         </div>
       </div>
       <div class="header-badges">
@@ -1982,17 +2103,23 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </header>
 
+    <nav class="ws-nav" aria-label="Workspace">
+      <button type="button" class="ws-tab active" data-ws="command" id="ws-tab-command">Command Center</button>
+      <button type="button" class="ws-tab" data-ws="horizons" id="ws-tab-horizons">Multi-Horizon Books</button>
+    </nav>
+
+    <div id="ws-panel-command">
     <!-- Hero Cards -->
     <div class="grid-hero">
       <!-- Active Recommendation -->
       <div class="card hero-recommendation">
         <div class="card-label">
-          <span>Active Recommendations (Bar <span id="rec-bar-idx">--</span>)</span>
+          <span>Active Recommendations (Evt <span id="rec-bar-idx">--</span>)</span>
           <span class="pill-sm pill-prospective" id="sample-status-pill">PROSPECTIVE</span>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 10px 0;" id="crypto-rec-horizon-badges">
-          <span class="pill-sm" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35); font-weight:700;">INTRADAY</span>
-          <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">Term: ≤60m trade-plan / tick Gate C</span>
+          <span class="pill-sm" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35); font-weight:700;">TICK CLOCK</span>
+          <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">RP-608-SHADOW-TICK-001 · Gate C isolated</span>
         </div>
         <div class="rec-box-group">
           <!-- Policy B Box with Tooltip -->
@@ -2009,7 +2136,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               </div>
               <div class="tooltip-metrics">
                 <div class="tooltip-metric-item">
-                  <span class="tooltip-metric-label">15m Return</span>
+                  <span class="tooltip-metric-label">Macro / Tick Ret</span>
                   <span class="tooltip-metric-val" id="tip-b-ret">--</span>
                 </div>
                 <div class="tooltip-metric-item">
@@ -2055,7 +2182,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="metric-sub" style="margin-top: 16px;">
-          <span>Ret 15m: <b id="rec-ret" style="color:#fff;">--</b></span>
+          <span>Macro bps: <b id="rec-ret" style="color:#fff;">--</b></span>
+          <span>Tick mid: <b id="rec-tick-mid" style="color:#fff;">--</b></span>
+          <span>Imb: <b id="rec-tick-imb" style="color:#fff;">--</b></span>
           <span>ATR14: <b id="rec-atr" style="color:#fff;">--</b></span>
           <span>Quote Age: <b id="rec-quote-age" style="color:var(--accent-emerald);">-- ms</b></span>
         </div>
@@ -2110,7 +2239,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             BTC/USDT · Trade Plan Overlay v1
           </h2>
-          <span>Protocol: RP-608-TRADE-PLAN-OVERLAY-001 · Policy B Canonical · Simulated Shadow Mode</span>
+          <span>Protocol: RP-608-TRADE-PLAN-OVERLAY-001 · Tick Policy B · ATR from 15m · Simulated Shadow Mode</span>
           <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;" id="plan-horizon-badges">
             <span class="pill-sm" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35); font-weight:700;">INTRADAY</span>
             <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">Term: ≤60 minutes</span>
@@ -2308,54 +2437,27 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; font-size:11px; color:var(--text-dim); flex-wrap:wrap; gap:8px;">
-        <div>Streams: <b style="color:var(--accent-emerald);">btcusdt@bookTicker</b> + <b style="color:var(--accent-emerald);">btcusdt@kline_15m</b> (Connected)</div>
+        <div>Canonical clock: <b style="color:var(--accent-emerald);">btcusdt@bookTicker</b> · ATR context: <b style="color:var(--accent-emerald);">kline_15m</b> · Gate C isolated</div>
         <div id="gate-c-telemetry-counters">Quotes: <b style="color:#fff;">--</b> · Rate-Limited (&ge;1s): <b style="color:#fff;">--</b> · Filtered: <b style="color:var(--accent-amber);">--</b></div>
         <div>Candle Buffer: <b style="color:#fff;" id="gate-c-candle-buffer">149 Bars (Warmed Up)</b></div>
         <div>Isolation: <b style="color:var(--accent-emerald);">Canonical Files 100% Untouched</b></div>
       </div>
     </div>
 
-    <!-- MULTI-HORIZON: INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM -->
-    <div class="card" style="margin-bottom:24px; border-left: 4px solid #c4b5fd; background: linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-        <div class="section-title" style="margin-bottom:0;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#c4b5fd;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Multi-Horizon Recommendations · INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM
+    <!-- Pointer → dedicated Multi-Horizon Books workspace tab -->
+    <div class="card" style="margin-bottom:24px; border-left: 4px solid #c4b5fd; background: rgba(124,58,237,0.08);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#c4b5fd;">Multi-Horizon Books live in their own tab</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="mh-pointer-counts">
+            Open observation books · 0.0% order authority · gates CLOSED
+          </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <span class="pill-sm" style="background:rgba(167,139,250,0.15); color:#c4b5fd; border:1px solid rgba(167,139,250,0.35);">RP-609 NSE · RP-610 CRYPTO</span>
-          <span class="pill-sm pill-prewindow" style="border:1px solid rgba(255,255,255,0.2);">0.0% ORDER AUTHORITY</span>
-          <span class="pill-sm" id="mh-gates-pill" style="background:rgba(245,158,11,0.12); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">GATES CLOSED</span>
-        </div>
+        <button type="button" onclick="switchWorkspace('horizons')"
+          style="background:#7c3aed; border:none; color:#fff; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; padding:10px 14px; border-radius:8px; cursor:pointer;">
+          Open Multi-Horizon Books
+        </button>
       </div>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;" id="mh-note">
-        H0/INTRADAY remains owned by RP-608 live daemons. H1–H3 are observation-only paper books (promotion gates CLOSED).
-      </p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;" id="mh-class-counts">
-        <span class="pill-sm" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.3);">INTRADAY: —</span>
-        <span class="pill-sm" style="background:rgba(167,139,250,0.12); color:#c4b5fd; border:1px solid rgba(167,139,250,0.3);">MULTI_DAY: —</span>
-        <span class="pill-sm" style="background:rgba(251,146,60,0.12); color:#fdba74; border:1px solid rgba(251,146,60,0.3);">MULTI_WEEK: —</span>
-        <span class="pill-sm" style="background:rgba(244,63,94,0.12); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.3);">LONG_TERM: —</span>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Filter class:</span>
-        <select id="mh-filter-class" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-          <option value="ALL">All classes</option>
-          <option value="INTRADAY">INTRADAY</option>
-          <option value="MULTI_DAY">MULTI_DAY</option>
-          <option value="MULTI_WEEK">MULTI_WEEK</option>
-          <option value="LONG_TERM">LONG_TERM</option>
-        </select>
-        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Market:</span>
-        <select id="mh-filter-market" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-          <option value="ALL">NSE + CRYPTO</option>
-          <option value="NSE">NSE only</option>
-          <option value="CRYPTO">CRYPTO only</option>
-        </select>
-      </div>
-      <div style="margin-bottom:14px;" id="mh-catalog-grid"></div>
-      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Open observation recommendations (live books — not the catalog above)</div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px; max-height:420px; overflow:auto;" id="mh-recs-grid"></div>
     </div>
 
     <!-- Decision Cards Feed -->
@@ -2515,6 +2617,22 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- PANEL B0: Next-session watchlist (post-close) -->
+      <div id="nse-next-session-panel" style="background:rgba(0,0,0,0.35); border:1px solid rgba(6,182,212,0.35); border-radius:12px; padding:18px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px; font-weight:700; color:#fff;">Next Session · Intraday Watchlist</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;" id="nse-next-session-meta">
+              Post-close recommendations for the next trading session · 0.0% authority · not overnight / CAS
+            </div>
+          </div>
+          <span class="pill-sm" id="nse-next-session-pill" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35);">WAITING</span>
+        </div>
+        <div id="nse-next-session-list" style="display:grid; gap:8px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim);">
+          No next-session file yet — emitted automatically after POST_CLOSE.
+        </div>
+      </div>
+
       <!-- PANEL B: RP-608 Intraday Momentum & Decision Telemetry -->
       <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:18px; margin-bottom:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
@@ -2549,8 +2667,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
             <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 01 · Session Window</div>
-            <div style="font-size:12px; font-weight:700; color:#fff;">1 &le; Bar &le; 23</div>
-            <div style="font-size:10px; color:var(--text-muted);">09:15 - 15:00 IST Entry Window</div>
+            <div style="font-size:12px; font-weight:700; color:#fff;">1 &le; Bar &le; 19</div>
+            <div style="font-size:10px; color:var(--text-muted);">Entry cutoff · 60m ends by 15:00 close-window</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
             <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 02 · Concurrency</div>
@@ -2686,6 +2804,137 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
+    </div><!-- /ws-panel-command -->
+
+    <!-- MULTI-HORIZON BOOKS WORKSPACE -->
+    <div id="ws-panel-horizons" style="display:none;">
+      <div class="card" style="margin-bottom:20px; border-left: 4px solid #c4b5fd; background: linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+          <div>
+            <div class="section-title" style="margin-bottom:6px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#c4b5fd;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Multi-Horizon Observation Books
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); max-width:820px; line-height:1.5; margin:0;" id="mh-note">
+              Separate holding-term paper books for NSE (RP-609 CNC) and Crypto (RP-610 spot-sim).
+              This is <b style="color:#e2e8f0;">not</b> the intraday decision feed — each row is an open observation position with a named symbol and a holding class.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="pill-sm" style="background:rgba(167,139,250,0.15); color:#c4b5fd; border:1px solid rgba(167,139,250,0.35);">RP-609 NSE · RP-610 CRYPTO</span>
+            <span class="pill-sm pill-prewindow" style="border:1px solid rgba(255,255,255,0.2);">0.0% ORDER AUTHORITY</span>
+            <span class="pill-sm" id="mh-gates-pill" style="background:rgba(245,158,11,0.12); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">GATES CLOSED</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin:16px 0 14px; flex-wrap:wrap;">
+          <button type="button" class="mh-inner-tab active" data-mh-inner="OPEN" id="mh-inner-open"
+            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#7c3aed; color:#fff;">1. Open books (actionable)</button>
+          <button type="button" class="mh-inner-tab" data-mh-inner="UNIVERSE" id="mh-inner-universe"
+            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#1e293b; color:#fff;">2. NSE universe (119)</button>
+          <button type="button" class="mh-inner-tab" data-mh-inner="GUIDE" id="mh-inner-guide"
+            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#1e293b; color:#fff;">3. How to read classes</button>
+        </div>
+
+        <div id="mh-coverage-strip" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
+          <span class="pill-sm" style="background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.35);">NSE universe: —</span>
+        </div>
+
+        <div id="mh-guide-panel" style="display:none; margin-bottom:8px;">
+          <div style="display:grid; gap:12px;" id="mh-guide-grid"></div>
+        </div>
+
+        <div id="mh-universe-panel" style="display:none; margin-bottom:8px;">
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px 0; max-width:820px; line-height:1.45;">
+            All <b style="color:#e2e8f0;">119</b> RP-608 NSE shadow scrips. Symbols marked <b style="color:#34d399;">IN MH</b> appear in an open H1/H2/H3 observation book.
+            The rest are covered for market data only — not missing rows, and not auto-opened (0.0% order authority).
+          </p>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Filter</span>
+            <select id="mh-universe-filter" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+              <option value="ALL">All 119</option>
+              <option value="IN">In MH books</option>
+              <option value="OUT">Not in MH books</option>
+            </select>
+            <input id="mh-universe-search" type="search" placeholder="Search symbol…"
+              style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none; min-width:160px;" />
+          </div>
+          <div style="overflow-x:auto; border:1px solid rgba(255,255,255,0.08); border-radius:10px; max-height:520px; overflow-y:auto;">
+            <table class="mh-open-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Tradingsymbol</th>
+                  <th>MH status</th>
+                  <th>Classes</th>
+                  <th>Open book detail</th>
+                </tr>
+              </thead>
+              <tbody id="mh-universe-tbody">
+                <tr><td colspan="5" style="color:var(--text-muted); padding:24px 14px;">Loading universe…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="mh-open-panel">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;" id="mh-class-counts">
+            <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.12);">Loading…</span>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Market</span>
+            <select id="mh-filter-market" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+              <option value="ALL">NSE + CRYPTO</option>
+              <option value="NSE">NSE only</option>
+              <option value="CRYPTO">CRYPTO only</option>
+            </select>
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Class</span>
+            <select id="mh-filter-class" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+              <option value="ALL">All classes</option>
+              <option value="INTRADAY">INTRADAY</option>
+              <option value="MULTI_DAY">MULTI_DAY</option>
+              <option value="MULTI_WEEK">MULTI_WEEK</option>
+              <option value="LONG_TERM">LONG_TERM</option>
+            </select>
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Books</span>
+            <select id="mh-filter-book-kind" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+              <option value="ALL">Actionable + 119 COVERED</option>
+              <option value="ACTIONABLE">Actionable only (H1–H3)</option>
+              <option value="UNIVERSE">COVERED universe only</option>
+            </select>
+            <input id="mh-filter-search" type="search" placeholder="Search symbol…"
+              style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none; min-width:140px;" />
+          </div>
+          <div style="overflow-x:auto; border:1px solid rgba(255,255,255,0.08); border-radius:10px; margin-bottom:16px;">
+            <table class="mh-open-table">
+              <thead>
+                <tr>
+                  <th>Symbol(s)</th>
+                  <th>Market</th>
+                  <th>Holding class</th>
+                  <th>What it means</th>
+                  <th>Decision</th>
+                  <th>Side</th>
+                  <th>Status</th>
+                  <th>Entry</th>
+                  <th>Stop</th>
+                  <th>Target</th>
+                  <th>Thesis / plan</th>
+                </tr>
+              </thead>
+              <tbody id="mh-recs-tbody">
+                <tr><td colspan="11" style="color:var(--text-muted); padding:24px 14px;">Loading open books…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <details style="background:rgba(0,0,0,0.25); border:1px solid var(--card-border); border-radius:10px; padding:12px 14px;">
+            <summary style="cursor:pointer; font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Catalog reference (which books exist — not open positions)</summary>
+            <div style="margin-top:12px;" id="mh-catalog-grid"></div>
+          </details>
+        </div>
+      </div>
+    </div><!-- /ws-panel-horizons -->
+
     <!-- Footer -->
     <footer>
       <div id="nse-footer-daemon">Daemon PID: <b>--</b> · Host: <b>LCUtest</b> (192.168.0.9)</div>
@@ -2709,8 +2958,66 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         LONG_TERM: { bg: 'rgba(244,63,94,0.12)', fg: 'var(--accent-rose)', bd: 'rgba(244,63,94,0.3)' },
       };
       const c = colors[cls] || colors.INTRADAY;
-      return `<span class="badge" style="background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; font-weight:700; margin-right:6px;" title="${term}">${label.toUpperCase()}</span>`
-        + `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1); font-weight:600; margin-right:6px;" title="Holding term"> · ${term}</span>`;
+      const safeTerm = term.replace(/"/g, '&quot;');
+      return `<span class="badge" style="background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; font-weight:700; margin-right:6px;" title="${safeTerm}">${label.toUpperCase()}</span>`
+        + `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1); font-weight:600; margin-right:6px;" title="Holding term"> · ${safeTerm}</span>`;
+    }
+
+    const MH_CLASS_META = {
+      INTRADAY: {
+        title: 'Intraday',
+        meaning: 'Same-session / ≤60 minutes. Owned by RP-608 live shadows — not opened here.',
+        color: '#22d3ee',
+        nseOwner: 'RP-608 NSE MIS shadow (link-only)',
+        cryptoOwner: 'RP-608 trade-plan overlay (link-only)',
+      },
+      MULTI_DAY: {
+        title: 'Multi-day',
+        meaning: 'Swing hold: NSE 2–20 sessions (CNC) · Crypto 2–14 calendar days.',
+        color: '#c4b5fd',
+        nseOwner: 'RP-609 H1 swing book',
+        cryptoOwner: 'RP-610 H1 multi-day book',
+      },
+      MULTI_WEEK: {
+        title: 'Multi-week',
+        meaning: 'Longer build: NSE staggered CNC portfolio · Crypto 14–56 day position.',
+        color: '#fdba74',
+        nseOwner: 'RP-609 H2 portfolio build',
+        cryptoOwner: 'RP-610 H2 multi-week book',
+      },
+      LONG_TERM: {
+        title: 'Long-term',
+        meaning: 'Thesis hold: NSE ≥60 sessions / ≥90d · Crypto ≥90 calendar days.',
+        color: '#fb7185',
+        nseOwner: 'RP-609 H3 long-term book',
+        cryptoOwner: 'RP-610 H3 long-term book',
+      },
+    };
+
+    function mhSymbolList(r) {
+      if (Array.isArray(r.symbols) && r.symbols.length) {
+        return r.symbols.map(s => String(s || '').trim()).filter(Boolean);
+      }
+      const one = String(r.symbol || '').trim();
+      return one ? [one] : [];
+    }
+
+    function mhFormatSymbols(r) {
+      const list = mhSymbolList(r);
+      return list.length ? list.join(' · ') : '—';
+    }
+
+    function mhFormatLevel(r, field) {
+      const raw = r ? r[field] : null;
+      if (raw == null || raw === '') return '—';
+      const n = Number(raw);
+      if (Number.isNaN(n)) return '—';
+      // Crypto H1–H3 store stop/target as fractions (e.g. 0.04 = 4%)
+      if ((r.market || '') === 'CRYPTO' && Math.abs(n) > 0 && Math.abs(n) < 1 && field !== 'entry_price') {
+        return (n * 100).toFixed(1) + '%';
+      }
+      if ((r.market || '') === 'NSE') return '₹' + n.toFixed(2);
+      return '$' + n.toFixed(2);
     }
 
     function mhOpenSymbolsFor(market, horizonClass, horizonId) {
@@ -2728,11 +3035,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if ((r.market || '') !== market) return;
         if (horizonClass && (r.horizon_class || '') !== horizonClass) return;
         if (horizonId && (r.horizon_id || '') !== horizonId) return;
-        if (Array.isArray(r.symbols) && r.symbols.length) {
-          r.symbols.forEach(push);
-        } else {
-          push(r.symbol);
-        }
+        mhSymbolList(r).forEach(push);
       });
       return syms;
     }
@@ -2746,19 +3049,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
       const cards = items.map(c => {
         const openSyms = mhOpenSymbolsFor(market, c.horizon_class, c.horizon_id);
+        const cls = c.horizon_class || 'INTRADAY';
+        const meta = MH_CLASS_META[cls] || MH_CLASS_META.INTRADAY;
         const symHtml = openSyms.length
-          ? openSyms.map(s => `<span style="display:inline-block; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#f8fafc; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); border-radius:6px; padding:3px 8px; margin:2px 4px 2px 0;">${s}</span>`).join('')
+          ? `<span style="font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:800; color:#38bdf8;">${openSyms.join(' · ')}</span>`
           : `<span style="font-size:11px; color:var(--text-muted);">${c.observational_link_only ? 'No symbol here — H0 owned by RP-608 live books' : 'No open observation symbol yet'}</span>`;
         return `
-        <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:12px;">
+        <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-left:4px solid ${meta.color}; border-radius:10px; padding:12px;">
           <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center;">
-            <div>${horizonBadgeHtml(c)}</div>
+            <span style="font-size:11px; font-weight:900; color:${meta.color};">${cls}</span>
             <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#e2e8f0; border:1px solid rgba(255,255,255,0.12);">${market}</span>
           </div>
-          <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">Symbol(s)</div>
+          <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">Open symbol(s)</div>
           <div style="margin-bottom:10px; min-height:28px;">${symHtml}</div>
           <div style="font-size:12px; font-weight:700; color:#fff; margin-bottom:4px;">${c.horizon_id || ''}</div>
-          <div style="font-size:11px; color:var(--text-dim); line-height:1.4;">${c.label || c.horizon_term || ''}</div>
+          <div style="font-size:11px; color:var(--text-dim); line-height:1.4;">${c.label || c.horizon_term || meta.meaning}</div>
           <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">${c.owner_protocol || ''} · ${c.product_type || ''}${c.observational_link_only ? ' · link-only' : ''}</div>
         </div>`;
       }).join('');
@@ -2766,6 +3071,80 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div style="font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing:0.04em; margin-bottom:8px; text-transform:uppercase;">${title}</div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">${cards}</div>
       </div>`;
+    }
+
+    function switchWorkspace(name) {
+      const cmd = document.getElementById('ws-panel-command');
+      const hor = document.getElementById('ws-panel-horizons');
+      if (cmd) cmd.style.display = name === 'command' ? '' : 'none';
+      if (hor) hor.style.display = name === 'horizons' ? '' : 'none';
+      document.querySelectorAll('.ws-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-ws') === name);
+      });
+      try { localStorage.setItem('rp608_ws', name); } catch (e) {}
+    }
+
+    function switchMhInner(name) {
+      const open = document.getElementById('mh-open-panel');
+      const guide = document.getElementById('mh-guide-panel');
+      const uni = document.getElementById('mh-universe-panel');
+      if (open) open.style.display = name === 'OPEN' ? '' : 'none';
+      if (guide) guide.style.display = name === 'GUIDE' ? '' : 'none';
+      if (uni) uni.style.display = name === 'UNIVERSE' ? '' : 'none';
+      document.querySelectorAll('.mh-inner-tab').forEach(btn => {
+        const on = btn.getAttribute('data-mh-inner') === name;
+        btn.classList.toggle('active', on);
+        btn.style.background = on ? '#7c3aed' : '#1e293b';
+      });
+    }
+
+    function paintNseUniverse() {
+      const mh = window.__mhState;
+      const uni = (mh && mh.nse_universe) || {};
+      const strip = document.getElementById('mh-coverage-strip');
+      if (strip) {
+        const total = uni.total_universe != null ? uni.total_universe : 119;
+        const inn = uni.in_mh_books != null ? uni.in_mh_books : 0;
+        const out = uni.not_in_mh_books != null ? uni.not_in_mh_books : Math.max(0, total - inn);
+        const members = uni.universe_members_in_open_books != null ? uni.universe_members_in_open_books : out;
+        const shown = uni.shown_in_open_books != null ? uni.shown_in_open_books : total;
+        strip.innerHTML = `
+          <span class="pill-sm" style="background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.35);">NSE in Open books: <b>${shown}</b> / ${total}</span>
+          <span class="pill-sm" style="background:rgba(16,185,129,0.12); color:#34d399; border:1px solid rgba(16,185,129,0.35);">Actionable H1–H3: <b>${inn}</b></span>
+          <span class="pill-sm" style="background:rgba(148,163,184,0.12); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);">COVERED members: <b>${members}</b></span>
+          <span class="pill-sm" style="background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);">0.0% authority · gates CLOSED</span>`;
+      }
+      const tbody = document.getElementById('mh-universe-tbody');
+      if (!tbody) return;
+      const filt = (document.getElementById('mh-universe-filter') || {}).value || 'ALL';
+      const q = String((document.getElementById('mh-universe-search') || {}).value || '').trim().toUpperCase();
+      let rows = Array.isArray(uni.symbols) ? uni.symbols.slice() : [];
+      if (filt === 'IN') rows = rows.filter(r => r.in_mh_books);
+      if (filt === 'OUT') rows = rows.filter(r => !r.in_mh_books);
+      if (q) {
+        rows = rows.filter(r => String(r.symbol || '').toUpperCase().includes(q)
+          || String(r.tradingsymbol || '').toUpperCase().includes(q));
+      }
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted); padding:24px 14px;">No symbols for this filter.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const classes = (r.horizon_classes || []).join(' · ') || '—';
+        const detail = (r.books || []).map(b =>
+          `${b.horizon_id || ''} ${b.status || ''} ${b.plan_id || b.thesis || ''}`.trim()
+        ).filter(Boolean).join(' · ') || '—';
+        const badge = r.in_mh_books
+          ? `<span style="color:#34d399; font-weight:800;">IN MH</span>`
+          : `<span style="color:#64748b; font-weight:700;">data only</span>`;
+        return `<tr>
+          <td style="font-family:'JetBrains Mono',monospace; font-weight:800; color:#38bdf8;">${r.symbol || '—'}</td>
+          <td style="color:#e2e8f0;">${r.tradingsymbol || '—'}</td>
+          <td>${badge}</td>
+          <td style="color:#fdba74; font-size:11px; font-weight:700;">${classes}</td>
+          <td style="color:#94a3b8; font-size:11px;">${detail}</td>
+        </tr>`;
+      }).join('');
     }
 
     window.__mhState = null;
@@ -2778,76 +3157,224 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       if (countsEl) {
         countsEl.innerHTML = ['INTRADAY','MULTI_DAY','MULTI_WEEK','LONG_TERM'].map(cls => {
           const n = counts[cls] != null ? counts[cls] : 0;
-          return `<span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.12);">${cls}: <b>${n}</b> open</span>`;
+          const c = (MH_CLASS_META[cls] || {}).color || '#94a3b8';
+          return `<span class="pill-sm" style="background:${c}18; color:${c}; border:1px solid ${c}55;">${cls}: <b>${n}</b> open</span>`;
+        }).join('');
+      }
+      const pointer = document.getElementById('mh-pointer-counts');
+      if (pointer) {
+        pointer.textContent =
+          `Open: INTRADAY ${counts.INTRADAY || 0} · MULTI_DAY ${counts.MULTI_DAY || 0} · MULTI_WEEK ${counts.MULTI_WEEK || 0} · LONG_TERM ${counts.LONG_TERM || 0}`
+          + ` · fetch-backed · 0.0% authority · gates CLOSED`;
+      }
+      const guideGrid = document.getElementById('mh-guide-grid');
+      if (guideGrid) {
+        guideGrid.innerHTML = Object.keys(MH_CLASS_META).map(k => {
+          const m = MH_CLASS_META[k];
+          const n = counts[k] != null ? counts[k] : 0;
+          return `<div style="background:#0f172a; border:1px solid ${m.color}44; border-left:4px solid ${m.color}; border-radius:10px; padding:14px 16px;">
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+              <span style="font-size:12px; font-weight:900; color:${m.color};">${k}</span>
+              <span style="font-size:14px; font-weight:700; color:#f8fafc;">${m.title}</span>
+              <span style="font-size:11px; color:#94a3b8;">open now: ${n}</span>
+            </div>
+            <p style="margin:0 0 8px 0; color:#cbd5e1; font-size:13px;">${m.meaning}</p>
+            <div style="font-size:12px; color:#64748b;">NSE: ${m.nseOwner} · Crypto: ${m.cryptoOwner}</div>
+          </div>`;
         }).join('');
       }
       const catalogGrid = document.getElementById('mh-catalog-grid');
       if (catalogGrid) {
-        const nseCats = ((mh.nse || {}).catalog) || [];
-        const cryptoCats = ((mh.crypto || {}).catalog) || [];
+        const nseCats = ((mh && mh.nse) || {}).catalog || [];
+        const cryptoCats = ((mh && mh.crypto) || {}).catalog || [];
         if (!nseCats.length && !cryptoCats.length) {
           catalogGrid.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Horizon catalog unavailable (RP-609/610 not loaded).</div>';
         } else {
-          // Keep markets separate — same class labels (INTRADAY/…) are NOT duplicates.
-          catalogGrid.style.display = 'block';
           catalogGrid.innerHTML =
             mhCatalogSection('NSE · RP-609 (MIS link + CNC books)', 'NSE', nseCats)
             + mhCatalogSection('CRYPTO · RP-610 (SPOT_SIM books)', 'CRYPTO', cryptoCats);
         }
       }
       paintMultiHorizonRecs();
+      paintNseUniverse();
     }
 
     function paintMultiHorizonRecs() {
       const mh = window.__mhState;
-      const grid = document.getElementById('mh-recs-grid');
-      if (!grid) return;
+      const tbody = document.getElementById('mh-recs-tbody');
+      if (!tbody) return;
       const clsFilter = (document.getElementById('mh-filter-class') || {}).value || 'ALL';
       const mktFilter = (document.getElementById('mh-filter-market') || {}).value || 'ALL';
+      const kindFilter = (document.getElementById('mh-filter-book-kind') || {}).value || 'ALL';
+      const q = String((document.getElementById('mh-filter-search') || {}).value || '').trim().toUpperCase();
       let recs = (mh && mh.recommendations) ? mh.recommendations.slice() : [];
       if (clsFilter !== 'ALL') recs = recs.filter(r => r.horizon_class === clsFilter);
       if (mktFilter !== 'ALL') recs = recs.filter(r => r.market === mktFilter);
+      const isUni = (r) => r.book_kind === 'UNIVERSE_MEMBER' || r.decision === 'UNIVERSE_MEMBER' || r.status === 'COVERED';
+      if (kindFilter === 'ACTIONABLE') recs = recs.filter(r => !isUni(r));
+      if (kindFilter === 'UNIVERSE') recs = recs.filter(r => isUni(r));
+      if (q) {
+        recs = recs.filter(r => {
+          const blob = [r.symbol, ...(r.symbols || []), ...((r.legs || []).map(l => l.symbol)), r.plan_id, r.thesis]
+            .filter(Boolean).join(' ').toUpperCase();
+          return blob.includes(q);
+        });
+      }
       if (!recs.length) {
-        grid.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:8px 0;">No open multi-horizon observation positions for this filter. Catalog above still shows implemented terms.</div>';
+        tbody.innerHTML = `<tr><td colspan="11" style="color:var(--text-muted); padding:24px 14px;">
+          No open observation books for this filter. H0 uses RP-608 fetches (NSE active_trades / crypto overlay);
+          NSE marks come from kite bar_history. Demo H1–H3 rows are excluded.
+        </td></tr>`;
         return;
       }
-      grid.innerHTML = recs.map(r => {
-        const px = r.entry_price != null ? Number(r.entry_price) : null;
-        const pxTxt = px == null ? '--' : (r.market === 'NSE' ? ('₹' + px.toFixed(2)) : ('$' + px.toFixed(2)));
-        const symList = (Array.isArray(r.symbols) && r.symbols.length) ? r.symbols : [r.symbol || '--'];
-        const symLine = symList.map(s => `<span style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:800; color:#38bdf8; margin-right:8px;">${s}</span>`).join('');
-        return `
-          <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:12px;">
-            <div style="margin-bottom:8px;">${symLine}</div>
-            <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-              <div>
-                ${horizonBadgeHtml(r)}
-                <span style="font-size:10px; color:var(--text-dim); margin-left:6px;">${r.market || ''} · ${r.source || ''}</span>
-              </div>
-              <span style="font-family:'JetBrains Mono',monospace; color:#fff; font-weight:700;">${pxTxt}</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-dim); display:flex; flex-direction:column; gap:3px;">
-              <div>Decision: <b style="color:var(--accent-cyan);">${r.decision || '--'}</b> · Side: <b>${r.side || '--'}</b> · Status: <b>${r.status || '--'}</b></div>
-              <div>Horizon ID: <span style="font-family:'JetBrains Mono',monospace;">${r.horizon_id || '--'}</span></div>
-              <div>Term: ${r.horizon_term || '--'}</div>
-              <div>Thesis: ${r.thesis || '—'}</div>
-            </div>
-          </div>`;
+      tbody.innerHTML = recs.map(r => {
+        const hc = r.horizon_class || 'INTRADAY';
+        const meta = MH_CLASS_META[hc] || MH_CLASS_META.INTRADAY;
+        const entryTxt = mhFormatLevel(r, 'entry_price');
+        const stopTxt = mhFormatLevel(r, 'stop_loss_price');
+        const tgtTxt = mhFormatLevel(r, 'target_price');
+        const isUniverse = (r.book_kind === 'UNIVERSE_MEMBER') || (r.decision === 'UNIVERSE_MEMBER') || (r.status === 'COVERED');
+        const isPortfolio = (r.book_kind === 'PORTFOLIO_BUILD') || (r.decision === 'PORTFOLIO_BUILD')
+          || (Array.isArray(r.legs) && r.legs.length > 1);
+        if (isUniverse) {
+          const syms = mhFormatSymbols(r);
+          const mark = entryTxt !== '—' ? entryTxt : '—';
+          return `<tr style="background:rgba(148,163,184,0.05);">
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:800; color:#7dd3fc; white-space:nowrap;">${syms}</td>
+            <td style="font-weight:700; color:#e2e8f0;">NSE</td>
+            <td><span style="font-size:11px; font-weight:900; color:#94a3b8;">MULTI_DAY</span>
+              <div style="font-size:10px; color:#64748b; margin-top:2px;">H1_SWING · universe</div></td>
+            <td style="color:#94a3b8; font-size:12px;">119-universe member · in Open books as COVERED (not an opened trade)</td>
+            <td style="color:#94a3b8; font-weight:700; font-size:12px;">UNIVERSE_MEMBER</td>
+            <td style="color:#94a3b8;">—</td>
+            <td style="color:#94a3b8; font-weight:700;">COVERED</td>
+            <td style="font-family:'JetBrains Mono',monospace; color:#cbd5e1;">${mark}</td>
+            <td style="color:#64748b; font-size:11px;">n/a</td>
+            <td style="color:#64748b; font-size:11px;">n/a</td>
+            <td style="color:#94a3b8; font-size:12px;">rp608_nse_119_universe
+              <div style="font-size:10px; color:#64748b;">RP-608/609 · CNC · 0.0% authority</div></td>
+          </tr>`;
+        }
+        if (isPortfolio) {
+          const legs = Array.isArray(r.legs) && r.legs.length
+            ? r.legs
+            : (Array.isArray(r.symbols) ? r.symbols.map(s => ({ symbol: s, sector: '—', target_weight_pct: null, avg_price: null })) : []);
+          const progress = r.tranche_progress || ((r.n_tranches != null) ? `${r.tranches_filled || 0}/${r.n_tranches}` : '—');
+          const capital = (r.total_capital_inr != null && !Number.isNaN(Number(r.total_capital_inr)))
+            ? ('₹' + Number(r.total_capital_inr).toLocaleString('en-IN'))
+            : '—';
+          const planId = r.plan_id || r.thesis || r.symbol || 'PORTFOLIO';
+          const legRows = legs.map(leg => {
+            const w = leg.target_weight_pct != null ? (Number(leg.target_weight_pct).toFixed(1) + '%') : '—';
+            const avg = leg.avg_price != null ? ('₹' + Number(leg.avg_price).toFixed(2)) : '—';
+            const qty = leg.qty_filled != null ? Number(leg.qty_filled) : 0;
+            return `<tr style="background:rgba(0,0,0,0.18);">
+              <td style="padding-left:28px; font-family:'JetBrains Mono',monospace; font-weight:800; color:#38bdf8; white-space:nowrap;">${leg.symbol || '—'}</td>
+              <td style="color:#e2e8f0; font-weight:700;">${r.market || 'NSE'}</td>
+              <td style="color:#94a3b8; font-size:11px;">${leg.sector || '—'}
+                <div style="font-size:10px; color:#64748b;">leg · weight ${w}</div></td>
+              <td style="color:#94a3b8; font-size:12px;">CNC tranche leg · qty ${qty}</td>
+              <td style="color:#c4b5fd; font-size:11px;">—</td>
+              <td style="color:#e2e8f0;">${r.side || 'LONG'}</td>
+              <td style="color:#94a3b8; font-size:11px;">building</td>
+              <td style="font-family:'JetBrains Mono',monospace; color:#f8fafc;">${avg}</td>
+              <td style="color:#64748b; font-size:11px;" title="H2 has no per-leg stop">n/a</td>
+              <td style="color:#64748b; font-size:11px;" title="H2 has no per-leg target">n/a</td>
+              <td style="color:#64748b; font-size:11px;">plan ${planId}</td>
+            </tr>`;
+          }).join('');
+          return `<tr style="background:rgba(251,146,60,0.08); border-top:1px solid rgba(251,146,60,0.25);">
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:800; color:#fdba74; white-space:nowrap;">
+              PORTFOLIO · ${legs.length} names
+              <div style="font-size:10px; color:#94a3b8; font-weight:600; margin-top:2px;">one CNC build plan — not a single ticker</div>
+            </td>
+            <td style="font-weight:700; color:#e2e8f0;">${r.market || 'NSE'}</td>
+            <td><span style="font-size:11px; font-weight:900; color:${meta.color};">${hc}</span>
+              <div style="font-size:10px; color:#64748b; margin-top:2px;">${r.horizon_id || ''}</div></td>
+            <td style="color:#94a3b8; font-size:12px; max-width:240px;">${r.horizon_term || meta.meaning}
+              <div style="font-size:10px; color:#fdba74; margin-top:2px;">Staggered build · tranche ${progress} · capital ${capital}</div></td>
+            <td style="color:#c4b5fd; font-weight:700; font-size:12px;">${r.decision || 'PORTFOLIO_BUILD'}</td>
+            <td style="color:#e2e8f0;">${r.side || 'LONG'}</td>
+            <td style="color:#34d399; font-weight:700;">${r.status || 'ACTIVE'}</td>
+            <td style="font-family:'JetBrains Mono',monospace; color:#f8fafc;">—</td>
+            <td style="color:#64748b; font-size:11px;" title="H2 uses weights/caps, not swing stops">n/a</td>
+            <td style="color:#64748b; font-size:11px;" title="H2 uses weights/caps, not swing targets">n/a</td>
+            <td style="color:#94a3b8; font-size:12px;">${planId}
+              <div style="font-size:10px; color:#64748b;">${r.source || 'RP-609'} · ${r.product_type || 'CNC'}</div></td>
+          </tr>${legRows}`;
+        }
+        const syms = mhFormatSymbols(r);
+        const stopNote = (hc === 'LONG_TERM' && stopTxt === '—') ? 'n/a' : stopTxt;
+        const tgtNote = (hc === 'LONG_TERM' && tgtTxt === '—') ? 'n/a' : tgtTxt;
+        return `<tr>
+          <td style="font-family:'JetBrains Mono',monospace; font-weight:800; color:#38bdf8; white-space:nowrap;">${syms}</td>
+          <td style="font-weight:700; color:#e2e8f0;">${r.market || '—'}</td>
+          <td><span style="font-size:11px; font-weight:900; color:${meta.color};">${hc}</span>
+            <div style="font-size:10px; color:#64748b; margin-top:2px;">${r.horizon_id || ''}</div></td>
+          <td style="color:#94a3b8; font-size:12px; max-width:240px;">${r.horizon_term || meta.meaning}</td>
+          <td style="color:#c4b5fd; font-weight:700; font-size:12px;">${r.decision || '—'}</td>
+          <td style="color:#e2e8f0;">${r.side || 'LONG'}</td>
+          <td style="color:#34d399; font-weight:700;">${r.status || 'OPEN'}</td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#f8fafc;">${entryTxt}</td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#f87171;">${stopNote}</td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#34d399;">${tgtNote}</td>
+          <td style="color:#94a3b8; font-size:12px;">${r.thesis || r.plan_id || '—'}
+            <div style="font-size:10px; color:#64748b;">${r.source || ''} · ${r.product_type || '—'}</div></td>
+        </tr>`;
       }).join('');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       const a = document.getElementById('mh-filter-class');
       const b = document.getElementById('mh-filter-market');
+      const c = document.getElementById('mh-filter-book-kind');
+      const d = document.getElementById('mh-filter-search');
       if (a) a.addEventListener('change', paintMultiHorizonRecs);
       if (b) b.addEventListener('change', paintMultiHorizonRecs);
+      if (c) c.addEventListener('change', paintMultiHorizonRecs);
+      if (d) d.addEventListener('input', paintMultiHorizonRecs);
+      const uf = document.getElementById('mh-universe-filter');
+      const us = document.getElementById('mh-universe-search');
+      if (uf) uf.addEventListener('change', paintNseUniverse);
+      if (us) us.addEventListener('input', paintNseUniverse);
+      document.querySelectorAll('.ws-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchWorkspace(btn.getAttribute('data-ws')));
+      });
+      document.querySelectorAll('.mh-inner-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchMhInner(btn.getAttribute('data-mh-inner')));
+      });
+      let initial = 'command';
+      try {
+        const saved = localStorage.getItem('rp608_ws');
+        if (saved === 'horizons' || saved === 'command') initial = saved;
+      } catch (e) {}
+      if (location.hash === '#horizons') initial = 'horizons';
+      switchWorkspace(initial);
     });
+
+    async function fetchMultiHorizon() {
+      try {
+        const resp = await fetch('/api/multi_horizon');
+        if (!resp.ok) return;
+        const mh = await resp.json();
+        if (mh && (mh.recommendations || mh.counts_by_class)) {
+          updateMultiHorizonUI(mh);
+        }
+      } catch (e) {
+        console.warn('multi_horizon fetch failed', e);
+      }
+    }
 
     async function fetchState() {
       try {
         const resp = await fetch('/api/state');
         if (!resp.ok) return;
         const data = await resp.json();
+
+        // Paint MH first so this tab never depends on later fragile UI blocks
+        if (data.multi_horizon) {
+          updateMultiHorizonUI(data.multi_horizon);
+        }
 
         // Update Clocks
         document.getElementById('live-ist-clock').textContent = data.server_time_ist;
@@ -2862,7 +3389,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         // Hero Card (Latest Decision Card)
         const latest = data.latest_card;
         if (latest) {
-          document.getElementById('rec-bar-idx').textContent = latest.bar_idx;
+          document.getElementById('rec-bar-idx').textContent =
+            (latest.decision_event_idx != null) ? latest.decision_event_idx : latest.bar_idx;
           
           const isProspective = (latest.close_time_ms >= 1792972800000);
           const pill = document.getElementById('sample-status-pill');
@@ -2895,6 +3423,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
           document.getElementById('tip-c-action').textContent = latest.policy_c_action || 'NO_TRADE';
           document.getElementById('tip-c-text').textContent = r.reason_c || 'No reasoning available.';
+
+          const ft = latest.features_tick || {};
+          const midEl = document.getElementById('rec-tick-mid');
+          const imbEl = document.getElementById('rec-tick-imb');
+          if (midEl) midEl.textContent = (ft.mid_price != null) ? Number(ft.mid_price).toFixed(2) : '--';
+          if (imbEl) imbEl.textContent = (ft.imbalance != null) ? Number(ft.imbalance).toFixed(3) : '--';
 
           // Details
           document.getElementById('rec-ret').textContent = (latest.ret_15m_bps !== undefined) ? latest.ret_15m_bps.toFixed(2) + ' bps' : '--';
@@ -3121,11 +3655,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             `;
             nseEl.appendChild(div);
           });
-        }
-
-        // Multi-horizon books (RP-609 / RP-610)
-        if (data.multi_horizon) {
-          updateMultiHorizonUI(data.multi_horizon);
         }
 
         // Gate C Parallel Lookbacks
@@ -3383,6 +3912,44 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const tlEl = document.getElementById('nse-top-loser');
         if (tgEl) tgEl.textContent = `▲ ${tg.symbol} (+${tg.gap_bps} bps)`;
         if (tlEl && tl) tlEl.textContent = `▼ ${tl.symbol} (${tl.gap_bps} bps)`;
+      }
+
+      // Next-session post-close watchlist
+      const nsr = nse.next_session_recommendations || {};
+      const nsrPill = document.getElementById('nse-next-session-pill');
+      const nsrMeta = document.getElementById('nse-next-session-meta');
+      const nsrList = document.getElementById('nse-next-session-list');
+      if (nsrPill) {
+        nsrPill.textContent = nsr.available
+          ? (`NEXT ${nsr.next_session_date || ''} · ${nsr.n_recommendations || 0}`)
+          : 'WAITING';
+      }
+      if (nsrMeta) {
+        nsrMeta.textContent = nsr.note
+          || `From ${nsr.from_session_date || '—'} → next ${nsr.next_session_date || '—'} · 0.0% authority · not overnight/CAS`;
+      }
+      if (nsrList) {
+        const rows = nsr.recommendations || [];
+        if (!rows.length) {
+          nsrList.innerHTML = 'No next-session watches yet — emitted automatically after POST_CLOSE.';
+        } else {
+          nsrList.innerHTML = rows.slice(0, 20).map((r, i) => {
+            const sym = r.tradingsymbol || (r.symbol || '').replace('.NS','');
+            const sc = (r.score != null) ? Number(r.score).toFixed(4) : '—';
+            const tr = (r.traj15_eod != null) ? Number(r.traj15_eod).toFixed(4) : '—';
+            const sb = (r.session_return_bps != null) ? Number(r.session_return_bps).toFixed(1) : '—';
+            const px = (r.close_price != null) ? Number(r.close_price).toFixed(2) : '—';
+            return `<div style="display:grid; grid-template-columns:32px 88px 70px 1fr 90px 90px 90px; gap:8px; align-items:center; padding:8px 10px; background:rgba(6,182,212,0.06); border:1px solid rgba(6,182,212,0.15); border-radius:8px;">
+              <span style="color:#64748b;">#${i+1}</span>
+              <span style="color:#7dd3fc; font-weight:800;">${sym}</span>
+              <span style="color:#e2e8f0;">${r.side || 'LONG'}</span>
+              <span style="color:#94a3b8; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(r.thesis||'').replace(/"/g,'&quot;')}">${r.status || 'WATCH_NEXT_SESSION'}</span>
+              <span style="color:#cbd5e1;">score ${sc}</span>
+              <span style="color:#94a3b8;">traj ${tr}</span>
+              <span style="color:#94a3b8;">${sb} bps · ₹${px}</span>
+            </div>`;
+          }).join('');
+        }
       }
 
       // Candidate Recommendations & Evaluation Ledger Banner
@@ -3904,7 +4471,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     // Initial and periodic refresh
     fetchState();
+    fetchMultiHorizon();
     setInterval(fetchState, 3000);
+    setInterval(fetchMultiHorizon, 15000);
 
     // Continuous Kite batch live feed polling (15s interval)
     refreshNseBatch();

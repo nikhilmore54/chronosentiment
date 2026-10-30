@@ -1,0 +1,102 @@
+{
+  "policy_id": "Policy_B_Tick_Champion",
+  "alphabet": "TickBase",
+  "protocol_id": "RP-608-SHADOW-TICK-001",
+  "seed": 608001,
+  "notes": "Hand-frozen tick continuation rules; Gate-C-aligned thresholds; GA retrain deferred.",
+  "champion_genome": {
+    "unmatched_action": "NO_TRADE",
+    "rules": [
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          },
+          {
+            "concept": "MicroConfirm",
+            "present": true,
+            "direction": "BidHeavy"
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bearish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          },
+          {
+            "concept": "MicroConfirm",
+            "present": true,
+            "direction": "AskHeavy"
+          }
+        ],
+        "action": "SHORT"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bearish"
+          },
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Negative"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "SHORT"
+      }
+    ]
+  }
+}

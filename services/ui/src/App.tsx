@@ -8,6 +8,7 @@ import StateViewerPanel from './StateViewerPanel';
 import Gate5PaperDashboard from './Gate5PaperDashboard';
 import DecisionSurfacePanel from './components/DecisionSurfacePanel';
 import ResearchForensicsWorkspace from './components/ResearchForensicsWorkspace';
+import MultiHorizonBooksPanel from './components/MultiHorizonBooksPanel';
 import { SystemState } from './types';
 import { API_BASE_URL } from './config';
 
@@ -76,7 +77,7 @@ function App() {
     fetchSystemState(0);
   };
 
-  const [activeTab, setActiveTab] = useState<'surface' | 'gate5' | 'forensics' | 'observatory' | 'replay' | 'inspector' | 'research'>('forensics');
+  const [activeTab, setActiveTab] = useState<'surface' | 'gate5' | 'horizons' | 'forensics' | 'observatory' | 'replay' | 'inspector' | 'research'>('horizons');
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', backgroundColor: '#0a0a0a', color: '#e5e5e5', minHeight: '100vh' }}>
@@ -98,6 +99,10 @@ function App() {
             id="tab-gate5"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'gate5' ? '#0284c7' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}
             onClick={() => setActiveTab('gate5')}>📄 Paper Trading & Protection</button>
+          <button
+            id="tab-horizons"
+            style={{ padding: '10px 16px', backgroundColor: activeTab === 'horizons' ? '#7c3aed' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, boxShadow: activeTab === 'horizons' ? '0 4px 12px rgba(124,58,237,0.35)' : 'none' }}
+            onClick={() => setActiveTab('horizons')}>Multi-Horizon Books</button>
           <button 
             id="tab-observatory"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'observatory' ? '#2563eb' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
@@ -130,6 +135,10 @@ function App() {
 
         {activeTab === 'gate5' && (
           <Gate5PaperDashboard />
+        )}
+
+        {activeTab === 'horizons' && (
+          <MultiHorizonBooksPanel />
         )}
 
         {activeTab === 'observatory' && (

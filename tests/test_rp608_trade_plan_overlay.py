@@ -183,6 +183,35 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertEqual(plan2["plan_id"], plan1["plan_id"])
         self.assertEqual(mgr.state["suppressed_signals_count"], 1)
 
+    def test_08b_tick_decision_card_opens_with_atr_geometry(self):
+        """Tick-clock decision card opens a plan; SL/TP still from atr_14 on the card."""
+        tick_card = {
+            "protocol_id": "RP-608-SHADOW-TICK-001",
+            "decision_clock": "tick_book_ticker",
+            "decision_event_idx": 42,
+            "bar_idx": 7,
+            "timestamp_utc": "2026-10-30T08:00:00.000Z",
+            "close_time_ms": 1793304000000,
+            "reference_price": 80272.85,
+            "atr_14": 248.12,
+            "policy_b_action": "LONG",
+            "policy_c_action": "NO_TRADE",
+            "execution_quote": {
+                "best_bid_price": 80272.85,
+                "best_ask_price": 80272.86,
+                "exchange_event_time_ms": 1793304000100,
+            },
+        }
+        self.assertEqual(CONFIG.get("signal_cadence"), "tick_book_ticker")
+        plan = calculate_trade_plan(tick_card)
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["direction"], "LONG")
+        self.assertEqual(plan.get("source_decision_event_idx"), 42)
+        self.assertEqual(plan.get("signal_cadence"), "tick_book_ticker")
+        self.assertAlmostEqual(plan["atr_14"], 248.12)
+        self.assertLess(plan["stop_loss_price"], plan["entry_price"])
+        self.assertGreater(plan["profit_target_price"], plan["entry_price"])
+
     def test_09_zero_order_authority_invariant(self):
         """Guarantees order authority is strictly 0.0%."""
         self.assertEqual(CONFIG["order_authority_pct"], 0.0)

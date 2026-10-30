@@ -10,18 +10,19 @@ Features:
      - Exact census from RP-608-NSE-SHADOW-001 Section 2 (ADANIENT.NS to WIPRO.NS)
      - Concurrent market-data ingestion with rate-limiting and connection pooling
   2. Strict Session Schedule & 15-Minute Bar Alignment:
-     - 25 non-overlapping 15m intervals per session (09:15:00 to 15:30:00 IST)
+     - 25 calendar 15m intervals (09:15–15:30 IST); F&O continuous halt at 15:15 (CAS era)
      - Decision timestamp T_decision(k) == T_close(k)
+     - Closing window 15:00–15:15 IST (bars 23–24): no new entries; flatten at bar 23 (15:00)
      - Pre-open exclusion (< 09:15 IST) and post-close idle (> 15:30 IST)
-     - Mandatory square-off at 15:15 IST (Bar 24 close) for open trades
   3. Dual Estimand Architecture (Section 5):
      - Estimand B (Directional Opportunity Prediction):
-       * Bars 1-21 eligible (T_outcome <= 15:30 IST, fixed 4-bar forward horizon)
-       * Bars 22-25 tagged IntradayBoundaryExcluded
+       * Bars 1-19 eligible (T_outcome <= 15:00 IST close-window start, fixed 4-bar forward)
+       * Bars 20-25 tagged IntradayBoundaryExcluded
        * Ex-ante forecasts: Long = 0.58, StandAside = 0.38
        * Frozen training prevalence reference: 0.512
      - Estimand A (Trade-Outcome Prediction):
-       * Entered trade lifecycle with 60m / 180m / 15:15 exit rules
+       * Entered trade lifecycle with 60m / 180m / 15:00 close-window square-off
+       * New entries bars 1..19 (60m completes by 15:00)
        * Frozen training prevalence reference: 0.58
        * Statistical invariant: Balanced accuracy strictly marked None (N/A)
   4. Multi-Component Indian Statutory Friction Ledger (Section 4):
@@ -46,7 +47,7 @@ import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 import hashlib
 import json
 import math
@@ -110,7 +111,13 @@ PROTOCOL_ID = "RP-608-NSE-SHADOW-001"
 REGISTERED_WINDOW_START_UTC_MS = 1792986300000  # 2026-10-26T03:45:00.000Z (09:15:00 IST)
 FIFTEEN_MINUTES_MS = 15 * 60 * 1000  # 900,000 ms
 TOTAL_BARS_PER_SESSION = 25
-ESTIMAND_B_ELIGIBLE_BARS = 21  # Bars 1..21 have forward endpoints <= 15:30 IST
+# Closing-window adaptation (F&O continuous ends 15:15; CAS ~15:15–15:35):
+#   Bar 23 closes 15:00 IST — start of 15:00–15:15 closing window
+#   Bar 24 closes 15:15 IST — continuous halt / CAS open
+CLOSING_WINDOW_START_BAR = 23
+MANDATORY_SQUARE_OFF_BAR = 23  # flatten at 15:00 bar close
+MAX_NEW_ENTRY_BAR = 19  # 60m (4 bars) completes by bar 23 (15:00)
+ESTIMAND_B_ELIGIBLE_BARS = 19  # T+4 endpoint <= bar 23 (15:00 continuous reference)
 MAX_CONSECUTIVE_OUTAGES_FAIL_CLOSED = 1  # TG-4: < 1 consecutive missing bar for NSE
 
 # RP-608-REGIME-BREAKOUT-001 — Arm A freeze + observational regime telemetry
@@ -181,6 +188,18 @@ DEFAULT_INSTRUMENT_MAP_CACHE = DEFAULT_OUTPUT_DIR / "kite_nse_instrument_map.jso
 DEFAULT_KITE_READINESS_REPORT = DEFAULT_OUTPUT_DIR / "kite_readiness_report.json"
 INSTRUMENT_FETCH_COOLDOWN_SEC = 300.0
 INSTRUMENT_FETCH_MAX_ATTEMPTS = 3
+# Kite historical soft limit ~3 req/s; stay under for 119-symbol same-day bootstrap.
+HISTORICAL_FETCH_MIN_INTERVAL_SEC = 0.35
+# After a transient hist failure (429/5xx/network), retry the symbol without waiting for next bar.
+BOOTSTRAP_FAIL_COOLDOWN_SEC = 45.0
+
+
+class KiteAuthError(Exception):
+    """Kite HTTP 401/403 — access token invalid or expired."""
+
+
+class KiteRateLimitError(Exception):
+    """Kite HTTP 429 — too many requests; caller should back off and retry."""
 
 
 def resolve_output_dir(output_dir: Optional[str | Path]) -> Path:
@@ -323,6 +342,7 @@ class NSECheckpointState:
     unexecutable_drops_count: int = 0
     accounted_outage_ids: List[str] = field(default_factory=list)
     current_session_date: str = ""
+    next_session_recs_emitted_for: str = ""  # IST session date already emitted
     checksum: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -356,11 +376,56 @@ class KiteDataFeedAdapter:
         self.creds = self._load_credentials()
         self.api_key = self.creds.get("api_key", "")
         self.access_token = self.creds.get("access_token", "")
+        self._creds_mtime: Optional[float] = self._credentials_mtime()
         self.instrument_map: Dict[str, Tuple[int, str]] = {}
         self._instrument_map_source: Optional[str] = None
         self._last_instrument_fetch_attempt_mono: float = 0.0
+        self._last_historical_fetch_mono: float = 0.0
         self.ticker_cache: Optional[KiteTickerQuoteCache] = None
         self._initialize_instrument_map()
+
+    def _credentials_mtime(self) -> Optional[float]:
+        try:
+            return float(self.credentials_file.stat().st_mtime)
+        except OSError:
+            return None
+
+    def reload_credentials_if_stale(self, *, force: bool = False) -> bool:
+        """
+        Hot-reload ~/.kite_credentials.json when the dashboard re-auths Kite.
+        Restarts the WebSocket ticker if the access_token changed so the next
+        session (and mid-session re-auth) does not keep a stale 403 token.
+        Returns True when credentials were reloaded from disk.
+        """
+        mtime = self._credentials_mtime()
+        if (
+            not force
+            and mtime is not None
+            and self._creds_mtime is not None
+            and mtime == self._creds_mtime
+            and self.access_token
+        ):
+            return False
+
+        new_creds = self._load_credentials()
+        new_key = str(new_creds.get("api_key", "") or "")
+        new_token = str(new_creds.get("access_token", "") or "")
+        changed = (new_key != self.api_key) or (new_token != self.access_token)
+        self.creds = new_creds
+        self.api_key = new_key
+        self.access_token = new_token
+        self._creds_mtime = mtime
+
+        if changed:
+            if self.ticker_cache is not None:
+                self.stop_ticker()
+                self.start_ticker()
+            print(
+                f"[+] Kite credentials reloaded from {self.credentials_file} "
+                f"(token_len={len(self.access_token)}, ticker_restarted={self.ticker_cache is not None})",
+                flush=True,
+            )
+        return True
 
     def start_ticker(self) -> None:
         """Start continuous Kite WebSocket L1 cache (1 connection, universe tokens)."""
@@ -604,6 +669,7 @@ class KiteDataFeedAdapter:
         Fetches full quotes for all 119 symbols in a SINGLE batch HTTP request.
         Returns: {symbol: {"bars": [BarOHLCV], "quote": TopOfBookQuote, "error": Optional[str]}}
         """
+        self.reload_credentials_if_stale()
         if not self.access_token:
             return {s: {"bars": None, "quote": None, "error": "MISSING_KITE_ACCESS_TOKEN"} for s in self.symbols}
 
@@ -621,20 +687,37 @@ class KiteDataFeedAdapter:
             "User-Agent": "ChronoSentiment-RP608-Shadow"
         }
 
-        req = urllib.request.Request(url, headers=headers)
-        t_req_mono = time.monotonic()
         t_req_utc = int(time.time() * 1000)
+        data: Optional[Dict[str, Any]] = None
 
-        try:
+        def _quote_once(auth_headers: Dict[str, str]) -> Dict[str, Any]:
+            req = urllib.request.Request(url, headers=auth_headers)
             with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
                 if resp.status != 200:
-                    return {s: {"bars": None, "quote": None, "error": f"HTTP_{resp.status}"} for s in self.symbols}
-                data = json.loads(resp.read().decode("utf-8")).get("data", {})
+                    raise urllib.error.HTTPError(url, resp.status, f"HTTP_{resp.status}", resp.headers, None)
+                return json.loads(resp.read().decode("utf-8")).get("data", {}) or {}
+
+        try:
+            data = _quote_once(headers)
         except urllib.error.HTTPError as e:
             err_code = f"KITE_HTTP_{e.code}"
-            return {s: {"bars": None, "quote": None, "error": err_code} for s in self.symbols}
+            # Daily Kite token rotate via dashboard: pick up new file and retry once.
+            if e.code in (401, 403) and self.reload_credentials_if_stale(force=True) and self.access_token:
+                headers = {
+                    **headers,
+                    "Authorization": f"token {self.api_key}:{self.access_token}",
+                }
+                try:
+                    data = _quote_once(headers)
+                except Exception:
+                    return {s: {"bars": None, "quote": None, "error": err_code} for s in self.symbols}
+            else:
+                return {s: {"bars": None, "quote": None, "error": err_code} for s in self.symbols}
         except Exception as e:
             return {s: {"bars": None, "quote": None, "error": f"EXCEPTION_{type(e).__name__}"} for s in self.symbols}
+
+        if data is None:
+            return {s: {"bars": None, "quote": None, "error": "KITE_HTTP_EMPTY"} for s in self.symbols}
 
         results = {}
         for full_sym in self.symbols:
@@ -727,6 +810,13 @@ class KiteDataFeedAdapter:
 
         return results
 
+    def _throttle_historical_fetch(self) -> None:
+        elapsed = time.monotonic() - float(self._last_historical_fetch_mono or 0.0)
+        wait_s = HISTORICAL_FETCH_MIN_INTERVAL_SEC - elapsed
+        if wait_s > 0:
+            time.sleep(wait_s)
+        self._last_historical_fetch_mono = time.monotonic()
+
     def fetch_historical_15m_bars(
         self,
         symbol: str,
@@ -737,9 +827,14 @@ class KiteDataFeedAdapter:
         Fetches historical 15m candles from Kite Connect for a given symbol within [from_utc, to_utc].
         Strictly Read-Only (0.0% Order Authority).
         Returns list of BarOHLCV marked with source='kite_historical_same_day'.
+
+        Raises:
+          KiteAuthError on HTTP 401/403 (after one forced credential reload retry).
+          KiteRateLimitError on HTTP 429.
         """
+        self.reload_credentials_if_stale()
         if not self.access_token or not self.api_key:
-            return []
+            raise KiteAuthError("MISSING_KITE_ACCESS_TOKEN")
 
         if not self.instrument_map:
             self._initialize_instrument_map()
@@ -761,21 +856,44 @@ class KiteDataFeedAdapter:
             "to": to_str
         })
         url = f"https://api.kite.trade/instruments/historical/{token}/15minute?{query_str}"
-        headers = {
-            "X-Kite-Version": "3",
-            "Authorization": f"token {self.api_key}:{self.access_token}",
-            "User-Agent": "ChronoSentiment-RP608-Shadow"
-        }
 
-        req = urllib.request.Request(url, headers=headers)
-        try:
+        def _hist_once() -> List[Any]:
+            self._throttle_historical_fetch()
+            headers = {
+                "X-Kite-Version": "3",
+                "Authorization": f"token {self.api_key}:{self.access_token}",
+                "User-Agent": "ChronoSentiment-RP608-Shadow"
+            }
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
                 if resp.status != 200:
-                    return []
+                    raise urllib.error.HTTPError(url, int(resp.status), f"HTTP_{resp.status}", resp.headers, None)
                 body = json.loads(resp.read().decode("utf-8"))
-                candles = body.get("data", {}).get("candles", [])
-        except Exception:
-            return []
+                return list((body.get("data") or {}).get("candles") or [])
+
+        try:
+            candles = _hist_once()
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                self.reload_credentials_if_stale(force=True)
+                if not self.access_token:
+                    raise KiteAuthError(f"KITE_HTTP_{e.code}") from e
+                try:
+                    candles = _hist_once()
+                except urllib.error.HTTPError as e2:
+                    if e2.code in (401, 403):
+                        raise KiteAuthError(f"KITE_HTTP_{e2.code}") from e2
+                    if e2.code == 429:
+                        raise KiteRateLimitError("KITE_HTTP_429") from e2
+                    raise
+            elif e.code == 429:
+                raise KiteRateLimitError("KITE_HTTP_429") from e
+            else:
+                raise
+        except KiteAuthError:
+            raise
+        except KiteRateLimitError:
+            raise
 
         bars = []
         for c in candles:
@@ -831,6 +949,7 @@ class RP608NSEShadowDaemon:
         self.latest_evaluations_path = self.output_dir / "rp608_nse_latest_evaluations.json"
         self.bar_history_path = self.output_dir / "rp608_nse_bar_history.json"
         self.pending_evaluations_path = self.output_dir / "rp608_nse_pending_evaluations.json"
+        self.next_session_recs_path = self.output_dir / "rp608_nse_next_session_recommendations.json"
 
         self.feed_adapter = feed_adapter or KiteDataFeedAdapter(NSE_119_SYMBOLS)
         self.symbols = getattr(self.feed_adapter, "symbols", NSE_119_SYMBOLS)
@@ -841,6 +960,8 @@ class RP608NSEShadowDaemon:
         self.exchange_holidays = set(NSE_2026_HOLIDAYS)
         self.current_session_date: Optional[Any] = None
         self._symbol_last_bootstrap_bar: Dict[str, int] = {}
+        # Transient hist failures (429/auth/network): cooldown then retry without waiting for next bar.
+        self._symbol_bootstrap_fail_mono: Dict[str, float] = {}
         # Price history ring buffer per symbol loaded from durable storage: {symbol: [BarOHLCV]}
         self.price_history: Dict[str, List[BarOHLCV]] = self.load_bar_history()
         # Forward outcome pending queue and active trades restored from durable storage across restarts:
@@ -1107,15 +1228,30 @@ class RP608NSEShadowDaemon:
                 "reason": f"Only {completed_bars}/5 completed bars today; opening warm-up active"
             }
 
+        # Pick up dashboard re-auth before same-day hist storm (next-session + mid-day rotate).
+        reload_fn = getattr(self.feed_adapter, "reload_credentials_if_stale", None)
+        if callable(reload_fn):
+            reload_fn()
+
+        now_mono = time.monotonic()
+        need_n = min(completed_bars, 5)
+
         # Determine symbols that actually need recovery
         if target_symbols is not None:
             symbols_to_query = list(target_symbols)
         else:
-            symbols_to_query = [
-                s for s in self.symbols
-                if len(self.price_history.get(s, [])) < min(completed_bars, 5)
-                and self._symbol_last_bootstrap_bar.get(s, 0) < completed_bars
-            ]
+            symbols_to_query = []
+            for s in self.symbols:
+                if len(self.price_history.get(s, [])) >= need_n:
+                    continue
+                # Successful empty/complete attempt for this bar: wait for next completed bar.
+                if self._symbol_last_bootstrap_bar.get(s, 0) >= completed_bars:
+                    continue
+                # Transient failure: short cooldown then retry within the same bar.
+                fail_at = float(self._symbol_bootstrap_fail_mono.get(s, 0.0) or 0.0)
+                if fail_at > 0.0 and (now_mono - fail_at) < BOOTSTRAP_FAIL_COOLDOWN_SEC:
+                    continue
+                symbols_to_query.append(s)
 
         if not symbols_to_query:
             return {
@@ -1139,16 +1275,38 @@ class RP608NSEShadowDaemon:
 
         recovered_count = 0
         total_backfilled_bars = 0
+        transient_failures = 0
+        auth_reloaded = False
 
         for sym in symbols_to_query:
-            self._symbol_last_bootstrap_bar[sym] = completed_bars
             try:
                 hist_bars = self.feed_adapter.fetch_historical_15m_bars(sym, from_utc, to_utc)
+            except KiteAuthError as e:
+                # Fail closed: do NOT mark bar complete — retry after cooldown / re-auth.
+                self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
+                transient_failures += 1
+                if not auth_reloaded and callable(reload_fn):
+                    reload_fn(force=True)
+                    auth_reloaded = True
+                    print(f"[!] Bootstrap auth failure ({sym}: {e}); credentials force-reloaded once", flush=True)
+                continue
+            except KiteRateLimitError:
+                self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
+                transient_failures += 1
+                time.sleep(2.0)
+                continue
             except Exception:
-                # Fail closed on API failure for this symbol: do not crash, allow other symbols to proceed
+                # Fail closed on API failure for this symbol: do not crash; do not consume the bar slot.
+                self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
+                transient_failures += 1
                 continue
 
+            # Clear transient fail marker on any successful HTTP round-trip.
+            self._symbol_bootstrap_fail_mono.pop(sym, None)
+
             if not hist_bars:
+                # Definitive empty range for this bar — do not re-poll until next completed bar.
+                self._symbol_last_bootstrap_bar[sym] = completed_bars
                 continue
 
             # Filter hist_bars strictly:
@@ -1220,11 +1378,27 @@ class RP608NSEShadowDaemon:
                 recovered_count += 1
                 total_backfilled_bars += added_for_sym
 
+            # Mark bar complete only once warm enough; otherwise retry within cooldown/next pass
+            # (covers filtered-empty responses without consuming the bar slot forever).
+            if len(self.price_history.get(sym, [])) >= need_n:
+                self._symbol_last_bootstrap_bar[sym] = completed_bars
+            else:
+                self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
+
+        if transient_failures:
+            print(
+                f"[!] Bootstrap transient failures={transient_failures}/"
+                f"{len(symbols_to_query)} (will retry after {BOOTSTRAP_FAIL_COOLDOWN_SEC:.0f}s cooldown)",
+                flush=True,
+            )
+
         return {
             "status": "BOOTSTRAP_SUCCESS",
             "completed_bars_today": completed_bars,
             "recovered_symbols": recovered_count,
-            "total_backfilled_bars": total_backfilled_bars
+            "total_backfilled_bars": total_backfilled_bars,
+            "transient_failures": transient_failures,
+            "queried_symbols": len(symbols_to_query),
         }
 
     def append_jsonl(self, path: Path, record: Dict[str, Any]):
@@ -1491,10 +1665,16 @@ class RP608NSEShadowDaemon:
             self.state.directional_cards_count += 1
 
         # ─── Estimand A: Trade Lifecycle Simulation ───────────
-        # Mandatory square-off at Bar 24 close (15:15 IST)
-        if bar_idx >= 24 and symbol in self.active_trades:
+        # Mandatory square-off at Bar 23 close (15:00 IST) — adapt to 15:00–15:15
+        # closing window / F&O continuous halt (do not carry into CAS).
+        if bar_idx >= MANDATORY_SQUARE_OFF_BAR and symbol in self.active_trades:
             trade = self.active_trades.pop(symbol)
-            self._close_trade(trade, exit_price=p_ref, exit_bar=bar_idx, exit_reason="MANDATORY_INTRADAY_SQUARE_OFF")
+            self._close_trade(
+                trade,
+                exit_price=p_ref,
+                exit_bar=bar_idx,
+                exit_reason="MANDATORY_INTRADAY_SQUARE_OFF",
+            )
 
         # Check existing open trade for exit conditions
         elif symbol in self.active_trades:
@@ -1533,8 +1713,12 @@ class RP608NSEShadowDaemon:
             elif bars_held >= 4 and p_ref > entry_p:
                 self._close_trade(self.active_trades.pop(symbol), exit_price=p_ref, exit_bar=bar_idx, exit_reason="TARGET_HORIZON_60M")
 
-        # Entry condition: bar_idx in 1..20 (canonical RP-608 protocol: new entries restricted to 09:15-14:00 IST)
-        elif signal_entry and (1 <= bar_idx <= 20) and symbol not in self.active_trades:
+        # Entry: bars 1..MAX_NEW_ENTRY_BAR so 60m horizon completes by 15:00 close-window.
+        elif (
+            signal_entry
+            and (1 <= bar_idx <= MAX_NEW_ENTRY_BAR)
+            and symbol not in self.active_trades
+        ):
             trade_id = f"nse_trade_{self.state.session_idx}_{bar_idx}_{symbol}"
             qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
             half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
@@ -1577,13 +1761,19 @@ class RP608NSEShadowDaemon:
             decision_code = "EXISTING_POSITION_ACTIVE"
             explanation = f"Existing active trade open since bar {self.active_trades[symbol]['entry_bar_idx']}"
             decision = "NO_TRADE"
-        elif bar_idx >= 24:
+        elif bar_idx >= MANDATORY_SQUARE_OFF_BAR:
             decision_code = "INTRADAY_BOUNDARY_EXCLUDED"
-            explanation = f"Session bar {bar_idx} >= 24 (session close square-off)"
+            explanation = (
+                f"Session bar {bar_idx} >= {MANDATORY_SQUARE_OFF_BAR} "
+                f"(15:00–15:15 closing window / mandatory square-off)"
+            )
             decision = "NO_TRADE"
-        elif bar_idx > 20:
+        elif bar_idx > MAX_NEW_ENTRY_BAR:
             decision_code = "INTRADAY_BOUNDARY_EXCLUDED"
-            explanation = f"Session bar {bar_idx} > 20 (canonical entry cutoff 14:00 IST)"
+            explanation = (
+                f"Session bar {bar_idx} > {MAX_NEW_ENTRY_BAR} "
+                f"(entry cutoff so 60m horizon completes by 15:00 close-window)"
+            )
             decision = "NO_TRADE"
         elif len(closes) < 5:
             decision_code = "COLD_START_INSUFFICIENT_HISTORY"
@@ -1694,7 +1884,10 @@ class RP608NSEShadowDaemon:
                 "historical_bootstrap_count": sum(1 for b in history if getattr(b, "source", "") == "kite_historical_same_day")
             },
             "half_spread_bps": round(quote.half_spread_bps, 2) if quote else None,
-            "entry_conditions": "traj15 >= 0.05 and history >= 5 and 1 <= bar_idx <= 20 and not active_trade",
+            "entry_conditions": (
+                f"traj15 >= 0.05 and history >= 5 and 1 <= bar_idx <= {MAX_NEW_ENTRY_BAR} "
+                f"and not active_trade (60m completes by 15:00 close-window)"
+            ),
             "invalidation": inval_text,
             "risk_reward": rr_dict,
             "exit_policy": EXIT_POLICY,
@@ -1709,7 +1902,13 @@ class RP608NSEShadowDaemon:
             "horizon_class": "INTRADAY",
             "horizon_id": "H0_NSE_INTRADAY",
             "horizon_label": "Intraday",
-            "horizon_term": "15m bars · 60m target / 180m max · session square-off",
+            "horizon_term": (
+                f"15m bars · 60m / 180m max · square-off 15:00 "
+                f"(bar {MANDATORY_SQUARE_OFF_BAR}; close-window 15:00–15:15)"
+            ),
+            "closing_window_ist": "15:00-15:15",
+            "max_new_entry_bar": MAX_NEW_ENTRY_BAR,
+            "mandatory_square_off_bar": MANDATORY_SQUARE_OFF_BAR,
         }
         # Observational regime telemetry on completed-bar history only (Phase 1–2).
         # Must not alter decision / entry / exit / cost fields above.
@@ -1893,8 +2092,17 @@ class RP608NSEShadowDaemon:
             # Closed-market heartbeat must NOT accidentally initialize or erase active-session state!
             self.state.last_heartbeat_utc_ms = now_ms
             self.state.last_heartbeat_iso = now_utc.isoformat()
+            next_sess_meta = None
+            if phase == "POST_CLOSE":
+                try:
+                    next_sess_meta = self.emit_next_session_recommendations_if_needed(now_ist=now_ist)
+                except Exception as nsr_exc:
+                    print(f"[next_session_recs] emit skipped: {nsr_exc}")
             self.atomic_commit_checkpoint(self.state)
-            return {"status": phase, "bar_idx": 0, "processed": 0}
+            out = {"status": phase, "bar_idx": 0, "processed": 0}
+            if next_sess_meta:
+                out["next_session_recommendations"] = next_sess_meta
+            return out
 
         # Determine authoritative trading session date in IST
         today_session_str = str(now_ist.date())
@@ -1905,6 +2113,10 @@ class RP608NSEShadowDaemon:
             self.state.current_session_date = today_session_str
             self.state.last_durable_bar_idx = 0
             self.state.last_accounted_bar_idx = 0
+            # Fresh session: always load latest Kite token (daily rotate / overnight re-auth).
+            reload_fn = getattr(self.feed_adapter, "reload_credentials_if_stale", None)
+            if callable(reload_fn):
+                reload_fn(force=True)
             self.atomic_commit_checkpoint(self.state)
         elif str(self.current_session_date) != today_session_str:
             self.state.session_idx += 1
@@ -1915,8 +2127,13 @@ class RP608NSEShadowDaemon:
             self.pending_directional_evals.clear()
             self.last_evaluations.clear()
             self._symbol_last_bootstrap_bar.clear()
+            self._symbol_bootstrap_fail_mono.clear()
             self.current_session_date = today_session_str
             self.state.current_session_date = today_session_str
+            # Next session must not inherit yesterday's expired access_token in memory.
+            reload_fn = getattr(self.feed_adapter, "reload_credentials_if_stale", None)
+            if callable(reload_fn):
+                reload_fn(force=True)
             self.save_bar_history()
             self.save_pending_evaluations()
             self.atomic_commit_checkpoint(self.state)
@@ -2009,7 +2226,10 @@ class RP608NSEShadowDaemon:
                     "provisional_rank": None,
                     "history_length": len(self.price_history.get(sym, [])),
                     "half_spread_bps": None,
-                    "entry_conditions": "traj15 >= 0.05 and history >= 5 and 1 <= bar_idx <= 20 and not active_trade",
+                    "entry_conditions": (
+                        f"traj15 >= 0.05 and history >= 5 and 1 <= bar_idx <= {MAX_NEW_ENTRY_BAR} "
+                        f"and not active_trade (60m completes by 15:00 close-window)"
+                    ),
                     "invalidation": "p <= entry_price * 0.99 (1.0% stop) or 4-bar hold without gain or max 12 bars",
                     "risk_reward": None,
                     "data_quality": {
@@ -2082,6 +2302,63 @@ class RP608NSEShadowDaemon:
         self.append_jsonl(self.telemetry_path, telem)
         return telem
 
+    def emit_next_session_recommendations_if_needed(
+        self,
+        *,
+        now_ist: datetime,
+        force: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Once per completed IST session date, emit next-session intraday watchlist
+        from today's fetch-backed bar history (POST_CLOSE only).
+        """
+        from scripts.rp608_nse_next_session_recs import (
+            build_next_session_recommendations,
+            next_weekday_session,
+            write_next_session_recommendations,
+        )
+
+        from_date = str(
+            self.current_session_date
+            or getattr(self.state, "current_session_date", "")
+            or now_ist.date()
+        )
+        if not force and getattr(self.state, "next_session_recs_emitted_for", "") == from_date:
+            return {
+                "emitted": False,
+                "reason": "already_emitted",
+                "from_session_date": from_date,
+                "path": str(self.next_session_recs_path),
+            }
+
+        try:
+            d0 = date.fromisoformat(from_date)
+        except ValueError:
+            d0 = now_ist.date()
+            from_date = str(d0)
+
+        nxt = next_weekday_session(d0, holidays=set(getattr(self, "exchange_holidays", set()) or set()))
+        payload = build_next_session_recommendations(
+            self.price_history,
+            from_session_date=from_date,
+            next_session_date=str(nxt),
+            top_n=20,
+            now_utc=datetime.now(timezone.utc),
+        )
+        write_next_session_recommendations(self.next_session_recs_path, payload)
+        self.state.next_session_recs_emitted_for = from_date
+        print(
+            f"[next_session_recs] emitted {payload.get('n_recommendations')} watches "
+            f"for {payload.get('next_session_date')} → {self.next_session_recs_path}"
+        )
+        return {
+            "emitted": True,
+            "from_session_date": from_date,
+            "next_session_date": str(nxt),
+            "n_recommendations": payload.get("n_recommendations"),
+            "path": str(self.next_session_recs_path),
+        }
+
     async def run_async_loop(self):
         """Asynchronous main loop with graceful termination handling."""
         self.running = True
@@ -2138,6 +2415,11 @@ def parse_args():
     parser.add_argument("--single-bar-test", action="store_true", help="Run a single bar iteration and exit cleanly")
     parser.add_argument("--setup-only", action="store_true", help="Initialize directory and checkpoint then exit")
     parser.add_argument("--reset-outages", action="store_true", help="Reset consecutive outages counter on authorized service start")
+    parser.add_argument(
+        "--emit-next-session-recs",
+        action="store_true",
+        help="Force-emit next-session watchlist from bar history and exit (post-close tool)",
+    )
     return parser.parse_args()
 
 
@@ -2152,6 +2434,13 @@ def main():
     if args.setup_only:
         print(f"Setup complete. Output dir: {daemon.output_dir}")
         print(f"Checkpoint status: {daemon.state.status}, checksum: {daemon.state.checksum}")
+        sys.exit(0)
+
+    if args.emit_next_session_recs:
+        ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+        meta = daemon.emit_next_session_recommendations_if_needed(now_ist=ist, force=True)
+        daemon.atomic_commit_checkpoint(daemon.state)
+        print(json.dumps(meta, indent=2))
         sys.exit(0)
 
     if args.single_bar_test:
