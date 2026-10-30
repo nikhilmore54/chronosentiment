@@ -217,7 +217,11 @@ def calculate_trade_plan(
         "expiry_time_ms": expiry_time_ms,
         "state": "OPEN",
         "data_quality_status": "VALID",
-        "order_authority": "0.0% (SIMULATED)"
+        "order_authority": "0.0% (SIMULATED)",
+        "horizon_class": "INTRADAY",
+        "horizon_id": "H0_INTRADAY_60M",
+        "horizon_label": "Intraday",
+        "horizon_term": "≤60 minutes (trade-plan overlay)",
     }
 
 

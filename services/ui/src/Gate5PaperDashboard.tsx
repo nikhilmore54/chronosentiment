@@ -252,6 +252,9 @@ export interface QuantTradeParameters {
   stopLossPct: number;
   formattedStopLossPrice: string;
   horizonDuration: string;
+  horizonClass: 'INTRADAY' | 'MULTI_DAY' | 'MULTI_WEEK' | 'LONG_TERM';
+  horizonLabel: string;
+  horizonTerm: string;
   horizonDurations: {
     '15m': string;
     '30m': string;
@@ -281,15 +284,50 @@ function getDynamicAssetVolatility(sym: string): { baseTarget: number; baseStop:
   return { baseTarget: 3.50, baseStop: 1.40 };
 }
 
+const HORIZON_META: Record<
+  'INTRADAY' | 'MULTI_DAY' | 'MULTI_WEEK' | 'LONG_TERM',
+  { label: string; termCrypto: string; termEquity: string; durationCrypto: string; durationEquity: string }
+> = {
+  INTRADAY: {
+    label: 'Intraday',
+    termCrypto: '≤60m target · 180m max (crypto overlay)',
+    termEquity: '≤60m / session square-off (MIS)',
+    durationCrypto: '60m (1h) Target (180m Max)',
+    durationEquity: '60m Target (180m Max · session)',
+  },
+  MULTI_DAY: {
+    label: 'Multi-day',
+    termCrypto: '2–14 calendar days (RP-610 H1)',
+    termEquity: '2–20 sessions CNC swing (RP-609 H1)',
+    durationCrypto: '2–14d hold',
+    durationEquity: '2–20 sessions',
+  },
+  MULTI_WEEK: {
+    label: 'Multi-week',
+    termCrypto: '14–56 calendar days (RP-610 H2)',
+    termEquity: '5–60 sessions portfolio build (RP-609 H2)',
+    durationCrypto: '14–56d hold',
+    durationEquity: '5–60 sessions',
+  },
+  LONG_TERM: {
+    label: 'Long-term',
+    termCrypto: '≥90 calendar days thesis hold (RP-610 H3)',
+    termEquity: '≥60 sessions / ≥90d thesis (RP-609 H3)',
+    durationCrypto: '≥90d thesis',
+    durationEquity: '≥90d / ≥60 sessions',
+  },
+};
+
 export function getQuantTradeParameters(
   sym: string,
   price: number,
   state: string,
   traj1d?: number,
   scores?: { '15m': number; '30m': number; '1d': number },
-  overrideSide?: 'LONG' | 'SHORT'
+  overrideSide?: 'LONG' | 'SHORT',
+  overrideHorizon?: 'INTRADAY' | 'MULTI_DAY' | 'MULTI_WEEK' | 'LONG_TERM'
 ): QuantTradeParameters {
-  const isCrypto = sym.includes('-USD');
+  const isCrypto = sym.includes('-USD') || sym.includes('USDT');
   const isNse = sym.endsWith('.NS') || sym.endsWith('.BO');
   const currSym = isNse ? '₹' : '$';
 
@@ -318,7 +356,12 @@ export function getQuantTradeParameters(
   const targetPrice = Math.round(price * (1 + targetPct / 100) * scale) / scale;
   const stopLossPrice = Math.round(price * (1 + stopLossPct / 100) * scale) / scale;
 
-  const horizonDuration = isCrypto ? '60m (1h) Target (180m Max)' : '1440m (24h) Target (4320m Max)';
+  const horizonClass: 'INTRADAY' | 'MULTI_DAY' | 'MULTI_WEEK' | 'LONG_TERM' =
+    overrideHorizon ?? (isCrypto ? 'INTRADAY' : 'MULTI_DAY');
+  const meta = HORIZON_META[horizonClass];
+  const horizonDuration = isCrypto ? meta.durationCrypto : meta.durationEquity;
+  const horizonLabel = meta.label;
+  const horizonTerm = isCrypto ? meta.termCrypto : meta.termEquity;
   const horizonDurations = {
     '15m': '45m Target (180m Max)',
     '30m': '90m Target (360m Max)',
@@ -341,6 +384,10 @@ export function getQuantTradeParameters(
     formattedTargetPrice,
     stopLossPrice,
     stopLossPct,
+    horizonDuration,
+    horizonClass,
+    horizonLabel,
+    horizonTerm,
     horizonDurations
   };
 }
@@ -727,7 +774,7 @@ const SAMPLE_DECISION_CARD = (sym: string, price: number): DecisionCard => {
 
   const explicitReasoning = [
     meta.reasoning[0] || `• DYNAMICS: 15m (${meta.scores['15m'] >= 0 ? '+' : ''}${meta.scores['15m'].toFixed(4)}), 30m (${meta.scores['30m'] >= 0 ? '+' : ''}${meta.scores['30m'].toFixed(4)}), 1d (${meta.scores['1d'] >= 0 ? '+' : ''}${meta.scores['1d'].toFixed(4)}) multi-horizon score alignment.`,
-    `• RECOMMENDATION RATIONALE: ${meta.state} — Entry/Trigger: ${q.formattedTriggerPrice} | Target Price (+3.5%): ${q.formattedTargetPrice} | Stop Loss Price (-1.5%): ${q.formattedStopLossPrice} | Horizon Duration: ${q.horizonDuration}.`,
+    `• RECOMMENDATION RATIONALE: ${meta.state} — Horizon: ${q.horizonLabel.toUpperCase()} (${q.horizonTerm}) | Entry/Trigger: ${q.formattedTriggerPrice} | Target: ${q.formattedTargetPrice} | Stop: ${q.formattedStopLossPrice} | Clock: ${q.horizonDuration}.`,
     `• ACTIONABLE TRIGGER: Entry signal active at ${q.formattedTriggerPrice} when 15m velocity exceeds ${meta.state === 'EXIT' ? '-0.20' : '+0.20'} (Current Price: ${formattedPrice}).`,
     `• CAPITAL PROTECTION: Hard stop loss at ${q.formattedStopLossPrice} limits downside risk to 1.5%; maximum horizon exit enforced at ${q.horizonDuration}.`
   ];
@@ -1215,6 +1262,39 @@ export const Gate5PaperDashboard: React.FC = () => {
   const [nseRecLedgerFilter, setNseRecLedgerFilter] = useState<'ALL' | 'LEDGER_A_ACTIVE' | 'LEDGER_B_ACTIVE' | 'REJECTED_COUNTERFACTUAL' | 'NOT_YET_ACTIVE'>('ALL');
   const [nseRecF15Filter, setNseRecF15Filter] = useState<'ALL' | 'COLD_START' | 'FULL_LOOKBACK'>('ALL');
 
+  // RP-609/610 multi-horizon observation surface (Pi dashboard)
+  type HorizonClass = 'INTRADAY' | 'MULTI_DAY' | 'MULTI_WEEK' | 'LONG_TERM';
+  type MhRec = {
+    market?: string;
+    horizon_class?: HorizonClass;
+    horizon_label?: string;
+    horizon_term?: string;
+    symbol?: string;
+    symbols?: string[];
+    side?: string;
+    decision?: string;
+    entry_price?: number | null;
+    stop_loss_price?: number | null;
+    target_price?: number | null;
+    status?: string;
+    thesis?: string;
+    source?: string;
+    live_order_authority?: number;
+  };
+  type MhState = {
+    live_order_authority?: number;
+    updated_utc?: string;
+    note?: string;
+    counts_by_class?: Record<string, number>;
+    recommendations?: MhRec[];
+    nse?: { available?: boolean; catalog?: any[] };
+    crypto?: { available?: boolean; catalog?: any[] };
+  };
+  const [multiHorizon, setMultiHorizon] = useState<MhState | null>(null);
+  const [mhClassFilter, setMhClassFilter] = useState<'ALL' | HorizonClass>('ALL');
+  const [mhMarketFilter, setMhMarketFilter] = useState<'ALL' | 'NSE' | 'CRYPTO'>('ALL');
+  const [ticketHorizonClass, setTicketHorizonClass] = useState<HorizonClass>('INTRADAY');
+
   // Shortcut handler for direct Paper Trade execution from asset compare surface
   const handlePaperTradeShortcut = (sym: string, action: 'BUY' | 'SELL SHORT' | 'CLOSE') => {
     setSelectedSymbol(sym);
@@ -1596,6 +1676,38 @@ export const Gate5PaperDashboard: React.FC = () => {
     const interval = setInterval(fetchNseRecs, 30000); // 30s refresh
     return () => clearInterval(interval);
   }, []);
+
+  // RP-609/610 multi-horizon books from Pi (proxy) with local snapshot fallback
+  useEffect(() => {
+    const fetchMh = async () => {
+      const urls = [
+        '/pi-dashboard/api/multi_horizon',
+        '/data/multi_horizon_snapshot.json?t=' + Date.now(),
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (data && (data.recommendations || data.counts_by_class || data.classes)) {
+            setMultiHorizon(data);
+            return;
+          }
+        } catch {
+          // try next source
+        }
+      }
+    };
+    fetchMh();
+    const interval = setInterval(fetchMh, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Keep ticket horizon default aligned to symbol class
+  useEffect(() => {
+    const isCrypto = selectedSymbol.includes('-USD') || selectedSymbol.includes('USDT');
+    setTicketHorizonClass(isCrypto ? 'INTRADAY' : 'MULTI_DAY');
+  }, [selectedSymbol]);
 
   // Update position current prices and unrealized P&L whenever liveCards change
   useEffect(() => {
@@ -2837,6 +2949,7 @@ export const Gate5PaperDashboard: React.FC = () => {
                     <tr style={{ backgroundColor: '#1e293b', color: '#64748b', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                       <th style={{ padding: '8px 10px' }}>Rank</th>
                       <th style={{ padding: '8px 10px' }}>Instrument</th>
+                      <th style={{ padding: '8px 10px' }}>Holding Term</th>
                       <th style={{ padding: '8px 10px' }}>Session</th>
                       <th style={{ padding: '8px 10px' }}>Recommendation State</th>
                       <th style={{ padding: '8px 10px' }}>Alignment</th>
@@ -2859,6 +2972,23 @@ export const Gate5PaperDashboard: React.FC = () => {
                           <td style={{ padding: '10px' }}>
                             <strong style={{ color: '#ffffff', fontSize: '12px' }}>{sym}</strong>
                             <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>{formatAssetCurrency(card.current_price, sym)}</span>
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            {(() => {
+                              const hc = q.horizonClass;
+                              const colors: Record<string, { bg: string; fg: string }> = {
+                                INTRADAY: { bg: 'rgba(6,182,212,0.15)', fg: '#22d3ee' },
+                                MULTI_DAY: { bg: 'rgba(167,139,250,0.15)', fg: '#c4b5fd' },
+                                MULTI_WEEK: { bg: 'rgba(251,146,60,0.15)', fg: '#fdba74' },
+                                LONG_TERM: { bg: 'rgba(244,63,94,0.15)', fg: '#fb7185' },
+                              };
+                              const c = colors[hc] || colors.INTRADAY;
+                              return (
+                                <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', backgroundColor: c.bg, color: c.fg, border: `1px solid ${c.fg}44` }} title={q.horizonTerm}>
+                                  {hc}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '10px' }}>
                             <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: session.isOpen ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: session.isOpen ? '#34d399' : '#f87171' }}>
@@ -2916,16 +3046,151 @@ export const Gate5PaperDashboard: React.FC = () => {
       </div>
 
 
+      {/* 1C. RP-609/610 MULTI-HORIZON OBSERVATION RECS (Pi) */}
+      <div style={{ marginBottom: '28px', borderLeft: '4px solid #c4b5fd', background: 'linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%)', borderRadius: '10px', padding: '16px 18px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Multi-Horizon Recommendations · INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8', maxWidth: '720px' }}>
+              {multiHorizon?.note ?? 'H0/INTRADAY owned by RP-608 daemons. H1–H3 are RP-609/610 observation-only paper books (gates CLOSED).'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', backgroundColor: 'rgba(167,139,250,0.15)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.35)' }}>
+              RP-609 NSE · RP-610 CRYPTO
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', backgroundColor: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' }}>
+              {(multiHorizon?.live_order_authority ?? 0).toFixed(1)}% ORDER AUTHORITY
+            </span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {(['INTRADAY', 'MULTI_DAY', 'MULTI_WEEK', 'LONG_TERM'] as const).map((cls) => {
+            const colors: Record<string, string> = { INTRADAY: '#22d3ee', MULTI_DAY: '#c4b5fd', MULTI_WEEK: '#fdba74', LONG_TERM: '#fb7185' };
+            const c = colors[cls];
+            const n = multiHorizon?.counts_by_class?.[cls] ?? 0;
+            const active = mhClassFilter === cls;
+            return (
+              <button
+                key={cls}
+                type="button"
+                onClick={() => setMhClassFilter(active ? 'ALL' : cls)}
+                style={{
+                  fontSize: '10px', fontWeight: 800, padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
+                  border: `1px solid ${c}55`, color: c, backgroundColor: active ? `${c}28` : `${c}12`,
+                }}
+              >
+                {cls}: {n}
+              </button>
+            );
+          })}
+          <select
+            value={mhMarketFilter}
+            onChange={(e) => setMhMarketFilter(e.target.value as 'ALL' | 'NSE' | 'CRYPTO')}
+            style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#0f172a', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <option value="ALL">NSE + CRYPTO</option>
+            <option value="NSE">NSE only</option>
+            <option value="CRYPTO">CRYPTO only</option>
+          </select>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', maxHeight: '360px', overflow: 'auto' }}>
+          {(() => {
+            const recs = (multiHorizon?.recommendations ?? []).filter((r) => {
+              if (mhClassFilter !== 'ALL' && r.horizon_class !== mhClassFilter) return false;
+              if (mhMarketFilter !== 'ALL' && (r.market || '') !== mhMarketFilter) return false;
+              return true;
+            });
+            if (recs.length === 0) {
+              return (
+                <div style={{ fontSize: '12px', color: '#64748b', padding: '8px 0' }}>
+                  No open observation recommendations for this filter. Catalog classes remain implemented on Pi.
+                </div>
+              );
+            }
+            const badge = (cls?: string) => {
+              const map: Record<string, { bg: string; fg: string }> = {
+                INTRADAY: { bg: 'rgba(6,182,212,0.15)', fg: '#22d3ee' },
+                MULTI_DAY: { bg: 'rgba(167,139,250,0.15)', fg: '#c4b5fd' },
+                MULTI_WEEK: { bg: 'rgba(251,146,60,0.15)', fg: '#fdba74' },
+                LONG_TERM: { bg: 'rgba(244,63,94,0.15)', fg: '#fb7185' },
+              };
+              return map[cls || 'INTRADAY'] || map.INTRADAY;
+            };
+            return recs.map((r, i) => {
+              const b = badge(r.horizon_class);
+              const symList = (r.symbols && r.symbols.length) ? r.symbols : [r.symbol || '—'];
+              const sym = symList[0] || '—';
+              return (
+                <div key={`${r.market}-${r.horizon_class}-${sym}-${i}`} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {symList.map((s) => (
+                        <strong key={s} style={{ color: '#38bdf8', fontSize: '15px', fontFamily: 'monospace' }}>{s}</strong>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', backgroundColor: b.bg, color: b.fg, border: `1px solid ${b.fg}44` }}>
+                      {r.horizon_label || r.horizon_class}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
+                    {r.market} · {r.decision} · {r.side || 'LONG'} · {r.status || 'OPEN'}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px' }}>{r.horizon_term}</div>
+                  <div style={{ display: 'flex', gap: '10px', fontSize: '11px', fontFamily: 'monospace', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#e2e8f0' }}>Entry {r.entry_price != null ? r.entry_price : '—'}</span>
+                    <span style={{ color: '#f87171' }}>Stop {r.stop_loss_price != null ? r.stop_loss_price : '—'}</span>
+                    <span style={{ color: '#34d399' }}>Tgt {r.target_price != null ? r.target_price : '—'}</span>
+                  </div>
+                  {r.thesis ? <div style={{ marginTop: '6px', fontSize: '10px', color: '#94a3b8' }}>{r.thesis}</div> : null}
+                  <div style={{ marginTop: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ticketSym = sym.includes('USDT') ? sym.replace('USDT', '-USD') : sym;
+                        setSelectedSymbol(ticketSym);
+                        setTicketHorizonClass((r.horizon_class as HorizonClass) || 'INTRADAY');
+                        setTicketAction((r.side || 'LONG') === 'SHORT' ? 'SELL SHORT' : 'BUY');
+                        setTimeout(() => {
+                          document.getElementById('paper-order-ticket')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 50);
+                      }}
+                      style={{ fontSize: '10px', fontWeight: 800, padding: '5px 10px', borderRadius: '5px', border: 'none', backgroundColor: '#0284c7', color: '#fff', cursor: 'pointer' }}
+                    >
+                      OPEN TICKET · {r.horizon_class}
+                    </button>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+
       {/* 2. MULTI-HORIZON COMPARE & PAPER TRADE SHORTCUT SURFACE */}
       <div style={{ marginBottom: '28px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>📊</span> Multi-Horizon Asset Compare Surface
+              Multi-Horizon Asset Compare Surface
             </h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
               Compare multi-horizon trajectory alignment (15m, 30m, 1d) across market asset classes with direct paper trade shortcuts.
             </p>
+            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {[
+                { cls: 'INTRADAY', term: '≤60m / session', color: '#22d3ee' },
+                { cls: 'MULTI_DAY', term: '2–14d / 2–20 sessions', color: '#c4b5fd' },
+                { cls: 'MULTI_WEEK', term: '14–56d / portfolio build', color: '#fdba74' },
+                { cls: 'LONG_TERM', term: '≥90d thesis', color: '#fb7185' },
+              ].map((h) => (
+                <span key={h.cls} style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', border: `1px solid ${h.color}55`, color: h.color, backgroundColor: `${h.color}18` }}>
+                  {h.cls} · {h.term}
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Market Class Selector Pills */}
@@ -3105,7 +3370,7 @@ export const Gate5PaperDashboard: React.FC = () => {
                             const q = getQuantTradeParameters(sym, card.current_price, state, traj1d, { '15m': traj15m, '30m': traj30m, '1d': traj1d });
                             return [
                               `• DYNAMICS: 15m (${traj15m > 0 ? '+' : ''}${traj15m.toFixed(2)}), 30m (${traj30m > 0 ? '+' : ''}${traj30m.toFixed(2)}), 1d (${traj1d > 0 ? '+' : ''}${traj1d.toFixed(2)})`,
-                              `• RECOMMENDATION RATIONALE: ${state} — Entry/Trigger: ${q.formattedTriggerPrice} | Target Price: ${q.formattedTargetPrice} (${q.targetPct > 0 ? '+' : ''}${q.targetPct.toFixed(2)}%) | Stop Loss Price: ${q.formattedStopLossPrice} (${q.stopLossPct > 0 ? '+' : ''}${q.stopLossPct.toFixed(2)}%) | Horizon Duration: ${q.horizonDuration}.`,
+                              `• RECOMMENDATION RATIONALE: ${state} — Horizon: ${q.horizonLabel.toUpperCase()} (${q.horizonTerm}) | Entry/Trigger: ${q.formattedTriggerPrice} | Target: ${q.formattedTargetPrice} (${q.targetPct > 0 ? '+' : ''}${q.targetPct.toFixed(2)}%) | Stop: ${q.formattedStopLossPrice} (${q.stopLossPct > 0 ? '+' : ''}${q.stopLossPct.toFixed(2)}%) | Clock: ${q.horizonDuration}.`,
                               `• ACTIONABLE TRIGGER: Monitor velocity relative to threshold ±0.20 for momentum shift (${q.triggerLabel}: ${q.formattedTriggerPrice}).`,
                               `• CAPITAL PROTECTION: Stop loss set at ${q.formattedStopLossPrice}; maximum horizon exit enforced at ${q.horizonDuration}.`
                             ];
@@ -3528,8 +3793,15 @@ export const Gate5PaperDashboard: React.FC = () => {
                 '30m': ticketCard.resolutions['30m']?.score || 0,
                 '1d': ticketCard.resolutions['1d']?.score || 0
               },
-              overrideSide
+              overrideSide,
+              ticketHorizonClass
             );
+            const hzBadge = {
+              INTRADAY: { bg: 'rgba(6,182,212,0.2)', fg: '#22d3ee' },
+              MULTI_DAY: { bg: 'rgba(167,139,250,0.2)', fg: '#c4b5fd' },
+              MULTI_WEEK: { bg: 'rgba(251,146,60,0.2)', fg: '#fdba74' },
+              LONG_TERM: { bg: 'rgba(244,63,94,0.2)', fg: '#fb7185' },
+            }[q.horizonClass];
             return (
               <div style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.9)',
@@ -3538,11 +3810,43 @@ export const Gate5PaperDashboard: React.FC = () => {
                 padding: '12px 14px',
                 marginBottom: '14px'
               }}>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    🎯 Quant Execution Parameters
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>
+                    Holding Term (REC/TRADE class)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+                    {(['INTRADAY', 'MULTI_DAY', 'MULTI_WEEK', 'LONG_TERM'] as const).map((cls) => {
+                      const active = ticketHorizonClass === cls;
+                      const c = { INTRADAY: '#22d3ee', MULTI_DAY: '#c4b5fd', MULTI_WEEK: '#fdba74', LONG_TERM: '#fb7185' }[cls];
+                      return (
+                        <button
+                          key={cls}
+                          type="button"
+                          onClick={() => setTicketHorizonClass(cls)}
+                          style={{
+                            padding: '6px 4px', fontSize: '9px', fontWeight: 800, borderRadius: '5px', cursor: 'pointer',
+                            border: `1px solid ${active ? c : 'rgba(255,255,255,0.1)'}`,
+                            backgroundColor: active ? `${c}22` : '#1e293b',
+                            color: active ? c : '#94a3b8',
+                          }}
+                        >
+                          {cls.replace('_', ' ')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    Quant Execution Parameters
                     <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 6px', borderRadius: '3px', backgroundColor: q.direction === 'SHORT' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', color: q.direction === 'SHORT' ? '#f87171' : '#34d399' }}>
                       {q.direction} BIAS
+                    </span>
+                    <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 6px', borderRadius: '3px', backgroundColor: hzBadge.bg, color: hzBadge.fg, border: '1px solid rgba(255,255,255,0.08)' }}>
+                      {q.horizonLabel.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: '9px', fontWeight: 600, padding: '1px 6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                      Term: {q.horizonTerm}
                     </span>
                   </span>
                   <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 700 }}>{q.horizonDuration}</span>

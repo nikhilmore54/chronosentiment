@@ -30,6 +30,7 @@ WORKSPACE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKSPACE_DIR))
 
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager, calculate_trade_plan
+from scripts.rp608_multi_horizon_status import get_multi_horizon_dashboard_state
 
 try:
     from scripts.test_kite_probe import (
@@ -53,6 +54,76 @@ NSE_TEST_DIR = WORKSPACE_DIR / "live_capture" / "shadow_validation" / "nse" / "t
 NSE_HIGH_TARGET_BPS = 75.0
 # Fallback round-trip friction when Indian-equity calc is not on the frozen trade.
 NSE_RR_FRICTION_FALLBACK_BPS = 15.0
+
+
+def recommendation_horizon_meta(
+    *,
+    market: str,
+    profile: str = "INTRADAY",
+    lookback_bars: Optional[int] = None,
+) -> Dict[str, str]:
+    """
+    Explicit holding-horizon labels for recommendation surfaces.
+    horizon_class: INTRADAY | MULTI_DAY | MULTI_WEEK | LONG_TERM
+    horizon_term: human clock / bar policy string
+    """
+    m = (market or "").upper()
+    p = (profile or "INTRADAY").upper()
+    if m == "NSE" and p == "INTRADAY":
+        return {
+            "horizon_class": "INTRADAY",
+            "horizon_id": "H0_NSE_INTRADAY",
+            "horizon_label": "Intraday",
+            "horizon_term": "15m bars · 60m target / 180m max · session square-off",
+        }
+    if m == "CRYPTO" and p in {"TRADE_PLAN", "INTRADAY", "H0"}:
+        return {
+            "horizon_class": "INTRADAY",
+            "horizon_id": "H0_INTRADAY_60M",
+            "horizon_label": "Intraday",
+            "horizon_term": "≤60 minutes (trade-plan overlay)",
+        }
+    if m == "CRYPTO" and p == "GATE_C":
+        bars = int(lookback_bars or 0)
+        hours = {16: 4, 32: 8, 64: 16, 120: 30}.get(bars)
+        term = (
+            f"Tick stream · {bars}-bar lookback ({hours}h context) · 30 bps stop"
+            if hours
+            else f"Tick stream · {bars}-bar lookback · 30 bps stop"
+        )
+        return {
+            "horizon_class": "INTRADAY",
+            "horizon_id": f"GATE_C_{bars}B" if bars else "GATE_C_TICK",
+            "horizon_label": "Intraday",
+            "horizon_term": term,
+        }
+    if p in {"MULTI_DAY", "H1", "SWING"}:
+        return {
+            "horizon_class": "MULTI_DAY",
+            "horizon_id": "H1_MULTI_DAY",
+            "horizon_label": "Multi-day",
+            "horizon_term": "2–14 calendar days",
+        }
+    if p in {"MULTI_WEEK", "H2"}:
+        return {
+            "horizon_class": "MULTI_WEEK",
+            "horizon_id": "H2_MULTI_WEEK",
+            "horizon_label": "Multi-week",
+            "horizon_term": "14–56 calendar days",
+        }
+    if p in {"LONG_TERM", "H3", "LT"}:
+        return {
+            "horizon_class": "LONG_TERM",
+            "horizon_id": "H3_LONG_TERM",
+            "horizon_label": "Long-term",
+            "horizon_term": "≥90 calendar days (thesis hold)",
+        }
+    return {
+        "horizon_class": "INTRADAY",
+        "horizon_id": "H0_UNSPECIFIED",
+        "horizon_label": "Intraday",
+        "horizon_term": "Intraday (unspecified term)",
+    }
 
 
 def _nse_estimate_friction_bps(half_spread_bps: Any = None, estimated_friction_bps: Any = None) -> float:
@@ -248,7 +319,8 @@ def get_event_engine_status() -> Dict[str, Any]:
             "candle_regime": feat.get("candle_regime", "UNKNOWN"),
             "imbalance": feat.get("imbalance", 0.0),
             "velocity_5s_bps": feat.get("velocity_5s_bps", 0.0),
-            "last_emitted_utc": latest_rec.get("timestamp_utc", "N/A") if latest_rec else "N/A"
+            "last_emitted_utc": latest_rec.get("timestamp_utc", "N/A") if latest_rec else "N/A",
+            **recommendation_horizon_meta(market="CRYPTO", profile="GATE_C", lookback_bars=bars),
         }
 
     telemetry_file = EVENT_DIR / "event_telemetry.jsonl"
@@ -478,7 +550,18 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
     active_trades_map = pending_data.get("active_trades", {})
 
     eval_map = eval_data.get("evaluations", {})
-    qualifying_candidates = eval_data.get("qualifying_candidates", [])
+    qualifying_candidates = []
+    _nse_hz = recommendation_horizon_meta(market="NSE", profile="INTRADAY")
+    for _qc in eval_data.get("qualifying_candidates", []) or []:
+        if isinstance(_qc, dict):
+            row = dict(_qc)
+            row.setdefault("horizon_class", _nse_hz["horizon_class"])
+            row.setdefault("horizon_id", _nse_hz["horizon_id"])
+            row.setdefault("horizon_label", _nse_hz["horizon_label"])
+            row.setdefault("horizon_term", _nse_hz["horizon_term"])
+            qualifying_candidates.append(row)
+        else:
+            qualifying_candidates.append(_qc)
     rejection_breakdown = eval_data.get("rejection_breakdown", {})
     total_evaluated = eval_data.get("total_evaluated", 0)
     n_qualifying = eval_data.get("n_qualifying", 0)
@@ -733,6 +816,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "gates_trace": gates_trace,
             "entry_price": (trade_info or {}).get("entry_price") or last_price,
             "active_entry_bar_idx": (trade_info or {}).get("entry_bar_idx"),
+            **recommendation_horizon_meta(market="NSE", profile="INTRADAY"),
         })
 
     # High-target idea surface (≥ NSE_HIGH_TARGET_BPS): active dynamic bounds + fresh qualifies.
@@ -758,6 +842,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         rr["rank_score"] = rank_score
         card["risk_reward"] = rr
         card["rank_score"] = rank_score
+        card.update(recommendation_horizon_meta(market="NSE", profile="INTRADAY"))
         return card
 
     for sym, trade in (active_trades_map or {}).items():
@@ -1059,6 +1144,9 @@ def load_live_state() -> Dict[str, Any]:
         trade_plan_payload["valuation"] = sync_res.get("valuation", {})
         trade_plan_payload["is_active"] = sync_res.get("is_active", False)
         trade_plan_payload["quote_source"] = sync_res.get("quote_source")
+        trade_plan_payload.update(
+            recommendation_horizon_meta(market="CRYPTO", profile="TRADE_PLAN")
+        )
         # Reasoning: when a plan is/was active, never show "Awaiting directional breakout"
         # from a later NO_TRADE card — that masks an open/closed simulated position.
         atr = float(trade_plan_payload.get("atr_14") or 0.0)
@@ -1172,7 +1260,8 @@ def load_live_state() -> Dict[str, Any]:
         "recent_cards": cards[-8:][::-1],  # newest first
         "nse_schedule": nse_events,
         "gate_c": get_event_engine_status(),
-        "nse_operations": get_nse_dashboard_state()
+        "nse_operations": get_nse_dashboard_state(),
+        "multi_horizon": get_multi_horizon_dashboard_state(),
     }
 
 
@@ -1901,6 +1990,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <span>Active Recommendations (Bar <span id="rec-bar-idx">--</span>)</span>
           <span class="pill-sm pill-prospective" id="sample-status-pill">PROSPECTIVE</span>
         </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 10px 0;" id="crypto-rec-horizon-badges">
+          <span class="pill-sm" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35); font-weight:700;">INTRADAY</span>
+          <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">Term: ≤60m trade-plan / tick Gate C</span>
+        </div>
         <div class="rec-box-group">
           <!-- Policy B Box with Tooltip -->
           <div class="policy-box has-tooltip" id="box-policy-b">
@@ -2018,6 +2111,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             BTC/USDT · Trade Plan Overlay v1
           </h2>
           <span>Protocol: RP-608-TRADE-PLAN-OVERLAY-001 · Policy B Canonical · Simulated Shadow Mode</span>
+          <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;" id="plan-horizon-badges">
+            <span class="pill-sm" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35); font-weight:700;">INTRADAY</span>
+            <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">Term: ≤60 minutes</span>
+          </div>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <span class="pill-sm pill-prospective" id="plan-state-pill">PLAN ACTIVE</span>
@@ -2216,6 +2313,49 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div>Candle Buffer: <b style="color:#fff;" id="gate-c-candle-buffer">149 Bars (Warmed Up)</b></div>
         <div>Isolation: <b style="color:var(--accent-emerald);">Canonical Files 100% Untouched</b></div>
       </div>
+    </div>
+
+    <!-- MULTI-HORIZON: INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM -->
+    <div class="card" style="margin-bottom:24px; border-left: 4px solid #c4b5fd; background: linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div class="section-title" style="margin-bottom:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#c4b5fd;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Multi-Horizon Recommendations · INTRADAY / MULTI_DAY / MULTI_WEEK / LONG_TERM
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span class="pill-sm" style="background:rgba(167,139,250,0.15); color:#c4b5fd; border:1px solid rgba(167,139,250,0.35);">RP-609 NSE · RP-610 CRYPTO</span>
+          <span class="pill-sm pill-prewindow" style="border:1px solid rgba(255,255,255,0.2);">0.0% ORDER AUTHORITY</span>
+          <span class="pill-sm" id="mh-gates-pill" style="background:rgba(245,158,11,0.12); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">GATES CLOSED</span>
+        </div>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;" id="mh-note">
+        H0/INTRADAY remains owned by RP-608 live daemons. H1–H3 are observation-only paper books (promotion gates CLOSED).
+      </p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;" id="mh-class-counts">
+        <span class="pill-sm" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.3);">INTRADAY: —</span>
+        <span class="pill-sm" style="background:rgba(167,139,250,0.12); color:#c4b5fd; border:1px solid rgba(167,139,250,0.3);">MULTI_DAY: —</span>
+        <span class="pill-sm" style="background:rgba(251,146,60,0.12); color:#fdba74; border:1px solid rgba(251,146,60,0.3);">MULTI_WEEK: —</span>
+        <span class="pill-sm" style="background:rgba(244,63,94,0.12); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.3);">LONG_TERM: —</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Filter class:</span>
+        <select id="mh-filter-class" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+          <option value="ALL">All classes</option>
+          <option value="INTRADAY">INTRADAY</option>
+          <option value="MULTI_DAY">MULTI_DAY</option>
+          <option value="MULTI_WEEK">MULTI_WEEK</option>
+          <option value="LONG_TERM">LONG_TERM</option>
+        </select>
+        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Market:</span>
+        <select id="mh-filter-market" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+          <option value="ALL">NSE + CRYPTO</option>
+          <option value="NSE">NSE only</option>
+          <option value="CRYPTO">CRYPTO only</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px;" id="mh-catalog-grid"></div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Open observation recommendations (live books — not the catalog above)</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px; max-height:420px; overflow:auto;" id="mh-recs-grid"></div>
     </div>
 
     <!-- Decision Cards Feed -->
@@ -2554,6 +2694,155 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </div>
 
   <script>
+    function horizonBadgeHtml(obj) {
+      const cls = (obj && obj.horizon_class) ? String(obj.horizon_class) : 'INTRADAY';
+      const label = (obj && obj.horizon_label)
+        ? String(obj.horizon_label)
+        : (cls === 'LONG_TERM' ? 'Long-term'
+          : (cls === 'MULTI_WEEK' ? 'Multi-week'
+            : (cls === 'MULTI_DAY' ? 'Multi-day' : 'Intraday')));
+      const term = (obj && obj.horizon_term) ? String(obj.horizon_term) : 'Term unspecified';
+      const colors = {
+        INTRADAY: { bg: 'rgba(6,182,212,0.15)', fg: 'var(--accent-cyan)', bd: 'rgba(6,182,212,0.35)' },
+        MULTI_DAY: { bg: 'rgba(167,139,250,0.15)', fg: '#c4b5fd', bd: 'rgba(167,139,250,0.35)' },
+        MULTI_WEEK: { bg: 'rgba(251,146,60,0.15)', fg: '#fdba74', bd: 'rgba(251,146,60,0.35)' },
+        LONG_TERM: { bg: 'rgba(244,63,94,0.12)', fg: 'var(--accent-rose)', bd: 'rgba(244,63,94,0.3)' },
+      };
+      const c = colors[cls] || colors.INTRADAY;
+      return `<span class="badge" style="background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; font-weight:700; margin-right:6px;" title="${term}">${label.toUpperCase()}</span>`
+        + `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1); font-weight:600; margin-right:6px;" title="Holding term"> · ${term}</span>`;
+    }
+
+    function mhOpenSymbolsFor(market, horizonClass, horizonId) {
+      const mh = window.__mhState;
+      const recs = (mh && mh.recommendations) ? mh.recommendations : [];
+      const syms = [];
+      const seen = new Set();
+      const push = (sym) => {
+        const s = String(sym || '').trim();
+        if (!s || seen.has(s)) return;
+        seen.add(s);
+        syms.push(s);
+      };
+      recs.forEach(r => {
+        if ((r.market || '') !== market) return;
+        if (horizonClass && (r.horizon_class || '') !== horizonClass) return;
+        if (horizonId && (r.horizon_id || '') !== horizonId) return;
+        if (Array.isArray(r.symbols) && r.symbols.length) {
+          r.symbols.forEach(push);
+        } else {
+          push(r.symbol);
+        }
+      });
+      return syms;
+    }
+
+    function mhCatalogSection(title, market, items) {
+      if (!items || !items.length) {
+        return `<div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing:0.04em; margin-bottom:8px;">${title}</div>
+          <div style="color:var(--text-muted); font-size:12px;">No catalog rows.</div>
+        </div>`;
+      }
+      const cards = items.map(c => {
+        const openSyms = mhOpenSymbolsFor(market, c.horizon_class, c.horizon_id);
+        const symHtml = openSyms.length
+          ? openSyms.map(s => `<span style="display:inline-block; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#f8fafc; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); border-radius:6px; padding:3px 8px; margin:2px 4px 2px 0;">${s}</span>`).join('')
+          : `<span style="font-size:11px; color:var(--text-muted);">${c.observational_link_only ? 'No symbol here — H0 owned by RP-608 live books' : 'No open observation symbol yet'}</span>`;
+        return `
+        <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center;">
+            <div>${horizonBadgeHtml(c)}</div>
+            <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#e2e8f0; border:1px solid rgba(255,255,255,0.12);">${market}</span>
+          </div>
+          <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">Symbol(s)</div>
+          <div style="margin-bottom:10px; min-height:28px;">${symHtml}</div>
+          <div style="font-size:12px; font-weight:700; color:#fff; margin-bottom:4px;">${c.horizon_id || ''}</div>
+          <div style="font-size:11px; color:var(--text-dim); line-height:1.4;">${c.label || c.horizon_term || ''}</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:6px;">${c.owner_protocol || ''} · ${c.product_type || ''}${c.observational_link_only ? ' · link-only' : ''}</div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:16px;">
+        <div style="font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing:0.04em; margin-bottom:8px; text-transform:uppercase;">${title}</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">${cards}</div>
+      </div>`;
+    }
+
+    window.__mhState = null;
+    function updateMultiHorizonUI(mh) {
+      window.__mhState = mh || null;
+      const note = document.getElementById('mh-note');
+      if (note && mh && mh.note) note.textContent = mh.note;
+      const counts = (mh && mh.counts_by_class) || {};
+      const countsEl = document.getElementById('mh-class-counts');
+      if (countsEl) {
+        countsEl.innerHTML = ['INTRADAY','MULTI_DAY','MULTI_WEEK','LONG_TERM'].map(cls => {
+          const n = counts[cls] != null ? counts[cls] : 0;
+          return `<span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.12);">${cls}: <b>${n}</b> open</span>`;
+        }).join('');
+      }
+      const catalogGrid = document.getElementById('mh-catalog-grid');
+      if (catalogGrid) {
+        const nseCats = ((mh.nse || {}).catalog) || [];
+        const cryptoCats = ((mh.crypto || {}).catalog) || [];
+        if (!nseCats.length && !cryptoCats.length) {
+          catalogGrid.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Horizon catalog unavailable (RP-609/610 not loaded).</div>';
+        } else {
+          // Keep markets separate — same class labels (INTRADAY/…) are NOT duplicates.
+          catalogGrid.style.display = 'block';
+          catalogGrid.innerHTML =
+            mhCatalogSection('NSE · RP-609 (MIS link + CNC books)', 'NSE', nseCats)
+            + mhCatalogSection('CRYPTO · RP-610 (SPOT_SIM books)', 'CRYPTO', cryptoCats);
+        }
+      }
+      paintMultiHorizonRecs();
+    }
+
+    function paintMultiHorizonRecs() {
+      const mh = window.__mhState;
+      const grid = document.getElementById('mh-recs-grid');
+      if (!grid) return;
+      const clsFilter = (document.getElementById('mh-filter-class') || {}).value || 'ALL';
+      const mktFilter = (document.getElementById('mh-filter-market') || {}).value || 'ALL';
+      let recs = (mh && mh.recommendations) ? mh.recommendations.slice() : [];
+      if (clsFilter !== 'ALL') recs = recs.filter(r => r.horizon_class === clsFilter);
+      if (mktFilter !== 'ALL') recs = recs.filter(r => r.market === mktFilter);
+      if (!recs.length) {
+        grid.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:8px 0;">No open multi-horizon observation positions for this filter. Catalog above still shows implemented terms.</div>';
+        return;
+      }
+      grid.innerHTML = recs.map(r => {
+        const px = r.entry_price != null ? Number(r.entry_price) : null;
+        const pxTxt = px == null ? '--' : (r.market === 'NSE' ? ('₹' + px.toFixed(2)) : ('$' + px.toFixed(2)));
+        const symList = (Array.isArray(r.symbols) && r.symbols.length) ? r.symbols : [r.symbol || '--'];
+        const symLine = symList.map(s => `<span style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:800; color:#38bdf8; margin-right:8px;">${s}</span>`).join('');
+        return `
+          <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:12px;">
+            <div style="margin-bottom:8px;">${symLine}</div>
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+              <div>
+                ${horizonBadgeHtml(r)}
+                <span style="font-size:10px; color:var(--text-dim); margin-left:6px;">${r.market || ''} · ${r.source || ''}</span>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace; color:#fff; font-weight:700;">${pxTxt}</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-dim); display:flex; flex-direction:column; gap:3px;">
+              <div>Decision: <b style="color:var(--accent-cyan);">${r.decision || '--'}</b> · Side: <b>${r.side || '--'}</b> · Status: <b>${r.status || '--'}</b></div>
+              <div>Horizon ID: <span style="font-family:'JetBrains Mono',monospace;">${r.horizon_id || '--'}</span></div>
+              <div>Term: ${r.horizon_term || '--'}</div>
+              <div>Thesis: ${r.thesis || '—'}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const a = document.getElementById('mh-filter-class');
+      const b = document.getElementById('mh-filter-market');
+      if (a) a.addEventListener('change', paintMultiHorizonRecs);
+      if (b) b.addEventListener('change', paintMultiHorizonRecs);
+    });
+
     async function fetchState() {
       try {
         const resp = await fetch('/api/state');
@@ -2624,6 +2913,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         // Render Trade Plan Overlay
         const plan = data.trade_plan;
+        const planHzEl = document.getElementById('plan-horizon-badges');
+        if (planHzEl) {
+          planHzEl.innerHTML = horizonBadgeHtml(plan || {
+            horizon_class: 'INTRADAY',
+            horizon_label: 'Intraday',
+            horizon_term: '≤60 minutes (trade-plan overlay)'
+          });
+        }
         const planContainer = document.getElementById('trade-plan-container');
         if (plan) {
           planContainer.style.display = 'block';
@@ -2826,6 +3123,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           });
         }
 
+        // Multi-horizon books (RP-609 / RP-610)
+        if (data.multi_horizon) {
+          updateMultiHorizonUI(data.multi_horizon);
+        }
+
         // Gate C Parallel Lookbacks
         if (data.gate_c) {
           const gc = data.gate_c;
@@ -2872,6 +3174,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                   <span style="font-size:12px; font-weight:700; color:#fff;">${cand.name}</span>
                   <span style="font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-dim);" title="SHA-256: ${cand.hash_full}">${cand.hash_prefix}...</span>
                 </div>
+                <div style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;">${horizonBadgeHtml(cand)}</div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                   <span style="padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:${decBg}; color:${decColor}; border:1px solid ${decBorder};">
                     ${cand.latest_recommendation}
@@ -3180,6 +3483,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               <div>
                 ${rankBadge}
                 <span class="badge badge-active" style="background:rgba(16,185,129,0.2); color:var(--accent-emerald); font-weight:700; margin-right:6px;">${kindLabel}</span>
+                ${horizonBadgeHtml(qc)}
                 <b style="font-size:14px; color:#fff;">${qc.tradingsymbol || qc.symbol}</b>
                 <span style="font-size:10px; color:var(--text-dim); margin-left:4px;">${qc.symbol || ''}</span>
               </div>
@@ -3196,6 +3500,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               <div>Trend: <span style="color:var(--text-muted); font-family:'JetBrains Mono',monospace;">${rr.trend_label || '--'}</span></div>
             </div>
             <div style="font-size:10px; color:var(--text-muted); line-height:1.4; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px;">
+              <div><b style="color:var(--text-dim);">Horizon:</b> ${qc.horizon_class || 'INTRADAY'} · ${qc.horizon_term || '15m bars · 60m target / 180m max'}</div>
               <div><b style="color:var(--text-dim);">Policy:</b> ${rr.exit_policy || '--'}</div>
               <div><b style="color:var(--text-dim);">Invalidation:</b> ${qc.invalidation || '--'}</div>
             </div>
@@ -3226,7 +3531,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         let recsHtml = '';
         if (highs.length > 0) {
           const sorted = sortNseIdeaCards(highs, mode);
-          recsHtml += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Ideas with frozen dynamic target &gt; <b style="color:#fff;">${floor} bps</b> · sorted by <b style="color:var(--accent-cyan);">${NSE_SORT_LABELS[mode] || mode}</b>.</div>`;
+          recsHtml += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Ideas with frozen dynamic target &gt; <b style="color:#fff;">${floor} bps</b> · sorted by <b style="color:var(--accent-cyan);">${NSE_SORT_LABELS[mode] || mode}</b>. Each card shows <b style="color:var(--accent-cyan);">INTRADAY</b> + holding term.</div>`;
           recsHtml += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px; max-height:520px; overflow:auto; padding-right:4px;">';
           sorted.forEach((qc, idx) => {
             const isFresh = qc.decision === 'RECOMMEND_LONG' || qc.card_kind === 'QUALIFIED_HIGH_TARGET';
@@ -3427,6 +3732,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const decColor = isRecLong ? 'var(--accent-emerald)' : 'var(--text-muted)';
         const decText = isRecLong ? 'RECOMMEND_LONG' : 'NO_TRADE';
         const rankBadge = s.provisional_rank ? `<span class="badge badge-active" style="background:rgba(16,185,129,0.2); color:var(--accent-emerald); font-weight:700; margin-left:4px;">#${s.provisional_rank}</span>` : '';
+        const hzBadge = `<div style="margin-top:4px;">${horizonBadgeHtml(s)}</div>`;
 
         // Live LTP & Spread
         const isCrossed = s.status === 'CROSSED';
@@ -3472,12 +3778,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             ${gateTraceHtml}
           </td>
           <td>
-            <div style="display:flex; align-items:center; margin-bottom:4px;">
+            <div style="display:flex; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
               <span style="font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px; background:${decBg}; color:${decColor}; font-family:'JetBrains Mono',monospace;">
                 ${decText}
               </span>
               ${rankBadge}
             </div>
+            ${hzBadge}
             <div style="font-size:10px; color:var(--text-dim); max-width:240px; line-height:1.3;">${s.explanation || '--'}</div>
             <span style="font-size:9px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Code: ${s.decision_code || 'N/A'}</span>
           </td>
@@ -3761,6 +4068,11 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 state = load_live_state()
                 self._send_json(200, state)
+            except Exception as e:
+                self._send_json(500, {"error": str(e)})
+        elif self.path == "/api/multi_horizon":
+            try:
+                self._send_json(200, get_multi_horizon_dashboard_state())
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
         elif self.path in ("/api/nse/refresh", "/api/refresh_nse"):

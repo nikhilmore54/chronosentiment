@@ -1706,6 +1706,10 @@ class RP608NSEShadowDaemon:
             },
             "arm_a_frozen": ARM_A_FROZEN,
             "live_order_authority": LIVE_ORDER_AUTHORITY_PCT,
+            "horizon_class": "INTRADAY",
+            "horizon_id": "H0_NSE_INTRADAY",
+            "horizon_label": "Intraday",
+            "horizon_term": "15m bars · 60m target / 180m max · session square-off",
         }
         # Observational regime telemetry on completed-bar history only (Phase 1–2).
         # Must not alter decision / entry / exit / cost fields above.
