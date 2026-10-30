@@ -1188,6 +1188,10 @@ struct ScheduleResponse {
     constraint_report: Option<ultracrew::constraint_engine::ConstraintReport>,
     recommendations: Vec<ultracrew::recommendation::SchedulingRecommendation>,
     telemetry: Option<ultracrew::optimization::OptimizationReport>,
+    #[serde(default)]
+    alternatives: Vec<ultracrew::pareto_pipeline::ProductionParetoSolution>,
+    #[serde(default)]
+    recommended_alternative_id: Option<String>,
 }
 
 async fn schedule_handler(
@@ -1203,15 +1207,27 @@ async fn schedule_handler(
         ));
     }
 
-    let solution = ultracrew::pipeline::run_pipeline_from_request(
-        context.clone(),
-        req.generation_limit,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
+    let context_for_pipeline = context.clone();
+    let gen_limit = req.generation_limit;
+    let solution = tokio::task::spawn_blocking(move || {
+        ultracrew::pipeline::run_pipeline_from_request(
+            context_for_pipeline,
+            gen_limit,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Optimization task join error: {}", e),
+        )
+    })?
     .map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -1219,11 +1235,7 @@ async fn schedule_handler(
         )
     })?;
 
-    let mut app_state = state.lock().unwrap();
-    app_state.last_solution = Some(solution.clone());
-    app_state.last_request = Some(req);
-
-    let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
+    let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context.clone());
     let genome = ultracrew::optimization::ScheduleGenome {
         assignments: solution.assignments.clone(),
     };
@@ -1234,12 +1246,32 @@ async fn schedule_handler(
 
     let metrics = ultracrew::decision_intelligence::analyze_solution(&solution);
 
+    // Run Pareto pipeline for alternative candidate solutions
+    let context_for_pareto = context.clone();
+    let genome_for_pareto = genome.clone();
+    let alternatives = tokio::task::spawn_blocking(move || {
+        ultracrew::pareto_pipeline::run_pareto_pipeline(
+            context_for_pareto,
+            genome_for_pareto,
+            vec![],
+            50,
+        )
+    })
+    .await
+    .unwrap_or_default();
+
+    let mut app_state = state.lock().unwrap();
+    app_state.last_solution = Some(solution.clone());
+    app_state.last_request = Some(req);
+
     let response = ScheduleResponse {
         schedule: solution.assignments.clone(),
         metrics,
         constraint_report: Some(report),
         recommendations,
         telemetry: solution.telemetry.clone(),
+        alternatives,
+        recommended_alternative_id: None,
     };
 
     Ok(Json(response))
@@ -1251,15 +1283,33 @@ async fn reschedule_handler(
 ) -> Result<Json<ScheduleResponse>, (axum::http::StatusCode, String)> {
     let context = req.to_context();
 
-    let solution = ultracrew::pipeline::run_pipeline_from_request(
-        context.clone(),
-        req.generation_limit,
-        req.tournament_size,
-        req.population_size,
-        req.mutation_rate,
-        req.crossover_rate,
-        req.elite_count,
-    )
+    let context_for_pipeline = context.clone();
+    let gen_limit = req.generation_limit;
+    let tourney = req.tournament_size;
+    let pop = req.population_size;
+    let mut_rate = req.mutation_rate;
+    let xover = req.crossover_rate;
+    let elite = req.elite_count;
+
+    let solution = tokio::task::spawn_blocking(move || {
+        ultracrew::pipeline::run_pipeline_from_request(
+            context_for_pipeline,
+            gen_limit,
+            tourney,
+            pop,
+            mut_rate,
+            xover,
+            elite,
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Rescheduling task join error: {}", e),
+        )
+    })?
     .map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -1287,6 +1337,8 @@ async fn reschedule_handler(
         constraint_report: Some(report),
         recommendations,
         telemetry: solution.telemetry.clone(),
+        alternatives: Vec::new(),
+        recommended_alternative_id: None,
     };
 
     Ok(Json(response))
@@ -1326,6 +1378,8 @@ async fn validate_handler(
         constraint_report: Some(report),
         recommendations,
         telemetry: None,
+        alternatives: Vec::new(),
+        recommended_alternative_id: None,
     };
 
     Ok(Json(response))

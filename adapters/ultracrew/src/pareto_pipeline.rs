@@ -122,6 +122,17 @@ const PARETO_MUTATION_PERTURBATIONS: usize = 3;
 
 pub struct ProductionMutationAdapter {
     pub context: Arc<ScheduleContext>,
+    rng: std::sync::Mutex<StdRng>,
+}
+
+impl ProductionMutationAdapter {
+    pub fn new(context: Arc<ScheduleContext>) -> Self {
+        let seed = context.rng_seed.wrapping_add(101);
+        Self {
+            context,
+            rng: std::sync::Mutex::new(StdRng::seed_from_u64(seed)),
+        }
+    }
 }
 
 impl MutationPolicy<ScheduleGenome> for ProductionMutationAdapter {
@@ -131,9 +142,9 @@ impl MutationPolicy<ScheduleGenome> for ProductionMutationAdapter {
 
         let mut child = genome.clone();
         let optimizer = ScheduleOptimizer::new(self.context.clone());
-        let mut rng = StdRng::from_entropy();
+        let mut rng = self.rng.lock().unwrap();
         for _ in 0..PARETO_MUTATION_PERTURBATIONS {
-            optimizer.mutate(&mut child, &mut rng);
+            optimizer.mutate(&mut child, &mut *rng);
         }
         child
     }
@@ -238,9 +249,7 @@ pub fn run_pareto_pipeline(
     let evaluator = ProductionParetoEvaluator {
         context: context.clone(),
     };
-    let mutator = ProductionMutationAdapter {
-        context: context.clone(),
-    };
+    let mutator = ProductionMutationAdapter::new(context.clone());
 
     let mut engine = EvolutionEngine::new(evaluator, mutator);
 
@@ -336,7 +345,6 @@ fn archive_to_solutions(
                 rest_violations: report.rest_violations,
                 recommendations: None,
                 telemetry: None,
-                top_candidates: Vec::new(),
             };
             let metrics = analyze_solution(&schedule_solution);
 

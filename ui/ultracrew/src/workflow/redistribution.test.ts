@@ -10,7 +10,7 @@
 // The invariants (locked cells preserved, provenance correct) are unchanged.
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { redistributeWithLocks, buildSyntheticSchedule } from './WorkflowUtils';
+import { redistributeWithLocks, buildSyntheticSchedule, buildSchedulePayload, buildLockedShiftIds, getScheduleSlotMeta } from './WorkflowUtils';
 import type { StaffMember } from './WorkflowTypes';
 
 // Minimal staff fixture — 8 members, all Nurse skill
@@ -260,4 +260,39 @@ test('P3.3-CR: no locked_shift_ids when no cells are locked', async () => {
 
   const body = JSON.parse((rescheduleCall![1] as RequestInit).body as string);
   expect(body.locked_shift_ids).toBeNull();
+});
+
+test('AT-05: 28-day exact shift locking does not collapse across weeks', () => {
+  const payload = buildSchedulePayload(STAFF, {});
+  // Payload should have 20 shifts for Nurse (4 weeks * 5 weekday slots)
+  expect(payload.shifts.length).toBe(20);
+
+  // Map 28-day apiSchedule: shift 1..20
+  const fullApiSchedule: Record<string, number> = {};
+  payload.shifts.forEach((s, idx) => {
+    fullApiSchedule[String(s.id)] = (idx % STAFF.length) + 1;
+  });
+
+  // Week 2 Tuesday is dayIdx = 2 * 7 + 1 = 15
+  const slotMeta = getScheduleSlotMeta(STAFF);
+  const week2TueShift = Object.values(slotMeta).find(m => m.dayIdx === 15);
+  expect(week2TueShift).toBeDefined();
+
+  const workerOnWeek2Tue = fullApiSchedule[String(week2TueShift!.shiftId)];
+  const staffMember = STAFF[workerOnWeek2Tue - 1];
+
+  // Lock ONLY Week 2 Tuesday
+  const lockedCells = new Set([`${staffMember.id}:15`]);
+  const lockedIds = buildLockedShiftIds(STAFF, fullApiSchedule, lockedCells);
+
+  // MUST contain exactly the shift for day 15, and NOT shifts for day 1, 8, or 22!
+  expect(lockedIds).toContain(week2TueShift!.shiftId);
+  expect(lockedIds.length).toBe(1);
+
+  const week0TueShift = Object.values(slotMeta).find(m => m.dayIdx === 1);
+  const week1TueShift = Object.values(slotMeta).find(m => m.dayIdx === 8);
+  const week3TueShift = Object.values(slotMeta).find(m => m.dayIdx === 22);
+  expect(lockedIds).not.toContain(week0TueShift!.shiftId);
+  expect(lockedIds).not.toContain(week1TueShift!.shiftId);
+  expect(lockedIds).not.toContain(week3TueShift!.shiftId);
 });

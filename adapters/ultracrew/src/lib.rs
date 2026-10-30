@@ -15,6 +15,7 @@ pub mod metrics;
 pub mod models;
 pub mod observability;
 pub mod optimization;
+pub mod pareto_pipeline;
 pub mod partitioning;
 pub mod pipeline;
 pub mod public_contracts;

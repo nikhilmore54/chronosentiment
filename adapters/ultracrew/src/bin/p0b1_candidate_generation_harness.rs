@@ -316,9 +316,7 @@ struct InstrumentedMutator {
 impl MutationPolicy<ScheduleGenome> for InstrumentedMutator {
     fn mutate(&self, genome: &ScheduleGenome) -> ScheduleGenome {
         use ultracrew::pareto_pipeline::ProductionMutationAdapter;
-        let inner = ProductionMutationAdapter {
-            context: self.context.clone(),
-        };
+        let inner = ProductionMutationAdapter::new(self.context.clone());
         inner.mutate(genome)
     }
 }

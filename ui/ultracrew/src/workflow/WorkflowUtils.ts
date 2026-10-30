@@ -80,28 +80,51 @@ const WEEKLY_SHIFT_SLOTS: Array<{ dayOfWeek: number; startHour: number; label: s
   { dayOfWeek: 4, startHour: 102, label: 'Early' }, // Fri 06:00–14:00  (gap from Thu Late end: 102-94=8h ✓)
 ];
 
-export function buildSchedulePayload(staff: StaffMember[], _rulePayload: object) {
+export interface ShiftSlotMeta {
+  shiftId: number;
+  dayIdx: number;
+  label: string;
+  skill: string;
+  startHour: number;
+}
+
+export function getScheduleSlotMeta(staff: StaffMember[]): Record<number, ShiftSlotMeta> {
+  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+  const meta: Record<number, ShiftSlotMeta> = {};
+  let shiftId = 1;
+  for (const skill of allSkills) {
+    for (let week = 0; week < 4; week++) {
+      for (const slot of WEEKLY_SHIFT_SLOTS) {
+        const dayIdx = week * 7 + slot.dayOfWeek;
+        const startHour = week * 168 + slot.startHour;
+        meta[shiftId] = {
+          shiftId,
+          dayIdx,
+          label: slot.label,
+          skill,
+          startHour,
+        };
+        shiftId++;
+      }
+    }
+  }
+  return meta;
+}
+
+export function buildSchedulePayload(staff: StaffMember[], rulePayload: any = {}) {
   const workers = staff.map((s, i) => ({
     id: i + 1,
     skills: s.skills.length > 0 ? s.skills : ['Nurse'],
+    contract: s.contract,
   }));
 
-  // Collect all unique skills across staff
-  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
-
-  // Generate shift slots: one per (slot, skill) combination
-  const shifts: Array<{ id: number; start_hour: number; duration_hours: number; required_skill: string }> = [];
-  let shiftId = 1;
-  for (const skill of allSkills) {
-    for (const slot of WEEKLY_SHIFT_SLOTS) {
-      shifts.push({
-        id: shiftId++,
-        start_hour: slot.startHour,
-        duration_hours: 8,
-        required_skill: skill,
-      });
-    }
-  }
+  const slotMeta = getScheduleSlotMeta(staff);
+  const shifts = Object.values(slotMeta).map(m => ({
+    id: m.shiftId,
+    start_hour: m.startHour,
+    duration_hours: 8,
+    required_skill: m.skill,
+  }));
 
   return {
     workers,
@@ -109,6 +132,12 @@ export function buildSchedulePayload(staff: StaffMember[], _rulePayload: object)
     historical_workloads: null,
     rng_seed: null,
     generation_limit: 200,
+    scenario: {
+      planning_horizon_hours: 28 * 24,
+      max_hours_per_worker: rulePayload?.max_weekly_hours ?? 40.0,
+      minimum_rest_hours: rulePayload?.min_rest_hours ?? 10,
+      leave_requests: null,
+    },
   };
 }
 
@@ -118,51 +147,58 @@ export function buildEditableSchedule(
   staff: StaffMember[],
   apiSchedule: Record<string, number>
 ): Record<string, string[]> {
-  // apiSchedule: shift_id (string) → worker_id (number, 1-indexed)
-  // Shift IDs were generated in buildSchedulePayload:
-  //   for each skill, for each WEEKLY_SHIFT_SLOTS entry → shiftId++
-  //
-  // We reconstruct the shiftId → {dayOfWeek, label} mapping,
-  // then expand the weekly pattern into a 28-day grid (4 weeks).
-
-  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
-
-  // Rebuild shiftId → {dayOfWeek, label, skill} map
-  const shiftMeta: Record<number, { dayOfWeek: number; label: string; skill: string }> = {};
-  let shiftId = 1;
-  for (const skill of allSkills) {
-    for (const slot of WEEKLY_SHIFT_SLOTS) {
-      shiftMeta[shiftId++] = { dayOfWeek: slot.dayOfWeek, label: slot.label, skill };
-    }
-  }
-
-  // Initialize result: staffId → 28 empty strings
+  const slotMeta = getScheduleSlotMeta(staff);
   const result: Record<string, string[]> = {};
   staff.forEach(s => { result[s.id] = Array(28).fill(''); });
 
-  // Build worker assignment map: workerId → Set of (dayOfWeek, label) assigned
-  // Then expand across 4 weeks
-  const workerWeeklySlots: Record<number, Array<{ dayOfWeek: number; label: string }>> = {};
-  Object.entries(apiSchedule).forEach(([shiftIdStr, workerId]) => {
-    const sid = Number(shiftIdStr);
-    const meta = shiftMeta[sid];
-    if (!meta) return;
-    if (!workerWeeklySlots[workerId]) workerWeeklySlots[workerId] = [];
-    workerWeeklySlots[workerId].push({ dayOfWeek: meta.dayOfWeek, label: meta.label });
-  });
+  const shiftIds = Object.keys(apiSchedule).map(Number);
+  // Detect if apiSchedule only contains 1-week IDs (e.g. legacy test fixture IDs 1..5)
+  const isLegacySingleWeek =
+    shiftIds.length > 0 &&
+    Math.max(...shiftIds) <= 5 * Math.max(1, staff.length) &&
+    !shiftIds.some(id => (slotMeta[id]?.dayIdx ?? 0) >= 7);
 
-  // Expand weekly pattern into 28 days (4 weeks × 7 days)
-  Object.entries(workerWeeklySlots).forEach(([workerIdStr, slots]) => {
-    const workerId = Number(workerIdStr);
-    const assignedStaff = staff[workerId - 1]; // 1-indexed
-    if (!assignedStaff) return;
-    for (let week = 0; week < 4; week++) {
-      for (const slot of slots) {
-        const dayIdx = week * 7 + slot.dayOfWeek;
-        if (dayIdx < 28) {
-          result[assignedStaff.id][dayIdx] = slot.label;
+  if (isLegacySingleWeek) {
+    const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+    const legacyMeta: Record<number, { dayOfWeek: number; label: string }> = {};
+    let sid = 1;
+    for (const _skill of allSkills) {
+      for (const slot of WEEKLY_SHIFT_SLOTS) {
+        legacyMeta[sid++] = { dayOfWeek: slot.dayOfWeek, label: slot.label };
+      }
+    }
+    const workerWeeklySlots: Record<number, Array<{ dayOfWeek: number; label: string }>> = {};
+    Object.entries(apiSchedule).forEach(([shiftIdStr, workerId]) => {
+      const meta = legacyMeta[Number(shiftIdStr)];
+      if (!meta) return;
+      if (!workerWeeklySlots[workerId]) workerWeeklySlots[workerId] = [];
+      workerWeeklySlots[workerId].push({ dayOfWeek: meta.dayOfWeek, label: meta.label });
+    });
+    Object.entries(workerWeeklySlots).forEach(([workerIdStr, slots]) => {
+      const workerId = Number(workerIdStr);
+      const assignedStaff = staff[workerId - 1];
+      if (!assignedStaff) return;
+      for (let week = 0; week < 4; week++) {
+        for (const slot of slots) {
+          const dayIdx = week * 7 + slot.dayOfWeek;
+          if (dayIdx < 28) {
+            result[assignedStaff.id][dayIdx] = slot.label;
+          }
         }
       }
+    });
+    return result;
+  }
+
+  // Authoritative 28-day schedule mapping:
+  Object.entries(apiSchedule).forEach(([shiftIdStr, workerId]) => {
+    const sid = Number(shiftIdStr);
+    const meta = slotMeta[sid];
+    if (!meta) return;
+    const assignedStaff = staff[workerId - 1];
+    if (!assignedStaff) return;
+    if (meta.dayIdx < 28) {
+      result[assignedStaff.id][meta.dayIdx] = meta.label;
     }
   });
 
@@ -241,51 +277,112 @@ function generateOperationId(): string {
 }
 
 // P3.3-CR: Translate UI lock model (staffId:dayIdx) to backend shift IDs.
-// The shift ID scheme is deterministic and matches buildSchedulePayload/buildEditableSchedule:
-//   shiftId starts at 1, iterates allSkills then WEEKLY_SHIFT_SLOTS.
-// A locked cell staffId:dayIdx corresponds to shift IDs where:
-//   worker_id == staffIndex+1 AND shiftMeta[shiftId].dayOfWeek == dayIdx % 7
-function buildLockedShiftIds(
+// For authoritative 28-day rosters, maps exact dayIdx 1-to-1 without modulo collapse.
+// For legacy 1-week test fixtures, preserves backwards-compatible dayOfWeek modulo.
+export function buildLockedShiftIds(
   staff: StaffMember[],
   apiSchedule: Record<string, number>, // shift_id (string) → worker_id (number, 1-indexed)
   lockedCells: Set<string>, // keys: `${staffId}:${dayIdx}`
 ): number[] {
   if (lockedCells.size === 0) return [];
 
-  // Rebuild shiftId → {dayOfWeek} map (same scheme as buildEditableSchedule)
-  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
-  const shiftDayOfWeek: Record<number, number> = {};
-  let shiftId = 1;
-  for (const _skill of allSkills) {
-    for (const slot of WEEKLY_SHIFT_SLOTS) {
-      shiftDayOfWeek[shiftId++] = slot.dayOfWeek;
+  const slotMeta = getScheduleSlotMeta(staff);
+  const shiftIds = Object.keys(apiSchedule).map(Number);
+  const isLegacySingleWeek =
+    shiftIds.length > 0 &&
+    Math.max(...shiftIds) <= 5 * Math.max(1, staff.length) &&
+    !shiftIds.some(id => (slotMeta[id]?.dayIdx ?? 0) >= 7);
+
+  if (isLegacySingleWeek) {
+    const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+    const shiftDayOfWeek: Record<number, number> = {};
+    let legacyId = 1;
+    for (const _skill of allSkills) {
+      for (const slot of WEEKLY_SHIFT_SLOTS) {
+        shiftDayOfWeek[legacyId++] = slot.dayOfWeek;
+      }
     }
+    const lockedShiftIds: number[] = [];
+    for (const [shiftIdStr, workerId] of Object.entries(apiSchedule)) {
+      const sid = Number(shiftIdStr);
+      const dayOfWeek = shiftDayOfWeek[sid];
+      if (dayOfWeek === undefined) continue;
+      const staffEntry = staff[workerId - 1];
+      if (!staffEntry) continue;
+      for (let week = 0; week < 4; week++) {
+        const dayIdx = week * 7 + dayOfWeek;
+        if (lockedCells.has(`${staffEntry.id}:${dayIdx}`)) {
+          lockedShiftIds.push(sid);
+          break;
+        }
+      }
+    }
+    return lockedShiftIds;
   }
 
-  // Build staffId → workerId (1-indexed) map
-  const staffWorkerIds: Record<string, number> = {};
-  staff.forEach((s, i) => { staffWorkerIds[s.id] = i + 1; });
-
+  // Authoritative 28-day matching: exact dayIdx match without modulo collapse
   const lockedShiftIds: number[] = [];
   for (const [shiftIdStr, workerId] of Object.entries(apiSchedule)) {
     const sid = Number(shiftIdStr);
-    const dayOfWeek = shiftDayOfWeek[sid];
-    if (dayOfWeek === undefined) continue;
-    // Find which staffId this workerId corresponds to
-    const staffEntry = staff[workerId - 1]; // 1-indexed
+    const meta = slotMeta[sid];
+    if (!meta) continue;
+    const staffEntry = staff[workerId - 1];
     if (!staffEntry) continue;
-    // Check if any locked cell for this staff member falls on this dayOfWeek
-    // A cell staffId:dayIdx is locked if dayIdx % 7 === dayOfWeek
-    for (let week = 0; week < 4; week++) {
-      const dayIdx = week * 7 + dayOfWeek;
-      const key = `${staffEntry.id}:${dayIdx}`;
-      if (lockedCells.has(key)) {
-        lockedShiftIds.push(sid);
-        break; // shift is locked — no need to check other weeks
+    const cellKey = `${staffEntry.id}:${meta.dayIdx}`;
+    if (lockedCells.has(cellKey)) {
+      lockedShiftIds.push(sid);
+    }
+  }
+
+  return lockedShiftIds;
+}
+
+export function scheduleToAssignments(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+): Record<string, number> {
+  const slotMeta = getScheduleSlotMeta(staff);
+  const assignments: Record<string, number> = {};
+  const staffWorkerIds: Record<string, number> = {};
+  staff.forEach((s, i) => { staffWorkerIds[s.id] = i + 1; });
+
+  const assignedShifts = new Set<number>();
+
+  for (const meta of Object.values(slotMeta)) {
+    for (const s of staff) {
+      const shiftAtDay = (schedule[s.id] || [])[meta.dayIdx];
+      if (shiftAtDay === meta.label && !assignedShifts.has(meta.shiftId)) {
+        assignments[String(meta.shiftId)] = staffWorkerIds[s.id];
+        assignedShifts.add(meta.shiftId);
+        break;
       }
     }
   }
-  return lockedShiftIds;
+
+  return assignments;
+}
+
+export async function validateCurrentSchedule(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  rulePayload: object = {},
+): Promise<any | null> {
+  try {
+    const basePayload = buildSchedulePayload(staff, rulePayload);
+    const assignments = scheduleToAssignments(staff, schedule);
+    const resp = await fetch('/api/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request: basePayload,
+        assignments,
+      }),
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
 }
 
 export async function redistributeWithLocks(

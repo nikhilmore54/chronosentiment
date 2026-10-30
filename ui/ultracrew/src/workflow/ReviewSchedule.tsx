@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage } from './WorkflowUtils';
+import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule } from './WorkflowUtils';
 import type { RedistributionResult } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -334,6 +334,7 @@ export const ReviewSchedule: React.FC<{
   const [redistResult, setRedistResult] = useState<RedistributionResult | null>(null);
   // P3.3: provenance inspector
   const [provenanceTarget, setProvenanceTarget] = useState<{ staffId: string; dayIdx: number } | null>(null);
+  const [liveReport, setLiveReport] = useState<ScheduleResult['constraint_report'] | null>(result.constraint_report);
 
   const startDate = new Date('2026-07-14');
   const days = Array.from({ length: 28 }, (_, i) => {
@@ -353,6 +354,16 @@ export const ReviewSchedule: React.FC<{
     // Track this cell as locked (scheduler's explicit decision)
     setLockedCells(prev => new Set([...prev, `${nurseId}:${dayIdx}`]));
 
+    // Validate the updated schedule asynchronously to keep constraint feedback live
+    validateCurrentSchedule(staff, next).then(val => {
+      if (val && val.constraint_report) {
+        setLiveReport(val.constraint_report);
+        if (result) {
+          result.constraint_report = val.constraint_report;
+        }
+      }
+    });
+
     // Classify the edit
     setEditDist(d => {
       const updated = { ...d };
@@ -368,7 +379,7 @@ export const ReviewSchedule: React.FC<{
     setActiveCell(null);
   };
 
-  const cr = result.constraint_report;
+  const cr = liveReport ?? result.constraint_report;
 
   const stickyTh: React.CSSProperties = {
     padding: '0.4rem 0.5rem',
@@ -635,6 +646,14 @@ export const ReviewSchedule: React.FC<{
                 );
                 onScheduleChange(r.schedule);
                 setRedistResult(r);
+                validateCurrentSchedule(staff, r.schedule).then(val => {
+                  if (val && val.constraint_report) {
+                    setLiveReport(val.constraint_report);
+                    if (result) {
+                      result.constraint_report = val.constraint_report;
+                    }
+                  }
+                });
                 // P3.3 hard gate 5: notify parent to persist the log
                 onRedistributionComplete?.(r.log);
               }}

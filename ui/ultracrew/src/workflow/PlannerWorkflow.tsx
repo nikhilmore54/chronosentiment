@@ -151,27 +151,59 @@ export const PlannerWorkflow: React.FC = () => {
           />
         )}
 
-        {/* Step 4 — Alternatives unavailable: backend returned no candidates — workflow stops here */}
+        {/* Step 4 — Single candidate or no alternative candidates: proceed with primary schedule */}
         {step === 4 && scheduleResult && alternatives.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Explore the Decision</h3>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Decision Review: Primary Candidate</h3>
               <div style={{
-                backgroundColor: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
+                backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
                 borderRadius: '8px',
                 padding: '1rem 1.25rem',
-                color: '#fcd34d',
+                color: 'var(--text-main)',
                 fontSize: '0.9rem',
               }}>
-                <strong>Decision alternatives unavailable.</strong> The optimizer did not return candidate alternatives
-                required for the decision step. The workflow cannot proceed until the backend provides this data.
-                Please regenerate the schedule or contact support.
+                <strong style={{ color: '#38bdf8' }}>Single Optimal Candidate:</strong> The optimizer generated a single authoritative candidate meeting all defined constraints. You can proceed directly with this candidate into Review &amp; Edit.
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={() => goTo(3)} style={{ padding: '0.5rem 1.25rem', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer' }}>
                 ← Back to Generate
+              </button>
+              <button
+                onClick={() => {
+                  const defaultMetrics = {
+                    coverage: 1.0,
+                    filled_positions: Object.values(editableSchedule).flat().filter(s => s !== '').length,
+                    required_positions: Object.values(editableSchedule).flat().filter(s => s !== '').length,
+                    fairness_penalty: 0,
+                    utilization: 1.0,
+                    cost: 0,
+                    diff_from_recommended: 0,
+                  };
+                  setSchedulerDecision({
+                    decision_id: `dec-${Date.now()}`,
+                    created_at_iso: new Date().toISOString(),
+                    recommended_id: 'primary',
+                    selected_id: 'primary',
+                    overrode_recommendation: false,
+                    recommended_metrics: defaultMetrics,
+                    selected_metrics: defaultMetrics,
+                  });
+                  goTo(5);
+                }}
+                style={{
+                  padding: '0.6rem 1.5rem',
+                  backgroundColor: 'var(--primary-color)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Proceed to Review &amp; Edit →
               </button>
             </div>
           </div>

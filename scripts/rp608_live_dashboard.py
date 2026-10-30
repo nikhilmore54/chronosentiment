@@ -525,7 +525,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
     # 4. Parse RP-607 Stock Profiles Artifact (Historical Morphology)
     rp607_file = Path("live_capture/shadow_validation/nse/rp607_stock_profiles.json")
     if not rp607_file.exists():
-        rp607_file = WORKSPACE / "live_capture/shadow_validation/nse/rp607_stock_profiles.json"
+        rp607_file = WORKSPACE_DIR / "live_capture/shadow_validation/nse/rp607_stock_profiles.json"
     rp607_data: Dict[str, Any] = {}
     if rp607_file.exists():
         try:

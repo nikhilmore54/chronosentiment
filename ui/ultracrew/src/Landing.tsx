@@ -16,14 +16,31 @@ export const Landing = ({ onStartDemo }: LandingProps) => {
       textAlign: 'center'
     }}>
       <div style={{ maxWidth: '800px' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          color: '#38bdf8',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          padding: '0.35rem 1rem',
+          borderRadius: '9999px',
+          marginBottom: '1.5rem',
+        }}>
+          <span>ℹ</span>
+          <span>Demonstration Environment — Synthetic Hospital Data Only</span>
+        </div>
+
         <h1 style={{ fontSize: '3rem', color: 'var(--accent-color)', marginBottom: '2rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
-          UltraCrew
+          UltraRoster
         </h1>
         
         <div style={{ fontSize: '2rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '3rem' }}>
           <span style={{ color: 'var(--text-muted)' }}>Employee was sick.</span><br />
           <span style={{ color: 'var(--text-muted)' }}>Traditional schedulers forget.</span><br />
-          <span style={{ color: 'var(--text-main)' }}>UltraCrew remembers.</span>
+          <span style={{ color: 'var(--text-main)' }}>UltraRoster remembers.</span>
         </div>
 
         <button 

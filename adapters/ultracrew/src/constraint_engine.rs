@@ -54,17 +54,29 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
         let mut fatigue_penalty = 0.0;
 
         let mut worker_hours: HashMap<u64, u64> = HashMap::new();
+        let mut worker_weekly_hours: HashMap<(u64, usize), u64> = HashMap::new();
         let mut worker_shifts: HashMap<u64, Vec<&Shift>> = HashMap::new();
+        let mut unassigned_shifts = 0;
+        let mut invalid_worker_assignments = 0;
 
         // Pass 1: Aggregate data and evaluate HC1 (Skills)
         for shift in self.context.shifts.iter() {
-            let worker_id = genome.assignments.get(&shift.id).unwrap();
-            let worker = self
-                .context
-                .workers
-                .iter()
-                .find(|w| w.id == *worker_id)
-                .unwrap();
+            let worker_id = match genome.assignments.get(&shift.id) {
+                Some(id) => id,
+                None => {
+                    fitness -= 100_000.0;
+                    unassigned_shifts += 1;
+                    continue;
+                }
+            };
+            let worker = match self.context.workers.iter().find(|w| w.id == *worker_id) {
+                Some(w) => w,
+                None => {
+                    fitness -= 100_000.0;
+                    invalid_worker_assignments += 1;
+                    continue;
+                }
+            };
 
             // HC1: Skill match
             if !worker.skills.contains(&shift.required_skill) {
@@ -89,28 +101,42 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
                 }
             }
 
+            let week_idx = (shift.start_hour / 168) as usize;
             *worker_hours.entry(*worker_id).or_insert(0) += shift.duration_hours;
+            *worker_weekly_hours.entry((*worker_id, week_idx)).or_insert(0) += shift.duration_hours;
             worker_shifts.entry(*worker_id).or_default().push(shift);
         }
 
         // Pass 2: Evaluate HC2 (double booking), HC3 (max hours), Rest periods, SC1 (fairness), SC2 (fatigue)
         let mut hours_list = Vec::new();
+        const DEFAULT_WEEKLY_MAX_HOURS: u64 = 40;
+        let hc3_limit = self
+            .context
+            .scenario
+            .as_ref()
+            .and_then(|s| s.max_hours_per_worker)
+            .map(|h| h as u64)
+            .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
+
+        let max_week = self
+            .context
+            .shifts
+            .iter()
+            .map(|s| (s.start_hour / 168) as usize)
+            .max()
+            .unwrap_or(0);
+
         for worker in self.context.workers.iter() {
             let hours = *worker_hours.get(&worker.id).unwrap_or(&0);
             hours_list.push(hours as f64);
 
-            // HC3: Max Hours
-            const DEFAULT_WEEKLY_MAX_HOURS: u64 = 40;
-            let hc3_limit = self
-                .context
-                .scenario
-                .as_ref()
-                .and_then(|s| s.max_hours_per_worker)
-                .map(|h| h as u64)
-                .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
-            if hours > hc3_limit {
-                fitness -= 100_000.0;
-                hc3_violations += 1;
+            // HC3: Max Hours per 168-hour week
+            for w in 0..=max_week {
+                let week_hours = *worker_weekly_hours.get(&(worker.id, w)).unwrap_or(&0);
+                if week_hours > hc3_limit {
+                    fitness -= 100_000.0;
+                    hc3_violations += 1;
+                }
             }
 
             if let Some(shifts) = worker_shifts.get(&worker.id) {
@@ -237,13 +263,26 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
             satisfied_constraints.push("SC2".to_string());
         }
 
-        for (w_id, &hours) in &worker_hours {
-            if hours > 35 && hours <= 40 {
+        for ((w_id, week), &w_hours) in &worker_weekly_hours {
+            if w_hours > 35 && w_hours <= hc3_limit {
                 warnings.push(format!(
-                    "Worker {} is near weekly hours limit: {} hours",
-                    w_id, hours
+                    "Worker {} is near weekly hours limit in week {}: {} hours",
+                    w_id,
+                    week + 1,
+                    w_hours
                 ));
             }
+        }
+        if unassigned_shifts > 0 {
+            warnings.push(format!("Schedule has {} unassigned shifts", unassigned_shifts));
+            violated_constraints.push("UnassignedShifts".to_string());
+        }
+        if invalid_worker_assignments > 0 {
+            warnings.push(format!(
+                "Schedule has {} assignments to non-existent workers",
+                invalid_worker_assignments
+            ));
+            violated_constraints.push("InvalidWorkerAssignments".to_string());
         }
         if fatigue_penalty > 100.0 {
             warnings.push(format!(
@@ -253,13 +292,13 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
         }
 
         let hard_violations =
-            hc1_violations + hc2_violations + hc3_violations + hc4_violations + rest_violations;
+            hc1_violations + hc2_violations + hc3_violations + hc4_violations + rest_violations + unassigned_shifts + invalid_worker_assignments;
         let soft_violations =
             if fairness_penalty > 0.0 { 1 } else { 0 } + if fatigue_penalty > 0.0 { 1 } else { 0 };
 
         ConstraintReport {
             fitness,
-            is_valid: true,
+            is_valid: hard_violations == 0,
             hard_violations,
             soft_violations,
             warnings,

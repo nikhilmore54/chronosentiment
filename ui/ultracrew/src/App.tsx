@@ -246,7 +246,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-        <h1 style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('dashboard')}>UltraCrew</h1>
+        <h1 style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('dashboard')}>UltraRoster</h1>
         <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1 }}>
           <button 
             onClick={() => setCurrentTab('dashboard')}
@@ -312,6 +312,23 @@ function App() {
           {backendOnline && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>&nbsp;:3001</span>}
         </div>
       </header>
+
+      {/* Synthetic Demo Disclaimer Banner */}
+      <div style={{
+        backgroundColor: 'rgba(56, 189, 248, 0.08)',
+        borderBottom: '1px solid rgba(56, 189, 248, 0.25)',
+        padding: '0.4rem 1.5rem',
+        fontSize: '0.8rem',
+        color: '#38bdf8',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.5rem',
+        fontWeight: 500,
+      }}>
+        <span>ℹ</span>
+        <span>Demonstration Environment — Synthetic Hospital Data Only</span>
+      </div>
       
       <div className="content">
   <main className="main-view">

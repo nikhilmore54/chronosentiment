@@ -311,8 +311,15 @@ export const SelectDecision: React.FC<SelectDecisionProps> = ({
   };
 
   const handleProceed = () => {
-    if (!selectedAlt || !committedDecision) return;
-    onDecision(selectedAlt, committedDecision);
+    if (!selectedAlt) return;
+    const recommendedAlt = alternatives.find(a => a.id === recommendedId) ?? selectedAlt;
+    const decision: SchedulerDecision = committedDecision ?? repo.recordSchedulerDecision(
+      recommendedId,
+      selectedId,
+      recommendedAlt.metrics,
+      selectedAlt.metrics,
+    );
+    onDecision(selectedAlt, decision);
   };
 
   const onlyOneOption = alternatives.length === 1;
@@ -416,8 +423,8 @@ export const SelectDecision: React.FC<SelectDecisionProps> = ({
         <button onClick={onBack} style={ghostBtnStyle}>← Back</button>
         <button
           onClick={handleProceed}
-          disabled={!committedDecision}
-          style={{ ...primaryBtnStyle, opacity: committedDecision ? 1 : 0.4, cursor: committedDecision ? 'pointer' : 'default' }}
+          disabled={!selectedAlt}
+          style={{ ...primaryBtnStyle, opacity: selectedAlt ? 1 : 0.4, cursor: selectedAlt ? 'pointer' : 'default' }}
         >
           Next: Review & Edit →
         </button>
