@@ -67,11 +67,13 @@ export function buildImportSummary(staff: StaffMember[]): ImportSummary {
 // We generate 3 shift slots per working day × 5 days = 15 slots per skill type.
 // Each slot can be assigned to any worker with the matching skill.
 
-// One shift slot per working day — alternating Early/Late to avoid same-day overlap.
-// Each slot is on a distinct day so the constraint engine never sees two shifts
-// for the same worker within 8 hours (Early ends at 14, next slot starts at 30 = day 1 + 6h).
-// Gap between end of day-N Early (hour 14) and start of day-(N+1) Early (hour 30) = 16h ≥ 8h ✓
-// Gap between end of day-N Late  (hour 22) and start of day-(N+1) Early (hour 30) = 8h  ≥ 8h ✓
+// Canonical 28-day hospital shift model matching buildStaffingRequirements():
+// 7 shifts per day × 28 days = 196 shifts total.
+// Early: 06:00–14:00 (3 per day: 1 HeadNurse, 2 Nurse)
+// Late:  14:00–22:00 (2 per day: 2 Nurse)
+// Night: 22:00–06:00 (2 per day: 2 Nurse)
+//
+// Kept for backward compatibility with 1-week legacy test fixtures:
 const WEEKLY_SHIFT_SLOTS: Array<{ dayOfWeek: number; startHour: number; label: string }> = [
   { dayOfWeek: 0, startHour: 6,   label: 'Early' }, // Mon 06:00–14:00
   { dayOfWeek: 1, startHour: 38,  label: 'Late'  }, // Tue 14:00–22:00  (gap from Mon Early end: 38-14=24h ✓)
@@ -89,25 +91,39 @@ export interface ShiftSlotMeta {
 }
 
 export function getScheduleSlotMeta(staff: StaffMember[]): Record<number, ShiftSlotMeta> {
-  const allSkills = [...new Set(staff.flatMap(s => s.skills.length > 0 ? s.skills : ['Nurse']))];
+  const hasHeadNurse = staff.some(s => s.skills.includes('HeadNurse'));
+  const nurseSkill = staff.some(s => s.skills.includes('Nurse'))
+    ? 'Nurse'
+    : (staff.find(s => s.skills.length > 0)?.skills[0] || 'Nurse');
+  const headNurseSkill = hasHeadNurse ? 'HeadNurse' : nurseSkill;
+
   const meta: Record<number, ShiftSlotMeta> = {};
   let shiftId = 1;
-  for (const skill of allSkills) {
-    for (let week = 0; week < 4; week++) {
-      for (const slot of WEEKLY_SHIFT_SLOTS) {
-        const dayIdx = week * 7 + slot.dayOfWeek;
-        const startHour = week * 168 + slot.startHour;
-        meta[shiftId] = {
-          shiftId,
-          dayIdx,
-          label: slot.label,
-          skill,
-          startHour,
-        };
-        shiftId++;
-      }
-    }
+
+  for (let day = 0; day < 28; day++) {
+    const baseHour = day * 24;
+
+    // 3 Early shifts (06:00–14:00): 1 HeadNurse, 2 Nurse
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: headNurseSkill, startHour: baseHour + 6 };
+    shiftId++;
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6 };
+    shiftId++;
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Early', skill: nurseSkill, startHour: baseHour + 6 };
+    shiftId++;
+
+    // 2 Late shifts (14:00–22:00): 2 Nurse
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14 };
+    shiftId++;
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Late', skill: nurseSkill, startHour: baseHour + 14 };
+    shiftId++;
+
+    // 2 Night shifts (22:00–06:00 next day): 2 Nurse
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22 };
+    shiftId++;
+    meta[shiftId] = { shiftId, dayIdx: day, label: 'Night', skill: nurseSkill, startHour: baseHour + 22 };
+    shiftId++;
   }
+
   return meta;
 }
 
@@ -131,9 +147,9 @@ export function buildSchedulePayload(staff: StaffMember[], rulePayload: any = {}
     shifts,
     historical_workloads: null,
     rng_seed: null,
-    generation_limit: 200,
+    generation_limit: 100,
     scenario: {
-      planning_horizon_hours: 28 * 24,
+      planning_horizon_hours: 28 * 24 + 16, // 688h: Day 27 night shift starts at 670 and ends at 678, so 688 ensures V-007 passes
       max_hours_per_worker: rulePayload?.max_weekly_hours ?? 40.0,
       minimum_rest_hours: rulePayload?.min_rest_hours ?? 10,
       leave_requests: null,
@@ -347,13 +363,17 @@ export function scheduleToAssignments(
   staff.forEach((s, i) => { staffWorkerIds[s.id] = i + 1; });
 
   const assignedShifts = new Set<number>();
+  const assignedWorkerDays = new Set<string>();
 
   for (const meta of Object.values(slotMeta)) {
     for (const s of staff) {
+      const cellKey = `${s.id}:${meta.dayIdx}`;
+      if (assignedWorkerDays.has(cellKey)) continue;
       const shiftAtDay = (schedule[s.id] || [])[meta.dayIdx];
       if (shiftAtDay === meta.label && !assignedShifts.has(meta.shiftId)) {
         assignments[String(meta.shiftId)] = staffWorkerIds[s.id];
         assignedShifts.add(meta.shiftId);
+        assignedWorkerDays.add(cellKey);
         break;
       }
     }

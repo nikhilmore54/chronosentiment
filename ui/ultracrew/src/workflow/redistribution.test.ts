@@ -264,8 +264,8 @@ test('P3.3-CR: no locked_shift_ids when no cells are locked', async () => {
 
 test('AT-05: 28-day exact shift locking does not collapse across weeks', () => {
   const payload = buildSchedulePayload(STAFF, {});
-  // Payload should have 20 shifts for Nurse (4 weeks * 5 weekday slots)
-  expect(payload.shifts.length).toBe(20);
+  // Payload should have 196 shifts (28 days * 7 canonical hospital shift slots)
+  expect(payload.shifts.length).toBe(196);
 
   // Map 28-day apiSchedule: shift 1..20
   const fullApiSchedule: Record<string, number> = {};
