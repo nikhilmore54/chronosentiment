@@ -90,10 +90,15 @@ const ComparisonTable: React.FC<{
                 {alternatives.map((alt, i) => {
                   const v = values[i];
                   const isBest = v === best;
-                  const barVal = row.key === 'fairness_penalty' ? Math.max(0, 1 - v / 3)
-                    : row.key === 'cost' ? Math.max(0, 1 - (v - 90) / 20)
-                    : row.key === 'diff_from_recommended' ? 0
-                    : v;
+                  const maxVal = Math.max(...values);
+                  const minVal = Math.min(...values);
+                  const barVal = row.key === 'fairness_penalty'
+                    ? (maxVal > 0 ? (maxVal === minVal ? 1 : 0.5 + 0.5 * (minVal / Math.max(1, v))) : 1)
+                    : row.key === 'cost'
+                    ? (maxVal > 0 ? (maxVal === minVal ? 1 : 0.5 + 0.5 * (minVal / Math.max(1, v))) : 1)
+                    : row.key === 'diff_from_recommended'
+                    ? 0
+                    : Math.min(1, Math.max(0, v));
                   return (
                     <td key={alt.id} style={{
                       padding: '0.45rem 0.75rem',

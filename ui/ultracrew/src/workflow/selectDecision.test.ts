@@ -76,8 +76,8 @@ test('G-10: Δ from recommended is sixth (last)', () => {
 //   2. compareAlternatives() does NOT produce a recommendedId or reason string.
 //   3. The adapter cannot silently substitute its own recommendation policy.
 
-import { compareAlternatives } from './WorkflowUtils';
-import type { RosterAlternative } from './WorkflowTypes';
+import { compareAlternatives, mapParetoAlternatives } from './WorkflowUtils';
+import type { RosterAlternative, StaffMember, ParetoAlternativeRaw } from './WorkflowTypes';
 
 function makeAlt(id: string, filled: number, required: number, fairness: number, cost: number): RosterAlternative {
   return {
@@ -135,4 +135,72 @@ test('G-10: adapter cannot change recommendedId — compareAlternatives has no r
   const result = compareAlternatives(alts);
   const hasRecommendedId = result.some(r => 'recommendedId' in (r as unknown as Record<string, unknown>));
   expect(hasRecommendedId).toBe(false);
+});
+
+// ─── P0-E: mapParetoAlternatives() regression tests ──────────────────────────
+
+const testStaff: StaffMember[] = [
+  { id: 'nurse-1', name: 'Nurse 1', skills: ['Nurse'], contract: 'FullTime' },
+  { id: 'nurse-2', name: 'Nurse 2', skills: ['Nurse'], contract: 'FullTime' },
+];
+
+test('P0-E: mapParetoAlternatives includes primary schedule as Option 1 with real coverage', () => {
+  // Primary schedule has 1 shift: shift 1 (Mon Early) assigned to worker 1 (nurse-1)
+  const primarySchedule = { 1: 1 };
+  const rawAlternatives: ParetoAlternativeRaw[] = [
+    {
+      schedule: { 1: 2 }, // worker 2 instead of worker 1
+      objectives: [0, 0, 10.0, 0, 0, 0],
+      metrics: { fitness: 100, hard_violations: 0, fairness_penalty: 10.0, fatigue_penalty: 0, rest_violations: 0 },
+      feasibility: { is_feasible: true, hard_violations: 0, rest_violations: 0, hc1_violations: 0, hc3_violations: 0 },
+    },
+  ];
+
+  const mapped = mapParetoAlternatives(rawAlternatives, testStaff, {
+    schedule: primarySchedule,
+    metrics: { fitness: 90, hard_violations: 0, fairness_penalty: 8.0, fatigue_penalty: 0, rest_violations: 0 },
+    constraint_report: { hard_violations: 0, rest_violations: 0, hc1_violations: 0, hc3_violations: 0 },
+  });
+
+  expect(mapped).toHaveLength(2);
+  const opt1 = mapped[0];
+  expect(opt1.id).toBe('pareto-0');
+  expect(opt1.label).toBe('Option 1');
+  expect(opt1.feasibility?.is_feasible).toBe(true);
+  expect(opt1.metrics.required_positions).toBe(196);
+  expect(opt1.metrics.filled_positions).toBeGreaterThan(0);
+  expect(opt1.metrics.coverage).toBeGreaterThan(0);
+  expect(opt1.metrics.utilization).toBeGreaterThan(0);
+  expect(opt1.metrics.diff_from_recommended).toBe(0);
+
+  const opt2 = mapped[1];
+  expect(opt2.id).toBe('pareto-1');
+  expect(opt2.label).toBe('Option 2');
+  expect(opt2.metrics.required_positions).toBe(196);
+  expect(opt2.metrics.filled_positions).toBeGreaterThan(0);
+  expect(opt2.metrics.coverage).toBeGreaterThan(0);
+  expect(opt2.metrics.diff_from_recommended).toBeGreaterThan(0);
+});
+
+test('P0-E: mapParetoAlternatives labels infeasible candidate as Exception N', () => {
+  const primarySchedule = { 1: 1 };
+  const rawAlternatives: ParetoAlternativeRaw[] = [
+    {
+      schedule: { 1: 2 },
+      objectives: [1, 0, 5.0, 0, 1, 0],
+      metrics: { fitness: 200, hard_violations: 1, fairness_penalty: 5.0, fatigue_penalty: 0, rest_violations: 0 },
+      feasibility: { is_feasible: false, hard_violations: 1, rest_violations: 0, hc1_violations: 1, hc3_violations: 0 },
+    },
+  ];
+
+  const mapped = mapParetoAlternatives(rawAlternatives, testStaff, {
+    schedule: primarySchedule,
+    metrics: { fitness: 90, hard_violations: 0, fairness_penalty: 8.0, fatigue_penalty: 0, rest_violations: 0 },
+    constraint_report: { hard_violations: 0, rest_violations: 0, hc1_violations: 0, hc3_violations: 0 },
+  });
+
+  expect(mapped[0].label).toBe('Option 1');
+  expect(mapped[0].feasibility?.is_feasible).toBe(true);
+  expect(mapped[1].label).toBe('Exception 2');
+  expect(mapped[1].feasibility?.is_feasible).toBe(false);
 });

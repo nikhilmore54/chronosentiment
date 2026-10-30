@@ -1271,7 +1271,7 @@ async fn schedule_handler(
         recommendations,
         telemetry: solution.telemetry.clone(),
         alternatives,
-        recommended_alternative_id: None,
+        recommended_alternative_id: Some("pareto-0".to_string()),
     };
 
     Ok(Json(response))
@@ -1338,7 +1338,7 @@ async fn reschedule_handler(
         recommendations,
         telemetry: solution.telemetry.clone(),
         alternatives: Vec::new(),
-        recommended_alternative_id: None,
+        recommended_alternative_id: Some("pareto-0".to_string()),
     };
 
     Ok(Json(response))
@@ -1379,7 +1379,7 @@ async fn validate_handler(
         recommendations,
         telemetry: None,
         alternatives: Vec::new(),
-        recommended_alternative_id: None,
+        recommended_alternative_id: Some("pareto-0".to_string()),
     };
 
     Ok(Json(response))

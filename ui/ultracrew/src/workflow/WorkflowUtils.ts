@@ -630,40 +630,155 @@ export function compareAlternatives(alternatives: RosterAlternative[]): Alternat
 // ─── P0-E: Pareto alternative mapping layer ──────────────────────────────────
 //
 // mapParetoAlternatives() translates the raw backend ProductionParetoSolution[]
-// (shift_id → worker_id map) into RosterAlternative[] (staffId → 28-day shift[]).
+// (shift_id → worker_id map) and the primary schedule into RosterAlternative[]
+// (staffId → 28-day shift[]).
 //
 // This is the P0-E fix: it closes the type contract gap between the Rust backend
 // and the UI. The mapping uses the same buildEditableSchedule() logic that
 // translates the primary schedule, ensuring consistency.
 //
 // Invariants:
-//   - No filtering: all candidates from the backend are preserved.
-//   - No ranking: candidates are returned in backend order.
-//   - No synthetic data: every field comes from the backend response.
+//   - Primary schedule is included as the baseline Option 1 (recommended) candidate.
+//   - Demand coverage, positions filled, and utilization are computed canonically
+//     against the hospital staffing demand profile (buildStaffingRequirements()).
+//   - diff_from_recommended accurately counts shift assignments that differ from
+//     the recommended primary schedule.
 //   - feasibility and objectives are passed through unchanged.
+
+export interface PrimaryScheduleRaw {
+  schedule: Record<string, number>;
+  metrics?: Record<string, number>;
+  constraint_report?: {
+    fitness?: number;
+    is_valid?: boolean;
+    hard_violations?: number;
+    soft_violations?: number;
+    rest_violations?: number;
+    hc1_violations?: number;
+    hc3_violations?: number;
+    violated_constraints?: string[];
+    satisfied_constraints?: string[];
+    warnings?: string[];
+  } | null;
+  recommendations?: Array<{
+    constraint_id: string;
+    severity: string;
+    explanation: string;
+    recommended_action: string;
+  }>;
+}
 
 export function mapParetoAlternatives(
   raw: ParetoAlternativeRaw[],
   staff: StaffMember[],
+  primaryRaw?: PrimaryScheduleRaw,
 ): RosterAlternative[] {
-  return raw.map((alt, idx) => {
-    // Translate shift_id → worker_id map to staffId → 28-day shift[] grid.
-    // Uses the same buildEditableSchedule() logic as the primary schedule.
+  const requirements = buildStaffingRequirements();
+  const totalSlots = staff.length * 28;
+
+  let primaryAlt: RosterAlternative | null = null;
+  let baselineSchedule: Record<string, string[]> = {};
+
+  if (primaryRaw && primaryRaw.schedule) {
+    const primarySchedule = buildEditableSchedule(staff, primaryRaw.schedule);
+    baselineSchedule = primarySchedule;
+    const primaryCov = computeCanonicalCoverage(requirements, primarySchedule);
+    const baselineAssignments = Object.values(primarySchedule).flat().filter(s => s !== '').length;
+    const primaryUtil = totalSlots > 0 ? Math.round((baselineAssignments / totalSlots) * 1000) / 1000 : 0;
+    const isPrimaryFeasible = primaryRaw.constraint_report
+      ? (primaryRaw.constraint_report.hard_violations ?? 0) === 0
+      : true;
+    const primaryFairness = primaryRaw.metrics?.['fairness_penalty'] ?? 0;
+    const primaryCost = primaryRaw.metrics?.['cost'] ?? 100;
+
+    const primaryReasons: string[] = [];
+    if (isPrimaryFeasible) primaryReasons.push('No hard violations');
+    if ((primaryRaw.constraint_report?.rest_violations ?? 0) === 0) primaryReasons.push('No rest violations');
+    primaryReasons.push(`${primaryCov.filledPositions} / ${primaryCov.requiredPositions} required positions filled`);
+
+    primaryAlt = {
+      id: 'pareto-0',
+      label: isPrimaryFeasible ? 'Option 1' : 'Exception 1',
+      schedule: primarySchedule,
+      metrics: {
+        coverage: primaryRaw.metrics?.['coverage'] ?? (primaryCov.coveragePct / 100),
+        filled_positions: primaryRaw.metrics?.['filled_positions'] ?? primaryCov.filledPositions,
+        required_positions: primaryRaw.metrics?.['required_positions'] ?? primaryCov.requiredPositions,
+        fairness_penalty: primaryFairness,
+        utilization: primaryRaw.metrics?.['utilization'] ?? primaryUtil,
+        cost: primaryCost,
+        diff_from_recommended: 0,
+      },
+      reasons: primaryReasons,
+      feasibility: {
+        is_feasible: isPrimaryFeasible,
+        hard_violations: primaryRaw.constraint_report?.hard_violations ?? 0,
+        rest_violations: primaryRaw.constraint_report?.rest_violations ?? 0,
+        hc1_violations: primaryRaw.constraint_report?.hc1_violations ?? 0,
+        hc3_violations: primaryRaw.constraint_report?.hc3_violations ?? 0,
+      },
+      objectives: [
+        primaryRaw.constraint_report?.hard_violations ?? 0,
+        primaryRaw.constraint_report?.rest_violations ?? 0,
+        primaryFairness,
+        primaryRaw.metrics?.['fatigue_penalty'] ?? 0,
+        primaryRaw.constraint_report?.hc1_violations ?? 0,
+        primaryRaw.constraint_report?.hc3_violations ?? 0,
+      ],
+    };
+  } else if (raw.length > 0) {
+    baselineSchedule = buildEditableSchedule(staff, raw[0].schedule);
+  }
+
+  const result: RosterAlternative[] = primaryAlt ? [primaryAlt] : [];
+
+  raw.forEach(alt => {
     const schedule = buildEditableSchedule(staff, alt.schedule);
 
-    // Derive RosterAlternativeMetrics from the backend flat metric map.
-    // Keys match analyze_solution() output in decision_intelligence.rs.
+    // Count assignment cells that differ from baseline (Option 1)
+    let diffCount = 0;
+    for (const s of staff) {
+      const aShifts = baselineSchedule[s.id] ?? [];
+      const bShifts = schedule[s.id] ?? [];
+      const len = Math.max(aShifts.length, bShifts.length);
+      for (let d = 0; d < len; d++) {
+        if ((aShifts[d] ?? '') !== (bShifts[d] ?? '')) diffCount++;
+      }
+    }
+
+    // If primary schedule is present and this candidate has 0 diff, skip redundant clone
+    if (primaryAlt && diffCount === 0) return;
+
+    const cov = computeCanonicalCoverage(requirements, schedule);
+    const totalAssignments = Object.values(schedule).flat().filter(s => s !== '').length;
+    const util = totalSlots > 0 ? Math.round((totalAssignments / totalSlots) * 1000) / 1000 : 0;
+
+    const candidateIdx = result.length;
+    const id = `pareto-${candidateIdx}`;
+    const label = alt.feasibility.is_feasible
+      ? `Option ${candidateIdx + 1}`
+      : `Exception ${candidateIdx + 1}`;
+
+    const reasons: string[] = [];
+    if (alt.objectives[0] === 0) reasons.push('No hard violations');
+    if (alt.objectives[1] === 0) reasons.push('No rest violations');
+    reasons.push(`${cov.filledPositions} / ${cov.requiredPositions} required positions filled`);
+    if (diffCount > 0) reasons.push(`${diffCount} shift assignments change from recommended`);
+
+    const altCost = alt.metrics['cost'] !== undefined
+      ? alt.metrics['cost']
+      : 100;
+
     const metrics: RosterAlternativeMetrics = {
-      coverage:             alt.metrics['coverage']             ?? 0,
-      filled_positions:     alt.metrics['filled_positions']     ?? 0,
-      required_positions:   alt.metrics['required_positions']   ?? 0,
-      fairness_penalty:     alt.metrics['fairness_penalty']     ?? 0,
-      utilization:          alt.metrics['utilization']          ?? 0,
-      cost:                 alt.metrics['cost']                 ?? 0,
-      diff_from_recommended: 0, // computed by compareAlternatives() if needed
+      coverage:             alt.metrics['coverage']             ?? (cov.coveragePct / 100),
+      filled_positions:     alt.metrics['filled_positions']     ?? cov.filledPositions,
+      required_positions:   alt.metrics['required_positions']   ?? cov.requiredPositions,
+      fairness_penalty:     alt.metrics['fairness_penalty']     ?? alt.objectives[2] ?? 0,
+      utilization:          alt.metrics['utilization']          ?? util,
+      cost:                 altCost,
+      diff_from_recommended: diffCount,
     };
 
-    // Map ParetoFeasibilityRaw → CandidateFeasibility (same field names).
     const feasibility: CandidateFeasibility = {
       is_feasible:      alt.feasibility.is_feasible,
       hard_violations:  alt.feasibility.hard_violations,
@@ -672,26 +787,7 @@ export function mapParetoAlternatives(
       hc3_violations:   alt.feasibility.hc3_violations,
     };
 
-    // Generate a stable id from the index (backend does not assign ids).
-    // The id is used for selection identity in SelectDecision — it is stable
-    // within a single schedule generation response.
-    const id = `pareto-${idx}`;
-
-    // Label: feasible candidates are "Option N", infeasible are "Exception N".
-    const label = feasibility.is_feasible
-      ? `Option ${idx + 1}`
-      : `Exception ${idx + 1}`;
-
-    // Reasons: derive from the objective vector for display.
-    // No ranking or recommendation is implied — these are factual descriptions.
-    const reasons: string[] = [];
-    if (alt.objectives[0] === 0) reasons.push('No hard violations');
-    if (alt.objectives[1] === 0) reasons.push('No rest violations');
-    if (alt.objectives[2] < (alt.objectives[2] + 1)) {
-      // Always true — placeholder for future objective-based reason generation
-    }
-
-    return {
+    result.push({
       id,
       label,
       metrics,
@@ -699,8 +795,10 @@ export function mapParetoAlternatives(
       reasons,
       feasibility,
       objectives: alt.objectives,
-    };
+    });
   });
+
+  return result;
 }
 
 export function buildSyntheticAlternatives(

@@ -49,16 +49,26 @@ export const GenerateSchedule: React.FC<{
       if (!res.ok) throw new Error(`Schedule generation failed (${res.status})`);
       // P0-E: Parse as ScheduleRawResponse (actual backend shape), then map
       // alternatives from ProductionParetoSolution[] → RosterAlternative[].
-      // This closes the type contract gap between the Rust backend and the UI.
+      // This closes the type contract gap between the Rust backend and the UI,
+      // including the authoritative primary schedule as Option 1 (recommended).
       const raw: ScheduleRawResponse = await res.json();
-      const mappedAlternatives = mapParetoAlternatives(raw.alternatives ?? [], staff);
+      const mappedAlternatives = mapParetoAlternatives(
+        raw.alternatives ?? [],
+        staff,
+        raw.schedule ? {
+          schedule: raw.schedule,
+          metrics: raw.metrics,
+          constraint_report: raw.constraint_report,
+          recommendations: raw.recommendations,
+        } : undefined,
+      );
       const data: ScheduleResult = {
         schedule: raw.schedule,
         metrics: raw.metrics,
         constraint_report: raw.constraint_report,
         recommendations: raw.recommendations,
         alternatives: mappedAlternatives,
-        recommended_alternative_id: raw.recommended_alternative_id,
+        recommended_alternative_id: raw.recommended_alternative_id ?? mappedAlternatives[0]?.id,
       };
       clearInterval(interval);
       setLoading(false);

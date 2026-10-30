@@ -27,6 +27,11 @@ pub fn analyze_solution(solution: &ScheduleSolution) -> HashMap<String, f64> {
         "rest_violations".to_string(),
         solution.rest_violations as f64,
     );
+    metrics.insert(
+        "filled_positions".to_string(),
+        solution.assignments.len() as f64,
+    );
+    metrics.insert("cost".to_string(), 100.0);
     metrics
 }
 

@@ -335,3 +335,4 @@ Upon completion of the audit, the hospital receives the following executive pres
 2. **Access Control:** Data is processed in an isolated single-tenant workspace. No customer data is shared or retained across client boundaries.
 3. **Retention & Disposal:** All raw CSV files, intermediate genomes, and assessment databases are permanently sanitized and deleted within 30 days of deliverable delivery upon written request.
 4. **Independent Intellectual Property:** The hospital retains complete ownership of its operational data and policies. Coralys retains all rights to its combinatorial solvers, MOGA algorithms, and optimization architectures.
+
