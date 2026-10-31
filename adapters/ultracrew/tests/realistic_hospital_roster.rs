@@ -90,6 +90,8 @@ fn test_realistic_20_nurse_196_shift_roster() {
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(10),
         leave_requests: None,
+        weekly_anchor_offset_hours: None,
+        weekly_contract_mode: Some("monday_sunday".to_string()),
     };
 
     let request = ScheduleRequest {

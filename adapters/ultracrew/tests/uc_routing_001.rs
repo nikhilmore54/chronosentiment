@@ -30,6 +30,7 @@ fn build_context(num_workers: usize, num_shifts: usize, disable_global: bool, se
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
         leave_requests: None,
+        ..Default::default()
     };
     Arc::new(ScheduleContext {
         workers: Arc::new(workers),

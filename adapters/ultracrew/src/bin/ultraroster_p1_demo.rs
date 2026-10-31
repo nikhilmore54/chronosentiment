@@ -44,6 +44,7 @@ fn main() {
         max_hours_per_worker: Some(40.0),
         minimum_rest_hours: Some(8),
         leave_requests: None,
+        ..Default::default()
     };
     
     let context = Arc::new(ScheduleContext {

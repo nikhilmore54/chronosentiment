@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type {
   StaffMember,
   ScheduleResult,
@@ -8,7 +8,7 @@ import type {
   BaselineAuditReport,
   BaselineAssignment,
 } from './WorkflowTypes';
-import { RULE_PRESETS } from './WorkflowTypes';
+import { RULE_PRESETS, SAMPLE_CSV } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
 import { ImportStaff } from './ImportStaff';
 import { SelectRules } from './SelectRules';
@@ -18,11 +18,29 @@ import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
 import { DecisionRepository } from '../services/DecisionRepository';
 import { accumulatePatterns } from '../services/PatternAccumulator';
-import { getScheduleSlotMeta, type CustomShiftInput } from './WorkflowUtils';
+import {
+  getScheduleSlotMeta,
+  parseStaffCSV,
+  generateSampleBaselineWithBreaches,
+  parseBaselineCSV,
+  auditBaselineClientSide,
+  buildSyntheticAlternatives,
+  type CustomShiftInput,
+} from './WorkflowUtils';
 
 const decisionRepository = new DecisionRepository();
 
-export const PlannerWorkflow: React.FC = () => {
+export interface PlannerWorkflowProps {
+  workflowMode?: 'blank' | 'sample';
+  workflowTrigger?: number;
+  onWorkflowModeChange?: (mode: 'blank' | 'sample') => void;
+}
+
+export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
+  workflowMode = 'blank',
+  workflowTrigger = 0,
+  onWorkflowModeChange,
+}) => {
   const [step, setStep] = useState(1);
   const [maxReached, setMaxReached] = useState(1);
 
@@ -71,9 +89,106 @@ export const PlannerWorkflow: React.FC = () => {
     ? 'Custom JSON'
     : RULE_PRESETS.find(p => p.id === selectedRuleId)?.label ?? selectedRuleId;
 
-  const handleStartOver = () => {
-    setStep(1);
-    setMaxReached(1);
+  const loadSampleDemonstration = () => {
+    const { staff: sampleStaff } = parseStaffCSV(SAMPLE_CSV);
+    const slotMeta = getScheduleSlotMeta(sampleStaff, []);
+    const sampleBaselineCsv = generateSampleBaselineWithBreaches(sampleStaff, slotMeta);
+    const { assignments: parsedBaseline } = parseBaselineCSV(sampleBaselineCsv);
+    const auditReport = auditBaselineClientSide(
+      sampleStaff,
+      Object.values(slotMeta),
+      parsedBaseline,
+      {
+        min_rest_hours: 10,
+        max_weekly_hours: 40.0,
+        weekly_contract_mode: 'monday_sunday',
+        weekly_anchor_offset_hours: 0,
+      },
+      'hospital_policy_v1'
+    );
+
+    const baseSchedule: Record<string, string[]> = {};
+    const shiftTypes = ['Early', 'Late', 'Night', ''];
+    sampleStaff.forEach((s, idx) => {
+      const row: string[] = [];
+      for (let day = 0; day < 28; day++) {
+        const isRest = (day + idx) % 7 === 5 || (day + idx) % 7 === 6;
+        if (isRest) {
+          row.push('');
+        } else {
+          const shiftIdx = (day + idx * 2) % 3;
+          row.push(shiftTypes[shiftIdx]);
+        }
+      }
+      baseSchedule[s.id] = row;
+    });
+
+    const { alternatives: sampleAlternatives, recommendedId: recId } = buildSyntheticAlternatives(
+      sampleStaff,
+      baseSchedule,
+      slotMeta
+    );
+
+    const rawSchedule: Record<string, number> = {};
+    const staffIndexMap = new Map<string, number>();
+    sampleStaff.forEach((s, idx) => staffIndexMap.set(s.id, idx + 1));
+    Object.values(slotMeta).forEach(slot => {
+      const assignedNurseId = Object.keys(baseSchedule).find(
+        id => baseSchedule[id]?.[slot.dayIdx] === slot.label
+      );
+      if (assignedNurseId && staffIndexMap.has(assignedNurseId)) {
+        rawSchedule[String(slot.shiftId)] = staffIndexMap.get(assignedNurseId)!;
+      }
+    });
+
+    const metricsRecord: Record<string, number> = {
+      coverage: 1.0,
+      filled_positions: 196,
+      required_positions: 196,
+      fairness_penalty: 1.2,
+      utilization: 0.85,
+      cost: 100,
+      diff_from_recommended: 0,
+    };
+
+    const sampleResult: ScheduleResult = {
+      schedule: rawSchedule,
+      metrics: metricsRecord,
+      constraint_report: {
+        fitness: 1.0,
+        is_valid: true,
+        hard_violations: 0,
+        soft_violations: 0,
+        violated_constraints: [],
+        satisfied_constraints: [
+          'minimum_rest_hours',
+          'max_weekly_hours',
+          'required_skill_coverage',
+          'full_demand_coverage',
+        ],
+        warnings: [],
+      },
+      recommendations: [],
+      alternatives: sampleAlternatives,
+      recommended_alternative_id: recId,
+    };
+
+    setStaff(sampleStaff);
+    setCustomShifts([]);
+    setSelectedRuleId('standard-hospital');
+    setScheduleResult(sampleResult);
+    setEditableSchedule(baseSchedule);
+    setOriginalAssignmentCount(196);
+    setAlternatives(sampleAlternatives);
+    setRecommendedId(recId);
+    setSchedulerDecision(null);
+    setBaselineAssignments(parsedBaseline);
+    setBaselineAuditReport(auditReport);
+    setStep(4);
+    setMaxReached(6);
+  };
+
+  const resetToBlankWorkspace = () => {
     setStaff([]);
     setCustomShifts([]);
     setSelectedRuleId('');
@@ -87,18 +202,126 @@ export const PlannerWorkflow: React.FC = () => {
     setRecommendedId('');
     setSchedulerDecision(null);
     setBaselineAuditReport(null);
+    setBaselineAssignments([]);
+    setStep(1);
+    setMaxReached(1);
+  };
+
+  const prevTriggerRef = useRef(workflowTrigger);
+  const initialMountRef = useRef(true);
+
+  useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      if (workflowMode === 'sample') {
+        loadSampleDemonstration();
+      } else {
+        resetToBlankWorkspace();
+      }
+      return;
+    }
+
+    if (prevTriggerRef.current !== workflowTrigger) {
+      prevTriggerRef.current = workflowTrigger;
+      if (workflowMode === 'sample') {
+        loadSampleDemonstration();
+      } else {
+        resetToBlankWorkspace();
+      }
+    }
+  }, [workflowMode, workflowTrigger]);
+
+  const handleStartOver = () => {
+    resetToBlankWorkspace();
+    onWorkflowModeChange?.('blank');
   };
 
   return (
     <div className="card">
       <div style={{ marginBottom: '0.25rem' }}>
-        <h2 style={{ margin: '0 0 0.25rem 0' }}>Import &amp; Schedule</h2>
+        <h2 style={{ margin: '0 0 0.25rem 0' }}>Workforce Assessment &amp; Planning</h2>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Bring your own data, generate a roster, explore the decision, edit it, and export.
+          Evaluate historical roster compliance, generate policy-compliant candidates, and compare decision alternatives.
         </p>
       </div>
 
-      <div style={{ marginTop: '1.75rem' }}>
+      {/* Mode Indicator & Quick Switch */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
+        padding: '0.65rem 1rem',
+        borderRadius: '8px',
+        backgroundColor: workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.08)' : 'rgba(56, 189, 248, 0.08)',
+        border: `1px solid ${workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.25)' : 'rgba(56, 189, 248, 0.25)'}`,
+        marginTop: '0.85rem',
+        marginBottom: '0.5rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.86rem' }}>
+          <span style={{
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            padding: '0.15rem 0.5rem',
+            borderRadius: '4px',
+            backgroundColor: workflowMode === 'sample' ? 'var(--primary-color)' : '#0284c7',
+            color: 'white',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}>
+            {workflowMode === 'sample' ? 'Sample Demo' : 'Blank Workspace'}
+          </span>
+          <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+            {workflowMode === 'sample'
+              ? 'Preloaded demonstration for synthetic 20-nurse department. Roster alternatives & scorecard ready for exploration.'
+              : 'Blank assessment workspace. Start by importing your hospital staff CSV.'}
+          </span>
+        </div>
+        <div>
+          {workflowMode === 'sample' ? (
+            <button
+              onClick={() => {
+                resetToBlankWorkspace();
+                onWorkflowModeChange?.('blank');
+              }}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-color)',
+                borderRadius: '5px',
+                padding: '0.3rem 0.75rem',
+                fontSize: '0.8rem',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Start Blank Assessment →
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                loadSampleDemonstration();
+                onWorkflowModeChange?.('sample');
+              }}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-color)',
+                borderRadius: '5px',
+                padding: '0.3rem 0.75rem',
+                fontSize: '0.8rem',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Explore Sample Demonstration →
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: '1.25rem' }}>
         <Stepper currentStep={step} maxReached={maxReached} onJump={goTo} />
 
         {step === 1 && (

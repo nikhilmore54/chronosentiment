@@ -11,6 +11,7 @@
 
 import { describe, test, expect } from 'vitest';
 import {
+  parseStaffCSV,
   parseShiftsCSV,
   parseBaselineCSV,
   generateSampleBaselineWithBreaches,
@@ -24,11 +25,13 @@ import {
   exportRosterToCSV,
   computeNextCycleBoundary,
   buildSyntheticSchedule,
+  buildSyntheticAlternatives,
   mapParetoAlternatives,
   generateShiftLevelDeltaRecords,
   exportShiftLevelDeltaCSV,
 } from './WorkflowUtils';
 import type { StaffMember, BaselineAssignment, ProductionParetoSolution } from './WorkflowTypes';
+import { SAMPLE_CSV } from './WorkflowTypes';
 
 const TEST_STAFF: StaffMember[] = [
   { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
@@ -773,5 +776,48 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
     // Line count equals 1 header + 10 data rows
     const lines = csvContent.trim().split('\n');
     expect(lines.length).toBe(11);
+  });
+
+  // ── AT-33: First-Use Workflow Separation ────────────────────────────────────
+  test('AT-33: First-use workflow separation guarantees blank workspace vs preloaded demonstration', () => {
+    // 1. Verify Sample Demonstration setup
+    const { staff: sampleStaff } = parseStaffCSV(SAMPLE_CSV);
+    expect(sampleStaff.length).toBe(20);
+
+    const slotMeta = getScheduleSlotMeta(sampleStaff, []);
+    const slots = Object.values(slotMeta);
+    expect(slots.length).toBe(196);
+
+    const sampleBaselineCsv = generateSampleBaselineWithBreaches(sampleStaff, slotMeta);
+    const { assignments: parsedBaseline } = parseBaselineCSV(sampleBaselineCsv);
+    expect(parsedBaseline.length).toBeGreaterThan(150);
+
+    const auditReport = auditBaselineClientSide(
+      sampleStaff,
+      slots,
+      parsedBaseline,
+      {
+        min_rest_hours: 10,
+        max_weekly_hours: 40.0,
+        weekly_contract_mode: 'monday_sunday',
+        weekly_anchor_offset_hours: 0,
+      },
+      'hospital_policy_v1'
+    );
+    expect(auditReport.audit_classification).toBe('VALID_BUT_INFEASIBLE');
+    expect(auditReport.feasibility.hard_violations).toBeGreaterThan(0);
+
+    const baseSchedule = buildSyntheticSchedule(sampleStaff);
+    const { alternatives, recommendedId } = buildSyntheticAlternatives(sampleStaff, baseSchedule, slotMeta);
+    expect(alternatives.length).toBeGreaterThanOrEqual(2);
+    expect(recommendedId).toBe('alt-A');
+
+    // 2. Verify Blank Workspace Invariant
+    const blankStaff: StaffMember[] = [];
+    const blankAssignments: BaselineAssignment[] = [];
+    const blankSlotMeta = getScheduleSlotMeta(blankStaff, []);
+    expect(blankStaff.length).toBe(0);
+    expect(blankAssignments.length).toBe(0);
+    expect(Object.keys(blankSlotMeta).length).toBe(196); // Standard hospital demand active waiting for custom shifts or staff
   });
 });

@@ -2,6 +2,19 @@
 name = "ultracrew"
 version = "0.1.0"
 edition = "2021"
+autobins = false
+
+[[bin]]
+name = "ultracrew-cli"
+path = "src/bin/ultracrew-cli.rs"
+
+[[bin]]
+name = "ultraroster_p1_demo"
+path = "src/bin/ultraroster_p1_demo.rs"
+
+[[bin]]
+name = "ultraroster_p2_demo"
+path = "src/bin/ultraroster_p2_demo.rs"
 
 [dependencies]
 coralys-ecology = { path = "../../coralys-ecology" }

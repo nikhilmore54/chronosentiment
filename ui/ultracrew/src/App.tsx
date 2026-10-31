@@ -42,6 +42,8 @@ function App() {
   // Backend connectivity state
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [showScenarioAnalysis, setShowScenarioAnalysis] = useState(false);
+  const [workflowMode, setWorkflowMode] = useState<'blank' | 'sample'>('blank');
+  const [workflowTrigger, setWorkflowTrigger] = useState<number>(0);
   
   const hasAutoScrolledRef = React.useRef(false);
 
@@ -270,6 +272,20 @@ function App() {
       });
   };
 
+  const startAssessment = () => {
+    setWorkflowMode('blank');
+    setWorkflowTrigger(Date.now());
+    setCurrentTab('scheduler');
+  };
+
+  const loadSampleHospital = () => {
+    setShowDemo(true);
+    setWorkflowMode('sample');
+    setWorkflowTrigger(Date.now());
+    setCurrentTab('scheduler');
+    handleLoadSampleHospital();
+  };
+
   const handleLoadInstance = (instance: string) => {
     setLoadingProgress(true);
     fetch(`/api/load-scenario`, {
@@ -371,12 +387,7 @@ function App() {
   if (!showDemo) {
     return (
       <Landing
-        onStartDemo={() => {
-          setShowDemo(true);
-          if (!dashboardData || nurses.length === 0) {
-            handleLoadSampleHospital();
-          }
-        }}
+        onStartDemo={loadSampleHospital}
       />
     );
   }
@@ -483,7 +494,11 @@ function App() {
       <div className="content">
   <main className="main-view">
     {currentTab === 'scheduler' ? (
-      <PlannerWorkflow />
+      <PlannerWorkflow
+        workflowMode={workflowMode}
+        workflowTrigger={workflowTrigger}
+        onWorkflowModeChange={setWorkflowMode}
+      />
     ) : currentTab === 'constraints' ? (
       <Constraints />
     ) : (!dashboardData || nurses.length === 0) ? (
@@ -514,7 +529,7 @@ function App() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setCurrentTab('scheduler')}
+                  onClick={startAssessment}
                   style={{
                     backgroundColor: 'var(--primary-color)',
                     color: 'white',
@@ -539,7 +554,7 @@ function App() {
                   </p>
                 </div>
                 <button
-                  onClick={handleLoadSampleHospital}
+                  onClick={loadSampleHospital}
                   style={{
                     background: 'none',
                     border: '1px solid var(--border-color)',
