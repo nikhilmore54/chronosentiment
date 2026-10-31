@@ -15,68 +15,73 @@ export const Landing = ({ onStartDemo }: LandingProps) => {
       padding: '2rem',
       textAlign: 'center'
     }}>
-      <div style={{ maxWidth: '800px' }}>
+      <div style={{ maxWidth: '820px' }}>
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.5rem',
-          backgroundColor: 'rgba(56, 189, 248, 0.1)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          color: '#38bdf8',
-          fontSize: '0.85rem',
+          backgroundColor: 'rgba(15, 118, 110, 0.08)',
+          border: '1px solid rgba(15, 118, 110, 0.25)',
+          color: 'var(--primary-color)',
+          fontSize: '0.8rem',
           fontWeight: 600,
-          padding: '0.35rem 1rem',
+          padding: '0.35rem 0.9rem',
           borderRadius: '9999px',
-          marginBottom: '1.5rem',
+          marginBottom: '1.75rem',
         }}>
           <span>ℹ</span>
           <span>Demonstration Environment — Synthetic Hospital Data Only</span>
         </div>
 
-        <h1 style={{ fontSize: '3rem', color: 'var(--accent-color)', marginBottom: '2rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
-          UltraRoster
-        </h1>
-        
-        <div style={{ fontSize: '2rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '3rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Employee was sick.</span><br />
-          <span style={{ color: 'var(--text-muted)' }}>Traditional schedulers forget.</span><br />
-          <span style={{ color: 'var(--text-main)' }}>UltraRoster remembers.</span>
+        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+          UltraRoster · Nursing Workforce Planning
         </div>
 
-        <button 
-          onClick={onStartDemo}
-          style={{
-            backgroundColor: 'var(--primary-color)',
-            color: 'white',
-            border: 'none',
-            padding: '1rem 2.5rem',
-            borderRadius: '8px',
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            marginBottom: '4rem',
-            boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.4)',
-            transition: 'transform 0.1s ease-in-out'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          Watch 60 Second Demo
-        </button>
+        <h1 style={{ fontSize: '2.8rem', color: 'var(--text-main)', marginBottom: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.25 }}>
+          Better rosters. Clearer decisions.<br />More balanced teams.
+        </h1>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', fontSize: '1.1rem', color: 'var(--text-muted)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ color: 'var(--success-color)', fontWeight: 'bold' }}>✓</span> Fair workload recovery
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ color: 'var(--success-color)', fontWeight: 'bold' }}>✓</span> Reduced scheduling complaints
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ color: 'var(--success-color)', fontWeight: 'bold' }}>✓</span> Historical balancing
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ color: 'var(--success-color)', fontWeight: 'bold' }}>✓</span> Explainable assignments
-          </div>
+        <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', maxWidth: '640px', margin: '0 auto 2.5rem auto', lineHeight: 1.55 }}>
+          Plan nursing workforce schedules with hospital-approved constraints, transparent alternatives and human oversight.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '3.5rem' }}>
+          <button 
+            onClick={onStartDemo}
+            style={{
+              backgroundColor: 'var(--primary-color)',
+              color: 'white',
+              border: 'none',
+              padding: '1rem 2.25rem',
+              borderRadius: '8px',
+              fontSize: '1.15rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(15, 118, 110, 0.25)',
+              transition: 'transform 0.15s ease-in-out, background-color 0.15s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.backgroundColor = 'var(--secondary-color)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.backgroundColor = 'var(--primary-color)';
+            }}
+          >
+            Explore a sample hospital
+          </button>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Experience UltraRoster with synthetic data
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontWeight: 500 }}>Policy-aware planning</span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ fontWeight: 500 }}>Fairness visibility</span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ fontWeight: 500 }}>Explainable decisions</span>
         </div>
       </div>
     </div>

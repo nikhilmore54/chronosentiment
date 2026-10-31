@@ -39,7 +39,7 @@ export const accentGhostBtnStyle: React.CSSProperties = {
 // ─── Shared box styles ────────────────────────────────────────────────────────
 
 export const codeBoxStyle: React.CSSProperties = {
-  backgroundColor: 'rgba(15, 23, 42, 0.8)',
+  backgroundColor: 'var(--bg-color)',
   border: '1px solid var(--border-color)',
   borderRadius: '8px',
   padding: '1rem',
@@ -48,7 +48,7 @@ export const codeBoxStyle: React.CSSProperties = {
 export const textareaStyle: React.CSSProperties = {
   width: '100%',
   height: '80px',
-  backgroundColor: '#0f172a',
+  backgroundColor: 'var(--panel-bg)',
   color: 'var(--text-main)',
   border: '1px solid var(--border-color)',
   borderRadius: '4px',

@@ -17,9 +17,10 @@ export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationSt
   const [selectedNurse, setSelectedNurse] = useState<NurseBalance | null>(null);
   const [showFull, setShowFull] = useState(false);
 
+  const hasWorkforce = balances.length > 0;
   const activeBalances = balances;
-  const surplusCount = activeBalances.filter(b => b.balance > 0).length;
-  const deficitCount = activeBalances.filter(b => b.balance < 0).length;
+  const surplusCount = hasWorkforce ? activeBalances.filter(b => b.balance > 0).length : null;
+  const deficitCount = hasWorkforce ? activeBalances.filter(b => b.balance < 0).length : null;
 
   const anomalies = balances.filter(b => {
     if (simulationState) {
@@ -34,18 +35,24 @@ export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationSt
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
         <h2>Team Balance</h2>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1 }}>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1, minWidth: '160px' }}>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Staff Behind Schedule</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger-color)' }}>{deficitCount}</div>
+            <div style={{ fontSize: hasWorkforce ? '1.5rem' : '0.95rem', fontWeight: 600, color: hasWorkforce ? 'var(--danger-color)' : 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {hasWorkforce ? deficitCount : 'Not yet calculated'}
+            </div>
           </div>
-          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1 }}>
+          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1, minWidth: '160px' }}>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Staff Ahead of Schedule</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--success-color)' }}>{surplusCount}</div>
+            <div style={{ fontSize: hasWorkforce ? '1.5rem' : '0.95rem', fontWeight: 600, color: hasWorkforce ? 'var(--success-color)' : 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {hasWorkforce ? surplusCount : 'Not yet calculated'}
+            </div>
           </div>
-          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1 }}>
+          <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1, minWidth: '200px' }}>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Balance Score</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--accent-color)' }}>{balanceScore}</div>
+            <div style={{ fontSize: hasWorkforce ? '1.5rem' : '0.9rem', fontWeight: 600, color: hasWorkforce ? 'var(--primary-color)' : 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {hasWorkforce ? balanceScore : 'Available after roster analysis'}
+            </div>
           </div>
         </div>
       </div>

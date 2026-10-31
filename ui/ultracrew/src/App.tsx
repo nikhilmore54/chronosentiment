@@ -41,6 +41,7 @@ function App() {
 
   // Backend connectivity state
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [showScenarioAnalysis, setShowScenarioAnalysis] = useState(false);
   
   const hasAutoScrolledRef = React.useRef(false);
 
@@ -239,56 +240,64 @@ function App() {
   }
 
   // Backend status pill colours
-  const statusColor = backendOnline === null ? '#94a3b8' : backendOnline ? '#22c55e' : '#ef4444';
-  const statusLabel = backendOnline === null ? 'Checking...' : backendOnline ? 'Backend Connected' : 'Backend Offline';
+  const statusColor = backendOnline === null ? '#94a3b8' : backendOnline ? '#10b981' : '#ef4444';
+  const statusLabel = backendOnline === null ? 'Checking...' : backendOnline ? 'Connected' : 'Offline';
   const statusDot = backendOnline === null ? '●' : backendOnline ? '●' : '⚠';
 
   return (
     <div className="app-container">
       <header className="header" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-        <h1 style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('dashboard')}>UltraRoster</h1>
-        <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1 }}>
+        <h1 style={{ cursor: 'pointer', color: 'var(--primary-color)', fontSize: '1.35rem', fontWeight: 800 }} onClick={() => setCurrentTab('dashboard')}>
+          UltraRoster
+        </h1>
+        <nav style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flex: 1 }}>
           <button 
             onClick={() => setCurrentTab('dashboard')}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: currentTab === 'dashboard' ? 'var(--accent-color)' : 'var(--text-muted)', 
-              fontWeight: currentTab === 'dashboard' ? 600 : 400,
-              fontSize: '1rem',
+              color: currentTab === 'dashboard' ? 'var(--primary-color)' : 'var(--text-muted)', 
+              fontWeight: currentTab === 'dashboard' ? 700 : 500,
+              fontSize: '0.95rem',
               cursor: 'pointer',
-              padding: '0.5rem'
+              padding: '0.4rem 0',
+              borderBottom: currentTab === 'dashboard' ? '2px solid var(--primary-color)' : '2px solid transparent',
+              transition: 'all 0.15s',
             }}
           >
-            Dashboard
+            Overview
           </button>
           <button 
             onClick={() => setCurrentTab('constraints')}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: currentTab === 'constraints' ? 'var(--accent-color)' : 'var(--text-muted)', 
-              fontWeight: currentTab === 'constraints' ? 600 : 400,
-              fontSize: '1rem',
+              color: currentTab === 'constraints' ? 'var(--primary-color)' : 'var(--text-muted)', 
+              fontWeight: currentTab === 'constraints' ? 700 : 500,
+              fontSize: '0.95rem',
               cursor: 'pointer',
-              padding: '0.5rem'
+              padding: '0.4rem 0',
+              borderBottom: currentTab === 'constraints' ? '2px solid var(--primary-color)' : '2px solid transparent',
+              transition: 'all 0.15s',
             }}
           >
-            Constraints
+            Staffing Policies
           </button>
           <button 
             onClick={() => setCurrentTab('scheduler')}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: currentTab === 'scheduler' ? 'var(--accent-color)' : 'var(--text-muted)', 
-              fontWeight: currentTab === 'scheduler' ? 600 : 400,
-              fontSize: '1rem',
+              color: currentTab === 'scheduler' ? 'var(--primary-color)' : 'var(--text-muted)', 
+              fontWeight: currentTab === 'scheduler' ? 700 : 500,
+              fontSize: '0.95rem',
               cursor: 'pointer',
-              padding: '0.5rem'
+              padding: '0.4rem 0',
+              borderBottom: currentTab === 'scheduler' ? '2px solid var(--primary-color)' : '2px solid transparent',
+              transition: 'all 0.15s',
             }}
           >
-            Import &amp; Schedule
+            Workforce &amp; Rostering
           </button>
         </nav>
 
@@ -297,7 +306,7 @@ function App() {
           display: 'flex',
           alignItems: 'center',
           gap: '0.4rem',
-          padding: '0.3rem 0.75rem',
+          padding: '0.25rem 0.65rem',
           borderRadius: '999px',
           border: `1px solid ${statusColor}33`,
           backgroundColor: `${statusColor}11`,
@@ -308,22 +317,21 @@ function App() {
           flexShrink: 0,
         }}>
           <span style={{ fontSize: '0.6rem' }}>{statusDot}</span>
-          {statusLabel}
-          {backendOnline && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>&nbsp;:3001</span>}
+          <span>{statusLabel}</span>
         </div>
       </header>
 
       {/* Synthetic Demo Disclaimer Banner */}
       <div style={{
-        backgroundColor: 'rgba(56, 189, 248, 0.08)',
-        borderBottom: '1px solid rgba(56, 189, 248, 0.25)',
-        padding: '0.4rem 1.5rem',
-        fontSize: '0.8rem',
-        color: '#38bdf8',
+        backgroundColor: 'rgba(15, 118, 110, 0.04)',
+        borderBottom: '1px solid var(--border-color)',
+        padding: '0.35rem 1.5rem',
+        fontSize: '0.78rem',
+        color: 'var(--text-muted)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '0.5rem',
+        gap: '0.4rem',
         fontWeight: 500,
       }}>
         <span>ℹ</span>
@@ -338,37 +346,84 @@ function App() {
       <Constraints />
     ) : (
       <>
-        {/* Dashboard empty/offline state */}
-        {!loading && !dashboardData && (
+        {/* Guided First-Use / Starting Card */}
+        {(!dashboardData || nurses.length === 0) ? (
           <div style={{
-            margin: '1.5rem',
-            padding: '2rem',
+            margin: '1.5rem 0',
+            padding: '2.5rem 2rem',
             backgroundColor: 'var(--panel-bg)',
             border: '1px solid var(--border-color)',
             borderRadius: '12px',
-            textAlign: 'center',
-            color: 'var(--text-muted)',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           }}>
-            {backendOnline === false ? (
-              <>
-                <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>⚠</div>
-                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>Backend Offline</div>
-                <div style={{ fontSize: '0.9rem' }}>
-                  Start the UltraCrew server: <code style={{ color: 'var(--accent-color)' }}>cargo run -p ultracrew_server</code>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>📋</div>
-                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>No workforce loaded</div>
-                <div style={{ fontSize: '0.9rem' }}>Import staff to see team balance and generate a schedule.</div>
-              </>
-            )}
-          </div>
-        )}
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
+              Welcome to UltraRoster
+            </div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.75rem 0' }}>
+              Let's plan your workforce.
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.5, margin: '0 0 1.75rem 0', maxWidth: '680px' }}>
+              Start with your nursing team and staffing requirements. UltraRoster will help you evaluate coverage, constraints and roster alternatives.
+            </p>
 
-        {/* Executive Dashboard */}
-        {dashboardData && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
+              <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.5rem', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700 }}>Start an assessment</h4>
+                  <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.45 }}>
+                    Import your workforce, shift requirements and hospital policies.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCurrentTab('scheduler')}
+                  style={{
+                    backgroundColor: 'var(--primary-color)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Set up workforce →
+                </button>
+              </div>
+
+              <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.5rem', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700 }}>Explore a sample hospital</h4>
+                  <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.45 }}>
+                    See a complete synthetic roster and its decision analysis.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCurrentTab('scheduler')}
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-main)',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Load sample data →
+                </button>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '0.85rem' }}>
+              Demonstration data only. No real hospital or employee information.
+            </div>
+          </div>
+        ) : (
+          /* Executive Dashboard */
           <Dashboard
             data={dashboardData}
             baselineData={baselineDashboardData}
@@ -377,67 +432,102 @@ function App() {
             onAlertClick={handleAlertClick}
           />
         )}
+
         {/* Decision Workspace */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <TeamBalance
             balances={balances}
             simulationState={simulationState}
-            balanceScore={dashboardData?.roster_health?.balance_score ?? 100}
+            balanceScore={dashboardData?.roster_health?.balance_score}
           />
-          <Simulator
-            nurses={nurses}
-            schedule={authenticSchedule}
-            simulationState={simulationState}
-            todayIndex={todayIndex}
-            onJumpToRecovery={() => {
-              if (scheduleContainerRef.current) {
-                scheduleContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => {
-                  if (scheduleContainerRef.current) {
-                    scheduleContainerRef.current.scrollTo({
-                      left: (todayIndex + 7) * 80,
-                      behavior: 'smooth'
+
+          {/* Secondary Section: Scenario Analysis (Sick Leave Recovery) */}
+          <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                  Scenario Analysis
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Simulate unplanned absence and evaluate automated workload-recovery balancing.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowScenarioAnalysis(!showScenarioAnalysis)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  padding: '0.45rem 1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                }}
+              >
+                {showScenarioAnalysis ? '▲ Hide Scenario Simulator' : '▼ Open Scenario Simulator'}
+              </button>
+            </div>
+
+            {showScenarioAnalysis && (
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                <Simulator
+                  nurses={nurses}
+                  schedule={authenticSchedule}
+                  simulationState={simulationState}
+                  todayIndex={todayIndex}
+                  onJumpToRecovery={() => {
+                    if (scheduleContainerRef.current) {
+                      scheduleContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => {
+                        if (scheduleContainerRef.current) {
+                          scheduleContainerRef.current.scrollTo({
+                            left: (todayIndex + 7) * 80,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }, 300);
+                    }
+                  }}
+                  onMarkSick={(nurseId, sickDays) => {
+                    setLoadingProgress(true);
+                    setDemoStep('optimization');
+
+                    const fetchPromise = fetch(`/api/simulations/sick-leave`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        employee_id: nurseId,
+                        sick_days: Array.from(sickDays)
+                      })
+                    }).then(res => {
+                      if (!res.ok) throw new Error('Simulation API request failed.');
+                      return res.json();
                     });
-                  }
-                }, 300);
-              }
-            }}
-            onMarkSick={(nurseId, sickDays) => {
-              setLoadingProgress(true);
-              setDemoStep('optimization');
 
-              const fetchPromise = fetch(`/api/simulations/sick-leave`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  employee_id: nurseId,
-                  sick_days: Array.from(sickDays)
-                })
-              }).then(res => {
-                if (!res.ok) throw new Error('Simulation API request failed.');
-                return res.json();
-              });
+                    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
 
-              const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
-
-              Promise.all([fetchPromise, minDelayPromise])
-                .then(([data]) => {
-                  const diffs = computeChangedAssignments(authenticSchedule, data.schedule);
-                  setSchedule(data.schedule);
-                  setBalances(data.balances);
-                  setDashboardData(data.dashboard);
-                  setSimulationState(data.recovery_plan);
-                  setChangedAssignments(diffs);
-                  setLoadingProgress(false);
-                  setDemoStep('recovery');
-                })
-                .catch(err => {
-                  console.error('Simulation error:', err);
-                  setLoadingProgress(false);
-                  setDemoStep('baseline');
-                });
-            }}
-          />
+                    Promise.all([fetchPromise, minDelayPromise])
+                      .then(([data]) => {
+                        const diffs = computeChangedAssignments(authenticSchedule, data.schedule);
+                        setSchedule(data.schedule);
+                        setBalances(data.balances);
+                        setDashboardData(data.dashboard);
+                        setSimulationState(data.recovery_plan);
+                        setChangedAssignments(diffs);
+                        setLoadingProgress(false);
+                        setDemoStep('recovery');
+                      })
+                      .catch(err => {
+                        console.error('Simulation error:', err);
+                        setLoadingProgress(false);
+                        setDemoStep('baseline');
+                      });
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
         {/* Active Workforce Roster */}
         <div
