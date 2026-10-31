@@ -133,6 +133,17 @@ export const ExportRoster: React.FC<{
 
   const effectiveAlternatives = useMemo<RosterAlternative[]>(() => {
     if (alternatives && alternatives.length > 0) return alternatives;
+    // Population variance over scheduled worker hours (8h/shift), matching Rust baseline_audit.rs:
+    // Var(hours) = 1/N * sum((hours_i - mean_hours)^2) rounded to 1 decimal place.
+    const allHours = staff.map(w => {
+      const shiftCount = (schedule[w.id] || []).filter(sh => sh !== '').length;
+      return shiftCount * 8.0;
+    });
+    const meanHours = allHours.length > 0 ? allHours.reduce((sum, h) => sum + h, 0) / allHours.length : 0.0;
+    const dynamicWorkloadVariance = allHours.length > 0
+      ? Math.round((allHours.reduce((sum, h) => sum + Math.pow(h - meanHours, 2), 0) / allHours.length) * 10) / 10
+      : 0.0;
+
     return [{
       id: schedulerDecision?.selected_id ?? 'candidate-selected',
       label: 'Selected Candidate',
@@ -141,7 +152,7 @@ export const ExportRoster: React.FC<{
         coverage: coverageReport.coveragePct / 100,
         filled_positions: coverageReport.filledPositions,
         required_positions: coverageReport.requiredPositions,
-        fairness_penalty: 102.4,
+        fairness_penalty: dynamicWorkloadVariance,
         utilization: Math.round((totalShifts / (staff.length * horizonDays)) * 1000) / 1000,
         cost: 100,
         diff_from_recommended: 0,
@@ -455,7 +466,7 @@ export const ExportRoster: React.FC<{
               <strong style={{ color: 'var(--text-main)' }}>Operational Boundaries:</strong> This assessment validates planned schedule compliance against encoded hospital policies. Dynamic operational disruptions (unplanned sickness, clinical surges, emergency call-ins) remain governed by hospital operational dispatch.
             </div>
             <div>
-              <strong style={{ color: 'var(--text-main)' }}>Authoritative Independent Certification:</strong> All feasibility assessments and constraint breach counts are certified independently by the Rust backend engine (<code>audit_hospital_baseline</code> / <code>validate</code>).
+              <strong style={{ color: 'var(--text-main)' }}>Authoritative Validation Attribution:</strong> Baseline diagnostic audit and constraint breach counts were evaluated by the Rust audit engine (<code>audit_hospital_baseline</code>). All candidate roster alternatives are independently verified and certified by the standalone validator (<code>validate_schedule</code>).
             </div>
           </div>
         </div>

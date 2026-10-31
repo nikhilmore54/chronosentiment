@@ -137,6 +137,139 @@ function App() {
     }, 2000);
   };
 
+  const loadSyntheticClientScenario = () => {
+    const syntheticNurses: Nurse[] = [
+      { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+      { id: 'Marcus_Webb', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Priya_Nair', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+      { id: 'James_Okafor', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Elena_Vasquez', contract: 'PartTime', skills: ['Nurse'] },
+      { id: 'Liam_Davies', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Amara_Diallo', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+      { id: 'Chloe_Dupont', contract: 'PartTime', skills: ['Nurse'] },
+      { id: 'Devon_Brooks', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Fatima_Al-Sayed', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+      { id: 'Gabriel_Santos', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Hannah_Schmidt', contract: 'PartTime', skills: ['Nurse'] },
+      { id: 'Ian_Kowalski', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Jasmine_Kaur', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Kai_Takahashi', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Lena_Lindholm', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+      { id: 'Mateo_Morales', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Nadia_Petrova', contract: 'PartTime', skills: ['Nurse'] },
+      { id: 'Owen_Walsh', contract: 'FullTime', skills: ['Nurse'] },
+      { id: 'Rachel_Cohen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
+    ];
+
+    const shiftTypes = ['Early', 'Late', 'Night', ''];
+    const syntheticSchedule: Record<string, string[]> = {};
+    syntheticNurses.forEach((n, nIdx) => {
+      const row: string[] = [];
+      for (let day = 0; day < 28; day++) {
+        const isRest = (day + nIdx) % 7 === 5 || (day + nIdx) % 7 === 6;
+        if (isRest) {
+          row.push('');
+        } else {
+          const shiftIdx = (day + nIdx * 2) % 3;
+          row.push(shiftTypes[shiftIdx]);
+        }
+      }
+      syntheticSchedule[n.id] = row;
+    });
+
+    const syntheticBalances: NurseBalance[] = [
+      { nurse_id: 'Elena_Vasquez', balance: -2, explanation: ['Assigned 2 fewer shifts than part-time contract requirement'] },
+      { nurse_id: 'Marcus_Webb', balance: 1, explanation: ['Covered additional weekend shift in Week 2'] },
+      { nurse_id: 'Sarah_Chen', balance: 1, explanation: ['Stepped in as HeadNurse on Day 4'] },
+      { nurse_id: 'James_Okafor', balance: -1, explanation: ['Rostered under target contract hours'] },
+      { nurse_id: 'Priya_Nair', balance: 0, explanation: ['Workload exactly on contract target'] },
+      { nurse_id: 'Liam_Davies', balance: 0, explanation: ['Balanced shift distribution'] },
+      { nurse_id: 'Chloe_Dupont', balance: -1, explanation: ['Assigned 1 shift below target'] },
+      { nurse_id: 'Amara_Diallo', balance: 1, explanation: ['Senior weekend coverage surplus'] },
+    ];
+
+    const syntheticDashboard = {
+      schedule_version: 'synthetic-sample-v1',
+      roster_health: {
+        balance_score: 94,
+        coverage_pct: 100,
+      },
+    };
+
+    const startDate = new Date('2026-06-01T00:00:00');
+    const scheduleDates = Array.from({ length: 28 }).map((_, i) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+
+    setNurses(syntheticNurses);
+    setSchedule(syntheticSchedule);
+    setAuthenticSchedule(syntheticSchedule);
+    setBalances(syntheticBalances);
+    setBaselineBalances(syntheticBalances);
+    setDashboardData(syntheticDashboard);
+    setBaselineDashboardData(syntheticDashboard);
+    setDates(scheduleDates);
+    setSimulationState(null);
+    setChangedAssignments({});
+    setDemoStep('baseline');
+    setActiveHighlightCell(null);
+    setLoading(false);
+  };
+
+  const handleLoadSampleHospital = () => {
+    setLoadingProgress(true);
+    fetch(`/api/load-scenario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instance: 'n030w4' })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load instance from server');
+        return fetch(`/api/nurses`);
+      })
+      .then(res => res.json())
+      .then(data => {
+        const parsedNurses = data.nurses.map((n: any) => ({
+          id: n.id,
+          contract: n.contract,
+          skills: n.skills,
+        }));
+        setNurses(parsedNurses);
+        return fetch(`/api/state`);
+      })
+      .then(res => res.json())
+      .then(stateData => {
+        setSchedule(stateData.schedule);
+        setAuthenticSchedule(stateData.schedule);
+        setBalances(stateData.balances);
+        setBaselineBalances(stateData.balances);
+        setDashboardData(stateData.dashboard);
+        setBaselineDashboardData(stateData.dashboard);
+        
+        const sched = stateData.schedule as Record<string, string[]>;
+        const scheduleLength = Object.values(sched)[0]?.length || 28;
+        const startDate = new Date('2026-06-01T00:00:00');
+        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + i);
+          return d;
+        });
+        setDates(scheduleDates);
+        setSimulationState(null);
+        setChangedAssignments({});
+        setDemoStep('baseline');
+        setActiveHighlightCell(null);
+        setLoadingProgress(false);
+      })
+      .catch(() => {
+        // Fall back gracefully to standalone synthetic hospital dataset
+        loadSyntheticClientScenario();
+        setLoadingProgress(false);
+      });
+  };
+
   const handleLoadInstance = (instance: string) => {
     setLoadingProgress(true);
     fetch(`/api/load-scenario`, {
@@ -236,7 +369,16 @@ function App() {
   };
 
   if (!showDemo) {
-    return <Landing onStartDemo={() => setShowDemo(true)} />;
+    return (
+      <Landing
+        onStartDemo={() => {
+          setShowDemo(true);
+          if (!dashboardData || nurses.length === 0) {
+            handleLoadSampleHospital();
+          }
+        }}
+      />
+    );
   }
 
   // Backend status pill colours
@@ -344,10 +486,7 @@ function App() {
       <PlannerWorkflow />
     ) : currentTab === 'constraints' ? (
       <Constraints />
-    ) : (
-      <>
-        {/* Guided First-Use / Starting Card */}
-        {(!dashboardData || nurses.length === 0) ? (
+    ) : (!dashboardData || nurses.length === 0) ? (
           <div style={{
             margin: '1.5rem 0',
             padding: '2.5rem 2rem',
@@ -400,7 +539,7 @@ function App() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setCurrentTab('scheduler')}
+                  onClick={handleLoadSampleHospital}
                   style={{
                     background: 'none',
                     border: '1px solid var(--border-color)',
@@ -423,17 +562,16 @@ function App() {
             </div>
           </div>
         ) : (
-          /* Executive Dashboard */
-          <Dashboard
-            data={dashboardData}
-            baselineData={baselineDashboardData}
-            simulationState={simulationState}
-            demoStep={demoStep}
-            onAlertClick={handleAlertClick}
-          />
-        )}
+          <>
+            <Dashboard
+              data={dashboardData}
+              baselineData={baselineDashboardData}
+              simulationState={simulationState}
+              demoStep={demoStep}
+              onAlertClick={handleAlertClick}
+            />
 
-        {/* Decision Workspace */}
+            {/* Decision Workspace */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <TeamBalance
             balances={balances}

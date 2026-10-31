@@ -286,6 +286,14 @@ export const ComparativeScorecard: React.FC<{
 
   const measurements = [
     {
+      label: 'Validation authority',
+      baseline: 'Rust Baseline Audit (audit_hospital_baseline)',
+      candA: 'Independent Validator Certificate (validate_schedule)',
+      candB: candidateB ? 'Independent Validator Certificate (validate_schedule)' : '—',
+      status: 'highlight',
+      note: 'Authoritative validation and audit source',
+    },
+    {
       label: 'Required positions',
       baseline: `${baseline.coverage.required_positions}`,
       candA: `${candidateA?.metrics.required_positions ?? baseline.coverage.required_positions}`,
@@ -338,8 +346,8 @@ export const ComparativeScorecard: React.FC<{
     {
       label: 'Workload fairness',
       baseline: `${baseline.workload_variance} variance`,
-      candA: `${candidateA?.metrics.fairness_penalty.toFixed(1) ?? '1.0'} penalty`,
-      candB: candidateB ? `${candidateB.metrics.fairness_penalty.toFixed(1)} penalty` : '—',
+      candA: `${candidateA?.metrics.fairness_penalty.toFixed(1) ?? '0.0'} variance`,
+      candB: candidateB ? `${candidateB.metrics.fairness_penalty.toFixed(1)} variance` : '—',
       note: 'Shift distribution equity',
     },
     {

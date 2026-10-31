@@ -13,7 +13,7 @@ interface TeamBalanceProps {
   balanceScore?: number;
 }
 
-export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationState, balanceScore = 92 }) => {
+export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationState, balanceScore }) => {
   const [selectedNurse, setSelectedNurse] = useState<NurseBalance | null>(null);
   const [showFull, setShowFull] = useState(false);
 
@@ -21,6 +21,7 @@ export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationSt
   const activeBalances = balances;
   const surplusCount = hasWorkforce ? activeBalances.filter(b => b.balance > 0).length : null;
   const deficitCount = hasWorkforce ? activeBalances.filter(b => b.balance < 0).length : null;
+  const hasCalculatedScore = typeof balanceScore === 'number';
 
   const anomalies = balances.filter(b => {
     if (simulationState) {
@@ -50,8 +51,13 @@ export const TeamBalance: React.FC<TeamBalanceProps> = ({ balances, simulationSt
           </div>
           <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', flex: 1, minWidth: '200px' }}>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Balance Score</div>
-            <div style={{ fontSize: hasWorkforce ? '1.5rem' : '0.9rem', fontWeight: 600, color: hasWorkforce ? 'var(--primary-color)' : 'var(--text-muted)', marginTop: '0.25rem' }}>
-              {hasWorkforce ? balanceScore : 'Available after roster analysis'}
+            <div style={{
+              fontSize: hasCalculatedScore ? '1.5rem' : '0.95rem',
+              fontWeight: 600,
+              color: hasCalculatedScore ? 'var(--primary-color)' : 'var(--text-muted)',
+              marginTop: '0.25rem'
+            }}>
+              {hasCalculatedScore ? balanceScore : 'Not yet calculated'}
             </div>
           </div>
         </div>
