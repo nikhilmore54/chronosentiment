@@ -54,6 +54,8 @@ export const ImportStaff: React.FC<{
   onCustomShiftsChange?: (shifts: CustomShiftInput[]) => void;
   baselineAuditReport?: BaselineAuditReport | null;
   onBaselineAuditReportChange?: (report: BaselineAuditReport | null) => void;
+  baselineAssignments?: BaselineAssignment[];
+  onBaselineAssignmentsChange?: (assignments: BaselineAssignment[]) => void;
   onNext: () => void;
 }> = ({
   staff,
@@ -62,6 +64,8 @@ export const ImportStaff: React.FC<{
   onCustomShiftsChange,
   baselineAuditReport: externalAuditReport,
   onBaselineAuditReportChange,
+  baselineAssignments: externalBaselineAssignments,
+  onBaselineAssignmentsChange,
   onNext,
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,7 +74,14 @@ export const ImportStaff: React.FC<{
   const [errors, setErrors] = useState<string[]>([]);
   const [shiftErrors, setShiftErrors] = useState<string[]>([]);
   const [baselineErrors, setBaselineErrors] = useState<string[]>([]);
-  const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
+  const [internalBaselineAssignments, setInternalBaselineAssignments] = useState<BaselineAssignment[]>([]);
+  const baselineAssignments = externalBaselineAssignments !== undefined ? externalBaselineAssignments : internalBaselineAssignments;
+
+  const setBaselineAssignments = (assignments: BaselineAssignment[]) => {
+    setInternalBaselineAssignments(assignments);
+    onBaselineAssignmentsChange?.(assignments);
+  };
+
   const [internalAuditReport, setInternalAuditReport] = useState<BaselineAuditReport | null>(null);
   const baselineAuditReport = externalAuditReport !== undefined ? externalAuditReport : internalAuditReport;
 

@@ -6,6 +6,7 @@ import type {
   SchedulerDecision,
   RedistributionLog,
   BaselineAuditReport,
+  BaselineAssignment,
 } from './WorkflowTypes';
 import { RULE_PRESETS } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
@@ -42,6 +43,7 @@ export const PlannerWorkflow: React.FC = () => {
   const [recommendedId, setRecommendedId] = useState('');
   const [schedulerDecision, setSchedulerDecision] = useState<SchedulerDecision | null>(null);
   const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
+  const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
 
   // P4.1: dismissed pattern reasons (persisted in localStorage)
   const [dismissedPatterns, setDismissedPatterns] = useState<string[]>(
@@ -107,6 +109,8 @@ export const PlannerWorkflow: React.FC = () => {
             onCustomShiftsChange={setCustomShifts}
             baselineAuditReport={baselineAuditReport}
             onBaselineAuditReportChange={setBaselineAuditReport}
+            baselineAssignments={baselineAssignments}
+            onBaselineAssignmentsChange={setBaselineAssignments}
             onNext={() => goTo(2)}
           />
         )}
@@ -262,6 +266,9 @@ export const PlannerWorkflow: React.FC = () => {
             originalAssignmentCount={originalAssignmentCount}
             schedulerDecision={schedulerDecision}
             customSlotMeta={customSlotMeta}
+            baselineAuditReport={baselineAuditReport}
+            baselineAssignments={baselineAssignments}
+            alternatives={alternatives}
             onBack={() => goTo(5)}
             onStartOver={handleStartOver}
           />

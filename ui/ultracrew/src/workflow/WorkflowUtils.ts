@@ -14,6 +14,8 @@ import type {
   BaselineAssignment,
   BaselineAuditReport,
   AuditFinding,
+  ShiftDeltaClassification,
+  ShiftLevelDeltaRecord,
 } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
@@ -1844,4 +1846,159 @@ export async function runBaselineAudit(
   const localReport = auditBaselineClientSide(staff, shifts, baselineAssignments, rulePayload, policyVersion);
   localReport.policy_retrospective_note = `[UNVERIFIED PREVIEW] Rust audit backend is currently offline. Authoritative feasibility certification requires the backend validator. ${localReport.policy_retrospective_note}`;
   return localReport;
+}
+
+// ─── Gate 3 (G3.3): Shift-Level Delta Export ─────────────────────────────────
+
+export function generateShiftLevelDeltaRecords(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  baselineAssignments: BaselineAssignment[],
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): ShiftLevelDeltaRecord[] {
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const conversion = scheduleToAssignments(staff, schedule, slotMeta);
+  const candidateAssignments = conversion.assignments; // shiftId (string) -> workerIdx (number, 1-indexed)
+
+  const staffIndexMap = new Map<number, StaffMember>();
+  staff.forEach((s, idx) => staffIndexMap.set(idx + 1, s));
+
+  // Index baseline assignments by shift_id
+  const baselineByShift = new Map<number, string[]>();
+  for (const ba of baselineAssignments) {
+    if (!baselineByShift.has(ba.shift_id)) {
+      baselineByShift.set(ba.shift_id, []);
+    }
+    baselineByShift.get(ba.shift_id)!.push(ba.worker_id);
+  }
+
+  const records: ShiftLevelDeltaRecord[] = [];
+
+  // 1. Process all required canonical demand slots (sorted by shiftId)
+  const sortedSlots = Object.values(slotMeta).sort((a, b) => a.shiftId - b.shiftId);
+  for (const slot of sortedSlots) {
+    const candWorkerIdx = candidateAssignments[String(slot.shiftId)];
+    const candidateWorkerId = candWorkerIdx ? staffIndexMap.get(candWorkerIdx)?.id ?? 'UNFILLED' : 'UNFILLED';
+
+    const baselineWorkers = baselineByShift.get(slot.shiftId);
+    if (!baselineWorkers || baselineWorkers.length === 0) {
+      // Unfilled in baseline
+      const classification: ShiftDeltaClassification = candidateWorkerId !== 'UNFILLED'
+        ? 'UNFILLED_IN_BASELINE_NOW_COVERED'
+        : 'UNFILLED_BOTH';
+
+      records.push({
+        shift_id: slot.shiftId,
+        day_index: slot.dayIdx + 1,
+        date_or_day: `Day ${slot.dayIdx + 1}`,
+        shift_type: slot.label,
+        start_hour: slot.startHour,
+        duration_hours: slot.durationHours ?? 8,
+        required_skill: slot.skill,
+        baseline_worker_id: 'UNFILLED',
+        candidate_worker_id: candidateWorkerId,
+        change_classification: classification,
+        notes: candidateWorkerId !== 'UNFILLED' ? 'Deficit resolved in optimized candidate' : 'Unfilled in both rosters',
+      });
+    } else {
+      // First baseline assignment for this slot
+      const firstWorker = baselineWorkers[0];
+      let classification: ShiftDeltaClassification;
+      let notes = '';
+
+      if (candidateWorkerId === 'UNFILLED') {
+        classification = 'COVERED_IN_BASELINE_NOW_UNFILLED';
+        notes = 'Position covered in baseline but left unfilled in candidate';
+      } else if (firstWorker === candidateWorkerId) {
+        classification = 'UNTOUCHED';
+        notes = 'Assignment retained unchanged';
+      } else {
+        classification = 'WORKER_REASSIGNED';
+        notes = `Reassigned from ${firstWorker} to ${candidateWorkerId} to satisfy constraints`;
+      }
+
+      records.push({
+        shift_id: slot.shiftId,
+        day_index: slot.dayIdx + 1,
+        date_or_day: `Day ${slot.dayIdx + 1}`,
+        shift_type: slot.label,
+        start_hour: slot.startHour,
+        duration_hours: slot.durationHours ?? 8,
+        required_skill: slot.skill,
+        baseline_worker_id: firstWorker,
+        candidate_worker_id: candidateWorkerId,
+        change_classification: classification,
+        notes,
+      });
+
+      // If baseline had multiple duplicate rows for the SAME shift:
+      for (let i = 1; i < baselineWorkers.length; i++) {
+        records.push({
+          shift_id: slot.shiftId,
+          day_index: slot.dayIdx + 1,
+          date_or_day: `Day ${slot.dayIdx + 1}`,
+          shift_type: slot.label,
+          start_hour: slot.startHour,
+          duration_hours: slot.durationHours ?? 8,
+          required_skill: slot.skill,
+          baseline_worker_id: baselineWorkers[i],
+          candidate_worker_id: 'N/A',
+          change_classification: 'DUPLICATE_IN_BASELINE',
+          notes: `Duplicate baseline assignment for shift ID ${slot.shiftId}`,
+        });
+      }
+    }
+  }
+
+  // 2. Process unmatched excess baseline assignments (shifts not present in slotMeta)
+  const excessBaselineAssignments = baselineAssignments.filter(ba => !slotMeta[ba.shift_id]);
+  for (const ba of excessBaselineAssignments) {
+    records.push({
+      shift_id: ba.shift_id,
+      day_index: 'N/A',
+      date_or_day: 'N/A',
+      shift_type: 'UNKNOWN',
+      start_hour: 'N/A',
+      duration_hours: 'N/A',
+      required_skill: 'N/A',
+      baseline_worker_id: ba.worker_id,
+      candidate_worker_id: 'N/A',
+      change_classification: 'UNMATCHED_EXCESS_IN_BASELINE',
+      notes: `Shift ID ${ba.shift_id} not present in canonical demand requirements`,
+    });
+  }
+
+  return records;
+}
+
+export function exportShiftLevelDeltaCSV(records: ShiftLevelDeltaRecord[]): string {
+  const header = [
+    'shift_id',
+    'day_index',
+    'date_or_day',
+    'shift_type',
+    'start_hour',
+    'duration_hours',
+    'required_skill',
+    'baseline_worker_id',
+    'candidate_worker_id',
+    'change_classification',
+    'notes',
+  ].join(',');
+
+  const rows = records.map(r => [
+    r.shift_id,
+    r.day_index,
+    `"${r.date_or_day}"`,
+    `"${r.shift_type}"`,
+    r.start_hour,
+    r.duration_hours,
+    `"${r.required_skill}"`,
+    `"${r.baseline_worker_id}"`,
+    `"${r.candidate_worker_id}"`,
+    `"${r.change_classification}"`,
+    `"${(r.notes ?? '').replace(/"/g, '""')}"`,
+  ].join(','));
+
+  return [header, ...rows].join('\n');
 }

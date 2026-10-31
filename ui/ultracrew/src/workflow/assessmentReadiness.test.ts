@@ -25,6 +25,8 @@ import {
   computeNextCycleBoundary,
   buildSyntheticSchedule,
   mapParetoAlternatives,
+  generateShiftLevelDeltaRecords,
+  exportShiftLevelDeltaCSV,
 } from './WorkflowUtils';
 import type { StaffMember, BaselineAssignment, ProductionParetoSolution } from './WorkflowTypes';
 
@@ -640,5 +642,136 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
     expect(mapped[0].metrics.required_positions).toBe(15);
     expect(mapped[0].metrics.filled_positions).toBe(15);
     expect(mapped[0].metrics.coverage).toBe(1.0);
+  });
+
+  // ── G3.3: Executive Assessment Report & Shift-Level Delta Export ───────────
+  test('G3.3-Deliverable1: Executive Assessment Report invariant and evidence controls verification', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+    const baselineCsv = generateSampleBaselineWithBreaches(TEST_STAFF, slotMeta);
+    const { assignments } = parseBaselineCSV(baselineCsv);
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments, {}, 'hospital_policy_v1');
+
+    // 1. Assessment scope & policy parameters
+    expect(report.policy_version).toBe('hospital_policy_v1');
+    expect(report.policy_parameters.min_rest_hours).toBe(10);
+    expect(report.policy_parameters.max_weekly_hours).toBe(40.0);
+    expect(report.policy_parameters.senior_skill_name).toBe('HeadNurse');
+    expect(report.policy_parameters.weekly_contract_mode).toBe('monday_sunday');
+
+    // 2. Hospital baseline findings
+    expect(report.audit_classification).toBe('VALID_BUT_INFEASIBLE');
+    expect(report.feasibility.hard_violations).toBeGreaterThan(0);
+    expect(report.rest_violations).toBeGreaterThan(0);
+    expect(report.weekly_contract_violations).toBeGreaterThan(0);
+    expect(report.senior_coverage_deficits).toBeGreaterThan(0);
+    expect(report.scheduled_overtime_hours).toBeGreaterThan(0);
+
+    // 3. Evidence standard disclaimers
+    expect(report.policy_retrospective_note).toContain('Retrospective audit');
+  });
+
+  test('G3.3-Deliverable2: Shift-Level Delta Export retains all records, unfilled slots, excess rows, and classifies changes accurately', () => {
+    // 2-day demand setup with 8 slots (shiftId 1..8)
+    const customCSV = `id,start_hour,duration_hours,required_skill
+1,6,8,HeadNurse
+2,6,8,Nurse
+3,14,8,Nurse
+4,22,8,Nurse
+5,30,8,HeadNurse
+6,30,8,Nurse
+7,38,8,Nurse
+8,46,8,Nurse`;
+
+    const { shifts } = parseShiftsCSV(customCSV);
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF, shifts);
+
+    // Candidate schedule covering all 8 shifts
+    // Day 0 (shifts 1-4): Sarah_Chen(HeadNurse), Marcus_Webb(Nurse), Priya_Nair(Nurse), James_Okafor(Nurse)
+    // Day 1 (shifts 5-8): Priya_Nair(HeadNurse), Marcus_Webb(Nurse), James_Okafor(Nurse), Sarah_Chen(Nurse)
+    const candidateSchedule: Record<string, string[]> = {
+      Sarah_Chen:    ['Early', 'Night'],
+      Marcus_Webb:   ['Early', 'Early'],
+      Priya_Nair:    ['Late',  'Early'],
+      James_Okafor:  ['Night', 'Late'],
+      Elena_Vasquez: ['', ''],
+      Tom_Lindqvist: ['', ''],
+      Aisha_Diallo:  ['', ''],
+      Ingrid_Sorensen: ['', ''],
+    };
+
+    // Baseline assignments:
+    // Shift 1: Sarah_Chen (matches candidate -> UNTOUCHED)
+    // Shift 2: Elena_Vasquez (candidate has Marcus_Webb -> WORKER_REASSIGNED)
+    // Shift 3: UNFILLED in baseline (candidate has Priya_Nair -> UNFILLED_IN_BASELINE_NOW_COVERED)
+    // Shift 4: James_Okafor, PLUS duplicate row with Tom_Lindqvist -> DUPLICATE_IN_BASELINE
+    // Shift 5: UNFILLED in baseline, candidate covers -> UNFILLED_IN_BASELINE_NOW_COVERED
+    // Shift 6: Marcus_Webb -> UNTOUCHED
+    // Shift 7: James_Okafor -> UNTOUCHED
+    // Shift 8: UNFILLED in baseline, candidate covers -> UNFILLED_IN_BASELINE_NOW_COVERED
+    // Excess shift 999: Ingrid_Sorensen -> UNMATCHED_EXCESS_IN_BASELINE
+    const baselineAssignments: BaselineAssignment[] = [
+      { worker_id: 'Sarah_Chen', shift_id: 1 },
+      { worker_id: 'Elena_Vasquez', shift_id: 2 },
+      // shift 3 left unfilled
+      { worker_id: 'James_Okafor', shift_id: 4 },
+      { worker_id: 'Tom_Lindqvist', shift_id: 4 }, // duplicate on shift 4
+      // shift 5 left unfilled
+      { worker_id: 'Marcus_Webb', shift_id: 6 },
+      { worker_id: 'James_Okafor', shift_id: 7 },
+      // shift 8 left unfilled
+      { worker_id: 'Ingrid_Sorensen', shift_id: 999 }, // excess unmatched shift
+    ];
+
+    const records = generateShiftLevelDeltaRecords(TEST_STAFF, candidateSchedule, baselineAssignments, slotMeta);
+
+    // Total records must include: 8 demand slots + 1 duplicate on shift 4 + 1 excess shift 999 = 10 records
+    expect(records.length).toBe(10);
+
+    // Verify Untouched classification
+    const shift1Record = records.find(r => r.shift_id === 1);
+    expect(shift1Record).toBeDefined();
+    expect(shift1Record?.baseline_worker_id).toBe('Sarah_Chen');
+    expect(shift1Record?.candidate_worker_id).toBe('Sarah_Chen');
+    expect(shift1Record?.change_classification).toBe('UNTOUCHED');
+
+    // Verify Worker Reassigned classification
+    const shift2Record = records.find(r => r.shift_id === 2);
+    expect(shift2Record).toBeDefined();
+    expect(shift2Record?.baseline_worker_id).toBe('Elena_Vasquez');
+    expect(shift2Record?.candidate_worker_id).toBe('Marcus_Webb');
+    expect(shift2Record?.change_classification).toBe('WORKER_REASSIGNED');
+
+    // Verify Unfilled in Baseline Now Covered
+    const shift3Record = records.find(r => r.shift_id === 3);
+    expect(shift3Record).toBeDefined();
+    expect(shift3Record?.baseline_worker_id).toBe('UNFILLED');
+    expect(shift3Record?.candidate_worker_id).toBe('Priya_Nair');
+    expect(shift3Record?.change_classification).toBe('UNFILLED_IN_BASELINE_NOW_COVERED');
+
+    // Verify Duplicate in Baseline
+    const dupShift4 = records.filter(r => r.shift_id === 4);
+    expect(dupShift4.length).toBe(2);
+    expect(dupShift4.some(r => r.change_classification === 'DUPLICATE_IN_BASELINE')).toBe(true);
+
+    // Verify Unmatched Excess in Baseline
+    const excessRecord = records.find(r => r.shift_id === 999);
+    expect(excessRecord).toBeDefined();
+    expect(excessRecord?.baseline_worker_id).toBe('Ingrid_Sorensen');
+    expect(excessRecord?.candidate_worker_id).toBe('N/A');
+    expect(excessRecord?.change_classification).toBe('UNMATCHED_EXCESS_IN_BASELINE');
+
+    // Verify CSV Generation and parseability
+    const csvContent = exportShiftLevelDeltaCSV(records);
+    expect(csvContent).toContain('shift_id,day_index,date_or_day,shift_type,start_hour,duration_hours,required_skill,baseline_worker_id,candidate_worker_id,change_classification,notes');
+    expect(csvContent).toContain('UNTOUCHED');
+    expect(csvContent).toContain('WORKER_REASSIGNED');
+    expect(csvContent).toContain('UNFILLED_IN_BASELINE_NOW_COVERED');
+    expect(csvContent).toContain('DUPLICATE_IN_BASELINE');
+    expect(csvContent).toContain('UNMATCHED_EXCESS_IN_BASELINE');
+
+    // Line count equals 1 header + 10 data rows
+    const lines = csvContent.trim().split('\n');
+    expect(lines.length).toBe(11);
   });
 });

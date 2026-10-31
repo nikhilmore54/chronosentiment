@@ -374,3 +374,28 @@ export interface BaselineAuditReport {
   satisfied_constraints: string[];
   detailed_findings: AuditFinding[];
 }
+
+// ─── Gate 3 (G3.3): Shift-Level Delta & Executive Assessment Types ──────────
+
+export type ShiftDeltaClassification =
+  | 'UNTOUCHED'
+  | 'WORKER_REASSIGNED'
+  | 'UNFILLED_IN_BASELINE_NOW_COVERED'
+  | 'COVERED_IN_BASELINE_NOW_UNFILLED'
+  | 'UNFILLED_BOTH'
+  | 'UNMATCHED_EXCESS_IN_BASELINE'
+  | 'DUPLICATE_IN_BASELINE';
+
+export interface ShiftLevelDeltaRecord {
+  shift_id: number;
+  day_index: number | string;
+  date_or_day: string;
+  shift_type: string;
+  start_hour: number | string;
+  duration_hours: number | string;
+  required_skill: string;
+  baseline_worker_id: string;
+  candidate_worker_id: string;
+  change_classification: ShiftDeltaClassification;
+  notes?: string;
+}
