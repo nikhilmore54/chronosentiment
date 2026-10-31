@@ -133,7 +133,7 @@ export const GenerateSchedule: React.FC<{
         )}
       </div>
 
-      {/* Pre-Optimization Demand-Capacity Diagnostic */}
+      {/* Aggregate Capacity Diagnostic (Pre-Optimization Early Warning) */}
       <div style={{
         backgroundColor: statusColors.bg,
         border: `1px solid ${statusColors.border}`,
@@ -145,7 +145,7 @@ export const GenerateSchedule: React.FC<{
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Pre-Optimization Demand–Capacity Diagnostic
+            Aggregate Capacity Diagnostic (Pre-Optimization Early Warning)
           </div>
           <span style={{
             fontSize: '0.78rem',
@@ -184,8 +184,11 @@ export const GenerateSchedule: React.FC<{
           </div>
         </div>
 
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', borderTop: `1px solid ${statusColors.border}`, paddingTop: '0.5rem' }}>
-          {diagnostic.message}
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', borderTop: `1px solid ${statusColors.border}`, paddingTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div>{diagnostic.message}</div>
+          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.9 }}>
+            ℹ {diagnostic.feasibilityDisclaimer}
+          </div>
         </div>
       </div>
 

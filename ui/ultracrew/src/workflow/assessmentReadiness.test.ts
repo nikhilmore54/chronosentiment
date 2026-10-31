@@ -12,6 +12,10 @@
 import { describe, test, expect } from 'vitest';
 import {
   parseShiftsCSV,
+  parseBaselineCSV,
+  generateSampleBaselineWithBreaches,
+  auditBaselineClientSide,
+  buildExcelXmlSpreadsheet,
   getScheduleSlotMeta,
   buildSchedulePayload,
   buildStaffingRequirements,
@@ -21,7 +25,7 @@ import {
   computeNextCycleBoundary,
   buildSyntheticSchedule,
 } from './WorkflowUtils';
-import type { StaffMember } from './WorkflowTypes';
+import type { StaffMember, BaselineAssignment } from './WorkflowTypes';
 
 const TEST_STAFF: StaffMember[] = [
   { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
@@ -275,5 +279,250 @@ describe('Assessment Readiness Suite (AT-14 to AT-20)', () => {
     const underDiag = computeDemandCapacityDiagnostic(TEST_STAFF, heavyShifts, 28);
     expect(underDiag.status).toBe('under_capacity');
     expect(underDiag.message).toContain('Under-Capacity Deficit');
+  });
+});
+
+// ── Gate 3 (G3.1) Acceptance Tests: Historical Baseline Audit & Controls A-D ──
+describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () => {
+  // ── AT-21: Valid Baseline Ingestion ─────────────────────────────────────────
+  test('AT-21: Valid baseline imports correctly and is parsed without errors', () => {
+    const csv = `worker_id,shift_id\nSarah_Chen,1\nMarcus_Webb,2\nPriya_Nair,3`;
+    const { assignments, errors, rawRowCount } = parseBaselineCSV(csv);
+
+    expect(errors.length).toBe(0);
+    expect(rawRowCount).toBe(3);
+    expect(assignments.length).toBe(3);
+    expect(assignments[0]).toEqual({ worker_id: 'Sarah_Chen', shift_id: 1 });
+  });
+
+  // ── AT-22: Rest Violations Detection ────────────────────────────────────────
+  test('AT-22: Rest deficits (< 10h rest) are detected in historical baseline', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    // Marcus_Webb works Day 0 Night (shift 6: 22:00 to 06:00 Day 1) and Day 1 Early (shift 9: 06:00 to 14:00 Day 1) -> 0h rest
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Marcus_Webb', shift_id: 6 },
+      { worker_id: 'Marcus_Webb', shift_id: 9 },
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.rest_violations).toBeGreaterThanOrEqual(1);
+    expect(report.feasibility.is_feasible).toBe(false);
+    expect(report.feasibility.hard_violations).toBeGreaterThanOrEqual(1);
+    const restFinding = report.detailed_findings.find(f => f.code === 'REST_VIOLATION');
+    expect(restFinding).toBeDefined();
+    expect(restFinding?.worker_id).toBe('Marcus_Webb');
+  });
+
+  // ── AT-23: Weekly Contract Buckets & Scheduled Overtime ─────────────────────
+  test('AT-23: Overtime evaluated in 168h weekly buckets and correctly flags scheduled excess hours', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    // Assign Marcus_Webb (FullTime, 40h cap) to 6 shifts (48h) in Week 1 (Days 0 to 5)
+    // Shifts 2 (D0), 9 (D1), 16 (D2), 23 (D3), 30 (D4), 37 (D5)
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Marcus_Webb', shift_id: 2 },
+      { worker_id: 'Marcus_Webb', shift_id: 9 },
+      { worker_id: 'Marcus_Webb', shift_id: 16 },
+      { worker_id: 'Marcus_Webb', shift_id: 23 },
+      { worker_id: 'Marcus_Webb', shift_id: 30 },
+      { worker_id: 'Marcus_Webb', shift_id: 37 },
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.weekly_contract_violations).toBe(1);
+    expect(report.scheduled_overtime_hours).toBe(8); // 48h - 40h = 8h overtime
+    const overtimeFinding = report.detailed_findings.find(f => f.code === 'CONTRACT_OVERTIME');
+    expect(overtimeFinding).toBeDefined();
+    expect(overtimeFinding?.worker_id).toBe('Marcus_Webb');
+  });
+
+  // ── AT-24: Missing Skill Requirements Detected ──────────────────────────────
+  test('AT-24: Missing certified skill requirements produce skill coverage deficits', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    // Slot 1 requires HeadNurse. Marcus_Webb has only ['Nurse']
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Marcus_Webb', shift_id: 1 },
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.skill_coverage_deficits).toBe(1);
+    expect(report.senior_coverage_deficits).toBe(1);
+    const skillFinding = report.detailed_findings.find(f => f.code === 'SKILL_DEFICIT');
+    expect(skillFinding).toBeDefined();
+    expect(skillFinding?.worker_id).toBe('Marcus_Webb');
+  });
+
+  // ── AT-25: Uncovered Demand Positions Identified ────────────────────────────
+  test('AT-25: Uncovered demand positions are identified and reported in coverage metrics', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta); // 196 shifts total
+
+    // Only assign 10 shifts
+    const assignments: BaselineAssignment[] = slots.slice(0, 10).map((s, i) => ({
+      worker_id: TEST_STAFF[i % TEST_STAFF.length].id,
+      shift_id: s.shiftId,
+    }));
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.coverage.required_positions).toBe(196);
+    expect(report.coverage.filled_positions).toBe(10);
+    expect(report.coverage.unfilled_positions).toBe(186);
+    expect(report.coverage.coverage_pct).toBe(5.1);
+    expect(report.detailed_findings.some(f => f.code === 'UNFILLED_POSITION')).toBe(true);
+  });
+
+  // ── AT-26: Duplicate Assignments Detected ───────────────────────────────────
+  test('AT-26: Duplicate assignments for same worker/shift are detected and reported', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Sarah_Chen', shift_id: 1 },
+      { worker_id: 'Sarah_Chen', shift_id: 1 }, // Duplicate!
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.assignment_integrity.duplicate_assignments).toBe(1);
+    expect(report.detailed_findings.some(f => f.code === 'DUPLICATE_ASSIGNMENT')).toBe(true);
+  });
+
+  // ── AT-27: Unknown Worker and Shift IDs ──────────────────────────────────────
+  test('AT-27: Unknown worker and shift IDs produce structured errors without crashing', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Ghost_Worker_99', shift_id: 1 }, // Unknown worker
+      { worker_id: 'Sarah_Chen', shift_id: 99999 },    // Unmatched shift
+      { worker_id: 'Sarah_Chen', shift_id: 2 },        // Valid
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    expect(report.assignment_integrity.unknown_worker_errors).toBe(1);
+    expect(report.assignment_integrity.unknown_workers).toContain('Ghost_Worker_99');
+    expect(report.assignment_integrity.unmatched_excess_assignments).toBe(1);
+    expect(report.assignment_integrity.unmatched_shift_ids).toContain(99999);
+    expect(report.assignment_integrity.valid_assignments_count).toBe(1);
+  });
+
+  // ── AT-28: Boundary Continuity & Rest Lockout ───────────────────────────────
+  test('AT-28: Cycle boundary continuity correctly carries forward rest lockouts', () => {
+    const schedule: Record<string, string[]> = {};
+    TEST_STAFF.forEach(s => { schedule[s.id] = Array(28).fill(''); });
+
+    schedule['Ingrid_Sorensen'][27] = 'Night'; // ends at 678h
+    const boundary = computeNextCycleBoundary(TEST_STAFF, schedule, 672, 10);
+    const ingrid = boundary.find(b => b.staffId === 'Ingrid_Sorensen')!;
+
+    expect(ingrid.restLockoutUntilHour).toBe(688);
+    expect(ingrid.isRestLockedForCycleStartEarly).toBe(true);
+  });
+
+  // ── AT-29: Control B — Scarce Skill Allocation ──────────────────────────────
+  test('AT-29: Control B sorts slots by skill scarcity so specialists are allocated to scarce slots first', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const schedule: Record<string, string[]> = {};
+    TEST_STAFF.forEach(s => { schedule[s.id] = Array(28).fill(''); });
+
+    // Aisha_Diallo is ONLY HeadNurse (1 skill, scarce)
+    // Sarah_Chen is HeadNurse + Nurse (2 skills)
+    // Marcus_Webb is Nurse only (1 skill)
+    // Assign Aisha and Sarah to Early on Day 0
+    schedule['Aisha_Diallo'][0] = 'Early';
+    schedule['Sarah_Chen'][0] = 'Early';
+
+    const conversion = scheduleToAssignments(TEST_STAFF, schedule, slotMeta);
+
+    // Day 0 Early slots: shift 1 is HeadNurse, shifts 2 and 3 are Nurse
+    // Aisha_Diallo must be assigned to shift 1 (HeadNurse)
+    expect(conversion.assignments['1']).toBe(7); // Aisha_Diallo is staff index 6 -> worker_id 7
+  });
+
+  // ── AT-30: Control C — Demand-Capacity Diagnostic Scope ─────────────────────
+  test('AT-30: Control C ensures demand-capacity diagnostic includes explicit feasibility disclaimer', () => {
+    const diag = computeDemandCapacityDiagnostic(TEST_STAFF, undefined, 28);
+
+    expect(diag.feasibilityDisclaimer).toBeDefined();
+    expect(diag.feasibilityDisclaimer).toContain('does not prove mathematical feasibility');
+    expect(diag.feasibilityDisclaimer).toContain('Shift succession, minimum rest periods');
+  });
+
+  // ── AT-31: Excess Baseline Assignments Retained and Reported ────────────────
+  test('AT-31: Excess baseline assignments are retained and reported in assignment integrity', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    const assignments: BaselineAssignment[] = [
+      { worker_id: 'Sarah_Chen', shift_id: 1 },
+      { worker_id: 'Sarah_Chen', shift_id: 1 }, // duplicate
+      { worker_id: 'NonExistent', shift_id: 2 }, // unknown worker
+      { worker_id: 'Marcus_Webb', shift_id: 9999 }, // unmatched shift
+    ];
+
+    const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    // Total rows must be conserved and reported
+    expect(report.assignment_integrity.total_baseline_rows).toBe(4);
+    expect(report.assignment_integrity.duplicate_assignments).toBe(1);
+    expect(report.assignment_integrity.unknown_worker_errors).toBe(1);
+    expect(report.assignment_integrity.unmatched_excess_assignments).toBe(1);
+    expect(report.assignment_integrity.valid_assignments_count).toBe(1);
+  });
+
+  // ── AT-32: Policy Version and Retrospective Note ────────────────────────────
+  test('AT-32: Policy version and retrospective note are identified in the audit report', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    const report = auditBaselineClientSide(
+      TEST_STAFF,
+      slots,
+      [{ worker_id: 'Sarah_Chen', shift_id: 1 }],
+      {},
+      'hospital_policy_pilot_v2.1',
+    );
+
+    expect(report.policy_version).toBe('hospital_policy_pilot_v2.1');
+    expect(report.policy_retrospective_note).toContain('hospital_policy_pilot_v2.1');
+    expect(report.policy_retrospective_note).toContain('Retrospective audit against hospital policy version');
+  });
+
+  // ── Control A: Canonical Shifts CSV Parsing ─────────────────────────────────
+  test('Control A: parseShiftsCSV supports both canonical "id" and legacy "shift_id" columns', () => {
+    const csvCanonical = `id,start_hour,duration_hours,required_skill\n1,6,8,HeadNurse\n2,14,8,Nurse`;
+    const { shifts: shifts1, errors: errs1 } = parseShiftsCSV(csvCanonical);
+    expect(errs1.length).toBe(0);
+    expect(shifts1.length).toBe(2);
+    expect(shifts1[0].shiftId).toBe(1);
+
+    const csvAlias = `shift_id,start_hour,duration_hours,required_skill\n10,6,8,HeadNurse`;
+    const { shifts: shifts2, errors: errs2 } = parseShiftsCSV(csvAlias);
+    expect(errs2.length).toBe(0);
+    expect(shifts2.length).toBe(1);
+    expect(shifts2[0].shiftId).toBe(10);
+  });
+
+  // ── Control D: Genuine XML Spreadsheet 2003 Export ──────────────────────────
+  test('Control D: buildExcelXmlSpreadsheet generates valid Microsoft XML Spreadsheet 2003', () => {
+    const schedule = buildSyntheticSchedule(TEST_STAFF);
+    const xml = buildExcelXmlSpreadsheet(TEST_STAFF, schedule, 28);
+
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(xml).toContain('<?mso-application progid="Excel.Sheet"?>');
+    expect(xml).toContain('xmlns="urn:schemas-microsoft-com:office:spreadsheet"');
+    expect(xml).toContain('<Worksheet ss:Name="UltraRoster Schedule">');
+    expect(xml).toContain('<Row ss:Height="24">');
+    expect(xml).toContain('Sarah_Chen');
   });
 });

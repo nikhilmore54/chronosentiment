@@ -1,9 +1,17 @@
 import React, { useRef, useState } from 'react';
-import type { StaffMember } from './WorkflowTypes';
+import type {
+  StaffMember,
+  BaselineAssignment,
+  BaselineAuditReport,
+} from './WorkflowTypes';
 import { SAMPLE_CSV } from './WorkflowTypes';
 import {
   parseStaffCSV,
   parseShiftsCSV,
+  parseBaselineCSV,
+  generateSampleBaselineWithBreaches,
+  runBaselineAudit,
+  getScheduleSlotMeta,
   buildImportSummary,
   type CustomShiftInput,
   type ShiftSlotMeta,
@@ -48,8 +56,14 @@ export const ImportStaff: React.FC<{
 }> = ({ staff, onStaffChange, customShifts, onCustomShiftsChange, onNext }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const shiftFileRef = useRef<HTMLInputElement>(null);
+  const baselineFileRef = useRef<HTMLInputElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [shiftErrors, setShiftErrors] = useState<string[]>([]);
+  const [baselineErrors, setBaselineErrors] = useState<string[]>([]);
+  const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
+  const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [showFindings, setShowFindings] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
 
   const processText = (text: string) => {
@@ -63,6 +77,29 @@ export const ImportStaff: React.FC<{
     setShiftErrors(errs);
     if (parsed.length > 0 && onCustomShiftsChange) {
       onCustomShiftsChange(parsed);
+    }
+  };
+
+  const processBaselineText = (text: string) => {
+    const { assignments: parsed, errors: errs } = parseBaselineCSV(text);
+    setBaselineErrors(errs);
+    setBaselineAssignments(parsed);
+    setBaselineAuditReport(null);
+  };
+
+  const handleRunAudit = async () => {
+    if (baselineAssignments.length === 0 || staff.length === 0) return;
+    setIsAuditing(true);
+    try {
+      const slotMeta = getScheduleSlotMeta(staff, customShifts);
+      const shifts = Object.values(slotMeta);
+      const report = await runBaselineAudit(staff, shifts, baselineAssignments);
+      setBaselineAuditReport(report);
+      setShowFindings(true);
+    } catch (err) {
+      setBaselineErrors([err instanceof Error ? err.message : 'Audit failed']);
+    } finally {
+      setIsAuditing(false);
     }
   };
 
@@ -228,6 +265,247 @@ export const ImportStaff: React.FC<{
         {shiftErrors.length > 0 && (
           <div style={errorBoxStyle}>
             {shiftErrors.map((e, i) => <div key={i} style={{ fontSize: '0.85rem' }}>⚠ {e}</div>)}
+          </div>
+        )}
+      </div>
+
+      {/* ── Gate 3 (G3.1): Historical Hospital Baseline Roster (Audit Only) ── */}
+      <div style={{
+        backgroundColor: 'var(--panel-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '1.25rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.85rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+              Historical Hospital Baseline Roster (Audit Only)
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Upload your historical roster (<code>hospital_baseline.csv</code>) to independently audit regulatory, rest, overtime, and skill compliance against ratified hospital policy.
+            </div>
+          </div>
+          {baselineAssignments.length > 0 ? (
+            <span style={{ color: 'var(--accent-color)', fontSize: '0.85rem', fontWeight: 600 }}>
+              ✓ Baseline loaded: {baselineAssignments.length} assignments
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              No baseline loaded (optional)
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label style={{ ...accentGhostBtnStyle, cursor: 'pointer' }}>
+            Upload hospital_baseline.csv
+            <input ref={baselineFileRef} type="file" accept=".csv,.txt" onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => processBaselineText(ev.target?.result as string);
+              reader.readAsText(file);
+              e.target.value = '';
+            }} style={{ display: 'none' }} />
+          </label>
+
+          <button onClick={() => {
+            const sampleCsv = generateSampleBaselineWithBreaches(staff, getScheduleSlotMeta(staff, customShifts));
+            processBaselineText(sampleCsv);
+          }} style={ghostBtnStyle} disabled={staff.length === 0}>
+            Load Sample Baseline (with Deficits)
+          </button>
+
+          <button onClick={() => {
+            const template = `worker_id,shift_id\nSarah_Chen,1\nMarcus_Webb,2\nPriya_Nair,3`;
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hospital_baseline_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }} style={ghostBtnStyle}>
+            ⬇ Baseline Template
+          </button>
+
+          {baselineAssignments.length > 0 && (
+            <>
+              <button
+                onClick={handleRunAudit}
+                disabled={isAuditing || staff.length === 0}
+                style={{
+                  ...primaryBtnStyle,
+                  backgroundColor: '#0284c7',
+                  opacity: isAuditing || staff.length === 0 ? 0.6 : 1,
+                }}
+              >
+                {isAuditing ? 'Auditing Baseline...' : '🔍 Audit Baseline Roster'}
+              </button>
+
+              <button onClick={() => {
+                setBaselineAssignments([]);
+                setBaselineErrors([]);
+                setBaselineAuditReport(null);
+              }} style={{ ...ghostBtnStyle, color: '#f59e0b' }}>
+                Clear Baseline
+              </button>
+            </>
+          )}
+        </div>
+
+        {baselineErrors.length > 0 && (
+          <div style={errorBoxStyle}>
+            {baselineErrors.map((e, i) => <div key={i} style={{ fontSize: '0.85rem' }}>⚠ {e}</div>)}
+          </div>
+        )}
+
+        {/* ── Baseline Audit Results Display ── */}
+        {baselineAuditReport && (
+          <div style={{
+            marginTop: '0.5rem',
+            backgroundColor: baselineAuditReport.feasibility.is_feasible ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+            border: `1px solid ${baselineAuditReport.feasibility.is_feasible ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+            borderRadius: '8px',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Independent Baseline Audit Report
+                </div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1.05rem', marginTop: '0.2rem' }}>
+                  Policy Version: {baselineAuditReport.policy_version}
+                </div>
+              </div>
+              <span style={{
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: baselineAuditReport.feasibility.is_feasible ? '#22c55e' : '#ef4444',
+                backgroundColor: baselineAuditReport.feasibility.is_feasible ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                padding: '0.3rem 0.8rem',
+                borderRadius: '6px',
+              }}>
+                {baselineAuditReport.feasibility.is_feasible
+                  ? '✓ FEASIBLE — Zero Regulatory Violations'
+                  : `✕ INFEASIBLE — ${baselineAuditReport.feasibility.hard_violations} Hard Violations`}
+              </span>
+            </div>
+
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              {baselineAuditReport.policy_retrospective_note}
+            </div>
+
+            {/* Scorecard Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '0.75rem',
+              backgroundColor: 'var(--panel-bg)',
+              padding: '0.85rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border-color)',
+            }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Coverage</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  {baselineAuditReport.coverage.coverage_pct}%
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {baselineAuditReport.coverage.filled_positions} / {baselineAuditReport.coverage.required_positions} slots
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rest Violations</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: baselineAuditReport.rest_violations > 0 ? '#ef4444' : '#22c55e' }}>
+                  {baselineAuditReport.rest_violations}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>&lt; 10h rest between shifts</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Contract Overtime</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: baselineAuditReport.weekly_contract_violations > 0 ? '#ef4444' : '#22c55e' }}>
+                  {baselineAuditReport.weekly_contract_violations}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  +{baselineAuditReport.scheduled_overtime_hours}h scheduled excess
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Skill Deficits</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: baselineAuditReport.skill_coverage_deficits > 0 ? '#ef4444' : '#22c55e' }}>
+                  {baselineAuditReport.skill_coverage_deficits}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {baselineAuditReport.senior_coverage_deficits} senior deficits
+                </div>
+              </div>
+            </div>
+
+            {/* Assignment Integrity */}
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <span>Total Rows: <strong>{baselineAuditReport.assignment_integrity.total_baseline_rows}</strong></span>
+              <span>Valid Mapped: <strong>{baselineAuditReport.assignment_integrity.valid_assignments_count}</strong></span>
+              <span>Duplicates: <strong style={{ color: baselineAuditReport.assignment_integrity.duplicate_assignments > 0 ? '#ef4444' : 'inherit' }}>{baselineAuditReport.assignment_integrity.duplicate_assignments}</strong></span>
+              <span>Unknown Workers: <strong style={{ color: baselineAuditReport.assignment_integrity.unknown_worker_errors > 0 ? '#ef4444' : 'inherit' }}>{baselineAuditReport.assignment_integrity.unknown_worker_errors}</strong></span>
+              <span>Unmatched Shifts: <strong style={{ color: baselineAuditReport.assignment_integrity.unmatched_excess_assignments > 0 ? '#ef4444' : 'inherit' }}>{baselineAuditReport.assignment_integrity.unmatched_excess_assignments}</strong></span>
+            </div>
+
+            {/* Detailed Findings Toggle */}
+            {baselineAuditReport.detailed_findings.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setShowFindings(prev => !prev)}
+                  style={{ ...ghostBtnStyle, fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                >
+                  {showFindings ? '▲ Hide Audit Findings' : `▼ Show Audit Findings (${baselineAuditReport.detailed_findings.length})`}
+                </button>
+
+                {showFindings && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--panel-bg)',
+                    padding: '0.5rem',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                  }}>
+                    {baselineAuditReport.detailed_findings.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          padding: '0.1rem 0.35rem',
+                          borderRadius: '3px',
+                          backgroundColor: f.severity === 'critical' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                          color: f.severity === 'critical' ? '#ef4444' : '#f59e0b',
+                          fontFamily: 'monospace',
+                        }}>
+                          [{f.code}]
+                        </span>
+                        <span style={{ color: 'var(--text-main)', flex: 1 }}>{f.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

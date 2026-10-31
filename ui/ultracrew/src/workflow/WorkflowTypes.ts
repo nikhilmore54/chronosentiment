@@ -307,3 +307,60 @@ Patrick_Brennan,FullTime,HeadNurse
 Nadia_Petrov,PartTime,Nurse
 Soren_Andersen,FullTime,Nurse
 Mei_Lin_Zhou,FullTime,Nurse`;
+
+// ─── Gate 3 (G3.1): Historical Baseline Audit Data Contract ─────────────────
+
+export interface BaselineAssignment {
+  worker_id: string;
+  shift_id: number;
+}
+
+export interface BaselineFeasibility {
+  is_feasible: boolean;
+  hard_violations: number;
+}
+
+export interface BaselineCoverage {
+  required_positions: number;
+  filled_positions: number;
+  unfilled_positions: number;
+  coverage_pct: number;
+}
+
+export interface AssignmentIntegrityReport {
+  duplicate_assignments: number;
+  unknown_worker_errors: number;
+  unknown_workers: string[];
+  unmatched_excess_assignments: number;
+  unmatched_shift_ids: number[];
+  total_baseline_rows: number;
+  valid_assignments_count: number;
+}
+
+export interface AuditFinding {
+  code: string;
+  severity: string;
+  description: string;
+  worker_id?: string;
+  shift_id?: number;
+  day_idx?: number;
+}
+
+export interface BaselineAuditReport {
+  audit_id: string;
+  status: string;
+  policy_version: string;
+  policy_retrospective_note: string;
+  feasibility: BaselineFeasibility;
+  coverage: BaselineCoverage;
+  rest_violations: number;
+  weekly_contract_violations: number;
+  skill_coverage_deficits: number;
+  senior_coverage_deficits: number;
+  scheduled_overtime_hours: number;
+  workload_variance: number;
+  assignment_integrity: AssignmentIntegrityReport;
+  violated_constraints: string[];
+  satisfied_constraints: string[];
+  detailed_findings: AuditFinding[];
+}

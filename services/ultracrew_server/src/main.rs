@@ -1385,6 +1385,15 @@ async fn validate_handler(
     Ok(Json(response))
 }
 
+async fn baseline_audit_handler(
+    State(_state): State<Arc<Mutex<AppState>>>,
+    Json(req): Json<ultracrew::baseline_audit::BaselineAuditRequest>,
+) -> Result<Json<ultracrew::baseline_audit::BaselineAuditReport>, (axum::http::StatusCode, String)> {
+    ultracrew::baseline_audit::audit_hospital_baseline(&req)
+        .map(Json)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, e))
+}
+
 // ─── FTA Constants (TC CAR 700 — Air Canada / Air Transat) ───────────────────
 //
 // Transport Canada Commercial Air Services, Subpart 700.15 (Flight Duty Period)
@@ -2428,6 +2437,7 @@ async fn main() {
         .route("/api/schedule", post(schedule_handler))
         .route("/api/reschedule", post(reschedule_handler))
         .route("/api/validate", post(validate_handler))
+        .route("/api/audit/baseline", post(baseline_audit_handler))
         .route("/api/recommendations", get(recommendations_handler))
         .route("/api/metrics", get(metrics_handler))
         .route("/api/balance", get(get_balance_handler))
@@ -2576,6 +2586,7 @@ mod server_endpoints_tests {
             .route("/api/schedule", post(schedule_handler))
             .route("/api/reschedule", post(reschedule_handler))
             .route("/api/validate", post(validate_handler))
+            .route("/api/audit/baseline", post(baseline_audit_handler))
             .route("/api/recommendations", get(recommendations_handler))
             .route("/api/metrics", get(metrics_handler))
             .route("/api/nurses", get(get_nurses_handler))
@@ -2735,6 +2746,64 @@ mod server_endpoints_tests {
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);
         assert!(resp.constraint_report.is_some());
         assert_eq!(resp.constraint_report.unwrap().hard_violations, 0);
+    }
+
+    #[tokio::test]
+    async fn test_audit_baseline_endpoint() {
+        let app = setup_test_app();
+        use ultracrew::models::{Shift, Skill, Worker};
+        let request = ultracrew::public_contracts::ScheduleRequest {
+            workers: vec![Worker {
+                id: 1,
+                skills: vec![Skill::new("Nurse")],
+            }],
+            shifts: vec![Shift {
+                id: 201,
+                start_hour: 8,
+                duration_hours: 8,
+                required_skill: Skill::new("Nurse"),
+            }],
+            historical_workloads: None,
+            rng_seed: Some(42),
+            generation_limit: None,
+            scenario: None,
+            fatigue: FatigueConfig::default(),
+        };
+
+        let audit_req = ultracrew::baseline_audit::BaselineAuditRequest {
+            request,
+            baseline_assignments: Some(vec![ultracrew::baseline_audit::BaselineAssignment {
+                worker_id: "1".to_string(),
+                shift_id: 201,
+            }]),
+            baseline_csv: None,
+            policy_version: Some("pilot-policy-v1".to_string()),
+        };
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/audit/baseline")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&audit_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), 50000)
+            .await
+            .unwrap();
+        let resp: ultracrew::baseline_audit::BaselineAuditReport = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(resp.status, "completed");
+        assert_eq!(resp.coverage.filled_positions, 1);
+        assert_eq!(resp.coverage.unfilled_positions, 0);
+        assert!(resp.feasibility.is_feasible);
+        assert_eq!(resp.policy_version, "pilot-policy-v1");
     }
 
     #[tokio::test]

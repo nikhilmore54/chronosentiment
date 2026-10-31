@@ -1,3 +1,4 @@
+pub mod baseline_audit;
 pub mod compliance;
 pub mod config;
 pub mod constraint_engine;

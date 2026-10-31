@@ -122,26 +122,25 @@ N_03,PartTime,Nurse,24.0,4,12,2
 N_04,NightDedicated,Nurse;ICU,36.0,4,14,2
 ```
 
-### 3.2 File 2: `shifts.csv`
-Defines the discrete shift demand slots required across the 28-day horizon (672 hours).
+### 3.2 File 2: `shifts.csv` (Canonical Shift-Slot Demand)
+Defines the discrete shift demand slots required across the 28-day horizon (672 hours). Per Control A, the canonical contract is frozen to pre-expanded shift slots with exactly one row per position required.
 
 | Column Name | Data Type | Requirement | Description / Permitted Values |
 | :--- | :--- | :--- | :--- |
-| `shift_id` | Integer | Mandatory | Unique integer identifier across the entire 28-day horizon (e.g., `1` to `N`). |
-| `date` | Date | Mandatory | Calendar date (`YYYY-MM-DD`). |
-| `day_idx` | Integer | Mandatory | Relative day index (`0` to `27`). |
-| `shift_type` | String | Mandatory | Standard shift label: `Early` (06:00–14:00), `Late` (14:00–22:00), `Night` (22:00–06:00). |
-| `start_hour` | Integer | Mandatory | Horizon start hour (`day_idx * 24 + shift_start_offset`). |
+| `id` (or `shift_id`) | Integer | Mandatory | Unique integer identifier across the entire planning horizon (e.g., `1` to `N`). |
+| `start_hour` | Integer | Mandatory | Relative horizon start hour (`0` to `671`). |
 | `duration_hours` | Integer | Mandatory | Duration of duty in hours (standard: `8`). |
-| `required_skill` | String | Mandatory | Minimum certified skill required to staff the position. |
-| `ward` | String | Mandatory | Ward or unit code (e.g., `ICU_Ward_A`). |
+| `required_skill` | String | Mandatory | Minimum certified skill required to staff the position (e.g., `HeadNurse`, `Nurse`). |
+| `shift_type` | String | Optional | Descriptive shift label: `Early` (06:00–14:00), `Late` (14:00–22:00), `Night` (22:00–06:00). |
+| `date` | Date | Optional | Calendar date (`YYYY-MM-DD`). |
+| `ward` | String | Optional | Ward or unit code (e.g., `ICU_Ward_A`). |
 
 ```csv
-shift_id,date,day_idx,shift_type,start_hour,duration_hours,required_skill,ward
-1,2026-07-01,0,Early,6,8,HeadNurse,ICU_Ward_A
-2,2026-07-01,0,Early,6,8,Nurse,ICU_Ward_A
-3,2026-07-01,0,Late,14,8,Nurse,ICU_Ward_A
-4,2026-07-01,0,Night,22,8,Nurse,ICU_Ward_A
+id,start_hour,duration_hours,required_skill,shift_type
+1,6,8,HeadNurse,Early
+2,6,8,Nurse,Early
+3,14,8,Nurse,Late
+4,22,8,Nurse,Night
 ```
 
 ### 3.3 File 3: `history_boundary.csv`
@@ -164,6 +163,23 @@ Pre-approved planned leave, medical absences, and mandatory training sessions.
 | `start_date` | Date | Mandatory | Start date (`YYYY-MM-DD`). |
 | `end_date` | Date | Mandatory | End date (`YYYY-MM-DD`). |
 | `reason` | String | Mandatory | `AnnualLeave`, `MedicalLeave`, `Training`, or `ApprovedOff`. |
+
+### 3.5 File 5: `hospital_baseline.csv` (Historical Roster Ingestion)
+The historical roster for retrospective audit against ratified hospital policy and constraints.
+
+| Column Name | Data Type | Requirement | Description / Permitted Values |
+| :--- | :--- | :--- | :--- |
+| `worker_id` | String | Mandatory | Identifies the assigned staff member (must match `staff.csv`). |
+| `shift_id` | Integer | Mandatory | Identifies the shift demand position assigned (must match `shifts.csv`). |
+
+```csv
+worker_id,shift_id
+Sarah_Chen,1
+Marcus_Webb,2
+Priya_Nair,3
+```
+
+**Baseline Retention Invariant:** Excess, duplicate, or unmatched baseline assignments must never silently disappear from the audit. All rows are retained, and anomalies (such as duplicate entries or assignments to unknown shift IDs) are surfaced explicitly in the Assignment Integrity Report.
 
 ---
 

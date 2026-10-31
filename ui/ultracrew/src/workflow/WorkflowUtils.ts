@@ -1,4 +1,20 @@
-import type { StaffMember, ImportSummary, ScheduleResult, RosterAlternative, RosterAlternativeMetrics, CandidateFeasibility, StaffingRequirement, CoverageReport, ChangeRecord, RedistributionLog, AssignmentProvenanceState, ParetoAlternativeRaw } from './WorkflowTypes';
+import type {
+  StaffMember,
+  ImportSummary,
+  ScheduleResult,
+  RosterAlternative,
+  RosterAlternativeMetrics,
+  CandidateFeasibility,
+  StaffingRequirement,
+  CoverageReport,
+  ChangeRecord,
+  RedistributionLog,
+  AssignmentProvenanceState,
+  ParetoAlternativeRaw,
+  BaselineAssignment,
+  BaselineAuditReport,
+  AuditFinding,
+} from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
 // ─── CSV parsing ──────────────────────────────────────────────────────────────
@@ -101,13 +117,13 @@ export function parseShiftsCSV(text: string): { shifts: ShiftSlotMeta[]; errors:
   if (lines.length < 2) return { shifts: [], errors: ['CSV must have a header row and at least one data row.'] };
 
   const header = lines[0].toLowerCase().split(',').map(h => h.trim());
-  const idIdx = header.indexOf('id');
+  const idIdx = header.indexOf('id') !== -1 ? header.indexOf('id') : header.indexOf('shift_id');
   const startIdx = header.indexOf('start_hour');
   const durIdx = header.indexOf('duration_hours');
   const skillIdx = header.indexOf('required_skill');
 
   const errors: string[] = [];
-  if (idIdx === -1) errors.push('Missing column: id');
+  if (idIdx === -1) errors.push('Missing column: id (or shift_id)');
   if (startIdx === -1) errors.push('Missing column: start_hour');
   if (durIdx === -1) errors.push('Missing column: duration_hours');
   if (skillIdx === -1) errors.push('Missing column: required_skill');
@@ -212,6 +228,7 @@ export interface DemandCapacityDiagnostic {
   message: string;
   shiftCount: number;
   horizonDays: number;
+  feasibilityDisclaimer: string;
 }
 
 export function computeDemandCapacityDiagnostic(
@@ -264,6 +281,8 @@ export function computeDemandCapacityDiagnostic(
     message,
     shiftCount: shiftList.length,
     horizonDays,
+    feasibilityDisclaimer:
+      'Aggregate capacity is a necessary pre-optimization diagnostic but does not prove mathematical feasibility. Shift succession, minimum rest periods (10h), specialized skill distribution, and weekend balance must still be verified by the optimization solver.',
   };
 }
 
@@ -384,30 +403,105 @@ export function buildSyntheticSchedule(staff: StaffMember[]): Record<string, str
   return result;
 }
 
-// ─── Excel export ─────────────────────────────────────────────────────────────
+// ─── Excel export (Control D: Microsoft XML Spreadsheet 2003 format) ──────────
+// Genuine Excel-compatible XML (urn:schemas-microsoft-com:office:spreadsheet).
+// Avoids the classic Excel format/extension mismatch dialog caused by TSV-in-.xls.
 
-export function exportRosterToExcel(staff: StaffMember[], schedule: Record<string, string[]>) {
+function escapeXml(unsafe: string): string {
+  return String(unsafe).replace(/[<>&'"]/g, c => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
+
+export function buildExcelXmlSpreadsheet(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  horizonDays: number = 28,
+): string {
   const startDate = new Date('2026-07-14');
-  const headers = [
-    'Staff',
-    ...Array.from({ length: 28 }, (_, d) => {
-      const dt = new Date(startDate);
-      dt.setDate(dt.getDate() + d);
-      return `${dt.toLocaleDateString('en-US', { weekday: 'short' })} ${dt.getDate()}/${dt.getMonth() + 1}`;
-    }),
-  ];
-
-  const rows = staff.map(s => {
-    const shifts = schedule[s.id] || Array(28).fill('');
-    return [s.id, ...shifts.map(sh => sh || 'Off')];
+  const dateHeaders = Array.from({ length: horizonDays }, (_, d) => {
+    const dt = new Date(startDate);
+    dt.setDate(dt.getDate() + d);
+    return `${dt.toLocaleDateString('en-US', { weekday: 'short' })} ${dt.getDate()}/${dt.getMonth() + 1}`;
   });
 
-  const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n');
-  const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
+  const headerCells = ['Staff', ...dateHeaders]
+    .map(h => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`)
+    .join('');
+
+  const rowNodes = staff.map(s => {
+    const shifts = schedule[s.id] || Array(horizonDays).fill('');
+    const cells = [
+      `<Cell ss:StyleID="StaffCol"><Data ss:Type="String">${escapeXml(s.id)}</Data></Cell>`,
+      ...shifts.map(sh => `<Cell ss:StyleID="ShiftCell"><Data ss:Type="String">${escapeXml(sh || 'Off')}</Data></Cell>`),
+    ].join('');
+    return `<Row>${cells}</Row>`;
+  }).join('\n   ');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>UltraRoster Assessment Engine</Author>
+  <Created>${new Date().toISOString()}</Created>
+ </DocumentProperties>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#FFFFFF" ss:Bold="1"/>
+   <Interior ss:Color="#1E3A8A" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="StaffCol">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+  </Style>
+  <Style ss:ID="ShiftCell">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="UltraRoster Schedule">
+  <Table>
+   <Column ss:Width="120"/>
+   ${Array.from({ length: horizonDays }, () => '<Column ss:Width="70"/>').join('\n   ')}
+   <Row ss:Height="24">
+    ${headerCells}
+   </Row>
+   ${rowNodes}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+}
+
+export function exportRosterToExcel(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  horizonDays: number = 28,
+) {
+  const xml = buildExcelXmlSpreadsheet(staff, schedule, horizonDays);
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ultracrew_roster_${new Date().toISOString().slice(0, 10)}.xls`;
+  a.download = `ultraroster_roster_${new Date().toISOString().slice(0, 10)}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -600,6 +694,14 @@ export function scheduleToAssignments(
   const unmappedUiAssignments: Array<{ staffId: string; dayIdx: number; shiftType: string; reason: string }> = [];
   const duplicateAssignments: Array<{ staffId: string; dayIdx: number; shiftTypes: string[] }> = [];
 
+  // Control B: Calculate skill frequency across workforce to determine scarcity
+  const skillWorkerCount: Record<string, number> = {};
+  for (const s of staff) {
+    for (const sk of s.skills) {
+      skillWorkerCount[sk] = (skillWorkerCount[sk] || 0) + 1;
+    }
+  }
+
   // Group slots by (dayIdx, label)
   const availableSlotsByDayAndLabel: Record<string, ShiftSlotMeta[]> = {};
   for (const meta of Object.values(slotMeta)) {
@@ -608,6 +710,16 @@ export function scheduleToAssignments(
       availableSlotsByDayAndLabel[key] = [];
     }
     availableSlotsByDayAndLabel[key].push(meta);
+  }
+
+  // Control B: Sort slots within each bucket by skill scarcity (rarest skill first)
+  // Ensures specialists are assigned to scarce qualified positions before general slots
+  for (const key of Object.keys(availableSlotsByDayAndLabel)) {
+    availableSlotsByDayAndLabel[key].sort((a, b) => {
+      const countA = skillWorkerCount[a.skill] ?? 999;
+      const countB = skillWorkerCount[b.skill] ?? 999;
+      return countA - countB;
+    });
   }
 
   let totalUiAssignments = 0;
@@ -1272,4 +1384,426 @@ export function buildSyntheticAlternatives(
   // alt-A is always the optimizer-produced schedule; recommendation authority
   // belongs to the optimizer pipeline, not the adapter.
   return { alternatives: [optionA, optionB], recommendedId: 'alt-A' };
+}
+
+// ─── Gate 3 (G3.1): Historical Baseline Ingestion and Audit Engine ────────────
+
+export function parseBaselineCSV(text: string): {
+  assignments: BaselineAssignment[];
+  errors: string[];
+  rawRowCount: number;
+} {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) {
+    return {
+      assignments: [],
+      errors: ['Baseline CSV must have a header row and at least one data row.'],
+      rawRowCount: lines.length,
+    };
+  }
+
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const workerIdx = header.indexOf('worker_id') !== -1
+    ? header.indexOf('worker_id')
+    : header.indexOf('worker') !== -1
+    ? header.indexOf('worker')
+    : header.indexOf('staff_id') !== -1
+    ? header.indexOf('staff_id')
+    : header.indexOf('nurse_id');
+
+  const shiftIdx = header.indexOf('shift_id') !== -1
+    ? header.indexOf('shift_id')
+    : header.indexOf('shift');
+
+  const errors: string[] = [];
+  if (workerIdx === -1) errors.push('Missing column: worker_id (or staff_id / nurse_id)');
+  if (shiftIdx === -1) errors.push('Missing column: shift_id (or shift)');
+  if (errors.length > 0) return { assignments: [], errors, rawRowCount: lines.length - 1 };
+
+  const assignments: BaselineAssignment[] = [];
+  const rawRowCount = lines.length - 1;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const workerId = cols[workerIdx];
+    const shiftIdStr = cols[shiftIdx];
+    const shiftId = parseInt(shiftIdStr, 10);
+
+    if (!workerId) {
+      errors.push(`Row ${i + 1}: missing worker_id`);
+      continue;
+    }
+    if (isNaN(shiftId) || shiftId <= 0) {
+      errors.push(`Row ${i + 1}: invalid shift_id "${shiftIdStr}"`);
+      continue;
+    }
+
+    assignments.push({ worker_id: workerId, shift_id: shiftId });
+  }
+
+  return { assignments, errors, rawRowCount };
+}
+
+export function generateSampleBaselineWithBreaches(
+  staff: StaffMember[],
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): string {
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const slots = Object.values(slotMeta).sort((a, b) => a.shiftId - b.shiftId);
+  const rows = ['worker_id,shift_id'];
+
+  if (staff.length === 0 || slots.length === 0) {
+    return 'worker_id,shift_id\n';
+  }
+
+  const generalNurse1 = staff.find(s => !s.skills.includes('HeadNurse')) ?? staff[1 % staff.length];
+  const generalNurse2 = staff.filter(s => !s.skills.includes('HeadNurse'))[1] ?? staff[2 % staff.length];
+  const overtimeNurse = staff.find(s => s.contract === 'FullTime' && s.id !== generalNurse1.id && s.id !== generalNurse2.id) ?? staff[3 % staff.length];
+
+  // Map slots across staff:
+  // Breach 1: Skill Deficit — slot 1 requires HeadNurse, assign to general nurse who lacks HeadNurse
+  const headNurseSlot1 = slots.find(s => s.skill === 'HeadNurse') || slots[0];
+  rows.push(`${generalNurse1.id},${headNurseSlot1.shiftId}`);
+
+  // Breach 2: Rest Deficit 1 — generalNurse1 works Night on Day 0 (ends 06:00 Day 1) then Early on Day 1 (starts 06:00 Day 1) -> 0h rest
+  const day0Night = slots.find(s => s.dayIdx === 0 && s.label === 'Night' && s.shiftId !== headNurseSlot1.shiftId);
+  const day1Early = slots.find(s => s.dayIdx === 1 && s.label === 'Early' && s.shiftId !== headNurseSlot1.shiftId);
+  if (day0Night) rows.push(`${generalNurse1.id},${day0Night.shiftId}`);
+  if (day1Early) rows.push(`${generalNurse1.id},${day1Early.shiftId}`);
+
+  // Breach 3: Rest Deficit 2 — generalNurse2 works Night on Day 2 then Early on Day 3 -> 0h rest
+  const day2Night = slots.find(s => s.dayIdx === 2 && s.label === 'Night');
+  const day3Early = slots.find(s => s.dayIdx === 3 && s.label === 'Early');
+  if (day2Night) rows.push(`${generalNurse2.id},${day2Night.shiftId}`);
+  if (day3Early) rows.push(`${generalNurse2.id},${day3Early.shiftId}`);
+
+  // Breach 4: Weekly Contract Overtime — overtimeNurse assigned 6 shifts (48h) in Week 1 (Days 0-6)
+  const week1Slots = slots.filter(s => s.dayIdx < 7 && s.shiftId !== headNurseSlot1.shiftId && s.shiftId !== day0Night?.shiftId && s.shiftId !== day1Early?.shiftId);
+  const overtimeAssignedSlots = week1Slots.slice(0, 6);
+  for (const s of overtimeAssignedSlots) {
+    rows.push(`${overtimeNurse.id},${s.shiftId}`);
+  }
+
+  // Set of already assigned shifts
+  const assignedShiftIds = new Set<number>([
+    headNurseSlot1.shiftId,
+    ...(day0Night ? [day0Night.shiftId] : []),
+    ...(day1Early ? [day1Early.shiftId] : []),
+    ...(day2Night ? [day2Night.shiftId] : []),
+    ...(day3Early ? [day3Early.shiftId] : []),
+    ...overtimeAssignedSlots.map(s => s.shiftId),
+  ]);
+
+  // Breach 5: Uncovered positions — leave last 4 shifts unassigned!
+  const uncoveredSlotIds = new Set(slots.slice(-4).map(s => s.shiftId));
+
+  // Assign remaining shifts fairly across remaining staff
+  let staffIdx = 0;
+  for (const slot of slots) {
+    if (assignedShiftIds.has(slot.shiftId) || uncoveredSlotIds.has(slot.shiftId)) {
+      continue;
+    }
+    const staffMember = staff[staffIdx % staff.length];
+    rows.push(`${staffMember.id},${slot.shiftId}`);
+    staffIdx++;
+  }
+
+  return rows.join('\n');
+}
+
+export function auditBaselineClientSide(
+  staff: StaffMember[],
+  shifts: ShiftSlotMeta[],
+  baselineAssignments: BaselineAssignment[],
+  rulePayload: any = {},
+  policyVersion: string = 'hospital_policy_v1',
+): BaselineAuditReport {
+  const auditId = `audit-${Date.now()}`;
+  const minRestHours = rulePayload?.min_rest_hours ?? 10;
+  const maxWeeklyHours = rulePayload?.max_weekly_hours ?? 40.0;
+
+  const staffMap = new Map<string, StaffMember>();
+  staff.forEach(s => staffMap.set(s.id, s));
+
+  const shiftMap = new Map<number, ShiftSlotMeta>();
+  shifts.forEach(s => shiftMap.set(s.shiftId, s));
+
+  // Assignment Integrity Check
+  let duplicateCount = 0;
+  const seenWorkerShift = new Set<string>();
+  const unknownWorkersSet = new Set<string>();
+  let unknownWorkerErrors = 0;
+  const unmatchedShiftIdsSet = new Set<number>();
+  let unmatchedExcessCount = 0;
+  const validAssignments: Array<{ worker: StaffMember; shift: ShiftSlotMeta }> = [];
+  const findings: AuditFinding[] = [];
+
+  for (const ba of baselineAssignments) {
+    const pairKey = `${ba.worker_id}:${ba.shift_id}`;
+    if (seenWorkerShift.has(pairKey)) {
+      duplicateCount++;
+      findings.push({
+        code: 'DUPLICATE_ASSIGNMENT',
+        severity: 'high',
+        description: `Duplicate assignment in baseline: worker ${ba.worker_id} assigned to shift ${ba.shift_id} multiple times.`,
+        worker_id: ba.worker_id,
+        shift_id: ba.shift_id,
+      });
+      continue;
+    }
+    seenWorkerShift.add(pairKey);
+
+    const worker = staffMap.get(ba.worker_id);
+    if (!worker) {
+      unknownWorkerErrors++;
+      unknownWorkersSet.add(ba.worker_id);
+      findings.push({
+        code: 'UNKNOWN_WORKER',
+        severity: 'critical',
+        description: `Baseline assigns shift ${ba.shift_id} to unknown worker ID '${ba.worker_id}'.`,
+        worker_id: ba.worker_id,
+        shift_id: ba.shift_id,
+      });
+      continue;
+    }
+
+    const shift = shiftMap.get(ba.shift_id);
+    if (!shift) {
+      unmatchedExcessCount++;
+      unmatchedShiftIdsSet.add(ba.shift_id);
+      findings.push({
+        code: 'UNMATCHED_SHIFT',
+        severity: 'high',
+        description: `Baseline assigns worker '${ba.worker_id}' to shift ID ${ba.shift_id} not present in current demand requirements.`,
+        worker_id: ba.worker_id,
+        shift_id: ba.shift_id,
+      });
+      continue;
+    }
+
+    validAssignments.push({ worker, shift });
+  }
+
+  // Coverage Analysis
+  const shiftCoveredMap = new Map<number, StaffMember[]>();
+  validAssignments.forEach(({ worker, shift }) => {
+    if (!shiftCoveredMap.has(shift.shiftId)) {
+      shiftCoveredMap.set(shift.shiftId, []);
+    }
+    shiftCoveredMap.get(shift.shiftId)!.push(worker);
+  });
+
+  const requiredPositions = shifts.length;
+  let filledPositions = 0;
+  let unfilledPositions = 0;
+
+  for (const shift of shifts) {
+    const assigned = shiftCoveredMap.get(shift.shiftId);
+    if (assigned && assigned.length > 0) {
+      filledPositions++;
+    } else {
+      unfilledPositions++;
+      findings.push({
+        code: 'UNFILLED_POSITION',
+        severity: 'critical',
+        description: `Required position shift ${shift.shiftId} (${shift.label} on Day ${shift.dayIdx + 1}, requires ${shift.skill}) is completely uncovered.`,
+        shift_id: shift.shiftId,
+        day_idx: shift.dayIdx,
+      });
+    }
+  }
+
+  const coveragePct = requiredPositions > 0
+    ? Math.round((filledPositions / requiredPositions) * 1000) / 10
+    : 0;
+
+  // Group valid assignments by worker
+  const workerShifts = new Map<string, ShiftSlotMeta[]>();
+  for (const { worker, shift } of validAssignments) {
+    if (!workerShifts.has(worker.id)) {
+      workerShifts.set(worker.id, []);
+    }
+    workerShifts.get(worker.id)!.push(shift);
+  }
+
+  let restViolations = 0;
+  let skillCoverageDeficits = 0;
+  let seniorCoverageDeficits = 0;
+  let weeklyContractViolations = 0;
+  let scheduledOvertimeHours = 0;
+
+  const workerTotalHours = new Map<string, number>();
+  staff.forEach(s => workerTotalHours.set(s.id, 0));
+
+  for (const [staffId, assignedSlots] of workerShifts.entries()) {
+    const worker = staffMap.get(staffId)!;
+    assignedSlots.sort((a, b) => a.startHour - b.startHour);
+
+    let totalHoursWorker = 0;
+
+    // Check rest violations between consecutive shifts
+    for (let i = 0; i < assignedSlots.length; i++) {
+      const cur = assignedSlots[i];
+      const curDur = cur.durationHours ?? 8;
+      totalHoursWorker += curDur;
+
+      // Check skill coverage
+      if (!worker.skills.includes(cur.skill)) {
+        skillCoverageDeficits++;
+        if (cur.skill === 'HeadNurse') {
+          seniorCoverageDeficits++;
+        }
+        findings.push({
+          code: 'SKILL_DEFICIT',
+          severity: 'high',
+          description: `Worker ${worker.id} assigned to shift ${cur.shiftId} requiring '${cur.skill}' but holds only: [${worker.skills.join(', ')}].`,
+          worker_id: worker.id,
+          shift_id: cur.shiftId,
+          day_idx: cur.dayIdx,
+        });
+      }
+
+      // Rest with next shift
+      if (i + 1 < assignedSlots.length) {
+        const next = assignedSlots[i + 1];
+        const restGap = next.startHour - (cur.startHour + curDur);
+        if (restGap < minRestHours) {
+          restViolations++;
+          findings.push({
+            code: 'REST_VIOLATION',
+            severity: 'critical',
+            description: `Insufficient rest for ${worker.id}: ${restGap}h between shift ${cur.shiftId} (ends at h${cur.startHour + curDur}) and shift ${next.shiftId} (starts at h${next.startHour}). Required: ${minRestHours}h.`,
+            worker_id: worker.id,
+            shift_id: next.shiftId,
+            day_idx: next.dayIdx,
+          });
+        }
+      }
+    }
+
+    workerTotalHours.set(worker.id, totalHoursWorker);
+
+    // Weekly Contract Overtime (168h windows / calendar weeks)
+    const maxHorizonDay = Math.max(...shifts.map(s => s.dayIdx), 27);
+    const totalWeeks = Math.ceil((maxHorizonDay + 1) / 7);
+
+    for (let w = 0; w < totalWeeks; w++) {
+      const weekStartHour = w * 168;
+      const weekEndHour = (w + 1) * 168;
+      const weekShifts = assignedSlots.filter(s => s.startHour >= weekStartHour && s.startHour < weekEndHour);
+      const weekHours = weekShifts.reduce((sum, s) => sum + (s.durationHours ?? 8), 0);
+
+      let workerMaxWeekly = maxWeeklyHours;
+      if (worker.contract === 'PartTime') workerMaxWeekly = 20.0;
+      else if (worker.contract === 'Night') workerMaxWeekly = 32.0;
+
+      if (weekHours > workerMaxWeekly) {
+        weeklyContractViolations++;
+        const excess = weekHours - workerMaxWeekly;
+        scheduledOvertimeHours += excess;
+        findings.push({
+          code: 'CONTRACT_OVERTIME',
+          severity: 'medium',
+          description: `Weekly contractual overtime breach for ${worker.id}: ${weekHours}h scheduled in Week ${w + 1} (max allowed: ${workerMaxWeekly}h, excess: +${excess}h).`,
+          worker_id: worker.id,
+          day_idx: w * 7,
+        });
+      }
+    }
+  }
+
+  // Workload variance
+  const hoursArr = Array.from(workerTotalHours.values());
+  const meanHours = hoursArr.length > 0 ? hoursArr.reduce((a, b) => a + b, 0) / hoursArr.length : 0;
+  const workloadVariance = hoursArr.length > 0
+    ? Math.round((hoursArr.reduce((sum, h) => sum + Math.pow(h - meanHours, 2), 0) / hoursArr.length) * 10) / 10
+    : 0;
+
+  const hardViolations = restViolations + weeklyContractViolations + skillCoverageDeficits + unfilledPositions + duplicateCount + unknownWorkerErrors;
+  const isFeasible = hardViolations === 0;
+
+  const violatedConstraints: string[] = [];
+  if (restViolations > 0) violatedConstraints.push(`minimum_rest_hours (${restViolations} breaches)`);
+  if (weeklyContractViolations > 0) violatedConstraints.push(`max_weekly_hours (${weeklyContractViolations} breaches)`);
+  if (skillCoverageDeficits > 0) violatedConstraints.push(`required_skill_coverage (${skillCoverageDeficits} breaches)`);
+  if (unfilledPositions > 0) violatedConstraints.push(`unfilled_demand_positions (${unfilledPositions} positions)`);
+  if (duplicateCount > 0) violatedConstraints.push(`duplicate_assignments (${duplicateCount} rows)`);
+  if (unknownWorkerErrors > 0) violatedConstraints.push(`unknown_workers (${unknownWorkerErrors} rows)`);
+
+  const satisfiedConstraints: string[] = [];
+  if (restViolations === 0) satisfiedConstraints.push('minimum_rest_hours');
+  if (weeklyContractViolations === 0) satisfiedConstraints.push('max_weekly_hours');
+  if (skillCoverageDeficits === 0) satisfiedConstraints.push('required_skill_coverage');
+  if (unfilledPositions === 0) satisfiedConstraints.push('full_demand_coverage');
+
+  return {
+    audit_id: auditId,
+    status: 'completed',
+    policy_version: policyVersion,
+    policy_retrospective_note: `Retrospective audit against hospital policy version ${policyVersion}. Evaluates regulatory and contract compliance on historical manual roster.`,
+    feasibility: {
+      is_feasible: isFeasible,
+      hard_violations: hardViolations,
+    },
+    coverage: {
+      required_positions: requiredPositions,
+      filled_positions: filledPositions,
+      unfilled_positions: unfilledPositions,
+      coverage_pct: coveragePct,
+    },
+    rest_violations: restViolations,
+    weekly_contract_violations: weeklyContractViolations,
+    skill_coverage_deficits: skillCoverageDeficits,
+    senior_coverage_deficits: seniorCoverageDeficits,
+    scheduled_overtime_hours: scheduledOvertimeHours,
+    workload_variance: workloadVariance,
+    assignment_integrity: {
+      duplicate_assignments: duplicateCount,
+      unknown_worker_errors: unknownWorkerErrors,
+      unknown_workers: Array.from(unknownWorkersSet),
+      unmatched_excess_assignments: unmatchedExcessCount,
+      unmatched_shift_ids: Array.from(unmatchedShiftIdsSet),
+      total_baseline_rows: baselineAssignments.length,
+      valid_assignments_count: validAssignments.length,
+    },
+    violated_constraints: violatedConstraints,
+    satisfied_constraints: satisfiedConstraints,
+    detailed_findings: findings,
+  };
+}
+
+export async function runBaselineAudit(
+  staff: StaffMember[],
+  shifts: ShiftSlotMeta[],
+  baselineAssignments: BaselineAssignment[],
+  rulePayload: any = {},
+  policyVersion: string = 'hospital_policy_v1',
+): Promise<BaselineAuditReport> {
+  try {
+    const payload = {
+      request: buildSchedulePayload(staff, rulePayload, shifts),
+      baseline_assignments: baselineAssignments,
+      policy_version: policyVersion,
+    };
+
+    const csrfRes = await fetch('/api/csrf-token').catch(() => null);
+    const csrfToken = csrfRes && csrfRes.ok ? (await csrfRes.json()).csrf_token ?? '' : '';
+
+    const res = await fetch('/api/audit/baseline', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Backend unreachable or offline — fall back to client-side audit engine
+  }
+
+  return auditBaselineClientSide(staff, shifts, baselineAssignments, rulePayload, policyVersion);
 }
