@@ -133,11 +133,21 @@ export const ExportRoster: React.FC<{
 
   const effectiveAlternatives = useMemo<RosterAlternative[]>(() => {
     if (alternatives && alternatives.length > 0) return alternatives;
-    // Population variance over scheduled worker hours (8h/shift), matching Rust baseline_audit.rs:
+    // Population variance over scheduled worker hours (accounting for variable duration_hours), matching Rust baseline_audit.rs:
     // Var(hours) = 1/N * sum((hours_i - mean_hours)^2) rounded to 1 decimal place.
     const allHours = staff.map(w => {
-      const shiftCount = (schedule[w.id] || []).filter(sh => sh !== '').length;
-      return shiftCount * 8.0;
+      const row = schedule[w.id] || [];
+      let totalHours = 0;
+      row.forEach((sh, dayIdx) => {
+        if (!sh) return;
+        if (customSlotMeta) {
+          const slot = Object.values(customSlotMeta).find(m => m.dayIdx === dayIdx && m.label === sh);
+          totalHours += slot?.durationHours ?? 8.0;
+        } else {
+          totalHours += 8.0;
+        }
+      });
+      return totalHours;
     });
     const meanHours = allHours.length > 0 ? allHours.reduce((sum, h) => sum + h, 0) / allHours.length : 0.0;
     const dynamicWorkloadVariance = allHours.length > 0
