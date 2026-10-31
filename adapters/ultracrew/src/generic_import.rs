@@ -397,6 +397,7 @@ pub fn export_request_template() -> String {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(11),
             leave_requests: None,
+            ..Default::default()
         }),
         fatigue: FatigueConfig::default(),
     };

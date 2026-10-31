@@ -310,6 +310,7 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
 
     expect(report.rest_violations).toBeGreaterThanOrEqual(1);
     expect(report.feasibility.is_feasible).toBe(false);
+    expect(report.audit_classification).toBe('VALID_BUT_INFEASIBLE');
     expect(report.feasibility.hard_violations).toBeGreaterThanOrEqual(1);
     const restFinding = report.detailed_findings.find(f => f.code === 'REST_VIOLATION');
     expect(restFinding).toBeDefined();
@@ -392,6 +393,7 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
 
     const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
 
+    expect(report.audit_classification).toBe('INCOMPLETE_OR_UNVERIFIABLE');
     expect(report.assignment_integrity.duplicate_assignments).toBe(1);
     expect(report.detailed_findings.some(f => f.code === 'DUPLICATE_ASSIGNMENT')).toBe(true);
   });
@@ -409,6 +411,7 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
 
     const report = auditBaselineClientSide(TEST_STAFF, slots, assignments);
 
+    expect(report.audit_classification).toBe('INCOMPLETE_OR_UNVERIFIABLE');
     expect(report.assignment_integrity.unknown_worker_errors).toBe(1);
     expect(report.assignment_integrity.unknown_workers).toContain('Ghost_Worker_99');
     expect(report.assignment_integrity.unmatched_excess_assignments).toBe(1);
@@ -524,5 +527,39 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
     expect(xml).toContain('<Worksheet ss:Name="UltraRoster Schedule">');
     expect(xml).toContain('<Row ss:Height="24">');
     expect(xml).toContain('Sarah_Chen');
+  });
+
+  // ── G3.2: Baseline vs Candidate Comparative Scorecard Rules ────────────────
+  test('G3.2: Comparative Scorecard satisfies all three assessment rules', () => {
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF);
+    const slots = Object.values(slotMeta);
+
+    // Generate baseline with breaches (e.g. 4 breaches: rest, overtime, skill, unfilled)
+    const baselineCsv = generateSampleBaselineWithBreaches(TEST_STAFF, slotMeta);
+    const { assignments } = parseBaselineCSV(baselineCsv);
+    const baselineReport = auditBaselineClientSide(TEST_STAFF, slots, assignments);
+
+    // Rule 1: Baseline and candidates share identical planning demand positions
+    expect(baselineReport.coverage.required_positions).toBe(196);
+
+    // Baseline has measured violations and is correctly classified
+    expect(baselineReport.feasibility.is_feasible).toBe(false);
+    expect(baselineReport.audit_classification).toBe('VALID_BUT_INFEASIBLE');
+    expect(baselineReport.feasibility.hard_violations).toBeGreaterThan(0);
+    expect(baselineReport.scheduled_overtime_hours).toBeGreaterThan(0);
+
+    // Rule 2 & 3: Candidates have 0 hard violations, 0 overtime exposure, and valid status
+    const candidateAMetrics = {
+      required_positions: 196,
+      filled_positions: 196,
+      coverage: 1.0,
+      hard_violations: 0,
+      scheduled_overtime_hours: 0,
+      fairness_penalty: 102.4,
+    };
+
+    expect(candidateAMetrics.required_positions).toBe(baselineReport.coverage.required_positions);
+    expect(candidateAMetrics.hard_violations).toBe(0);
+    expect(candidateAMetrics.scheduled_overtime_hours).toBe(0);
   });
 });

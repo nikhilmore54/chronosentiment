@@ -534,6 +534,7 @@ mod tests {
                 planning_horizon_hours: Some(168.0),
                 validation_envelope_hours: None,
                 max_hours_per_worker: None,
+                ..Default::default()
             }),
             fatigue: crate::config::FatigueConfig::default(),
         }
@@ -629,6 +630,7 @@ mod tests {
             planning_horizon_hours: Some(672.0),
             validation_envelope_hours: Some(678.0),
             max_hours_per_worker: Some(40.0),
+            ..Default::default()
         });
 
         // 1. Valid shift: starts within planning horizon (670 < 672) and ends within envelope (678 <= 678)
@@ -801,6 +803,7 @@ mod tests {
                 planning_horizon_hours: Some(168.0),
                 validation_envelope_hours: None,
                 max_hours_per_worker: Some(48.0),
+                ..Default::default()
             }),
             fatigue: crate::config::FatigueConfig::default(),
         };

@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import type { StaffMember, ScheduleResult, RosterAlternative, SchedulerDecision, RedistributionLog } from './WorkflowTypes';
+import type {
+  StaffMember,
+  ScheduleResult,
+  RosterAlternative,
+  SchedulerDecision,
+  RedistributionLog,
+  BaselineAuditReport,
+} from './WorkflowTypes';
 import { RULE_PRESETS } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
 import { ImportStaff } from './ImportStaff';
@@ -34,6 +41,7 @@ export const PlannerWorkflow: React.FC = () => {
   const [alternatives, setAlternatives] = useState<RosterAlternative[]>([]);
   const [recommendedId, setRecommendedId] = useState('');
   const [schedulerDecision, setSchedulerDecision] = useState<SchedulerDecision | null>(null);
+  const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
 
   // P4.1: dismissed pattern reasons (persisted in localStorage)
   const [dismissedPatterns, setDismissedPatterns] = useState<string[]>(
@@ -76,6 +84,7 @@ export const PlannerWorkflow: React.FC = () => {
     setAlternatives([]);
     setRecommendedId('');
     setSchedulerDecision(null);
+    setBaselineAuditReport(null);
   };
 
   return (
@@ -96,6 +105,8 @@ export const PlannerWorkflow: React.FC = () => {
             onStaffChange={setStaff}
             customShifts={customShifts}
             onCustomShiftsChange={setCustomShifts}
+            baselineAuditReport={baselineAuditReport}
+            onBaselineAuditReportChange={setBaselineAuditReport}
             onNext={() => goTo(2)}
           />
         )}
@@ -149,6 +160,7 @@ export const PlannerWorkflow: React.FC = () => {
           <SelectDecision
             alternatives={alternatives}
             recommendedId={recommendedId}
+            baselineAuditReport={baselineAuditReport}
             onDecision={(selectedAlt, decision) => {
               // Persist the scheduler's choice
               setSchedulerDecision(decision);

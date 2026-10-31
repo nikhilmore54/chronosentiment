@@ -346,11 +346,21 @@ export interface AuditFinding {
   day_idx?: number;
 }
 
+export interface BaselinePolicyParameters {
+  min_rest_hours: number;
+  max_weekly_hours: number;
+  weekly_contract_mode: string;
+  weekly_anchor_offset_hours: number;
+  senior_skill_name: string;
+}
+
 export interface BaselineAuditReport {
   audit_id: string;
   status: string;
+  audit_classification: 'VALID_AND_FEASIBLE' | 'VALID_BUT_INFEASIBLE' | 'INCOMPLETE_OR_UNVERIFIABLE';
   policy_version: string;
   policy_retrospective_note: string;
+  policy_parameters: BaselinePolicyParameters;
   feasibility: BaselineFeasibility;
   coverage: BaselineCoverage;
   rest_violations: number;

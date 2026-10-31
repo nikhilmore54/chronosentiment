@@ -1720,7 +1720,6 @@ export function auditBaselineClientSide(
     : 0;
 
   const hardViolations = restViolations + weeklyContractViolations + skillCoverageDeficits + unfilledPositions + duplicateCount + unknownWorkerErrors;
-  const isFeasible = hardViolations === 0;
 
   const violatedConstraints: string[] = [];
   if (restViolations > 0) violatedConstraints.push(`minimum_rest_hours (${restViolations} breaches)`);
@@ -1729,6 +1728,19 @@ export function auditBaselineClientSide(
   if (unfilledPositions > 0) violatedConstraints.push(`unfilled_demand_positions (${unfilledPositions} positions)`);
   if (duplicateCount > 0) violatedConstraints.push(`duplicate_assignments (${duplicateCount} rows)`);
   if (unknownWorkerErrors > 0) violatedConstraints.push(`unknown_workers (${unknownWorkerErrors} rows)`);
+
+  const isDataComplete = duplicateCount === 0 && unknownWorkerErrors === 0 && unmatchedExcessCount === 0 && baselineAssignments.length > 0;
+  let auditClassification: 'VALID_AND_FEASIBLE' | 'VALID_BUT_INFEASIBLE' | 'INCOMPLETE_OR_UNVERIFIABLE' = 'INCOMPLETE_OR_UNVERIFIABLE';
+
+  if (!isDataComplete) {
+    auditClassification = 'INCOMPLETE_OR_UNVERIFIABLE';
+  } else if (hardViolations === 0 && unfilledPositions === 0) {
+    auditClassification = 'VALID_AND_FEASIBLE';
+  } else {
+    auditClassification = 'VALID_BUT_INFEASIBLE';
+  }
+
+  const isFeasible = auditClassification === 'VALID_AND_FEASIBLE';
 
   const satisfiedConstraints: string[] = [];
   if (restViolations === 0) satisfiedConstraints.push('minimum_rest_hours');
@@ -1739,8 +1751,16 @@ export function auditBaselineClientSide(
   return {
     audit_id: auditId,
     status: 'completed',
+    audit_classification: auditClassification,
     policy_version: policyVersion,
     policy_retrospective_note: `Retrospective audit against hospital policy version ${policyVersion}. Evaluates regulatory and contract compliance on historical manual roster.`,
+    policy_parameters: {
+      min_rest_hours: minRestHours,
+      max_weekly_hours: maxWeeklyHours,
+      weekly_contract_mode: rulePayload?.weekly_contract_mode ?? 'monday_sunday',
+      weekly_anchor_offset_hours: rulePayload?.weekly_anchor_offset_hours ?? 0,
+      senior_skill_name: 'HeadNurse',
+    },
     feasibility: {
       is_feasible: isFeasible,
       hard_violations: hardViolations,
@@ -1779,6 +1799,8 @@ export async function runBaselineAudit(
   rulePayload: any = {},
   policyVersion: string = 'hospital_policy_v1',
 ): Promise<BaselineAuditReport> {
+  // Single Validation Authority: Authoritative validation is executed by the Rust backend engine.
+  // The UI orchestrates the request and displays the result.
   try {
     const payload = {
       request: buildSchedulePayload(staff, rulePayload, shifts),
@@ -1802,8 +1824,10 @@ export async function runBaselineAudit(
       return await res.json();
     }
   } catch {
-    // Backend unreachable or offline — fall back to client-side audit engine
+    // Backend unreachable — fall back to unverified client preview
   }
 
-  return auditBaselineClientSide(staff, shifts, baselineAssignments, rulePayload, policyVersion);
+  const localReport = auditBaselineClientSide(staff, shifts, baselineAssignments, rulePayload, policyVersion);
+  localReport.policy_retrospective_note = `[UNVERIFIED PREVIEW] Rust audit backend is currently offline. Authoritative feasibility certification requires the backend validator. ${localReport.policy_retrospective_note}`;
+  return localReport;
 }

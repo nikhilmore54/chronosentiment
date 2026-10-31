@@ -239,6 +239,7 @@ mod contract_tests {
                 planning_horizon_hours: None,
                 validation_envelope_hours: None,
                 leave_requests: None,
+                ..Default::default()
             }),
             enable_fatigue: false,
             fatigue_weight: 0.0,

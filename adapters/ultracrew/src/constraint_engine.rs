@@ -101,7 +101,10 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
                 }
             }
 
-            let week_idx = (shift.start_hour / 168) as usize;
+            let anchor_offset = self.context.scenario.as_ref()
+                .and_then(|s| s.weekly_anchor_offset_hours)
+                .unwrap_or(0.0);
+            let week_idx = (((shift.start_hour as f64 + anchor_offset) / 168.0).floor() as i64).max(0) as usize;
             *worker_hours.entry(*worker_id).or_insert(0) += shift.duration_hours;
             *worker_weekly_hours.entry((*worker_id, week_idx)).or_insert(0) += shift.duration_hours;
             worker_shifts.entry(*worker_id).or_default().push(shift);
@@ -118,11 +121,14 @@ impl DomainConstraintEvaluator for InrcConstraintEvaluator {
             .map(|h| h as u64)
             .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
 
+        let anchor_offset = self.context.scenario.as_ref()
+            .and_then(|s| s.weekly_anchor_offset_hours)
+            .unwrap_or(0.0);
         let max_week = self
             .context
             .shifts
             .iter()
-            .map(|s| (s.start_hour / 168) as usize)
+            .map(|s| (((s.start_hour as f64 + anchor_offset) / 168.0).floor() as i64).max(0) as usize)
             .max()
             .unwrap_or(0);
 

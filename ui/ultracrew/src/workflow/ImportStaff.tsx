@@ -52,8 +52,18 @@ export const ImportStaff: React.FC<{
   onStaffChange: (s: StaffMember[]) => void;
   customShifts?: CustomShiftInput[];
   onCustomShiftsChange?: (shifts: CustomShiftInput[]) => void;
+  baselineAuditReport?: BaselineAuditReport | null;
+  onBaselineAuditReportChange?: (report: BaselineAuditReport | null) => void;
   onNext: () => void;
-}> = ({ staff, onStaffChange, customShifts, onCustomShiftsChange, onNext }) => {
+}> = ({
+  staff,
+  onStaffChange,
+  customShifts,
+  onCustomShiftsChange,
+  baselineAuditReport: externalAuditReport,
+  onBaselineAuditReportChange,
+  onNext,
+}) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const shiftFileRef = useRef<HTMLInputElement>(null);
   const baselineFileRef = useRef<HTMLInputElement>(null);
@@ -61,7 +71,14 @@ export const ImportStaff: React.FC<{
   const [shiftErrors, setShiftErrors] = useState<string[]>([]);
   const [baselineErrors, setBaselineErrors] = useState<string[]>([]);
   const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
-  const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
+  const [internalAuditReport, setInternalAuditReport] = useState<BaselineAuditReport | null>(null);
+  const baselineAuditReport = externalAuditReport !== undefined ? externalAuditReport : internalAuditReport;
+
+  const setAuditReport = (report: BaselineAuditReport | null) => {
+    setInternalAuditReport(report);
+    onBaselineAuditReportChange?.(report);
+  };
+
   const [isAuditing, setIsAuditing] = useState(false);
   const [showFindings, setShowFindings] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -84,7 +101,7 @@ export const ImportStaff: React.FC<{
     const { assignments: parsed, errors: errs } = parseBaselineCSV(text);
     setBaselineErrors(errs);
     setBaselineAssignments(parsed);
-    setBaselineAuditReport(null);
+    setAuditReport(null);
   };
 
   const handleRunAudit = async () => {
@@ -94,7 +111,7 @@ export const ImportStaff: React.FC<{
       const slotMeta = getScheduleSlotMeta(staff, customShifts);
       const shifts = Object.values(slotMeta);
       const report = await runBaselineAudit(staff, shifts, baselineAssignments);
-      setBaselineAuditReport(report);
+      setAuditReport(report);
       setShowFindings(true);
     } catch (err) {
       setBaselineErrors([err instanceof Error ? err.message : 'Audit failed']);
@@ -351,7 +368,7 @@ export const ImportStaff: React.FC<{
               <button onClick={() => {
                 setBaselineAssignments([]);
                 setBaselineErrors([]);
-                setBaselineAuditReport(null);
+                setAuditReport(null);
               }} style={{ ...ghostBtnStyle, color: '#f59e0b' }}>
                 Clear Baseline
               </button>
@@ -389,19 +406,33 @@ export const ImportStaff: React.FC<{
               <span style={{
                 fontSize: '0.85rem',
                 fontWeight: 700,
-                color: baselineAuditReport.feasibility.is_feasible ? '#22c55e' : '#ef4444',
-                backgroundColor: baselineAuditReport.feasibility.is_feasible ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                color: baselineAuditReport.audit_classification === 'VALID_AND_FEASIBLE'
+                  ? '#22c55e'
+                  : baselineAuditReport.audit_classification === 'VALID_BUT_INFEASIBLE'
+                  ? '#f59e0b'
+                  : '#ef4444',
+                backgroundColor: baselineAuditReport.audit_classification === 'VALID_AND_FEASIBLE'
+                  ? 'rgba(34, 197, 94, 0.15)'
+                  : baselineAuditReport.audit_classification === 'VALID_BUT_INFEASIBLE'
+                  ? 'rgba(245, 158, 11, 0.15)'
+                  : 'rgba(239, 68, 68, 0.15)',
                 padding: '0.3rem 0.8rem',
                 borderRadius: '6px',
               }}>
-                {baselineAuditReport.feasibility.is_feasible
-                  ? '✓ FEASIBLE — Zero Regulatory Violations'
-                  : `✕ INFEASIBLE — ${baselineAuditReport.feasibility.hard_violations} Hard Violations`}
+                {baselineAuditReport.audit_classification === 'VALID_AND_FEASIBLE'
+                  ? '✓ VALID & FEASIBLE — Zero Regulatory Violations'
+                  : baselineAuditReport.audit_classification === 'VALID_BUT_INFEASIBLE'
+                  ? `⚠ VALID DATA BUT INFEASIBLE — ${baselineAuditReport.feasibility.hard_violations} Hard Violations`
+                  : `✕ INCOMPLETE OR UNVERIFIABLE — Data Integrity Deficit`}
               </span>
             </div>
 
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
               {baselineAuditReport.policy_retrospective_note}
+            </div>
+
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Policy Rules: min rest <strong>{baselineAuditReport.policy_parameters?.min_rest_hours ?? 10}h</strong> · max weekly <strong>{baselineAuditReport.policy_parameters?.max_weekly_hours ?? 40}h</strong> · contract week <strong>{baselineAuditReport.policy_parameters?.weekly_contract_mode ?? 'monday_sunday'}</strong> · senior role <strong>{baselineAuditReport.policy_parameters?.senior_skill_name ?? 'HeadNurse'}</strong>
             </div>
 
             {/* Scorecard Grid */}

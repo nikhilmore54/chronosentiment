@@ -171,6 +171,7 @@ fn check_validator() -> bool {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(10),
             leave_requests: None,
+            ..Default::default()
         }),
     };
     validate_request(&req).is_valid()

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LeaveRequest {
     pub crew_id: u64,
     pub start_hour: u64,
@@ -15,7 +15,7 @@ pub struct LeaveRequest {
 
 /// Domain-independent optimization context supplied by the INRC adapter.
 /// Sits between Coralys (Optimization Engine) and the Solution Engine.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InrcScenario {
     /// Total planning horizon in hours (e.g. 744.0 for a 31-day month, 672.0 for 28 days).
@@ -35,6 +35,12 @@ pub struct InrcScenario {
     pub minimum_rest_hours: Option<u64>,
     /// Active leave requests that must be respected as hard constraints.
     pub leave_requests: Option<Vec<LeaveRequest>>,
+    /// Calendar anchor offset in hours from Day 0 to align weekly 168h contract buckets to the hospital calendar/payroll week.
+    #[serde(default)]
+    pub weekly_anchor_offset_hours: Option<f64>,
+    /// Contract week definition: "monday_sunday" (default calendar week), "sunday_saturday", or "rolling_168h".
+    #[serde(default)]
+    pub weekly_contract_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,7 +104,7 @@ impl ScheduleRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RescheduleRequest {
     pub request: ScheduleRequest,
     pub existing_assignments: HashMap<u64, u64>,
@@ -150,7 +156,7 @@ impl RescheduleRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ValidateRequest {
     pub request: ScheduleRequest,
     pub assignments: HashMap<u64, u64>,
@@ -159,7 +165,7 @@ pub struct ValidateRequest {
 /// A single solution on the Pareto frontier produced by the INRC startup pipeline.
 /// Returned by `pipeline::run_inrc_startup_pipeline` so the application layer
 /// does not need to import `coralys_moga` types directly.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InrcParetoSolution {
     pub s6_assignment_penalty: f64,
     pub s7_weekend_penalty: f64,
@@ -177,7 +183,7 @@ pub struct InrcStartupResult {
     pub pareto_solutions: Vec<InrcParetoSolution>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DisruptionRecoveryRequest {
     pub base_request: ScheduleRequest,
     pub existing_assignments: HashMap<u64, u64>,
@@ -187,7 +193,7 @@ pub struct DisruptionRecoveryRequest {
     pub target_shift_id: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecoveryScenario {
     pub title: String,
     pub description: String,
@@ -198,7 +204,7 @@ pub struct RecoveryScenario {
     pub assignments: HashMap<u64, u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DisruptionRecoveryResult {
     pub original_penalty: f64,
     pub recovery_options: Vec<RecoveryScenario>,

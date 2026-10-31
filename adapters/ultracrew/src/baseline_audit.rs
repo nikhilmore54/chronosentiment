@@ -60,13 +60,24 @@ pub struct AuditFinding {
     pub day_idx: Option<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BaselinePolicyParameters {
+    pub min_rest_hours: u64,
+    pub max_weekly_hours: f64,
+    pub weekly_contract_mode: String,
+    pub weekly_anchor_offset_hours: f64,
+    pub senior_skill_name: String,
+}
+
 /// Comprehensive, independent audit report for a hospital's historical baseline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BaselineAuditReport {
     pub audit_id: String,
     pub status: String,
+    pub audit_classification: String, // VALID_AND_FEASIBLE | VALID_BUT_INFEASIBLE | INCOMPLETE_OR_UNVERIFIABLE
     pub policy_version: String,
     pub policy_retrospective_note: String,
+    pub policy_parameters: BaselinePolicyParameters,
     pub feasibility: BaselineFeasibility,
     pub coverage: BaselineCoverage,
     pub rest_violations: usize,
@@ -293,17 +304,29 @@ pub fn audit_hospital_baseline(req: &BaselineAuditRequest) -> Result<BaselineAud
     }
 
     // Scheduled Overtime Calculation
-    // Sum of hours scheduled above weekly contract cap per 168-hour contractual week
-    let hc3_limit = req.request.scenario.as_ref()
+    // Sum of hours scheduled above weekly contract cap per hospital contractual week
+    let hc3_limit_f64 = req.request.scenario.as_ref()
         .and_then(|s| s.max_hours_per_worker)
-        .unwrap_or(40.0) as u64;
+        .unwrap_or(40.0);
+    let hc3_limit = hc3_limit_f64 as u64;
+
+    let anchor_offset = req.request.scenario.as_ref()
+        .and_then(|s| s.weekly_anchor_offset_hours)
+        .unwrap_or(0.0);
+    let weekly_contract_mode = req.request.scenario.as_ref()
+        .and_then(|s| s.weekly_contract_mode.clone())
+        .unwrap_or_else(|| "monday_sunday".to_string());
+    let min_rest = req.request.scenario.as_ref()
+        .and_then(|s| s.minimum_rest_hours)
+        .unwrap_or(10);
+    let senior_skill_name = "HeadNurse".to_string();
 
     let mut worker_weekly_hours: HashMap<(u64, usize), u64> = HashMap::new();
     let mut total_worker_hours: HashMap<u64, u64> = HashMap::new();
 
     for (&shift_id, &worker_id) in &assigned_shifts {
         if let Some(shift) = shift_map.get(&shift_id) {
-            let week_idx = (shift.start_hour / 168) as usize;
+            let week_idx = (((shift.start_hour as f64 + anchor_offset) / 168.0).floor() as i64).max(0) as usize;
             *worker_weekly_hours.entry((worker_id, week_idx)).or_insert(0) += shift.duration_hours;
             *total_worker_hours.entry(worker_id).or_insert(0) += shift.duration_hours;
         }
@@ -336,7 +359,6 @@ pub fn audit_hospital_baseline(req: &BaselineAuditRequest) -> Result<BaselineAud
     };
 
     // Rest violations details
-    let min_rest = req.request.scenario.as_ref().and_then(|s| s.minimum_rest_hours).unwrap_or(10);
     for w in &req.request.workers {
         let mut shifts: Vec<&Shift> = assigned_shifts.iter()
             .filter(|(_, &w_id)| w_id == w.id)
@@ -394,16 +416,38 @@ pub fn audit_hospital_baseline(req: &BaselineAuditRequest) -> Result<BaselineAud
     if unknown_worker_errors > 0 { violated_constraints.push("VALID_WORKFORCE_IDENTIFIERS".to_string()); } else { satisfied_constraints.push("VALID_WORKFORCE_IDENTIFIERS".to_string()); }
 
     let assignment_integrity_errors = duplicate_assignments + unknown_worker_errors;
+    let has_integrity_defects = duplicate_assignments > 0 || unknown_worker_errors > 0 || unmatched_excess_assignments > 0 || total_baseline_rows == 0;
     let total_hard_violations = report.hard_violations + unfilled_positions + assignment_integrity_errors;
-    let is_feasible = total_hard_violations == 0;
+
+    // Three-State Classification:
+    // 1. INCOMPLETE_OR_UNVERIFIABLE: Integrity problems exist (unknown worker IDs, duplicate rows, unmatched shifts). Roster cannot be certified.
+    // 2. VALID_AND_FEASIBLE: Clean integrity AND zero hard violations AND full coverage.
+    // 3. VALID_BUT_INFEASIBLE: Clean data integrity, but violates regulatory/contract constraints or leaves slots unfilled.
+    let audit_classification = if has_integrity_defects {
+        "INCOMPLETE_OR_UNVERIFIABLE".to_string()
+    } else if total_hard_violations == 0 && unfilled_positions == 0 {
+        "VALID_AND_FEASIBLE".to_string()
+    } else {
+        "VALID_BUT_INFEASIBLE".to_string()
+    };
+
+    let is_feasible = audit_classification == "VALID_AND_FEASIBLE";
 
     let audit_id = format!("baseline-audit-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0));
 
     Ok(BaselineAuditReport {
         audit_id,
         status: "completed".to_string(),
+        audit_classification,
         policy_version,
         policy_retrospective_note,
+        policy_parameters: BaselinePolicyParameters {
+            min_rest_hours: min_rest,
+            max_weekly_hours: hc3_limit_f64,
+            weekly_contract_mode,
+            weekly_anchor_offset_hours: anchor_offset,
+            senior_skill_name,
+        },
         feasibility: BaselineFeasibility {
             is_feasible,
             hard_violations: total_hard_violations,
@@ -458,6 +502,7 @@ mod tests {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(10),
             leave_requests: None,
+            ..Default::default()
         };
         let request = ScheduleRequest {
             workers,
@@ -480,11 +525,14 @@ mod tests {
         };
         let report = audit_hospital_baseline(&audit_req).expect("Audit should succeed");
         assert!(report.feasibility.is_feasible);
+        assert_eq!(report.audit_classification, "VALID_AND_FEASIBLE");
         assert_eq!(report.feasibility.hard_violations, 0);
         assert_eq!(report.coverage.filled_positions, 3);
         assert_eq!(report.coverage.unfilled_positions, 0);
         assert_eq!(report.assignment_integrity.duplicate_assignments, 0);
         assert_eq!(report.assignment_integrity.unknown_worker_errors, 0);
+        assert_eq!(report.policy_parameters.min_rest_hours, 10);
+        assert_eq!(report.policy_parameters.max_weekly_hours, 40.0);
     }
 
     #[test]
@@ -502,7 +550,9 @@ mod tests {
         };
         let report = audit_hospital_baseline(&audit_req).expect("Audit should succeed");
         assert!(!report.feasibility.is_feasible);
-        assert!(report.rest_violations > 0 || report.detailed_findings.iter().any(|f| f.code.contains("REST")));
+        assert_eq!(report.audit_classification, "VALID_BUT_INFEASIBLE");
+        assert!(report.rest_violations > 0);
+        assert!(report.detailed_findings.iter().any(|f| f.code == "REST-DEFICIT"));
     }
 
     #[test]
@@ -553,6 +603,7 @@ mod tests {
         };
         let report = audit_hospital_baseline(&audit_req).expect("Audit should succeed");
         assert!(!report.feasibility.is_feasible);
+        assert_eq!(report.audit_classification, "INCOMPLETE_OR_UNVERIFIABLE");
         assert!(report.assignment_integrity.duplicate_assignments > 0);
     }
 
@@ -569,10 +620,31 @@ mod tests {
         };
         let report = audit_hospital_baseline(&audit_req).expect("Audit should succeed");
         assert!(!report.feasibility.is_feasible);
+        assert_eq!(report.audit_classification, "INCOMPLETE_OR_UNVERIFIABLE");
         assert_eq!(report.assignment_integrity.unknown_worker_errors, 1);
         assert!(report.assignment_integrity.unknown_workers.contains(&"999".to_string()));
         assert_eq!(report.assignment_integrity.unmatched_excess_assignments, 1);
         assert!(report.assignment_integrity.unmatched_shift_ids.contains(&888));
+    }
+
+    #[test]
+    fn test_calendar_week_anchor_offset_and_classification() {
+        let (mut request, _) = build_test_setup();
+        if let Some(ref mut s) = request.scenario {
+            s.weekly_anchor_offset_hours = Some(24.0); // Shift Day 0 starts on Day 1 (Tuesday) of Monday-indexed week
+            s.weekly_contract_mode = Some("monday_sunday".to_string());
+        }
+        let baseline_csv = "worker_id,shift_id\n1,101\n2,102\n3,103\n".to_string();
+        let audit_req = BaselineAuditRequest {
+            request,
+            baseline_csv: Some(baseline_csv),
+            baseline_assignments: None,
+            policy_version: Some("hospital_policy_v2_pilot".to_string()),
+        };
+        let report = audit_hospital_baseline(&audit_req).expect("Audit should succeed");
+        assert_eq!(report.audit_classification, "VALID_AND_FEASIBLE");
+        assert_eq!(report.policy_parameters.weekly_contract_mode, "monday_sunday");
+        assert_eq!(report.policy_parameters.weekly_anchor_offset_hours, 24.0);
     }
 
     #[test]
