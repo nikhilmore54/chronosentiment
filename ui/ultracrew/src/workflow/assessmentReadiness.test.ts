@@ -24,8 +24,9 @@ import {
   exportRosterToCSV,
   computeNextCycleBoundary,
   buildSyntheticSchedule,
+  mapParetoAlternatives,
 } from './WorkflowUtils';
-import type { StaffMember, BaselineAssignment } from './WorkflowTypes';
+import type { StaffMember, BaselineAssignment, ProductionParetoSolution } from './WorkflowTypes';
 
 const TEST_STAFF: StaffMember[] = [
   { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
@@ -561,5 +562,83 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
     expect(candidateAMetrics.required_positions).toBe(baselineReport.coverage.required_positions);
     expect(candidateAMetrics.hard_violations).toBe(0);
     expect(candidateAMetrics.scheduled_overtime_hours).toBe(0);
+  });
+
+  test('G3.2-DynamicDemand: Scorecard derives demand dynamically from canonical planning request (not fixed 196)', () => {
+    // 3-day custom demand CSV with 15 total positions (5 positions per day)
+    const customDemandCSV = `id,start_hour,duration_hours,required_skill
+1,6,8,HeadNurse
+2,6,8,Nurse
+3,6,8,Nurse
+4,14,8,Nurse
+5,22,8,Nurse
+6,30,8,HeadNurse
+7,30,8,Nurse
+8,30,8,Nurse
+9,38,8,Nurse
+10,46,8,Nurse
+11,54,8,HeadNurse
+12,54,8,Nurse
+13,54,8,Nurse
+14,62,8,Nurse
+15,70,8,Nurse`;
+
+    const { shifts, errors } = parseShiftsCSV(customDemandCSV);
+    expect(errors.length).toBe(0);
+    expect(shifts.length).toBe(15);
+
+    const slotMeta = getScheduleSlotMeta(TEST_STAFF, shifts);
+    expect(Object.keys(slotMeta).length).toBe(15);
+
+    // Provide arbitrary baseline assignments covering 12 of the 15 positions
+    const baselineAssignments: BaselineAssignment[] = [
+      { worker_id: 'Sarah_Chen', shift_id: 1 },
+      { worker_id: 'Marcus_Webb', shift_id: 2 },
+      { worker_id: 'Priya_Nair', shift_id: 3 },
+      { worker_id: 'James_Okafor', shift_id: 4 },
+      { worker_id: 'Elena_Vasquez', shift_id: 5 },
+      { worker_id: 'Sarah_Chen', shift_id: 6 },
+      { worker_id: 'Marcus_Webb', shift_id: 7 },
+      { worker_id: 'Priya_Nair', shift_id: 8 },
+      { worker_id: 'James_Okafor', shift_id: 9 },
+      { worker_id: 'Elena_Vasquez', shift_id: 10 },
+      { worker_id: 'Sarah_Chen', shift_id: 11 },
+      { worker_id: 'Marcus_Webb', shift_id: 12 },
+    ];
+
+    const baselineReport = auditBaselineClientSide(TEST_STAFF, shifts, baselineAssignments);
+
+    // Dynamically evaluated against 15 required positions, not fixed 196
+    expect(baselineReport.coverage.required_positions).toBe(15);
+    expect(baselineReport.coverage.filled_positions).toBe(12);
+    expect(baselineReport.coverage.unfilled_positions).toBe(3);
+    expect(baselineReport.coverage.coverage_pct).toBe(80.0);
+
+    // Verify candidate alternatives mapped with this customSlotMeta also dynamically derive 15 required positions
+    const rawCandidates: ProductionParetoSolution[] = [
+      {
+        id: 'sol-1',
+        schedule: {
+          '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+          '6': 1, '7': 2, '8': 3, '9': 4, '10': 5,
+          '11': 1, '12': 2, '13': 3, '14': 4, '15': 5,
+        },
+        objectives: [0, 0, 0.5, 0, 0, 0],
+        metrics: {},
+        feasibility: {
+          is_feasible: true,
+          hard_violations: 0,
+          rest_violations: 0,
+          hc1_violations: 0,
+          hc3_violations: 0,
+        },
+      },
+    ];
+
+    const mapped = mapParetoAlternatives(rawCandidates, TEST_STAFF, undefined, slotMeta);
+    expect(mapped.length).toBe(1);
+    expect(mapped[0].metrics.required_positions).toBe(15);
+    expect(mapped[0].metrics.filled_positions).toBe(15);
+    expect(mapped[0].metrics.coverage).toBe(1.0);
   });
 });

@@ -290,7 +290,7 @@ export const ComparativeScorecard: React.FC<{
       baseline: `${baseline.coverage.required_positions}`,
       candA: `${candidateA?.metrics.required_positions ?? baseline.coverage.required_positions}`,
       candB: candidateB ? `${candidateB.metrics.required_positions}` : '—',
-      note: 'Canonical demand fixture',
+      note: 'Canonical planning demand',
     },
     {
       label: 'Filled positions',

@@ -342,6 +342,7 @@ export function buildEditableSchedule(
   const shiftIds = Object.keys(apiSchedule).map(Number);
   // Detect if apiSchedule only contains 1-week IDs (e.g. legacy test fixture IDs 1..5)
   const isLegacySingleWeek =
+    !customSlotMeta &&
     shiftIds.length > 0 &&
     Math.max(...shiftIds) <= 5 * Math.max(1, staff.length) &&
     !shiftIds.some(id => (slotMeta[id]?.dayIdx ?? 0) >= 7);
@@ -616,12 +617,14 @@ export function buildLockedShiftIds(
   staff: StaffMember[],
   apiSchedule: Record<string, number>, // shift_id (string) → worker_id (number, 1-indexed)
   lockedCells: Set<string>, // keys: `${staffId}:${dayIdx}`
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
 ): number[] {
   if (lockedCells.size === 0) return [];
 
-  const slotMeta = getScheduleSlotMeta(staff);
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
   const shiftIds = Object.keys(apiSchedule).map(Number);
   const isLegacySingleWeek =
+    !customSlotMeta &&
     shiftIds.length > 0 &&
     Math.max(...shiftIds) <= 5 * Math.max(1, staff.length) &&
     !shiftIds.some(id => (slotMeta[id]?.dayIdx ?? 0) >= 7);
@@ -849,11 +852,16 @@ export async function redistributeWithLocks(
   apiSchedule: Record<string, number>, // raw shift_id → worker_id from ScheduleResult.schedule
   rulePayload: object,
   csrfToken: string,
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
 ): Promise<RedistributionResult> {
   // P3.3-CR: Use the existing Coralys-backed /api/reschedule path.
   // Locked assignments are passed as fixed variables; Coralys optimizes only unlocked slots.
-  const lockedShiftIds = buildLockedShiftIds(staff, apiSchedule, lockedCells);
-  const basePayload = buildSchedulePayload(staff, rulePayload);
+  const lockedShiftIds = buildLockedShiftIds(staff, apiSchedule, lockedCells, customSlotMeta);
+  const basePayload = buildSchedulePayload(
+    staff,
+    rulePayload,
+    customSlotMeta ? Object.values(customSlotMeta) : undefined,
+  );
 
   const reschedulePayload = {
     request: basePayload,
@@ -1292,9 +1300,15 @@ export function mapParetoAlternatives(
 export function buildSyntheticAlternatives(
   staff: StaffMember[],
   baseSchedule: Record<string, string[]>,
+  slotMeta?: Record<number, ShiftSlotMeta>,
 ): { alternatives: RosterAlternative[]; recommendedId: string } {
-  const requirements = buildStaffingRequirements();
-  const totalSlots = staff.length * 28;
+  const requirements = buildStaffingRequirements(slotMeta);
+  let horizonDays = 28;
+  if (slotMeta) {
+    const days = Object.values(slotMeta).map(m => m.dayIdx);
+    if (days.length > 0) horizonDays = Math.max(...days) + 1;
+  }
+  const totalSlots = staff.length * horizonDays;
 
   const coverageReportA = computeCanonicalCoverage(requirements, baseSchedule);
   const totalAssignmentsA = Object.values(baseSchedule).flat().filter(s => s !== '').length;
