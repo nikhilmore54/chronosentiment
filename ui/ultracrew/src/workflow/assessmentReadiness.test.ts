@@ -29,8 +29,20 @@ import {
   mapParetoAlternatives,
   generateShiftLevelDeltaRecords,
   exportShiftLevelDeltaCSV,
+  validateHospitalWardConfiguration,
+  calculateClinicalDemand,
+  computePolicySnapshotHash,
+  createApprovedDemandSnapshot,
 } from './WorkflowUtils';
-import type { StaffMember, BaselineAssignment, ProductionParetoSolution } from './WorkflowTypes';
+import type {
+  StaffMember,
+  BaselineAssignment,
+  ProductionParetoSolution,
+  HospitalWardConfiguration,
+  ApprovedDemandSnapshot,
+  ShiftCensusOverride,
+  ShiftModifierCensusInput,
+} from './WorkflowTypes';
 import { SAMPLE_CSV } from './WorkflowTypes';
 
 const TEST_STAFF: StaffMember[] = [
@@ -821,3 +833,507 @@ describe('Gate 3 (G3.1) Acceptance Tests (AT-21 to AT-32 & Controls A-D)', () =>
     expect(Object.keys(blankSlotMeta).length).toBe(196); // Standard hospital demand active waiting for custom shifts or staff
   });
 });
+
+// ── AT-34: Coralys Staffing Requirement Recommendation (Level A Clinical Demand) ─
+describe('Coralys Staffing Requirement Recommendation — Level A Clinical Demand (AT-34)', () => {
+  const DEMAND_TEST_CONFIG: HospitalWardConfiguration = {
+    configVersion: '2026.1-demo',
+    wardId: 'ward-acute-med-01',
+    wardName: 'Acute Medical Care Unit',
+    serviceType: 'inpatient_24_7',
+    bedCategories: [
+      {
+        id: 'general_acute',
+        name: 'General Acute Beds',
+        totalBeds: 24,
+        activeStaffedBeds: 20,
+        defaultOccupancyPct: 90.0, // 20 * 0.9 = 18 patients
+      },
+      {
+        id: 'step_down_hdu',
+        name: 'Step-Down HDU Beds',
+        totalBeds: 6,
+        activeStaffedBeds: 6,
+        defaultOccupancyPct: 100.0, // 6 * 1.0 = 6 patients
+      },
+    ],
+    ratios: [
+      { bedCategoryId: 'general_acute', shiftType: 'Early', patientsPerNurse: 6 },
+      { bedCategoryId: 'general_acute', shiftType: 'Late', patientsPerNurse: 6 },
+      { bedCategoryId: 'general_acute', shiftType: 'Night', patientsPerNurse: 9 },
+      { bedCategoryId: 'step_down_hdu', shiftType: 'Early', patientsPerNurse: 2 },
+      { bedCategoryId: 'step_down_hdu', shiftType: 'Late', patientsPerNurse: 2 },
+      { bedCategoryId: 'step_down_hdu', shiftType: 'Night', patientsPerNurse: 3 },
+    ],
+    clinicalModifiers: [
+      {
+        id: 'infectious_isolation',
+        name: 'Airborne / Contact Isolation',
+        additionalNursesPerPatient: 0.25,
+        requiredCompetencySkills: ['InfectionControl'],
+        minimumCompetentStaffPerShift: 1,
+      },
+      {
+        id: 'cardiac_telemetry',
+        name: 'Continuous Telemetry Monitoring',
+        additionalNursesPerPatient: 0.15,
+        requiredCompetencySkills: ['Telemetry_Certified'],
+        minimumCompetentStaffPerShift: 1,
+      },
+    ],
+    shiftSafetyPolicies: {
+      Early: {
+        shiftType: 'Early',
+        startHourOfDay: 7,
+        durationHours: 8,
+        safetyFloor: 3,
+        chargeNurseFloor: 1,
+        seniorStaffRatioPct: 25.0,
+        seniorSkillName: 'HeadNurse',
+        generalSkillName: 'Nurse',
+      },
+      Late: {
+        shiftType: 'Late',
+        startHourOfDay: 15,
+        durationHours: 8,
+        safetyFloor: 3,
+        chargeNurseFloor: 1,
+        seniorStaffRatioPct: 25.0,
+        seniorSkillName: 'HeadNurse',
+        generalSkillName: 'Nurse',
+      },
+      Night: {
+        shiftType: 'Night',
+        startHourOfDay: 23,
+        durationHours: 8,
+        safetyFloor: 2,
+        chargeNurseFloor: 1,
+        seniorStaffRatioPct: 25.0,
+        seniorSkillName: 'HeadNurse',
+        generalSkillName: 'Nurse',
+      },
+    },
+    governance: {
+      lastModifiedAtIso: '2026-10-31T12:00:00Z',
+      modifiedBy: 'Director of Nursing Dr. Aris Thorne',
+      facilityStandardReference: 'Hospital Staffing Policy Policy-Doc-704-B',
+    },
+  };
+
+  // ── AT-34.1: Bed-Category Specific Ratios ────────────────────────────────────
+  test('AT-34.1: Calculates base requirements per primary bed category without aggregate dilution', () => {
+    // 20 active acute beds @ 90% = 18 patients -> 18 / 6 = 3 nurses
+    // 6 active HDU beds @ 100% = 6 patients -> 6 / 2 = 3 nurses
+    // Total base = 3 + 3 = 6 nurses (safety floor = 3)
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 1 });
+    expect(demand.derivationLogs.length).toBe(3); // Early, Late, Night
+
+    const earlyLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLog).toBeDefined();
+    expect(earlyLog.categoryBreakdown.length).toBe(2);
+
+    const acuteBreakdown = earlyLog.categoryBreakdown.find(c => c.categoryId === 'general_acute')!;
+    expect(acuteBreakdown.patientCensus).toBe(18);
+    expect(acuteBreakdown.ratio).toBe(6);
+    expect(acuteBreakdown.requiredNurses).toBe(3);
+
+    const hduBreakdown = earlyLog.categoryBreakdown.find(c => c.categoryId === 'step_down_hdu')!;
+    expect(hduBreakdown.patientCensus).toBe(6);
+    expect(hduBreakdown.ratio).toBe(2);
+    expect(hduBreakdown.requiredNurses).toBe(3);
+
+    expect(earlyLog.baseNursesCalculated).toBe(6);
+    expect(earlyLog.baseNursesFinal).toBe(6);
+    expect(earlyLog.totalNursesRequired).toBe(6);
+
+    // Protected senior split: senior = max(1, ceil(6 * 0.25)) = 2, general = 4
+    expect(earlyLog.seniorNursesRequired).toBe(2);
+    expect(earlyLog.generalNursesRequired).toBe(4);
+  });
+
+  // ── AT-34.2: Shift-Specific Ratio Variation ─────────────────────────────────
+  test('AT-34.2: Applies shift-specific ratios for identical bed category inventory', () => {
+    // Acute: 18 patients / 9 (Night) = 2 nurses
+    // HDU: 6 patients / 3 (Night) = 2 nurses
+    // Total base = 2 + 2 = 4 nurses
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 1 });
+    const nightLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Night')!;
+
+    expect(nightLog).toBeDefined();
+    expect(nightLog.baseNursesCalculated).toBe(4);
+    expect(nightLog.totalNursesRequired).toBe(4);
+    // Senior: max(1, ceil(4 * 0.25)) = 1, General: 4 - 1 = 3
+    expect(nightLog.seniorNursesRequired).toBe(1);
+    expect(nightLog.generalNursesRequired).toBe(3);
+
+    // Verify early vs night variance for same beds
+    const earlyLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLog.totalNursesRequired).toBe(6);
+    expect(nightLog.totalNursesRequired).toBe(4);
+  });
+
+  // ── AT-34.3: Occupancy & Direct Census Override Precedence ──────────────────
+  test('AT-34.3: Direct patient census overrides take precedence over default occupancy', () => {
+    // Override Day 1 Early: general_acute = 24 (100% capacity), step_down_hdu = 4 (66.7%)
+    const overrides: ShiftCensusOverride[] = [
+      {
+        dayIdx: 1,
+        shiftType: 'Early',
+        categoryCensus: {
+          general_acute: 24, // 24 / 6 = 4 nurses
+          step_down_hdu: 4,   // 4 / 2 = 2 nurses
+        },
+      },
+    ];
+
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 2,
+      censusOverrides: overrides,
+    });
+
+    const day0Early = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    const day1Early = demand.derivationLogs.find(l => l.dayIdx === 1 && l.shiftType === 'Early')!;
+
+    // Day 0 uses default 90% (18 patients) + 100% (6 patients) -> 3 + 3 = 6 nurses
+    expect(day0Early.categoryBreakdown.find(c => c.categoryId === 'general_acute')!.patientCensus).toBe(18);
+    expect(day0Early.totalNursesRequired).toBe(6);
+
+    // Day 1 uses override 24 patients + 4 patients -> 4 + 2 = 6 nurses
+    const acute1 = day1Early.categoryBreakdown.find(c => c.categoryId === 'general_acute')!;
+    const hdu1 = day1Early.categoryBreakdown.find(c => c.categoryId === 'step_down_hdu')!;
+    expect(acute1.patientCensus).toBe(24);
+    expect(acute1.requiredNurses).toBe(4);
+    expect(hdu1.patientCensus).toBe(4);
+    expect(hdu1.requiredNurses).toBe(2);
+    expect(day1Early.totalNursesRequired).toBe(6);
+
+    // Test invalid config rejection
+    const invalidConfig = {
+      ...DEMAND_TEST_CONFIG,
+      bedCategories: [
+        {
+          id: 'invalid_cat',
+          name: 'Invalid Beds',
+          totalBeds: 10,
+          activeStaffedBeds: 12, // Active > Total!
+          defaultOccupancyPct: 90,
+        },
+      ],
+    };
+    const errors = validateHospitalWardConfiguration(invalidConfig);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some(e => e.includes('cannot exceed totalBeds'))).toBe(true);
+  });
+
+  // ── AT-34.4: Additive Clinical Modifiers Combined Rounding Rule ──────────────
+  test('AT-34.4: Clinical modifiers combine nurse equivalents before ceil rounding to avoid inflation', () => {
+    // Modifier 1: infectious_isolation (addtl = 0.25) -> 2 patients = 0.50 equiv
+    // Modifier 2: cardiac_telemetry (addtl = 0.15) -> 2 patients = 0.30 equiv
+    // Sum = 0.80 equiv -> ceil(0.80) = 1 nurse
+    // (If rounded independently: ceil(0.50)=1 + ceil(0.30)=1 = 2 nurses, inflating by 1)
+    const modifierInputs: ShiftModifierCensusInput[] = [
+      {
+        dayIdx: 0,
+        shiftType: 'Early',
+        affectedPatientCounts: {
+          infectious_isolation: 2,
+          cardiac_telemetry: 2,
+        },
+      },
+    ];
+
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 1,
+      modifierCensusInputs: modifierInputs,
+    });
+
+    const earlyLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLog.additionalNursesFromModifiers).toBe(1);
+    expect(earlyLog.baseNursesFinal).toBe(6);
+    expect(earlyLog.totalNursesRequired).toBe(7); // 6 + 1
+
+    // Cross integer boundary: 3 isolation (0.75) + 3 telemetry (0.45) = 1.20 -> ceil = 2
+    const modifierInputs2: ShiftModifierCensusInput[] = [
+      {
+        dayIdx: 0,
+        shiftType: 'Early',
+        affectedPatientCounts: {
+          infectious_isolation: 3,
+          cardiac_telemetry: 3,
+        },
+      },
+    ];
+    const demand2 = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 1,
+      modifierCensusInputs: modifierInputs2,
+    });
+    const earlyLog2 = demand2.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLog2.additionalNursesFromModifiers).toBe(2);
+    expect(earlyLog2.totalNursesRequired).toBe(8); // 6 + 2
+  });
+
+  // ── AT-34.5: Competency Requirements Without Headcount Inflation ─────────────
+  test('AT-34.5: Competency requirements are captured without independently inflating total headcount', () => {
+    const modifierInputs: ShiftModifierCensusInput[] = [
+      {
+        dayIdx: 0,
+        shiftType: 'Early',
+        affectedPatientCounts: {
+          cardiac_telemetry: 1, // 1 * 0.15 = 0.15 equiv -> ceil = 1 nurse
+        },
+      },
+    ];
+
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 1,
+      modifierCensusInputs: modifierInputs,
+    });
+
+    const earlyLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLog.competencyRequirements['Telemetry_Certified']).toBe(1);
+
+    // Add a modifier with 0 additive ratio but minimum 2 competent staff
+    const customConfig: HospitalWardConfiguration = {
+      ...DEMAND_TEST_CONFIG,
+      clinicalModifiers: [
+        ...DEMAND_TEST_CONFIG.clinicalModifiers,
+        {
+          id: 'chemo_admin',
+          name: 'Chemotherapy Administration',
+          additionalNursesPerPatient: 0.0,
+          requiredCompetencySkills: ['Chemo_Certified'],
+          minimumCompetentStaffPerShift: 2,
+        },
+      ],
+    };
+
+    const modifierInputsWithChemo: ShiftModifierCensusInput[] = [
+      {
+        dayIdx: 0,
+        shiftType: 'Early',
+        affectedPatientCounts: {
+          chemo_admin: 4,
+        },
+      },
+    ];
+
+    const demandChemo = calculateClinicalDemand(customConfig, {
+      horizonDays: 1,
+      modifierCensusInputs: modifierInputsWithChemo,
+    });
+
+    const earlyLogChemo = demandChemo.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    // 0 additional nurses added to base 6
+    expect(earlyLogChemo.additionalNursesFromModifiers).toBe(0);
+    expect(earlyLogChemo.totalNursesRequired).toBe(6);
+    // Competency requirement registered
+    expect(earlyLogChemo.competencyRequirements['Chemo_Certified']).toBe(2);
+  });
+
+  // ── AT-34.6: Charge Nurse Floor & Non-Negative General Staffing ──────────────
+  test('AT-34.6: Charge nurse floor is guaranteed and general nurse staffing is strictly non-negative', () => {
+    // Edge Case 1: Low census triggers safetyFloor & chargeNurseFloor
+    const lowCensusConfig: HospitalWardConfiguration = {
+      ...DEMAND_TEST_CONFIG,
+      bedCategories: [
+        {
+          id: 'single_bed',
+          name: 'Single Bed Unit',
+          totalBeds: 2,
+          activeStaffedBeds: 1,
+          defaultOccupancyPct: 100, // 1 patient
+        },
+      ],
+      ratios: [
+        { bedCategoryId: 'single_bed', shiftType: 'Early', patientsPerNurse: 6 },
+        { bedCategoryId: 'single_bed', shiftType: 'Late', patientsPerNurse: 6 },
+        { bedCategoryId: 'single_bed', shiftType: 'Night', patientsPerNurse: 6 },
+      ],
+      shiftSafetyPolicies: {
+        Early: {
+          shiftType: 'Early',
+          startHourOfDay: 7,
+          durationHours: 8,
+          safetyFloor: 3,
+          chargeNurseFloor: 1,
+          seniorStaffRatioPct: 25.0,
+          seniorSkillName: 'HeadNurse',
+          generalSkillName: 'Nurse',
+        },
+      },
+    };
+
+    const demandLow = calculateClinicalDemand(lowCensusConfig, { horizonDays: 1 });
+    const logLow = demandLow.derivationLogs[0];
+    expect(logLow.baseNursesCalculated).toBe(1); // ceil(1/6)
+    expect(logLow.baseNursesFinal).toBe(3);      // safety floor 3 applied
+    expect(logLow.totalNursesRequired).toBe(3);
+    expect(logLow.seniorNursesRequired).toBe(1); // charge floor 1
+    expect(logLow.generalNursesRequired).toBe(2); // 3 - 1 >= 0
+    expect(logLow.generalNursesRequired).toBeGreaterThanOrEqual(0);
+
+    // Edge Case 2: Charge nurse floor exceeds percentage calculation
+    const floorConfig: HospitalWardConfiguration = {
+      ...lowCensusConfig,
+      shiftSafetyPolicies: {
+        Early: {
+          shiftType: 'Early',
+          startHourOfDay: 7,
+          durationHours: 8,
+          safetyFloor: 1,
+          chargeNurseFloor: 4, // Floor 4
+          seniorStaffRatioPct: 20.0, // 4 * 0.20 = 0.8 -> ceil = 1, but floor = 4
+          seniorSkillName: 'HeadNurse',
+          generalSkillName: 'Nurse',
+        },
+      },
+    };
+    const demandFloor = calculateClinicalDemand(floorConfig, { horizonDays: 1 });
+    const logFloor = demandFloor.derivationLogs[0];
+    expect(logFloor.totalNursesRequired).toBe(4);
+    expect(logFloor.seniorNursesRequired).toBe(4);
+    expect(logFloor.generalNursesRequired).toBe(0); // 4 - 4 = 0 >= 0
+    expect(logFloor.generalNursesRequired).toBeGreaterThanOrEqual(0);
+  });
+
+  // ── AT-34.7: Immutable Demand Snapshot with Deterministic Policy Hash ────────
+  test('AT-34.7: Approved demand snapshot produces deterministic hash that reflects policy changes', () => {
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 7 });
+    const snapshot = createApprovedDemandSnapshot(
+      'scenario-alpha',
+      DEMAND_TEST_CONFIG,
+      'Dr. Aris Thorne',
+      'Approved initial 7-day trial',
+      demand,
+    );
+
+    expect(snapshot.scenarioId).toBe('scenario-alpha');
+    expect(snapshot.configVersion).toBe('2026.1-demo');
+    expect(snapshot.approvedBy).toBe('Dr. Aris Thorne');
+    expect(snapshot.totalPositions).toBe(demand.totalPositions);
+    expect(snapshot.totalClinicalHours).toBe(demand.totalClinicalHours);
+    expect(snapshot.slots.length).toBe(demand.slots.length);
+
+    // Deterministic hash verification
+    const hash1 = computePolicySnapshotHash(DEMAND_TEST_CONFIG);
+    expect(snapshot.policySnapshotHash).toBe(hash1);
+
+    // Hash sensitivity: changing ratio must alter hash
+    const modifiedConfig1: HospitalWardConfiguration = {
+      ...DEMAND_TEST_CONFIG,
+      ratios: DEMAND_TEST_CONFIG.ratios.map(r =>
+        r.bedCategoryId === 'general_acute' && r.shiftType === 'Early'
+          ? { ...r, patientsPerNurse: 5 }
+          : r
+      ),
+    };
+    const hash2 = computePolicySnapshotHash(modifiedConfig1);
+    expect(hash2).not.toBe(hash1);
+
+    // Hash sensitivity: changing staffed beds must alter hash
+    const modifiedConfig2: HospitalWardConfiguration = {
+      ...DEMAND_TEST_CONFIG,
+      bedCategories: DEMAND_TEST_CONFIG.bedCategories.map(c =>
+        c.id === 'general_acute' ? { ...c, activeStaffedBeds: 18 } : c
+      ),
+    };
+    const hash3 = computePolicySnapshotHash(modifiedConfig2);
+    expect(hash3).not.toBe(hash1);
+
+    // Validation checks on snapshot creation
+    expect(() =>
+      createApprovedDemandSnapshot('', DEMAND_TEST_CONFIG, 'Dr. Thorne', '', demand)
+    ).toThrow('scenarioId is required');
+
+    expect(() =>
+      createApprovedDemandSnapshot('scenario-alpha', DEMAND_TEST_CONFIG, '', '', demand)
+    ).toThrow('approvedBy is required');
+  });
+
+  // ── AT-34.8: Scenario Isolation ─────────────────────────────────────────────
+  test('AT-34.8: Scenario isolation guarantees separate namespaces for standard and surge profiles', () => {
+    const standardDemand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 7 });
+    const standardSnapshot = createApprovedDemandSnapshot(
+      'scenario-standard-01',
+      DEMAND_TEST_CONFIG,
+      'Nurse Executive Smith',
+      'Standard 90% census baseline',
+      standardDemand,
+    );
+
+    const surgeOverrides: ShiftCensusOverride[] = [];
+    for (let d = 0; d < 7; d++) {
+      surgeOverrides.push({
+        dayIdx: d,
+        shiftType: 'Early',
+        categoryCensus: { general_acute: 24, step_down_hdu: 6 },
+      });
+      surgeOverrides.push({
+        dayIdx: d,
+        shiftType: 'Late',
+        categoryCensus: { general_acute: 24, step_down_hdu: 6 },
+      });
+      surgeOverrides.push({
+        dayIdx: d,
+        shiftType: 'Night',
+        categoryCensus: { general_acute: 24, step_down_hdu: 6 },
+      });
+    }
+
+    const surgeDemand = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 7,
+      censusOverrides: surgeOverrides,
+    });
+    const surgeSnapshot = createApprovedDemandSnapshot(
+      'scenario-surge-01',
+      DEMAND_TEST_CONFIG,
+      'Nurse Executive Smith',
+      'Surge 100% capacity plan',
+      surgeDemand,
+    );
+
+    expect(standardSnapshot.scenarioId).toBe('scenario-standard-01');
+    expect(surgeSnapshot.scenarioId).toBe('scenario-surge-01');
+    expect(standardSnapshot.demandSnapshotId).not.toBe(surgeSnapshot.demandSnapshotId);
+    expect(surgeSnapshot.totalPositions).toBeGreaterThan(standardSnapshot.totalPositions);
+    expect(surgeSnapshot.totalClinicalHours).toBeGreaterThan(standardSnapshot.totalClinicalHours);
+  });
+
+  // ── AT-34.9: Canonical ShiftSlotMeta[] Mapping ──────────────────────────────
+  test('AT-34.9: Emits canonical ShiftSlotMeta[] that seamlessly interoperate with downstream workflow', () => {
+    // 7-day demand across 3 shifts: Early (6), Late (6), Night (4) = 16 slots/day * 7 = 112 slots
+    const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 7 });
+
+    expect(demand.slots.length).toBe(112);
+    expect(demand.totalPositions).toBe(112);
+    expect(demand.totalClinicalHours).toBe(112 * 8);
+
+    // Verify canonical slot structure
+    for (let i = 0; i < demand.slots.length; i++) {
+      const slot = demand.slots[i];
+      expect(slot.shiftId).toBe(i + 1);
+      expect(slot.dayIdx).toBeGreaterThanOrEqual(0);
+      expect(slot.dayIdx).toBeLessThan(7);
+      expect(['Early', 'Late', 'Night']).toContain(slot.label);
+      expect(['HeadNurse', 'Nurse']).toContain(slot.skill);
+      expect(slot.durationHours).toBe(8);
+      expect(slot.startHour).toBeDefined();
+    }
+
+    // Interoperability with getScheduleSlotMeta
+    const slotMeta = getScheduleSlotMeta([], demand.slots);
+    expect(Object.keys(slotMeta).length).toBe(112);
+
+    // Interoperability with buildStaffingRequirements
+    const requirements = buildStaffingRequirements(slotMeta);
+    expect(requirements.length).toBe(21); // 7 days * 3 shift types
+    const day0Early = requirements.find(r => r.dayIdx === 0 && r.shiftType === 'Early');
+    expect(day0Early?.required).toBe(6);
+    const day0Night = requirements.find(r => r.dayIdx === 0 && r.shiftType === 'Night');
+    expect(day0Night?.required).toBe(4);
+
+    const totalReqPositions = requirements.reduce((acc, r) => acc + r.required, 0);
+    expect(totalReqPositions).toBe(112);
+  });
+});
+

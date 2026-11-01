@@ -88,6 +88,17 @@ export interface RosterAlternative {
 // of these four states. The state is emitted by the redistribution operation
 // at the moment it acts on the cell — never derived by post-hoc diff.
 
+export interface ShiftSlotMeta {
+  shiftId: number;
+  dayIdx: number;
+  label: string;
+  skill: string;
+  startHour: number;
+  durationHours?: number;
+}
+
+export type CustomShiftInput = ShiftSlotMeta;
+
 export type AssignmentProvenanceState =
   | 'original'           // from the selected alternative, untouched
   | 'scheduler_edit'     // scheduler-authored, locked — redistribution must not touch
@@ -398,4 +409,118 @@ export interface ShiftLevelDeltaRecord {
   candidate_worker_id: string;
   change_classification: ShiftDeltaClassification;
   notes?: string;
+}
+
+// ─── Coralys Staffing Requirement Recommendation (Level A Demand) ──────────
+
+export interface WardBedCategory {
+  id: string;
+  name: string;
+  totalBeds: number;
+  activeStaffedBeds: number;
+  defaultOccupancyPct: number; // 0.0 - 100.0
+}
+
+export interface BedCategoryShiftRatio {
+  bedCategoryId: string;
+  shiftType: string;
+  patientsPerNurse: number; // must be > 0
+}
+
+export interface ClinicalModifier {
+  id: string;
+  name: string;
+  description?: string;
+  additionalNursesPerPatient: number; // e.g. +0.15 nurse / affected patient
+  requiredCompetencySkills: string[];  // e.g. ["CardiacTelemetry"]
+  minimumCompetentStaffPerShift: number; // minimum staff with this competency
+}
+
+export interface ShiftSafetyPolicy {
+  shiftType: string;
+  startHourOfDay: number;       // 0–23 (e.g. 7 for 07:00)
+  durationHours: number;        // e.g. 8
+  safetyFloor: number;          // absolute minimum total nurses on ward
+  chargeNurseFloor: number;     // mandatory supervisory presence
+  seniorStaffRatioPct: number;  // 0.0 - 100.0 (e.g. 25.0)
+  seniorSkillName: string;      // e.g. 'HeadNurse'
+  generalSkillName: string;     // e.g. 'Nurse'
+}
+
+export interface HospitalWardConfiguration {
+  configVersion: string;
+  wardId: string;
+  wardName: string;
+  serviceType: 'inpatient_24_7';
+  bedCategories: WardBedCategory[];
+  ratios: BedCategoryShiftRatio[];
+  clinicalModifiers: ClinicalModifier[];
+  shiftSafetyPolicies: Record<string, ShiftSafetyPolicy>;
+  governance: {
+    lastModifiedAtIso: string;
+    modifiedBy: string;
+    facilityStandardReference: string;
+  };
+}
+
+export interface ShiftCensusOverride {
+  dayIdx: number;
+  shiftType: string;
+  categoryCensus: Record<string, number>; // bedCategoryId -> actual/forecast patient count
+}
+
+export interface ShiftModifierCensusInput {
+  dayIdx: number;
+  shiftType: string;
+  affectedPatientCounts: Record<string, number>; // modifierId -> affected patients
+}
+
+export interface DerivationCategoryBreakdown {
+  categoryId: string;
+  categoryName: string;
+  patientCensus: number;
+  ratio: number;
+  requiredNurses: number;
+}
+
+export interface DerivationModifierBreakdown {
+  modifierId: string;
+  modifierName: string;
+  affectedPatients: number;
+  additiveRatio: number;
+  additionalNursesEquiv: number;
+  competencySkillsRequired: string[];
+  minCompetentStaff: number;
+}
+
+export interface DerivationLogEntry {
+  dayIdx: number;
+  shiftType: string;
+  categoryBreakdown: DerivationCategoryBreakdown[];
+  baseNursesCalculated: number;
+  safetyFloor: number;
+  baseNursesFinal: number;
+  modifierBreakdown: DerivationModifierBreakdown[];
+  additionalNursesFromModifiers: number;
+  chargeNurseFloor: number;
+  totalNursesRequired: number;
+  seniorNursesRequired: number;
+  generalNursesRequired: number;
+  competencyRequirements: Record<string, number>;
+  derivationFormula: string;
+}
+
+export interface ApprovedDemandSnapshot {
+  scenarioId: string;
+  demandSnapshotId: string;
+  configVersion: string;
+  policySnapshotHash: string;
+  createdAtIso: string;
+  approvedAtIso: string;
+  approvedBy: string;
+  approvalNotes: string;
+  slots: ShiftSlotMeta[];
+  totalPositions: number;
+  totalClinicalHours: number;
+  derivationLogs: DerivationLogEntry[];
 }

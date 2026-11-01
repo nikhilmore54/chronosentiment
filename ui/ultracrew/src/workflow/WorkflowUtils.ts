@@ -16,6 +16,14 @@ import type {
   AuditFinding,
   ShiftDeltaClassification,
   ShiftLevelDeltaRecord,
+  ShiftSlotMeta,
+  HospitalWardConfiguration,
+  ShiftCensusOverride,
+  ShiftModifierCensusInput,
+  DerivationCategoryBreakdown,
+  DerivationModifierBreakdown,
+  DerivationLogEntry,
+  ApprovedDemandSnapshot,
 } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
@@ -100,14 +108,7 @@ const WEEKLY_SHIFT_SLOTS: Array<{ dayOfWeek: number; startHour: number; label: s
   { dayOfWeek: 4, startHour: 102, label: 'Early' }, // Fri 06:00–14:00  (gap from Thu Late end: 102-94=8h ✓)
 ];
 
-export interface ShiftSlotMeta {
-  shiftId: number;
-  dayIdx: number;
-  label: string;
-  skill: string;
-  startHour: number;
-  durationHours?: number;
-}
+export type { ShiftSlotMeta };
 
 export type CustomShiftInput = ShiftSlotMeta;
 
@@ -2001,4 +2002,326 @@ export function exportShiftLevelDeltaCSV(records: ShiftLevelDeltaRecord[]): stri
   ].join(','));
 
   return [header, ...rows].join('\n');
+}
+
+// ─── Level A: Hospital-Configured Deterministic Demand Engine ──────────────
+
+export function validateHospitalWardConfiguration(config: HospitalWardConfiguration): string[] {
+  const errors: string[] = [];
+  if (!config.wardId?.trim()) errors.push('Missing wardId');
+  if (!config.wardName?.trim()) errors.push('Missing wardName');
+  if (config.serviceType !== 'inpatient_24_7') {
+    errors.push(`Unsupported serviceType: "${config.serviceType}". Level A initial implementation requires "inpatient_24_7".`);
+  }
+  if (!config.bedCategories || config.bedCategories.length === 0) {
+    errors.push('At least one primary bed category must be defined.');
+  }
+
+  const seenCatIds = new Set<string>();
+  for (const cat of config.bedCategories || []) {
+    if (!cat.id?.trim()) errors.push('Bed category missing id');
+    if (seenCatIds.has(cat.id)) errors.push(`Duplicate bed category id: "${cat.id}"`);
+    seenCatIds.add(cat.id);
+
+    if (cat.totalBeds < 0) errors.push(`Category "${cat.id}": totalBeds cannot be negative`);
+    if (cat.activeStaffedBeds < 0) errors.push(`Category "${cat.id}": activeStaffedBeds cannot be negative`);
+    if (cat.activeStaffedBeds > cat.totalBeds) {
+      errors.push(`Category "${cat.id}": activeStaffedBeds (${cat.activeStaffedBeds}) cannot exceed totalBeds (${cat.totalBeds})`);
+    }
+    if (cat.defaultOccupancyPct < 0 || cat.defaultOccupancyPct > 100) {
+      errors.push(`Category "${cat.id}": defaultOccupancyPct (${cat.defaultOccupancyPct}) must be between 0 and 100`);
+    }
+  }
+
+  const seenModifiers = new Set<string>();
+  for (const mod of config.clinicalModifiers || []) {
+    if (!mod.id?.trim()) errors.push('Clinical modifier missing id');
+    if (seenModifiers.has(mod.id)) errors.push(`Duplicate clinical modifier id: "${mod.id}"`);
+    seenModifiers.add(mod.id);
+
+    if (mod.additionalNursesPerPatient < 0) {
+      errors.push(`Modifier "${mod.id}": additionalNursesPerPatient cannot be negative`);
+    }
+    if (mod.minimumCompetentStaffPerShift < 0) {
+      errors.push(`Modifier "${mod.id}": minimumCompetentStaffPerShift cannot be negative`);
+    }
+  }
+
+  const shiftTypes = Object.keys(config.shiftSafetyPolicies || {});
+  if (shiftTypes.length === 0) {
+    errors.push('At least one shift safety policy must be defined.');
+  }
+
+  for (const [st, policy] of Object.entries(config.shiftSafetyPolicies || {})) {
+    if (policy.startHourOfDay < 0 || policy.startHourOfDay > 23) {
+      errors.push(`Shift "${st}": startHourOfDay must be between 0 and 23`);
+    }
+    if (policy.durationHours <= 0) {
+      errors.push(`Shift "${st}": durationHours must be > 0`);
+    }
+    if (policy.safetyFloor < 0) {
+      errors.push(`Shift "${st}": safetyFloor cannot be negative`);
+    }
+    if (policy.chargeNurseFloor < 0) {
+      errors.push(`Shift "${st}": chargeNurseFloor cannot be negative`);
+    }
+    if (policy.seniorStaffRatioPct < 0 || policy.seniorStaffRatioPct > 100) {
+      errors.push(`Shift "${st}": seniorStaffRatioPct (${policy.seniorStaffRatioPct}) must be between 0 and 100`);
+    }
+  }
+
+  // Ensure every bed category has a defined ratio for every shift type
+  for (const cat of config.bedCategories || []) {
+    for (const st of shiftTypes) {
+      const match = (config.ratios || []).find(r => r.bedCategoryId === cat.id && r.shiftType === st);
+      if (!match) {
+        errors.push(`Missing staffing ratio for bed category "${cat.id}" on shift "${st}"`);
+      } else if (match.patientsPerNurse <= 0) {
+        errors.push(`Ratio for bed category "${cat.id}" on shift "${st}" must have patientsPerNurse > 0`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+export function calculateClinicalDemand(
+  config: HospitalWardConfiguration,
+  options: {
+    horizonDays?: number;
+    censusOverrides?: ShiftCensusOverride[];
+    modifierCensusInputs?: ShiftModifierCensusInput[];
+    startSlotId?: number;
+  } = {},
+): {
+  slots: ShiftSlotMeta[];
+  totalPositions: number;
+  totalClinicalHours: number;
+  derivationLogs: DerivationLogEntry[];
+} {
+  const validationErrors = validateHospitalWardConfiguration(config);
+  if (validationErrors.length > 0) {
+    throw new Error(`Invalid HospitalWardConfiguration: ${validationErrors.join('; ')}`);
+  }
+
+  const horizonDays = options.horizonDays ?? 28;
+  const startSlotId = options.startSlotId ?? 1;
+  const slots: ShiftSlotMeta[] = [];
+  const derivationLogs: DerivationLogEntry[] = [];
+  let currentSlotId = startSlotId;
+
+  // Build lookup maps for fast access
+  const ratioMap = new Map<string, number>(); // "catId:shiftType" -> patientsPerNurse
+  for (const r of config.ratios) {
+    ratioMap.set(`${r.bedCategoryId}:${r.shiftType}`, r.patientsPerNurse);
+  }
+
+  // Index census overrides by "dayIdx:shiftType"
+  const overrideMap = new Map<string, Record<string, number>>();
+  for (const ov of options.censusOverrides || []) {
+    overrideMap.set(`${ov.dayIdx}:${ov.shiftType}`, ov.categoryCensus);
+  }
+
+  // Index modifier census inputs by "dayIdx:shiftType"
+  const modCensusMap = new Map<string, Record<string, number>>();
+  for (const mi of options.modifierCensusInputs || []) {
+    modCensusMap.set(`${mi.dayIdx}:${mi.shiftType}`, mi.affectedPatientCounts);
+  }
+
+  const shiftTypes = Object.keys(config.shiftSafetyPolicies);
+
+  for (let day = 0; day < horizonDays; day++) {
+    for (const st of shiftTypes) {
+      const policy = config.shiftSafetyPolicies[st];
+      const key = `${day}:${st}`;
+      const catCensusOverrides = overrideMap.get(key);
+      const modCounts = modCensusMap.get(key) || {};
+
+      // 1. Calculate Base Requirements across primary bed categories
+      // N_base(d,s) = sum_b ceil(C_b(d,s) / R_b(s))
+      const categoryBreakdown: DerivationCategoryBreakdown[] = [];
+      let baseCalculatedSum = 0;
+
+      for (const cat of config.bedCategories) {
+        let census = 0;
+        if (catCensusOverrides && catCensusOverrides[cat.id] !== undefined) {
+          census = catCensusOverrides[cat.id];
+          if (census < 0) throw new Error(`Day ${day} Shift ${st}: Census override for "${cat.id}" cannot be negative (${census})`);
+        } else {
+          // Census = ActiveStaffedBeds * (OccupancyPct / 100)
+          census = cat.activeStaffedBeds * (cat.defaultOccupancyPct / 100);
+        }
+
+        const ratio = ratioMap.get(`${cat.id}:${st}`)!;
+        const reqForCat = Math.ceil(census / ratio);
+        baseCalculatedSum += reqForCat;
+
+        categoryBreakdown.push({
+          categoryId: cat.id,
+          categoryName: cat.name,
+          patientCensus: census,
+          ratio,
+          requiredNurses: reqForCat,
+        });
+      }
+
+      // Apply ward safety floor: N_base,final = max(safetyFloor, N_base)
+      const baseNursesFinal = Math.max(policy.safetyFloor, baseCalculatedSum);
+
+      // 2. Additive Clinical Modifiers (documenting rounding policy: sum nurse equivalents, then ceil)
+      const modifierBreakdown: DerivationModifierBreakdown[] = [];
+      let additiveNurseEquivSum = 0;
+      const competencyReqs: Record<string, number> = {};
+
+      for (const mod of config.clinicalModifiers) {
+        const affectedPatients = modCounts[mod.id] || 0;
+        if (affectedPatients < 0) {
+          throw new Error(`Day ${day} Shift ${st}: Affected patients for modifier "${mod.id}" cannot be negative (${affectedPatients})`);
+        }
+
+        const addtlEquiv = affectedPatients * mod.additionalNursesPerPatient;
+        additiveNurseEquivSum += addtlEquiv;
+
+        // Record competency requirements (does not independently inflate headcount unless floor dictates)
+        if (mod.minimumCompetentStaffPerShift > 0 && mod.requiredCompetencySkills.length > 0) {
+          for (const skill of mod.requiredCompetencySkills) {
+            competencyReqs[skill] = Math.max(competencyReqs[skill] || 0, mod.minimumCompetentStaffPerShift);
+          }
+        }
+
+        modifierBreakdown.push({
+          modifierId: mod.id,
+          modifierName: mod.name,
+          affectedPatients,
+          additiveRatio: mod.additionalNursesPerPatient,
+          additionalNursesEquiv: addtlEquiv,
+          competencySkillsRequired: mod.requiredCompetencySkills,
+          minCompetentStaff: mod.minimumCompetentStaffPerShift,
+        });
+      }
+
+      const additionalNursesFromModifiers = Math.ceil(additiveNurseEquivSum);
+
+      // 3. Total nurses required and protected senior / general split
+      // N_total = max(N_base,final + delta_N_modifiers, N_charge_floor)
+      const totalNursesRequired = Math.max(baseNursesFinal + additionalNursesFromModifiers, policy.chargeNurseFloor);
+      // N_senior = max(N_charge_floor, ceil(N_total * SeniorPct))
+      const seniorNursesRequired = Math.max(
+        policy.chargeNurseFloor,
+        Math.ceil(totalNursesRequired * (policy.seniorStaffRatioPct / 100)),
+      );
+      // N_general = N_total - N_senior (guaranteed non-negative)
+      const generalNursesRequired = totalNursesRequired - seniorNursesRequired;
+
+      // 4. Generate canonical ShiftSlotMeta[]
+      const startHour = day * 24 + policy.startHourOfDay;
+      const durationHours = policy.durationHours;
+
+      // First senior slots
+      for (let sIdx = 0; sIdx < seniorNursesRequired; sIdx++) {
+        slots.push({
+          shiftId: currentSlotId++,
+          dayIdx: day,
+          label: st,
+          skill: policy.seniorSkillName,
+          startHour,
+          durationHours,
+        });
+      }
+
+      // Next general slots
+      for (let gIdx = 0; gIdx < generalNursesRequired; gIdx++) {
+        slots.push({
+          shiftId: currentSlotId++,
+          dayIdx: day,
+          label: st,
+          skill: policy.generalSkillName,
+          startHour,
+          durationHours,
+        });
+      }
+
+      derivationLogs.push({
+        dayIdx: day,
+        shiftType: st,
+        categoryBreakdown,
+        baseNursesCalculated: baseCalculatedSum,
+        safetyFloor: policy.safetyFloor,
+        baseNursesFinal,
+        modifierBreakdown,
+        additionalNursesFromModifiers,
+        chargeNurseFloor: policy.chargeNurseFloor,
+        totalNursesRequired,
+        seniorNursesRequired,
+        generalNursesRequired,
+        competencyRequirements: competencyReqs,
+        derivationFormula: `max(${policy.safetyFloor}, sum(ceil(C_b / R_b))) + ceil(sum(C_m * addtl_m)) = ${totalNursesRequired} (${seniorNursesRequired} ${policy.seniorSkillName} + ${generalNursesRequired} ${policy.generalSkillName})`,
+      });
+    }
+  }
+
+  const totalPositions = slots.length;
+  const totalClinicalHours = slots.reduce((acc, s) => acc + (s.durationHours || 8), 0);
+
+  return {
+    slots,
+    totalPositions,
+    totalClinicalHours,
+    derivationLogs,
+  };
+}
+
+export function computePolicySnapshotHash(config: HospitalWardConfiguration): string {
+  const normalized = JSON.stringify({
+    configVersion: config.configVersion,
+    wardId: config.wardId,
+    serviceType: config.serviceType,
+    bedCategories: config.bedCategories.map(c => ({ id: c.id, beds: c.activeStaffedBeds, occ: c.defaultOccupancyPct })),
+    ratios: config.ratios.map(r => ({ cat: r.bedCategoryId, shift: r.shiftType, ratio: r.patientsPerNurse })),
+    modifiers: config.clinicalModifiers.map(m => ({ id: m.id, addtl: m.additionalNursesPerPatient, min: m.minimumCompetentStaffPerShift })),
+    policies: config.shiftSafetyPolicies,
+  });
+
+  // Fast deterministic hash (fnv1a 32-bit hex)
+  let hash = 2166136261;
+  for (let i = 0; i < normalized.length; i++) {
+    hash ^= normalized.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return `hash-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+export function createApprovedDemandSnapshot(
+  scenarioId: string,
+  config: HospitalWardConfiguration,
+  approvedBy: string,
+  approvalNotes: string,
+  calculatedDemand: {
+    slots: ShiftSlotMeta[];
+    totalPositions: number;
+    totalClinicalHours: number;
+    derivationLogs: DerivationLogEntry[];
+  },
+): ApprovedDemandSnapshot {
+  if (!scenarioId?.trim()) throw new Error('scenarioId is required for ApprovedDemandSnapshot');
+  if (!approvedBy?.trim()) throw new Error('approvedBy is required for ApprovedDemandSnapshot');
+
+  const snapshotId = `dmd-snap-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const nowIso = new Date().toISOString();
+  const policyHash = computePolicySnapshotHash(config);
+
+  return {
+    scenarioId,
+    demandSnapshotId: snapshotId,
+    configVersion: config.configVersion,
+    policySnapshotHash: policyHash,
+    createdAtIso: nowIso,
+    approvedAtIso: nowIso,
+    approvedBy,
+    approvalNotes,
+    slots: calculatedDemand.slots,
+    totalPositions: calculatedDemand.totalPositions,
+    totalClinicalHours: calculatedDemand.totalClinicalHours,
+    derivationLogs: calculatedDemand.derivationLogs,
+  };
 }
