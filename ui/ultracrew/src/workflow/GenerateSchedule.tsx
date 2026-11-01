@@ -7,6 +7,8 @@ import {
   mapParetoAlternatives,
   computeDemandCapacityDiagnostic,
   getScheduleSlotMeta,
+  getCsrfToken,
+  clearCsrfTokenCache,
   type CustomShiftInput,
   type ShiftSlotMeta,
 } from './WorkflowUtils';
@@ -44,11 +46,12 @@ export const GenerateSchedule: React.FC<{
     }, 700);
 
     try {
-      // Fetch CSRF token (double-submit pattern required by the backend)
-      const csrfRes = await fetch('/api/csrf-token');
-      if (!csrfRes.ok) throw new Error(`CSRF token request failed (${csrfRes.status})`);
-      const csrfData = await csrfRes.json();
-      const csrfToken: string = csrfData.csrf_token ?? '';
+      // Fetch or reuse cached CSRF token with automatic 429 backoff retry
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        const csrfRes = await fetch('/api/csrf-token').catch(() => null);
+        if (csrfRes && !csrfRes.ok) throw new Error(`CSRF token request failed (${csrfRes.status})`);
+      }
 
       const payload = buildSchedulePayload(staff, rulePayload, customShifts);
       const res = await fetch('/api/schedule', {
@@ -59,7 +62,10 @@ export const GenerateSchedule: React.FC<{
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Schedule generation failed (${res.status})`);
+      if (!res.ok) {
+        if (res.status === 403) clearCsrfTokenCache();
+        throw new Error(`Schedule generation failed (${res.status})`);
+      }
       // P0-E: Parse as ScheduleRawResponse (actual backend shape), then map
       // alternatives from ProductionParetoSolution[] → RosterAlternative[].
       // This closes the type contract gap between the Rust backend and the UI,

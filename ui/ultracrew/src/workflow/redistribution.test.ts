@@ -487,3 +487,49 @@ test('AT-36.4: Backend preservation of manually locked assignments and protectio
   expect(protectedCov.gapPositions).toBe(0);
 });
 
+test('AT-37: Manual edit to Night shift resolves rest-succession (HC2) and eliminates 0-hour turnaround', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Recreate the user's scenario on Aisha_Diallo:
+  // Aisha_Diallo (HeadNurse) has Early on Day 11.
+  // The scheduler manually changes Day 10 to 'Night'.
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Aisha_Diallo'][10] = 'Night';
+  const lockedCells = new Set(['Aisha_Diallo:10']);
+
+  // Before redistribution: Day 10 is Night and Day 11 is Early -> 0-hour turnaround violation!
+  expect(editedSchedule['Aisha_Diallo'][10]).toBe('Night');
+  expect(editedSchedule['Aisha_Diallo'][11]).toBe('Early');
+
+  // 2. Run redistribution (using local rebalance or backend)
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked edit on Day 10 is strictly preserved
+  expect(result.schedule['Aisha_Diallo'][10]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Day 11 Early shift is evacuated to Off (rest) to resolve the 0h turnaround!
+  expect(result.schedule['Aisha_Diallo'][11]).toBe('');
+
+  // Invariant 3: Total demand coverage is conserved at 100% (196/196)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+

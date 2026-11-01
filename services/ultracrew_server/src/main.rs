@@ -2446,19 +2446,18 @@ async fn main() {
     }));
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
-    // 10 requests/second per IP, burst of 20.  Permissive for local dev/demo;
-    // tighten before production deployment.
+    // 50 requests/second per IP, burst of 100. Permissive for local dev/demo with Vite proxy.
     // Returns HTTP 429 Too Many Requests when the limit is exceeded.
+    // Note: /api/health and /api/csrf-token are explicitly exempt so background polling
+    // and security handshakes never starve or block schedule operations.
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(10)
-        .burst_size(20)
+        .per_second(50)
+        .burst_size(100)
         .finish()
         .expect("Invalid governor configuration");
     let governor_conf = std::sync::Arc::new(governor_conf);
 
-    let app = Router::new()
-        .route("/api/health", get(health_check))
-        .route("/api/csrf-token", get(csrf_token_handler))
+    let protected_routes = Router::new()
         .route("/api/scenario", get(get_scenario))
         .route("/api/state", get(get_state))
         .route("/api/simulations/sick-leave", post(simulate_sick_leave))
@@ -2504,10 +2503,16 @@ async fn main() {
         .route("/api/load-scenario", post(load_scenario_handler))
         // INRC nurse rostering compliance endpoint
         .route("/api/inrc/compliance", post(inrc_compliance_handler))
-        .with_state(app_state)
         .layer(GovernorLayer {
             config: governor_conf,
-        })
+        });
+
+    let app = Router::new()
+        // Handshake & monitoring: exempt from rate limiting
+        .route("/api/health", get(health_check))
+        .route("/api/csrf-token", get(csrf_token_handler))
+        .merge(protected_routes)
+        .with_state(app_state)
         .layer(cors);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

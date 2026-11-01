@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule } from './WorkflowUtils';
+import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken } from './WorkflowUtils';
 import type { RedistributionResult, ShiftSlotMeta } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -11,49 +11,101 @@ const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
 
 const ShiftPicker: React.FC<{
   current: string;
+  staffMember?: StaffMember;
+  dayIdx?: number;
+  schedule?: Record<string, string[]>;
   onPick: (shift: string) => void;
   onClose: () => void;
-}> = ({ current, onPick, onClose }) => (
-  <div
-    style={{
-      position: 'absolute',
-      zIndex: 300,
-      top: '100%',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      backgroundColor: 'var(--bg-color)',
-      border: '1px solid var(--border-color)',
-      borderRadius: '8px',
-      padding: '0.4rem',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.2rem',
-      minWidth: '120px',
-    }}
-    onClick={e => e.stopPropagation()}
-  >
-    {SHIFT_OPTIONS.map(opt => (
-      <button
-        key={opt || 'off'}
-        onClick={() => { onPick(opt); onClose(); }}
-        style={{
-          background: current === opt ? 'rgba(56,189,248,0.12)' : 'none',
-          border: `1px solid ${current === opt ? 'var(--accent-color)' : 'transparent'}`,
-          color: opt ? SHIFT_COLORS[opt] : 'var(--text-muted)',
-          padding: '0.35rem 0.75rem',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontWeight: current === opt ? 700 : 400,
-          fontSize: '0.82rem',
-          textAlign: 'left',
-        }}
-      >
-        {opt || 'Off (rest)'}
-      </button>
-    ))}
-  </div>
-);
+}> = ({ current, staffMember, dayIdx, schedule, onPick, onClose }) => {
+  const getViolations = (opt: string): string[] => {
+    if (!staffMember || dayIdx === undefined || !schedule) return [];
+    if (!opt) return []; // Off / Rest is legally always allowed
+    const issues: string[] = [];
+
+    // 1. Skill qualification check (HC1)
+    if ((opt === 'Late' || opt === 'Night') && !staffMember.skills.includes('Nurse')) {
+      issues.push('Missing Nurse skill');
+    }
+    if (opt === 'Early' && !staffMember.skills.includes('HeadNurse') && !staffMember.skills.includes('Nurse')) {
+      issues.push('Missing Early qualification');
+    }
+
+    // 2. Rest & Succession check (HC2)
+    // Night on day d forbids Early or Late on day d+1 (0h or 8h rest < 10h min)
+    if (opt === 'Night') {
+      const tomorrow = schedule[staffMember.id]?.[dayIdx + 1];
+      if (tomorrow === 'Early') issues.push('0h rest: followed by Early tomorrow');
+      else if (tomorrow === 'Late') issues.push('8h rest: followed by Late tomorrow (<10h min)');
+    }
+    if (opt === 'Early') {
+      const yesterday = schedule[staffMember.id]?.[dayIdx - 1];
+      if (yesterday === 'Night') issues.push('0h rest: preceded by Night yesterday');
+    }
+    if (opt === 'Late') {
+      const yesterday = schedule[staffMember.id]?.[dayIdx - 1];
+      if (yesterday === 'Night') issues.push('8h rest: preceded by Night yesterday (<10h min)');
+    }
+
+    return issues;
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        zIndex: 300,
+        top: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        backgroundColor: 'var(--bg-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '0.4rem',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.3rem',
+        minWidth: '160px',
+      }}
+      onClick={e => e.stopPropagation()}
+    >
+      {SHIFT_OPTIONS.map(opt => {
+        const issues = getViolations(opt);
+        const hasConflict = issues.length > 0;
+        return (
+          <button
+            key={opt || 'off'}
+            onClick={() => { onPick(opt); onClose(); }}
+            style={{
+              background: current === opt ? 'rgba(56,189,248,0.12)' : hasConflict ? 'rgba(239,68,68,0.05)' : 'none',
+              border: `1px solid ${current === opt ? 'var(--accent-color)' : hasConflict ? 'rgba(239,68,68,0.3)' : 'transparent'}`,
+              color: opt ? SHIFT_COLORS[opt] : 'var(--text-muted)',
+              padding: '0.35rem 0.65rem',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: current === opt ? 700 : 400,
+              fontSize: '0.8rem',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{opt || 'Off (rest)'}</span>
+              {hasConflict && <span style={{ color: '#ef4444', fontSize: '0.7rem' }}>⚠ Policy risk</span>}
+            </div>
+            {issues.map((iss, idx) => (
+              <span key={idx} style={{ fontSize: '0.66rem', color: '#f87171', fontWeight: 500 }}>
+                • {iss}
+              </span>
+            ))}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 // ─── Provenance Inspector Modal ──────────────────────────────────────────────
 // Shows why a system_reassignment happened, using the emitted ChangeRecord.
@@ -600,6 +652,9 @@ export const ReviewSchedule: React.FC<{
                         {isActive && (
                           <ShiftPicker
                             current={shift}
+                            staffMember={s}
+                            dayIdx={dayIdx}
+                            schedule={schedule}
                             onPick={s2 => handleShiftPick(s.id, dayIdx, s2)}
                             onClose={() => setActiveCell(null)}
                           />
@@ -633,15 +688,8 @@ export const ReviewSchedule: React.FC<{
           {!redistResult ? (
             <button
               onClick={async () => {
-                // P3.3-CR: fetch CSRF token then call Coralys-backed /api/reschedule
-                let csrfToken = '';
-                try {
-                  const csrfRes = await fetch('/api/csrf-token');
-                  const csrfData = await csrfRes.json();
-                  csrfToken = csrfData.csrf_token ?? '';
-                } catch {
-                  // csrf fetch failed — proceed with empty token (backend will reject if required)
-                }
+                // Fetch cached/resilient CSRF token then call Coralys-backed /api/reschedule
+                const csrfToken = await getCsrfToken();
                 const r = await redistributeWithLocks(
                   staff,
                   schedule,

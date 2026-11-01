@@ -728,6 +728,73 @@ export function localRebalanceSchedule(
     result[s.id] = [...(currentSchedule[s.id] || Array(maxDay + 1).fill(''))];
   });
 
+  // Pre-pass 1: Resolve rest-succession violations (HC2)
+  // Night shift (ends 06:00 next day) strictly forbids Early (starts 06:00 -> 0h rest)
+  // and Late (starts 14:00 -> 8h rest < 10h min).
+  // If a worker has Night on day d, day d+1 CANNOT be Early or Late.
+  // If one cell is locked, the conflicting unlocked cell must yield to Off so it can be rebalanced.
+  for (const s of staff) {
+    for (let d = 0; d < maxDay; d++) {
+      const shiftToday = result[s.id]?.[d] ?? '';
+      const shiftTomorrow = result[s.id]?.[d + 1] ?? '';
+
+      if (shiftToday === 'Night' && (shiftTomorrow === 'Early' || shiftTomorrow === 'Late')) {
+        const todayLocked = lockedCells.has(`${s.id}:${d}`);
+        const tomorrowLocked = lockedCells.has(`${s.id}:${d + 1}`);
+
+        if (todayLocked && !tomorrowLocked) {
+          // Today's Night is locked; tomorrow's conflicting shift yields to Off
+          result[s.id][d + 1] = '';
+        } else if (!todayLocked && tomorrowLocked) {
+          // Tomorrow's Early/Late is locked; today's unlocked Night yields to Off
+          result[s.id][d] = '';
+        } else if (!todayLocked && !tomorrowLocked) {
+          // Neither is locked; tomorrow yields to Off
+          result[s.id][d + 1] = '';
+        }
+      }
+    }
+  }
+
+  // Pre-pass 2: Resolve skill incompatibility violations (HC1)
+  // If an unlocked cell has a shift type for which the worker lacks required skills, evacuate it
+  for (const s of staff) {
+    for (let d = 0; d <= maxDay; d++) {
+      const shift = result[s.id]?.[d] ?? '';
+      if (!shift) continue;
+      const cellKey = `${s.id}:${d}`;
+      if (lockedCells.has(cellKey)) continue;
+
+      // Late and Night slots in standard ward demand require 'Nurse' skill.
+      if ((shift === 'Late' || shift === 'Night') && !s.skills.includes('Nurse')) {
+        result[s.id][d] = '';
+      }
+      // Early slots require HeadNurse or Nurse
+      if (shift === 'Early' && !s.skills.includes('HeadNurse') && !s.skills.includes('Nurse')) {
+        result[s.id][d] = '';
+      }
+    }
+  }
+
+  // Helper: check if assigning worker w to shift on day d creates a rest-succession conflict
+  const causesRestConflict = (w: StaffMember, dayIdx: number, newShift: string): boolean => {
+    if (newShift === 'Night') {
+      const nextShift = result[w.id]?.[dayIdx + 1];
+      if (nextShift === 'Early' || nextShift === 'Late') return true;
+    }
+    if (newShift === 'Early' || newShift === 'Late') {
+      const prevShift = result[w.id]?.[dayIdx - 1];
+      if (prevShift === 'Night') return true;
+    }
+    return false;
+  };
+
+  // Helper: check if worker qualifies for shift
+  const qualifiesForShift = (w: StaffMember, _shift: string, reqHeadNurse: boolean): boolean => {
+    if (reqHeadNurse) return w.skills.includes('HeadNurse');
+    return w.skills.includes('Nurse');
+  };
+
   // Demand slots grouped by day
   const demandByDay: Record<number, Record<string, number>> = {};
   for (const meta of Object.values(slotMeta)) {
@@ -773,14 +840,15 @@ export function localRebalanceSchedule(
       }
     }
 
-    // 1. Reassign surplus workers to deficit shifts where skill qualifies
+    // 1. Reassign surplus workers to deficit shifts where skill qualifies and rest is legal
     for (const deficit of [...deficitShifts]) {
       const reqHeadNurse = deficit === 'Early' && Object.values(slotMeta).some(
         m => m.dayIdx === d && m.label === 'Early' && m.skill === 'HeadNurse'
       );
       const surplusIdx = surplusWorkers.findIndex(sw => {
-        if (reqHeadNurse) return sw.worker.skills.includes('HeadNurse');
-        return sw.worker.skills.includes('Nurse') || sw.worker.skills.includes('HeadNurse');
+        if (!qualifiesForShift(sw.worker, deficit, reqHeadNurse)) return false;
+        if (causesRestConflict(sw.worker, d, deficit)) return false;
+        return true;
       });
 
       if (surplusIdx >= 0) {
@@ -791,7 +859,7 @@ export function localRebalanceSchedule(
       }
     }
 
-    // 2. If deficit shifts remain, fill from unlocked offStaff with compatible skills
+    // 2. If deficit shifts remain, fill from unlocked offStaff with compatible skills & legal rest
     for (const deficit of [...deficitShifts]) {
       const reqHeadNurse = deficit === 'Early' && Object.values(slotMeta).some(
         m => m.dayIdx === d && m.label === 'Early' && m.skill === 'HeadNurse'
@@ -799,8 +867,9 @@ export function localRebalanceSchedule(
       const candidateIdx = offStaff.findIndex(w => {
         const cellKey = `${w.id}:${d}`;
         if (lockedCells.has(cellKey)) return false;
-        if (reqHeadNurse) return w.skills.includes('HeadNurse');
-        return w.skills.includes('Nurse') || w.skills.includes('HeadNurse');
+        if (!qualifiesForShift(w, deficit, reqHeadNurse)) return false;
+        if (causesRestConflict(w, d, deficit)) return false;
+        return true;
       });
 
       if (candidateIdx >= 0) {
@@ -938,6 +1007,52 @@ export function scheduleToAssignments(
   };
 }
 
+let cachedCsrfToken: string | null = null;
+let csrfFetchPromise: Promise<string> | null = null;
+
+export async function getCsrfToken(forceRefresh = false): Promise<string> {
+  if (cachedCsrfToken && !forceRefresh) {
+    return cachedCsrfToken;
+  }
+  if (csrfFetchPromise && !forceRefresh) {
+    return csrfFetchPromise;
+  }
+
+  csrfFetchPromise = (async (): Promise<string> => {
+    let attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        const res = await fetch('/api/csrf-token');
+        if (res.ok) {
+          const data = await res.json();
+          const token: string = data.csrf_token || '';
+          cachedCsrfToken = token;
+          return token;
+        }
+        if (res.status === 429 && attempts < 3) {
+          // Rate-limited: back off briefly and retry
+          await new Promise(r => setTimeout(r, attempts * 250));
+          continue;
+        }
+      } catch {
+        // Fall back gracefully
+      }
+    }
+    return cachedCsrfToken || '';
+  })();
+
+  try {
+    return await csrfFetchPromise;
+  } finally {
+    csrfFetchPromise = null;
+  }
+}
+
+export function clearCsrfTokenCache(): void {
+  cachedCsrfToken = null;
+}
+
 export async function validateCurrentSchedule(
   staff: StaffMember[],
   schedule: Record<string, string[]>,
@@ -949,8 +1064,7 @@ export async function validateCurrentSchedule(
     const basePayload = buildSchedulePayload(staff, rulePayload, Object.values(slotMeta));
     const conversion = scheduleToAssignments(staff, schedule, slotMeta);
 
-    const csrfRes = await fetch('/api/csrf-token').catch(() => null);
-    const csrfToken = csrfRes && csrfRes.ok ? (await csrfRes.json()).csrf_token ?? '' : '';
+    const csrfToken = await getCsrfToken();
 
     const resp = await fetch('/api/validate', {
       method: 'POST',
@@ -963,7 +1077,10 @@ export async function validateCurrentSchedule(
         assignments: conversion.assignments,
       }),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      if (resp.status === 403) clearCsrfTokenCache();
+      return null;
+    }
     const report = await resp.json();
 
     // Assignment Conservation & Duplicate Detection Invariant:
@@ -1026,11 +1143,12 @@ export async function redistributeWithLocks(
   let freshSchedule: Record<string, string[]> | null = null;
 
   try {
+    const token = csrfToken || (await getCsrfToken());
     const res = await fetch('/api/reschedule', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken,
+        'X-CSRF-Token': token,
       },
       body: JSON.stringify(reschedulePayload),
     });
