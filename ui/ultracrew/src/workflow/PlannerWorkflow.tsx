@@ -7,6 +7,7 @@ import type {
   RedistributionLog,
   BaselineAuditReport,
   BaselineAssignment,
+  ApprovedDemandSnapshot,
 } from './WorkflowTypes';
 import { RULE_PRESETS, SAMPLE_CSV } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
@@ -62,6 +63,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
   const [schedulerDecision, setSchedulerDecision] = useState<SchedulerDecision | null>(null);
   const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
   const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
+  const [approvedDemandSnapshot, setApprovedDemandSnapshot] = useState<ApprovedDemandSnapshot | null>(null);
 
   // P4.1: dismissed pattern reasons (persisted in localStorage)
   const [dismissedPatterns, setDismissedPatterns] = useState<string[]>(
@@ -203,6 +205,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     setSchedulerDecision(null);
     setBaselineAuditReport(null);
     setBaselineAssignments([]);
+    setApprovedDemandSnapshot(null);
     setStep(1);
     setMaxReached(1);
   };
@@ -334,6 +337,13 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
             onBaselineAuditReportChange={setBaselineAuditReport}
             baselineAssignments={baselineAssignments}
             onBaselineAssignmentsChange={setBaselineAssignments}
+            approvedDemandSnapshot={approvedDemandSnapshot}
+            onApprovedDemandSnapshotChange={snap => {
+              setApprovedDemandSnapshot(snap);
+              if (snap) {
+                setCustomShifts(snap.slots);
+              }
+            }}
             onNext={() => goTo(2)}
           />
         )}

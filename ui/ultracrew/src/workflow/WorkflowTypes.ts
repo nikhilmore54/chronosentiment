@@ -447,6 +447,21 @@ export interface ShiftSafetyPolicy {
   generalSkillName: string;     // e.g. 'Nurse'
 }
 
+export interface ModifierOverlapPolicy {
+  /**
+   * 'additive': Increments from distinct clinical modifiers compound directly (standard hospital baseline).
+   * 'capped_per_patient': Compounding increments for a single patient are capped at a maximum ceiling (e.g. 1.0 for 1:1 dedicated care).
+   */
+  mode: 'additive' | 'capped_per_patient';
+  maxAdditionalNursesPerPatient?: number; // e.g. 1.0 (dedicated 1:1 care cap) or 0.5
+}
+
+export interface OverlappingPatientCohort {
+  cohortLabel?: string;
+  modifierIds: string[];
+  patientCount: number;
+}
+
 export interface HospitalWardConfiguration {
   configVersion: string;
   wardId: string;
@@ -456,6 +471,7 @@ export interface HospitalWardConfiguration {
   ratios: BedCategoryShiftRatio[];
   clinicalModifiers: ClinicalModifier[];
   shiftSafetyPolicies: Record<string, ShiftSafetyPolicy>;
+  modifierOverlapPolicy?: ModifierOverlapPolicy;
   governance: {
     lastModifiedAtIso: string;
     modifiedBy: string;
@@ -472,7 +488,8 @@ export interface ShiftCensusOverride {
 export interface ShiftModifierCensusInput {
   dayIdx: number;
   shiftType: string;
-  affectedPatientCounts: Record<string, number>; // modifierId -> affected patients
+  affectedPatientCounts?: Record<string, number>; // modifierId -> affected patients
+  overlappingCohorts?: OverlappingPatientCohort[]; // patients carrying multiple concurrent modifiers
 }
 
 export interface DerivationCategoryBreakdown {

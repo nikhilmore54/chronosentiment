@@ -2006,6 +2006,96 @@ export function exportShiftLevelDeltaCSV(records: ShiftLevelDeltaRecord[]): stri
 
 // ─── Level A: Hospital-Configured Deterministic Demand Engine ──────────────
 
+export const DEFAULT_HOSPITAL_CONFIG: HospitalWardConfiguration = {
+  configVersion: '2026.1-pilot',
+  wardId: 'ward-acute-4b',
+  wardName: 'Ward 4B — Acute Medical & Step-Down HDU',
+  serviceType: 'inpatient_24_7',
+  bedCategories: [
+    {
+      id: 'general_acute',
+      name: 'General Acute Care Beds',
+      totalBeds: 24,
+      activeStaffedBeds: 20,
+      defaultOccupancyPct: 90.0,
+    },
+    {
+      id: 'step_down_hdu',
+      name: 'Step-Down High Dependency Beds',
+      totalBeds: 6,
+      activeStaffedBeds: 6,
+      defaultOccupancyPct: 100.0,
+    },
+  ],
+  ratios: [
+    { bedCategoryId: 'general_acute', shiftType: 'Early', patientsPerNurse: 6 },
+    { bedCategoryId: 'general_acute', shiftType: 'Late', patientsPerNurse: 6 },
+    { bedCategoryId: 'general_acute', shiftType: 'Night', patientsPerNurse: 9 },
+    { bedCategoryId: 'step_down_hdu', shiftType: 'Early', patientsPerNurse: 2 },
+    { bedCategoryId: 'step_down_hdu', shiftType: 'Late', patientsPerNurse: 2 },
+    { bedCategoryId: 'step_down_hdu', shiftType: 'Night', patientsPerNurse: 3 },
+  ],
+  clinicalModifiers: [
+    {
+      id: 'infectious_isolation',
+      name: 'Airborne / Contact Isolation',
+      description: 'Dedicated barrier nursing and PPE precautions for infection control',
+      additionalNursesPerPatient: 0.25,
+      requiredCompetencySkills: ['InfectionControl'],
+      minimumCompetentStaffPerShift: 1,
+    },
+    {
+      id: 'cardiac_telemetry',
+      name: 'Continuous Cardiac Telemetry',
+      description: 'Continuous ECG arrhythmia monitoring and surveillance',
+      additionalNursesPerPatient: 0.15,
+      requiredCompetencySkills: ['Telemetry_Certified'],
+      minimumCompetentStaffPerShift: 1,
+    },
+  ],
+  shiftSafetyPolicies: {
+    Early: {
+      shiftType: 'Early',
+      startHourOfDay: 7,
+      durationHours: 8,
+      safetyFloor: 3,
+      chargeNurseFloor: 1,
+      seniorStaffRatioPct: 25.0,
+      seniorSkillName: 'HeadNurse',
+      generalSkillName: 'Nurse',
+    },
+    Late: {
+      shiftType: 'Late',
+      startHourOfDay: 15,
+      durationHours: 8,
+      safetyFloor: 3,
+      chargeNurseFloor: 1,
+      seniorStaffRatioPct: 25.0,
+      seniorSkillName: 'HeadNurse',
+      generalSkillName: 'Nurse',
+    },
+    Night: {
+      shiftType: 'Night',
+      startHourOfDay: 23,
+      durationHours: 8,
+      safetyFloor: 2,
+      chargeNurseFloor: 1,
+      seniorStaffRatioPct: 25.0,
+      seniorSkillName: 'HeadNurse',
+      generalSkillName: 'Nurse',
+    },
+  },
+  modifierOverlapPolicy: {
+    mode: 'additive',
+    maxAdditionalNursesPerPatient: 1.0,
+  },
+  governance: {
+    lastModifiedAtIso: '2026-10-31T09:00:00Z',
+    modifiedBy: 'Director of Nursing Dr. Aris Thorne',
+    facilityStandardReference: 'Hospital Staffing Policy Policy-Doc-704-B',
+  },
+};
+
 export function validateHospitalWardConfiguration(config: HospitalWardConfiguration): string[] {
   const errors: string[] = [];
   if (!config.wardId?.trim()) errors.push('Missing wardId');
@@ -2123,19 +2213,23 @@ export function calculateClinicalDemand(
   }
 
   // Index modifier census inputs by "dayIdx:shiftType"
-  const modCensusMap = new Map<string, Record<string, number>>();
+  const modCensusMap = new Map<string, ShiftModifierCensusInput>();
   for (const mi of options.modifierCensusInputs || []) {
-    modCensusMap.set(`${mi.dayIdx}:${mi.shiftType}`, mi.affectedPatientCounts);
+    modCensusMap.set(`${mi.dayIdx}:${mi.shiftType}`, mi);
   }
 
   const shiftTypes = Object.keys(config.shiftSafetyPolicies);
+  const overlapPolicy = config.modifierOverlapPolicy ?? { mode: 'additive' };
+  const modLookup = new Map((config.clinicalModifiers || []).map(m => [m.id, m]));
 
   for (let day = 0; day < horizonDays; day++) {
     for (const st of shiftTypes) {
       const policy = config.shiftSafetyPolicies[st];
       const key = `${day}:${st}`;
       const catCensusOverrides = overrideMap.get(key);
-      const modCounts = modCensusMap.get(key) || {};
+      const modInput = modCensusMap.get(key);
+      const modCounts = modInput?.affectedPatientCounts || {};
+      const cohorts = modInput?.overlappingCohorts || [];
 
       // 1. Calculate Base Requirements across primary bed categories
       // N_base(d,s) = sum_b ceil(C_b(d,s) / R_b(s))
@@ -2168,11 +2262,33 @@ export function calculateClinicalDemand(
       // Apply ward safety floor: N_base,final = max(safetyFloor, N_base)
       const baseNursesFinal = Math.max(policy.safetyFloor, baseCalculatedSum);
 
-      // 2. Additive Clinical Modifiers (documenting rounding policy: sum nurse equivalents, then ceil)
+      // 2. Additive Clinical Modifiers (handling isolated modifiers and overlapping cohorts)
       const modifierBreakdown: DerivationModifierBreakdown[] = [];
       let additiveNurseEquivSum = 0;
       const competencyReqs: Record<string, number> = {};
 
+      // 2a. Overlapping patient cohorts (concurrent modifiers on same patient)
+      for (const cohort of cohorts) {
+        if (cohort.patientCount <= 0) continue;
+        let perPatientAddtl = 0;
+        for (const mid of cohort.modifierIds) {
+          const mod = modLookup.get(mid);
+          if (mod) {
+            perPatientAddtl += mod.additionalNursesPerPatient;
+            if (mod.minimumCompetentStaffPerShift > 0 && mod.requiredCompetencySkills.length > 0) {
+              for (const skill of mod.requiredCompetencySkills) {
+                competencyReqs[skill] = Math.max(competencyReqs[skill] || 0, mod.minimumCompetentStaffPerShift);
+              }
+            }
+          }
+        }
+        if (overlapPolicy.mode === 'capped_per_patient' && overlapPolicy.maxAdditionalNursesPerPatient !== undefined) {
+          perPatientAddtl = Math.min(perPatientAddtl, overlapPolicy.maxAdditionalNursesPerPatient);
+        }
+        additiveNurseEquivSum += cohort.patientCount * perPatientAddtl;
+      }
+
+      // 2b. Isolated single-modifier inputs
       for (const mod of config.clinicalModifiers) {
         const affectedPatients = modCounts[mod.id] || 0;
         if (affectedPatients < 0) {
@@ -2182,8 +2298,8 @@ export function calculateClinicalDemand(
         const addtlEquiv = affectedPatients * mod.additionalNursesPerPatient;
         additiveNurseEquivSum += addtlEquiv;
 
-        // Record competency requirements (does not independently inflate headcount unless floor dictates)
-        if (mod.minimumCompetentStaffPerShift > 0 && mod.requiredCompetencySkills.length > 0) {
+        // Record competency requirements when modifier is clinically active
+        if (affectedPatients > 0 && mod.minimumCompetentStaffPerShift > 0 && mod.requiredCompetencySkills.length > 0) {
           for (const skill of mod.requiredCompetencySkills) {
             competencyReqs[skill] = Math.max(competencyReqs[skill] || 0, mod.minimumCompetentStaffPerShift);
           }
@@ -2213,7 +2329,7 @@ export function calculateClinicalDemand(
       // N_general = N_total - N_senior (guaranteed non-negative)
       const generalNursesRequired = totalNursesRequired - seniorNursesRequired;
 
-      // 4. Generate canonical ShiftSlotMeta[]
+      // 4. Generate canonical ShiftSlotMeta[] with competency enforcement
       const startHour = day * 24 + policy.startHourOfDay;
       const durationHours = policy.durationHours;
 
@@ -2229,8 +2345,26 @@ export function calculateClinicalDemand(
         });
       }
 
-      // Next general slots
-      for (let gIdx = 0; gIdx < generalNursesRequired; gIdx++) {
+      // Second: Competency-specialized slots (ensures required certifications reach MOGA & strict validator)
+      let allocatedCompetencySlots = 0;
+      for (const [skillTag, count] of Object.entries(competencyReqs)) {
+        const slotsForThisSkill = Math.min(count, Math.max(0, generalNursesRequired - allocatedCompetencySlots));
+        for (let k = 0; k < slotsForThisSkill; k++) {
+          slots.push({
+            shiftId: currentSlotId++,
+            dayIdx: day,
+            label: st,
+            skill: skillTag,
+            startHour,
+            durationHours,
+          });
+          allocatedCompetencySlots++;
+        }
+      }
+
+      // Third: Remaining general slots
+      const remainingGeneralSlots = Math.max(0, generalNursesRequired - allocatedCompetencySlots);
+      for (let gIdx = 0; gIdx < remainingGeneralSlots; gIdx++) {
         slots.push({
           shiftId: currentSlotId++,
           dayIdx: day,
@@ -2255,7 +2389,7 @@ export function calculateClinicalDemand(
         seniorNursesRequired,
         generalNursesRequired,
         competencyRequirements: competencyReqs,
-        derivationFormula: `max(${policy.safetyFloor}, sum(ceil(C_b / R_b))) + ceil(sum(C_m * addtl_m)) = ${totalNursesRequired} (${seniorNursesRequired} ${policy.seniorSkillName} + ${generalNursesRequired} ${policy.generalSkillName})`,
+        derivationFormula: `max(${policy.safetyFloor}, sum(ceil(C_b / R_b))) + ceil(sum(C_m * addtl_m)) = ${totalNursesRequired} (${seniorNursesRequired} ${policy.seniorSkillName} + ${generalNursesRequired} General [${allocatedCompetencySlots} Competency-Certified])`,
       });
     }
   }
@@ -2271,6 +2405,134 @@ export function calculateClinicalDemand(
   };
 }
 
+// ─── Cryptographic SHA-256 Digest (FIPS 180-4 standard) ──────────────────────
+export function sha256Hex(ascii: string): string {
+  function rightRotate(value: number, amount: number): number {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  let i: number, j: number;
+  let result = '';
+
+  const words: number[] = [];
+
+  // Initial hash values: first 32 bits of fractional parts of square roots of first 8 primes (2..19)
+  const hash: number[] = [];
+  // Round constants: first 32 bits of fractional parts of cube roots of first 64 primes (2..311)
+  const k: number[] = [];
+  let primeCounter = 0;
+
+  const isComposite: Record<number, boolean> = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (i = candidate * candidate; i < 313; i += candidate) {
+        isComposite[i] = true;
+      }
+      if (primeCounter < 8) {
+        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      }
+      k[primeCounter] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      primeCounter++;
+    }
+  }
+
+  // UTF-8 encode
+  const bytes: number[] = [];
+  for (i = 0; i < ascii.length; i++) {
+    let code = ascii.charCodeAt(i);
+    if (code < 128) {
+      bytes.push(code);
+    } else if (code < 2048) {
+      bytes.push(192 | (code >> 6), 128 | (code & 63));
+    } else if (code < 55296 || code >= 57344) {
+      bytes.push(224 | (code >> 12), 128 | ((code >> 6) & 63), 128 | (code & 63));
+    } else {
+      i++;
+      code = 65536 + (((code & 1023) << 10) | (ascii.charCodeAt(i) & 1023));
+      bytes.push(240 | (code >> 18), 128 | ((code >> 12) & 63), 128 | ((code >> 6) & 63), 128 | (code & 63));
+    }
+  }
+
+  const bitLength = bytes.length * 8;
+  bytes.push(0x80);
+  while ((bytes.length % 64) !== 56) {
+    bytes.push(0);
+  }
+
+  // Append 64-bit length big-endian
+  const highBits = Math.floor(bitLength / maxWord);
+  const lowBits = bitLength & 0xffffffff;
+  for (i = 3; i >= 0; i--) bytes.push((highBits >>> (i * 8)) & 0xff);
+  for (i = 3; i >= 0; i--) bytes.push((lowBits >>> (i * 8)) & 0xff);
+
+  for (i = 0; i < bytes.length; i += 4) {
+    words.push((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3]);
+  }
+
+  for (j = 0; j < words.length; j += 16) {
+    const w: number[] = [];
+    for (i = 0; i < 16; i++) w[i] = words[j + i];
+    for (i = 16; i < 64; i++) {
+      const s0 = rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (((w[i - 16] + s0) | 0) + ((w[i - 7] + s1) | 0)) | 0;
+    }
+
+    let a = hash[0], b = hash[1], c = hash[2], d = hash[3];
+    let e = hash[4], f = hash[5], g = hash[6], h = hash[7];
+
+    for (i = 0; i < 64; i++) {
+      const S1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
+      const ch = (e & f) ^ ((~e) & g);
+      const temp1 = (((((h + S1) | 0) + ch) | 0) + ((k[i] + w[i]) | 0)) | 0;
+      const S0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) | 0;
+
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) | 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) | 0;
+    }
+
+    hash[0] = (hash[0] + a) | 0;
+    hash[1] = (hash[1] + b) | 0;
+    hash[2] = (hash[2] + c) | 0;
+    hash[3] = (hash[3] + d) | 0;
+    hash[4] = (hash[4] + e) | 0;
+    hash[5] = (hash[5] + f) | 0;
+    hash[6] = (hash[6] + g) | 0;
+    hash[7] = (hash[7] + h) | 0;
+  }
+
+  for (i = 0; i < 8; i++) {
+    for (j = 3; j >= 0; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? '0' : '') + b.toString(16);
+    }
+  }
+
+  return result;
+}
+
+export function deepFreeze<T>(obj: T): Readonly<T> {
+  if (obj === null || typeof obj !== 'object') return obj;
+  Object.freeze(obj);
+  for (const key of Object.getOwnPropertyNames(obj)) {
+    const val = (obj as any)[key];
+    if (val !== null && (typeof val === 'object' || typeof val === 'function') && !Object.isFrozen(val)) {
+      deepFreeze(val);
+    }
+  }
+  return obj;
+}
+
 export function computePolicySnapshotHash(config: HospitalWardConfiguration): string {
   const normalized = JSON.stringify({
     configVersion: config.configVersion,
@@ -2280,15 +2542,10 @@ export function computePolicySnapshotHash(config: HospitalWardConfiguration): st
     ratios: config.ratios.map(r => ({ cat: r.bedCategoryId, shift: r.shiftType, ratio: r.patientsPerNurse })),
     modifiers: config.clinicalModifiers.map(m => ({ id: m.id, addtl: m.additionalNursesPerPatient, min: m.minimumCompetentStaffPerShift })),
     policies: config.shiftSafetyPolicies,
+    overlap: config.modifierOverlapPolicy ?? { mode: 'additive' },
   });
 
-  // Fast deterministic hash (fnv1a 32-bit hex)
-  let hash = 2166136261;
-  for (let i = 0; i < normalized.length; i++) {
-    hash ^= normalized.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return `hash-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+  return `sha256-${sha256Hex(normalized)}`;
 }
 
 export function createApprovedDemandSnapshot(
@@ -2310,7 +2567,7 @@ export function createApprovedDemandSnapshot(
   const nowIso = new Date().toISOString();
   const policyHash = computePolicySnapshotHash(config);
 
-  return {
+  const snapshot: ApprovedDemandSnapshot = {
     scenarioId,
     demandSnapshotId: snapshotId,
     configVersion: config.configVersion,
@@ -2319,9 +2576,16 @@ export function createApprovedDemandSnapshot(
     approvedAtIso: nowIso,
     approvedBy,
     approvalNotes,
-    slots: calculatedDemand.slots,
+    slots: calculatedDemand.slots.map(s => ({ ...s })),
     totalPositions: calculatedDemand.totalPositions,
     totalClinicalHours: calculatedDemand.totalClinicalHours,
-    derivationLogs: calculatedDemand.derivationLogs,
+    derivationLogs: calculatedDemand.derivationLogs.map(l => ({
+      ...l,
+      categoryBreakdown: l.categoryBreakdown.map(c => ({ ...c })),
+      modifierBreakdown: l.modifierBreakdown.map(m => ({ ...m })),
+      competencyRequirements: { ...l.competencyRequirements },
+    })),
   };
+
+  return deepFreeze(snapshot) as ApprovedDemandSnapshot;
 }

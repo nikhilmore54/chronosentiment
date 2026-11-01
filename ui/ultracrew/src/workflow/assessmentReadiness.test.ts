@@ -33,6 +33,7 @@ import {
   calculateClinicalDemand,
   computePolicySnapshotHash,
   createApprovedDemandSnapshot,
+  DEFAULT_HOSPITAL_CONFIG,
 } from './WorkflowUtils';
 import type {
   StaffMember,
@@ -1025,12 +1026,12 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
     expect(errors.some(e => e.includes('cannot exceed totalBeds'))).toBe(true);
   });
 
-  // ── AT-34.4: Additive Clinical Modifiers Combined Rounding Rule ──────────────
-  test('AT-34.4: Clinical modifiers combine nurse equivalents before ceil rounding to avoid inflation', () => {
+  // ── AT-34.4: Additive Clinical Modifiers Combined Rounding & Overlap ─────────
+  test('AT-34.4: Clinical modifiers combine nurse equivalents before ceil rounding and support defined overlap policies', () => {
+    // Isolated modifiers:
     // Modifier 1: infectious_isolation (addtl = 0.25) -> 2 patients = 0.50 equiv
     // Modifier 2: cardiac_telemetry (addtl = 0.15) -> 2 patients = 0.30 equiv
     // Sum = 0.80 equiv -> ceil(0.80) = 1 nurse
-    // (If rounded independently: ceil(0.50)=1 + ceil(0.30)=1 = 2 nurses, inflating by 1)
     const modifierInputs: ShiftModifierCensusInput[] = [
       {
         dayIdx: 0,
@@ -1070,16 +1071,58 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
     const earlyLog2 = demand2.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
     expect(earlyLog2.additionalNursesFromModifiers).toBe(2);
     expect(earlyLog2.totalNursesRequired).toBe(8); // 6 + 2
+
+    // Overlapping Cohorts Test 1: Additive overlap policy
+    // 4 patients concurrently carrying BOTH isolation (0.25) and telemetry (0.15)
+    // Additive sum = 4 * (0.25 + 0.15) = 4 * 0.40 = 1.60 -> ceil = 2 nurses
+    const additiveOverlapInput: ShiftModifierCensusInput[] = [
+      {
+        dayIdx: 0,
+        shiftType: 'Early',
+        overlappingCohorts: [
+          {
+            cohortLabel: 'Isolation + Telemetry Complex Cohort',
+            modifierIds: ['infectious_isolation', 'cardiac_telemetry'],
+            patientCount: 4,
+          },
+        ],
+      },
+    ];
+    const demandAdditive = calculateClinicalDemand(DEMAND_TEST_CONFIG, {
+      horizonDays: 1,
+      modifierCensusInputs: additiveOverlapInput,
+    });
+    const earlyLogAdditive = demandAdditive.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLogAdditive.additionalNursesFromModifiers).toBe(2);
+    expect(earlyLogAdditive.totalNursesRequired).toBe(8); // 6 + 2
+
+    // Overlapping Cohorts Test 2: Capped per-patient overlap policy
+    // Same 4 patients, but hospital policy caps compounding addition at 0.25 max per patient
+    // Capped sum = 4 * min(0.40, 0.25) = 4 * 0.25 = 1.00 -> ceil = 1 nurse
+    const cappedConfig: HospitalWardConfiguration = {
+      ...DEMAND_TEST_CONFIG,
+      modifierOverlapPolicy: {
+        mode: 'capped_per_patient',
+        maxAdditionalNursesPerPatient: 0.25,
+      },
+    };
+    const demandCapped = calculateClinicalDemand(cappedConfig, {
+      horizonDays: 1,
+      modifierCensusInputs: additiveOverlapInput,
+    });
+    const earlyLogCapped = demandCapped.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
+    expect(earlyLogCapped.additionalNursesFromModifiers).toBe(1);
+    expect(earlyLogCapped.totalNursesRequired).toBe(7); // 6 + 1 (capping prevented 1 additional nurse)
   });
 
-  // ── AT-34.5: Competency Requirements Without Headcount Inflation ─────────────
-  test('AT-34.5: Competency requirements are captured without independently inflating total headcount', () => {
+  // ── AT-34.5: Competency Enforcement Through MOGA & Strict Validator ─────────
+  test('AT-34.5: Competency requirements emit certified slots that reach MOGA payload and independent validator', () => {
     const modifierInputs: ShiftModifierCensusInput[] = [
       {
         dayIdx: 0,
         shiftType: 'Early',
         affectedPatientCounts: {
-          cardiac_telemetry: 1, // 1 * 0.15 = 0.15 equiv -> ceil = 1 nurse
+          cardiac_telemetry: 1, // 1 patient triggers 1 Telemetry_Certified slot
         },
       },
     ];
@@ -1092,42 +1135,36 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
     const earlyLog = demand.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
     expect(earlyLog.competencyRequirements['Telemetry_Certified']).toBe(1);
 
-    // Add a modifier with 0 additive ratio but minimum 2 competent staff
-    const customConfig: HospitalWardConfiguration = {
-      ...DEMAND_TEST_CONFIG,
-      clinicalModifiers: [
-        ...DEMAND_TEST_CONFIG.clinicalModifiers,
-        {
-          id: 'chemo_admin',
-          name: 'Chemotherapy Administration',
-          additionalNursesPerPatient: 0.0,
-          requiredCompetencySkills: ['Chemo_Certified'],
-          minimumCompetentStaffPerShift: 2,
-        },
-      ],
-    };
+    // 1. Verify that calculateClinicalDemand explicitly allocated a slot with Telemetry_Certified skill
+    const telemetrySlot = demand.slots.find(s => s.dayIdx === 0 && s.label === 'Early' && s.skill === 'Telemetry_Certified');
+    expect(telemetrySlot).toBeDefined();
+    expect(telemetrySlot?.skill).toBe('Telemetry_Certified');
 
-    const modifierInputsWithChemo: ShiftModifierCensusInput[] = [
-      {
-        dayIdx: 0,
-        shiftType: 'Early',
-        affectedPatientCounts: {
-          chemo_admin: 4,
-        },
-      },
+    // 2. Verify that buildSchedulePayload transfers this required skill to MOGA shifts
+    const mogaPayload = buildSchedulePayload(TEST_STAFF, {}, demand.slots);
+    const mogaShift = mogaPayload.shifts.find(s => s.id === telemetrySlot?.shiftId);
+    expect(mogaShift).toBeDefined();
+    expect(mogaShift?.required_skill).toBe('Telemetry_Certified');
+
+    // 3. Verify that independent validator / client audit enforces this skill requirement
+    // Marcus_Webb has ONLY ['Nurse'], lacks 'Telemetry_Certified' -> assigning Marcus must trigger SKILL_DEFICIT
+    const invalidAssignment: BaselineAssignment[] = [
+      { worker_id: 'Marcus_Webb', shift_id: telemetrySlot!.shiftId },
     ];
+    const auditReport = auditBaselineClientSide(TEST_STAFF, demand.slots, invalidAssignment);
+    expect(auditReport.skill_coverage_deficits).toBe(1);
+    expect(auditReport.detailed_findings.some(f => f.code === 'SKILL_DEFICIT' && f.description.includes('Telemetry_Certified'))).toBe(true);
 
-    const demandChemo = calculateClinicalDemand(customConfig, {
-      horizonDays: 1,
-      modifierCensusInputs: modifierInputsWithChemo,
-    });
-
-    const earlyLogChemo = demandChemo.derivationLogs.find(l => l.dayIdx === 0 && l.shiftType === 'Early')!;
-    // 0 additional nurses added to base 6
-    expect(earlyLogChemo.additionalNursesFromModifiers).toBe(0);
-    expect(earlyLogChemo.totalNursesRequired).toBe(6);
-    // Competency requirement registered
-    expect(earlyLogChemo.competencyRequirements['Chemo_Certified']).toBe(2);
+    // 4. Qualified nurse assignment (Elena_Vasquez with Telemetry_Certified) satisfies requirement
+    const qualifiedStaff: StaffMember[] = [
+      ...TEST_STAFF,
+      { id: 'Certified_Nurse_Kim', contract: 'FullTime', skills: ['Nurse', 'Telemetry_Certified'] },
+    ];
+    const validAssignment: BaselineAssignment[] = [
+      { worker_id: 'Certified_Nurse_Kim', shift_id: telemetrySlot!.shiftId },
+    ];
+    const validReport = auditBaselineClientSide(qualifiedStaff, demand.slots, validAssignment);
+    expect(validReport.skill_coverage_deficits).toBe(0);
   });
 
   // ── AT-34.6: Charge Nurse Floor & Non-Negative General Staffing ──────────────
@@ -1196,8 +1233,8 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
     expect(logFloor.generalNursesRequired).toBeGreaterThanOrEqual(0);
   });
 
-  // ── AT-34.7: Immutable Demand Snapshot with Deterministic Policy Hash ────────
-  test('AT-34.7: Approved demand snapshot produces deterministic hash that reflects policy changes', () => {
+  // ── AT-34.7: Immutable Demand Snapshot with Strong SHA-256 Digest ───────────
+  test('AT-34.7: Approved demand snapshot produces 256-bit cryptographic digest and enforces deep immutability', () => {
     const demand = calculateClinicalDemand(DEMAND_TEST_CONFIG, { horizonDays: 7 });
     const snapshot = createApprovedDemandSnapshot(
       'scenario-alpha',
@@ -1214,9 +1251,37 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
     expect(snapshot.totalClinicalHours).toBe(demand.totalClinicalHours);
     expect(snapshot.slots.length).toBe(demand.slots.length);
 
+    // Cryptographic SHA-256 digest verification
+    expect(snapshot.policySnapshotHash).toMatch(/^sha256-[0-9a-f]{64}$/);
+    expect(snapshot.policySnapshotHash.length).toBe(71); // "sha256-" (7) + 64 hex chars
+
     // Deterministic hash verification
     const hash1 = computePolicySnapshotHash(DEMAND_TEST_CONFIG);
     expect(snapshot.policySnapshotHash).toBe(hash1);
+
+    // Deep Immutability Verification: Object and nested properties are frozen
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.slots)).toBe(true);
+    expect(Object.isFrozen(snapshot.slots[0])).toBe(true);
+    expect(Object.isFrozen(snapshot.derivationLogs)).toBe(true);
+    expect(Object.isFrozen(snapshot.derivationLogs[0])).toBe(true);
+
+    // Assert that attempted mutations fail or throw TypeError
+    expect(() => {
+      (snapshot as any).approvedBy = 'Unauthorized_Change';
+    }).toThrow(TypeError);
+
+    expect(() => {
+      (snapshot.slots as any).push({ shiftId: 9999 } as any);
+    }).toThrow(TypeError);
+
+    expect(() => {
+      (snapshot.slots[0] as any).skill = 'Unauthorized_Skill';
+    }).toThrow(TypeError);
+
+    expect(() => {
+      (snapshot.derivationLogs[0] as any).totalNursesRequired = 999;
+    }).toThrow(TypeError);
 
     // Hash sensitivity: changing ratio must alter hash
     const modifiedConfig1: HospitalWardConfiguration = {
@@ -1334,6 +1399,110 @@ describe('Coralys Staffing Requirement Recommendation — Level A Clinical Deman
 
     const totalReqPositions = requirements.reduce((acc, r) => acc + r.required, 0);
     expect(totalReqPositions).toBe(112);
+  });
+});
+
+// ── AT-35: Coralys Demand Review & Approval UI Suite (Phase 2) ───────────────
+describe('Coralys Demand Review & Approval UI Suite (Phase 2)', () => {
+  // ── AT-35.1: Dynamic Configuration Recalculation ───────────────────────────
+  test('AT-35.1: Ward and bed configuration inputs dynamically recalculate clinical demand across 28-day horizon', () => {
+    // Standard configuration: 20 active acute beds @ 90% (18 patients) + 6 active HDU beds @ 100% (6 patients)
+    // Early: 18/6=3 acute + 6/2=3 HDU = 6 nurses
+    // Late:  18/6=3 acute + 6/2=3 HDU = 6 nurses
+    // Night: 18/9=2 acute + 6/3=2 HDU = 4 nurses
+    // Total per day: 16 nurses. Over 28 days = 448 positions, 3,584 hours
+    const baseDemand = calculateClinicalDemand(DEFAULT_HOSPITAL_CONFIG, { horizonDays: 28 });
+
+    expect(baseDemand.totalPositions).toBe(448);
+    expect(baseDemand.totalClinicalHours).toBe(3584);
+    expect(baseDemand.slots.length).toBe(448);
+
+    // Modify active acute beds to 24 (full surge): 24 * 0.9 = 21.6 -> ceil(21.6/6) = 4 nurses on Early/Late
+    const surgeConfig: HospitalWardConfiguration = {
+      ...DEFAULT_HOSPITAL_CONFIG,
+      bedCategories: DEFAULT_HOSPITAL_CONFIG.bedCategories.map(c =>
+        c.id === 'general_acute' ? { ...c, activeStaffedBeds: 24 } : c
+      ),
+    };
+    const surgeDemand = calculateClinicalDemand(surgeConfig, { horizonDays: 28 });
+
+    // Early and Late now need 4 acute + 3 HDU = 7 nurses. Night: ceil(21.6/9)=3 acute + 2 HDU = 5 nurses.
+    // Daily total: 7 + 7 + 5 = 19 nurses. Over 28 days = 532 positions
+    expect(surgeDemand.totalPositions).toBe(532);
+    expect(surgeDemand.totalClinicalHours).toBe(532 * 8);
+    expect(surgeDemand.totalPositions).toBeGreaterThan(baseDemand.totalPositions);
+  });
+
+  // ── AT-35.2: Required vs Available Capacity Diagnostic ─────────────────────
+  test('AT-35.2: Required-versus-available workforce diagnostic calculates accurate gaps and carries mandatory Level B disclaimer', () => {
+    const { staff: sampleStaff } = parseStaffCSV(SAMPLE_CSV);
+    const demand = calculateClinicalDemand(DEFAULT_HOSPITAL_CONFIG, { horizonDays: 28 });
+
+    const diagnostic = computeDemandCapacityDiagnostic(sampleStaff, demand.slots, 28);
+
+    expect(diagnostic.demandHours).toBe(3584);
+    expect(diagnostic.shiftCount).toBe(448);
+    // 20 staff members from SAMPLE_CSV
+    expect(diagnostic.workforceCapacityHours).toBeGreaterThan(2000);
+    expect(diagnostic.surplusOrDeficitHours).toBeDefined();
+
+    // Verify strict workflow boundary and Level B feasibility disclaimer
+    expect(diagnostic.feasibilityDisclaimer).toBeDefined();
+    expect(diagnostic.feasibilityDisclaimer).toContain('does not prove mathematical feasibility');
+    expect(diagnostic.feasibilityDisclaimer).toContain('verified by the optimization solver');
+  });
+
+  // ── AT-35.3: Explicit Governance Approval & Immutable Snapshot ─────────────
+  test('AT-35.3: Explicit approval creates immutable demand snapshot with SHA-256 digest and locks positions', () => {
+    const demand = calculateClinicalDemand(DEFAULT_HOSPITAL_CONFIG, { horizonDays: 28 });
+    const snapshot = createApprovedDemandSnapshot(
+      'scenario-ward-4b-28d',
+      DEFAULT_HOSPITAL_CONFIG,
+      'Dr. Aris Thorne, Director of Nursing',
+      'Approved 28-day baseline demand for Ward 4B',
+      demand,
+    );
+
+    expect(snapshot.scenarioId).toBe('scenario-ward-4b-28d');
+    expect(snapshot.approvedBy).toBe('Dr. Aris Thorne, Director of Nursing');
+    expect(snapshot.approvalNotes).toBe('Approved 28-day baseline demand for Ward 4B');
+    expect(snapshot.totalPositions).toBe(448);
+    expect(snapshot.totalClinicalHours).toBe(3584);
+    expect(snapshot.slots.length).toBe(448);
+
+    // Strong SHA-256 Digest
+    expect(snapshot.policySnapshotHash).toMatch(/^sha256-[0-9a-f]{64}$/);
+
+    // Deep immutability
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.slots)).toBe(true);
+    expect(() => { (snapshot as any).approvedBy = 'Hacked'; }).toThrow(TypeError);
+  });
+
+  // ── AT-35.4: Seamless Optimization Pipeline Connection ─────────────────────
+  test('AT-35.4: Approved demand snapshot slots seamlessly populate MOGA schedule payload', () => {
+    const { staff: sampleStaff } = parseStaffCSV(SAMPLE_CSV);
+    const demand = calculateClinicalDemand(DEFAULT_HOSPITAL_CONFIG, { horizonDays: 28 });
+    const snapshot = createApprovedDemandSnapshot(
+      'scenario-ward-4b-28d',
+      DEFAULT_HOSPITAL_CONFIG,
+      'Dr. Aris Thorne',
+      'Approved for MOGA optimization',
+      demand,
+    );
+
+    // Passing snapshot.slots as customShifts to downstream payload builder
+    const slotMeta = getScheduleSlotMeta(sampleStaff, snapshot.slots);
+    expect(Object.keys(slotMeta).length).toBe(448);
+
+    const payload = buildSchedulePayload(sampleStaff, { max_weekly_hours: 40.0, min_rest_hours: 10 }, snapshot.slots);
+    expect(payload.shifts.length).toBe(448);
+    expect(payload.workers.length).toBe(sampleStaff.length);
+
+    // Verify slot parameters match approved snapshot exactly
+    expect(payload.shifts[0].id).toBe(snapshot.slots[0].shiftId);
+    expect(payload.shifts[0].required_skill).toBe(snapshot.slots[0].skill);
+    expect(payload.shifts[0].duration_hours).toBe(8);
   });
 });
 
