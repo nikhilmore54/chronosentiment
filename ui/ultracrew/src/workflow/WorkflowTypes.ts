@@ -319,6 +319,25 @@ Nadia_Petrov,PartTime,Nurse
 Soren_Andersen,FullTime,Nurse
 Mei_Lin_Zhou,FullTime,Nurse`;
 
+// ─── Optimal 12-Person Establishment with 22% Slack Uplift ───────────────────
+// Sized for 196 monthly shifts (7 shifts/day): 3 Supervisory (HeadNurse;Nurse)
+// + 9 Staff Nurses (Nurse). Delivers 81.7% utilization on 40h contracts with
+// 22% built-in relief uplift for annual leave, mandatory training, and sickness.
+
+export const OPTIMAL_12_STAFF_CSV = `id,contract,skills
+Sarah_Chen,FullTime,HeadNurse;Nurse
+Priya_Nair,FullTime,HeadNurse;Nurse
+Amara_Diallo,FullTime,HeadNurse;Nurse
+Marcus_Webb,FullTime,Nurse
+James_Okafor,FullTime,Nurse
+Elena_Vasquez,FullTime,Nurse
+Tom_Lindqvist,FullTime,Nurse
+Ravi_Sharma,FullTime,Nurse
+Fatima_Al-Hassan,FullTime,Nurse
+Daniel_Park,FullTime,Nurse
+Carlos_Mendez,FullTime,Nurse
+Lena_Hoffmann,FullTime,Nurse`;
+
 // ─── Gate 3 (G3.1): Historical Baseline Audit Data Contract ─────────────────
 
 export interface BaselineAssignment {

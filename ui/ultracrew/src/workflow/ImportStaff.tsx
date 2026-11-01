@@ -7,7 +7,7 @@ import type {
   HospitalWardConfiguration,
   ShiftModifierCensusInput,
 } from './WorkflowTypes';
-import { SAMPLE_CSV } from './WorkflowTypes';
+import { SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
 import {
   parseStaffCSV,
   parseShiftsCSV,
@@ -253,6 +253,14 @@ export const ImportStaff: React.FC<{
           onStaffChange(parsed);
         }} style={accentGhostBtnStyle}>
           Load Sample Staff (20 staff)
+        </button>
+
+        <button onClick={() => {
+          const { staff: parsed } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+          setErrors([]);
+          onStaffChange(parsed);
+        }} style={{ ...accentGhostBtnStyle, borderColor: '#10b981', color: '#10b981' }}>
+          Load Optimal Staff (12 staff • 22% slack)
         </button>
 
         <button onClick={() => {
@@ -676,6 +684,83 @@ export const ImportStaff: React.FC<{
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
                 <strong style={{ color: 'var(--accent-color)' }}>Preliminary Capacity Diagnostic:</strong> Compares aggregate required shift hours against nominal contractual hours. This diagnostic <strong>does not determine or certify schedule feasibility</strong>. Roster feasibility, rest rule compliance, skill sequencing, and contract limits are evaluated exclusively by Coralys MOGA and verified by the independent validator in subsequent steps.
               </div>
+            </div>
+
+            {/* Optimal Establishment Recommendation Card (Level B) */}
+            <div style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.04)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '6px',
+              padding: '0.9rem 1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.86rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>🎯</span> Optimal Establishment Recommendation (Level B)
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Hospital Policy: 22.0% Relief Uplift (Vacation: 14%, CPD/Training: 3.5%, Sickness: 4.5%)
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Net Productive Demand</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.15rem 0' }}>
+                    {(capacityDiagnostic.demandHours / 160).toFixed(1)} Net FTE
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {capacityDiagnostic.demandHours}h / 40h standard
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Optimal Establishment Sizing</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', margin: '0.15rem 0' }}>
+                    12 Nurses (12.0 FTE)
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#10b981' }}>
+                    3 Supervisory + 9 Staff Nurses
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Workforce Status</div>
+                  <div style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    color: staff.length > 13 ? '#f59e0b' : staff.length < 11 ? '#ef4444' : '#10b981',
+                    margin: '0.2rem 0',
+                  }}>
+                    {staff.length === 20 ? 'Over-Established (20 loaded)' : staff.length === 12 ? 'Right-Sized (12 loaded)' : `${staff.length} staff loaded`}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    {staff.length === 20 ? '+8 FTE surplus (~49% utilization)' : staff.length === 12 ? '81.7% utilization (22% slack)' : `Target: 12 nurses`}
+                  </div>
+                </div>
+              </div>
+
+              {staff.length !== 12 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                  <button
+                    onClick={() => {
+                      const { staff: parsed } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+                      setErrors([]);
+                      onStaffChange(parsed);
+                    }}
+                    style={{
+                      ...primaryBtnStyle,
+                      fontSize: '0.78rem',
+                      padding: '0.35rem 0.8rem',
+                      backgroundColor: '#10b981',
+                    }}
+                  >
+                    Apply Recommended 12-Nurse Team (22% Slack) →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

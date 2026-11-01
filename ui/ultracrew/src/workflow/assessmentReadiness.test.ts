@@ -34,6 +34,9 @@ import {
   computePolicySnapshotHash,
   createApprovedDemandSnapshot,
   DEFAULT_HOSPITAL_CONFIG,
+  VERIFIED_OPTIMAL_12_SCHEDULE,
+  buildEditableSchedule,
+  computeCanonicalCoverage,
 } from './WorkflowUtils';
 import type {
   StaffMember,
@@ -44,7 +47,7 @@ import type {
   ShiftCensusOverride,
   ShiftModifierCensusInput,
 } from './WorkflowTypes';
-import { SAMPLE_CSV } from './WorkflowTypes';
+import { SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
 
 const TEST_STAFF: StaffMember[] = [
   { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
@@ -1503,6 +1506,58 @@ describe('Coralys Demand Review & Approval UI Suite (Phase 2)', () => {
     expect(payload.shifts[0].id).toBe(snapshot.slots[0].shiftId);
     expect(payload.shifts[0].required_skill).toBe(snapshot.slots[0].skill);
     expect(payload.shifts[0].duration_hours).toBe(8);
+  });
+
+  test('AT-38: Optimal 12-nurse establishment with 22% relief slack achieves 100% coverage, 81.7% utilization, and zero hard violations', () => {
+    const { staff, errors } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+    expect(errors).toEqual([]);
+    expect(staff.length).toBe(12);
+
+    // Verify skill composition: 3 Supervisory (HeadNurse;Nurse) + 9 Staff Nurses
+    const supervisoryCount = staff.filter(s => s.skills.includes('HeadNurse')).length;
+    const staffNurseCount = staff.filter(s => !s.skills.includes('HeadNurse')).length;
+    expect(supervisoryCount).toBe(3);
+    expect(staffNurseCount).toBe(9);
+
+    // Verify slot meta and editable schedule
+    const slotMeta = getScheduleSlotMeta(staff);
+    expect(Object.keys(slotMeta).length).toBe(196);
+
+    const editableSchedule = buildEditableSchedule(staff, VERIFIED_OPTIMAL_12_SCHEDULE, slotMeta);
+    expect(Object.keys(editableSchedule).length).toBe(12);
+
+    // Check 100% demand coverage
+    const reqs = buildStaffingRequirements(slotMeta);
+    const cov = computeCanonicalCoverage(reqs, editableSchedule);
+    expect(cov.coveragePct).toBe(100);
+    expect(cov.gapPositions).toBe(0);
+    expect(cov.filledPositions).toBe(196);
+
+    // Check workload density: each nurse works 16 to 17 shifts across 28 days (~32.7h/week, 81.7% utilization)
+    for (const s of staff) {
+      const assigned = editableSchedule[s.id].filter(Boolean);
+      expect(assigned.length).toBeGreaterThanOrEqual(16);
+      expect(assigned.length).toBeLessThanOrEqual(17);
+
+      // Check max weekly hours constraint: <= 5 shifts (40h) per 7-day week
+      for (let w = 0; w < 4; w++) {
+        const weekShifts = editableSchedule[s.id].slice(w * 7, (w + 1) * 7).filter(Boolean);
+        expect(weekShifts.length).toBeLessThanOrEqual(5);
+      }
+
+      // Check rest rules: Night is never followed by Early or Late
+      for (let d = 0; d < 27; d++) {
+        const today = editableSchedule[s.id][d];
+        const tomorrow = editableSchedule[s.id][d + 1];
+        if (today === 'Night') {
+          expect(tomorrow).not.toBe('Early');
+          expect(tomorrow).not.toBe('Late');
+        }
+        if (today === 'Late') {
+          expect(tomorrow).not.toBe('Early');
+        }
+      }
+    }
   });
 });
 

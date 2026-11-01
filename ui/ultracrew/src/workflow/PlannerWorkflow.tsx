@@ -9,7 +9,7 @@ import type {
   BaselineAssignment,
   ApprovedDemandSnapshot,
 } from './WorkflowTypes';
-import { RULE_PRESETS, SAMPLE_CSV } from './WorkflowTypes';
+import { RULE_PRESETS, SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
 import { ImportStaff } from './ImportStaff';
 import { SelectRules } from './SelectRules';
@@ -28,6 +28,7 @@ import {
   buildSyntheticAlternatives,
   buildEditableSchedule,
   VERIFIED_SAMPLE_SCHEDULE,
+  VERIFIED_OPTIMAL_12_SCHEDULE,
   type CustomShiftInput,
 } from './WorkflowUtils';
 
@@ -93,8 +94,9 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     ? 'Custom JSON'
     : RULE_PRESETS.find(p => p.id === selectedRuleId)?.label ?? selectedRuleId;
 
-  const loadSampleDemonstration = () => {
-    const { staff: sampleStaff } = parseStaffCSV(SAMPLE_CSV);
+  const loadSampleDemonstration = (demoType: '20-nurse' | '12-nurse' = '20-nurse') => {
+    const csvSource = demoType === '12-nurse' ? OPTIMAL_12_STAFF_CSV : SAMPLE_CSV;
+    const { staff: sampleStaff } = parseStaffCSV(csvSource);
     const slotMeta = getScheduleSlotMeta(sampleStaff, []);
     const sampleBaselineCsv = generateSampleBaselineWithBreaches(sampleStaff, slotMeta);
     const { assignments: parsedBaseline } = parseBaselineCSV(sampleBaselineCsv);
@@ -111,7 +113,9 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       'hospital_policy_v1'
     );
 
-    const rawSchedule = { ...VERIFIED_SAMPLE_SCHEDULE };
+    const rawSchedule = demoType === '12-nurse'
+      ? { ...VERIFIED_OPTIMAL_12_SCHEDULE }
+      : { ...VERIFIED_SAMPLE_SCHEDULE };
     const baseSchedule = buildEditableSchedule(sampleStaff, rawSchedule, slotMeta);
 
     const { alternatives: sampleAlternatives, recommendedId: recId } = buildSyntheticAlternatives(
@@ -125,7 +129,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       filled_positions: 196,
       required_positions: 196,
       fairness_penalty: 1.2,
-      utilization: 0.85,
+      utilization: demoType === '12-nurse' ? 0.82 : 0.85,
       cost: 100,
       diff_from_recommended: 0,
     };
@@ -260,43 +264,82 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
         </div>
         <div>
           {workflowMode === 'sample' ? (
-            <button
-              onClick={() => {
-                resetToBlankWorkspace();
-                onWorkflowModeChange?.('blank');
-              }}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-color)',
-                borderRadius: '5px',
-                padding: '0.3rem 0.75rem',
-                fontSize: '0.8rem',
-                color: 'var(--text-main)',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Start Blank Assessment →
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  loadSampleDemonstration(staff.length === 12 ? '20-nurse' : '12-nurse');
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--accent-color)',
+                  borderRadius: '5px',
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8rem',
+                  color: 'var(--accent-color)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {staff.length === 12 ? 'Switch to 20-Nurse Baseline →' : 'Switch to Optimal 12-Nurse Team (22% Slack) →'}
+              </button>
+              <button
+                onClick={() => {
+                  resetToBlankWorkspace();
+                  onWorkflowModeChange?.('blank');
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '5px',
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Start Blank Assessment →
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => {
-                loadSampleDemonstration();
-                onWorkflowModeChange?.('sample');
-              }}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-color)',
-                borderRadius: '5px',
-                padding: '0.3rem 0.75rem',
-                fontSize: '0.8rem',
-                color: 'var(--text-main)',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Explore Sample Demonstration →
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  loadSampleDemonstration('12-nurse');
+                  onWorkflowModeChange?.('sample');
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid #10b981',
+                  borderRadius: '5px',
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8rem',
+                  color: '#10b981',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Explore 12-Nurse Optimal Demo (22% Slack) →
+              </button>
+              <button
+                onClick={() => {
+                  loadSampleDemonstration('20-nurse');
+                  onWorkflowModeChange?.('sample');
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '5px',
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Explore 20-Nurse Demo (Baseline) →
+              </button>
+            </div>
           )}
         </div>
       </div>
