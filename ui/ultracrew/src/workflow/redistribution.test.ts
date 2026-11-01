@@ -399,3 +399,91 @@ test('AT-36.3: buildLockedShiftIds correctly maps user manual edits from current
   expect(lockedMeta.dayIdx).toBe(2);
   expect(lockedMeta.label).toBe('Night');
 });
+
+test('AT-36.4: Backend preservation of manually locked assignments and protection of last valid schedule', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Manually reassign Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  // Find the exact shift ID corresponding to Tom's edit on Day 2
+  const activeConversion = scheduleToAssignments(staff, editedSchedule, slotMeta);
+  const editedShiftId = Object.entries(activeConversion.assignments).find(
+    ([sid, wid]) => wid === 6 && slotMeta[Number(sid)]?.dayIdx === 2
+  )?.[0];
+  expect(editedShiftId).toBeDefined();
+
+  // 2. Mock /api/reschedule returning a response where the locked shift is preserved
+  const mockApiReturn = { ...activeConversion.assignments };
+  mockApiReturn[editedShiftId!] = 6; // strictly preserved
+  mockFetch(mockApiReturn);
+
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 3. Verify outgoing payload: ONLY the manually edited shift is in locked_shift_ids (not all 196!)
+  const fetchMock = vi.mocked(fetch);
+  const rescheduleCall = fetchMock.mock.calls.find(
+    (call: unknown[]) => call[0] === '/api/reschedule'
+  );
+  expect(rescheduleCall).toBeDefined();
+  const requestBody = JSON.parse((rescheduleCall![1] as RequestInit).body as string);
+  expect(requestBody.locked_shift_ids).toEqual([Number(editedShiftId)]);
+  expect(requestBody.locked_shift_ids.length).toBe(1);
+
+  // 4. Invariant: manually edited (worker, shift) remains unchanged
+  expect(result.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // 5. Independently validate returned schedule
+  const finalConversion = scheduleToAssignments(staff, result.schedule, slotMeta);
+  expect(finalConversion.isConserved).toBe(true);
+  expect(finalConversion.unmappedUiAssignments).toEqual([]);
+  expect(finalConversion.duplicateAssignments).toEqual([]);
+
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+
+  // 6. Protection check: If the backend throws or returns an error, the schedule is protected
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/reschedule') {
+      return Promise.resolve({ ok: false, status: 500 });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ csrf_token: 'tok' }) });
+  }));
+
+  const protectedResult = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // The local preservation fallback ensures the scheduler's edit and coverage are safely protected
+  expect(protectedResult.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(protectedResult.log.lockedAssignmentsChanged).toBe(0);
+  const protectedCov = computeCanonicalCoverage(reqs, protectedResult.schedule);
+  expect(protectedCov.coveragePct).toBe(100);
+  expect(protectedCov.gapPositions).toBe(0);
+});
+

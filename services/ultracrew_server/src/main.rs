@@ -1317,14 +1317,43 @@ async fn reschedule_handler(
         )
     })?;
 
-    let mut app_state = state.lock().unwrap();
-    app_state.last_solution = Some(solution.clone());
-
     let constraint_engine = ultracrew::constraint_engine::InrcConstraintEvaluator::new(context);
     let genome = ultracrew::optimization::ScheduleGenome {
         assignments: solution.assignments.clone(),
     };
     let report = constraint_engine.evaluate(&genome);
+
+    // Invariant verification: Verify that all locked assignments were strictly preserved
+    if let Some(ref locked_ids) = req.locked_shift_ids {
+        for &shift_id in locked_ids {
+            if let Some(&expected_worker) = req.existing_assignments.get(&shift_id) {
+                if solution.assignments.get(&shift_id) != Some(&expected_worker) {
+                    return Err((
+                        axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+                        format!(
+                            "Invariant violation: locked shift {} was altered from worker {} to {:?}",
+                            shift_id,
+                            expected_worker,
+                            solution.assignments.get(&shift_id)
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
+    // Protection of last valid solution:
+    // Only update app_state.last_solution if the rescheduled roster is valid (0 hard violations)
+    // so an invalid or degraded optimization run CANNOT overwrite the last valid schedule!
+    let mut app_state = state.lock().unwrap();
+    if report.hard_violations == 0 {
+        app_state.last_solution = Some(solution.clone());
+    } else {
+        eprintln!(
+            "Rescheduled solution has {} hard violations; preserving previous valid last_solution",
+            report.hard_violations
+        );
+    }
 
     let rec_engine = ultracrew::recommendation::RecommendationEngine::new();
     let recommendations = rec_engine.generate_recommendations(&report);
@@ -2500,7 +2529,7 @@ mod server_endpoints_tests {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // for oneshot
 
-    fn setup_test_app() -> Router {
+    fn setup_test_app_with_state() -> (Router, Arc<Mutex<AppState>>) {
         let cors = CorsLayer::new()
             .allow_origin(Any)
             .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
@@ -2581,7 +2610,7 @@ mod server_endpoints_tests {
             schedule_versions: Vec::new(),
         }));
 
-        Router::new()
+        let router = Router::new()
             .route("/api/health", get(health_check))
             .route("/api/schedule", post(schedule_handler))
             .route("/api/reschedule", post(reschedule_handler))
@@ -2590,8 +2619,14 @@ mod server_endpoints_tests {
             .route("/api/recommendations", get(recommendations_handler))
             .route("/api/metrics", get(metrics_handler))
             .route("/api/nurses", get(get_nurses_handler))
-            .with_state(app_state)
-            .layer(cors)
+            .with_state(app_state.clone())
+            .layer(cors);
+
+        (router, app_state)
+    }
+
+    fn setup_test_app() -> Router {
+        setup_test_app_with_state().0
     }
 
     #[tokio::test]
@@ -2881,5 +2916,153 @@ mod server_endpoints_tests {
         assert_eq!(resp.schedule.len(), 2);
         // Verify locked assignment is preserved
         assert_eq!(*resp.schedule.get(&101).unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_at36_4_server_reschedule_lock_invariant_and_protection() {
+        let (app, state) = setup_test_app_with_state();
+
+        use ultracrew::models::{Shift, Skill, Worker};
+        let request = ultracrew::public_contracts::ScheduleRequest {
+            workers: vec![
+                Worker {
+                    id: 1,
+                    skills: vec![Skill::new("Nurse")],
+                },
+                Worker {
+                    id: 2,
+                    skills: vec![Skill::new("Nurse")],
+                },
+            ],
+            shifts: vec![
+                Shift {
+                    id: 10,
+                    start_hour: 8,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Nurse"),
+                },
+                Shift {
+                    id: 20,
+                    start_hour: 24,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Nurse"),
+                },
+            ],
+            historical_workloads: None,
+            rng_seed: Some(42),
+            generation_limit: Some(20),
+            scenario: None,
+            fatigue: FatigueConfig::default(),
+        };
+
+        // 1. Manually edit Shift 10 to Worker 2 and lock it
+        let mut existing_assignments = std::collections::HashMap::new();
+        existing_assignments.insert(10, 2);
+        existing_assignments.insert(20, 1);
+
+        let reschedule_req = ultracrew::public_contracts::RescheduleRequest {
+            request: request.clone(),
+            existing_assignments: existing_assignments.clone(),
+            locked_shift_ids: Some(vec![10]), // Lock Shift 10 to Worker 2 ONLY
+            generation_limit: Some(20),
+            tournament_size: None,
+            population_size: Some(10),
+            mutation_rate: None,
+            crossover_rate: None,
+            elite_count: None,
+        };
+
+        // 2. Call POST /api/reschedule
+        let response = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/reschedule")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&reschedule_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 50000).await.unwrap();
+        let resp: ScheduleResponse = serde_json::from_slice(&body).unwrap();
+
+        // 3. Verify locked assignment (Shift 10 -> Worker 2) remained unchanged
+        assert_eq!(resp.schedule.get(&10), Some(&2), "Shift 10 must remain locked to Worker 2");
+        assert_eq!(resp.constraint_report.as_ref().unwrap().hard_violations, 0);
+
+        // 4. Verify that app_state.last_solution was updated with this valid solution
+        let valid_sol = {
+            let app_state = state.lock().unwrap();
+            assert!(app_state.last_solution.is_some());
+            app_state.last_solution.clone().unwrap()
+        };
+        assert_eq!(valid_sol.assignments.get(&10), Some(&2));
+
+        // 5. Test Protection: Submit a reschedule request that fails due to conflicting / impossible constraints
+        // (Worker 1 has only Nurse skill, but shift 10 requires Surgeon)
+        let invalid_request = ultracrew::public_contracts::ScheduleRequest {
+            workers: vec![
+                Worker {
+                    id: 1,
+                    skills: vec![Skill::new("Nurse")],
+                },
+            ],
+            shifts: vec![
+                Shift {
+                    id: 10,
+                    start_hour: 8,
+                    duration_hours: 8,
+                    required_skill: Skill::new("Surgeon"), // Impossible skill
+                },
+            ],
+            historical_workloads: None,
+            rng_seed: Some(42),
+            generation_limit: Some(10),
+            scenario: None,
+            fatigue: FatigueConfig::default(),
+        };
+
+        let mut invalid_assignments = std::collections::HashMap::new();
+        invalid_assignments.insert(10, 1);
+
+        let invalid_reschedule_req = ultracrew::public_contracts::RescheduleRequest {
+            request: invalid_request,
+            existing_assignments: invalid_assignments,
+            locked_shift_ids: Some(vec![10]),
+            generation_limit: Some(10),
+            tournament_size: None,
+            population_size: Some(10),
+            mutation_rate: None,
+            crossover_rate: None,
+            elite_count: None,
+        };
+
+        let invalid_response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/reschedule")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&invalid_reschedule_req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let invalid_body = axum::body::to_bytes(invalid_response.into_body(), 50000).await.unwrap();
+        let invalid_resp: ScheduleResponse = serde_json::from_slice(&invalid_body).unwrap();
+        assert!(invalid_resp.constraint_report.as_ref().unwrap().hard_violations > 0);
+
+        // Invariant 7: Confirm that failed/invalid optimization DID NOT overwrite last_solution!
+        let protected_sol = {
+            let app_state = state.lock().unwrap();
+            app_state.last_solution.clone().unwrap()
+        };
+        // It must still be the previous valid solution!
+        assert_eq!(protected_sol.assignments.get(&10), Some(&2));
+        assert_eq!(protected_sol.hard_violations, 0);
     }
 }

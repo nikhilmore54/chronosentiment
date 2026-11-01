@@ -363,8 +363,14 @@ impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
     fn create(&self, rng: &mut StdRng) -> ScheduleGenome {
         if let Some(ref seeds_mutex) = self.context.precomputed_seeds {
             let mut seeds = seeds_mutex.lock().unwrap();
-            if let Some(seed) = seeds.pop() {
-                return seed.clone(); // Ensure we don't move it if we wanted to clone, but pop() moves it. Just `return seed;` is fine.
+            if let Some(mut seed) = seeds.pop() {
+                // Ensure locked assignments invariant is strictly enforced on precomputed seeds
+                if let Some(ref locked) = self.context.locked_assignments {
+                    for (&shift_id, &worker_id) in locked {
+                        seed.assignments.insert(shift_id, worker_id);
+                    }
+                }
+                return seed;
             }
         }
         
@@ -606,6 +612,14 @@ impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
         let mut child1_assignments = HashMap::new();
         let mut child2_assignments = HashMap::new();
         for shift in self.context.shifts.iter() {
+            // Strictly enforce locked assignments invariant: never alter locked shifts across generations
+            if let Some(ref locked) = self.context.locked_assignments {
+                if let Some(&w_id) = locked.get(&shift.id) {
+                    child1_assignments.insert(shift.id, w_id);
+                    child2_assignments.insert(shift.id, w_id);
+                    continue;
+                }
+            }
             if rng.gen_bool(0.5) {
                 child1_assignments.insert(shift.id, *parent_a.assignments.get(&shift.id).unwrap());
                 child2_assignments.insert(shift.id, *parent_b.assignments.get(&shift.id).unwrap());
