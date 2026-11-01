@@ -26,6 +26,8 @@ import {
   parseBaselineCSV,
   auditBaselineClientSide,
   buildSyntheticAlternatives,
+  buildEditableSchedule,
+  VERIFIED_SAMPLE_SCHEDULE,
   type CustomShiftInput,
 } from './WorkflowUtils';
 
@@ -109,39 +111,14 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       'hospital_policy_v1'
     );
 
-    const baseSchedule: Record<string, string[]> = {};
-    const shiftTypes = ['Early', 'Late', 'Night', ''];
-    sampleStaff.forEach((s, idx) => {
-      const row: string[] = [];
-      for (let day = 0; day < 28; day++) {
-        const isRest = (day + idx) % 7 === 5 || (day + idx) % 7 === 6;
-        if (isRest) {
-          row.push('');
-        } else {
-          const shiftIdx = (day + idx * 2) % 3;
-          row.push(shiftTypes[shiftIdx]);
-        }
-      }
-      baseSchedule[s.id] = row;
-    });
+    const rawSchedule = { ...VERIFIED_SAMPLE_SCHEDULE };
+    const baseSchedule = buildEditableSchedule(sampleStaff, rawSchedule, slotMeta);
 
     const { alternatives: sampleAlternatives, recommendedId: recId } = buildSyntheticAlternatives(
       sampleStaff,
       baseSchedule,
       slotMeta
     );
-
-    const rawSchedule: Record<string, number> = {};
-    const staffIndexMap = new Map<string, number>();
-    sampleStaff.forEach((s, idx) => staffIndexMap.set(s.id, idx + 1));
-    Object.values(slotMeta).forEach(slot => {
-      const assignedNurseId = Object.keys(baseSchedule).find(
-        id => baseSchedule[id]?.[slot.dayIdx] === slot.label
-      );
-      if (assignedNurseId && staffIndexMap.has(assignedNurseId)) {
-        rawSchedule[String(slot.shiftId)] = staffIndexMap.get(assignedNurseId)!;
-      }
-    });
 
     const metricsRecord: Record<string, number> = {
       coverage: 1.0,

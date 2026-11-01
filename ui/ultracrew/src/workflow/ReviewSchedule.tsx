@@ -361,10 +361,11 @@ export const ReviewSchedule: React.FC<{
 
     // Validate the updated schedule asynchronously to keep constraint feedback live
     validateCurrentSchedule(staff, next, undefined, customSlotMeta).then(val => {
-      if (val && val.constraint_report) {
-        setLiveReport(val.constraint_report);
+      if (val) {
+        const report = val.constraint_report ?? val;
+        setLiveReport(report);
         if (result) {
-          result.constraint_report = val.constraint_report;
+          result.constraint_report = report;
         }
       }
     });
@@ -648,14 +649,16 @@ export const ReviewSchedule: React.FC<{
                   result.schedule,
                   {},
                   csrfToken,
+                  customSlotMeta,
                 );
                 onScheduleChange(r.schedule);
                 setRedistResult(r);
                 validateCurrentSchedule(staff, r.schedule, undefined, customSlotMeta).then(val => {
-                  if (val && val.constraint_report) {
-                    setLiveReport(val.constraint_report);
+                  if (val) {
+                    const report = val.constraint_report ?? val;
+                    setLiveReport(report);
                     if (result) {
-                      result.constraint_report = val.constraint_report;
+                      result.constraint_report = report;
                     }
                   }
                 });

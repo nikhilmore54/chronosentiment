@@ -135,6 +135,18 @@ impl RescheduleRequest {
                 }
             }
         }
+        let (precomputed_seeds, disable_global_constructor) = if !self.existing_assignments.is_empty() {
+            let mut seeds = Vec::new();
+            let pop_size = self.population_size.unwrap_or(50);
+            for _ in 0..pop_size {
+                seeds.push(crate::optimization::ScheduleGenome {
+                    assignments: self.existing_assignments.clone(),
+                });
+            }
+            (Some(Arc::new(std::sync::Mutex::new(seeds))), true)
+        } else {
+            (None, false)
+        };
         Arc::new(ScheduleContext {
             workers: Arc::new(self.request.workers.clone()),
             shifts: Arc::new(self.request.shifts.clone()),
@@ -149,9 +161,9 @@ impl RescheduleRequest {
             fatigue_weight: self.request.fatigue.fatigue_weight,
             hc3_aware_initialization: false,
             temporal_scarcity_construction: false,
-            disable_global_constructor: false,
+            disable_global_constructor,
             constructor_budget_ms: None,
-            precomputed_seeds: None,
+            precomputed_seeds,
         })
     }
 }

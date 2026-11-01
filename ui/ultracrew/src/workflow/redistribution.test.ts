@@ -10,8 +10,21 @@
 // The invariants (locked cells preserved, provenance correct) are unchanged.
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { redistributeWithLocks, buildSyntheticSchedule, buildSchedulePayload, buildLockedShiftIds, getScheduleSlotMeta } from './WorkflowUtils';
+import {
+  redistributeWithLocks,
+  buildSyntheticSchedule,
+  buildSchedulePayload,
+  buildLockedShiftIds,
+  getScheduleSlotMeta,
+  scheduleToAssignments,
+  buildEditableSchedule,
+  parseStaffCSV,
+  VERIFIED_SAMPLE_SCHEDULE,
+  computeCanonicalCoverage,
+  buildStaffingRequirements,
+} from './WorkflowUtils';
 import type { StaffMember } from './WorkflowTypes';
+import { SAMPLE_CSV } from './WorkflowTypes';
 
 // Minimal staff fixture — 8 members, all Nurse skill
 const STAFF: StaffMember[] = [
@@ -295,4 +308,94 @@ test('AT-05: 28-day exact shift locking does not collapse across weeks', () => {
   expect(lockedIds).not.toContain(week0TueShift!.shiftId);
   expect(lockedIds).not.toContain(week1TueShift!.shiftId);
   expect(lockedIds).not.toContain(week3TueShift!.shiftId);
+});
+
+// ─── AT-36: Single Manual Edit Regression Suite ─────────────────────────────
+
+test('AT-36.1: Verified sample roster initial state is 100% conserved with zero unmapped slots', () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  const conversion = scheduleToAssignments(staff, baseSchedule, slotMeta);
+  expect(conversion.totalUiAssignments).toBe(196);
+  expect(conversion.totalMappedAssignments).toBe(196);
+  expect(conversion.isConserved).toBe(true);
+  expect(conversion.unmappedUiAssignments).toEqual([]);
+  expect(conversion.duplicateAssignments).toEqual([]);
+
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, baseSchedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+});
+
+test('AT-36.2: 1 manual edit followed by redistribution preserves >= 95% of roster and zero hard violations', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Edit Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  // Mock API returning failure or cold-scramble to trigger quality gate fallback
+  mockFetch({});
+
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked scheduler edit MUST be preserved
+  expect(result.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Minimal churn — 1 edit must NOT reassign hundreds of shifts (user saw 409!)
+  expect(result.changedCount).toBeLessThanOrEqual(4);
+  expect(result.unchangedCount).toBeGreaterThanOrEqual(556);
+
+  // Invariant 3: Full conservation of demand coverage
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // Invariant 4: No unmapped assignments or duplicate assignments
+  const conversion = scheduleToAssignments(staff, result.schedule, slotMeta);
+  expect(conversion.isConserved).toBe(true);
+  expect(conversion.unmappedUiAssignments).toEqual([]);
+  expect(conversion.duplicateAssignments).toEqual([]);
+});
+
+test('AT-36.3: buildLockedShiftIds correctly maps user manual edits from currentSchedule', () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Edit Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  const lockedIds = buildLockedShiftIds(staff, {}, lockedCells, slotMeta, editedSchedule);
+  expect(lockedIds.length).toBe(1);
+  const lockedMeta = slotMeta[lockedIds[0]];
+  expect(lockedMeta).toBeDefined();
+  expect(lockedMeta.dayIdx).toBe(2);
+  expect(lockedMeta.label).toBe('Night');
 });

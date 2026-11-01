@@ -9,18 +9,39 @@ use std::time::Instant;
 #[test]
 fn test_realistic_20_nurse_196_shift_roster() {
     let mut workers = Vec::new();
-    // 5 HeadNurses + 15 Nurses
-    for i in 1..=5 {
-        workers.push(Worker {
-            id: i,
-            skills: vec![Skill::new("HeadNurse"), Skill::new("Nurse")],
-        });
-    }
-    for i in 6..=20 {
-        workers.push(Worker {
-            id: i,
-            skills: vec![Skill::new("Nurse")],
-        });
+    // Exact mapping matching SAMPLE_CSV in WorkflowTypes.ts:
+    // 1: Sarah_Chen (HeadNurse;Nurse)
+    // 2: Marcus_Webb (Nurse)
+    // 3: Priya_Nair (HeadNurse;Nurse)
+    // 4: James_Okafor (Nurse)
+    // 5: Elena_Vasquez (Nurse)
+    // 6: Tom_Lindqvist (Nurse)
+    // 7: Aisha_Diallo (HeadNurse)
+    // 8: Ravi_Sharma (Nurse)
+    // 9: Fatima_Al-Hassan (Nurse)
+    // 10: Daniel_Park (Nurse)
+    // 11: Ingrid_Sorensen (Nurse)
+    // 12: Carlos_Mendez (Nurse)
+    // 13: Yuki_Tanaka (HeadNurse;Nurse)
+    // 14: Kwame_Asante (Nurse)
+    // 15: Lena_Hoffmann (Nurse)
+    // 16: Amara_Osei (Nurse)
+    // 17: Patrick_Brennan (HeadNurse)
+    // 18: Nadia_Petrov (Nurse)
+    // 19: Soren_Andersen (Nurse)
+    // 20: Mei_Lin_Zhou (Nurse)
+    let head_nurses = [1, 3, 7, 13, 17];
+    for i in 1..=20 {
+        let skills = if head_nurses.contains(&i) {
+            if i == 7 || i == 17 {
+                vec![Skill::new("HeadNurse")]
+            } else {
+                vec![Skill::new("HeadNurse"), Skill::new("Nurse")]
+            }
+        } else {
+            vec![Skill::new("Nurse")]
+        };
+        workers.push(Worker { id: i, skills });
     }
 
     let mut shifts = Vec::new();
@@ -124,7 +145,7 @@ fn test_realistic_20_nurse_196_shift_roster() {
     println!("Fairness penalty: {}", solution.fairness_penalty);
 
     let evaluator = InrcConstraintEvaluator::new(context);
-    let genome = ScheduleGenome { assignments: solution.assignments };
+    let genome = ScheduleGenome { assignments: solution.assignments.clone() };
     let report = evaluator.evaluate(&genome);
 
     println!("Report hard violations: {}", report.hard_violations);
