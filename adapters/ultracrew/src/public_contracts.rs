@@ -139,8 +139,22 @@ impl RescheduleRequest {
             let mut seeds = Vec::new();
             let pop_size = self.population_size.unwrap_or(50);
             for _ in 0..pop_size {
+                let mut assignments = self.existing_assignments.clone();
+                for shift in &self.request.shifts {
+                    if !assignments.contains_key(&shift.id) {
+                        let eligible: Vec<u64> = self.request.workers.iter()
+                            .filter(|w| w.skills.contains(&shift.required_skill))
+                            .map(|w| w.id)
+                            .collect();
+                        if let Some(&w_id) = eligible.first() {
+                            assignments.insert(shift.id, w_id);
+                        } else if let Some(first_worker) = self.request.workers.first() {
+                            assignments.insert(shift.id, first_worker.id);
+                        }
+                    }
+                }
                 seeds.push(crate::optimization::ScheduleGenome {
-                    assignments: self.existing_assignments.clone(),
+                    assignments,
                 });
             }
             (Some(Arc::new(std::sync::Mutex::new(seeds))), true)

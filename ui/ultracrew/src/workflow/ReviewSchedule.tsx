@@ -428,13 +428,21 @@ export const ReviewSchedule: React.FC<{
         if (!newLocked.has(key)) {
           const before = (next[nurseId] || [])[d] ?? '';
           const after = (resolvedSchedule[nurseId] || [])[d] ?? '';
-          if (before !== '' && after === '') {
+          if (before !== '' && after !== before) {
             const dtStr = days[d]?.toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' }) ?? `${d + 1}`;
-            const rebalancedColleague = staff.find(
-              s => s.id !== nurseId && (next[s.id] || [])[d] !== before && (resolvedSchedule[s.id] || [])[d] === before
-            );
-            const colleagueName = rebalancedColleague ? rebalancedColleague.id.replace(/_/g, ' ') : 'an eligible colleague';
-            notice = `${nurseId.replace(/_/g, ' ')}'s unlocked ${before} shift on ${dtStr} was automatically rebalanced to ${colleagueName} to guarantee 10h+ rest before/after manual ${shift} edit.`;
+            if (after === '') {
+              const rebalancedColleague = staff.find(
+                s => s.id !== nurseId && (next[s.id] || [])[d] !== before && (resolvedSchedule[s.id] || [])[d] === before
+              );
+              const colleagueName = rebalancedColleague ? rebalancedColleague.id.replace(/_/g, ' ') : 'an eligible colleague';
+              notice = `${nurseId.replace(/_/g, ' ')}'s unlocked ${before} shift on ${dtStr} was automatically rebalanced to ${colleagueName} to guarantee 10h+ rest before/after manual ${shift} edit.`;
+            } else {
+              const swappedColleague = staff.find(
+                s => s.id !== nurseId && (next[s.id] || [])[d] === after && (resolvedSchedule[s.id] || [])[d] === before
+              );
+              const colleagueName = swappedColleague ? swappedColleague.id.replace(/_/g, ' ') : 'a colleague';
+              notice = `${nurseId.replace(/_/g, ' ')}'s shift on ${dtStr} was switched to an alternate ${after} shift (swapping with ${colleagueName}) to preserve hours and guarantee 10h+ rest before/after manual ${shift} edit.`;
+            }
           }
         }
       }

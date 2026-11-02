@@ -755,34 +755,100 @@ export function localRebalanceSchedule(
     result[s.id] = [...(currentSchedule[s.id] || Array(maxDay + 1).fill(''))];
   });
 
+  // Helper: check legal rest succession between two consecutive shifts
+  const isLegalSuccession = (first: string, second: string): boolean => {
+    if (!first || !second) return true;
+    if (first === 'Night' && (second === 'Early' || second === 'Late')) return false;
+    if (first === 'Late' && second === 'Early') return false;
+    return true;
+  };
+
+  const qualifiesForShiftType = (w: StaffMember, shiftType: string): boolean => {
+    if (shiftType === 'Early') return w.skills.includes('HeadNurse') || w.skills.includes('Nurse');
+    if (shiftType === 'Late' || shiftType === 'Night') return w.skills.includes('Nurse');
+    return true;
+  };
+
   // Pre-pass 1: Resolve rest-succession violations (HC2)
   // Working time regulations require minimum 10h continuous rest between shifts.
   // Forbidden consecutive successions (rest < 10h):
   // 1. Night (ends 06:00 next day) -> Early (starts 06:00 -> 0h rest)
   // 2. Night (ends 06:00 next day) -> Late (starts 14:00 -> 8h rest)
   // 3. Late (ends 22:00) -> Early (starts 06:00 next day -> 8h rest)
-  // If one cell is locked, the conflicting unlocked cell must yield to Off so it can be rebalanced.
+  // Prefer intra-day shift swap to assign the worker an alternate feasible shift on that day
+  // rather than stripping their shift into an unpaid off-duty day!
+  const SHIFT_OPTIONS = ['Early', 'Late', 'Night'];
+
   for (const s of staff) {
     for (let d = 0; d < maxDay; d++) {
       const shiftToday = result[s.id]?.[d] ?? '';
       const shiftTomorrow = result[s.id]?.[d + 1] ?? '';
 
-      const isRestViolation =
-        (shiftToday === 'Night' && (shiftTomorrow === 'Early' || shiftTomorrow === 'Late')) ||
-        (shiftToday === 'Late' && shiftTomorrow === 'Early');
+      const isRestViolation = !isLegalSuccession(shiftToday, shiftTomorrow);
 
       if (isRestViolation) {
         const todayLocked = lockedCells.has(`${s.id}:${d}`);
         const tomorrowLocked = lockedCells.has(`${s.id}:${d + 1}`);
 
-        if (todayLocked && !tomorrowLocked) {
-          // Today's shift is locked; tomorrow's conflicting unlocked shift yields to Off
-          result[s.id][d + 1] = '';
-        } else if (!todayLocked && tomorrowLocked) {
-          // Tomorrow's shift is locked; today's conflicting unlocked shift yields to Off
-          result[s.id][d] = '';
+        if (!todayLocked && tomorrowLocked) {
+          // Tomorrow is locked; try to give worker s an alternate shift on day d via intra-day swap
+          let swapped = false;
+          for (const alt of SHIFT_OPTIONS) {
+            if (alt === shiftToday) continue;
+            if (!qualifiesForShiftType(s, alt)) continue;
+            const prev = d > 0 ? (result[s.id]?.[d - 1] ?? '') : '';
+            if (!isLegalSuccession(prev, alt) || !isLegalSuccession(alt, shiftTomorrow)) continue;
+
+            for (const other of staff) {
+              if (other.id === s.id) continue;
+              if (lockedCells.has(`${other.id}:${d}`)) continue;
+              if ((result[other.id]?.[d] ?? '') !== alt) continue;
+              if (!qualifiesForShiftType(other, shiftToday)) continue;
+
+              const otherPrev = d > 0 ? (result[other.id]?.[d - 1] ?? '') : '';
+              const otherNext = d < maxDay ? (result[other.id]?.[d + 1] ?? '') : '';
+              if (isLegalSuccession(otherPrev, shiftToday) && isLegalSuccession(shiftToday, otherNext)) {
+                result[s.id][d] = alt;
+                result[other.id][d] = shiftToday;
+                swapped = true;
+                break;
+              }
+            }
+            if (swapped) break;
+          }
+          if (!swapped) {
+            result[s.id][d] = '';
+          }
+        } else if (todayLocked && !tomorrowLocked) {
+          // Today is locked; try to give worker s an alternate shift on day d+1 via intra-day swap
+          let swapped = false;
+          for (const alt of SHIFT_OPTIONS) {
+            if (alt === shiftTomorrow) continue;
+            if (!qualifiesForShiftType(s, alt)) continue;
+            const next = d + 1 < maxDay ? (result[s.id]?.[d + 2] ?? '') : '';
+            if (!isLegalSuccession(shiftToday, alt) || !isLegalSuccession(alt, next)) continue;
+
+            for (const other of staff) {
+              if (other.id === s.id) continue;
+              if (lockedCells.has(`${other.id}:${d + 1}`)) continue;
+              if ((result[other.id]?.[d + 1] ?? '') !== alt) continue;
+              if (!qualifiesForShiftType(other, shiftTomorrow)) continue;
+
+              const otherPrev = result[other.id]?.[d] ?? '';
+              const otherNext = d + 1 < maxDay ? (result[other.id]?.[d + 2] ?? '') : '';
+              if (isLegalSuccession(otherPrev, shiftTomorrow) && isLegalSuccession(shiftTomorrow, otherNext)) {
+                result[s.id][d + 1] = alt;
+                result[other.id][d + 1] = shiftTomorrow;
+                swapped = true;
+                break;
+              }
+            }
+            if (swapped) break;
+          }
+          if (!swapped) {
+            result[s.id][d + 1] = '';
+          }
         } else if (!todayLocked && !tomorrowLocked) {
-          // Neither is locked; tomorrow yields to Off to protect rest
           result[s.id][d + 1] = '';
         }
       }

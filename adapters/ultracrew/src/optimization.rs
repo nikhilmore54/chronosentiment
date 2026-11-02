@@ -626,12 +626,25 @@ impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
                     continue;
                 }
             }
+            let w_a = parent_a
+                .assignments
+                .get(&shift.id)
+                .copied()
+                .or_else(|| parent_b.assignments.get(&shift.id).copied())
+                .unwrap_or_else(|| self.skill_aware_pick(shift, rng));
+            let w_b = parent_b
+                .assignments
+                .get(&shift.id)
+                .copied()
+                .or_else(|| parent_a.assignments.get(&shift.id).copied())
+                .unwrap_or_else(|| self.skill_aware_pick(shift, rng));
+
             if rng.gen_bool(0.5) {
-                child1_assignments.insert(shift.id, *parent_a.assignments.get(&shift.id).unwrap());
-                child2_assignments.insert(shift.id, *parent_b.assignments.get(&shift.id).unwrap());
+                child1_assignments.insert(shift.id, w_a);
+                child2_assignments.insert(shift.id, w_b);
             } else {
-                child1_assignments.insert(shift.id, *parent_b.assignments.get(&shift.id).unwrap());
-                child2_assignments.insert(shift.id, *parent_a.assignments.get(&shift.id).unwrap());
+                child1_assignments.insert(shift.id, w_b);
+                child2_assignments.insert(shift.id, w_a);
             }
         }
         (
@@ -687,17 +700,19 @@ impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
 pub fn generate_explanation(eval: &ScheduleEvaluation, context: &ScheduleContext) -> String {
     let mut lines = Vec::new();
     for shift in context.shifts.iter() {
-        let worker_id = eval.schedule.assignments.get(&shift.id).unwrap();
-        let worker = context.workers.iter().find(|w| w.id == *worker_id).unwrap();
-        let skill_ok = if worker.skills.contains(&shift.required_skill) {
-            "✔"
-        } else {
-            "✖"
-        };
-        lines.push(format!(
-            "Shift {} assigned to Worker {} (Skill match: {}), Duration: {}h",
-            shift.id, worker.id, skill_ok, shift.duration_hours
-        ));
+        if let Some(worker_id) = eval.schedule.assignments.get(&shift.id) {
+            if let Some(worker) = context.workers.iter().find(|w| w.id == *worker_id) {
+                let skill_ok = if worker.skills.contains(&shift.required_skill) {
+                    "✔"
+                } else {
+                    "✖"
+                };
+                lines.push(format!(
+                    "Shift {} assigned to Worker {} (Skill match: {}), Duration: {}h",
+                    shift.id, worker.id, skill_ok, shift.duration_hours
+                ));
+            }
+        }
     }
     if eval.fatigue_penalty > 0.0 {
         lines.push(format!("Fatigue penalty: {:.2}", eval.fatigue_penalty));
