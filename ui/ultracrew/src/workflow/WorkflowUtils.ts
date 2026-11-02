@@ -817,7 +817,24 @@ export function localRebalanceSchedule(
             if (swapped) break;
           }
           if (!swapped) {
-            result[s.id][d] = '';
+            // Check if there is an eligible off colleague on day d who can take shiftToday
+            const canRebalanceToOffColleague = staff.some(other => {
+              if (other.id === s.id) return false;
+              if (lockedCells.has(`${other.id}:${d}`)) return false;
+              if ((result[other.id]?.[d] ?? '') !== '') return false;
+              if (!qualifiesForShiftType(other, shiftToday)) return false;
+              const otherPrev = d > 0 ? (result[other.id]?.[d - 1] ?? '') : '';
+              const otherNext = d < maxDay ? (result[other.id]?.[d + 1] ?? '') : '';
+              return isLegalSuccession(otherPrev, shiftToday) && isLegalSuccession(shiftToday, otherNext);
+            });
+
+            if (canRebalanceToOffColleague) {
+              result[s.id][d] = '';
+            } else {
+              // AT-40.2: If neither swap nor off-staff rebalance is feasible,
+              // do NOT silently drop the shift to Off. Preserve the assignment and let
+              // independent validation surface the unresolved violation to the scheduler.
+            }
           }
         } else if (todayLocked && !tomorrowLocked) {
           // Today is locked; try to give worker s an alternate shift on day d+1 via intra-day swap
@@ -846,7 +863,22 @@ export function localRebalanceSchedule(
             if (swapped) break;
           }
           if (!swapped) {
-            result[s.id][d + 1] = '';
+            // Check if there is an eligible off colleague on day d+1 who can take shiftTomorrow
+            const canRebalanceToOffColleague = staff.some(other => {
+              if (other.id === s.id) return false;
+              if (lockedCells.has(`${other.id}:${d + 1}`)) return false;
+              if ((result[other.id]?.[d + 1] ?? '') !== '') return false;
+              if (!qualifiesForShiftType(other, shiftTomorrow)) return false;
+              const otherPrev = result[other.id]?.[d] ?? '';
+              const otherNext = d + 1 < maxDay ? (result[other.id]?.[d + 2] ?? '') : '';
+              return isLegalSuccession(otherPrev, shiftTomorrow) && isLegalSuccession(shiftTomorrow, otherNext);
+            });
+
+            if (canRebalanceToOffColleague) {
+              result[s.id][d + 1] = '';
+            } else {
+              // AT-40.2: Preserve assignment; let independent validation surface the violation
+            }
           }
         } else if (!todayLocked && !tomorrowLocked) {
           result[s.id][d + 1] = '';
@@ -1152,7 +1184,7 @@ export function detectScheduleViolations(
           staffId: s.id,
           dayIdx: d + 1,
           type: 'rest',
-          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has ${today} on day ${d + 1} followed by ${tomorrow} on day ${d + 2} (<10h rest).`,
+          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has ${today} on day ${d + 1} followed by ${tomorrow} on day ${d + 2} (< configured 10h min rest).`,
         });
       }
       if (today === 'Late' && tomorrow === 'Early') {
@@ -1160,7 +1192,7 @@ export function detectScheduleViolations(
           staffId: s.id,
           dayIdx: d + 1,
           type: 'rest',
-          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has Late on day ${d + 1} followed by Early on day ${d + 2} (8h rest < 10h min).`,
+          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has Late on day ${d + 1} followed by Early on day ${d + 2} (8h rest < configured 10h min).`,
         });
       }
     }

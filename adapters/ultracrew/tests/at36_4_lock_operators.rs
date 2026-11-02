@@ -213,3 +213,47 @@ fn at36_4_repair_skips_locked_shifts() {
         "repair must not move locked shift 102"
     );
 }
+
+#[test]
+fn at40_incomplete_seed_crossover_safety() {
+    let mut locked = HashMap::new();
+    locked.insert(10, 2); // Shift 10 is locked to worker 2
+
+    let ctx = test_context(locked);
+    let optimizer = ScheduleOptimizer::new(ctx.clone());
+    let mut rng = StdRng::seed_from_u64(999);
+
+    // Parent A is missing shift 30
+    let mut a_map = HashMap::new();
+    a_map.insert(10, 2);
+    a_map.insert(20, 1);
+    a_map.insert(40, 3);
+    let parent_a = ScheduleGenome { assignments: a_map };
+
+    // Parent B is missing shifts 20 and 40
+    let mut b_map = HashMap::new();
+    b_map.insert(10, 2);
+    b_map.insert(30, 2);
+    let parent_b = ScheduleGenome { assignments: b_map };
+
+    // Crossover must not panic despite missing keys in parents
+    let (child1, child2) = optimizer.crossover(&parent_a, &parent_b, &mut rng);
+
+    // Invariant 1: Locked assignment strictly preserved in both children
+    assert_eq!(child1.assignments.get(&10), Some(&2));
+    assert_eq!(child2.assignments.get(&10), Some(&2));
+
+    // Invariant 2: Both children must have assignments for ALL shifts in context
+    for shift in ctx.shifts.iter() {
+        assert!(
+            child1.assignments.contains_key(&shift.id),
+            "Child 1 must contain shift {}",
+            shift.id
+        );
+        assert!(
+            child2.assignments.contains_key(&shift.id),
+            "Child 2 must contain shift {}",
+            shift.id
+        );
+    }
+}

@@ -659,3 +659,151 @@ test('AT-36.5: Locked skill-violation recovery — explicit Off releases shift t
   expect(violationsAfter.length).toBe(0);
 });
 
+test('AT-40.1: Alternate shift swap — Marcus moves to Early, Daniel absorbs Late, both pass rest/skill checks, locked assignment preserved', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Set up the exact Marcus-Daniel July 22-23 (Days 8-9) scenario:
+  // Day 8 (July 22): Marcus has Late (14:00-22:00), Daniel has Early (06:00-14:00)
+  // Day 9 (July 23): Marcus is manually edited to Early (06:00-14:00)
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Marcus_Webb'][8] = 'Late';
+  currentSchedule['James_Okafor'][8] = ''; // James yields Late slot on Day 8 to Marcus
+  currentSchedule['Marcus_Webb'][9] = 'Early'; // The scheduler edit
+  currentSchedule['Daniel_Park'][8] = 'Early';
+
+  // Lock Marcus Day 9 edit, and lock Priya and Kwame on Day 8 so Daniel is the selected swap candidate
+  const lockedCells = new Set(['Marcus_Webb:9', 'Priya_Nair:8', 'Kwame_Asante:8']);
+
+  // Run redistribution with locks
+  const result = await redistributeWithLocks(
+    staff,
+    currentSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 1. Marcus moves to Early on Day 8 (July 22)
+  expect(result.schedule['Marcus_Webb'][8]).toBe('Early');
+
+  // 2. Daniel absorbs Late on Day 8 (July 22)
+  expect(result.schedule['Daniel_Park'][8]).toBe('Late');
+
+  // 3. The locked manual assignment on Marcus on Day 9 is strictly preserved
+  expect(result.schedule['Marcus_Webb'][9]).toBe('Early');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // 4. Both workers pass rest and skill checks:
+  // Marcus rest between Day 8 Early (ends 14:00) and Day 9 Early (starts 06:00) = 16h (>= configured 10h min)
+  // Daniel rest between Day 7 Early (ends 14:00) and Day 8 Late (starts 14:00) = 24h (>= configured 10h min)
+  const violations = detectScheduleViolations(staff, result.schedule, slotMeta);
+  const marcusViolations = violations.filter(v => v.staffId === 'Marcus_Webb');
+  const danielViolations = violations.filter(v => v.staffId === 'Daniel_Park');
+  expect(marcusViolations.length).toBe(0);
+  expect(danielViolations.length).toBe(0);
+
+  // 5. Total assigned hours remain conserved (196/196 required positions)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-40.2: No valid alternate — manual decision preserved, unresolved violation visible, no assignment silently dropped to Off', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Set up scenario where Marcus has Late on Day 8, manually locked to Early on Day 9.
+  // BUT all colleagues on Day 8 are locked, so NO valid swap or off-staff rebalance can take place:
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Marcus_Webb'][8] = 'Late';
+  currentSchedule['James_Okafor'][8] = ''; // James yields Late slot on Day 8 to Marcus
+  currentSchedule['Marcus_Webb'][9] = 'Early';
+
+  // Lock Marcus Day 9 AND all colleagues on Day 8
+  const lockedCells = new Set(['Marcus_Webb:9']);
+  staff.forEach(s => {
+    if (s.id !== 'Marcus_Webb') lockedCells.add(`${s.id}:8`);
+  });
+
+  const resolved = localRebalanceSchedule(staff, currentSchedule, lockedCells, slotMeta);
+
+  // 1. Manual locked edit on Marcus is preserved
+  expect(resolved['Marcus_Webb'][9]).toBe('Early');
+
+  // 2. Crucial: Marcus\'s Day 8 assignment is NOT silently dropped to Off (\'\')
+  expect(resolved['Marcus_Webb'][8]).toBe('Late');
+
+  // 3. Unresolved rest violation remains visible to the scheduler
+  const violations = detectScheduleViolations(staff, resolved, slotMeta);
+  const marcusRestViolation = violations.find(
+    v => v.staffId === 'Marcus_Webb' && v.type === 'rest'
+  );
+  expect(marcusRestViolation).toBeDefined();
+  expect(marcusRestViolation!.message).toContain('configured 10h min');
+});
+
+test('AT-40.3: Incomplete seed recovery — missing positions completed safely or produce controlled failure without panic or lock loss', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Intentionally introduce 5 unassigned / missing positions across the schedule
+  const incompleteSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    incompleteSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  // Clear shifts on 5 workers on Day 15
+  incompleteSchedule['Sarah_Chen'][15] = '';
+  incompleteSchedule['Marcus_Webb'][15] = '';
+  incompleteSchedule['James_Okafor'][15] = '';
+  incompleteSchedule['Elena_Vasquez'][15] = '';
+  incompleteSchedule['Daniel_Park'][15] = '';
+
+  // Lock a critical assignment on Day 3
+  incompleteSchedule['Priya_Nair'][3] = 'Night';
+  const lockedCells = new Set(['Priya_Nair:3']);
+
+  // Call redistributeWithLocks with incomplete schedule
+  const result = await redistributeWithLocks(
+    staff,
+    incompleteSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 1. Does not panic and returns a valid schedule structure
+  expect(result.schedule).toBeDefined();
+
+  // 2. Invariant: Locked assignment is strictly preserved
+  expect(result.schedule['Priya_Nair'][3]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // 3. Independent validator verifies the schedule
+  const violations = detectScheduleViolations(staff, result.schedule, slotMeta);
+  // Independent validation confirms no hard violations on preserved locks
+  expect(violations.filter(v => v.staffId === 'Priya_Nair' && v.dayIdx === 3).length).toBe(0);
+
+  // 4. Missing positions are filled safely: 100% canonical demand covered
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+

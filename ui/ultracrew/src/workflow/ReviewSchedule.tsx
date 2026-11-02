@@ -265,7 +265,7 @@ const ExplainModal: React.FC<{
     // Rest day reasoning
     reasons.push({ icon: '😴', text: `Rest day on ${dateStr}.` });
     if (member) reasons.push({ icon: '📄', text: `Ensures minimum consecutive days off for ${member.id} per contract rules.` });
-    reasons.push({ icon: '⚡', text: 'Prevents fatigue accumulation and maintains legal rest requirements.' });
+    reasons.push({ icon: '⚡', text: 'Prevents fatigue accumulation and maintains configured minimum rest requirements.' });
     if (isWeekend) reasons.push({ icon: '📅', text: 'Weekend rest — does not consume weekend allocation.' });
     if (sc2 !== null && sc2 > 800) {
       reasons.push({ icon: '⚡', text: `Team fatigue load is elevated (SC2 = ${sc2.toFixed(0)}). Rest days are being prioritised for high-workload workers.`, color: '#f59e0b' });
@@ -421,7 +421,7 @@ export const ReviewSchedule: React.FC<{
     const resolvedSchedule = localRebalanceSchedule(staff, next, newLocked, customSlotMeta);
 
     // Detect if an adjacent unlocked shift on this worker was auto-rebalanced to resolve root cause
-    let notice: string | null = null;
+    let candidateNotice: string | null = null;
     for (let d = 0; d < horizonDays; d++) {
       if (Math.abs(d - dayIdx) === 1) {
         const key = `${nurseId}:${d}`;
@@ -435,31 +435,39 @@ export const ReviewSchedule: React.FC<{
                 s => s.id !== nurseId && (next[s.id] || [])[d] !== before && (resolvedSchedule[s.id] || [])[d] === before
               );
               const colleagueName = rebalancedColleague ? rebalancedColleague.id.replace(/_/g, ' ') : 'an eligible colleague';
-              notice = `${nurseId.replace(/_/g, ' ')}'s unlocked ${before} shift on ${dtStr} was automatically rebalanced to ${colleagueName} to guarantee 10h+ rest before/after manual ${shift} edit.`;
+              candidateNotice = `${nurseId.replace(/_/g, ' ')}'s unlocked ${before} shift on ${dtStr} was automatically rebalanced to ${colleagueName} to guarantee configured minimum 10h+ rest before/after manual ${shift} edit.`;
             } else {
               const swappedColleague = staff.find(
                 s => s.id !== nurseId && (next[s.id] || [])[d] === after && (resolvedSchedule[s.id] || [])[d] === before
               );
               const colleagueName = swappedColleague ? swappedColleague.id.replace(/_/g, ' ') : 'a colleague';
-              notice = `${nurseId.replace(/_/g, ' ')}'s shift on ${dtStr} was switched to an alternate ${after} shift (swapping with ${colleagueName}) to preserve hours and guarantee 10h+ rest before/after manual ${shift} edit.`;
+              candidateNotice = `${nurseId.replace(/_/g, ' ')}'s shift on ${dtStr} was switched to an alternate ${after} shift (swapping with ${colleagueName}) to preserve hours and guarantee configured minimum 10h+ rest before/after manual ${shift} edit.`;
             }
           }
         }
       }
     }
-    setAutoResolveNotice(notice);
 
     onScheduleChange(resolvedSchedule);
     setEditCount(c => c + 1);
     setRedistResult(null); // clear any previous redistribution result on new edit
 
     // Validate the updated schedule asynchronously to keep constraint feedback live
+    // UI safeguard: Only surface root-cause resolved banner after independent validator confirms zero hard violations!
     validateCurrentSchedule(staff, resolvedSchedule, undefined, customSlotMeta).then(val => {
       if (val) {
         const report = val.constraint_report ?? val;
         setLiveReport(report);
         if (result) {
           result.constraint_report = report;
+        }
+
+        const violations = detectScheduleViolations(staff, resolvedSchedule, customSlotMeta);
+        const hasViolationsOnWorker = violations.some(v => v.staffId === nurseId);
+        if (candidateNotice && !hasViolationsOnWorker && (report.hard_violations ?? 0) === 0) {
+          setAutoResolveNotice(candidateNotice);
+        } else {
+          setAutoResolveNotice(null);
         }
       }
     });
