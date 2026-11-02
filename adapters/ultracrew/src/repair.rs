@@ -165,6 +165,12 @@ impl RepairOperator<ScheduleGenome, InrcConstraintModel> for ReassignRepairOpera
                     shift_id: shift_2_id,
                     ..
                 } => {
+                    // AT-36.4: never repair-away a manually locked assignment
+                    if let Some(ref locked) = self.context.locked_assignments {
+                        if locked.contains_key(&shift_2_id) {
+                            continue;
+                        }
+                    }
                     let target_shift = self.context.shifts.iter().find(|s| s.id == shift_2_id);
                     if let Some(shift) = target_shift {
                         let mut eligible_workers: Vec<u64> = self

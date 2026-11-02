@@ -217,7 +217,13 @@ pub struct SeededScheduleFactory {
 
 impl GenomeFactory<ScheduleGenome> for SeededScheduleFactory {
     fn create(&self, rng: &mut StdRng) -> ScheduleGenome {
-        if let Some(seed) = self.seeds.borrow_mut().pop() {
+        if let Some(mut seed) = self.seeds.borrow_mut().pop() {
+            // AT-36.4: same lock re-stamp as ScheduleOptimizer::create precomputed seeds
+            if let Some(ref locked) = self.base_optimizer.context.locked_assignments {
+                for (&shift_id, &worker_id) in locked {
+                    seed.assignments.insert(shift_id, worker_id);
+                }
+            }
             seed
         } else {
             self.base_optimizer.create(rng)

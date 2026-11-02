@@ -22,6 +22,8 @@ import {
   VERIFIED_SAMPLE_SCHEDULE,
   computeCanonicalCoverage,
   buildStaffingRequirements,
+  detectScheduleViolations,
+  localRebalanceSchedule,
 } from './WorkflowUtils';
 import type { StaffMember } from './WorkflowTypes';
 import { SAMPLE_CSV } from './WorkflowTypes';
@@ -579,5 +581,80 @@ test('AT-39: Manual edit to Early shift resolves root cause of preceding Late sh
   expect(cov.coveragePct).toBe(100);
   expect(cov.gapPositions).toBe(0);
   expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-36.5: Locked skill-violation recovery — explicit Off releases shift to eligible replacement with zero violations', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Recreate the user scenario where Priya Nair is locked on Day 3 Night
+  // and Aisha Diallo (HeadNurse only) is locked on Day 10 to incompatible 'Late' shift.
+  const scheduleWithViolation: Record<string, string[]> = {};
+  for (const s of staff) {
+    scheduleWithViolation[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  scheduleWithViolation['Priya_Nair'][3] = 'Night';
+  scheduleWithViolation['Aisha_Diallo'][10] = 'Late';
+  const initialLocks = new Set(['Priya_Nair:3', 'Aisha_Diallo:10']);
+
+  // Run initial rebalance: rest turnaround conflicts on Day 4 and Day 11 are resolved,
+  // leaving ONLY the locked skill violation on Aisha Diallo!
+  const rebalancedWithViolation = localRebalanceSchedule(staff, scheduleWithViolation, initialLocks, slotMeta);
+
+  // Confirm existing skill violation is detected and visible
+  const violationsBefore = detectScheduleViolations(staff, rebalancedWithViolation, slotMeta);
+  expect(violationsBefore.length).toBe(1);
+  expect(violationsBefore[0].type).toBe('skill');
+  expect(violationsBefore[0].staffId).toBe('Aisha_Diallo');
+  expect(violationsBefore[0].dayIdx).toBe(10);
+
+  // 2. Scheduler explicitly changes Aisha to 'Off' on Day 10
+  const scheduleWithOff: Record<string, string[]> = {};
+  for (const s of staff) {
+    scheduleWithOff[s.id] = [...(rebalancedWithViolation[s.id] || [])];
+  }
+  scheduleWithOff['Aisha_Diallo'][10] = ''; // Changed to Off
+  const locksWithOff = new Set(['Priya_Nair:3', 'Aisha_Diallo:10']); // Aisha is locked as Off
+
+  // 3. Run redistribution
+  const result = await redistributeWithLocks(
+    staff,
+    scheduleWithOff,
+    locksWithOff,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Aisha remains protected as Off on Day 10 (she is unavailable that day)
+  expect(result.schedule['Aisha_Diallo'][10]).toBe('');
+
+  // Invariant 2: Unrelated locked assignment on Priya_Nair (Day 3 Night) is strictly preserved
+  expect(result.schedule['Priya_Nair'][3]).toBe('Night');
+
+  // Invariant 3: The vacant Late shift position on Day 10 is released and assigned to an eligible replacement nurse
+  const day10LateStaff = staff.filter(s => result.schedule[s.id][10] === 'Late');
+  expect(day10LateStaff.length).toBe(2); // Exactly 2 Late shifts on Day 10
+  expect(day10LateStaff.map(s => s.id)).not.toContain('Aisha_Diallo');
+
+  const replacement = day10LateStaff.find(s => s.id !== 'Ingrid_Sorensen');
+  expect(replacement).toBeDefined();
+  expect(replacement!.skills).toContain('Nurse'); // Replacement has Nurse qualification
+
+  // Invariant 4: No locked assignments changed
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // Invariant 5: 100% Demand coverage conserved (196/196 positions)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // Invariant 6: Independent validation confirms ZERO hard violations across the entire roster!
+  const violationsAfter = detectScheduleViolations(staff, result.schedule, slotMeta);
+  expect(violationsAfter.length).toBe(0);
 });
 

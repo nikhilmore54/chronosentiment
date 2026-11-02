@@ -107,6 +107,7 @@ fn case_002_rest_7h59() {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
+            ..Default::default()
         }),
         vec![shift1, shift2],
     );
@@ -140,6 +141,7 @@ fn case_003_rest_8h00() {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
+            ..Default::default()
         }),
         vec![shift1, shift2],
     );
@@ -175,6 +177,7 @@ fn case_004_weekly_40h00() {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
+            ..Default::default()
         }),
         shifts,
     );
@@ -214,6 +217,7 @@ fn case_005_weekly_40h01() {
             max_hours_per_worker: Some(40.0),
             minimum_rest_hours: Some(8),
             leave_requests: None,
+            ..Default::default()
         }),
         shifts,
     );
