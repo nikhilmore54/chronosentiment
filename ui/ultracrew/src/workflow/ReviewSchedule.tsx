@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken, localRebalanceSchedule } from './WorkflowUtils';
+import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken, localRebalanceSchedule, detectScheduleViolations } from './WorkflowUtils';
 import type { RedistributionResult, ShiftSlotMeta } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -24,10 +24,10 @@ const ShiftPicker: React.FC<{
 
     // 1. Skill qualification check (HC1)
     if ((opt === 'Late' || opt === 'Night') && !staffMember.skills.includes('Nurse')) {
-      issues.push('Missing Nurse skill');
+      issues.push(`Skill mismatch (HC1): lacks 'Nurse' skill (has [${staffMember.skills.join(', ')}])`);
     }
     if (opt === 'Early' && !staffMember.skills.includes('HeadNurse') && !staffMember.skills.includes('Nurse')) {
-      issues.push('Missing Early qualification');
+      issues.push(`Skill mismatch (HC1): lacks Early qualification`);
     }
 
     // 2. Rest & Succession check (HC2)
@@ -472,6 +472,9 @@ export const ReviewSchedule: React.FC<{
   };
 
   const cr = liveReport ?? result.constraint_report;
+  const activeViolations = detectScheduleViolations(staff, schedule, customSlotMeta);
+  const violationByCell = new Map<string, string>();
+  activeViolations.forEach(v => violationByCell.set(`${v.staffId}:${v.dayIdx}`, v.message));
 
   const stickyTh: React.CSSProperties = {
     padding: '0.4rem 0.5rem',
@@ -613,6 +616,38 @@ export const ReviewSchedule: React.FC<{
         </div>
       )}
 
+      {activeViolations.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(239,68,68,0.06)',
+          border: '1px solid var(--danger-color)',
+          borderRadius: '8px',
+          padding: '0.75rem 1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.45rem',
+        }}>
+          <div style={{ color: 'var(--danger-color)', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span>⚠ Active Hard Policy Violations ({activeViolations.length})</span>
+          </div>
+          {activeViolations.map((v, i) => {
+            const isLocked = lockedCells.has(`${v.staffId}:${v.dayIdx}`);
+            return (
+              <div key={i} style={{ fontSize: '0.82rem', color: 'var(--text-main)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', lineHeight: 1.4 }}>
+                <span style={{ color: 'var(--danger-color)', fontWeight: 700 }}>•</span>
+                <div>
+                  <strong>{v.message}</strong>
+                  {isLocked && (
+                    <div style={{ color: '#f59e0b', fontSize: '0.78rem', marginTop: '0.15rem' }}>
+                      🔒 Locked manual edit (✎) — Redistribution respects your manual locks and cannot alter this shift. Reassign this cell to a compatible shift or change to Off to resolve.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
         {[['Early', '#38bdf8'], ['Late', '#f59e0b'], ['Night', '#818cf8'], ['Off', 'var(--text-muted)']].map(([label, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -659,6 +694,8 @@ export const ReviewSchedule: React.FC<{
                       : lockedCells.has(cellKey) ? 'scheduler_edit' : 'original';
                     const isSchedulerEdit = provenance === 'scheduler_edit';
                     const isSystemReassignment = provenance === 'system_reassignment';
+                    const isViolation = violationByCell.has(cellKey);
+                    const violationMsg = violationByCell.get(cellKey);
                     return (
                       <td
                         key={dayIdx}
@@ -668,6 +705,8 @@ export const ReviewSchedule: React.FC<{
                           position: 'relative',
                           backgroundColor: isActive
                             ? 'rgba(56,189,248,0.12)'
+                            : isViolation
+                            ? 'rgba(239,68,68,0.08)'
                             : isSystemReassignment
                             ? 'rgba(56,189,248,0.07)'
                             : isSchedulerEdit
@@ -681,13 +720,26 @@ export const ReviewSchedule: React.FC<{
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: '2px',
                           backgroundColor: shift ? `${color}18` : 'transparent',
-                          border: `1px solid ${shift ? color : 'transparent'}`,
+                          border: isViolation ? '2px solid #ef4444' : `1px solid ${shift ? color : 'transparent'}`,
                           borderRadius: '4px', padding: '0.15rem 0.3rem',
                           color, fontWeight: shift ? 700 : 400, fontSize: '0.75rem',
                           minWidth: '28px', justifyContent: 'center',
                         }}>
                           {shift ? shift.charAt(0) : '·'}
                         </div>
+                        {/* Policy violation alert badge on cell */}
+                        {isViolation && (
+                          <span
+                            style={{
+                              position: 'absolute', top: '1px', right: '14px',
+                              fontSize: '0.62rem', lineHeight: 1,
+                              color: '#ef4444', fontWeight: 800,
+                            }}
+                            title={violationMsg}
+                          >
+                            ⚠
+                          </span>
+                        )}
                         {/* P3.3: provenance marker — ✎ for scheduler edit, ↻ for system reassignment */}
                         {(isSchedulerEdit || isSystemReassignment) && (
                           <span

@@ -1045,6 +1045,64 @@ export function scheduleToAssignments(
   };
 }
 
+export interface CellViolation {
+  staffId: string;
+  dayIdx: number;
+  type: 'skill' | 'rest' | 'hours';
+  message: string;
+}
+
+export function detectScheduleViolations(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  customSlotMeta?: Record<number, ShiftSlotMeta>
+): CellViolation[] {
+  const violations: CellViolation[] = [];
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const conversion = scheduleToAssignments(staff, schedule, slotMeta);
+
+  // 1. Skill check (HC1)
+  for (const [shiftIdStr, workerId] of Object.entries(conversion.assignments)) {
+    const meta = slotMeta[Number(shiftIdStr)];
+    const worker = staff[workerId - 1];
+    if (meta && worker && !worker.skills.includes(meta.skill)) {
+      violations.push({
+        staffId: worker.id,
+        dayIdx: meta.dayIdx,
+        type: 'skill',
+        message: `Skill mismatch (HC1): ${worker.id.replace(/_/g, ' ')} is assigned to ${meta.label} on day ${meta.dayIdx + 1} which requires '${meta.skill}', but possesses [${worker.skills.join(', ')}].`,
+      });
+    }
+  }
+
+  // 2. Rest turnaround check (HC2)
+  for (const s of staff) {
+    const shifts = schedule[s.id] || [];
+    for (let d = 0; d < shifts.length - 1; d++) {
+      const today = shifts[d];
+      const tomorrow = shifts[d + 1];
+      if (today === 'Night' && (tomorrow === 'Early' || tomorrow === 'Late')) {
+        violations.push({
+          staffId: s.id,
+          dayIdx: d + 1,
+          type: 'rest',
+          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has ${today} on day ${d + 1} followed by ${tomorrow} on day ${d + 2} (<10h rest).`,
+        });
+      }
+      if (today === 'Late' && tomorrow === 'Early') {
+        violations.push({
+          staffId: s.id,
+          dayIdx: d + 1,
+          type: 'rest',
+          message: `Rest violation (HC2): ${s.id.replace(/_/g, ' ')} has Late on day ${d + 1} followed by Early on day ${d + 2} (8h rest < 10h min).`,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
 let cachedCsrfToken: string | null = null;
 let csrfFetchPromise: Promise<string> | null = null;
 
