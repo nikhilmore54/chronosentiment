@@ -738,6 +738,76 @@ export function buildLockedShiftIds(
 }
 
 /**
+ * Slot-level matching: Matches assigned workers to individual ShiftSlotMeta requirements
+ * by shiftId and skill, strictly calculating unfilled required positions.
+ *
+ * Invariant:
+ * 1. Workers with explicit/pinned slot assignments are seated to those exact slots first (if qualified).
+ * 2. Unassigned slots are matched scarce-skill first (HeadNurse before Nurse).
+ * 3. A worker satisfies a slot requirement iff w.skills.includes(slot.skill).
+ * 4. Any slot that cannot be matched to a qualified worker is returned as an unfilled required position.
+ */
+export function getUnfilledSlotsForShift(
+  dayIdx: number,
+  shiftType: string,
+  assignedWorkers: StaffMember[],
+  slotMeta: Record<number, ShiftSlotMeta>,
+  pinnedSlotAssignments?: Record<number, StaffMember>,
+): ShiftSlotMeta[] {
+  const slots = Object.values(slotMeta).filter(
+    m => m.dayIdx === dayIdx && m.label === shiftType
+  );
+
+  const matchedSlotIds = new Set<number>();
+  const remainingWorkers: StaffMember[] = [];
+
+  // 1. If explicit/pinned slot assignments exist, honor them first
+  if (pinnedSlotAssignments) {
+    for (const slot of slots) {
+      const pinnedWorker = pinnedSlotAssignments[slot.shiftId];
+      if (pinnedWorker && pinnedWorker.skills.includes(slot.skill)) {
+        matchedSlotIds.add(slot.shiftId);
+      }
+    }
+    for (const w of assignedWorkers) {
+      const isPinned = Object.entries(pinnedSlotAssignments).some(
+        ([sid, pw]) => Number(sid) in slotMeta && pw.id === w.id && matchedSlotIds.has(Number(sid))
+      );
+      if (!isPinned) remainingWorkers.push(w);
+    }
+  } else {
+    remainingWorkers.push(...assignedWorkers);
+  }
+
+  // 2. Sort remaining slots: rarest skill first (HeadNurse before Nurse)
+  const remainingSlots = slots
+    .filter(s => !matchedSlotIds.has(s.shiftId))
+    .sort((a, b) => {
+      if (a.skill === 'HeadNurse' && b.skill !== 'HeadNurse') return -1;
+      if (b.skill === 'HeadNurse' && a.skill !== 'HeadNurse') return 1;
+      return a.shiftId - b.shiftId;
+    });
+
+  // 3. Match remaining slots to qualified workers (preferring specialized workers with fewer skills)
+  const sortedWorkers = [...remainingWorkers].sort((a, b) => a.skills.length - b.skills.length);
+  const usedWorkerIds = new Set<string>();
+  for (const slot of remainingSlots) {
+    const workerIdx = sortedWorkers.findIndex(w => {
+      if (usedWorkerIds.has(w.id)) return false;
+      return w.skills.includes(slot.skill);
+    });
+
+    if (workerIdx >= 0) {
+      matchedSlotIds.add(slot.shiftId);
+      usedWorkerIds.add(sortedWorkers[workerIdx].id);
+    }
+  }
+
+  // Any slot not matched to a qualified assigned worker is an unfilled required position
+  return slots.filter(s => !matchedSlotIds.has(s.shiftId));
+}
+
+/**
  * Localized redistribution repair:
  * Conserves 100% of demand coverage and preserves locked scheduler decisions.
  * Only rebalances displaced assignments on impacted days without re-randomizing the roster.
@@ -747,6 +817,7 @@ export function localRebalanceSchedule(
   currentSchedule: Record<string, string[]>,
   lockedCells: Set<string>,
   customSlotMeta?: Record<number, ShiftSlotMeta>,
+  pinnedSlotAssignments?: Record<number, StaffMember>,
 ): Record<string, string[]> {
   const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
   const maxDay = Math.max(...Object.values(slotMeta).map(m => m.dayIdx), 27);
@@ -997,17 +1068,16 @@ export function localRebalanceSchedule(
       }
     }
 
-    // Check surplus vs deficit for each shift type on day d
-    const deficitShifts: string[] = [];
+    // Slot-level accounting: calculate unfilled required positions and surplus workers on day d
+    const unfilledSlots: ShiftSlotMeta[] = [];
     const surplusWorkers: { worker: StaffMember; currentShift: string }[] = [];
 
     for (const [shiftType, reqCount] of Object.entries(requiredForDay)) {
       const assigned = assignedByShift[shiftType] || [];
-      if (assigned.length < reqCount) {
-        for (let i = 0; i < reqCount - assigned.length; i++) {
-          deficitShifts.push(shiftType);
-        }
-      } else if (assigned.length > reqCount) {
+      const unfilled = getUnfilledSlotsForShift(d, shiftType, assigned, slotMeta, pinnedSlotAssignments);
+      unfilledSlots.push(...unfilled);
+
+      if (assigned.length > reqCount) {
         // Collect surplus workers who are NOT locked
         for (let i = assigned.length - 1; i >= 0 && (assignedByShift[shiftType].length > reqCount); i--) {
           const w = assigned[i];
@@ -1020,94 +1090,39 @@ export function localRebalanceSchedule(
       }
     }
 
-    // Helper to evaluate HeadNurse requirement for deficit shifts on day d
-    const getHeadNurseDeficit = (shiftType: string): number => {
-      if (shiftType !== 'Early') return 0;
-      const reqHead = Object.values(slotMeta).filter(
-        m => m.dayIdx === d && m.label === shiftType && m.skill === 'HeadNurse'
-      ).length;
-      const assignedHead = (assignedByShift[shiftType] || []).filter(
-        w => w.skills.includes('HeadNurse')
-      ).length;
-      return Math.max(0, reqHead - assignedHead);
-    };
-
-    const qualifiesForDeficit = (w: StaffMember, deficit: string): boolean => {
-      if (deficit === 'Early') {
-        const hnDeficit = getHeadNurseDeficit('Early');
-        const totalEarlyDeficit = deficitShifts.filter(s => s === 'Early').length;
-        if (w.skills.includes('HeadNurse')) return true;
-        if (w.skills.includes('Nurse')) {
-          // Regular Nurse qualifies if total Early deficit exceeds remaining HeadNurse deficit
-          return totalEarlyDeficit > hnDeficit;
-        }
-        return false;
-      }
-      if (deficit === 'Late' || deficit === 'Night') {
-        return w.skills.includes('Nurse');
-      }
-      return true;
-    };
-
-    // 1. Reassign surplus workers to deficit shifts where skill qualifies and rest is legal
-    for (const deficit of [...deficitShifts]) {
-      const hnDef = getHeadNurseDeficit(deficit);
-      let surplusIdx = -1;
-      if (hnDef > 0) {
-        surplusIdx = surplusWorkers.findIndex(sw => {
-          if (!sw.worker.skills.includes('HeadNurse')) return false;
-          if (!qualifiesForDeficit(sw.worker, deficit)) return false;
-          if (causesRestConflict(sw.worker, d, deficit)) return false;
-          return true;
-        });
-      }
-      if (surplusIdx < 0) {
-        surplusIdx = surplusWorkers.findIndex(sw => {
-          if (!qualifiesForDeficit(sw.worker, deficit)) return false;
-          if (causesRestConflict(sw.worker, d, deficit)) return false;
-          return true;
-        });
-      }
+    // 1. Reassign surplus workers to unfilled required positions where skill qualifies and rest is legal
+    for (const slot of [...unfilledSlots]) {
+      const surplusIdx = surplusWorkers.findIndex(sw => {
+        if (!sw.worker.skills.includes(slot.skill)) return false;
+        if (causesRestConflict(sw.worker, d, slot.label)) return false;
+        return true;
+      });
 
       if (surplusIdx >= 0) {
         const sw = surplusWorkers.splice(surplusIdx, 1)[0];
-        result[sw.worker.id][d] = deficit;
-        assignedByShift[deficit].push(sw.worker);
-        const dIdx = deficitShifts.indexOf(deficit);
-        if (dIdx >= 0) deficitShifts.splice(dIdx, 1);
+        result[sw.worker.id][d] = slot.label;
+        assignedByShift[slot.label].push(sw.worker);
+        const idx = unfilledSlots.indexOf(slot);
+        if (idx >= 0) unfilledSlots.splice(idx, 1);
       }
     }
 
-    // 2. If deficit shifts remain, fill from unlocked offStaff with compatible skills & legal rest
-    for (const deficit of [...deficitShifts]) {
-      const hnDef = getHeadNurseDeficit(deficit);
-      let candidateIdx = -1;
-      if (hnDef > 0) {
-        candidateIdx = offStaff.findIndex(w => {
-          const cellKey = `${w.id}:${d}`;
-          if (lockedCells.has(cellKey)) return false;
-          if (!w.skills.includes('HeadNurse')) return false;
-          if (!qualifiesForDeficit(w, deficit)) return false;
-          if (causesRestConflict(w, d, deficit)) return false;
-          return true;
-        });
-      }
-      if (candidateIdx < 0) {
-        candidateIdx = offStaff.findIndex(w => {
-          const cellKey = `${w.id}:${d}`;
-          if (lockedCells.has(cellKey)) return false;
-          if (!qualifiesForDeficit(w, deficit)) return false;
-          if (causesRestConflict(w, d, deficit)) return false;
-          return true;
-        });
-      }
+    // 2. If unfilled required positions remain, fill from unlocked offStaff with compatible skills & legal rest
+    for (const slot of [...unfilledSlots]) {
+      const candidateIdx = offStaff.findIndex(w => {
+        const cellKey = `${w.id}:${d}`;
+        if (lockedCells.has(cellKey)) return false;
+        if (!w.skills.includes(slot.skill)) return false;
+        if (causesRestConflict(w, d, slot.label)) return false;
+        return true;
+      });
 
       if (candidateIdx >= 0) {
         const candidate = offStaff.splice(candidateIdx, 1)[0];
-        result[candidate.id][d] = deficit;
-        assignedByShift[deficit].push(candidate);
-        const dIdx = deficitShifts.indexOf(deficit);
-        if (dIdx >= 0) deficitShifts.splice(dIdx, 1);
+        result[candidate.id][d] = slot.label;
+        assignedByShift[slot.label].push(candidate);
+        const idx = unfilledSlots.indexOf(slot);
+        if (idx >= 0) unfilledSlots.splice(idx, 1);
       }
     }
 
