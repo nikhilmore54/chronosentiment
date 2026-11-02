@@ -222,7 +222,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
 
   return (
     <div className="card">
-      <div style={{ marginBottom: '0.25rem' }}>
+      <div className="no-print" style={{ marginBottom: '0.25rem' }}>
         <h2 style={{ margin: '0 0 0.25rem 0' }}>Workforce Assessment &amp; Planning</h2>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
           Evaluate historical roster compliance, generate policy-compliant candidates, and compare decision alternatives.
@@ -230,7 +230,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       </div>
 
       {/* Mode Indicator & Quick Switch */}
-      <div style={{
+      <div className="no-print" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -345,7 +345,9 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       </div>
 
       <div style={{ marginTop: '1.25rem' }}>
-        <Stepper currentStep={step} maxReached={maxReached} onJump={goTo} />
+        <div className="no-print">
+          <Stepper currentStep={step} maxReached={maxReached} onJump={goTo} />
+        </div>
 
         {step === 1 && (
           <ImportStaff

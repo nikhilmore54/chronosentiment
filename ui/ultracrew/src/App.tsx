@@ -475,7 +475,7 @@ function App() {
       </header>
 
       {/* Synthetic Demo Disclaimer Banner */}
-      <div style={{
+      <div className="no-print" style={{
         backgroundColor: 'rgba(15, 118, 110, 0.04)',
         borderBottom: '1px solid var(--border-color)',
         padding: '0.35rem 1.5rem',

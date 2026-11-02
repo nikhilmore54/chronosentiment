@@ -181,47 +181,102 @@ export const ExportRoster: React.FC<{
   const recommendedAltId = schedulerDecision?.recommended_id ?? effectiveAlternatives[0]?.id ?? '';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="export-roster-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <style>{`
         @media print {
-          body {
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 15mm 10mm;
+          }
+          html, body {
+            height: auto !important;
+            min-height: 100% !important;
+            overflow: visible !important;
             background: #ffffff !important;
             color: #0f172a !important;
-          }
-          nav, header, .no-print, button, .stepper-container {
-            display: none !important;
-          }
-          .executive-assessment-report {
-            background: #ffffff !important;
-            color: #0f172a !important;
-            border: none !important;
+            margin: 0 !important;
             padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #root, .app-container, .content, .main-view, .card, .export-roster-container {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: block !important;
+            position: static !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
             box-shadow: none !important;
+            background: transparent !important;
             width: 100% !important;
             max-width: 100% !important;
           }
+          header, .header, nav, .no-print, button, .stepper-container, .workflow-stepper {
+            display: none !important;
+          }
+          .executive-assessment-report {
+            display: block !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .executive-assessment-report div {
+            overflow: visible !important;
+            max-height: none !important;
+          }
           .executive-card {
+            display: block !important;
             background: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
-            color: #0f172a !important;
-            break-inside: avoid;
-            page-break-inside: avoid;
+            border-radius: 8px !important;
+            padding: 1.25rem !important;
             margin-bottom: 1.25rem !important;
+            color: #0f172a !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            overflow: visible !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
           }
-          .executive-table {
+          .executive-table, table {
             color: #0f172a !important;
             border-color: #cbd5e1 !important;
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: collapse !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
-          .executive-table th, .executive-table td {
+          .executive-table th, .executive-table td, table th, table td {
             color: #0f172a !important;
             border-bottom: 1px solid #e2e8f0 !important;
+            font-size: 0.78rem !important;
+          }
+          tr {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           .disclaimer-box {
+            display: block !important;
             background: #f8fafc !important;
             border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
             color: #334155 !important;
-            break-inside: avoid;
-            page-break-inside: avoid;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 1.25rem !important;
+            overflow: visible !important;
           }
         }
       `}</style>
