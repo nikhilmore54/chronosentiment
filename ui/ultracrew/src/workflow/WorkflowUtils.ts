@@ -756,27 +756,33 @@ export function localRebalanceSchedule(
   });
 
   // Pre-pass 1: Resolve rest-succession violations (HC2)
-  // Night shift (ends 06:00 next day) strictly forbids Early (starts 06:00 -> 0h rest)
-  // and Late (starts 14:00 -> 8h rest < 10h min).
-  // If a worker has Night on day d, day d+1 CANNOT be Early or Late.
+  // Working time regulations require minimum 10h continuous rest between shifts.
+  // Forbidden consecutive successions (rest < 10h):
+  // 1. Night (ends 06:00 next day) -> Early (starts 06:00 -> 0h rest)
+  // 2. Night (ends 06:00 next day) -> Late (starts 14:00 -> 8h rest)
+  // 3. Late (ends 22:00) -> Early (starts 06:00 next day -> 8h rest)
   // If one cell is locked, the conflicting unlocked cell must yield to Off so it can be rebalanced.
   for (const s of staff) {
     for (let d = 0; d < maxDay; d++) {
       const shiftToday = result[s.id]?.[d] ?? '';
       const shiftTomorrow = result[s.id]?.[d + 1] ?? '';
 
-      if (shiftToday === 'Night' && (shiftTomorrow === 'Early' || shiftTomorrow === 'Late')) {
+      const isRestViolation =
+        (shiftToday === 'Night' && (shiftTomorrow === 'Early' || shiftTomorrow === 'Late')) ||
+        (shiftToday === 'Late' && shiftTomorrow === 'Early');
+
+      if (isRestViolation) {
         const todayLocked = lockedCells.has(`${s.id}:${d}`);
         const tomorrowLocked = lockedCells.has(`${s.id}:${d + 1}`);
 
         if (todayLocked && !tomorrowLocked) {
-          // Today's Night is locked; tomorrow's conflicting shift yields to Off
+          // Today's shift is locked; tomorrow's conflicting unlocked shift yields to Off
           result[s.id][d + 1] = '';
         } else if (!todayLocked && tomorrowLocked) {
-          // Tomorrow's Early/Late is locked; today's unlocked Night yields to Off
+          // Tomorrow's shift is locked; today's conflicting unlocked shift yields to Off
           result[s.id][d] = '';
         } else if (!todayLocked && !tomorrowLocked) {
-          // Neither is locked; tomorrow yields to Off
+          // Neither is locked; tomorrow yields to Off to protect rest
           result[s.id][d + 1] = '';
         }
       }
@@ -805,13 +811,18 @@ export function localRebalanceSchedule(
 
   // Helper: check if assigning worker w to shift on day d creates a rest-succession conflict
   const causesRestConflict = (w: StaffMember, dayIdx: number, newShift: string): boolean => {
+    const nextShift = result[w.id]?.[dayIdx + 1];
+    const prevShift = result[w.id]?.[dayIdx - 1];
+
     if (newShift === 'Night') {
-      const nextShift = result[w.id]?.[dayIdx + 1];
       if (nextShift === 'Early' || nextShift === 'Late') return true;
     }
-    if (newShift === 'Early' || newShift === 'Late') {
-      const prevShift = result[w.id]?.[dayIdx - 1];
+    if (newShift === 'Late') {
       if (prevShift === 'Night') return true;
+      if (nextShift === 'Early') return true;
+    }
+    if (newShift === 'Early') {
+      if (prevShift === 'Night' || prevShift === 'Late') return true;
     }
     return false;
   };

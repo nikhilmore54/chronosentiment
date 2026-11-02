@@ -533,3 +533,51 @@ test('AT-37: Manual edit to Night shift resolves rest-succession (HC2) and elimi
   expect(cov.filledPositions).toBe(196);
 });
 
+test('AT-39: Manual edit to Early shift resolves root cause of preceding Late shift (HC2 8-hour turnaround)', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Recreate user scenario on Ingrid_Sorensen:
+  // In baseline, Ingrid has Late on Day 10 (24/7).
+  // Scheduler manually sets Day 11 (25/7) to 'Early'.
+  expect(baseSchedule['Ingrid_Sorensen'][10]).toBe('Late');
+
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Ingrid_Sorensen'][11] = 'Early';
+  const lockedCells = new Set(['Ingrid_Sorensen:11']);
+
+  // Run redistribution with locks
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked edit on Day 11 is strictly preserved
+  expect(result.schedule['Ingrid_Sorensen'][11]).toBe('Early');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Root cause (Day 10 Late shift) is evacuated to Off (rest) on Ingrid to eliminate 8h turnaround!
+  expect(result.schedule['Ingrid_Sorensen'][10]).toBe('');
+
+  // Invariant 3: The evacuated Day 10 Late shift is covered by another eligible off nurse
+  const day10LateStaff = staff.filter(s => result.schedule[s.id][10] === 'Late');
+  expect(day10LateStaff.length).toBe(2); // Exactly 2 Late shifts on Day 10 as required
+
+  // Invariant 4: Total demand coverage is conserved at 100% (196/196)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken } from './WorkflowUtils';
+import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken, localRebalanceSchedule } from './WorkflowUtils';
 import type { RedistributionResult, ShiftSlotMeta } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -31,7 +31,7 @@ const ShiftPicker: React.FC<{
     }
 
     // 2. Rest & Succession check (HC2)
-    // Night on day d forbids Early or Late on day d+1 (0h or 8h rest < 10h min)
+    // Mandatory 10h continuous rest between shifts (Early 06-14, Late 14-22, Night 22-06+1d)
     if (opt === 'Night') {
       const tomorrow = schedule[staffMember.id]?.[dayIdx + 1];
       if (tomorrow === 'Early') issues.push('0h rest: followed by Early tomorrow');
@@ -40,10 +40,13 @@ const ShiftPicker: React.FC<{
     if (opt === 'Early') {
       const yesterday = schedule[staffMember.id]?.[dayIdx - 1];
       if (yesterday === 'Night') issues.push('0h rest: preceded by Night yesterday');
+      else if (yesterday === 'Late') issues.push('8h rest: preceded by Late yesterday (<10h min)');
     }
     if (opt === 'Late') {
       const yesterday = schedule[staffMember.id]?.[dayIdx - 1];
       if (yesterday === 'Night') issues.push('8h rest: preceded by Night yesterday (<10h min)');
+      const tomorrow = schedule[staffMember.id]?.[dayIdx + 1];
+      if (tomorrow === 'Early') issues.push('8h rest: followed by Early tomorrow (<10h min)');
     }
 
     return issues;
@@ -388,6 +391,7 @@ export const ReviewSchedule: React.FC<{
   // P3.3: provenance inspector
   const [provenanceTarget, setProvenanceTarget] = useState<{ staffId: string; dayIdx: number } | null>(null);
   const [liveReport, setLiveReport] = useState<ScheduleResult['constraint_report'] | null>(result.constraint_report);
+  const [autoResolveNotice, setAutoResolveNotice] = useState<string | null>(null);
 
   const horizonDays = customSlotMeta && Object.keys(customSlotMeta).length > 0
     ? Math.max(...Object.values(customSlotMeta).map(m => m.dayIdx)) + 1
@@ -404,15 +408,45 @@ export const ReviewSchedule: React.FC<{
     const prev = (schedule[nurseId] || [])[dayIdx] ?? '';
     const next = { ...schedule, [nurseId]: [...(schedule[nurseId] || [])] };
     next[nurseId][dayIdx] = shift;
-    onScheduleChange(next);
+
+    // Track this cell as locked (scheduler's explicit decision)
+    const newLocked = new Set(lockedCells);
+    newLocked.add(`${nurseId}:${dayIdx}`);
+    setLockedCells(newLocked);
+
+    // Automatic Root-Cause Resolution:
+    // If this edit creates rest succession conflicts with adjacent unlocked shifts (<10h),
+    // localRebalanceSchedule resolves the root cause by evacuating the conflicting shift
+    // to Off and rebalancing it to eligible off-duty staff, preventing hard violations.
+    const resolvedSchedule = localRebalanceSchedule(staff, next, newLocked, customSlotMeta);
+
+    // Detect if an adjacent unlocked shift on this worker was auto-rebalanced to resolve root cause
+    let notice: string | null = null;
+    for (let d = 0; d < horizonDays; d++) {
+      if (Math.abs(d - dayIdx) === 1) {
+        const key = `${nurseId}:${d}`;
+        if (!newLocked.has(key)) {
+          const before = (next[nurseId] || [])[d] ?? '';
+          const after = (resolvedSchedule[nurseId] || [])[d] ?? '';
+          if (before !== '' && after === '') {
+            const dtStr = days[d]?.toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' }) ?? `${d + 1}`;
+            const rebalancedColleague = staff.find(
+              s => s.id !== nurseId && (next[s.id] || [])[d] !== before && (resolvedSchedule[s.id] || [])[d] === before
+            );
+            const colleagueName = rebalancedColleague ? rebalancedColleague.id.replace(/_/g, ' ') : 'an eligible colleague';
+            notice = `${nurseId.replace(/_/g, ' ')}'s unlocked ${before} shift on ${dtStr} was automatically rebalanced to ${colleagueName} to guarantee 10h+ rest before/after manual ${shift} edit.`;
+          }
+        }
+      }
+    }
+    setAutoResolveNotice(notice);
+
+    onScheduleChange(resolvedSchedule);
     setEditCount(c => c + 1);
     setRedistResult(null); // clear any previous redistribution result on new edit
 
-    // Track this cell as locked (scheduler's explicit decision)
-    setLockedCells(prev => new Set([...prev, `${nurseId}:${dayIdx}`]));
-
     // Validate the updated schedule asynchronously to keep constraint feedback live
-    validateCurrentSchedule(staff, next, undefined, customSlotMeta).then(val => {
+    validateCurrentSchedule(staff, resolvedSchedule, undefined, customSlotMeta).then(val => {
       if (val) {
         const report = val.constraint_report ?? val;
         setLiveReport(report);
@@ -528,6 +562,36 @@ export const ReviewSchedule: React.FC<{
           </span>
         )}
       </div>
+
+      {autoResolveNotice && (
+        <div style={{
+          backgroundColor: 'rgba(56,189,248,0.08)',
+          border: '1px solid rgba(56,189,248,0.3)',
+          borderRadius: '6px',
+          padding: '0.65rem 0.95rem',
+          fontSize: '0.84rem',
+          color: 'var(--accent-color)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem',
+        }}>
+          <span>⚡ <strong>Root-Cause Auto-Resolved:</strong> {autoResolveNotice}</span>
+          <button
+            onClick={() => setAutoResolveNotice(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-color)',
+              cursor: 'pointer',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '0 0.2rem',
+            }}
+            title="Dismiss"
+          >×</button>
+        </div>
+      )}
 
       {cr && (
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
