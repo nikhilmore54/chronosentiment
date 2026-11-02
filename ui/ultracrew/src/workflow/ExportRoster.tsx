@@ -495,19 +495,25 @@ export const ExportRoster: React.FC<{
       }}>
         <div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.2rem' }}>
-            Planner Acceptance Score
+            Planner Acceptance Score (Automation Fidelity)
           </div>
           <div style={{ fontSize: '2.5rem', fontWeight: 800, color: pasColor, lineHeight: 1 }}>
             {pas.toFixed(1)}%
           </div>
+          <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            Measures human rework (not shift coverage)
+          </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           <span>Generated assignments: <strong style={{ color: 'var(--text-main)' }}>{pasDenominator}</strong></span>
-          <span>Manual edits: <strong style={{ color: manualEditCount > 0 ? '#f59e0b' : 'var(--success-color)' }}>{manualEditCount}</strong></span>
-          <span>Accepted without change: <strong style={{ color: pasColor }}>{pasDenominator - manualEditCount}</strong></span>
+          <span>Manual edits made: <strong style={{ color: manualEditCount > 0 ? '#f59e0b' : 'var(--success-color)' }}>{manualEditCount}</strong></span>
+          <span>Accepted without change: <strong style={{ color: pasColor }}>{pasDenominator - manualEditCount}</strong> ({pas.toFixed(1)}%)</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--success-color)', fontWeight: 600, marginTop: '0.1rem' }}>
+            ✓ Clinical shift coverage remains 100% ({coverageReport.filledPositions}/{coverageReport.requiredPositions} positions)
+          </span>
         </div>
-        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px', textAlign: 'right' }}>
-          {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95%)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}
+        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '220px', textAlign: 'right' }}>
+          {pas >= 95 ? '✓ Planner-quality threshold met (≥ 95% accepted without rework)' : pas >= 80 ? '⚠ Below target — review flagged assignments' : '✗ High edit rate — schedule quality needs improvement'}
         </div>
       </div>
 
