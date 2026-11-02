@@ -20,13 +20,14 @@ import {
   buildEditableSchedule,
   parseStaffCSV,
   VERIFIED_SAMPLE_SCHEDULE,
+  VERIFIED_OPTIMAL_12_SCHEDULE,
   computeCanonicalCoverage,
   buildStaffingRequirements,
   detectScheduleViolations,
   localRebalanceSchedule,
 } from './WorkflowUtils';
 import type { StaffMember } from './WorkflowTypes';
-import { SAMPLE_CSV } from './WorkflowTypes';
+import { SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
 
 // Minimal staff fixture — 8 members, all Nurse skill
 const STAFF: StaffMember[] = [
@@ -806,4 +807,57 @@ test('AT-40.3: Incomplete seed recovery — missing positions completed safely o
   expect(cov.gapPositions).toBe(0);
   expect(cov.filledPositions).toBe(196);
 });
+
+test('AT-41: Manual edit of supervisory HeadNurse rebalances HeadNurse slot without HC1 skill mismatch on standard Nurse', async () => {
+  const { staff } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_OPTIMAL_12_SCHEDULE, slotMeta);
+
+  // Replicate user scenario:
+  // Sarah Chen (HeadNurse;Nurse) is manually edited on Day 7 (dayIdx 7, 21/7) from Early to Late ('Late').
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Sarah_Chen'][7] = 'Late';
+  const lockedCells = new Set(['Sarah_Chen:7']);
+
+  // Run localized rebalance (the root-cause recovery invoked on cell edit)
+  const resolved = localRebalanceSchedule(staff, currentSchedule, lockedCells, slotMeta);
+
+  // 1. Manual edit on Sarah Chen Day 7 is strictly preserved
+  expect(resolved['Sarah_Chen'][7]).toBe('Late');
+
+  // 2. Coverage is 100% conserved (196 / 196 shifts) — no unassigned shift gap
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, resolved);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // 3. Independent validator confirms ZERO hard violations across the entire roster
+  const violations = detectScheduleViolations(staff, resolved, slotMeta);
+  const hardViolations = violations.filter(v => v.type === 'skill' || v.type === 'rest');
+  expect(hardViolations).toEqual([]);
+
+  // 4. Specifically verify Carlos Mendez (Nurse) does NOT have an HC1 skill mismatch on Day 8 / Day 9
+  const carlosMismatch = violations.find(v => v.staffId === 'Carlos_Mendez' && v.type === 'skill');
+  expect(carlosMismatch).toBeUndefined();
+
+  // 5. Test redistributeWithLocks completes with valid provenance and zero hard violations
+  const redistResult = await redistributeWithLocks(
+    staff,
+    currentSchedule,
+    lockedCells,
+    VERIFIED_OPTIMAL_12_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+  expect(redistResult.schedule['Sarah_Chen'][7]).toBe('Late');
+  expect(redistResult.log.lockedAssignmentsChanged).toBe(0);
+  const redistViolations = detectScheduleViolations(staff, redistResult.schedule, slotMeta);
+  expect(redistViolations.filter(v => v.type === 'skill' || v.type === 'rest')).toEqual([]);
+});
+
 

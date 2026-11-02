@@ -769,6 +769,25 @@ export function localRebalanceSchedule(
     return true;
   };
 
+  // Helper: check if a shift type on dayIdx strictly requires a HeadNurse
+  // (i.e. slot requires HeadNurse and removing leavingWorker leaves fewer than required HeadNurses)
+  const shiftRequiresHeadNurse = (dayIdx: number, shiftType: string, leavingWorker?: StaffMember): boolean => {
+    if (shiftType !== 'Early') return false;
+    const requiredHeadNurses = Object.values(slotMeta).filter(
+      m => m.dayIdx === dayIdx && m.label === shiftType && m.skill === 'HeadNurse'
+    ).length;
+    if (requiredHeadNurses === 0) return false;
+
+    let remainingHeadNurses = 0;
+    for (const w of staff) {
+      if (leavingWorker && w.id === leavingWorker.id) continue;
+      if (w.skills.includes('HeadNurse') && (result[w.id]?.[dayIdx] ?? '') === shiftType) {
+        remainingHeadNurses++;
+      }
+    }
+    return remainingHeadNurses < requiredHeadNurses;
+  };
+
   // Pre-pass 1: Resolve rest-succession violations (HC2)
   // Working time regulations require minimum 10h continuous rest between shifts.
   // Forbidden consecutive successions (rest < 10h):
@@ -804,6 +823,8 @@ export function localRebalanceSchedule(
               if (lockedCells.has(`${other.id}:${d}`)) continue;
               if ((result[other.id]?.[d] ?? '') !== alt) continue;
               if (!qualifiesForShiftType(other, shiftToday)) continue;
+              if (shiftRequiresHeadNurse(d, shiftToday, s) && !other.skills.includes('HeadNurse')) continue;
+              if (shiftRequiresHeadNurse(d, alt, other) && !s.skills.includes('HeadNurse')) continue;
 
               const otherPrev = d > 0 ? (result[other.id]?.[d - 1] ?? '') : '';
               const otherNext = d < maxDay ? (result[other.id]?.[d + 1] ?? '') : '';
@@ -823,6 +844,7 @@ export function localRebalanceSchedule(
               if (lockedCells.has(`${other.id}:${d}`)) return false;
               if ((result[other.id]?.[d] ?? '') !== '') return false;
               if (!qualifiesForShiftType(other, shiftToday)) return false;
+              if (shiftRequiresHeadNurse(d, shiftToday, s) && !other.skills.includes('HeadNurse')) return false;
               const otherPrev = d > 0 ? (result[other.id]?.[d - 1] ?? '') : '';
               const otherNext = d < maxDay ? (result[other.id]?.[d + 1] ?? '') : '';
               return isLegalSuccession(otherPrev, shiftToday) && isLegalSuccession(shiftToday, otherNext);
@@ -850,6 +872,8 @@ export function localRebalanceSchedule(
               if (lockedCells.has(`${other.id}:${d + 1}`)) continue;
               if ((result[other.id]?.[d + 1] ?? '') !== alt) continue;
               if (!qualifiesForShiftType(other, shiftTomorrow)) continue;
+              if (shiftRequiresHeadNurse(d + 1, shiftTomorrow, s) && !other.skills.includes('HeadNurse')) continue;
+              if (shiftRequiresHeadNurse(d + 1, alt, other) && !s.skills.includes('HeadNurse')) continue;
 
               const otherPrev = result[other.id]?.[d] ?? '';
               const otherNext = d + 1 < maxDay ? (result[other.id]?.[d + 2] ?? '') : '';
@@ -869,6 +893,7 @@ export function localRebalanceSchedule(
               if (lockedCells.has(`${other.id}:${d + 1}`)) return false;
               if ((result[other.id]?.[d + 1] ?? '') !== '') return false;
               if (!qualifiesForShiftType(other, shiftTomorrow)) return false;
+              if (shiftRequiresHeadNurse(d + 1, shiftTomorrow, s) && !other.skills.includes('HeadNurse')) return false;
               const otherPrev = result[other.id]?.[d] ?? '';
               const otherNext = d + 1 < maxDay ? (result[other.id]?.[d + 2] ?? '') : '';
               return isLegalSuccession(otherPrev, shiftTomorrow) && isLegalSuccession(shiftTomorrow, otherNext);
@@ -888,7 +913,7 @@ export function localRebalanceSchedule(
   }
 
   // Pre-pass 2: Resolve skill incompatibility violations (HC1)
-  // If an unlocked cell has a shift type for which the worker lacks required skills, evacuate it
+  // 2a. Direct skill incompatibility: worker lacks any skill accepted by the shift type
   for (const s of staff) {
     for (let d = 0; d <= maxDay; d++) {
       const shift = result[s.id]?.[d] ?? '';
@@ -903,6 +928,31 @@ export function localRebalanceSchedule(
       // Early slots require HeadNurse or Nurse
       if (shift === 'Early' && !s.skills.includes('HeadNurse') && !s.skills.includes('Nurse')) {
         result[s.id][d] = '';
+      }
+    }
+  }
+
+  // 2b. Supervisory skill deficit: if Early on day d requires HeadNurse, but 0 HeadNurses are assigned,
+  // evacuate one unlocked standard Nurse so the deficit-filling logic can seat an eligible HeadNurse
+  for (let d = 0; d <= maxDay; d++) {
+    const reqHead = Object.values(slotMeta).filter(
+      m => m.dayIdx === d && m.label === 'Early' && m.skill === 'HeadNurse'
+    ).length;
+    if (reqHead === 0) continue;
+
+    const assignedEarlyStaff = staff.filter(s => (result[s.id]?.[d] ?? '') === 'Early');
+    const assignedHeadCount = assignedEarlyStaff.filter(s => s.skills.includes('HeadNurse')).length;
+
+    if (assignedHeadCount < reqHead && assignedEarlyStaff.length >= reqHead) {
+      const needed = reqHead - assignedHeadCount;
+      let evacuated = 0;
+      for (const s of assignedEarlyStaff) {
+        if (evacuated >= needed) break;
+        if (lockedCells.has(`${s.id}:${d}`)) continue;
+        if (!s.skills.includes('HeadNurse')) {
+          result[s.id][d] = '';
+          evacuated++;
+        }
       }
     }
   }
@@ -923,12 +973,6 @@ export function localRebalanceSchedule(
       if (prevShift === 'Night' || prevShift === 'Late') return true;
     }
     return false;
-  };
-
-  // Helper: check if worker qualifies for shift
-  const qualifiesForShift = (w: StaffMember, _shift: string, reqHeadNurse: boolean): boolean => {
-    if (reqHeadNurse) return w.skills.includes('HeadNurse');
-    return w.skills.includes('Nurse');
   };
 
   // Demand slots grouped by day
@@ -976,20 +1020,59 @@ export function localRebalanceSchedule(
       }
     }
 
+    // Helper to evaluate HeadNurse requirement for deficit shifts on day d
+    const getHeadNurseDeficit = (shiftType: string): number => {
+      if (shiftType !== 'Early') return 0;
+      const reqHead = Object.values(slotMeta).filter(
+        m => m.dayIdx === d && m.label === shiftType && m.skill === 'HeadNurse'
+      ).length;
+      const assignedHead = (assignedByShift[shiftType] || []).filter(
+        w => w.skills.includes('HeadNurse')
+      ).length;
+      return Math.max(0, reqHead - assignedHead);
+    };
+
+    const qualifiesForDeficit = (w: StaffMember, deficit: string): boolean => {
+      if (deficit === 'Early') {
+        const hnDeficit = getHeadNurseDeficit('Early');
+        const totalEarlyDeficit = deficitShifts.filter(s => s === 'Early').length;
+        if (w.skills.includes('HeadNurse')) return true;
+        if (w.skills.includes('Nurse')) {
+          // Regular Nurse qualifies if total Early deficit exceeds remaining HeadNurse deficit
+          return totalEarlyDeficit > hnDeficit;
+        }
+        return false;
+      }
+      if (deficit === 'Late' || deficit === 'Night') {
+        return w.skills.includes('Nurse');
+      }
+      return true;
+    };
+
     // 1. Reassign surplus workers to deficit shifts where skill qualifies and rest is legal
     for (const deficit of [...deficitShifts]) {
-      const reqHeadNurse = deficit === 'Early' && Object.values(slotMeta).some(
-        m => m.dayIdx === d && m.label === 'Early' && m.skill === 'HeadNurse'
-      );
-      const surplusIdx = surplusWorkers.findIndex(sw => {
-        if (!qualifiesForShift(sw.worker, deficit, reqHeadNurse)) return false;
-        if (causesRestConflict(sw.worker, d, deficit)) return false;
-        return true;
-      });
+      const hnDef = getHeadNurseDeficit(deficit);
+      let surplusIdx = -1;
+      if (hnDef > 0) {
+        surplusIdx = surplusWorkers.findIndex(sw => {
+          if (!sw.worker.skills.includes('HeadNurse')) return false;
+          if (!qualifiesForDeficit(sw.worker, deficit)) return false;
+          if (causesRestConflict(sw.worker, d, deficit)) return false;
+          return true;
+        });
+      }
+      if (surplusIdx < 0) {
+        surplusIdx = surplusWorkers.findIndex(sw => {
+          if (!qualifiesForDeficit(sw.worker, deficit)) return false;
+          if (causesRestConflict(sw.worker, d, deficit)) return false;
+          return true;
+        });
+      }
 
       if (surplusIdx >= 0) {
         const sw = surplusWorkers.splice(surplusIdx, 1)[0];
         result[sw.worker.id][d] = deficit;
+        assignedByShift[deficit].push(sw.worker);
         const dIdx = deficitShifts.indexOf(deficit);
         if (dIdx >= 0) deficitShifts.splice(dIdx, 1);
       }
@@ -997,20 +1080,32 @@ export function localRebalanceSchedule(
 
     // 2. If deficit shifts remain, fill from unlocked offStaff with compatible skills & legal rest
     for (const deficit of [...deficitShifts]) {
-      const reqHeadNurse = deficit === 'Early' && Object.values(slotMeta).some(
-        m => m.dayIdx === d && m.label === 'Early' && m.skill === 'HeadNurse'
-      );
-      const candidateIdx = offStaff.findIndex(w => {
-        const cellKey = `${w.id}:${d}`;
-        if (lockedCells.has(cellKey)) return false;
-        if (!qualifiesForShift(w, deficit, reqHeadNurse)) return false;
-        if (causesRestConflict(w, d, deficit)) return false;
-        return true;
-      });
+      const hnDef = getHeadNurseDeficit(deficit);
+      let candidateIdx = -1;
+      if (hnDef > 0) {
+        candidateIdx = offStaff.findIndex(w => {
+          const cellKey = `${w.id}:${d}`;
+          if (lockedCells.has(cellKey)) return false;
+          if (!w.skills.includes('HeadNurse')) return false;
+          if (!qualifiesForDeficit(w, deficit)) return false;
+          if (causesRestConflict(w, d, deficit)) return false;
+          return true;
+        });
+      }
+      if (candidateIdx < 0) {
+        candidateIdx = offStaff.findIndex(w => {
+          const cellKey = `${w.id}:${d}`;
+          if (lockedCells.has(cellKey)) return false;
+          if (!qualifiesForDeficit(w, deficit)) return false;
+          if (causesRestConflict(w, d, deficit)) return false;
+          return true;
+        });
+      }
 
       if (candidateIdx >= 0) {
         const candidate = offStaff.splice(candidateIdx, 1)[0];
         result[candidate.id][d] = deficit;
+        assignedByShift[deficit].push(candidate);
         const dIdx = deficitShifts.indexOf(deficit);
         if (dIdx >= 0) deficitShifts.splice(dIdx, 1);
       }
