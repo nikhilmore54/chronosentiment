@@ -6,6 +6,7 @@ import type {
   BaselineAuditReport,
   BaselineAssignment,
   RosterAlternative,
+  ShiftSlotMeta,
 } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle, accentGhostBtnStyle } from './WorkflowComponents';
 import {
@@ -15,7 +16,6 @@ import {
   computeCanonicalCoverage,
   generateShiftLevelDeltaRecords,
   exportShiftLevelDeltaCSV,
-  type ShiftSlotMeta,
 } from './WorkflowUtils';
 import { ComparativeScorecard } from './SelectDecision';
 
@@ -176,7 +176,7 @@ export const ExportRoster: React.FC<{
         hc3_violations: 0,
       },
     }];
-  }, [alternatives, schedule, coverageReport, totalShifts, staff.length, horizonDays, cr, schedulerDecision]);
+  }, [alternatives, schedule, coverageReport, totalShifts, staff, customSlotMeta, horizonDays, cr, schedulerDecision]);
 
   const recommendedAltId = schedulerDecision?.recommended_id ?? effectiveAlternatives[0]?.id ?? '';
 
