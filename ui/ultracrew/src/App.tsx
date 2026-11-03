@@ -1,15 +1,8 @@
-import React, { useEffect, useState } from 'react';
-
-
-import { ScheduleGrid } from './ScheduleGrid';
-import { TeamBalance } from './TeamBalance';
-import type { NurseBalance } from './TeamBalance';
-import { Dashboard } from './Dashboard';
-import { Simulator } from './Simulator';
+import { useEffect, useState } from 'react';
 import { Landing } from './Landing';
 import { Constraints } from './Constraints';
 import { PlannerWorkflow } from './workflow/PlannerWorkflow';
-import type { Nurse } from './NurseRoster';
+
 export interface SimulationState {
   affected_nurse: string;
   missed_shifts: number;
@@ -22,30 +15,10 @@ export interface SimulationState {
 
 function App() {
   const [showDemo, setShowDemo] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'constraints' | 'scheduler'>('dashboard');
-  const [nurses, setNurses] = useState<Nurse[]>([]);
-  const [schedule, setSchedule] = useState<Record<string, string[]>>({});
-  const [authenticSchedule, setAuthenticSchedule] = useState<Record<string, string[]>>({});
-  const [balances, setBalances] = useState<NurseBalance[]>([]);
-  const [baselineBalances, setBaselineBalances] = useState<NurseBalance[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dates, setDates] = useState<Date[]>([]);
-  
-  const [simulationState, setSimulationState] = useState<SimulationState | null>(null);
-  const [dashboardData, setDashboardData] = useState<any>(null);
-  const [baselineDashboardData, setBaselineDashboardData] = useState<any>(null);
-  const [demoStep, setDemoStep] = useState<'baseline' | 'optimization' | 'recovery'>('baseline');
-  const [loadingProgress, setLoadingProgress] = useState(false);
-  const [activeHighlightCell, setActiveHighlightCell] = useState<{ nurseId: string; dayIndex: number } | null>(null);
-  const [changedAssignments, setChangedAssignments] = useState<Record<string, boolean[]>>({});
-
-  // Backend connectivity state
+  const [currentTab, setCurrentTab] = useState<'scheduler' | 'constraints'>('scheduler');
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-  const [showScenarioAnalysis, setShowScenarioAnalysis] = useState(false);
   const [workflowMode, setWorkflowMode] = useState<'blank' | 'sample'>('blank');
   const [workflowTrigger, setWorkflowTrigger] = useState<number>(0);
-  
-  const hasAutoScrolledRef = React.useRef(false);
 
   // Poll backend health every 5 seconds
   useEffect(() => {
@@ -59,329 +32,11 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!loading && scheduleContainerRef.current && !hasAutoScrolledRef.current) {
-      const container = scheduleContainerRef.current;
-      const columnWidth = 80; // per day column width
-      const todayPos = todayIndex * columnWidth + columnWidth / 2;
-      const scrollPos = Math.max(0, todayPos - container.clientWidth / 2);
-      container.scrollTo({ left: scrollPos, behavior: 'smooth' });
-      hasAutoScrolledRef.current = true;
-    }
-  }, [loading, dates]);
-
-  const scheduleContainerRef = React.useRef<HTMLDivElement>(null);
-  
-  const todayIndex = 14; // Mock Today (Wednesday Week 3)
-
-  const computeChangedAssignments = (oldSched: Record<string, string[]>, newSched: Record<string, string[]>) => {
-    const result: Record<string, boolean[]> = {};
-    Object.keys(newSched).forEach(nurseId => {
-      const oldRow = oldSched[nurseId] || [];
-      const newRow = newSched[nurseId] || [];
-      result[nurseId] = newRow.map((shift, idx) => shift !== (oldRow[idx] || ''));
-    });
-    return result;
-  };
-
-  useEffect(() => {
-    fetch(`/api/nurses`)
-      .then(res => res.json())
-      .then(data => {
-        const parsedNurses = data.nurses.map((n: any) => ({
-          id: n.id,
-          contract: n.contract,
-          skills: n.skills,
-        }));
-        setNurses(parsedNurses);
-        return fetch(`/api/state`);
-      })
-      .then(res => res.json())
-      .then(stateData => {
-        setSchedule(stateData.schedule);
-        setAuthenticSchedule(stateData.schedule);
-        setBalances(stateData.balances);
-        setBaselineBalances(stateData.balances);
-        setDashboardData(stateData.dashboard);
-        setBaselineDashboardData(stateData.dashboard);
-        
-        const sched = stateData.schedule as Record<string, string[]>;
-        const scheduleLength = Object.values(sched)[0]?.length || 28;
-        const startDate = new Date('2026-06-01T00:00:00'); // Mock Monday
-        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
-          const d = new Date(startDate);
-          d.setDate(d.getDate() + i);
-          return d;
-        });
-        setDates(scheduleDates);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load scenario state:", err);
-        setLoading(false);
-      });
-  }, [showDemo]);
-
-  const handleAlertClick = (employeeId: string, dayIndex: number) => {
-    if (scheduleContainerRef.current) {
-      scheduleContainerRef.current.scrollTo({
-        left: Math.max(0, (dayIndex - 2) * 80),
-        behavior: 'smooth'
-      });
-    }
-    const gridEl = document.querySelector('.schedule-grid');
-    if (gridEl) {
-      gridEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    setActiveHighlightCell({ nurseId: employeeId, dayIndex });
-    setTimeout(() => {
-      setActiveHighlightCell(null);
-    }, 2000);
-  };
-
-  const loadSyntheticClientScenario = () => {
-    const syntheticNurses: Nurse[] = [
-      { id: 'Sarah_Chen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-      { id: 'Marcus_Webb', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Priya_Nair', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-      { id: 'James_Okafor', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Elena_Vasquez', contract: 'PartTime', skills: ['Nurse'] },
-      { id: 'Liam_Davies', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Amara_Diallo', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-      { id: 'Chloe_Dupont', contract: 'PartTime', skills: ['Nurse'] },
-      { id: 'Devon_Brooks', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Fatima_Al-Sayed', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-      { id: 'Gabriel_Santos', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Hannah_Schmidt', contract: 'PartTime', skills: ['Nurse'] },
-      { id: 'Ian_Kowalski', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Jasmine_Kaur', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Kai_Takahashi', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Lena_Lindholm', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-      { id: 'Mateo_Morales', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Nadia_Petrova', contract: 'PartTime', skills: ['Nurse'] },
-      { id: 'Owen_Walsh', contract: 'FullTime', skills: ['Nurse'] },
-      { id: 'Rachel_Cohen', contract: 'FullTime', skills: ['HeadNurse', 'Nurse'] },
-    ];
-
-    const shiftTypes = ['Early', 'Late', 'Night', ''];
-    const syntheticSchedule: Record<string, string[]> = {};
-    syntheticNurses.forEach((n, nIdx) => {
-      const row: string[] = [];
-      for (let day = 0; day < 28; day++) {
-        const isRest = (day + nIdx) % 7 === 5 || (day + nIdx) % 7 === 6;
-        if (isRest) {
-          row.push('');
-        } else {
-          const shiftIdx = (day + nIdx * 2) % 3;
-          row.push(shiftTypes[shiftIdx]);
-        }
-      }
-      syntheticSchedule[n.id] = row;
-    });
-
-    const syntheticBalances: NurseBalance[] = [
-      { nurse_id: 'Elena_Vasquez', balance: -2, explanation: ['Assigned 2 fewer shifts than part-time contract requirement'] },
-      { nurse_id: 'Marcus_Webb', balance: 1, explanation: ['Covered additional weekend shift in Week 2'] },
-      { nurse_id: 'Sarah_Chen', balance: 1, explanation: ['Stepped in as HeadNurse on Day 4'] },
-      { nurse_id: 'James_Okafor', balance: -1, explanation: ['Rostered under target contract hours'] },
-      { nurse_id: 'Priya_Nair', balance: 0, explanation: ['Workload exactly on contract target'] },
-      { nurse_id: 'Liam_Davies', balance: 0, explanation: ['Balanced shift distribution'] },
-      { nurse_id: 'Chloe_Dupont', balance: -1, explanation: ['Assigned 1 shift below target'] },
-      { nurse_id: 'Amara_Diallo', balance: 1, explanation: ['Senior weekend coverage surplus'] },
-    ];
-
-    const syntheticDashboard = {
-      schedule_version: 'synthetic-sample-v1',
-      roster_health: {
-        balance_score: 94,
-        coverage_pct: 100,
-      },
-    };
-
-    const startDate = new Date('2026-06-01T00:00:00');
-    const scheduleDates = Array.from({ length: 28 }).map((_, i) => {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-
-    setNurses(syntheticNurses);
-    setSchedule(syntheticSchedule);
-    setAuthenticSchedule(syntheticSchedule);
-    setBalances(syntheticBalances);
-    setBaselineBalances(syntheticBalances);
-    setDashboardData(syntheticDashboard);
-    setBaselineDashboardData(syntheticDashboard);
-    setDates(scheduleDates);
-    setSimulationState(null);
-    setChangedAssignments({});
-    setDemoStep('baseline');
-    setActiveHighlightCell(null);
-    setLoading(false);
-  };
-
-  const handleLoadSampleHospital = () => {
-    setLoadingProgress(true);
-    fetch(`/api/load-scenario`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instance: 'n030w4' })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load instance from server');
-        return fetch(`/api/nurses`);
-      })
-      .then(res => res.json())
-      .then(data => {
-        const parsedNurses = data.nurses.map((n: any) => ({
-          id: n.id,
-          contract: n.contract,
-          skills: n.skills,
-        }));
-        setNurses(parsedNurses);
-        return fetch(`/api/state`);
-      })
-      .then(res => res.json())
-      .then(stateData => {
-        setSchedule(stateData.schedule);
-        setAuthenticSchedule(stateData.schedule);
-        setBalances(stateData.balances);
-        setBaselineBalances(stateData.balances);
-        setDashboardData(stateData.dashboard);
-        setBaselineDashboardData(stateData.dashboard);
-        
-        const sched = stateData.schedule as Record<string, string[]>;
-        const scheduleLength = Object.values(sched)[0]?.length || 28;
-        const startDate = new Date('2026-06-01T00:00:00');
-        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
-          const d = new Date(startDate);
-          d.setDate(d.getDate() + i);
-          return d;
-        });
-        setDates(scheduleDates);
-        setSimulationState(null);
-        setChangedAssignments({});
-        setDemoStep('baseline');
-        setActiveHighlightCell(null);
-        setLoadingProgress(false);
-      })
-      .catch(() => {
-        // Fall back gracefully to standalone synthetic hospital dataset
-        loadSyntheticClientScenario();
-        setLoadingProgress(false);
-      });
-  };
-
-  const startAssessment = () => {
-    setWorkflowMode('blank');
-    setWorkflowTrigger(Date.now());
-    setCurrentTab('scheduler');
-  };
-
   const loadSampleHospital = () => {
     setShowDemo(true);
     setWorkflowMode('sample');
     setWorkflowTrigger(Date.now());
     setCurrentTab('scheduler');
-    handleLoadSampleHospital();
-  };
-
-  const handleLoadInstance = (instance: string) => {
-    setLoadingProgress(true);
-    fetch(`/api/load-scenario`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instance })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load instance');
-        return fetch(`/api/nurses`);
-      })
-      .then(res => res.json())
-      .then(data => {
-        const parsedNurses = data.nurses.map((n: any) => ({
-          id: n.id,
-          contract: n.contract,
-          skills: n.skills,
-        }));
-        setNurses(parsedNurses);
-        return fetch(`/api/state`);
-      })
-      .then(res => res.json())
-      .then(stateData => {
-        setSchedule(stateData.schedule);
-        setAuthenticSchedule(stateData.schedule);
-        setBalances(stateData.balances);
-        setBaselineBalances(stateData.balances);
-        setDashboardData(stateData.dashboard);
-        setBaselineDashboardData(stateData.dashboard);
-        
-        const sched = stateData.schedule as Record<string, string[]>;
-        const scheduleLength = Object.values(sched)[0]?.length || 28;
-        const startDate = new Date('2026-06-01T00:00:00');
-        const scheduleDates = Array.from({ length: scheduleLength }).map((_, i) => {
-          const d = new Date(startDate);
-          d.setDate(d.getDate() + i);
-          return d;
-        });
-        setDates(scheduleDates);
-        
-        setSimulationState(null);
-        setChangedAssignments({});
-        setDemoStep('baseline');
-        setActiveHighlightCell(null);
-        setLoadingProgress(false);
-      })
-      .catch(err => {
-        console.error("Failed to load instance:", err);
-        setLoadingProgress(false);
-      });
-  };
-
-  const handleResetDemo = () => {
-    fetch(`/api/simulations/reset`, { method: 'POST' })
-      .then(res => res.json())
-      .then(stateData => {
-        setSchedule(stateData.schedule);
-        setAuthenticSchedule(stateData.schedule);
-        setBalances(stateData.balances);
-        setBaselineBalances(stateData.balances);
-        setDashboardData(stateData.dashboard);
-        setBaselineDashboardData(stateData.dashboard);
-        setSimulationState(null);
-        setChangedAssignments({});
-        setDemoStep('baseline');
-        setActiveHighlightCell(null);
-      })
-      .catch(err => {
-        console.error("Failed to reset server state:", err);
-        setSchedule(authenticSchedule);
-        setBalances(baselineBalances);
-        setDashboardData(baselineDashboardData);
-        setSimulationState(null);
-        setChangedAssignments({});
-        setDemoStep('baseline');
-        setActiveHighlightCell(null);
-      });
-  };
-
-  const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    const dayHeaders = Array.from({ length: dates.length }).map((_, idx) => `Day ${idx + 1}`).join(",");
-    csvContent += `Nurse,${dayHeaders}\n`;
-    
-    Object.entries(schedule).forEach(([nurseId, assignments]) => {
-      const row = [nurseId, ...assignments].join(",");
-      csvContent += `${row}\n`;
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ultracrew_roster_export.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   if (!showDemo) {
@@ -400,25 +55,29 @@ function App() {
   return (
     <div className="app-container">
       <header className="header" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-        <h1 style={{ cursor: 'pointer', color: 'var(--primary-color)', fontSize: '1.35rem', fontWeight: 800 }} onClick={() => setCurrentTab('dashboard')}>
+        <h1 
+          style={{ cursor: 'pointer', color: 'var(--primary-color)', fontSize: '1.35rem', fontWeight: 800 }} 
+          onClick={() => setCurrentTab('scheduler')}
+          title="Back to Workforce & Rostering"
+        >
           UltraRoster
         </h1>
         <nav style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flex: 1 }}>
           <button 
-            onClick={() => setCurrentTab('dashboard')}
+            onClick={() => setCurrentTab('scheduler')}
             style={{ 
               background: 'none', 
               border: 'none', 
-              color: currentTab === 'dashboard' ? 'var(--primary-color)' : 'var(--text-muted)', 
-              fontWeight: currentTab === 'dashboard' ? 700 : 500,
+              color: currentTab === 'scheduler' ? 'var(--primary-color)' : 'var(--text-muted)', 
+              fontWeight: currentTab === 'scheduler' ? 700 : 500,
               fontSize: '0.95rem',
               cursor: 'pointer',
               padding: '0.4rem 0',
-              borderBottom: currentTab === 'dashboard' ? '2px solid var(--primary-color)' : '2px solid transparent',
+              borderBottom: currentTab === 'scheduler' ? '2px solid var(--primary-color)' : '2px solid transparent',
               transition: 'all 0.15s',
             }}
           >
-            Overview
+            Workforce &amp; Rostering
           </button>
           <button 
             onClick={() => setCurrentTab('constraints')}
@@ -435,22 +94,6 @@ function App() {
             }}
           >
             Staffing Policies
-          </button>
-          <button 
-            onClick={() => setCurrentTab('scheduler')}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: currentTab === 'scheduler' ? 'var(--primary-color)' : 'var(--text-muted)', 
-              fontWeight: currentTab === 'scheduler' ? 700 : 500,
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              padding: '0.4rem 0',
-              borderBottom: currentTab === 'scheduler' ? '2px solid var(--primary-color)' : '2px solid transparent',
-              transition: 'all 0.15s',
-            }}
-          >
-            Workforce &amp; Rostering
           </button>
         </nav>
 
@@ -492,364 +135,18 @@ function App() {
       </div>
       
       <div className="content">
-  <main className="main-view">
-    {currentTab === 'scheduler' ? (
-      <PlannerWorkflow
-        workflowMode={workflowMode}
-        workflowTrigger={workflowTrigger}
-        onWorkflowModeChange={setWorkflowMode}
-      />
-    ) : currentTab === 'constraints' ? (
-      <Constraints />
-    ) : (!dashboardData || nurses.length === 0) ? (
-          <div style={{
-            margin: '1.5rem 0',
-            padding: '2.5rem 2rem',
-            backgroundColor: 'var(--panel-bg)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-          }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.35rem' }}>
-              Welcome to UltraRoster
-            </div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.75rem 0' }}>
-              Let's plan your workforce.
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.5, margin: '0 0 1.75rem 0', maxWidth: '680px' }}>
-              Start with your nursing team and staffing requirements. UltraRoster will help you evaluate coverage, constraints and roster alternatives.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
-              <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.5rem', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700 }}>Start an assessment</h4>
-                  <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.45 }}>
-                    Import your workforce, shift requirements and hospital policies.
-                  </p>
-                </div>
-                <button
-                  onClick={startAssessment}
-                  style={{
-                    backgroundColor: 'var(--primary-color)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '0.65rem 1.25rem',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  Set up workforce →
-                </button>
-              </div>
-
-              <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '1.5rem', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700 }}>Explore a sample hospital</h4>
-                  <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.45 }}>
-                    See a complete synthetic roster and its decision analysis.
-                  </p>
-                </div>
-                <button
-                  onClick={loadSampleHospital}
-                  style={{
-                    background: 'none',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-main)',
-                    padding: '0.65rem 1.25rem',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  Load sample data →
-                </button>
-              </div>
-            </div>
-
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '0.85rem' }}>
-              Demonstration data only. No real hospital or employee information.
-            </div>
-          </div>
-        ) : (
-          <>
-            <Dashboard
-              data={dashboardData}
-              baselineData={baselineDashboardData}
-              simulationState={simulationState}
-              demoStep={demoStep}
-              onAlertClick={handleAlertClick}
+        <main className="main-view">
+          {currentTab === 'scheduler' ? (
+            <PlannerWorkflow
+              workflowMode={workflowMode}
+              workflowTrigger={workflowTrigger}
+              onWorkflowModeChange={setWorkflowMode}
             />
-
-            {/* Decision Workspace */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <TeamBalance
-            balances={balances}
-            simulationState={simulationState}
-            balanceScore={dashboardData?.roster_health?.balance_score}
-          />
-
-          {/* Secondary Section: Scenario Analysis (Sick Leave Recovery) */}
-          <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 700 }}>
-                  Scenario Analysis
-                </h3>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Simulate unplanned absence and evaluate automated workload-recovery balancing.
-                </span>
-              </div>
-              <button
-                onClick={() => setShowScenarioAnalysis(!showScenarioAnalysis)}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
-                  padding: '0.45rem 1rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                }}
-              >
-                {showScenarioAnalysis ? '▲ Hide Scenario Simulator' : '▼ Open Scenario Simulator'}
-              </button>
-            </div>
-
-            {showScenarioAnalysis && (
-              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                <Simulator
-                  nurses={nurses}
-                  schedule={authenticSchedule}
-                  simulationState={simulationState}
-                  todayIndex={todayIndex}
-                  onJumpToRecovery={() => {
-                    if (scheduleContainerRef.current) {
-                      scheduleContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      setTimeout(() => {
-                        if (scheduleContainerRef.current) {
-                          scheduleContainerRef.current.scrollTo({
-                            left: (todayIndex + 7) * 80,
-                            behavior: 'smooth'
-                          });
-                        }
-                      }, 300);
-                    }
-                  }}
-                  onMarkSick={(nurseId, sickDays) => {
-                    setLoadingProgress(true);
-                    setDemoStep('optimization');
-
-                    const fetchPromise = fetch(`/api/simulations/sick-leave`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        employee_id: nurseId,
-                        sick_days: Array.from(sickDays)
-                      })
-                    }).then(res => {
-                      if (!res.ok) throw new Error('Simulation API request failed.');
-                      return res.json();
-                    });
-
-                    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 3000));
-
-                    Promise.all([fetchPromise, minDelayPromise])
-                      .then(([data]) => {
-                        const diffs = computeChangedAssignments(authenticSchedule, data.schedule);
-                        setSchedule(data.schedule);
-                        setBalances(data.balances);
-                        setDashboardData(data.dashboard);
-                        setSimulationState(data.recovery_plan);
-                        setChangedAssignments(diffs);
-                        setLoadingProgress(false);
-                        setDemoStep('recovery');
-                      })
-                      .catch(err => {
-                        console.error('Simulation error:', err);
-                        setLoadingProgress(false);
-                        setDemoStep('baseline');
-                      });
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Active Workforce Roster */}
-        <div
-          className="roster-section"
-          ref={scheduleContainerRef}
-          style={{ overflowX: 'auto', overflowY: 'hidden' }}
-        >
-          <div style={{
-            position: 'relative',
-            border: simulationState ? '2px dashed var(--accent-color)' : '1px solid var(--border-color)',
-            borderRadius: '12px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: 'var(--panel-bg)',
-              padding: '0.75rem 1.5rem',
-              borderBottom: simulationState ? '2px dashed var(--accent-color)' : '1px solid var(--border-color)'
-            }}>
-              <span style={{ fontWeight: 600, letterSpacing: '0.05em', color: simulationState ? 'var(--accent-color)' : 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {simulationState ? '⚠️ SIMULATION ACTIVE: RECOVERY DETECTED' : '📋 ACTIVE WORKFORCE ROSTER'}
-              </span>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <select
-                  onChange={(e) => handleLoadInstance(e.target.value)}
-                  defaultValue="n030w4"
-                  style={{
-                    backgroundColor: 'var(--panel-bg)',
-                    color: 'var(--text-main)',
-                    border: '1px solid var(--border-color)',
-                    padding: '0.4rem',
-                    borderRadius: '6px',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  <option value="n030w4">INRC n030w4 (30 Nurses)</option>
-                  <option value="n040w4">INRC n040w4 (40 Nurses)</option>
-                  <option value="n060w4">INRC n060w4 (60 Nurses)</option>
-                  <option value="n080w4">INRC n080w4 (80 Nurses)</option>
-                  <option value="n120w4">INRC n120w4 (120 Nurses)</option>
-                </select>
-                <button
-                  onClick={handleExportCSV}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: 'var(--accent-color)',
-                    border: '1px solid var(--accent-color)',
-                    padding: '0.4rem 1rem',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={e => { e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)'; }}
-                  onMouseOut={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                  Export CSV
-                </button>
-                <button
-                  onClick={handleResetDemo}
-                  style={{
-                    backgroundColor: simulationState ? 'var(--accent-color)' : 'transparent',
-                    color: simulationState ? 'white' : 'var(--text-muted)',
-                    border: simulationState ? 'none' : '1px solid var(--border-color)',
-                    padding: '0.4rem 1rem',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={e => { if (!simulationState) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'; }}
-                  onMouseOut={e => { if (!simulationState) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                  Reset Demo
-                </button>
-              </div>
-            </div>
-            <ScheduleGrid
-              nurses={nurses}
-              schedule={schedule}
-              dates={dates}
-              todayIndex={todayIndex}
-              activeHighlightCell={activeHighlightCell}
-              changedAssignments={changedAssignments}
-            />
-          </div>
-        </div>
-      </>
-    )}
-  </main>
-</div>
-      <OptimizationLoader active={loadingProgress} />
-    </div>
-  );
-}
-
-
-
-function OptimizationLoader({ active }: { active: boolean }) {
-  const [stageIndex, setStageIndex] = useState(0);
-  const stages = [
-    "Analyzing schedule and coverage...",
-    "Finding qualified replacements...",
-    "Balancing workloads...",
-    "Validating union contract constraints...",
-    "Finalizing recovery schedule..."
-  ];
-
-  useEffect(() => {
-    if (!active) {
-      setStageIndex(0);
-      return;
-    }
-    const interval = setInterval(() => {
-      setStageIndex(prev => (prev < stages.length - 1 ? prev + 1 : prev));
-    }, 600);
-    return () => clearInterval(interval);
-  }, [active]);
-
-  if (!active) return null;
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.85)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      backdropFilter: 'blur(4px)'
-    }}>
-      <div style={{
-        backgroundColor: 'var(--panel-bg)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '16px',
-        padding: '3rem',
-        maxWidth: '500px',
-        width: '90%',
-        textAlign: 'center',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '4px solid rgba(56, 189, 248, 0.2)',
-          borderTopColor: 'var(--accent-color)',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 2rem auto'
-        }} />
-        <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', fontSize: '1.25rem' }}>Running MOGA Scheduler</h3>
-        <p style={{ margin: 0, color: 'var(--accent-color)', fontWeight: 600, minHeight: '24px' }}>
-          {stages[stageIndex]}
-        </p>
+          ) : (
+            <Constraints />
+          )}
+        </main>
       </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
