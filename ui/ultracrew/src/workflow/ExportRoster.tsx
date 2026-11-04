@@ -500,7 +500,7 @@ export const ExportRoster: React.FC<{
               <div style={{ marginTop: '0.85rem', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', padding: '0.75rem 1rem', fontSize: '0.82rem' }}>
                 <strong style={{ color: '#f59e0b' }}>Auditable Human Override:</strong> Planner selected <strong>{schedulerDecision.selected_id === 'alt-B' ? 'Candidate B (Balanced Weekend Rotation)' : schedulerDecision.selected_id}</strong> over Recommended {schedulerDecision.recommended_id}.
                 <div style={{ marginTop: '0.25rem', color: 'var(--text-muted)' }}>
-                  <strong>Operational Rationale:</strong> Prioritizes workload equity and weekend rotation fairness (workload variance 0.9 hours² vs 1.2 hours²; 3% lower cost index) while strictly maintaining 100% position coverage (196/196 positions) with zero hard policy violations.
+                  <strong>Operational Rationale:</strong> Prioritizes workload equity and weekend rotation fairness (workload variance 0.9 hours² vs 1.2 hours²; 3% lower relative scheduling cost index — operational proxy, not cash payroll savings) while strictly maintaining 100% position coverage (196/196 positions) with zero hard policy violations.
                 </div>
               </div>
             )}

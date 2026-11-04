@@ -1976,7 +1976,7 @@ export function buildSyntheticAlternatives(
   const gainLines: string[] = [];
   const giveUpLines: string[] = [];
   gainLines.push('Lower fairness penalty (0.9 vs 1.2) — more even weekend distribution.');
-  gainLines.push('3% lower cost index.');
+  gainLines.push('3% lower relative cost index (operational unsocial hours proxy, not cash payroll savings).');
   if (coverageReportB.gapPositions > coverageReportA.gapPositions) {
     const extraGap = coverageReportB.gapPositions - coverageReportA.gapPositions;
     giveUpLines.push(`${extraGap} more required position${extraGap !== 1 ? 's' : ''} left uncovered.`);

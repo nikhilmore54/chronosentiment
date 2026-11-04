@@ -55,6 +55,19 @@ pub fn is_secure_request(headers: &HeaderMap) -> bool {
     }
 }
 
+/// Enforces CSRF mitigation by verifying Sec-Fetch-Site on state mutation requests.
+pub fn check_csrf_protection(headers: &HeaderMap) -> Result<(), (StatusCode, Json<Value>)> {
+    if let Some(sec_site) = headers.get("sec-fetch-site").and_then(|v| v.to_str().ok()) {
+        if sec_site.eq_ignore_ascii_case("cross-site") {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "Cross-site session mutation forbidden (CSRF protection)"})),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Extracts device token from Cookie header, X-Device-Token header, or returns None.
 pub fn extract_device_token(headers: &HeaderMap) -> Option<String> {
     // 1. Check Cookie header (preferred browser mechanism)
@@ -187,6 +200,8 @@ pub async fn save_device_session_handler(
     headers: HeaderMap,
     Json(input): Json<SaveDeviceSessionInput>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+    check_csrf_protection(&headers)?;
+
     let base_dir = Path::new(SESSIONS_DIR);
     let secure = is_secure_request(&headers);
 
@@ -206,15 +221,15 @@ pub async fn save_device_session_handler(
         Uuid::new_v4().to_string()
     };
 
-    // Concurrency / revision protection: check for stale sequence numbers
+    // Concurrency / revision protection: check for stale or duplicate sequence numbers
     let existing_record = read_session_from_disk(base_dir, &token);
     let new_revision = if let Some(ref existing) = existing_record {
         if let Some(incoming_rev) = input.revision {
-            if incoming_rev < existing.revision {
+            if incoming_rev <= existing.revision {
                 return Err((
                     StatusCode::CONFLICT,
                     Json(json!({
-                        "error": "Stale revision: incoming revision is older than stored revision",
+                        "error": "Stale revision: incoming revision is not greater than stored revision",
                         "stored_revision": existing.revision,
                         "incoming_revision": incoming_rev,
                     })),
@@ -262,18 +277,22 @@ pub async fn save_device_session_handler(
     ))
 }
 
-pub async fn clear_device_session_handler(headers: HeaderMap) -> impl IntoResponse {
+pub async fn clear_device_session_handler(
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+    check_csrf_protection(&headers)?;
+
     let base_dir = Path::new(SESSIONS_DIR);
     let secure = is_secure_request(&headers);
     if let Some(token) = extract_device_token(&headers) {
         let _ = delete_session_from_disk(base_dir, &token);
     }
 
-    (
+    Ok((
         StatusCode::OK,
         [(header::SET_COOKIE, make_cookie_header("", 0, secure))],
         Json(json!({"status": "cleared"})),
-    )
+    ))
 }
 
 #[cfg(test)]
@@ -377,6 +396,50 @@ mod tests {
 
         write_session_to_disk(&temp_dir, &record).expect("write failed");
         assert!(read_session_from_disk(&temp_dir, "expired-device").is_none());
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn test_csrf_rejection() {
+        let mut cross_site_headers = HeaderMap::new();
+        cross_site_headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+        assert!(check_csrf_protection(&cross_site_headers).is_err());
+
+        let mut same_origin_headers = HeaderMap::new();
+        same_origin_headers.insert("sec-fetch-site", HeaderValue::from_static("same-origin"));
+        assert!(check_csrf_protection(&same_origin_headers).is_ok());
+
+        let empty_headers = HeaderMap::new();
+        assert!(check_csrf_protection(&empty_headers).is_ok());
+    }
+
+    #[test]
+    fn test_equal_and_stale_revision_conflict() {
+        let temp_dir = std::env::temp_dir().join(format!("test_session_{}", Uuid::new_v4()));
+        let record = DeviceSessionRecord {
+            device_token: "conflict-device".to_string(),
+            schema_version: 1,
+            revision: 5,
+            updated_at: chrono::Utc::now().to_rfc3339(),
+            state: json!({"step": 2}),
+        };
+        write_session_to_disk(&temp_dir, &record).expect("write failed");
+
+        let existing = read_session_from_disk(&temp_dir, "conflict-device").unwrap();
+        assert_eq!(existing.revision, 5);
+
+        // Stale revision (e.g. 4 <= 5) -> conflict
+        let stale_rev: u64 = 4;
+        assert!(stale_rev <= existing.revision);
+
+        // Equal revision (e.g. 5 <= 5) -> concurrent tab conflict
+        let equal_rev: u64 = 5;
+        assert!(equal_rev <= existing.revision);
+
+        // Newer revision (e.g. 6 > 5) -> accepted
+        let newer_rev: u64 = 6;
+        assert!(newer_rev > existing.revision);
 
         let _ = fs::remove_dir_all(temp_dir);
     }

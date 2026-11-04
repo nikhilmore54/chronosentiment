@@ -506,6 +506,9 @@ export const ComparativeScorecard: React.FC<{
           ℹ <strong>Single Validation Authority:</strong> All candidates and the baseline are evaluated by the independent Rust constraint engine under policy snapshot <code>{baseline.policy_version}</code>.
         </div>
         <div>
+          ℹ <strong>Relative Cost Index:</strong> Normalized operational shift-weight scheduling index (Option A = 100, Option B = 97) weighted by unsocial shift distributions (night/weekend weighting). A lower index reflects fewer unsocial hours scheduled. This is a relative scheduling proxy, not a realized cash payroll savings calculation.
+        </div>
+        <div>
           ℹ <strong>Independent Policy Validation:</strong> Candidate rosters satisfy all encoded hard constraints under the evaluated policy snapshot. This assessment does not independently certify compliance with statutes, regulations, or clinical staffing guidance that have not been explicitly mapped and verified.
         </div>
       </div>
