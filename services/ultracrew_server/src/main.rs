@@ -18,6 +18,9 @@ use ultracrew::constraint_engine::DomainConstraintEvaluator;
 use ultracrew::inrc::models::{InrcNurse, InrcScenario};
 use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
 use ultracrew::inrc::validator::validate_schedule;
+use ultracrew_server::device_session::{
+    clear_device_session_handler, get_device_session_handler, save_device_session_handler,
+};
 use ultracrew_server::models::{DecisionCase, DecisionLog, ScheduleVersion};
 use ultracrew_server::persistence::{delete_item, load_collection, save_item};
 use ultracrew_server::simulation::{
@@ -2431,7 +2434,13 @@ async fn get_nurses_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl I
 async fn main() {
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
         .allow_headers(Any);
 
     let app_state = Arc::new(Mutex::new(AppState {
@@ -2503,6 +2512,13 @@ async fn main() {
         .route("/api/load-scenario", post(load_scenario_handler))
         // INRC nurse rostering compliance endpoint
         .route("/api/inrc/compliance", post(inrc_compliance_handler))
+        // Device session state persistence endpoints
+        .route(
+            "/api/session/state",
+            get(get_device_session_handler)
+                .post(save_device_session_handler)
+                .delete(clear_device_session_handler),
+        )
         .layer(GovernorLayer {
             config: governor_conf,
         });

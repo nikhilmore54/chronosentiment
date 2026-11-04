@@ -313,14 +313,14 @@ export const ComparativeScorecard: React.FC<{
       candA: '0 violations',
       candB: candidateB ? '0 violations' : '—',
       status: 'highlight',
-      note: 'Regulatory and contractual breaches',
+      note: 'Encoded hospital-policy and contractual violations',
     },
     {
       label: 'Rest violations (< 10h)',
       baseline: `${baseline.rest_violations} breaches`,
       candA: '0 breaches',
       candB: candidateB ? '0 breaches' : '—',
-      note: 'Mandatory minimum rest periods',
+      note: 'Configured minimum rest requirement',
     },
     {
       label: 'Weekly contract violations',
@@ -345,10 +345,10 @@ export const ComparativeScorecard: React.FC<{
     },
     {
       label: 'Workload fairness',
-      baseline: `${baseline.workload_variance} variance`,
-      candA: `${candidateA?.metrics.fairness_penalty.toFixed(1) ?? '0.0'} variance`,
-      candB: candidateB ? `${candidateB.metrics.fairness_penalty.toFixed(1)} variance` : '—',
-      note: 'Shift distribution equity',
+      baseline: `${baseline.workload_variance} hours²`,
+      candA: `${candidateA?.metrics.fairness_penalty.toFixed(1) ?? '0.0'} hours²`,
+      candB: candidateB ? `${candidateB.metrics.fairness_penalty.toFixed(1)} hours²` : '—',
+      note: 'Workload variance in hours² (lower = more even)',
     },
     {
       label: 'Weekend distribution',
@@ -503,7 +503,10 @@ export const ComparativeScorecard: React.FC<{
           ℹ <strong>Evidence Standard Note:</strong> Scheduled overtime exposure indicates scheduled roster hours beyond contract caps. Realized cash payroll savings must be reconciled against timekeeping and payroll disbursements during the pilot.
         </div>
         <div>
-          ℹ <strong>Single Validation Authority:</strong> All candidates and the baseline are certified by the independent Rust constraint evaluator under the identical hospital policy snapshot (<code>{baseline.policy_version}</code>).
+          ℹ <strong>Single Validation Authority:</strong> All candidates and the baseline are evaluated by the independent Rust constraint engine under policy snapshot <code>{baseline.policy_version}</code>.
+        </div>
+        <div>
+          ℹ <strong>Independent Policy Validation:</strong> Candidate rosters satisfy all encoded hard constraints under the evaluated policy snapshot. This assessment does not independently certify compliance with statutes, regulations, or clinical staffing guidance that have not been explicitly mapped and verified.
         </div>
       </div>
     </div>

@@ -386,6 +386,8 @@ export interface BaselinePolicyParameters {
 
 export interface BaselineAuditReport {
   audit_id: string;
+  scenario_id?: string;
+  scenario_name?: string;
   status: string;
   audit_classification: 'VALID_AND_FEASIBLE' | 'VALID_BUT_INFEASIBLE' | 'INCOMPLETE_OR_UNVERIFIABLE';
   policy_version: string;

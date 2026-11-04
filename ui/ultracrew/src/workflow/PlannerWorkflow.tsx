@@ -19,6 +19,7 @@ import { ReviewSchedule } from './ReviewSchedule';
 import { ExportRoster } from './ExportRoster';
 import { DecisionRepository } from '../services/DecisionRepository';
 import { accumulatePatterns } from '../services/PatternAccumulator';
+import { DeviceSessionService } from '../services/DeviceSessionService';
 import {
   getScheduleSlotMeta,
   parseStaffCSV,
@@ -67,6 +68,17 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
   const [baselineAuditReport, setBaselineAuditReport] = useState<BaselineAuditReport | null>(null);
   const [baselineAssignments, setBaselineAssignments] = useState<BaselineAssignment[]>([]);
   const [approvedDemandSnapshot, setApprovedDemandSnapshot] = useState<ApprovedDemandSnapshot | null>(null);
+  const [demoScenario, setDemoScenario] = useState<'20-nurse' | '12-nurse' | null>(() => {
+    return workflowMode === 'sample' ? '20-nurse' : null;
+  });
+
+  // Server-side device session sync status
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  useEffect(() => {
+    const unsub = DeviceSessionService.onSyncStatusChange(setSyncStatus);
+    return unsub;
+  }, []);
 
   // P4.1: dismissed pattern reasons (persisted in localStorage)
   const [dismissedPatterns, setDismissedPatterns] = useState<string[]>(
@@ -112,6 +124,12 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       },
       'hospital_policy_v1'
     );
+    auditReport.scenario_id = demoType === '12-nurse'
+      ? 'scenario-synthetic-12-nurse-slack-team'
+      : 'scenario-synthetic-20-nurse-department';
+    auditReport.scenario_name = demoType === '12-nurse'
+      ? 'Optimal 12-Nurse Team (22% Slack)'
+      : 'Synthetic 20-Nurse Department';
 
     const rawSchedule = demoType === '12-nurse'
       ? { ...VERIFIED_OPTIMAL_12_SCHEDULE }
@@ -157,6 +175,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     };
 
     setStaff(sampleStaff);
+    setDemoScenario(demoType);
     setCustomShifts([]);
     setSelectedRuleId('standard-hospital');
     setScheduleResult(sampleResult);
@@ -172,6 +191,8 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
   };
 
   const resetToBlankWorkspace = () => {
+    void DeviceSessionService.clearSession();
+    setDemoScenario(null);
     setStaff([]);
     setCustomShifts([]);
     setSelectedRuleId('');
@@ -192,18 +213,59 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
   };
 
   const prevTriggerRef = useRef(workflowTrigger);
-  const initialMountRef = useRef(true);
+  const isHydratedRef = useRef(false);
 
+  // Initial load: rehydrate session from backend if available
   useEffect(() => {
-    if (initialMountRef.current) {
-      initialMountRef.current = false;
-      if (workflowMode === 'sample') {
-        loadSampleDemonstration();
-      } else {
-        resetToBlankWorkspace();
+    let cancelled = false;
+
+    async function hydrate() {
+      const session = await DeviceSessionService.loadSession();
+      if (!cancelled && session?.state && session.state.staff && session.state.staff.length > 0) {
+        const s = session.state;
+        if (s.step) setStep(s.step);
+        if (s.maxReached) setMaxReached(s.maxReached);
+        if (s.staff) setStaff(s.staff);
+        if (s.customShifts) setCustomShifts(s.customShifts);
+        if (s.selectedRuleId) setSelectedRuleId(s.selectedRuleId);
+        if (s.rulePayload) setRulePayload(s.rulePayload);
+        if (s.scheduleResult) setScheduleResult(s.scheduleResult);
+        if (s.editableSchedule) setEditableSchedule(s.editableSchedule);
+        if (s.manualEditCount !== undefined) setManualEditCount(s.manualEditCount);
+        if (s.editDistribution) setEditDistribution(s.editDistribution);
+        if (s.originalAssignmentCount !== undefined) setOriginalAssignmentCount(s.originalAssignmentCount);
+        if (s.alternatives) setAlternatives(s.alternatives);
+        if (s.recommendedId) setRecommendedId(s.recommendedId);
+        if (s.schedulerDecision) setSchedulerDecision(s.schedulerDecision);
+        if (s.baselineAuditReport) setBaselineAuditReport(s.baselineAuditReport);
+        if (s.baselineAssignments) setBaselineAssignments(s.baselineAssignments);
+        if (s.approvedDemandSnapshot) setApprovedDemandSnapshot(s.approvedDemandSnapshot);
+        if (s.demoScenario) setDemoScenario(s.demoScenario);
+        if (s.workflowMode && onWorkflowModeChange) onWorkflowModeChange(s.workflowMode);
+        isHydratedRef.current = true;
+        return;
       }
-      return;
+
+      if (!cancelled) {
+        if (workflowMode === 'sample') {
+          loadSampleDemonstration();
+        } else {
+          resetToBlankWorkspace();
+        }
+        isHydratedRef.current = true;
+      }
     }
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Workflow trigger updates (e.g. manual mode switch button)
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
 
     if (prevTriggerRef.current !== workflowTrigger) {
       prevTriggerRef.current = workflowTrigger;
@@ -215,6 +277,56 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     }
   }, [workflowMode, workflowTrigger]);
 
+  // Auto-save debounced to server whenever workflow state changes
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    if (staff.length === 0 && step === 1) return;
+
+    const snapshot = {
+      step,
+      maxReached,
+      staff,
+      customShifts,
+      selectedRuleId,
+      rulePayload,
+      scheduleResult,
+      editableSchedule,
+      manualEditCount,
+      editDistribution,
+      originalAssignmentCount,
+      alternatives,
+      recommendedId,
+      schedulerDecision,
+      baselineAuditReport,
+      baselineAssignments,
+      approvedDemandSnapshot,
+      demoScenario,
+      workflowMode,
+    };
+
+    DeviceSessionService.saveSessionDebounced(snapshot, 1000);
+  }, [
+    step,
+    maxReached,
+    staff,
+    customShifts,
+    selectedRuleId,
+    rulePayload,
+    scheduleResult,
+    editableSchedule,
+    manualEditCount,
+    editDistribution,
+    originalAssignmentCount,
+    alternatives,
+    recommendedId,
+    schedulerDecision,
+    baselineAuditReport,
+    baselineAssignments,
+    approvedDemandSnapshot,
+    demoScenario,
+    workflowMode,
+  ]);
+
   const handleStartOver = () => {
     resetToBlankWorkspace();
     onWorkflowModeChange?.('blank');
@@ -222,127 +334,137 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
 
   return (
     <div className="card">
-      <div className="no-print" style={{ marginBottom: '0.25rem' }}>
-        <h2 style={{ margin: '0 0 0.25rem 0' }}>Workforce Assessment &amp; Planning</h2>
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Evaluate historical roster compliance, generate policy-compliant candidates, and compare decision alternatives.
-        </p>
-      </div>
-
-      {/* Mode Indicator & Quick Switch */}
-      <div className="no-print" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '0.75rem',
-        padding: '0.65rem 1rem',
-        borderRadius: '8px',
-        backgroundColor: workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.08)' : 'rgba(56, 189, 248, 0.08)',
-        border: `1px solid ${workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.25)' : 'rgba(56, 189, 248, 0.25)'}`,
-        marginTop: '0.85rem',
-        marginBottom: '0.5rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.86rem' }}>
-          <span style={{
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            padding: '0.15rem 0.5rem',
-            borderRadius: '4px',
-            backgroundColor: workflowMode === 'sample' ? 'var(--primary-color)' : '#0284c7',
-            color: 'white',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}>
-            {workflowMode === 'sample' ? 'Sample Demo' : 'Blank Workspace'}
-          </span>
-          <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
-            {workflowMode === 'sample'
-              ? 'Preloaded demonstration for synthetic 20-nurse department. Roster alternatives & scorecard ready for exploration.'
-              : 'Blank assessment workspace. Start by importing your hospital staff CSV.'}
-          </span>
-        </div>
+      <div className="no-print" style={{ marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          {workflowMode === 'sample' ? (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  loadSampleDemonstration(staff.length === 12 ? '20-nurse' : '12-nurse');
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--accent-color)',
-                  borderRadius: '5px',
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.8rem',
-                  color: 'var(--accent-color)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                {staff.length === 12 ? 'Switch to 20-Nurse Baseline →' : 'Switch to Optimal 12-Nurse Team (22% Slack) →'}
-              </button>
-              <button
-                onClick={() => {
-                  resetToBlankWorkspace();
-                  onWorkflowModeChange?.('blank');
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '5px',
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.8rem',
-                  color: 'var(--text-main)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                Start Blank Assessment →
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  loadSampleDemonstration('12-nurse');
-                  onWorkflowModeChange?.('sample');
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid #10b981',
-                  borderRadius: '5px',
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.8rem',
-                  color: '#10b981',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                Explore 12-Nurse Optimal Demo (22% Slack) →
-              </button>
-              <button
-                onClick={() => {
-                  loadSampleDemonstration('20-nurse');
-                  onWorkflowModeChange?.('sample');
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '5px',
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.8rem',
-                  color: 'var(--text-main)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                Explore 20-Nurse Demo (Baseline) →
-              </button>
-            </div>
+          <h2 style={{ margin: '0 0 0.25rem 0' }}>Workforce Assessment &amp; Planning</h2>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            Evaluate historical roster compliance, generate policy-compliant candidates, and compare decision alternatives.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title="Device-scoped persistence: State is preserved on this local browser device for synthetic demonstration workflows. Does not provide multi-tenant or user identity authentication for actual hospital data.">
+          {syncStatus === 'saving' && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--accent-color)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(13,148,136,0.08)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(13,148,136,0.2)' }}>
+              <span>⟳</span> <span>Saving to server...</span>
+            </span>
+          )}
+          {syncStatus === 'saved' && (
+            <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(16,185,129,0.08)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <span>✓</span> <span>Server Backed Up</span>
+            </span>
+          )}
+          {syncStatus === 'error' && (
+            <span style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(239,68,68,0.08)', padding: '0.25rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <span>⚠</span> <span>Sync Offline</span>
+            </span>
           )}
         </div>
       </div>
+
+      {/* Mode Indicator & Quick Switch */}
+      {(() => {
+        const is12Nurse = demoScenario === '12-nurse' || (demoScenario === null && staff.length === 12);
+        return (
+          <div className="no-print" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            padding: '0.65rem 1rem',
+            borderRadius: '8px',
+            backgroundColor: workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.08)' : 'rgba(56, 189, 248, 0.08)',
+            border: `1px solid ${workflowMode === 'sample' ? 'rgba(15, 118, 110, 0.25)' : 'rgba(56, 189, 248, 0.25)'}`,
+            marginTop: '0.85rem',
+            marginBottom: '0.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.86rem' }}>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '0.15rem 0.5rem',
+                borderRadius: '4px',
+                backgroundColor: workflowMode === 'sample' ? 'var(--primary-color)' : '#0284c7',
+                color: 'white',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}>
+                {workflowMode === 'sample'
+                  ? (is12Nurse ? 'Sample Demo · 12-Nurse Team' : 'Sample Demo · 20-Nurse Department')
+                  : 'Blank Workspace'}
+              </span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                {workflowMode === 'sample'
+                  ? (is12Nurse
+                      ? 'Preloaded demonstration for synthetic 12-nurse team (22% capacity slack). Roster alternatives & scorecard ready for exploration.'
+                      : 'Preloaded demonstration for synthetic 20-nurse department. Roster alternatives & scorecard ready for exploration.')
+                  : 'Blank assessment workspace. Start by importing your hospital staff CSV.'}
+              </span>
+            </div>
+            <div>
+              {workflowMode === 'sample' ? (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      loadSampleDemonstration(is12Nurse ? '20-nurse' : '12-nurse');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--accent-color)',
+                      borderRadius: '5px',
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.8rem',
+                      color: 'var(--accent-color)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {is12Nurse ? 'Switch to 20-Nurse Baseline →' : 'Switch to Optimal 12-Nurse Team (22% Slack) →'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      resetToBlankWorkspace();
+                      onWorkflowModeChange?.('blank');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '5px',
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-main)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Start Blank Assessment →
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      loadSampleDemonstration('20-nurse');
+                      onWorkflowModeChange?.('sample');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #10b981',
+                      borderRadius: '5px',
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.8rem',
+                      color: '#10b981',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Load Sample Demo (20-Nurse) →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ marginTop: '1.25rem' }}>
         <div className="no-print">
